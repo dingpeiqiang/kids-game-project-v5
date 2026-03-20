@@ -1,0 +1,82 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{vue,js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // 使用 CSS 变量，支持动态主题
+        'kid-primary': 'var(--kid-primary)',
+        'kid-secondary': 'var(--kid-secondary)',
+        'kid-yellow': 'var(--kid-yellow)',
+        'kid-blue': 'var(--kid-blue)',
+        'kid-purple': 'var(--kid-purple)',
+        'kid-white': 'var(--kid-white)',
+        'kid-gray': {
+          50: 'var(--kid-gray-50)',
+          100: 'var(--kid-gray-100)',
+          200: 'var(--kid-gray-200)',
+          300: 'var(--kid-gray-300)',
+          400: 'var(--kid-gray-400)',
+          500: 'var(--kid-gray-500)',
+          600: 'var(--kid-gray-600)',
+          700: 'var(--kid-gray-700)',
+          800: 'var(--kid-gray-800)',
+          900: 'var(--kid-gray-900)',
+        },
+        'kid-success': 'var(--kid-success)',
+        'kid-warning': 'var(--kid-warning)',
+        'kid-error': 'var(--kid-error)',
+        'kid-info': 'var(--kid-info)',
+      },
+      fontSize: {
+        'xxs': '0.625rem',
+        'kid-xs': 'var(--kid-text-xs)',
+        'kid-sm': 'var(--kid-text-sm)',
+        'kid-base': 'var(--kid-text-base)',
+        'kid-lg': 'var(--kid-text-lg)',
+        'kid-xl': 'var(--kid-text-xl)',
+        'kid-2xl': 'var(--kid-text-2xl)',
+        'kid-3xl': 'var(--kid-text-3xl)',
+        'kid-4xl': 'var(--kid-text-4xl)',
+        'kid-5xl': 'var(--kid-text-5xl)',
+      },
+      borderRadius: {
+        'kid-sm': 'var(--kid-radius-sm)',
+        'kid-base': 'var(--kid-radius-base)',
+        'kid-md': 'var(--kid-radius-md)',
+        'kid-lg': 'var(--kid-radius-lg)',
+        'kid-xl': 'var(--kid-radius-xl)',
+        'kid-2xl': 'var(--kid-radius-2xl)',
+        'kid-full': 'var(--kid-radius-full)',
+      },
+      boxShadow: {
+        'kid-sm': 'var(--kid-shadow-sm)',
+        'kid-base': 'var(--kid-shadow-base)',
+        'kid-md': 'var(--kid-shadow-md)',
+        'kid-lg': 'var(--kid-shadow-lg)',
+        'kid-xl': 'var(--kid-shadow-xl)',
+      },
+      spacing: {
+        'kid-xs': 'var(--kid-spacing-xs)',
+        'kid-sm': 'var(--kid-spacing-sm)',
+        'kid-md': 'var(--kid-spacing-md)',
+        'kid-lg': 'var(--kid-spacing-lg)',
+        'kid-xl': 'var(--kid-spacing-xl)',
+        'kid-2xl': 'var(--kid-spacing-2xl)',
+      },
+      transitionDuration: {
+        'kid-fast': 'var(--kid-transition-fast)',
+        'kid-base': 'var(--kid-transition-base)',
+        'kid-slow': 'var(--kid-transition-slow)',
+      },
+      animation: {
+        'bounce-slow': 'bounce 2s infinite',
+        'pulse-slow': 'pulse 3s infinite',
+      },
+    },
+  },
+  plugins: [],
+}

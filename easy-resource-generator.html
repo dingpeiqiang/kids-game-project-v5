@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎮 游戏资源一键生成器</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    h1 {
+      color: #4a5568;
+      text-align: center;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: #718096;
+      font-size: 16px;
+      margin-bottom: 30px;
+    }
+    
+    .action-bar {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      padding: 15px 30px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+    }
+    
+    .btn-warning {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+    
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .progress-section {
+      background: #f7fafc;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      display: none;
+    }
+    
+    .progress-section.show {
+      display: block;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #e2e8f0;
+      border-radius: 15px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+    
+    .status-text {
+      text-align: center;
+      color: #2d3748;
+      font-size: 16px;
+    }
+    
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .preview-item {
+      background: #f7fafc;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+      transition: all 0.3s;
+    }
+    
+    .preview-item:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    
+    .preview-item canvas {
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .preview-item h3 {
+      color: #4a5568;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    
+    .preview-item p {
+      color: #718096;
+      font-size: 12px;
+    }
+    
+    .download-btn {
+      background: #4ECDC4;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    
+    .download-btn:hover {
+      background: #45b7aa;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .stat-card {
+      background: white;
+      border: 2px solid #e2e8f0;
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 32px;
+      font-weight: bold;
+      color: #667eea;
+    }
+    
+    .stat-label {
+      color: #718096;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 游戏资源一键生成器</h1>
+    <p class="subtitle">使用 Canvas 2D 绘制，支持批量下载 PNG 素材</p>
+    
+    <div class="action-bar">
+      <button class="btn btn-primary" onclick="generateSnakeResources()">
+        🐍 生成贪吃蛇资源
+      </button>
+      <button class="btn btn-warning" onclick="generatePlaneResources()">
+        ✈️ 生成飞机大战资源
+      </button>
+      <button class="btn btn-success" onclick="downloadAll()">
+        💾 下载所有资源
+      </button>
+    </div>
+    
+    <div id="progressSection" class="progress-section">
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill" style="width: 0%">0%</div>
+      </div>
+      <p id="statusText" class="status-text">准备生成...</p>
+    </div>
+    
+    <div id="previewGrid" class="preview-grid"></div>
+    
+    <div class="stats">
+      <div class="stat-card">
+        <div id="totalGenerated" class="stat-number">0</div>
+        <div class="stat-label">已生成资源</div>
+      </div>
+      <div class="stat-card">
+        <div id="totalSize" class="stat-number">0 KB</div>
+        <div class="stat-label">总大小</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const generatedResources = [];
+    
+    // 更新进度
+    function updateProgress(percent, status) {
+      document.getElementById('progressSection').classList.add('show');
+      document.getElementById('progressFill').style.width = percent + '%';
+      document.getElementById('progressFill').textContent = Math.round(percent) + '%';
+      document.getElementById('statusText').textContent = status;
+    }
+    
+    // 添加到预览
+    function addToPreview(canvas, name, size) {
+      const grid = document.getElementById('previewGrid');
+      const item = document.createElement('div');
+      item.className = 'preview-item';
+      
+      const title = document.createElement('h3');
+      title.textContent = name;
+      
+      const info = document.createElement('p');
+      info.textContent = `${size} px`;
+      
+      const downloadBtn = document.createElement('button');
+      downloadBtn.className = 'download-btn';
+      downloadBtn.textContent = '⬇️ 下载';
+      downloadBtn.onclick = () => downloadCanvas(canvas, name);
+      
+      item.appendChild(canvas);
+      item.appendChild(title);
+      item.appendChild(info);
+      item.appendChild(downloadBtn);
+      grid.appendChild(item);
+      
+      // 更新统计
+      const count = parseInt(document.getElementById('totalGenerated').textContent);
+      document.getElementById('totalGenerated').textContent = count + 1;
+    }
+    
+    // 下载 Canvas
+    function downloadCanvas(canvas, filename) {
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+    
+    // 下载所有资源
+    function downloadAll() {
+      if (generatedResources.length === 0) {
+        alert('请先生成资源!');
+        return;
+      }
+      
+      alert(`准备下载 ${generatedResources.length} 个资源文件\n\n提示：可以逐个点击下载，或使用批量下载工具`);
+      
+      // 依次下载
+      generatedResources.forEach((resource, index) => {
+        setTimeout(() => {
+          downloadCanvas(resource.canvas, resource.filename);
+        }, index * 300);
+      });
+    }
+    
+    // 绘制圆角矩形
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    // ========== 贪吃蛇资源 ==========
+    function generateSnakeResources() {
+      updateProgress(0, '开始生成贪吃蛇资源...');
+      document.getElementById('previewGrid').innerHTML = '';
+      generatedResources.length = 0;
+      document.getElementById('totalGenerated').textContent = '0';
+      
+      const resources = [
+        { name: 'snake_orange_happy.png', size: 64, draw: drawSnakeHeadHappy },
+        { name: 'snake_orange_cool.png', size: 64, draw: drawSnakeHeadCool },
+        { name: 'snake_body_segment.png', size: 64, draw: drawSnakeBody },
+        { name: 'food_apple.png', size: 48, draw: drawFoodApple },
+        { name: 'food_strawberry.png', size: 48, draw: drawFoodStrawberry },
+        { name: 'particle_sparkle.png', size: 32, draw: drawParticle },
+        { name: 'background_grid.png', size: 800, draw: drawBackground }
+      ];
+      
+      let completed = 0;
+      
+      resources.forEach((res, index) => {
+        setTimeout(() => {
+          const canvas = document.createElement('canvas');
+          canvas.width = res.size;
+          canvas.height = res.size;
+          const ctx = canvas.getContext('2d');
+          
+          res.draw(ctx, canvas.width, canvas.height);
+          
+          generatedResources.push({ canvas, filename: res.name });
+          addToPreview(canvas, res.name, `${res.size}x${res.size}`);
+          
+          completed++;
+          updateProgress((completed / resources.length) * 100, `已生成 ${completed}/${resources.length} 个资源`);
+        }, index * 500);
+      });
+    }
+    
+    function drawSnakeHeadHappy(ctx, w, h) {
+      // 头部
+      ctx.fillStyle = '#FF9800';
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, w/2 - 4, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 眼睛
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.arc(w/2 - 10, h/2 - 8, 8, 0, Math.PI * 2);
+      ctx.arc(w/2 + 10, h/2 - 8, 8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = 'black';
+      ctx.beginPath();
+      ctx.arc(w/2 - 8, h/2 - 8, 4, 0, Math.PI * 2);
+      ctx.arc(w/2 + 8, h/2 - 8, 4, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 微笑
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, 16, 0.1 * Math.PI, 0.9 * Math.PI);
+      ctx.stroke();
+    }
+    
+    function drawSnakeHeadCool(ctx, w, h) {
+      ctx.fillStyle = '#4CAF50';
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, w/2 - 4, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 墨镜
+      ctx.fillStyle = '#333';
+      ctx.fillRect(w/2 - 18, h/2 - 10, 16, 10);
+      ctx.fillRect(w/2 + 2, h/2 - 10, 16, 10);
+      ctx.fillRect(w/2 - 7, h/2 - 6, 14, 4);
+      
+      // 直线嘴巴
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(w/2 - 8, h/2 + 12);
+      ctx.lineTo(w/2 + 8, h/2 + 12);
+      ctx.stroke();
+    }
+    
+    function drawSnakeBody(ctx, w, h) {
+      const gradient = ctx.createRadialGradient(w/3, h/3, 5, w/2, h/2, w/2);
+      gradient.addColorStop(0, '#FFB74D');
+      gradient.addColorStop(1, '#F57C00');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, w/2 - 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    function drawFoodApple(ctx, w, h) {
+      // 苹果
+      ctx.fillStyle = '#E53935';
+      ctx.beginPath();
+      ctx.arc(w/2, h/2 + 2, 18, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 梗
+      ctx.fillStyle = '#795548';
+      ctx.fillRect(w/2 - 2, 6, 4, 8);
+      
+      // 叶子
+      ctx.fillStyle = '#4CAF50';
+      ctx.beginPath();
+      ctx.ellipse(w/2 + 4, 8, 8, 4, Math.PI / 4, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 高光
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath();
+      ctx.arc(w/2 - 6, h/2 - 4, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    function drawFoodStrawberry(ctx, w, h) {
+      // 草莓
+      ctx.fillStyle = '#E91E63';
+      ctx.beginPath();
+      ctx.moveTo(w/2, h - 4);
+      ctx.bezierCurveTo(8, h - 8, 4, h - 12, w/2, h - 20);
+      ctx.bezierCurveTo(w - 4, h - 12, w - 4, h - 8, w/2, h - 4);
+      ctx.fill();
+      
+      // 籽
+      ctx.fillStyle = '#FFEB3B';
+      for (let i = 0; i < 8; i++) {
+        const x = w/2 - 8 + Math.random() * 16;
+        const y = h/2 + Math.random() * 12;
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // 叶子
+      ctx.fillStyle = '#4CAF50';
+      ctx.beginPath();
+      ctx.moveTo(w/2, h - 20);
+      ctx.lineTo(w/2 - 6, h - 28);
+      ctx.lineTo(w/2 + 6, h - 28);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    function drawParticle(ctx, w, h) {
+      const gradient = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, w/2);
+      gradient.addColorStop(0, 'rgba(255, 235, 59, 1)');
+      gradient.addColorStop(0.5, 'rgba(255, 193, 7, 0.6)');
+      gradient.addColorStop(1, 'rgba(255, 193, 7, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+    }
+    
+    function drawBackground(ctx, w, h) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, h);
+      gradient.addColorStop(0, '#1a237e');
+      gradient.addColorStop(1, '#311b92');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+      
+      // 网格
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 1;
+      const gridSize = 40;
+      for (let x = 0; x <= w; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= h; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+    }
+    
+    // ========== 飞机大战资源 ==========
+    function generatePlaneResources() {
+      updateProgress(0, '开始生成飞机大战资源...');
+      document.getElementById('previewGrid').innerHTML = '';
+      generatedResources.length = 0;
+      document.getElementById('totalGenerated').textContent = '0';
+      
+      const resources = [
+        { name: 'player_plane_blue.png', size: 80, draw: drawPlayerPlane },
+        { name: 'enemy_plane_red.png', size: 70, draw: drawEnemyPlane },
+        { name: 'bullet_player.png', size: 20, draw: drawBulletPlayer, height: 40 },
+        { name: 'bullet_enemy.png', size: 20, draw: drawBulletEnemy, height: 40 },
+        { name: 'explosion_effect.png', size: 100, draw: drawExplosion },
+        { name: 'background_space.png', size: 800, draw: drawSpaceBg, height: 600 }
+      ];
+      
+      let completed = 0;
+      
+      resources.forEach((res, index) => {
+        setTimeout(() => {
+          const canvas = document.createElement('canvas');
+          canvas.width = res.size;
+          canvas.height = res.height || res.size;
+          const ctx = canvas.getContext('2d');
+          
+          res.draw(ctx, canvas.width, canvas.height);
+          
+          generatedResources.push({ canvas, filename: res.name });
+          addToPreview(canvas, res.name, `${res.size}x${res.height || res.size}`);
+          
+          completed++;
+          updateProgress((completed / resources.length) * 100, `已生成 ${completed}/${resources.length} 个资源`);
+        }, index * 500);
+      });
+    }
+    
+    function drawPlayerPlane(ctx, w, h) {
+      // 机身
+      ctx.fillStyle = '#2196F3';
+      ctx.beginPath();
+      ctx.moveTo(w/2, 0);
+      ctx.lineTo(w, h - 10);
+      ctx.lineTo(w/2, h - 20);
+      ctx.lineTo(0, h - 10);
+      ctx.closePath();
+      ctx.fill();
+      
+      // 机翼
+      ctx.fillStyle = '#1976D2';
+      ctx.beginPath();
+      ctx.moveTo(w/2, 20);
+      ctx.lineTo(w, h);
+      ctx.lineTo(w/2, h - 20);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fill();
+      
+      // 驾驶舱
+      ctx.fillStyle = '#64B5F6';
+      ctx.beginPath();
+      ctx.ellipse(w/2, 30, 8, 15, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    function drawEnemyPlane(ctx, w, h) {
+      // 机身
+      ctx.fillStyle = '#F44336';
+      ctx.beginPath();
+      ctx.moveTo(w/2, h);
+      ctx.lineTo(w, 10);
+      ctx.lineTo(w/2, 20);
+      ctx.lineTo(0, 10);
+      ctx.closePath();
+      ctx.fill();
+      
+      // 机翼
+      ctx.fillStyle = '#D32F2F';
+      ctx.beginPath();
+      ctx.moveTo(w/2, 30);
+      ctx.lineTo(w, 0);
+      ctx.lineTo(w/2, 20);
+      ctx.lineTo(0, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    function drawBulletPlayer(ctx, w, h) {
+      ctx.fillStyle = '#FFEB3B';
+      ctx.beginPath();
+      ctx.ellipse(w/2, h/2, w/2 - 2, h/2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#FFF';
+      ctx.beginPath();
+      ctx.arc(w/2, h/4, w/3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    function drawBulletEnemy(ctx, w, h) {
+      ctx.fillStyle = '#F44336';
+      ctx.beginPath();
+      ctx.ellipse(w/2, h/2, w/2 - 2, h/2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#FFCDD2';
+      ctx.beginPath();
+      ctx.arc(w/2, h * 3/4, w/3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    function drawExplosion(ctx, w, h) {
+      const gradient = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, w/2);
+      gradient.addColorStop(0, '#FFF');
+      gradient.addColorStop(0.2, '#FFEB3B');
+      gradient.addColorStop(0.4, '#FF9800');
+      gradient.addColorStop(0.6, '#F44336');
+      gradient.addColorStop(1, 'rgba(244, 67, 54, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+    }
+    
+    function drawSpaceBg(ctx, w, h) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, h);
+      gradient.addColorStop(0, '#0a0e27');
+      gradient.addColorStop(1, '#1a237e');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+      
+      // 星星
+      ctx.fillStyle = '#FFF';
+      for (let i = 0; i < 200; i++) {
+        const x = Math.random() * w;
+        const y = Math.random() * h;
+        const size = Math.random() * 2;
+        ctx.globalAlpha = Math.random() * 0.8 + 0.2;
+        ctx.fillRect(x, y, size, size);
+      }
+      ctx.globalAlpha = 1;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+/**
+ * 儿童友好弹窗主题 - 样式变量和配置
+ * 
+ * 特点：
+ * - 明亮彩虹色系（粉色、金色、蓝色、绿色）
+ * - 圆润边角和流畅动画
+ * - 趣味装饰元素（emoji、闪光、气球等）
+ * - 清晰易读的大字体
+ * - 安全的色彩对比度（WCAG AA 标准）
+ */
+
+// =============================================
+// 儿童主题颜色定义
+// =============================================
+
+// 主色调
+$kids-primary-pink: #ff69b4;      // 热粉红
+$kids-primary-gold: #ffd700;      // 金色
+$kids-primary-blue: #00bfff;      // 浅蓝
+$kids-primary-purple: #9370db;    // 紫色
+
+// 渐变色
+$kids-gradient-main: linear-gradient(135deg, #ff69b4, #ffd700, #00bfff, #ff1493);
+$kids-gradient-soft: linear-gradient(180deg, rgba(255, 105, 180, 0.08), rgba(0, 191, 255, 0.08));
+$kids-gradient-warm: linear-gradient(135deg, #ffd700, #ffb347);
+$kids-gradient-cool: linear-gradient(135deg, #00bfff, #1e90ff);
+
+// 中性色
+$kids-white: #ffffff;
+$kids-light-bg: #f8f4ff;
+$kids-light-pink: #fff5f8;
+$kids-text-dark: #333333;
+$kids-text-medium: #666666;
+$kids-text-light: #999999;
+
+// 阴影定义
+$kids-shadow-sm: 0 4px 12px rgba(147, 112, 219, 0.2);
+$kids-shadow-md: 0 12px 32px rgba(147, 112, 219, 0.2);
+$kids-shadow-lg: 0 16px 48px rgba(147, 112, 219, 0.2), 0 0 50px rgba(255, 182, 193, 0.1);
+
+// =============================================
+// 弹窗基础样式
+// =============================================
+
+.kids-modal-theme {
+  // 遮罩层
+  --overlay-bg: rgba(147, 112, 219, 0.25);
+  --overlay-blur: 8px;
+  
+  // 容器
+  --modal-bg: linear-gradient(135deg, #ffffff 0%, #f8f4ff 50%, #fff5f8 100%);
+  --modal-border-radius: 32px;
+  --modal-shadow: #{$kids-shadow-lg};
+  --modal-max-width: 90vw;
+  --modal-max-height: 85vh;
+  --modal-padding: 28px;
+  
+  // 文字
+  --title-color: #{$kids-primary-pink};
+  --title-size: 26px;
+  --title-weight: 700;
+  
+  --text-color: #{$kids-text-dark};
+  --text-size: 17px;
+  --text-weight: 500;
+  
+  // 边框
+  --border-color: rgba(255, 105, 180, 0.3);
+  --border-style: dashed;
+  --border-width: 3px;
+}
+
+// =============================================
+// 动画定义
+// =============================================
+
+@keyframes kids-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes kids-twinkle {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes kids-bounce {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes kids-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes kids-glow {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes kids-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-180deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+// =============================================
+// 按钮主题
+// =============================================
+
+.kids-button {
+  &.variant-primary {
+    background: linear-gradient(135deg, $kids-primary-gold, #ffb347);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    
+    &:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+    }
+  }
+  
+  &.variant-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    
+    &:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    }
+  }
+  
+  &.variant-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    
+    &:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+    }
+  }
+  
+  &.variant-outline {
+    border: 2px solid $kids-primary-blue;
+    background: $kids-white;
+    color: $kids-primary-blue;
+    
+    &:hover {
+      background: rgba(0, 191, 255, 0.1);
+      transform: scale(1.02);
+    }
+  }
+}
+
+// =============================================
+// 图标样式
+// =============================================
+
+.kids-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
+  &.size-sm {
+    font-size: 32px;
+  }
+  
+  &.size-md {
+    font-size: 56px;
+  }
+  
+  &.size-lg {
+    font-size: 72px;
+  }
+  
+  &.size-xl {
+    font-size: 96px;
+  }
+  
+  // 动画
+  &.animate-bounce {
+    animation: kids-bounce 0.6s ease-in-out;
+  }
+  
+  &.animate-float {
+    animation: kids-float 3s ease-in-out infinite;
+  }
+  
+  &.animate-spin {
+    animation: kids-spin 1s linear infinite;
+  }
+  
+  &.animate-twinkle {
+    animation: kids-twinkle 2s ease-in-out infinite;
+  }
+}
+
+// =============================================
+// 装饰元素
+// =============================================
+
+.kids-decoration {
+  position: relative;
+  
+  // 星星装饰
+  &.stars::before,
+  &.stars::after {
+    content: '⭐';
+    position: absolute;
+    font-size: 16px;
+    animation: kids-twinkle 2s ease-in-out infinite;
+  }
+  
+  &.stars::before {
+    left: -5px;
+    top: -15px;
+  }
+  
+  &.stars::after {
+    right: -5px;
+    top: -15px;
+    animation-delay: 0.5s;
+  }
+  
+  // 气球装饰
+  &.balloons::before,
+  &.balloons::after {
+    content: '🎈';
+    position: absolute;
+    font-size: 18px;
+    animation: kids-float 3s ease-in-out infinite;
+  }
+  
+  &.balloons::before {
+    left: 10px;
+    bottom: -20px;
+  }
+  
+  &.balloons::after {
+    right: 10px;
+    bottom: -20px;
+    animation-delay: 0.5s;
+  }
+  
+  // 彩带装饰
+  &.ribbons::before,
+  &.ribbons::after {
+    content: '✨';
+    position: absolute;
+    font-size: 20px;
+    animation: kids-float 3s ease-in-out infinite;
+  }
+  
+  &.ribbons::before {
+    top: -8px;
+    left: 20px;
+  }
+  
+  &.ribbons::after {
+    top: -8px;
+    right: 20px;
+    animation-delay: 0.3s;
+  }
+}
+
+// =============================================
+// 响应式调整
+// =============================================
+
+@media (max-width: 768px) {
+  .kids-modal-theme {
+    --modal-border-radius: 28px;
+    --modal-padding: 24px;
+    --title-size: 22px;
+    --text-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .kids-modal-theme {
+    --modal-border-radius: 24px;
+    --modal-padding: 20px;
+    --title-size: 20px;
+    --text-size: 15px;
+  }
+}

@@ -1,0 +1,394 @@
+/**
+ * 腾讯 COS 上传功能测试页面
+ * 
+ * 使用方法：
+ * 1. 在浏览器中打开此文件
+ * 2. 配置后端 API 地址
+ * 3. 选择文件测试上传
+ */
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COS 上传功能测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        input[type="text"],
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="file"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status-box {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-item {
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .log-info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .log-success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .log-error {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+        
+        .preview-box {
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .preview-box img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .preview-box audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .badge-success {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .badge-error {
+            background: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 COS 上传功能测试</h1>
+        <p class="subtitle">测试腾讯云 COS 对象存储上传功能</p>
+        
+        <!-- API 配置 -->
+        <div class="section">
+            <div class="section-title">⚙️ API 配置</div>
+            <div class="form-group">
+                <label for="apiUrl">后端 API 地址：</label>
+                <input type="text" id="apiUrl" value="http://localhost:8080" placeholder="例如：http://localhost:8080">
+            </div>
+            <button class="btn" onclick="testHealth()">🔍 测试连接</button>
+            <span id="healthStatus"></span>
+        </div>
+        
+        <!-- 图片上传测试 -->
+        <div class="section">
+            <div class="section-title">🖼️ 图片上传测试</div>
+            <div class="form-group">
+                <label for="imageFile">选择图片：</label>
+                <input type="file" id="imageFile" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label for="imageCategory">分类：</label>
+                <input type="text" id="imageCategory" value="themes/images" placeholder="例如：themes/images">
+            </div>
+            <button class="btn" onclick="uploadImage()">📤 上传图片</button>
+            <div class="preview-box" id="imagePreview"></div>
+        </div>
+        
+        <!-- 音频上传测试 -->
+        <div class="section">
+            <div class="section-title">🎵 音频上传测试</div>
+            <div class="form-group">
+                <label for="audioFile">选择音频：</label>
+                <input type="file" id="audioFile" accept="audio/*">
+            </div>
+            <div class="form-group">
+                <label for="audioCategory">分类：</label>
+                <input type="text" id="audioCategory" value="themes/audio" placeholder="例如：themes/audio">
+            </div>
+            <button class="btn" onclick="uploadAudio()">🎤 上传音频</button>
+            <div class="preview-box" id="audioPreview"></div>
+        </div>
+        
+        <!-- 日志输出 -->
+        <div class="section">
+            <div class="section-title">📋 日志输出</div>
+            <div class="status-box" id="logBox"></div>
+        </div>
+    </div>
+    
+    <script>
+        let logCount = 0;
+        
+        // 添加日志
+        function log(message, type = 'info') {
+            const logBox = document.getElementById('logBox');
+            const logItem = document.createElement('div');
+            logItem.className = `log-item log-${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            logItem.textContent = `[${timestamp}] ${message}`;
+            
+            logBox.appendChild(logItem);
+            logBox.scrollTop = logBox.scrollHeight;
+            
+            logCount++;
+            if (logCount > 50) {
+                logBox.removeChild(logBox.firstChild);
+            }
+        }
+        
+        // 获取 API 地址
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value.replace(/\/$/, '');
+        }
+        
+        // 测试健康检查
+        async function testHealth() {
+            const apiUrl = getApiUrl();
+            log('正在测试连接...', 'info');
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/cos/health`);
+                const data = await response.json();
+                
+                if (data.code === 0) {
+                    log(`✅ 连接成功！COS 状态：${data.data.configured ? '已配置' : '未配置'}`, 'success');
+                    document.getElementById('healthStatus').innerHTML = 
+                        `<span class="badge badge-${data.data.configured ? 'success' : 'error'}">
+                            ${data.data.configured ? '正常' : '未配置'}
+                        </span>`;
+                } else {
+                    log(`❌ 连接失败：${data.message}`, 'error');
+                    document.getElementById('healthStatus').innerHTML = '<span class="badge badge-error">失败</span>';
+                }
+            } catch (error) {
+                log(`❌ 请求失败：${error.message}`, 'error');
+                document.getElementById('healthStatus').innerHTML = '<span class="badge badge-error">无法连接</span>';
+            }
+        }
+        
+        // 上传图片
+        async function uploadImage() {
+            const fileInput = document.getElementById('imageFile');
+            const category = document.getElementById('imageCategory').value || 'themes/images';
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                log('请先选择图片文件', 'error');
+                return;
+            }
+            
+            log(`开始上传图片：${file.name} (${formatFileSize(file.size)})`, 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('category', category);
+                
+                const startTime = Date.now();
+                const response = await fetch(`${getApiUrl()}/api/resource/upload/image`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                const data = await response.json();
+                
+                if (data.code === 0) {
+                    log(`✅ 上传成功！耗时：${duration}ms`, 'success');
+                    log(`URL: ${data.data.url}`, 'success');
+                    
+                    // 显示预览
+                    const previewBox = document.getElementById('imagePreview');
+                    previewBox.innerHTML = `<img src="${data.data.url}" alt="预览图片">`;
+                } else {
+                    log(`❌ 上传失败：${data.message}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 上传异常：${error.message}`, 'error');
+            }
+        }
+        
+        // 上传音频
+        async function uploadAudio() {
+            const fileInput = document.getElementById('audioFile');
+            const category = document.getElementById('audioCategory').value || 'themes/audio';
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                log('请先选择音频文件', 'error');
+                return;
+            }
+            
+            log(`开始上传音频：${file.name} (${formatFileSize(file.size)})`, 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('category', category);
+                
+                const startTime = Date.now();
+                const response = await fetch(`${getApiUrl()}/api/resource/upload/audio`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                const data = await response.json();
+                
+                if (data.code === 0) {
+                    log(`✅ 上传成功！耗时：${duration}ms`, 'success');
+                    log(`URL: ${data.data.url}`, 'success');
+                    
+                    // 显示预览
+                    const previewBox = document.getElementById('audioPreview');
+                    previewBox.innerHTML = `<audio controls src="${data.data.url}"></audio>`;
+                } else {
+                    log(`❌ 上传失败：${data.message}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 上传异常：${error.message}`, 'error');
+            }
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+        
+        // 页面加载时的提示
+        window.onload = function() {
+            log('👋 欢迎使用 COS 上传功能测试工具', 'info');
+            log('📝 请先配置后端 API 地址，然后点击「测试连接」', 'info');
+            log('🔔 确保后端服务已启动并且 CORS 已正确配置', 'info');
+        };
+    </script>
+</body>
+</html>

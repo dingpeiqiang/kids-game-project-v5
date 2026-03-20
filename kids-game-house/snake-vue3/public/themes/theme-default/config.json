@@ -1,0 +1,22 @@
+{
+  "default": {
+    "name": "官方基础主题",
+    "author": "游戏官方",
+    "isBase": true,
+    "path": "assets/themes/theme-default",
+    "assets": {
+      "bg_main": "images/bg_main.png",
+      "player_1": "images/player.png",
+      "btn_start": "images/btn_start.png",
+      "bgm_main": "audio/bgm_main.mp3",
+      "sound_click": "audio/click.mp3"
+    },
+    "styles": {
+      "color_text": "#ffffff",
+      "color_primary": "#42b983",
+      "color_btn_bg": "#333333",
+      "font_size_title": "40px",
+      "border_radius_btn": "8px"
+    }
+  }
+}

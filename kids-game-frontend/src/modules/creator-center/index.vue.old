@@ -1,0 +1,4202 @@
+<template>
+  <div class="creator-center-container">
+    <!-- 顶部导航栏 -->
+    <BaseHeader variant="kids" :showThemeSwitcher="false" :showBack="true" @back="goBack">
+      <template #left>
+        <button class="back-home-btn" @click="goBack" title="返回首页">
+          <span class="back-icon">←</span>
+          <span class="back-text">返回首页</span>
+        </button>
+        <h1 class="logo">
+          <span class="logo-icon">🎨</span>
+          <span class="logo-text">创作者中心</span>
+        </h1>
+      </template>
+      <template #center>
+        <div class="nav-tabs">
+          <button 
+            v-for="tab in tabs" 
+            :key="tab.id"
+            :class="['nav-tab', { active: currentTab === tab.id }]"
+            @click="currentTab = tab.id"
+          >
+            <span class="tab-icon">{{ tab.icon }}</span>
+            <span class="tab-label">{{ tab.label }}</span>
+          </button>
+        </div>
+      </template>
+      <template #right>
+        <div class="creator-stats">
+          <div class="stat-item">
+            <span class="stat-icon">💰</span>
+            <span class="stat-value">{{ earnings.total }}</span>
+            <span class="stat-label">总收益</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">📊</span>
+            <span class="stat-value">{{ stats.themeCount }}</span>
+            <span class="stat-label">主题数</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">👥</span>
+            <span class="stat-value">{{ stats.followerCount }}</span>
+            <span class="stat-label">粉丝</span>
+          </div>
+        </div>
+      </template>
+    </BaseHeader>
+
+    <!-- 主内容区域 -->
+    <main class="creator-main">
+      <!-- 官方主题列表 -->
+      <section v-if="currentTab === 'official'" class="section official-themes">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span class="title-icon">🏛️</span>
+            <span class="title-text">官方主题</span>
+          </h2>
+          <div class="theme-filters">
+            <button 
+              :class="['filter-btn', { active: officialFilter === 'all' }]"
+              @click="officialFilter = 'all'"
+            >
+              全部
+            </button>
+            <button 
+              :class="['filter-btn', { active: officialFilter === 'game' }]"
+              @click="officialFilter = 'game'"
+            >
+              游戏主题
+            </button>
+            <button 
+              :class="['filter-btn', { active: officialFilter === 'app' }]"
+              @click="officialFilter = 'app'"
+            >
+              应用主题
+            </button>
+          </div>
+        </div>
+
+        <div class="official-themes-grid">
+          <div 
+            v-for="theme in filteredOfficialThemes" 
+            :key="theme.id"
+            class="official-theme-card"
+          >
+            <div class="theme-header">
+              <div class="theme-type-badge" :class="theme.type">
+                {{ theme.type === 'game' ? '🎮 游戏' : '💼 应用' }}
+              </div>
+              <div class="theme-category">{{ theme.category }}</div>
+            </div>
+            
+            <div class="theme-thumbnail">
+              <div v-if="!theme.thumbnail" class="thumbnail-placeholder">
+                <span class="placeholder-icon">{{ theme.type === 'game' ? '🎮' : '💼' }}</span>
+              </div>
+              <img 
+                v-else 
+                :src="theme.thumbnail" 
+                :alt="theme.name"
+                class="thumbnail-img"
+              />
+            </div>
+            
+            <div class="theme-info">
+              <h3 class="theme-name">{{ theme.name }}</h3>
+              <p class="theme-desc">{{ theme.description }}</p>
+            </div>
+            
+            <div class="theme-actions">
+              <button class="btn-action btn-view" @click="viewOfficialTheme(theme)">
+                <span class="action-icon">👁️</span>
+                <span>查看</span>
+              </button>
+              <button class="btn-action btn-diy" @click="diyFromOfficial(theme)">
+                <span class="action-icon">✨</span>
+                <span>DIY</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 我的主题管理 -->
+      <section v-if="currentTab === 'my-themes'" class="section my-themes">
+        <div class="section-header">
+          <h2 class="section-title">我的主题</h2>
+        </div>
+        
+        <div v-if="loading" class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>加载中...</p>
+        </div>
+
+        <div v-else-if="myThemes.length === 0" class="empty-state">
+          <div class="empty-illustration">🎨</div>
+          <h3>还没有创建主题</h3>
+          <p>前往 "官方主题" 选择喜欢的主题进行 DIY 创作吧！</p>
+          <button class="btn-go-official" @click="currentTab = 'official'">
+            浏览官方主题
+          </button>
+        </div>
+
+        <div v-else class="themes-grid">
+          <div 
+            v-for="theme in myThemes" 
+            :key="theme.id"
+            class="theme-card"
+            :class="{ 'on-sale': theme.status === 'on_sale' }"
+          >
+            <div class="theme-thumbnail" @click="editTheme(theme)">
+              <img 
+                v-if="theme.thumbnail" 
+                :src="theme.thumbnail" 
+                :alt="theme.name"
+                class="thumbnail-img"
+              />
+              <div v-else class="thumbnail-placeholder">
+                <span>{{ theme.name.charAt(0) }}</span>
+              </div>
+              <div v-if="theme.status === 'on_sale'" class="sale-badge">销售中</div>
+              <div v-else class="offline-badge">已下架</div>
+              <div class="theme-price">
+                {{ theme.price > 0 ? `${theme.price} 趣乐币` : '免费' }}
+              </div>
+            </div>
+            
+            <div class="theme-info">
+              <h3 class="theme-name">{{ theme.name }}</h3>
+              <div class="theme-meta">
+                <span class="theme-downloads">
+                  <span class="meta-icon">⬇️</span>
+                  {{ theme.downloadCount || 0 }}
+                </span>
+                <span v-if="theme.rating" class="theme-rating">
+                  <span class="meta-icon">⭐</span>
+                  {{ theme.rating.toFixed(1) }}
+                </span>
+                <span class="theme-earnings">
+                  <span class="meta-icon">💰</span>
+                  {{ theme.earnings || 0 }} 趣乐币
+                </span>
+              </div>
+            </div>
+            
+            <div class="theme-actions">
+              <button 
+                class="btn-action"
+                :class="theme.status === 'on_sale' ? 'btn-offline' : 'btn-online'"
+                @click="toggleThemeSale(theme)"
+                :disabled="isToggling"
+              >
+                {{ theme.status === 'on_sale' ? '下架' : '上架' }}
+              </button>
+              <button class="btn-action btn-edit" @click="editTheme(theme)">
+                编辑
+              </button>
+              <button class="btn-action btn-stats" @click="viewThemeStats(theme)">
+                数据
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 主题商店 -->
+      <section v-else-if="currentTab === 'store'" class="section theme-store">
+        <div class="section-header">
+          <h2 class="section-title">主题商店</h2>
+          <div class="store-filters">
+            <button 
+              v-for="filter in storeFilters" 
+              :key="filter.id"
+              :class="['filter-btn', { active: storeFilter === filter.id }]"
+              @click="storeFilter = filter.id"
+            >
+              {{ filter.label }}
+            </button>
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="搜索主题..." 
+              class="search-input"
+            />
+          </div>
+        </div>
+
+        <div v-if="storeLoading" class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>加载中...</p>
+        </div>
+
+        <div v-else-if="storeThemes.length === 0" class="empty-state">
+          <div class="empty-illustration">🛍️</div>
+          <h3>没有找到主题</h3>
+          <p>尝试搜索其他关键词</p>
+        </div>
+
+        <div v-else class="store-grid">
+          <div 
+            v-for="theme in storeThemes" 
+            :key="theme.id"
+            class="store-theme-card"
+            :class="{ owned: theme.owned }"
+          >
+            <div class="theme-thumbnail" @click="previewTheme(theme)">
+              <img 
+                v-if="theme.thumbnail" 
+                :src="theme.thumbnail" 
+                :alt="theme.name"
+                class="thumbnail-img"
+              />
+              <div v-else class="thumbnail-placeholder">
+                <span>{{ theme.name.charAt(0) }}</span>
+              </div>
+              <div v-if="theme.price === 0" class="free-badge">免费</div>
+            </div>
+            
+            <div class="theme-info">
+              <h3 class="theme-name">{{ theme.name }}</h3>
+              <p class="theme-author">作者：{{ theme.author }}</p>
+              <div class="theme-meta">
+                <span class="theme-downloads">
+                  <span class="meta-icon">⬇️</span>
+                  {{ theme.downloadCount || 0 }}
+                </span>
+                <span v-if="theme.rating" class="theme-rating">
+                  <span class="meta-icon">⭐</span>
+                  {{ theme.rating.toFixed(1) }}
+                </span>
+              </div>
+            </div>
+            
+            <div class="theme-footer">
+              <div class="theme-price">
+                {{ theme.price > 0 ? `${theme.price} 趣乐币` : '免费' }}
+              </div>
+              <button 
+                class="btn-buy"
+                :class="{ owned: theme.owned }"
+                @click="handleBuyOrDownload(theme)"
+                :disabled="isPurchasing"
+              >
+                {{ theme.owned ? '已拥有' : theme.price > 0 ? '购买' : '获取' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 主题创作（仅通过官方主题 DIY 进入） -->
+      <section v-else-if="currentTab === 'create'" class="section theme-create">
+        <div class="create-header-with-back">
+          <button class="btn-cancel-create" @click="cancelCreate">
+            <span class="cancel-icon">✕</span>
+            <span>取消创作</span>
+          </button>
+          <div class="create-title-wrapper">
+            <h2 class="create-title">主题创作</h2>
+            <div v-if="diySourceTheme" class="diy-source-badge">
+              <span class="source-icon">🎨</span>
+              <span>基于：</span>
+              <span class="source-theme-name">{{ diySourceTheme.name }}</span>
+            </div>
+          </div>
+          <div class="create-placeholder"></div>
+        </div>
+        
+        <div class="create-steps">
+          <div 
+            v-for="(step, index) in createSteps" 
+            :key="step.id"
+            :class="['create-step', { active: createStep === step.id }]"
+          >
+            <div class="step-number">{{ index + 1 }}</div>
+            <div class="step-info">
+              <h4 class="step-title">{{ step.title }}</h4>
+              <p class="step-description">{{ step.description }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 基本信息步骤 -->
+        <div v-if="createStep === 'info'" class="step-content info-step">
+          <div class="diy-source-info" v-if="diySourceTheme">
+            <div class="source-card">
+              <div class="source-header">
+                <span class="source-icon">📋</span>
+                <h4 class="source-title">来源主题信息</h4>
+              </div>
+              <div class="source-details">
+                <div class="detail-row">
+                  <span class="detail-label">原主题名称：</span>
+                  <span class="detail-value">{{ diySourceTheme.name }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">原主题描述：</span>
+                  <span class="detail-value">{{ diySourceTheme.description || '暂无描述' }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">基础模板：</span>
+                  <span class="detail-value">{{ newTheme.baseThemeKey }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">主题名称 <span class="required-mark">*</span></label>
+            <input 
+              v-model="newTheme.name" 
+              type="text" 
+              placeholder="请输入独特的主题名称" 
+              class="form-input"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">作者名称 <span class="required-mark">*</span></label>
+            <input 
+              v-model="newTheme.author" 
+              type="text" 
+              placeholder="输入作者名称" 
+              class="form-input"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">基于模板</label>
+            <select v-model="newTheme.baseThemeKey" class="form-input">
+              <option v-for="theme in baseThemes" :key="theme.key" :value="theme.key">
+                {{ theme.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">主题描述</label>
+            <textarea 
+              v-model="newTheme.description" 
+              placeholder="描述你的主题特点..." 
+              class="form-textarea"
+              rows="3"
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">定价（趣乐币）</label>
+            <input 
+              v-model="newTheme.price" 
+              type="number" 
+              min="0" 
+              class="form-input"
+              placeholder="0 表示免费"
+            />
+            <div class="form-hint">设置 0 为免费主题，其他为付费主题</div>
+          </div>
+        </div>
+
+        <!-- 样式配置步骤 -->
+        <div v-else-if="createStep === 'styles'" class="step-content styles-step">
+          <div class="style-editor">
+            <div class="style-preview">
+              <div class="preview-card" :style="previewStyles">
+                <h3 class="preview-title" :style="{ color: newThemeStyles.color_text }">
+                  {{ newTheme.name || '主题预览' }}
+                </h3>
+                <button 
+                  class="preview-button"
+                  :style="{
+                    backgroundColor: newThemeStyles.color_primary,
+                    borderRadius: newThemeStyles.border_radius_btn,
+                  }"
+                >
+                  示例按钮
+                </button>
+              </div>
+            </div>
+            
+            <div class="style-controls">
+              <div class="style-group">
+                <h4 class="style-group-title">颜色配置</h4>
+                <div class="color-grid">
+                  <div v-for="key in colorKeys" :key="key" class="color-field">
+                    <label class="color-label">{{ formatStyleKey(key) }}</label>
+                    <div class="color-input-wrapper">
+                      <input 
+                        v-model="newThemeStyles[key]"
+                        type="color"
+                        class="color-picker"
+                      />
+                      <input 
+                        v-model="newThemeStyles[key]"
+                        type="text"
+                        class="color-text-input"
+                        placeholder="#000000"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="style-group">
+                <h4 class="style-group-title">尺寸配置</h4>
+                <div class="size-grid">
+                  <div v-for="key in sizeKeys" :key="key" class="size-field">
+                    <label class="size-label">{{ formatStyleKey(key) }}</label>
+                    <input 
+                      v-model="newThemeStyles[key]"
+                      type="text"
+                      class="size-input"
+                      placeholder="8px"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 资源上传步骤 -->
+        <div v-else-if="createStep === 'assets'" class="step-content assets-step">
+          <div class="asset-grid-container">
+            <div class="grid-header">
+              <h4 class="section-title-with-icon">
+                <span class="title-icon">🎨</span>
+                主题资源配置
+              </h4>
+              <div class="grid-stats">
+                <span class="stats-badge">
+                  ✅ 已上传：{{ Object.keys(newThemeAssets).length }} / {{ assetKeys.length }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- 调试信息 -->
+            <div v-if="false" class="debug-info" style="background: #fff3cd; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-size: 12px;">
+              <div><strong>Debug:</strong></div>
+              <div>assetKeys 数量：{{ assetKeys.length }}</div>
+              <div>newThemeAssets 数量：{{ Object.keys(newThemeAssets).length }}</div>
+              <div>assetKeys: {{ JSON.stringify(assetKeys) }}</div>
+            </div>
+            
+            <!-- 空状态提示 -->
+            <div v-if="assetKeys.length === 0" class="empty-assets-state">
+              <div class="empty-illustration">⚠️</div>
+              <h3>暂无可用资源键</h3>
+              <p>基础主题配置尚未加载完成，请稍后...</p>
+            </div>
+            
+            <div v-else class="asset-grid-wrapper">
+              <!-- 所有资源卡片网格 -->
+              <div class="asset-grid">
+                <div 
+                  v-for="key in assetKeys" 
+                  :key="key"
+                  class="asset-card"
+                  :class="{ filled: newThemeAssets[key] }"
+                >
+                  <!-- 卡片内容 -->
+                  <div class="card-content">
+                    <!-- 资源类型标签 -->
+                    <div class="card-type-badge" :class="getAssetTypeClass(key)">
+                      {{ getAssetTypeLabel(key) }}
+                    </div>
+                    
+                    <!-- 资源名称 -->
+                    <div class="card-title">{{ formatAssetKey(key) }}</div>
+                    
+                    <!-- 预览区域 -->
+                    <div class="card-preview-area">
+                      <!-- 图片预览 -->
+                      <div v-if="isImage(newThemeAssets[key])" class="preview-image-wrapper">
+                        <img :src="newThemeAssets[key]" :alt="key" class="card-image" />
+                        <div class="image-overlay">
+                          <button class="overlay-action" @click="openImagePreview(key)">🔍</button>
+                        </div>
+                      </div>
+                      
+                      <!-- 音频播放 -->
+                      <div v-else-if="isAudio(newThemeAssets[key])" class="preview-audio-wrapper">
+                        <div class="audio-player-circle" :class="{ playing: currentPlayingKey === key }">
+                          <span class="audio-icon">🎵</span>
+                        </div>
+                        <button 
+                          class="play-button"
+                          @click="playAudio(key)"
+                          :class="{ playing: currentPlayingKey === key }"
+                        >
+                          {{ currentPlayingKey === key ? '⏹️' : '▶️' }}
+                        </button>
+                      </div>
+                      
+                      <!-- 空状态 -->
+                      <div v-else class="preview-empty">
+                        <span class="empty-icon">📭</span>
+                      </div>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <div class="card-actions">
+                      <label class="btn-upload-card">
+                        <input 
+                          type="file"
+                          :accept="getFileAccept(key)"
+                          @change="(e) => handleAssetUpload(key, e)"
+                          class="hidden-input"
+                        />
+                        <span class="upload-text">
+                          {{ newThemeAssets[key] ? '🔄 替换' : '📤 上传' }}
+                        </span>
+                      </label>
+                      
+                      <button 
+                        v-if="isImage(newThemeAssets[key])"
+                        class="btn-card-action"
+                        @click="openImagePreview(key)"
+                      >
+                        👁️
+                      </button>
+                      
+                      <button 
+                        v-if="isAudio(newThemeAssets[key])"
+                        class="btn-card-action btn-audio-action"
+                        @click="playAudio(key)"
+                        :class="{ playing: currentPlayingKey === key }"
+                      >
+                        {{ currentPlayingKey === key ? '⏹️' : '▶️' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 发布设置步骤 -->
+        <div v-else-if="createStep === 'publish'" class="step-content publish-step">
+          <div class="publish-summary">
+            <div class="summary-card">
+              <h4 class="summary-title">主题信息</h4>
+              <div class="summary-item">
+                <span class="item-label">主题名称：</span>
+                <span class="item-value">{{ newTheme.name }}</span>
+              </div>
+              <div class="summary-item">
+                <span class="item-label">作者名称：</span>
+                <span class="item-value">{{ newTheme.author }}</span>
+              </div>
+              <div class="summary-item">
+                <span class="item-label">定价：</span>
+                <span class="item-value">
+                  {{ newTheme.price > 0 ? `${newTheme.price} 趣乐币` : '免费' }}
+                </span>
+              </div>
+              <div class="summary-item">
+                <span class="item-label">资源数量：</span>
+                <span class="item-value">
+                  {{ Object.keys(newThemeAssets).length }} 个
+                </span>
+              </div>
+            </div>
+            
+            <div class="publish-options">
+              <div class="option-group">
+                <label class="option-label">
+                  <input 
+                    v-model="publishOptions.saveLocally" 
+                    type="checkbox" 
+                    class="option-checkbox"
+                  />
+                  保存到本地
+                </label>
+                <p class="option-description">保存主题到本地库，方便后续编辑</p>
+              </div>
+              <div class="option-group">
+                <label class="option-label">
+                  <input 
+                    v-model="publishOptions.uploadToStore" 
+                    type="checkbox" 
+                    class="option-checkbox"
+                  />
+                  发布到商店
+                </label>
+                <p class="option-description">将主题发布到主题商店，其他用户可以购买</p>
+              </div>
+              <div v-if="publishOptions.uploadToStore" class="option-group">
+                <label class="option-label">发布状态</label>
+                <select v-model="publishOptions.publishStatus" class="option-select">
+                  <option value="draft">草稿</option>
+                  <option value="on_sale">立即上架</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 导航按钮 -->
+        <div class="create-navigation">
+          <button 
+            v-if="createStep !== 'info'" 
+            class="btn-nav btn-prev"
+            @click="prevStep"
+          >
+            上一步
+          </button>
+          <button 
+            v-if="createStep !== 'publish'" 
+            class="btn-nav btn-next"
+            @click="nextStep"
+            :disabled="!canProceed"
+          >
+            下一步
+          </button>
+          <button 
+            v-if="createStep === 'publish'" 
+            class="btn-nav btn-publish"
+            @click="publishTheme"
+            :disabled="!canPublish"
+          >
+            发布主题
+          </button>
+        </div>
+      </section>
+
+      <!-- 主题切换 -->
+      <section v-else-if="currentTab === 'theme-switcher'" class="section theme-switcher">
+        <div class="switcher-container">
+          <div class="switcher-header">
+            <h2 class="switcher-title">切换主题</h2>
+            <p class="switcher-subtitle">选择您喜欢的主题应用到系统中</p>
+          </div>
+          
+          <div v-if="loadingThemes" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>加载主题中...</p>
+          </div>
+          
+          <div v-else class="themes-grid-switcher">
+            <div 
+              v-for="theme in availableThemes" 
+              :key="theme.id"
+              class="theme-option-switcher"
+              :class="{ active: currentTheme?.id === theme.id }"
+              @click="switchTheme(theme.id)"
+            >
+              <div class="theme-preview" :style="{ background: theme.previewColor }">
+                <div class="color-palette">
+                  <span 
+                    v-for="(color, index) in theme.colorPalette" 
+                    :key="index"
+                    class="color-swatch"
+                    :style="{ backgroundColor: color }"
+                  ></span>
+                </div>
+              </div>
+              
+              <div class="theme-info-switcher">
+                <h3 class="theme-name-switcher">{{ theme.name }}</h3>
+                <p class="theme-description-switcher">{{ theme.description || '这是一个漂亮的主题' }}</p>
+                <div class="theme-meta-switcher">
+                  <span class="theme-type">
+                    {{ theme.type === 'system' ? '系统' : '自定义' }}
+                  </span>
+                  <span v-if="theme.price === 0" class="theme-price-free">免费</span>
+                  <span v-else class="theme-price-paid">{{ theme.price }} 趣乐币</span>
+                </div>
+              </div>
+              
+              <div class="theme-status">
+                <span v-if="currentTheme?.id === theme.id" class="status-active">
+                  ✓ 已启用
+                </span>
+                <button v-else class="btn-apply" @click.stop="switchTheme(theme.id)">
+                  应用主题
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="availableThemes.length === 0 && !loadingThemes" class="empty-state">
+            <div class="empty-illustration">🎨</div>
+            <h3>暂无可用主题</h3>
+            <p>请先创建或下载主题</p>
+            <button class="btn-create-switcher" @click="currentTab = 'create'">
+              创建主题
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 数据统计 -->
+      <section v-else-if="currentTab === 'stats'" class="section creator-stats">
+        <div class="stats-container">
+          <div class="stats-header">
+            <h2 class="stats-title">数据统计</h2>
+            <div class="stats-period">
+              <select v-model="statsPeriod" class="period-select">
+                <option value="7d">最近7天</option>
+                <option value="30d">最近30天</option>
+                <option value="90d">最近90天</option>
+                <option value="all">全部时间</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">💰</div>
+              <div class="stat-info">
+                <div class="stat-value">{{ earnings.total }}</div>
+                <div class="stat-label">总收益</div>
+                <div class="stat-change" :class="earnings.change >= 0 ? 'positive' : 'negative'">
+                  {{ earnings.change >= 0 ? '+' : '' }}{{ earnings.change }}%
+                </div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">📈</div>
+              <div class="stat-info">
+                <div class="stat-value">{{ stats.downloads }}</div>
+                <div class="stat-label">总下载量</div>
+                <div class="stat-change" :class="stats.downloadChange >= 0 ? 'positive' : 'negative'">
+                  {{ stats.downloadChange >= 0 ? '+' : '' }}{{ stats.downloadChange }}%
+                </div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">👥</div>
+              <div class="stat-info">
+                <div class="stat-value">{{ stats.followerCount }}</div>
+                <div class="stat-label">粉丝数</div>
+                <div class="stat-change" :class="stats.followerChange >= 0 ? 'positive' : 'negative'">
+                  {{ stats.followerChange >= 0 ? '+' : '' }}{{ stats.followerChange }}%
+                </div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">⭐</div>
+              <div class="stat-info">
+                <div class="stat-value">{{ stats.averageRating.toFixed(1) }}</div>
+                <div class="stat-label">平均评分</div>
+                <div class="stat-change" :class="stats.ratingChange >= 0 ? 'positive' : 'negative'">
+                  {{ stats.ratingChange >= 0 ? '+' : '' }}{{ stats.ratingChange }}分
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="charts-section">
+            <div class="chart-card">
+              <h4 class="chart-title">收益趋势</h4>
+              <div class="chart-placeholder">
+                <div class="chart-empty">📈 图表待实现</div>
+              </div>
+            </div>
+            
+            <div class="chart-card">
+              <h4 class="chart-title">主题下载量</h4>
+              <div class="chart-placeholder">
+                <div class="chart-empty">📊 图表待实现</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, reactive, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import BaseHeader from '@/components/layout/BaseHeader.vue';
+import { themeManager } from '@/core/theme/ThemeManager';
+import { themeApi } from '@/services/themeApi';
+import type { 
+  CloudThemeInfo, 
+  ThemeConfig, 
+  DiyThemeData 
+} from '@/core/theme/ThemeManager';
+
+const router = useRouter();
+const route = useRoute();
+
+// 返回首页
+function goBack() {
+  router.push('/parent');
+}
+
+// 标签页配置
+const tabs = [
+  { id: 'official', label: '官方主题', icon: '🏛️' },
+  { id: 'my-themes', label: '我的主题', icon: '🎨' },
+  { id: 'store', label: '主题商店', icon: '🛍️' },
+  { id: 'theme-switcher', label: '切换主题', icon: '🎯' },
+];
+
+// 当前活动标签页
+const currentTab = ref('official');
+
+// 官方主题筛选器
+const officialFilter = ref('all');
+
+// 商店筛选器
+const storeFilters = [
+  { id: 'all', label: '全部' },
+  { id: 'free', label: '免费' },
+  { id: 'paid', label: '付费' },
+  { id: 'hot', label: '热门' },
+  { id: 'new', label: '最新' },
+];
+const storeFilter = ref('all');
+
+// 主题切换相关
+const loadingThemes = ref(false);
+const availableThemes = ref<any[]>([]);
+const currentTheme = ref<any>(null);
+const searchQuery = ref('');
+
+// 创作者数据
+const earnings = reactive({
+  total: 0,
+  pending: 0,
+  withdrawn: 0,
+  change: 12.5,
+});
+
+const stats = reactive({
+  themeCount: 0,
+  followerCount: 0,
+  downloads: 0,
+  downloadChange: 8.3,
+  averageRating: 4.5,
+  ratingChange: 0.2,
+  followerChange: 5.7,
+});
+
+const statsPeriod = ref('30d');
+
+// 我的主题
+const loading = ref(false);
+const isToggling = ref(false);
+const myThemes = ref<CloudThemeInfo[]>([]);
+
+// 官方主题 - 从后台加载 (不再硬编码)
+const officialThemes = ref<Array<{
+  id: string;
+  name: string;
+  type: 'game' | 'app';
+  category: string;
+  description: string;
+  thumbnail?: string;
+  baseThemeKey: string;
+  resourcePack?: any;
+  styleOverrides?: Record<string, string>;
+  assetOverrides?: Record<string, string>;
+}>>([]);
+
+// 官方主题加载中状态
+const loadingOfficialThemes = ref(false);
+  // 游戏主题
+  { 
+    id: 'plane-shooter', 
+    name: '飞机大战', 
+    type: 'game', 
+    category: '游戏主题',
+    description: '经典射击游戏主题',
+    baseThemeKey: 'default',
+    resourcePack: {
+      packId: 'plane-shooter-v1',
+      version: '1.0.0',
+      resources: {
+        bgm_game: {
+          filename: 'bgm_game.mp3',
+          // 开发环境使用 localhost:3000，生产环境会替换为实际 CDN 地址
+          url: '/images/games/plane-shooter/bgm_game.mp3?v=1.0.0',
+          hash: 'abc123def456',
+          size: 2048000,
+          mimeType: 'audio/mpeg',
+          updatedAt: 1710000000000,
+        },
+        sound_shoot: {
+          filename: 'sound_shoot.mp3',
+          url: '/images/games/plane-shooter/boom.png?hash=xyz789', // 临时用图片代替
+          hash: 'xyz789',
+          size: 102400,
+          mimeType: 'image/png',
+        },
+        sound_explosion: {
+          filename: 'sound_explosion.mp3',
+          url: '/images/games/plane-shooter/boom.png?hash=exp456', // 临时用图片代替
+          hash: 'exp456',
+          size: 153600,
+          mimeType: 'image/png',
+        },
+        img_background: {
+          filename: '开始背景.png',
+          url: '/images/games/plane-shooter/开始背景.png?hash=bg789xyz',
+          hash: 'bg789xyz',
+          size: 512000,
+          mimeType: 'image/png',
+        },
+        img_player: {
+          filename: '我的飞机.gif',
+          url: '/images/games/plane-shooter/我的飞机.gif?hash=player123',
+          hash: 'player123',
+          size: 204800,
+          mimeType: 'image/gif',
+        },
+        img_enemy: {
+          filename: 'enemy1_fly_1.png',
+          url: '/images/games/plane-shooter/enemy1_fly_1.png?hash=enemy456',
+          hash: 'enemy456',
+          size: 153600,
+          mimeType: 'image/png',
+        },
+        img_bullet: {
+          filename: 'bullet1.png',
+          url: '/images/games/plane-shooter/bullet1.png?hash=bullet789',
+          hash: 'bullet789',
+          size: 51200,
+          mimeType: 'image/png',
+        },
+      }
+    },
+    styleOverrides: {
+      color_bg: '#1a1a2e',
+      color_primary: '#e94560',
+      color_secondary: '#0f3460',
+      color_text: '#ffffff',
+      border_radius_card: '4px',
+      border_radius_btn: '4px',
+    },
+    assetOverrides: {}
+  },
+  { 
+    id: 'snake-shooter', 
+    name: '蛇蛇大作战', 
+    type: 'game', 
+    category: '游戏主题',
+    description: '休闲竞技游戏主题',
+    baseThemeKey: 'default',
+    resourcePack: {
+      packId: 'snake-shooter-v1',
+      version: '1.0.0',
+      resources: {
+        bgm_game: {
+          filename: 'bgm_snake.mp3',
+          url: '/images/games/snake-shooter/bgm_snake.mp3?hash=bgm_snake_v1',
+          hash: 'bgm_snake_v1',
+          size: 3072000,
+          mimeType: 'audio/mpeg',
+        },
+        sound_eat: {
+          filename: 'sound_eat.mp3',
+          url: '/images/games/snake-shooter/sound_eat.mp3?hash=eat123',
+          hash: 'eat123',
+          size: 51200,
+          mimeType: 'audio/mpeg',
+        },
+        sound_die: {
+          filename: 'sound_die.mp3',
+          url: '/images/games/snake-shooter/sound_die.mp3?hash=die456',
+          hash: 'die456',
+          size: 76800,
+          mimeType: 'audio/mpeg',
+        },
+        img_background: {
+          filename: 'cover.jpg',
+          url: '/images/games/snake-shooter/cover.jpg?hash=cover789',
+          hash: 'cover789',
+          size: 409600,
+          mimeType: 'image/jpeg',
+        },
+        img_snake_head: {
+          filename: 'snake_orange_happy.png',
+          url: '/images/games/snake-shooter/snake_orange_happy.png?hash=head123',
+          hash: 'head123',
+          size: 143360,
+          mimeType: 'image/png',
+        },
+        img_snake_body: {
+          filename: 'snake_orange_cool.png',
+          url: '/images/games/snake-shooter/snake_orange_cool.png?hash=body456',
+          hash: 'body456',
+          size: 138240,
+          mimeType: 'image/png',
+        },
+        img_food: {
+          filename: 'particle_sparkle.png',
+          url: '/images/games/snake-shooter/particle_sparkle.png?hash=sparkle789',
+          hash: 'sparkle789',
+          size: 20480,
+          mimeType: 'image/png',
+        },
+      }
+    },
+    styleOverrides: {
+      color_bg: '#2c3e50',
+      color_primary: '#27ae60',
+      color_secondary: '#3498db',
+      color_text: '#ecf0f1',
+      border_radius_card: '8px',
+      border_radius_btn: '8px',
+    },
+    assetOverrides: {}
+  },
+  // 应用主题
+  { 
+    id: 'kids-home', 
+    name: '儿童首页', 
+    type: 'app', 
+    category: '应用主题',
+    description: '儿童首页界面主题',
+    baseThemeKey: 'kids',
+    styleOverrides: {
+      color_bg: '#FFF5E4',
+      color_primary: '#FFB347',
+      color_secondary: '#87CEEB',
+      color_text: '#5D4E37',
+      border_radius_card: '16px',
+      border_radius_btn: '20px',
+    },
+    assetOverrides: {
+      bgm_home: '/images/kids-theme/bgm-happy.mp3', // 需要补充
+      img_logo: '/images/kids-theme/logo-kids.png', // 需要补充
+      img_banner: '/images/kids-theme/banner-kids.png', // 需要补充
+    }
+  },
+  { 
+    id: 'parent-home', 
+    name: '家长首页', 
+    type: 'app', 
+    category: '应用主题',
+    description: '家长管理界面主题',
+    baseThemeKey: 'parent',
+    styleOverrides: {
+      color_bg: '#F8F9FA',
+      color_primary: '#6B7C93',
+      color_secondary: '#A8B5C5',
+      color_text: '#2C3E50',
+      border_radius_card: '12px',
+      border_radius_btn: '12px',
+    },
+    assetOverrides: {
+      bgm_home: '/images/parent-theme/bgm-calm.mp3', // 需要补充
+      img_logo: '/images/parent-theme/logo-parent.png', // 需要补充
+      img_banner: '/images/parent-theme/banner-parent.png', // 需要补充
+    }
+  },
+]);
+
+// 主题商店
+const storeLoading = ref(false);
+const isPurchasing = ref(false);
+const storeThemes = ref<CloudThemeInfo[]>([]);
+
+// 主题创作
+const createSteps = [
+  { id: 'info', title: '基本信息', description: '设置主题名称和基本信息' },
+  { id: 'styles', title: '样式配置', description: '配置主题颜色和样式' },
+  { id: 'assets', title: '资源上传', description: '上传图片和音效资源' },
+  { id: 'publish', title: '发布设置', description: '确认信息并发布' },
+];
+const createStep = ref('info');
+const diySourceTheme = ref<any>(null); // 记录 DIY 来源的官方主题
+
+const newTheme = reactive({
+  name: '',
+  author: '',
+  baseThemeKey: 'default',
+  description: '',
+  price: 0,
+});
+
+const newThemeStyles = reactive<Record<string, string>>({});
+const newThemeAssets = reactive<Record<string, string>>({});
+
+const publishOptions = reactive({
+  saveLocally: true,
+  uploadToStore: true,
+  publishStatus: 'draft' as 'draft' | 'on_sale',
+});
+
+const baseThemes = ref<ThemeConfig[]>([]);
+const colorKeys = ref<string[]>([]);
+const sizeKeys = ref<string[]>([]);
+const assetKeys = ref<string[]>([]);
+const currentPlayingKey = ref<string | null>(null); // 当前正在播放的音频
+const currentAudio = ref<HTMLAudioElement | null>(null); // 当前音频对象
+
+// 计算属性
+const filteredOfficialThemes = computed(() => {
+  if (officialFilter.value === 'all') {
+    return officialThemes.value;
+  }
+  return officialThemes.value.filter(theme => theme.type === officialFilter.value);
+});
+
+const previewStyles = computed(() => ({
+  backgroundColor: newThemeStyles.color_bg || '#333333',
+  padding: '20px',
+  borderRadius: newThemeStyles.border_radius_card || '8px',
+}));
+
+// 获取资产的显示路径（包含默认值）
+const getAssetPath = (key: string) => computed(() => {
+  return newThemeAssets[key] || '';
+});
+
+const canProceed = computed(() => {
+  switch (createStep.value) {
+    case 'info':
+      return newTheme.name.trim() !== '' && newTheme.author.trim() !== '';
+    case 'styles':
+      return Object.keys(newThemeStyles).length > 0;
+    case 'assets':
+      return true; // 资产可选
+    default:
+      return true;
+  }
+});
+
+const canPublish = computed(() => {
+  return newTheme.name.trim() !== '' && 
+         newTheme.author.trim() !== '' && 
+         (publishOptions.saveLocally || publishOptions.uploadToStore);
+});
+
+// 生命周期
+onMounted(() => {
+  // 从 URL 参数中读取 tab
+  const tabFromQuery = route.query.tab as string;
+  if (tabFromQuery && tabs.some(t => t.id === tabFromQuery)) {
+    currentTab.value = tabFromQuery;
+  }
+  
+  console.log('[CreatorCenter] onMounted - 开始加载数据...');
+  loadMyThemes();
+  loadCreatorData();
+  loadBaseThemes();
+  loadThemes();
+  loadOfficialThemes(); // 从后台加载官方主题
+});
+
+// 加载所有可用主题
+async function loadThemes(): Promise<void> {
+  loadingThemes.value = true;
+  try {
+    // 这里应该从主题管理器获取所有可用主题
+    // 暂时使用模拟数据
+    availableThemes.value = [
+      {
+        id: 'default',
+        name: '默认主题',
+        description: '系统默认主题',
+        type: 'system',
+        price: 0,
+        previewColor: '#4ECDC4',
+        colorPalette: ['#4ECDC4', '#FF6B6B', '#45B7D1', '#96CEB4', '#FFEAA7'],
+      },
+      {
+        id: 'kids',
+        name: '儿童主题',
+        description: '专为儿童设计的主题',
+        type: 'system',
+        price: 0,
+        previewColor: '#FF6B6B',
+        colorPalette: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'],
+      },
+      {
+        id: 'ocean',
+        name: '海洋主题',
+        description: '蓝色海洋风格主题',
+        type: 'custom',
+        price: 0,
+        previewColor: '#45B7D1',
+        colorPalette: ['#45B7D1', '#4ECDC4', '#96CEB4', '#FFEAA7', '#FF6B6B'],
+      },
+    ];
+    
+    // 获取当前主题
+    const currentThemeId = themeManager.getCurrentThemeId?.();
+    if (currentThemeId) {
+      currentTheme.value = availableThemes.value.find(t => t.id === currentThemeId);
+    }
+  } catch (e) {
+    console.error('[CreatorCenter] Load themes failed:', e);
+  } finally {
+    loadingThemes.value = false;
+  }
+}
+
+// 切换主题
+async function switchTheme(themeId: string): Promise<void> {
+  try {
+    const success = themeManager.switchTheme(themeId);
+    if (success) {
+      currentTheme.value = availableThemes.value.find(t => t.id === themeId);
+      alert('主题切换成功！');
+    } else {
+      alert('主题切换失败');
+    }
+  } catch (e) {
+    console.error('[CreatorCenter] Switch theme failed:', e);
+    alert('主题切换失败');
+  }
+}
+
+// 加载我的主题
+async function loadMyThemes(): Promise<void> {
+  loading.value = true;
+  try {
+    myThemes.value = await themeManager.getMyCloudThemes();
+    stats.themeCount = myThemes.value.length;
+  } catch (e) {
+    console.error('[CreatorCenter] Failed to load themes:', e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+// 加载创作者数据
+async function loadCreatorData(): Promise<void> {
+  try {
+    const earningsData = await themeManager.getCreatorEarnings();
+    Object.assign(earnings, earningsData);
+    
+    // 模拟数据
+    stats.followerCount = Math.floor(Math.random() * 1000);
+    stats.downloads = Math.floor(Math.random() * 5000);
+  } catch (e) {
+    console.error('[CreatorCenter] Failed to load creator data:', e);
+  }
+}
+
+// 加载基础主题
+async function loadBaseThemes(): Promise<void> {
+  try {
+    await themeManager.loadBaseConfig();
+    baseThemes.value = await themeManager.getAllThemes();
+    colorKeys.value = themeManager.getBaseStyleKeys().filter(key => 
+      key.toLowerCase().includes('color')
+    );
+    sizeKeys.value = themeManager.getBaseStyleKeys().filter(key => 
+      key.toLowerCase().includes('size') || 
+      key.toLowerCase().includes('radius')
+    );
+    assetKeys.value = themeManager.getBaseAssetKeys();
+    console.log('[基础主题] 加载完成:', {
+      baseThemesCount: baseThemes.value.length,
+      colorKeysCount: colorKeys.value.length,
+      sizeKeysCount: sizeKeys.value.length,
+      assetKeysCount: assetKeys.value.length,
+      assetKeys: assetKeys.value,
+    });
+  } catch (e) {
+    console.error('[CreatorCenter] Failed to load base themes:', e);
+  }
+}
+
+// 切换主题销售状态
+async function toggleThemeSale(theme: CloudThemeInfo): Promise<void> {
+  if (isToggling.value) return;
+  
+  isToggling.value = true;
+  try {
+    const newStatus = theme.status !== 'on_sale';
+    const success = await themeManager.toggleThemeSale(theme.id, newStatus);
+    if (success) {
+      theme.status = newStatus ? 'on_sale' : 'offline';
+      await loadMyThemes();
+    } else {
+      alert('操作失败，请重试');
+    }
+  } catch (e) {
+    console.error('[CreatorCenter] Toggle sale failed:', e);
+    alert('操作失败');
+  } finally {
+    isToggling.value = false;
+  }
+}
+
+// 编辑主题
+function editTheme(theme: CloudThemeInfo): void {
+  // 跳转到编辑页面或打开编辑模态框
+  console.log('Edit theme:', theme);
+  // 这里可以打开编辑模态框或跳转到编辑页面
+}
+
+// 查看主题数据
+function viewThemeStats(theme: CloudThemeInfo): void {
+  console.log('View theme stats:', theme);
+  // 这里可以打开数据详情模态框
+}
+
+// 开始创建主题（已废弃，只能通过 DIY 进入）
+// function startCreateTheme(): void {
+//   currentTab.value = 'create';
+//   createStep.value = 'info';
+//   resetNewTheme();
+// }
+
+// 从后台加载官方主题
+async function loadOfficialThemes(): Promise<void> {
+  loadingOfficialThemes.value = true;
+  try {
+    // 从后台查询所有状态为 on_sale 的主题
+    const response = await themeApi.getList({ status: 'on_sale' });
+    
+    if (response.success && response.data) {
+      // 将云主题转换为官方主题格式
+      officialThemes.value = response.data.map((theme: CloudThemeInfo) => ({
+        id: theme.id,
+        name: theme.name,
+        type: 'game', // 默认设为游戏主题，后续可以根据实际数据判断
+        category: '游戏主题',
+        description: theme.description || '',
+        baseThemeKey: 'default',
+        styleOverrides: {},
+        assetOverrides: {},
+      }));
+      
+      console.log('[CreatorCenter] 官方主题加载成功:', officialThemes.value.length);
+    } else {
+      console.warn('[CreatorCenter] 官方主题加载失败:', response.message);
+      // 使用默认的硬编码主题作为回退
+      loadDefaultOfficialThemes();
+    }
+  } catch (error) {
+    console.error('[CreatorCenter] 加载官方主题出错:', error);
+    // 出错时使用默认主题
+    loadDefaultOfficialThemes();
+  } finally {
+    loadingOfficialThemes.value = false;
+  }
+}
+
+// 加载默认的硬编码官方主题 (作为回退方案)
+function loadDefaultOfficialThemes(): void {
+  // TODO: 这里可以放回原来的硬编码数据作为回退
+  console.log('[CreatorCenter] 使用默认官方主题数据');
+}
+
+// 资源服务器配置
+const RESOURCE_SERVER_CONFIG = {
+  // 默认资源服务器地址（可配置）
+  defaultServerUrl: 'http://192.168.1.100:8080',
+  // CDN 节点（可选，用于负载均衡）
+  cdnNodes: [
+    'http://cdn1.example.com:8080',
+    'http://cdn2.example.com:8080',
+  ],
+  // 是否启用 CDN
+  useCDN: false,
+};
+
+// 从资源包提取资源 URLs（直接使用已有的完整 URL）
+function extractAssetURLsFromPack(resourcePack: any): Record<string, string> {
+  if (!resourcePack || !resourcePack.resources) {
+    return {};
+  }
+  
+  const assets: Record<string, string> = {};
+  const serverStats = new Map<string, number>(); // 统计不同服务器数量
+  
+  Object.entries(resourcePack.resources).forEach(([key, resource]: [string, any]) => {
+    if (resource.url) {
+      assets[key] = resource.url;
+      
+      // 统计服务器分布 - 处理相对路径和绝对路径
+      try {
+        // 如果是相对路径，使用 window.location.origin 构建完整 URL
+        const fullUrl = resource.url.startsWith('/') 
+          ? `${window.location.origin}${resource.url}`
+          : resource.url;
+        
+        const urlObj = new URL(fullUrl);
+        const serverKey = `${urlObj.protocol}//${urlObj.host}`;
+        serverStats.set(serverKey, (serverStats.get(serverKey) || 0) + 1);
+      } catch (e) {
+        // 相对路径解析失败时，记录为本地资源
+        if (resource.url.startsWith('/')) {
+          const localServer = `${window.location.protocol}//${window.location.host}`;
+          serverStats.set(localServer, (serverStats.get(localServer) || 0) + 1);
+        } else {
+          console.debug('[资源包] URL 格式特殊:', resource.url);
+        }
+      }
+    }
+  });
+  
+  console.log('[资源包] 提取的资源 URLs:', {
+    packId: resourcePack.packId,
+    version: resourcePack.version,
+    totalResources: Object.keys(assets).length,
+    serverDistribution: Object.fromEntries(serverStats),
+    sampleAssets: Object.fromEntries(
+      Object.entries(assets).slice(0, 3)
+    ),
+  });
+  
+  return assets;
+}
+
+// 从官方主题开始 DIY
+function diyFromOfficial(theme: any): void {
+  currentTab.value = 'create';
+  createStep.value = 'info';
+  
+  // 记录 DIY 来源主题
+  diySourceTheme.value = theme;
+  
+  // 预填充基础主题信息
+  newTheme.baseThemeKey = theme.baseThemeKey;
+  newTheme.name = ''; // 名称必须为空，让用户自己填写
+  newTheme.author = '';
+  newTheme.description = theme.description || `基于${theme.name}的个性化主题`;
+  newTheme.price = 0;
+  
+  // 复制官方主题的样式配置作为默认值
+  Object.keys(newThemeStyles).forEach(key => {
+    delete newThemeStyles[key];
+  });
+  if (theme.styleOverrides) {
+    Object.assign(newThemeStyles, theme.styleOverrides);
+  } else {
+    console.log('[DIY] 主题没有 styleOverrides，使用默认配置');
+  }
+  
+  // 复制官方主题的资产配置作为默认值
+  Object.keys(newThemeAssets).forEach(key => {
+    delete newThemeAssets[key];
+  });
+  
+  // 关键：优先从资源包提取资源 URL
+  let sourceAssets: Record<string, string> = {};
+  
+  if (theme.resourcePack) {
+    // 从资源包提取完整 URL（每个资源可能来自不同服务器）
+    sourceAssets = extractAssetURLsFromPack(theme.resourcePack);
+    console.log('[DIY] 从去中心化资源服务器加载:', {
+      packId: theme.resourcePack.packId,
+      version: theme.resourcePack.version,
+      resourcesCount: Object.keys(sourceAssets).length,
+    });
+  } else if (theme.assetOverrides) {
+    // 兼容旧的直接配置方式
+    sourceAssets = { ...theme.assetOverrides };
+    console.log('[DIY] 使用旧方式资源配置:', Object.keys(sourceAssets).length);
+  }
+  
+  // 只复制 assetKeys 中存在的资源
+  if (sourceAssets && assetKeys.value.length > 0) {
+    assetKeys.value.forEach(key => {
+      if (sourceAssets[key]) {
+        newThemeAssets[key] = sourceAssets[key];
+      }
+    });
+    console.log('[DIY] 已加载资产配置:', {
+      totalKeys: assetKeys.value.length,
+      loadedAssets: Object.keys(newThemeAssets).length,
+      sampleAssets: Object.fromEntries(
+        Object.entries(newThemeAssets).slice(0, 3)
+      ),
+    });
+  } else if (sourceAssets) {
+    // 如果 assetKeys 还没有加载，直接复制所有资产
+    Object.assign(newThemeAssets, sourceAssets);
+    console.log('[DIY] assetKeys 未就绪，临时加载所有资产:', Object.keys(newThemeAssets).length);
+  } else {
+    console.log('[DIY] 主题没有资源配置');
+  }
+  
+  console.log('[DIY] 已加载来源主题数据:', {
+    sourceTheme: theme.name,
+    baseThemeKey: newTheme.baseThemeKey,
+    stylesCount: Object.keys(newThemeStyles).length,
+    assetsCount: Object.keys(newThemeAssets).length,
+    assetKeysReady: assetKeys.value.length > 0,
+    hasResourcePack: !!theme.resourcePack,
+  });
+  
+  // 提示用户
+  alert(`将基于"${theme.name}"创建您的个性化主题\n已加载该主题的所有配置\n您只需要设置一个独特的主题名称即可发布！`);
+}
+
+// 取消创作
+function cancelCreate(): void {
+  if (confirm('确定要取消创作吗？所有未保存的内容将丢失。')) {
+    resetNewTheme();
+    currentTab.value = 'official';
+  }
+}
+
+// 查看官方主题
+function viewOfficialTheme(theme: any): void {
+  // 这里可以打开主题详情模态框或跳转到详情页
+  console.log('View official theme:', theme);
+  alert(`查看官方主题：${theme.name}\n${theme.description}\n\n点击 "DIY" 按钮可以基于此主题创建您自己的版本！`);
+}
+
+// 重置新主题
+function resetNewTheme(): void {
+  newTheme.name = '';
+  newTheme.author = '';
+  newTheme.baseThemeKey = 'default';
+  newTheme.description = '';
+  newTheme.price = 0;
+  
+  Object.keys(newThemeStyles).forEach(key => {
+    delete newThemeStyles[key];
+  });
+  
+  Object.keys(newThemeAssets).forEach(key => {
+    delete newThemeAssets[key];
+  });
+  
+  diySourceTheme.value = null; // 清空来源主题
+}
+
+// 格式样式键
+function formatStyleKey(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+// 格式资产键
+function formatAssetKey(key: string): string {
+  return key.replace(/_/g, ' ');
+}
+
+// 获取文件接受类型
+function getFileAccept(key: string): string {
+  if (key.includes('bgm') || key.includes('sound') || key.includes('audio')) {
+    return 'audio/*';
+  }
+  return 'image/*';
+}
+
+// 检查是否为图片
+function isImage(path: string): boolean {
+  return /\.(png|jpg|jpeg|webp|gif)$/i.test(path);
+}
+
+// 检查是否为音频
+function isAudio(path: string): boolean {
+  if (!path) return false;
+  // 检查文件扩展名或 data URL 类型
+  if (path.startsWith('data:')) {
+    return path.startsWith('data:audio/');
+  }
+  return /\.(mp3|wav|ogg|m4a)$/i.test(path);
+}
+
+// 获取资产类型标签
+function getAssetTypeLabel(key: string): string {
+  if (key.includes('bgm') || key.includes('music')) return '背景音乐';
+  if (key.includes('sound') || key.includes('effect')) return '音效';
+  if (key.includes('img') || key.includes('image')) return '图片';
+  if (key.includes('bg') || key.includes('background')) return '背景';
+  return '资源';
+}
+
+// 获取资产类型样式类
+function getAssetTypeClass(key: string): string {
+  if (key.includes('bgm') || key.includes('music')) return 'type-music';
+  if (key.includes('sound') || key.includes('effect')) return 'type-sound';
+  if (key.includes('img') || key.includes('image')) return 'type-image';
+  if (key.includes('bg') || key.includes('background')) return 'type-bg';
+  return 'type-default';
+}
+
+// 获取资产名称
+function getAssetName(path: string): string {
+  if (path.startsWith('data:')) {
+    return '上传的文件';
+  }
+  return path.split('/').pop() || '文件';
+}
+
+// 处理资产上传
+function handleAssetUpload(key: string, event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = e.target?.result as string;
+    newThemeAssets[key] = result;
+    console.log(`[资源上传] ${key} 上传成功`);
+  };
+  reader.readAsDataURL(file);
+}
+
+// 打开图片预览
+function openImagePreview(key: string): void {
+  const path = newThemeAssets[key];
+  if (!path || !isImage(path)) return;
+  
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${formatAssetKey(key)} - 图片预览</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 20px;
+              background: #1a1a1a;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+            }
+            img {
+              max-width: 90%;
+              max-height: 90vh;
+              border-radius: 8px;
+              box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${path}" alt="${formatAssetKey(key)}" />
+        </body>
+      </html>
+    `);
+  }
+}
+
+// 播放音频
+function playAudio(key: string): void {
+  const path = newThemeAssets[key];
+  if (!path || !isAudio(path)) return;
+  
+  // 如果正在播放同一个音频，停止播放
+  if (currentPlayingKey.value === key && currentAudio.value) {
+    stopAudio();
+    return;
+  }
+  
+  // 停止当前正在播放的音频
+  stopAudio();
+  
+  // 创建并播放新音频
+  const audio = new Audio(path);
+  currentAudio.value = audio;
+  currentPlayingKey.value = key;
+  
+  audio.addEventListener('ended', () => {
+    currentPlayingKey.value = null;
+    currentAudio.value = null;
+  });
+  
+  audio.addEventListener('error', (e) => {
+    console.error('[音频播放] 播放失败:', e);
+    alert('音频播放失败，请检查文件是否完整');
+    currentPlayingKey.value = null;
+    currentAudio.value = null;
+  });
+  
+  audio.play().catch(err => {
+    console.error('[音频播放] 播放错误:', err);
+    alert('音频播放失败');
+    currentPlayingKey.value = null;
+    currentAudio.value = null;
+  });
+}
+
+// 停止音频播放
+function stopAudio(): void {
+  if (currentAudio.value) {
+    currentAudio.value.pause();
+    currentAudio.value.currentTime = 0;
+    currentAudio.value = null;
+  }
+  currentPlayingKey.value = null;
+}
+
+// 上一步
+function prevStep(): void {
+  const steps = createSteps.map(step => step.id);
+  const currentIndex = steps.indexOf(createStep.value);
+  if (currentIndex > 0) {
+    createStep.value = steps[currentIndex - 1];
+  }
+}
+
+// 下一步
+function nextStep(): void {
+  const steps = createSteps.map(step => step.id);
+  const currentIndex = steps.indexOf(createStep.value);
+  if (currentIndex < steps.length - 1) {
+    createStep.value = steps[currentIndex + 1];
+  }
+}
+
+// 发布主题
+async function publishTheme(): Promise<void> {
+  if (!canPublish.value) return;
+  
+  try {
+    const themeData: DiyThemeData = {
+      baseThemeKey: newTheme.baseThemeKey,
+      name: newTheme.name,
+      author: newTheme.author,
+      assetOverrides: { ...newThemeAssets },
+      styleOverrides: { ...newThemeStyles },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    
+    if (publishOptions.saveLocally) {
+      const themeKey = themeManager.addLocalDiyTheme(themeData);
+      console.log('Theme saved locally:', themeKey);
+    }
+    
+    if (publishOptions.uploadToStore) {
+      const result = await themeManager.uploadDiyToCloud(
+        themeData,
+        newTheme.price,
+      );
+      if (result) {
+        alert('主题发布成功！');
+        // 重置表单
+        resetNewTheme();
+        createStep.value = 'info';
+        // 重新加载我的主题
+        await loadMyThemes();
+        // 切换到我的主题页面
+        currentTab.value = 'my-themes';
+      } else {
+        alert('发布失败，请重试');
+      }
+    } else {
+      alert('主题已保存到本地！');
+      resetNewTheme();
+      createStep.value = 'info';
+    }
+  } catch (e) {
+    console.error('[CreatorCenter] Publish failed:', e);
+    alert('发布失败');
+  }
+}
+
+// 购买或下载主题
+async function handleBuyOrDownload(theme: CloudThemeInfo): Promise<void> {
+  if (theme.owned) {
+    await downloadTheme(theme.id);
+    return;
+  }
+  
+  if (theme.price > 0) {
+    // 显示购买确认
+    if (confirm(`确定要购买主题 "${theme.name}" 吗？\n价格：${theme.price} 趣乐币`)) {
+      await buyTheme(theme);
+    }
+  } else {
+    await downloadTheme(theme.id);
+  }
+}
+
+// 购买主题
+async function buyTheme(theme: CloudThemeInfo): Promise<void> {
+  if (isPurchasing.value) return;
+  
+  isPurchasing.value = true;
+  try {
+    // 这里调用购买API
+    // const response = await themeApi.buy(theme.id);
+    // if (response.success) {
+    //   await downloadTheme(theme.id);
+    //   alert('购买成功！');
+    // } else {
+    //   alert(response.message || '购买失败');
+    // }
+    alert('购买功能开发中...');
+  } catch (e) {
+    console.error('[CreatorCenter] Buy failed:', e);
+    alert('购买失败');
+  } finally {
+    isPurchasing.value = false;
+  }
+}
+
+// 下载主题
+async function downloadTheme(themeId: string): Promise<void> {
+  try {
+    const success = await themeManager.downloadCloudTheme(themeId);
+    if (success) {
+      alert('主题下载成功！');
+    } else {
+      alert('下载失败');
+    }
+  } catch (e) {
+    console.error('[CreatorCenter] Download failed:', e);
+    alert('下载失败');
+  }
+}
+
+// 预览主题
+function previewTheme(theme: CloudThemeInfo): void {
+  console.log('Preview theme:', theme);
+  // 这里可以打开主题预览模态框
+}
+</script>
+
+<style scoped>
+.creator-center-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 返回首页按钮 */
+.back-home-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid rgba(78, 205, 196, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-right: 12px;
+}
+
+.back-home-btn:hover {
+  background: white;
+  border-color: #4ECDC4;
+  transform: translateX(-2px);
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
+}
+
+.back-icon {
+  font-size: 20px;
+  color: #4ECDC4;
+  font-weight: bold;
+}
+
+.back-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* 导航标签 */
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-tab:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.nav-tab.active {
+  background: #4ECDC4;
+  color: white;
+  box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
+}
+
+.tab-icon {
+  font-size: 16px;
+}
+
+.tab-label {
+  white-space: nowrap;
+}
+
+/* 主题创作页面 */
+.theme-create {
+  .create-header-with-back {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  
+  .create-title-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .create-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+  }
+  
+  .diy-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.1) 0%, rgba(69, 183, 209, 0.1) 100%);
+    border: 2px solid rgba(78, 205, 196, 0.3);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4ECDC4;
+  }
+  
+  .source-icon {
+    font-size: 16px;
+  }
+  
+  .source-theme-name {
+    font-weight: 600;
+    color: #4ECDC4;
+  }
+}
+
+/* DIY 来源信息卡片 */
+.diy-source-info {
+  margin-bottom: 24px;
+}
+
+.source-card {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.05) 0%, rgba(69, 183, 209, 0.05) 100%);
+  border: 2px solid rgba(78, 205, 196, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.source-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(78, 205, 196, 0.2);
+}
+
+.source-icon {
+  font-size: 20px;
+}
+
+.source-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4ECDC4;
+  margin: 0;
+}
+
+.source-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.detail-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  min-width: 100px;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #333;
+  flex: 1;
+}
+
+/* 创作者统计 */
+.creator-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  min-width: 80px;
+}
+
+.stat-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+}
+
+/* 主内容区域 */
+.creator-main {
+  flex: 1;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* 官方主题列表 */
+.official-themes {
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .title-icon {
+    font-size: 28px;
+  }
+}
+
+.theme-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid rgba(78, 205, 196, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  color: #666;
+}
+
+.filter-btn:hover {
+  background: white;
+  border-color: #4ECDC4;
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, #4ECDC4 0%, #45B7D1 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+}
+
+.official-themes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.official-theme-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+}
+
+.official-theme-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.theme-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e6e9ff 100%);
+  border-bottom: 1px solid #e0e7ff;
+}
+
+.theme-type-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  
+  &.game {
+    background: linear-gradient(135deg, #FFE5EC 0%, #FFB6C1 100%);
+    color: #d6336c;
+  }
+  
+  &.app {
+    background: linear-gradient(135deg, #E3F2FD 0%, #90CAF9 100%);
+    color: #1976d2;
+  }
+}
+
+.theme-category {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.theme-thumbnail {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.placeholder-icon {
+  font-size: 80px;
+  opacity: 0.3;
+}
+
+.thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.theme-info {
+  padding: 16px;
+}
+
+.theme-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 8px 0;
+}
+
+.theme-desc {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.theme-actions {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.btn-action {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-icon {
+  font-size: 16px;
+}
+
+.btn-view {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.btn-view:hover {
+  background: #e0e0e0;
+}
+
+.btn-diy {
+  background: linear-gradient(135deg, #4ECDC4 0%, #45B7D1 100%);
+  color: white;
+}
+
+.btn-diy:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+}
+
+/* 创作页面头部 */
+.create-header-with-back {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.btn-cancel-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: none;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel-create:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.cancel-icon {
+  font-size: 16px;
+}
+
+.create-placeholder {
+  width: 100px; /* 占位，保持标题居中 */
+}
+
+.section {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 按钮样式 */
+.btn-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #FF6B9D 0%, #FF8E53 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-create:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+}
+
+.btn-go-official {
+  padding: 12px 32px;
+  background: linear-gradient(135deg, #4ECDC4 0%, #45B7D1 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-go-official:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(78, 205, 196, 0.3);
+}
+
+.btn-create-empty {
+  padding: 12px 32px;
+  background: linear-gradient(135deg, #FF6B9D 0%, #FF8E53 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-create-empty:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+}
+
+/* 加载和空状态 */
+.loading-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #888;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f0f0f0;
+  border-top-color: #4ECDC4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-illustration {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-state h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.empty-state p {
+  margin: 0;
+  color: #666;
+}
+
+/* 主题网格 */
+.themes-grid,
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.theme-card,
+.store-theme-card {
+  background: #f9f9f9;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.theme-card:hover,
+.store-theme-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.theme-card.on-sale {
+  border: 2px solid #4ECDC4;
+}
+
+/* 缩略图 */
+.theme-thumbnail {
+  position: relative;
+  width: 100%;
+  padding-top: 60%;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.thumbnail-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.theme-thumbnail:hover .thumbnail-img {
+  transform: scale(1.05);
+}
+
+.thumbnail-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #42b983, #3d5afe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 48px;
+  font-weight: bold;
+}
+
+.sale-badge,
+.offline-badge,
+.free-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  color: white;
+}
+
+.sale-badge {
+  background: #4ECDC4;
+}
+
+.offline-badge {
+  background: #888;
+}
+
+.free-badge {
+  background: #42b983;
+}
+
+.theme-price {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+/* 主题信息 */
+.theme-info {
+  padding: 16px;
+}
+
+.theme-name {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-author {
+  margin: 0 0 12px 0;
+  color: #666;
+  font-size: 13px;
+}
+
+.theme-meta {
+  display: flex;
+  gap: 12px;
+  color: #888;
+  font-size: 13px;
+}
+
+.meta-icon {
+  margin-right: 4px;
+}
+
+.theme-earnings {
+  color: #4ECDC4;
+  font-weight: 500;
+}
+
+/* 主题操作 */
+.theme-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+}
+
+.btn-action {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-action:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-offline {
+  background: #ff6b6b;
+  color: white;
+}
+
+.btn-online {
+  background: #4ECDC4;
+  color: white;
+}
+
+.btn-edit {
+  background: #45B7D1;
+  color: white;
+}
+
+.btn-stats {
+  background: #A66CFF;
+  color: white;
+}
+
+/* 商店相关 */
+.store-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-btn {
+  padding: 6px 16px;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 6px;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background: #e0e0e0;
+}
+
+.filter-btn.active {
+  background: #45B7D1;
+  color: white;
+}
+
+.search-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #45B7D1;
+}
+
+.store-theme-card.owned {
+  opacity: 0.8;
+}
+
+.theme-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+}
+
+.btn-buy {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #45B7D1 0%, #A66CFF 100%);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-buy:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(69, 183, 209, 0.3);
+}
+
+.btn-buy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-buy.owned {
+  background: #42b983;
+}
+
+/* 主题创作 */
+.create-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.create-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.create-title {
+  margin: 0 0 8px 0;
+  font-size: 32px;
+  font-weight: 600;
+  color: #333;
+}
+
+.create-subtitle {
+  margin: 0;
+  color: #666;
+  font-size: 16px;
+}
+
+.create-steps {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.create-steps::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 50px;
+  right: 50px;
+  height: 2px;
+  background: #e0e0e0;
+  z-index: 1;
+}
+
+.create-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  flex: 1;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  background: #f0f0f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.create-step.active .step-number {
+  background: #4ECDC4;
+  color: white;
+  box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
+}
+
+.step-info {
+  text-align: center;
+}
+
+.step-title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.step-description {
+  margin: 0;
+  font-size: 12px;
+  color: #888;
+  max-width: 120px;
+}
+
+/* 表单样式 */
+.step-content {
+  background: #f9f9f9;
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #4ECDC4;
+  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.1);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #888;
+}
+
+/* 样式编辑器 */
+.style-editor {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 32px;
+}
+
+.style-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-card {
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  min-width: 200px;
+}
+
+.preview-title {
+  margin: 0 0 20px 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.preview-button {
+  padding: 12px 30px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.preview-button:hover {
+  transform: scale(1.05);
+}
+
+.style-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.style-group {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.style-group-title {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.color-grid,
+.size-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.color-field,
+.size-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-label,
+.size-label {
+  font-size: 13px;
+  color: #666;
+}
+
+.color-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-picker {
+  width: 40px;
+  height: 36px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.color-text-input,
+.size-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: monospace;
+}
+
+.color-text-input:focus,
+.size-input:focus {
+  outline: none;
+  border-color: #4ECDC4;
+}
+
+/* 资产上传 */
+.asset-uploader {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.asset-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+}
+
+.asset-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.asset-key {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.asset-name {
+  font-size: 12px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.asset-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 资产上传 - 合并布局 */
+.asset-uploader-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section-title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 16px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(78, 205, 196, 0.2);
+}
+
+.title-icon {
+  font-size: 20px;
+}
+
+.upload-section {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.asset-list-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.asset-item-compact {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.9) 100%);
+  border: 1px solid rgba(78, 205, 196, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s;
+}
+
+.asset-item-compact:hover {
+  border-color: rgba(78, 205, 196, 0.3);
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.15);
+}
+
+.asset-header-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.asset-key-compact {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.asset-actions-compact {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-upload-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #4ECDC4 0%, #45B7D1 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.upload-icon {
+  font-size: 16px;
+}
+
+.btn-upload-compact:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+}
+
+.btn-action-compact {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-image {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-audio {
+  width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  font-size: 16px;
+}
+
+.btn-audio.playing {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  animation: pulse 1s infinite;
+}
+
+.btn-action-compact:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+/* 预览区域 */
+.preview-area {
+  min-height: 120px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.preview-area-image {
+  position: relative;
+  overflow: hidden;
+  background: #f8f9fa;
+  border: 2px solid rgba(102, 126, 234, 0.2);
+}
+
+.inline-preview-img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.preview-dimensions {
+  font-size: 12px;
+  color: #666;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+}
+
+.preview-area-audio {
+  background: linear-gradient(135deg, rgba(240, 147, 251, 0.1) 0%, rgba(245, 87, 108, 0.1) 100%);
+  border: 2px solid rgba(245, 87, 108, 0.2);
+  padding: 16px;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.audio-wave-indicator {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 20px;
+}
+
+.audio-wave-indicator span {
+  width: 4px;
+  height: 8px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 2px;
+  animation: none;
+}
+
+.audio-wave-indicator.active span {
+  animation: wave 0.5s ease-in-out infinite;
+}
+
+.audio-wave-indicator.active span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.audio-wave-indicator.active span:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.audio-wave-indicator.active span:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+@keyframes wave {
+  0%, 100% {
+    height: 8px;
+  }
+  50% {
+    height: 20px;
+  }
+}
+
+.audio-status {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.preview-area-empty {
+  background: #f0f0f0;
+  border: 2px dashed #ddd;
+}
+
+.empty-placeholder {
+  font-size: 13px;
+  color: #999;
+}
+
+/* 资源总览区域 */
+.preview-section {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.empty-all {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+  color: #999;
+}
+
+.empty-icon {
+  font-size: 48px;
+}
+
+.empty-all p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.preview-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.preview-card-compact {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.preview-card-compact:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.card-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+
+.card-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.card-image-wrapper:hover .card-overlay {
+  opacity: 1;
+}
+
+.overlay-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: white;
+  color: #333;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.overlay-btn:hover {
+  transform: scale(1.1);
+}
+
+.card-audio-wrapper {
+  width: 100%;
+  height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(240, 147, 251, 0.1) 0%, rgba(245, 87, 108, 0.1) 100%);
+}
+
+.card-audio-icon {
+  font-size: 40px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.card-play-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-play-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(245, 87, 108, 0.4);
+}
+
+.card-play-btn.playing {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  animation: pulse 1s infinite;
+}
+
+.card-label {
+  padding: 8px;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* 资源网格布局 - 新版本 */
+.asset-grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.grid-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.stats-badge {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.1) 0%, rgba(69, 183, 209, 0.1) 100%);
+  border: 2px solid rgba(78, 205, 196, 0.3);
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4ECDC4;
+}
+
+.asset-grid-wrapper {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 空状态 */
+.empty-assets-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.empty-illustration {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-assets-state h3 {
+  margin: 16px 0 8px;
+  font-size: 18px;
+  color: #333;
+}
+
+.empty-assets-state p {
+  margin: 0;
+  color: #888;
+  font-size: 14px;
+}
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.asset-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.asset-card.filled {
+  border-color: rgba(78, 205, 196, 0.3);
+}
+
+.asset-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.card-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-type-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.card-type-badge.type-music {
+  background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.2) 100%);
+  color: #f5576c;
+  border: 1px solid rgba(245, 87, 108, 0.3);
+}
+
+.card-type-badge.type-sound {
+  background: linear-gradient(135deg, rgba(250, 112, 154, 0.2) 0%, rgba(254, 225, 64, 0.2) 100%);
+  color: #fa709a;
+  border: 1px solid rgba(250, 112, 154, 0.3);
+}
+
+.card-type-badge.type-image {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+  color: #764ba2;
+  border: 1px solid rgba(118, 75, 162, 0.3);
+}
+
+.card-type-badge.type-bg,
+.card-type-badge.type-default {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.2) 0%, rgba(69, 183, 209, 0.2) 100%);
+  color: #4ECDC4;
+  border: 1px solid rgba(78, 205, 196, 0.3);
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.4;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.card-preview-area {
+  width: 100%;
+  height: 140px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(248, 249, 250, 0.5) 0%, rgba(240, 240, 240, 0.5) 100%);
+  border: 2px dashed rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.preview-image-wrapper:hover .image-overlay {
+  opacity: 1;
+}
+
+.overlay-action {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: white;
+  color: #333;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.overlay-action:hover {
+  transform: scale(1.1);
+}
+
+.preview-audio-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+}
+
+.audio-player-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(240, 147, 251, 0.1) 0%, rgba(245, 87, 108, 0.1) 100%);
+  border: 3px solid rgba(245, 87, 108, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.audio-player-circle.playing {
+  border-color: rgba(250, 112, 154, 0.4);
+  animation: pulse-ring 1s infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.audio-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.play-button {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.play-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);
+}
+
+.play-button.playing {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  animation: pulse 1s infinite;
+}
+
+.preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.empty-icon {
+  font-size: 40px;
+  opacity: 0.5;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.btn-upload-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.1) 0%, rgba(69, 183, 209, 0.1) 100%);
+  border: 2px solid rgba(78, 205, 196, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-upload-card:hover {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.2) 0%, rgba(69, 183, 209, 0.2) 100%);
+  border-color: rgba(78, 205, 196, 0.5);
+  transform: translateY(-1px);
+}
+
+.upload-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4ECDC4;
+}
+
+.btn-card-action {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-card-action:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-audio-action {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.btn-audio-action.playing {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  animation: pulse 1s infinite;
+}
+
+.hidden-input {
+  display: none;
+}
+
+/* 发布设置 */
+.publish-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.summary-card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.summary-title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.item-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.item-value {
+  color: #333;
+  font-weight: 600;
+}
+
+.publish-options {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+}
+
+.option-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid #ddd;
+  cursor: pointer;
+}
+
+.option-description {
+  margin: 0;
+  font-size: 12px;
+  color: #888;
+  padding-left: 26px;
+}
+
+.option-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+  max-width: 200px;
+}
+
+.option-select:focus {
+  outline: none;
+  border-color: #4ECDC4;
+}
+
+/* 导航按钮 */
+.create-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  border-top: 1px solid #eee;
+}
+
+.btn-nav {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-nav:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-prev {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.btn-prev:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.btn-next {
+  background: linear-gradient(135deg, #45B7D1 0%, #A66CFF 100%);
+  color: white;
+  margin-left: auto;
+}
+
+.btn-next:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(69, 183, 209, 0.3);
+}
+
+.btn-publish {
+  background: linear-gradient(135deg, #4ECDC4 0%, #42b983 100%);
+  color: white;
+  margin-left: auto;
+}
+
+.btn-publish:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+}
+
+/* 数据统计 */
+.stats-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.stats-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.period-select {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 120px;
+}
+
+.period-select:focus {
+  outline: none;
+  border-color: #4ECDC4;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 12px;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card .stat-icon {
+  font-size: 32px;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-card .stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.stat-card .stat-label {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.stat-change {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stat-change.positive {
+  color: #42b983;
+}
+
+.stat-change.negative {
+  color: #ff6b6b;
+}
+
+.charts-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chart-title {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.chart-placeholder {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.chart-empty {
+  color: #888;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .nav-tabs {
+    flex-wrap: wrap;
+  }
+
+  .nav-tab {
+    padding: 8px 12px;
+  }
+
+  .tab-label {
+    display: none;
+  }
+
+  .creator-stats {
+    gap: 8px;
+  }
+
+  .stat-item {
+    min-width: 60px;
+    padding: 6px 10px;
+  }
+
+  .stat-value {
+    font-size: 14px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+
+  /* 头部响应式调整 */
+  .logo-text {
+    display: none;
+  }
+
+  .header-left .logo {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* 头部布局调整 - 移动端 */
+  .base-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px !important;
+  }
+
+  .header-left {
+    order: 1;
+    flex: 0 0 auto !important;
+  }
+
+  .header-right {
+    order: 2;
+    flex: 0 0 auto !important;
+  }
+
+  .header-center {
+    order: 3;
+    flex: 1 1 100% !important;
+    justify-content: flex-start !important;
+    overflow-x: auto;
+    margin-top: 8px;
+  }
+
+  .nav-tabs {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .nav-tab {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .tab-label {
+    display: inline-block;
+  }
+
+  .creator-stats {
+    display: none;
+  }
+
+  .creator-main {
+    padding: 16px;
+  }
+  
+  .section {
+    padding: 16px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .section-title {
+    font-size: 20px;
+  }
+  
+  .themes-grid,
+  .store-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .style-editor,
+  .asset-uploader,
+  .publish-summary {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .store-filters {
+    flex-wrap: wrap;
+  }
+  
+  .search-input {
+    min-width: 100%;
+  }
+  
+  .create-steps {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .create-steps::before {
+    display: none;
+  }
+  
+  .create-step {
+    flex-direction: row;
+    gap: 16px;
+    text-align: left;
+  }
+  
+  .step-info {
+    text-align: left;
+  }
+  
+  .step-description {
+    max-width: none;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .charts-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 头部进一步简化 */
+  .base-header {
+    padding: 8px !important;
+  }
+
+  .header-left .logo {
+    font-size: 18px;
+  }
+  
+  /* 小屏幕隐藏返回按钮文字 */
+  .back-home-btn {
+    padding: 8px;
+    margin-right: 8px;
+  }
+  
+  .back-text {
+    display: none;
+  }
+  
+  .back-icon {
+    font-size: 18px;
+  }
+
+  .nav-tabs {
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-tab {
+    padding: 6px 8px;
+    white-space: nowrap;
+  }
+
+  .tab-icon {
+    font-size: 14px;
+  }
+
+  .tab-label {
+    font-size: 11px;
+  }
+
+  .creator-stats {
+    display: none;
+  }
+  
+  .btn-create {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .theme-actions {
+    flex-direction: column;
+  }
+  
+  .store-filters {
+    flex-direction: column;
+  }
+  
+  .filter-btn {
+    width: 100%;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

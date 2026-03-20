@@ -1,0 +1,135 @@
+{
+    "$comment": "GTRS v1.0.0 贪吃蛇游戏内置默认主题",
+    "globalStyle": {
+        "bgColor": "#1a1a2e",
+        "borderRadius": "8px",
+        "fontFamily": "Arial, sans-serif",
+        "primaryColor": "#4ade80",
+        "secondaryColor": "#22c55e",
+        "textColor": "#ffffff"
+    },
+    "resources": {
+        "audio": {
+            "bgm": {
+                "bgm_gameover": {
+                    "alias": "游戏结束音乐",
+                    "src": "/public/games/snake-vue3/themes/default/audio/bgm_gameover.wav",
+                    "type": "wav",
+                    "volume": 0.5
+                },
+                "bgm_gameplay": {
+                    "alias": "游戏中背景音乐",
+                    "src": "/public/games/snake-vue3/themes/default/audio/bgm_gameplay.mp3",
+                    "type": "mp3",
+                    "volume": 0.7
+                },
+                "bgm_main": {
+                    "alias": "主菜单背景音乐",
+                    "src": "/public/games/snake-vue3/themes/default/audio/bgm_main.wav",
+                    "type": "wav",
+                    "volume": 0.6
+                }
+            },
+            "effect": {
+                "effect_button_click": {
+                    "alias": "按钮点击音效",
+                    "src": "/public/games/snake-vue3/themes/default/audio/button_click.wav",
+                    "type": "wav",
+                    "volume": 0.5
+                },
+                "effect_crash": {
+                    "alias": "碰撞音效",
+                    "src": "/public/games/snake-vue3/themes/default/audio/crash.wav",
+                    "type": "wav",
+                    "volume": 0.6
+                },
+                "effect_eat": {
+                    "alias": "吃到食物音效",
+                    "src": "/public/games/snake-vue3/themes/default/audio/eat.wav",
+                    "type": "wav",
+                    "volume": 0.5
+                },
+                "effect_gameover": {
+                    "alias": "游戏结束音效",
+                    "src": "/public/games/snake-vue3/themes/default/audio/gameover.wav",
+                    "type": "wav",
+                    "volume": 0.7
+                },
+                "effect_levelup": {
+                    "alias": "升级音效",
+                    "src": "/public/games/snake-vue3/themes/default/audio/levelup.wav",
+                    "type": "wav",
+                    "volume": 0.6
+                }
+            }
+        },
+        "images": {
+            "scene": {
+                "food_apple": {
+                    "alias": "苹果",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/food_apple.png",
+                    "type": "png"
+                },
+                "food_banana": {
+                    "alias": "香蕉",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/food_banana.png",
+                    "type": "png"
+                },
+                "food_cherry": {
+                    "alias": "樱桃",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/food_cherry.png",
+                    "type": "png"
+                },
+                "obstacle_rock": {
+                    "alias": "石头障碍物",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/obstacle_rock.png",
+                    "type": "png"
+                },
+                "obstacle_wall": {
+                    "alias": "墙壁障碍物",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/obstacle_wall.png",
+                    "type": "png"
+                },
+                "scene_bg_grid": {
+                    "alias": "网格背景",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/grid.png",
+                    "type": "png"
+                },
+                "scene_bg_main": {
+                    "alias": "游戏主背景",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/background.png",
+                    "type": "png"
+                },
+                "snake_body": {
+                    "alias": "蛇身",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/snake_body.png",
+                    "type": "png"
+                },
+                "snake_head": {
+                    "alias": "蛇头",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/snake_head.png",
+                    "type": "png"
+                },
+                "snake_tail": {
+                    "alias": "蛇尾",
+                    "src": "/public/games/snake-vue3/themes/default/images/scene/snake_tail.png",
+                    "type": "png"
+                }
+            }
+        },
+        "video": {}
+    },
+    "specMeta": {
+        "compatibleVersion": "1.0.0",
+        "specName": "GTRS",
+        "specVersion": "1.0.0"
+    },
+    "themeInfo": {
+        "author": "官方",
+        "description": "贪吃蛇游戏内置默认主题，经典绿色配色方案",
+        "gameId": "game_snake_v3",
+        "isDefault": true,
+        "themeId": "snake_default_v1",
+        "themeName": "贪吃蛇 - 清新绿"
+    }
+}

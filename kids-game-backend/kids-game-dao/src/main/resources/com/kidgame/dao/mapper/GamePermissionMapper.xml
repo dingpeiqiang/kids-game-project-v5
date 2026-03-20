@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kidgame.dao.mapper.GamePermissionMapper">
+
+    <!-- 查询儿童的游戏权限 -->
+    <select id="selectPermissions" resultType="com.kidgame.dao.entity.GamePermission">
+        SELECT permission_id, user_id, user_type, resource_type, game_id, permission_type, permission_params,
+               remark, create_time, update_time, deleted
+        FROM t_game_permission
+        WHERE user_id = #{userId}
+          AND game_id = #{gameId}
+          AND deleted = 0
+        ORDER BY create_time ASC
+    </select>
+
+    <!-- 检查游戏是否被屏蔽 -->
+    <select id="isGameBlocked" resultType="java.lang.Boolean">
+        SELECT COUNT(1) > 0
+        FROM t_game_permission
+        WHERE user_id = #{userId}
+          AND game_id = #{gameId}
+          AND permission_type = 'BLOCK'
+          AND deleted = 0
+    </select>
+
+</mapper>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kidgame.dao.mapper.LeaderboardConfigMapper">
+
+    <!-- 查询游戏的排行榜配置列表 -->
+    <select id="selectByGameId" resultType="com.kidgame.dao.entity.LeaderboardConfig">
+        SELECT config_id, game_id, dimension_code, dimension_name, sort_order, is_enabled,
+               create_time, update_time, deleted
+        FROM t_leaderboard_config
+        WHERE game_id = #{gameId}
+          AND deleted = 0
+        ORDER BY sort_order ASC, create_time ASC
+    </select>
+
+    <!-- 查询游戏的某个维度配置 -->
+    <select id="selectByGameIdAndDimension" resultType="com.kidgame.dao.entity.LeaderboardConfig">
+        SELECT config_id, game_id, dimension_code, dimension_name, sort_order, is_enabled,
+               create_time, update_time, deleted
+        FROM t_leaderboard_config
+        WHERE game_id = #{gameId}
+          AND dimension_code = #{dimensionCode}
+          AND deleted = 0
+        LIMIT 1
+    </select>
+
+</mapper>

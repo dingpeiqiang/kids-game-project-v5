@@ -1,0 +1,140 @@
+{
+  "$comment": "GTRS v1.0.0 贪吃蛇游戏内置默认主题（优化版）。此文件随游戏代码一起发布，必须通过 GTRS 严格校验。禁止删除或损坏任何必填字段。",
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "author": "官方",
+    "gameId": "game_snake_v3",
+    "themeId": "snake_default_v1",
+    "isDefault": true,
+    "themeName": "贪吃蛇 - 清新绿",
+    "description": "贪吃蛇游戏内置默认主题，经典绿色配色方案，包含全量资源 key 定义。"
+  },
+  "globalStyle": {
+    "bgColor": "#1a1a2e",
+    "textColor": "#ffffff",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "8px",
+    "primaryColor": "#4ade80",
+    "secondaryColor": "#22c55e"
+  },
+  "resources": {
+    "audio": {
+      "bgm": {
+        "bgm_main": {
+          "src": "assets/themes/snake/audio/bgm_main.wav",
+          "type": "wav",
+          "alias": "主菜单背景音乐",
+          "volume": 0.6
+        },
+        "bgm_gameover": {
+          "src": "assets/themes/snake/audio/bgm_gameover.wav",
+          "type": "wav",
+          "alias": "游戏结束音乐",
+          "volume": 0.5
+        },
+        "bgm_gameplay": {
+          "src": "assets/themes/snake/audio/bgm_gameplay.wav",
+          "type": "wav",
+          "alias": "游戏中背景音乐",
+          "volume": 0.7
+        }
+      },
+      "effect": {
+        "effect_eat": {
+          "src": "assets/themes/snake/audio/eat.wav",
+          "type": "wav",
+          "alias": "吃到食物音效",
+          "volume": 0.5
+        },
+        "effect_crash": {
+          "src": "assets/themes/snake/audio/crash.wav",
+          "type": "wav",
+          "alias": "碰撞音效",
+          "volume": 0.6
+        },
+        "effect_levelup": {
+          "src": "assets/themes/snake/audio/levelup.wav",
+          "type": "wav",
+          "alias": "升级音效",
+          "volume": 0.6
+        },
+        "effect_gameover": {
+          "src": "assets/themes/snake/audio/gameover.wav",
+          "type": "wav",
+          "alias": "游戏结束音效",
+          "volume": 0.7
+        },
+        "effect_button_click": {
+          "src": "assets/themes/snake/audio/button_click.wav",
+          "type": "wav",
+          "alias": "按钮点击音效",
+          "volume": 0.5
+        }
+      },
+      "voice": {}
+    },
+    "images": {
+      "scene": {
+        "food_apple": {
+          "src": "assets/themes/snake/scene/food_apple.png",
+          "type": "png",
+          "alias": "苹果"
+        },
+        "snake_body": {
+          "src": "assets/themes/snake/scene/snake_body.png",
+          "type": "png",
+          "alias": "蛇身"
+        },
+        "snake_head": {
+          "src": "assets/themes/snake/scene/snake_head.png",
+          "type": "png",
+          "alias": "蛇头"
+        },
+        "snake_tail": {
+          "src": "assets/themes/snake/scene/snake_tail.png",
+          "type": "png",
+          "alias": "蛇尾"
+        },
+        "food_banana": {
+          "src": "assets/themes/snake/scene/food_banana.png",
+          "type": "png",
+          "alias": "香蕉"
+        },
+        "food_cherry": {
+          "src": "assets/themes/snake/scene/food_cherry.png",
+          "type": "png",
+          "alias": "樱桃"
+        },
+        "obstacle_rock": {
+          "src": "assets/themes/snake/scene/obstacle_rock.png",
+          "type": "png",
+          "alias": "石头障碍物"
+        },
+        "obstacle_wall": {
+          "src": "assets/themes/snake/scene/obstacle_wall.png",
+          "type": "png",
+          "alias": "墙壁障碍物"
+        },
+        "scene_bg_grid": {
+          "src": "assets/themes/snake/scene/grid.png",
+          "type": "png",
+          "alias": "网格背景"
+        },
+        "scene_bg_main": {
+          "src": "assets/themes/snake/scene/background.png",
+          "type": "png",
+          "alias": "游戏主背景"
+        }
+      },
+      "login": {},
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "video": {}
+  }
+}

@@ -1,0 +1,672 @@
+/**
+ * 儿童卡通主题 - 欢快·阳光·可爱·彩虹
+ * 
+ * 设计理念：
+ * - 明亮阳光的色彩系统（金黄、天蓝、樱花粉、草绿）
+ * - 圆润柔和的卡通风格（大圆角、厚重投影）
+ * - 活泼有趣的微动画（弹跳、摇摆、旋转）
+ * - 丰富的emoji装饰和趣味元素
+ * - 大字体、清晰排版、高对比度
+ */
+
+// =============================================
+// 卡通主题核心颜色
+// =============================================
+
+// 阳光色彩（温暖明亮）
+$cartoon-sunlight-gold: #FFD700;      // 灿烂金黄
+$cartoon-warm-orange: #FFA500;        // 温暖橙色
+$cartoon-coral: #FF7F50;              // 珊瑚色
+
+// 天空色彩（清爽活泼）
+$cartoon-sky-blue: #87CEEB;           // 天空蓝
+$cartoon-deep-blue: #4169E1;          // 深蓝
+$cartoon-light-cyan: #00D9FF;         // 亮青
+
+// 花朵色彩（温柔可爱）
+$cartoon-sakura-pink: #FFB6D9;        // 樱花粉
+$cartoon-hot-pink: #FF1493;           // 热粉
+$cartoon-light-pink: #FFE4E1;         // 淡粉
+
+// 草地色彩（清新活力）
+$cartoon-grass-green: #7FDB7F;        // 草地绿
+$cartoon-lime: #00FF00;               // 柠檬绿
+$cartoon-forest-green: #228B22;       // 森林绿
+
+// 中性配色（和谐背景）
+$cartoon-white: #FFFFFF;
+$cartoon-cream: #FFFACD;              // 奶油黄
+$cartoon-light-lavender: #E6E6FA;     // 薰衣草
+$cartoon-light-mint: #F0FFF0;         // 薄荷绿
+
+// 深色文字
+$cartoon-dark-text: #2C3E50;          // 深蓝灰
+$cartoon-medium-text: #555555;        // 中灰
+$cartoon-light-text: #999999;         // 浅灰
+
+// =============================================
+// 卡通阴影和装饰
+// =============================================
+
+// 厚重可爱的投影
+$cartoon-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.08);
+$cartoon-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
+$cartoon-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.15), 
+                    0 0 40px rgba(255, 215, 0, 0.1);
+$cartoon-shadow-cute: 0 8px 20px rgba(255, 107, 107, 0.15),
+                      0 4px 12px rgba(135, 206, 235, 0.1);
+
+// 渐变效果
+$cartoon-gradient-sunrise: linear-gradient(135deg, #FFD700, #FFA500, #FF7F50);
+$cartoon-gradient-sky: linear-gradient(180deg, #87CEEB, #00D9FF);
+$cartoon-gradient-rainbow: linear-gradient(90deg, 
+  #FFD700, #FFA500, #FF69B4, #87CEEB, #7FDB7F, #FFD700);
+$cartoon-gradient-sunset: linear-gradient(135deg, #FFA500, #FF7F50, #FF1493);
+$cartoon-gradient-party: linear-gradient(120deg, 
+  #FFB6D9, #87CEEB, #7FDB7F, #FFD700);
+
+// =============================================
+// 基础弹窗卡通风格
+// =============================================
+
+.cartoon-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle 400px at 20% 50%, rgba(255, 215, 0, 0.15), transparent),
+    radial-gradient(circle 400px at 80% 80%, rgba(135, 206, 235, 0.15), transparent),
+    rgba(44, 62, 80, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: cartoonOverlayFadeIn 0.4s ease-out;
+}
+
+@keyframes cartoonOverlayFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(6px);
+  }
+}
+
+.cartoon-modal-container {
+  background: $cartoon-gradient-party;
+  border: none;
+  border-radius: 36px;
+  padding: 2.5rem;
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: $cartoon-shadow-lg;
+  will-change: transform, opacity;
+  position: relative;
+
+  // 卡通厚重边框（双层）
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    background: linear-gradient(135deg, $cartoon-hot-pink, $cartoon-sunlight-gold);
+    border-radius: 40px;
+    z-index: -1;
+    filter: blur(3px);
+  }
+
+  // 顶部装饰 - 彩虹气球🎈
+  &::after {
+    content: '🎈🎈🎈';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 32px;
+    letter-spacing: 8px;
+    animation: cartoonBalloonFloat 3s ease-in-out infinite;
+  }
+}
+
+// 彩虹气球浮动
+@keyframes cartoonBalloonFloat {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0px);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-16px);
+  }
+}
+
+// =============================================
+// 卡通图标和表情
+// =============================================
+
+.cartoon-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
+  // 四周小装饰星星
+  &::before,
+  &::after {
+    content: '⭐';
+    position: absolute;
+    font-size: 24px;
+    animation: cartoonTwinkle 1.5s ease-in-out infinite;
+  }
+  
+  &::before {
+    left: -40px;
+    top: -10px;
+  }
+  
+  &::after {
+    right: -40px;
+    bottom: -10px;
+    animation-delay: 0.5s;
+  }
+}
+
+.cartoon-icon.size-xl {
+  font-size: 100px;
+  animation: cartoonEmojiPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  filter: drop-shadow(0 8px 20px rgba(255, 107, 107, 0.3));
+  margin-bottom: 1.5rem;
+}
+
+.cartoon-icon.size-lg {
+  font-size: 72px;
+  animation: cartoonEmojiPop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.1s backwards;
+}
+
+.cartoon-icon.size-md {
+  font-size: 48px;
+  animation: cartoonEmojiPop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.2s backwards;
+}
+
+// 表情弹出跳跃
+@keyframes cartoonEmojiPop {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(-360deg);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+// 星星闪烁
+@keyframes cartoonTwinkle {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// =============================================
+// 卡通标题和文字
+// =============================================
+
+.cartoon-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  background: $cartoon-gradient-rainbow;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: center;
+  margin: 0 0 1rem 0;
+  letter-spacing: 1px;
+  text-shadow: 
+    2px 2px 0px rgba(255, 255, 255, 0.5),
+    4px 4px 0px rgba(255, 215, 0, 0.2);
+  animation: cartoonTitleSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cartoon-subtitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: $cartoon-medium-text;
+  text-align: center;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+  background: linear-gradient(180deg, 
+    rgba(255, 214, 0, 0.12), 
+    rgba(135, 206, 235, 0.12));
+  padding: 12px 20px;
+  border-radius: 20px;
+  border: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.cartoon-message {
+  font-size: 1rem;
+  color: $cartoon-dark-text;
+  text-align: center;
+  line-height: 1.8;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+@keyframes cartoonTitleSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scaleX(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleX(1);
+  }
+}
+
+// =============================================
+// 卡通统计数据展示
+// =============================================
+
+.cartoon-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, 
+    rgba(255, 214, 0, 0.15),
+    rgba(135, 206, 235, 0.15),
+    rgba(127, 219, 127, 0.15));
+  border: 3px dashed rgba(255, 215, 0, 0.5);
+  border-radius: 24px;
+  margin-bottom: 1.5rem;
+}
+
+.cartoon-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  animation: cartoonStatPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) backwards;
+  
+  &:nth-child(1) { animation-delay: 0.1s; }
+  &:nth-child(2) { animation-delay: 0.2s; }
+  &:nth-child(3) { animation-delay: 0.3s; }
+  &:nth-child(4) { animation-delay: 0.4s; }
+}
+
+.cartoon-stat-label {
+  font-size: 0.85rem;
+  color: $cartoon-medium-text;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.cartoon-stat-value {
+  font-size: 1.8rem;
+  font-weight: 900;
+  background: $cartoon-gradient-sunrise;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes cartoonStatPop {
+  from {
+    opacity: 0;
+    transform: scale(0.3) rotate(-180deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+// =============================================
+// 卡通按钮组
+// =============================================
+
+.cartoon-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 2rem;
+}
+
+.cartoon-buttons.vertical {
+  flex-direction: column;
+}
+
+.cartoon-buttons.horizontal {
+  justify-content: center;
+}
+
+.cartoon-button {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 20px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+
+  // 按钮内层装饰光效
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent);
+    border-radius: 20px;
+    pointer-events: none;
+  }
+
+  &:hover {
+    transform: translateY(-6px) scale(1.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  &:active {
+    transform: translateY(-2px) scale(0.98);
+  }
+}
+
+// 主要按钮 - 阳光金黄
+.cartoon-button.primary {
+  background: $cartoon-gradient-sunrise;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+// 成功按钮 - 草地绿
+.cartoon-button.success {
+  background: linear-gradient(135deg, $cartoon-grass-green, $cartoon-lime);
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+// 危险按钮 - 樱花粉/热粉
+.cartoon-button.danger {
+  background: linear-gradient(135deg, $cartoon-sakura-pink, $cartoon-hot-pink);
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+// 取消按钮 - 天空蓝
+.cartoon-button.cancel {
+  background: linear-gradient(135deg, $cartoon-sky-blue, $cartoon-deep-blue);
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+// 轮廓按钮 - 白色背景
+.cartoon-button.outline {
+  background: $cartoon-white;
+  color: $cartoon-sunlight-gold;
+  border: 3px solid $cartoon-sunlight-gold;
+  font-weight: 800;
+
+  &:hover {
+    background: rgba(255, 215, 0, 0.1);
+  }
+}
+
+// =============================================
+// 卡通装饰和特效
+// =============================================
+
+.cartoon-decoration {
+  position: absolute;
+  font-size: 32px;
+  animation: cartoonDecorFloat 3s ease-in-out infinite;
+
+  // 左上角花朵🌻
+  &.flower-tl {
+    top: 8px;
+    left: 16px;
+    animation-delay: 0s;
+  }
+
+  // 右上角向日葵🌞
+  &.sun-tr {
+    top: 12px;
+    right: 16px;
+    font-size: 36px;
+    animation: cartoonSpin 4s linear infinite;
+  }
+
+  // 左下角蝴蝶🦋
+  &.butterfly-bl {
+    bottom: 20px;
+    left: 12px;
+    font-size: 28px;
+    animation: cartoonButterfly 4s ease-in-out infinite;
+    animation-delay: 0s;
+  }
+
+  // 右下角蜜蜂🐝
+  &.bee-br {
+    bottom: 24px;
+    right: 12px;
+    font-size: 28px;
+    animation: cartoonBuzz 2s ease-in-out infinite;
+    animation-delay: 0.5s;
+  }
+}
+
+@keyframes cartoonDecorFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes cartoonSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cartoonButterfly {
+  0%, 100% {
+    transform: translateX(0px) translateY(0px);
+  }
+  25% {
+    transform: translateX(-8px) translateY(-6px);
+  }
+  50% {
+    transform: translateX(0px) translateY(-12px);
+  }
+  75% {
+    transform: translateX(8px) translateY(-6px);
+  }
+}
+
+@keyframes cartoonBuzz {
+  0%, 100% {
+    transform: translateX(0px);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+}
+
+// =============================================
+// 卡通过渡动画
+// =============================================
+
+.cartoon-enter-active,
+.cartoon-leave-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cartoon-enter-from {
+  opacity: 0;
+  transform: translateY(-40px) scale(0.6) rotate(-20deg);
+}
+
+.cartoon-leave-to {
+  opacity: 0;
+  transform: translateY(30px) scale(0.7) rotate(15deg);
+}
+
+// =============================================
+// 响应式调整
+// =============================================
+
+@media (max-width: 768px) {
+  .cartoon-modal-container {
+    padding: 2rem;
+    border-radius: 32px;
+
+    &::after {
+      font-size: 28px;
+      letter-spacing: 6px;
+    }
+  }
+
+  .cartoon-title {
+    font-size: 1.8rem;
+  }
+
+  .cartoon-icon.size-xl {
+    font-size: 80px;
+  }
+
+  .cartoon-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .cartoon-button {
+    padding: 0.9rem 1.2rem;
+    font-size: 0.95rem;
+  }
+
+  .cartoon-decoration {
+    font-size: 24px;
+
+    &.sun-tr {
+      font-size: 28px;
+    }
+    &.butterfly-bl,
+    &.bee-br {
+      font-size: 24px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .cartoon-modal-container {
+    padding: 1.5rem;
+    border-radius: 28px;
+    margin: 0 12px;
+
+    &::before {
+      border-radius: 32px;
+      inset: -6px;
+    }
+
+    &::after {
+      font-size: 24px;
+      letter-spacing: 4px;
+      top: -16px;
+    }
+  }
+
+  .cartoon-title {
+    font-size: 1.5rem;
+    letter-spacing: 0.5px;
+  }
+
+  .cartoon-subtitle {
+    font-size: 0.95rem;
+    padding: 10px 16px;
+  }
+
+  .cartoon-message {
+    font-size: 0.95rem;
+  }
+
+  .cartoon-icon.size-xl {
+    font-size: 64px;
+    margin-bottom: 1rem;
+  }
+
+  .cartoon-icon.size-lg {
+    font-size: 56px;
+  }
+
+  .cartoon-stats {
+    gap: 0.8rem;
+    padding: 1rem;
+    border-radius: 16px;
+    margin-bottom: 1rem;
+  }
+
+  .cartoon-stat-item {
+    padding: 0.8rem;
+    border-radius: 12px;
+  }
+
+  .cartoon-stat-label {
+    font-size: 0.75rem;
+  }
+
+  .cartoon-stat-value {
+    font-size: 1.4rem;
+  }
+
+  .cartoon-buttons {
+    gap: 10px;
+    margin-top: 1.5rem;
+  }
+
+  .cartoon-button {
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+    border-radius: 16px;
+  }
+
+  .cartoon-decoration {
+    font-size: 20px;
+
+    &.sun-tr {
+      font-size: 22px;
+    }
+    &.butterfly-bl,
+    &.bee-br {
+      font-size: 18px;
+    }
+  }
+}

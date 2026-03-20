@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kidgame.dao.mapper.ThemeGameRelationMapper">
+
+    <resultMap id="BaseResultMap" type="com.kidgame.dao.entity.ThemeGameRelation">
+        <id column="relation_id" property="relationId"/>
+        <result column="theme_id" property="themeId"/>
+        <result column="game_id" property="gameId"/>
+        <result column="game_code" property="gameCode"/>
+        <result column="is_default" property="isDefault"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <!-- 根据主题 ID 查询关联的游戏列表 -->
+    <select id="selectGameIdsByThemeId" resultType="java.lang.Long">
+        SELECT game_id 
+        FROM theme_game_relation 
+        WHERE theme_id = #{themeId}
+        ORDER BY sort_order, relation_id
+    </select>
+
+    <!-- 根据游戏 ID 查询关联的主题列表 -->
+    <select id="selectRelationsByGameId" resultMap="BaseResultMap">
+        SELECT * 
+        FROM theme_game_relation 
+        WHERE game_id = #{gameId}
+        ORDER BY sort_order, relation_id
+    </select>
+
+    <!-- 获取游戏的默认主题 -->
+    <select id="selectDefaultTheme" resultMap="BaseResultMap">
+        SELECT * 
+        FROM theme_game_relation 
+        WHERE game_id = #{gameId} 
+          AND is_default = 1
+        LIMIT 1
+    </select>
+
+    <!-- 设置游戏的默认主题 -->
+    <update id="setDefaultTheme">
+        -- 先取消该游戏所有主题的默认状态
+        UPDATE theme_game_relation 
+        SET is_default = 0 
+        WHERE game_id = #{gameId};
+        
+        -- 设置新主题的默认状态
+        UPDATE theme_game_relation 
+        SET is_default = 1 
+        WHERE game_id = #{gameId} 
+          AND theme_id = #{themeId};
+    </update>
+
+</mapper>

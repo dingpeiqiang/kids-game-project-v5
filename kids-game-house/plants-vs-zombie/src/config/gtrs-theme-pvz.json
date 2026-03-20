@@ -1,0 +1,336 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "pvz_game_theme_default",
+    "gameId": "game_plants_vs_zombie",
+    "themeName": "植物大战僵尸默认主题",
+    "isDefault": true,
+    "author": "官方",
+    "description": "植物大战僵尸游戏的默认主题，包含所有必需的图片和音频资源"
+  },
+  "globalStyle": {
+    "primaryColor": "#8BC34A",
+    "secondaryColor": "#FF9800",
+    "bgColor": "#4CAF50",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "login": {
+        "login_bg": {
+          "src": "assets/themes/pvz/login/background.png",
+          "type": "png",
+          "alias": "登录背景"
+        },
+        "login_logo": {
+          "src": "assets/themes/pvz/login/logo.png",
+          "type": "png",
+          "alias": "游戏Logo"
+        },
+        "login_btn_start": {
+          "src": "assets/themes/pvz/login/btn_start.png",
+          "type": "png",
+          "alias": "开始冒险"
+        },
+        "login_btn_survival": {
+          "src": "assets/themes/pvz/login/btn_survival.png",
+          "type": "png",
+          "alias": "生存模式"
+        },
+        "login_btn_shop": {
+          "src": "assets/themes/pvz/login/btn_shop.png",
+          "type": "png",
+          "alias": "商店"
+        }
+      },
+      "scene": {
+        "scene_bg_lawn": {
+          "src": "assets/themes/pvz/scene/bg_lawn.png",
+          "type": "png",
+          "alias": "草坪背景"
+        },
+        "scene_bg_day": {
+          "src": "assets/themes/pvz/scene/bg_day.png",
+          "type": "png",
+          "alias": "白天背景"
+        },
+        "scene_bg_night": {
+          "src": "assets/themes/pvz/scene/bg_night.png",
+          "type": "png",
+          "alias": "夜晚背景"
+        },
+        "plant_peashooter": {
+          "src": "assets/themes/pvz/scene/plant_peashooter.png",
+          "type": "png",
+          "alias": "豌豆射手"
+        },
+        "plant_sunflower": {
+          "src": "assets/themes/pvz/scene/plant_sunflower.png",
+          "type": "png",
+          "alias": "向日葵"
+        },
+        "plant_wallnut": {
+          "src": "assets/themes/pvz/scene/plant_wallnut.png",
+          "type": "png",
+          "alias": "坚果墙"
+        },
+        "plant_cherrybomb": {
+          "src": "assets/themes/pvz/scene/plant_cherrybomb.png",
+          "type": "png",
+          "alias": "樱桃炸弹"
+        },
+        "plant_snowpea": {
+          "src": "assets/themes/pvz/scene/plant_snowpea.png",
+          "type": "png",
+          "alias": "寒冰射手"
+        },
+        "zombie_normal": {
+          "src": "assets/themes/pvz/scene/zombie_normal.png",
+          "type": "png",
+          "alias": "普通僵尸"
+        },
+        "zombie_conehead": {
+          "src": "assets/themes/pvz/scene/zombie_conehead.png",
+          "type": "png",
+          "alias": "路障僵尸"
+        },
+        "zombie_buckethead": {
+          "src": "assets/themes/pvz/scene/zombie_buckethead.png",
+          "type": "png",
+          "alias": "铁桶僵尸"
+        },
+        "projectile_pea": {
+          "src": "assets/themes/pvz/scene/projectile_pea.png",
+          "type": "png",
+          "alias": "豌豆子弹"
+        },
+        "projectile_snowpea": {
+          "src": "assets/themes/pvz/scene/projectile_snowpea.png",
+          "type": "png",
+          "alias": "寒冰子弹"
+        },
+        "sun": {
+          "src": "assets/themes/pvz/scene/sun.png",
+          "type": "png",
+          "alias": "阳光"
+        },
+        "sun_flower": {
+          "src": "assets/themes/pvz/scene/sun_flower.png",
+          "type": "png",
+          "alias": "花朵阳光"
+        }
+      },
+      "ui": {
+        "ui_panel_seed": {
+          "src": "assets/themes/pvz/ui/panel_seed.png",
+          "type": "png",
+          "alias": "种子面板"
+        },
+        "ui_slot_card": {
+          "src": "assets/themes/pvz/ui/slot_card.png",
+          "type": "png",
+          "alias": "卡片槽位"
+        },
+        "ui_sun_counter": {
+          "src": "assets/themes/pvz/ui/sun_counter.png",
+          "type": "png",
+          "alias": "阳光计数器"
+        },
+        "ui_progress_bar": {
+          "src": "assets/themes/pvz/ui/progress_bar.png",
+          "type": "png",
+          "alias": "进度条"
+        },
+        "ui_panel_gameover": {
+          "src": "assets/themes/pvz/ui/panel_gameover.png",
+          "type": "png",
+          "alias": "游戏结束面板"
+        },
+        "ui_panel_victory": {
+          "src": "assets/themes/pvz/ui/panel_victory.png",
+          "type": "png",
+          "alias": "胜利面板"
+        },
+        "ui_btn_normal": {
+          "src": "assets/themes/pvz/ui/button_normal.png",
+          "type": "png",
+          "alias": "按钮正常状态"
+        },
+        "ui_btn_hover": {
+          "src": "assets/themes/pvz/ui/button_hover.png",
+          "type": "png",
+          "alias": "按钮悬停状态"
+        },
+        "ui_btn_pressed": {
+          "src": "assets/themes/pvz/ui/button_pressed.png",
+          "type": "png",
+          "alias": "按钮按下状态"
+        }
+      },
+      "icon": {
+        "icon_plant": {
+          "src": "assets/themes/pvz/icon/plant.png",
+          "type": "png",
+          "alias": "植物图标"
+        },
+        "icon_zombie": {
+          "src": "assets/themes/pvz/icon/zombie.png",
+          "type": "png",
+          "alias": "僵尸图标"
+        },
+        "icon_sun": {
+          "src": "assets/themes/pvz/icon/sun.png",
+          "type": "png",
+          "alias": "阳光图标"
+        },
+        "icon_pause": {
+          "src": "assets/themes/pvz/icon/pause.png",
+          "type": "png",
+          "alias": "暂停图标"
+        },
+        "icon_settings": {
+          "src": "assets/themes/pvz/icon/settings.png",
+          "type": "png",
+          "alias": "设置图标"
+        },
+        "icon_restart": {
+          "src": "assets/themes/pvz/icon/restart.png",
+          "type": "png",
+          "alias": "重启图标"
+        }
+      },
+      "effect": {
+        "effect_explosion": {
+          "src": "assets/themes/pvz/effect/explosion.png",
+          "type": "png",
+          "alias": "爆炸特效"
+        },
+        "effect_sun_collected": {
+          "src": "assets/themes/pvz/effect/sun_collected.png",
+          "type": "png",
+          "alias": "收集阳光特效"
+        },
+        "effect_plant_placed": {
+          "src": "assets/themes/pvz/effect/plant_placed.png",
+          "type": "png",
+          "alias": "种植特效"
+        },
+        "effect_projectile_hit": {
+          "src": "assets/themes/pvz/effect/projectile_hit.png",
+          "type": "png",
+          "alias": "子弹命中特效"
+        },
+        "effect_zombie_eat": {
+          "src": "assets/themes/pvz/effect/zombie_eat.png",
+          "type": "png",
+          "alias": "僵尸吃植物特效"
+        }
+      }
+    },
+    "audio": {
+      "bgm": {
+        "bgm_grasswalk": {
+          "src": "assets/themes/pvz/audio/bgm_grasswalk.mp3",
+          "type": "mp3",
+          "volume": 0.6,
+          "alias": "草地漫步"
+        },
+        "bgm_day": {
+          "src": "assets/themes/pvz/audio/bgm_day.mp3",
+          "type": "mp3",
+          "volume": 0.6,
+          "alias": "白天音乐"
+        },
+        "bgm_night": {
+          "src": "assets/themes/pvz/audio/bgm_night.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "夜晚音乐"
+        },
+        "bgm_gameover": {
+          "src": "assets/themes/pvz/audio/bgm_gameover.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "游戏结束音乐"
+        },
+        "bgm_victory": {
+          "src": "assets/themes/pvz/audio/bgm_victory.mp3",
+          "type": "mp3",
+          "volume": 0.6,
+          "alias": "胜利音乐"
+        }
+      },
+      "effect": {
+        "effect_plant": {
+          "src": "assets/themes/pvz/audio/plant.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "种植音效"
+        },
+        "effect_shoot": {
+          "src": "assets/themes/pvz/audio/shoot.mp3",
+          "type": "mp3",
+          "volume": 0.4,
+          "alias": "射击音效"
+        },
+        "effect_hit": {
+          "src": "assets/themes/pvz/audio/hit.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "命中音效"
+        },
+        "effect_zombie_groan": {
+          "src": "assets/themes/pvz/audio/zombie_groan.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "僵尸呻吟"
+        },
+        "effect_zombie_eat": {
+          "src": "assets/themes/pvz/audio/zombie_eat.mp3",
+          "type": "mp3",
+          "volume": 0.4,
+          "alias": "僵尸啃食"
+        },
+        "effect_sun_collected": {
+          "src": "assets/themes/pvz/audio/sun_collected.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "收集阳光音效"
+        },
+        "effect_button_click": {
+          "src": "assets/themes/pvz/audio/button_click.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "按钮点击音效"
+        },
+        "effect_levelup": {
+          "src": "assets/themes/pvz/audio/levelup.mp3",
+          "type": "mp3",
+          "volume": 0.6,
+          "alias": "过关音效"
+        }
+      },
+      "voice": {
+        "voice_zombie_1": {
+          "src": "assets/themes/pvz/audio/voice/zombie_1.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "僵尸语音1"
+        },
+        "voice_zombie_2": {
+          "src": "assets/themes/pvz/audio/voice/zombie_2.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "僵尸语音2"
+        }
+      }
+    },
+    "video": {}
+  }
+}
