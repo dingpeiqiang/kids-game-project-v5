@@ -3,48 +3,59 @@
 import type { SnakeSegment, Food, Difficulty } from '@/types/game'
 import { FOOD_TYPES } from '@/types/game'
 import { initUIParams, updateUIParams } from '@/utils/uiResponsive'
-import GTRS from '@/config/GTRS.json'
+import { validateGTRSTheme, type GTRSTheme } from '@/utils/gtrs-validator'
 
-// GTRS 主题类型
-type GTRSConfig = typeof GTRS
+// ⭐ 运行时主题对象：null 表示尚未加载，游戏启动前必须通过 loadTheme 赋值
+// 可用 key 集合参见 src/config/GTRS.json（纯占位符，不可直接作为运行主题）
+let GTRS: GTRSTheme | null = null
 
 // Hex 颜色字符串转数字
 function hexToNumber(hex: string): number {
   if (!hex) return 0x000000
-  return parseInt(hex.replace('#', ''), 16)
+  const clean = hex.replace('#', '')
+  if (clean.length !== 6) return 0x000000
+  const num = parseInt(clean, 16)
+  return isNaN(num) ? 0x000000 : num
 }
 
-// 覆盖主题配置
-function overrideGTRS(theme: Partial<GTRSConfig>): void {
-  // ⭐ 递归转换资源路径：将 /public/ 替换为 /
-  const convertPaths = (obj: any): any => {
-    if (!obj || typeof obj !== 'object') return obj
-    
-    if (Array.isArray(obj)) {
-      return obj.map(convertPaths)
+/**
+ * ⭐ 修复 GTRS 资源 src 路径
+ * 规则：/public/xxx → /xxx（兼容旧格式），其余保持不变
+ */
+function normalizeSrcPaths(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj
+  if (Array.isArray(obj)) return obj.map(normalizeSrcPaths)
+  const result: any = {}
+  for (const key of Object.keys(obj)) {
+    const value = obj[key]
+    if (key === 'src' && typeof value === 'string') {
+      result[key] = value.startsWith('/public/') ? value.replace('/public/', '/') : value
+    } else if (typeof value === 'object') {
+      result[key] = normalizeSrcPaths(value)
+    } else {
+      result[key] = value
     }
-    
-    const result: any = {}
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        const value = obj[key]
-        
-        // 如果是 src 字段且以 /public/ 开头，转换为 /
-        if (key === 'src' && typeof value === 'string' && value.startsWith('/public/')) {
-          result[key] = value.replace('/public/', '/')
-        } else if (typeof value === 'object') {
-          result[key] = convertPaths(value)
-        } else {
-          result[key] = value
-        }
-      }
-    }
-    return result
   }
-  
-  // 转换主题配置中的路径
-  const convertedTheme = convertPaths(theme)
-  Object.assign(GTRS, convertedTheme)
+  return result
+}
+
+/**
+ * ⭐ 将后端主题 JSON 赋值给 GTRS（直接替换，不兜底合并）
+ * 必须在 Phaser 启动前完成调用，否则游戏将无法渲染
+ */
+function applyGTRS(theme: GTRSTheme): void {
+  GTRS = normalizeSrcPaths(theme) as GTRSTheme
+  console.log('[GTRS] ✅ 主题已加载:', GTRS.themeInfo?.themeName)
+}
+
+/**
+ * ⭐ 断言 GTRS 已加载，否则抛出错误（开发期快速定位问题）
+ */
+function assertGTRS(): GTRSTheme {
+  if (!GTRS) {
+    throw new Error('[GTRS] 主题未加载！请先调用 loadTheme() 获取主题后再启动游戏。')
+  }
+  return GTRS
 }
 
 /**
@@ -141,66 +152,84 @@ export class SnakePhaserGame {
 
   /**
    * 启动游戏
+   * @throws Error 未提供 themeId 或主题加载失败时
    */
   async start(difficulty: Difficulty, themeId?: string): Promise<void> {
     if (this.game) {
       this.game.destroy(true)
     }
 
-    // 如果有 themeId，先加载主题配置
-    if (themeId) {
-      const url = new URL(window.location.href)
-      url.searchParams.set('theme_id', themeId)
-      window.history.replaceState({}, '', url.toString())
-
-      // 从后端加载主题并覆盖 GTRS
-      await this.loadTheme(themeId)
+    if (!themeId) {
+      throw new Error('[PhaserGame] 必须提供 themeId 才能启动游戏。请先从主题列表选择一个主题。')
     }
+
+    const url = new URL(window.location.href)
+    url.searchParams.set('theme_id', themeId)
+    window.history.replaceState({}, '', url.toString())
+
+    // 主题加载失败时直接向上抛出，由调用方（Vue 组件）处理 UI 提示
+    await this.loadTheme(themeId)
 
     this.game = new Phaser.Game(this.config)
   }
 
   /**
-   * 从后端加载主题并覆盖 GTRS
+   * ⭐ 从后端加载主题并赋值 GTRS（含严格 GTRS 校验）
+   *
+   * 流程：
+   *   1. 请求 /api/theme/download?id=xxx
+   *   2. 从响应中提取 configJson（支持多种格式）
+   *   3. validateGTRSTheme() 严格校验
+   *   4. 校验通过 → applyGTRS 直接赋值
+   *   5. 任何环节失败 → 直接 throw（不静默降级）
+   *
+   * @throws Error 主题未登录 / 加载失败 / GTRS 校验不通过时
    */
   private async loadTheme(themeId: string): Promise<void> {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        console.warn('[PhaserGame] ⚠️ 未登录，使用默认主题')
-        return
-      }
-
-      const response = await fetch(`http://localhost:8080/api/theme/download?id=${themeId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-
-      const result = await response.json()
-      if (result.code !== 200 || !result.data) {
-        throw new Error(`服务端返回 code=${result.code}`)
-      }
-
-      // 提取主题配置
-      const raw = result.data
-      let themeConfig: any
-      if (typeof raw === 'string') {
-        themeConfig = JSON.parse(raw)
-      } else if (raw.configJson) {
-        themeConfig = typeof raw.configJson === 'string' ? JSON.parse(raw.configJson) : raw.configJson
-      } else {
-        themeConfig = raw
-      }
-
-      // 覆盖 GTRS
-      overrideGTRS(themeConfig)
-      console.log(`[PhaserGame] ✅ 主题已加载: ${GTRS.themeInfo.themeName}`)
-    } catch (error) {
-      console.warn('[PhaserGame] ⚠️ 主题加载失败，使用默认主题:', error)
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('[PhaserGame] 用户未登录，无法加载主题。请先登录后再启动游戏。')
     }
+
+    const response = await fetch(`http://localhost:8080/api/theme/download?id=${themeId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+
+    if (!response.ok) {
+      throw new Error(`[PhaserGame] 主题加载失败：HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+    if (result.code !== 200 || !result.data) {
+      throw new Error(`[PhaserGame] 主题加载失败：服务端 code=${result.code}, message=${result.message}`)
+    }
+
+    // ⭐ 提取 configJson（支持后端多种包装格式）
+    const raw = result.data
+    let configJsonStr: string
+
+    if (typeof raw === 'string') {
+      configJsonStr = raw
+    } else if (raw.configJson !== undefined) {
+      configJsonStr = typeof raw.configJson === 'string'
+        ? raw.configJson
+        : JSON.stringify(raw.configJson)
+    } else {
+      configJsonStr = JSON.stringify(raw)
+    }
+
+    // ⭐ GTRS 严格校验
+    const validationResult = validateGTRSTheme(configJsonStr)
+    if (!validationResult.valid) {
+      throw new Error(
+        `[PhaserGame] 主题 ${themeId} GTRS 校验失败，游戏无法启动：\n${validationResult.message}`
+      )
+    }
+
+    // 校验通过，直接赋值（不兜底合并）
+    const themeConfig: GTRSTheme = JSON.parse(configJsonStr)
+    applyGTRS(themeConfig)
+    console.log(`[PhaserGame] ✅ GTRS 主题已加载: ${GTRS!.themeInfo.themeName} (id=${themeId})`)
   }
 
   /**
@@ -228,7 +257,7 @@ export class SnakePhaserGame {
     this.Adapt.screenH = this.containerElement.clientHeight
 
     console.log('📏 设备真实尺寸:', `${this.Adapt.screenW} × ${this.Adapt.screenH}`)
-    console.log('🎨 当前主题:', GTRS.themeInfo.themeName)
+    console.log('🎨 当前主题:', assertGTRS().themeInfo.themeName)
 
     // ⭐ 添加资源加载进度监听
     const totalResourcesToLoad = this.countResourcesToLoad()
@@ -443,8 +472,8 @@ export class SnakePhaserGame {
   private createBackground(scene: Phaser.Scene): void {
     const graphics = scene.add.graphics()
 
-    // 使用 GTRS 背景图片或默认渐变背景
-    const bgKey = this.getThemeAssetKey('background')
+    // ⭐ 直接使用 GTRS 规范 key：scene_bg_main / scene_bg_grid
+    const bgKey = this.getThemeAssetKey('scene_bg_main')
     if (bgKey) {
       // 使用 GTRS 背景图片
       const bgImage = scene.add.image(
@@ -456,7 +485,7 @@ export class SnakePhaserGame {
       bgImage.setDepth(-1)
     } else {
       // 默认全屏渐变背景 - 使用 GTRS 背景色
-      const bgColor = GTRS.globalStyle.bgColor || '#1a1a2e'
+      const bgColor = assertGTRS().globalStyle.bgColor || '#1a1a2e'
       const baseColor = hexToNumber(bgColor)
       graphics.fillStyle(baseColor, 1)
       graphics.fillRect(0, 0, this.Adapt.screenW, this.Adapt.screenH)
@@ -474,8 +503,8 @@ export class SnakePhaserGame {
       cellSize: this.Adapt.cellSize.toFixed(2)
     })
 
-    // 尝试使用网格背景图片
-    const gridBgKey = this.getThemeAssetKey('gridBg')
+    // ⭐ 直接使用 GTRS 规范 key：scene_bg_grid
+    const gridBgKey = this.getThemeAssetKey('scene_bg_grid')
     if (gridBgKey) {
       // 使用网格背景图片
       const gridBg = scene.add.image(
@@ -582,8 +611,8 @@ export class SnakePhaserGame {
       const size = cellSize * 0.9
 
       if (index === 0) {
-        // 蛇头 - 使用主题资源或默认绘制
-        const headKey = this.getThemeAssetKey('snakeHead')
+        // 蛇头 - 直接使用 GTRS key "snake_head"
+        const headKey = this.getThemeAssetKey('snake_head')
         if (headKey) {
           const sprite = scene.add.image(x, y, headKey)
           const displaySize = Math.max(size, 16)
@@ -593,8 +622,8 @@ export class SnakePhaserGame {
           this.createSnakeHead(scene, x, y, size)
         }
       } else if (index === snake.length - 1) {
-        // 蛇尾 - 使用主题资源或默认绘制
-        const tailKey = this.getThemeAssetKey('snakeTail')
+        // 蛇尾 - 直接使用 GTRS key "snake_tail"
+        const tailKey = this.getThemeAssetKey('snake_tail')
         if (tailKey) {
           const sprite = scene.add.image(x, y, tailKey)
           const displaySize = Math.max(size * 0.8, 16)
@@ -608,8 +637,8 @@ export class SnakePhaserGame {
           group.add(circle)
         }
       } else {
-        // 蛇身 - 使用主题资源或默认绘制
-        const bodyKey = this.getThemeAssetKey('snakeBody')
+        // 蛇身 - 直接使用 GTRS key "snake_body"
+        const bodyKey = this.getThemeAssetKey('snake_body')
         if (bodyKey) {
           const sprite = scene.add.image(x, y, bodyKey)
           const displaySize = Math.max(size * 0.9, 16)
@@ -686,7 +715,7 @@ export class SnakePhaserGame {
       this.foodSprite.destroy()
     }
 
-    // 根据食物类型获取对应的图片资源
+    // ⭐ 直接使用 GTRS 食物类型 key：food.type → GTRS key
     const foodKey = this.getThemeAssetKey('food', food.type)
     if (foodKey) {
       // 使用主题食物资源
@@ -784,9 +813,9 @@ export class SnakePhaserGame {
       // 障碍物大小 = cellSize 的 95%，几乎填满格子
       const size = cellSize * 0.95
 
-      // 尝试使用石头或墙壁资源
-      const rockKey = this.getThemeAssetKey('obstacleRock')
-      const wallKey = this.getThemeAssetKey('obstacleWall')
+      // ⭐ 直接使用 GTRS 规范 key：obstacle_rock / obstacle_wall
+      const rockKey = this.getThemeAssetKey('obstacle_rock')
+      const wallKey = this.getThemeAssetKey('obstacle_wall')
 
       if (rockKey) {
         // 使用石头资源
@@ -926,23 +955,21 @@ export class SnakePhaserGame {
    */
   private countResourcesToLoad(): number {
     let count = 0
-    const images = GTRS.resources.images
-    const audio = GTRS.resources.audio
+    const gtrs = assertGTRS()
+    const images = gtrs.resources?.images
+    const audio = gtrs.resources?.audio
 
-    // 统计图片
-    if (images.scene) {
+    // 统计 scene 图片
+    if (images?.scene) {
       count += Object.keys(images.scene).length
     }
 
-    // 统计音频
-    if (audio.bgm) {
+    // 统计音频（仅计 bgm + effect，不计 voice）
+    if (audio?.bgm) {
       count += Object.keys(audio.bgm).length
     }
-    if (audio.effect) {
+    if (audio?.effect) {
       count += Object.keys(audio.effect).length
-    }
-    if (audio.voice) {
-      count += Object.keys(audio.voice).length
     }
 
     console.log(`📊 待加载资源总数：${count}`)
@@ -950,129 +977,142 @@ export class SnakePhaserGame {
   }
 
   /**
-   * 加载 GTRS 中配置的所有图片资源（仅 scene）
+   * ⭐ 加载 GTRS resources.images.scene 中的全部图片
+   *
+   * Phaser key = GTRS scene key（例如 "snake_head"、"food_apple"）
+   * 确保 key 与 GTRS JSON 完全一致，游戏渲染时直接通过 GTRS key 取图
    */
   private loadGTRSImages(scene: Phaser.Scene): void {
-    const images = GTRS.resources.images
+    const sceneImages = assertGTRS().resources?.images?.scene
+    if (!sceneImages) {
+      console.warn('[GTRS] ⚠️ resources.images.scene 不存在，跳过图片加载')
+      return
+    }
 
-    // 只加载场景图片
-    if (images.scene) {
-      Object.entries(images.scene).forEach(([key, resource]) => {
-        if (resource.src) {
-          scene.load.image(key, resource.src)
-          console.log(`[GTRS] 📷 加载场景图片: ${key} -> ${resource.src}`)
-        }
-      })
+    for (const [key, resource] of Object.entries(sceneImages)) {
+      if (resource?.src) {
+        scene.load.image(key, resource.src)
+        console.log(`[GTRS] 📷 加载场景图片: ${key} (${resource.alias}) -> ${resource.src}`)
+      } else {
+        console.warn(`[GTRS] ⚠️ 场景图片 ${key} 无效（src 为空），跳过`)
+      }
     }
   }
 
   /**
-   * 获取 GTRS 中的资源 key（通过别名匹配）
+   * ⭐ 获取 GTRS resources.images.scene 中指定 key 的资源 key
+   *
+   * 规则（优先级从高到低）：
+   *   1. 直接 key 命中（GTRS 标准 key，如 "snake_head"）
+   *   2. 食物类型 -> GTRS key 映射（处理 food.type 差异）
+   *   3. 语义别名 -> GTRS key 映射（向后兼容）
+   *
+   * @param gtrsKey  GTRS 规范 key 或语义别名
+   * @param foodType 可选，食物类型（"apple" / "banana" / "cherry" / "coin"）
+   * @returns Phaser 加载时使用的 key，若资源不存在则返回 undefined
    */
-  private getThemeAssetKey(alias: string, foodType?: string): string | undefined {
-    const images = GTRS.resources.images
+  private getThemeAssetKey(gtrsKey: string, foodType?: string): string | undefined {
+    const sceneImages = assertGTRS().resources?.images?.scene
+    if (!sceneImages) return undefined
 
-    // 别名到 GTRS key 的映射
-    const aliasMap: Record<string, string> = {
-      'snakeHead': 'snake_head',
-      'snakeBody': 'snake_body',
-      'snakeTail': 'snake_tail',
-      'food': 'food_apple',
-      'foodApple': 'food_apple',
-      'foodBanana': 'food_banana',
-      'foodCherry': 'food_cherry',
-      'foodStrawberry': 'food_cherry', // strawberry 复用 cherry 图片
-      'foodCoin': 'food_apple', // coin 复用 apple 图片
-      'background': 'scene_bg_main',
-      'gameBg': 'scene_bg_main',
-      'gridBg': 'scene_bg_grid',
-      'obstacleRock': 'obstacle_rock',
-      'obstacleWall': 'obstacle_wall'
-    }
-
-    // 如果是食物且有具体类型，优先使用类型映射
-    if (alias === 'food' && foodType) {
-      const foodKeyMap: Record<string, string> = {
-        'apple': 'food_apple',
-        'banana': 'food_banana',
-        'strawberry': 'food_cherry',
-        'cherry': 'food_cherry',
-        'coin': 'food_apple'
+    // ── 1. 食物类型映射（根据 food.type 找对应的 GTRS key）
+    if (gtrsKey === 'food' && foodType) {
+      const foodTypeToGTRSKey: Record<string, string> = {
+        apple:      'food_apple',
+        banana:     'food_banana',
+        cherry:     'food_cherry',
+        strawberry: 'food_cherry',  // strawberry 复用 cherry
+        coin:       'food_apple'    // coin 复用 apple
       }
-      const foodKey = foodKeyMap[foodType]
-      if (foodKey && images.scene?.[foodKey]?.src) {
-        return foodKey
+      const mapped = foodTypeToGTRSKey[foodType]
+      if (mapped && sceneImages[mapped]?.src) {
+        return mapped
       }
     }
 
-    // 优先使用映射
-    const mappedKey = aliasMap[alias]
-    if (mappedKey && images.scene?.[mappedKey]?.src) {
-      return mappedKey
+    // ── 2. 直接命中 GTRS key（最优路径，推荐全部使用此方式）
+    if (sceneImages[gtrsKey]?.src) {
+      return gtrsKey
     }
 
-    // 搜索场景图片（通过 alias 或 key 匹配）
-    if (images.scene) {
-      for (const [key, resource] of Object.entries(images.scene)) {
-        if (resource.alias === alias || key === alias || key.includes(alias.toLowerCase())) {
-          if (resource.src) {
-            return key
-          }
-        }
-      }
+    // ── 3. 向后兼容：语义别名 -> GTRS key 映射
+    //    （仅保留必要的兼容项，新代码应直接传入 GTRS key）
+    const legacyAliasMap: Record<string, string> = {
+      snakeHead:    'snake_head',
+      snakeBody:    'snake_body',
+      snakeTail:    'snake_tail',
+      foodApple:    'food_apple',
+      foodBanana:   'food_banana',
+      foodCherry:   'food_cherry',
+      background:   'scene_bg_main',
+      gameBg:       'scene_bg_main',
+      gridBg:       'scene_bg_grid',
+      obstacleRock: 'obstacle_rock',
+      obstacleWall: 'obstacle_wall'
+    }
+    const legacyKey = legacyAliasMap[gtrsKey]
+    if (legacyKey && sceneImages[legacyKey]?.src) {
+      return legacyKey
     }
 
+    // ── 4. 未命中：返回 undefined（由调用方决定是否使用程序化绘制）
     return undefined
   }
 
   /**
    * 检查 GTRS 中是否有指定资源
    */
-  private hasThemeAsset(alias: string): boolean {
-    return !!this.getThemeAssetKey(alias)
+  private hasThemeAsset(gtrsKey: string): boolean {
+    return !!this.getThemeAssetKey(gtrsKey)
   }
 
   // ========== 音频控制 ==========
 
   /**
-   * 播放背景音乐（主菜单）
+   * ⭐ 播放背景音乐（主菜单）- 直接从 GTRS resources.audio.bgm.bgm_main 读取
    */
   playBgmMain(): void {
     if (!this.soundEnabled) return
     this.stopAllBgm()
     
-    const config = GTRS.resources.audio.bgm?.bgm_main
+    const config = assertGTRS().resources?.audio?.bgm?.bgm_main
     if (config?.src) {
-      this.bgmMainAudio = this.createAudio(config.src, true, config.volume || 0.6)
-      console.log('[GTRS] 🎵 播放主菜单背景音乐:', config.src)
+      this.bgmMainAudio = this.createAudio(config.src, true, config.volume ?? 0.6)
+      console.log('[GTRS] 🎵 播放主菜单 BGM:', config.src)
+    } else {
+      console.warn('[GTRS] ⚠️ resources.audio.bgm.bgm_main 未配置，跳过')
     }
   }
 
   /**
-   * 播放背景音乐（游戏中）
+   * ⭐ 播放背景音乐（游戏中）- 直接从 GTRS resources.audio.bgm.bgm_gameplay 读取
    */
   playBgmGameplay(): void {
     if (!this.soundEnabled) return
     this.stopAllBgm()
     
-    const config = GTRS.resources.audio.bgm?.bgm_gameplay
+    const config = assertGTRS().resources?.audio?.bgm?.bgm_gameplay
     if (config?.src) {
-      this.bgmGameplayAudio = this.createAudio(config.src, true, config.volume || 0.7)
-      console.log('[GTRS] 🎵 播放游戏中背景音乐:', config.src)
+      this.bgmGameplayAudio = this.createAudio(config.src, true, config.volume ?? 0.7)
+      console.log('[GTRS] 🎵 播放游戏中 BGM:', config.src)
+    } else {
+      console.warn('[GTRS] ⚠️ resources.audio.bgm.bgm_gameplay 未配置，跳过')
     }
   }
 
   /**
-   * 播放背景音乐（游戏结束）
+   * ⭐ 播放背景音乐（游戏结束）- 直接从 GTRS resources.audio.bgm.bgm_gameover 读取
    */
   playBgmGameover(): void {
     if (!this.soundEnabled) return
     this.stopAllBgm()
     
-    const config = GTRS.resources.audio.bgm?.bgm_gameover
+    const config = assertGTRS().resources?.audio?.bgm?.bgm_gameover
     if (config?.src) {
-      this.bgmGameoverAudio = this.createAudio(config.src, false, config.volume || 0.5)
-      console.log('[GTRS] 🎵 播放游戏结束音乐:', config.src)
+      this.bgmGameoverAudio = this.createAudio(config.src, false, config.volume ?? 0.5)
+      console.log('[GTRS] 🎵 播放结束 BGM:', config.src)
+    } else {
+      console.warn('[GTRS] ⚠️ resources.audio.bgm.bgm_gameover 未配置，跳过')
     }
   }
 
@@ -1120,28 +1160,47 @@ export class SnakePhaserGame {
   }
 
   /**
-   * 播放音效
+   * ⭐ 播放音效 - 直接从 GTRS resources.audio.effect 读取
+   *
+   * soundKey 优先匹配 GTRS effect key（如 "effect_eat"），
+   * 若传入简短语义名（"eat"），则自动补全为 "effect_eat"。
    */
   playSound(soundKey: string): void {
     if (!this.soundEnabled) return
     
-    // 音效 key 映射
-    const keyMap: Record<string, string> = {
-      'eat': 'effect_eat',
-      'crash': 'effect_crash',
-      'gameover': 'effect_gameover',
-      'levelup': 'effect_levelup',
-      'button_click': 'effect_button_click'
+    const effectAudio = assertGTRS().resources?.audio?.effect
+    if (!effectAudio) {
+      console.warn('[GTRS] ⚠️ resources.audio.effect 不存在')
+      return
+    }
+
+    // 优先直接命中（GTRS 规范 key，如 "effect_eat"）
+    let actualKey = soundKey
+    if (!effectAudio[actualKey as keyof typeof effectAudio]) {
+      // 尝试自动补全 "effect_" 前缀
+      const withPrefix = `effect_${soundKey}`
+      if (effectAudio[withPrefix as keyof typeof effectAudio]) {
+        actualKey = withPrefix
+      } else {
+        // 向后兼容：语义 key 映射
+        const legacySoundMap: Record<string, string> = {
+          eat:          'effect_eat',
+          crash:        'effect_crash',
+          gameover:     'effect_gameover',
+          levelup:      'effect_levelup',
+          button_click: 'effect_button_click'
+        }
+        actualKey = legacySoundMap[soundKey] || soundKey
+      }
     }
     
-    const actualKey = keyMap[soundKey] || soundKey
-    const effectConfig = GTRS.resources.audio.effect?.[actualKey as keyof typeof GTRS.resources.audio.effect]
+    const effectConfig = effectAudio[actualKey as keyof typeof effectAudio]
     
     if (effectConfig?.src) {
-      this.createAudio(effectConfig.src, false, effectConfig.volume || 0.5)
-      console.log(`[GTRS] 🔊 播放音效: ${actualKey}`)
+      this.createAudio(effectConfig.src, false, effectConfig.volume ?? 0.5)
+      console.log(`[GTRS] 🔊 播放音效: ${actualKey} -> ${effectConfig.src}`)
     } else {
-      console.warn(`[GTRS] ⚠️ ${actualKey} 音频配置未找到`)
+      console.warn(`[GTRS] ⚠️ 音效 ${actualKey} 未找到或 src 为空`)
     }
   }
 
@@ -1185,15 +1244,16 @@ export class SnakePhaserGame {
   // ========== 主题颜色 ==========
 
   /**
-   * 主题颜色（数字色值，Phaser / Canvas 直接使用）
-   * 直接从 GTRS 获取
+   * ⭐ 主题颜色（数字色值，Phaser / Canvas 直接使用）
+   * 完全从 GTRS.globalStyle 读取，无硬编码
    */
   private get themeColors() {
+    const style = assertGTRS().globalStyle
     return {
-      snakeHead: hexToNumber(GTRS.globalStyle.primaryColor || '#4ade80'),
-      snakeBody: hexToNumber(GTRS.globalStyle.primaryColor || '#4ade80'),
-      food: hexToNumber(GTRS.globalStyle.secondaryColor || '#22c55e'),
-      bg: hexToNumber(GTRS.globalStyle.bgColor || '#1a1a2e')
+      snakeHead: hexToNumber(style?.primaryColor   || '#4ade80'),
+      snakeBody: hexToNumber(style?.primaryColor   || '#4ade80'),
+      food:      hexToNumber(style?.secondaryColor || '#22c55e'),
+      bg:        hexToNumber(style?.bgColor        || '#1a1a2e')
     }
   }
 }

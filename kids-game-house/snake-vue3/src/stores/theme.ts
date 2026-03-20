@@ -71,6 +71,9 @@ export const useThemeStore = defineStore('theme', () => {
   // 自定义主题
   const customTheme = ref<ThemeConfig | null>(null)
   
+  // ⭐ 原始 GTRS JSON 字符串（从后端获取并校验通过后存储，供 StartView.vue 复用）
+  const gtrsRawJson = ref<string>('')
+  
   // 当前完整主题配置
   const currentTheme = computed<ThemeConfig>(() => {
     if (customTheme.value) {
@@ -225,15 +228,14 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
   
-  // 从后端加载主题配置
+  // 从后端加载主题配置（⭐ 严格 GTRS 规范校验）
   async function loadThemeFromBackend(themeId: number | string): Promise<boolean> {
     try {
-      console.log('🎨 从后端加载主题:', themeId)
+      console.log('🎨 从后端加载 GTRS 主题:', themeId)
       
       // 获取本地存储的 token
       const token = localStorage.getItem('token')
       
-      // 如果没有 token，说明未登录
       if (!token) {
         console.warn('⚠️ 用户未登录，无法加载主题')
         return false
@@ -248,101 +250,118 @@ export const useThemeStore = defineStore('theme', () => {
         headers
       })
       
-      // 检查是否返回 401 未授权（token 过期）
       if (response.status === 401) {
         console.warn('⚠️ Token 已过期，清除登录状态')
         localStorage.removeItem('token')
         localStorage.removeItem('user')
-        // 跳转到登录页
         const currentPath = window.location.href
         window.location.href = `http://localhost:3000/login?redirect=${encodeURIComponent(currentPath)}`
         return false
       }
 
       const result = await response.json()
-
-      console.log('📦 后端返回的原始数据:', result)
+      console.log('📦 后端返回原始数据（code/message）:', result.code, result.message)
 
       if (result.code !== 200 || !result.data) {
         console.error('❌ 后端返回数据异常：code=', result.code, 'message=', result.message)
         return false
       }
 
-      // 提取主题配置
-      let themeConfig: unknown
+      // ⭐ 提取 configJson（支持多种包装格式）
       const data = result.data
+      let configJsonStr: string
 
       if (typeof data === 'string') {
-        themeConfig = JSON.parse(data)
+        configJsonStr = data
       } else if (data.configJson !== undefined) {
-        themeConfig = typeof data.configJson === 'string' ? JSON.parse(data.configJson) : data.configJson
+        configJsonStr = typeof data.configJson === 'string'
+          ? data.configJson
+          : JSON.stringify(data.configJson)
       } else if (data.config !== undefined) {
-        themeConfig = data.config
+        configJsonStr = typeof data.config === 'string'
+          ? data.config
+          : JSON.stringify(data.config)
       } else {
-        themeConfig = data
+        configJsonStr = JSON.stringify(data)
       }
 
-      // 提取主题信息
-      const themeData = themeConfig as any
-      const themeName = themeData.themeInfo?.themeName || themeData.themeName || '未命名主题'
-      const primaryColor = themeData.globalStyle?.primaryColor || themeData.colors?.primary || '#4ade80'
-      const secondaryColor = themeData.globalStyle?.secondaryColor || themeData.colors?.secondary || '#22c55e'
-      const bgColor = themeData.globalStyle?.bgColor || themeData.colors?.background || '#1e293b'
-      const textColor = themeData.globalStyle?.textColor || themeData.colors?.text || '#ffffff'
+      // ⭐ 动态 import gtrs-validator（避免循环依赖问题）
+      const { validateGTRSTheme } = await import('@/utils/gtrs-validator')
+      const validationResult = validateGTRSTheme(configJsonStr)
 
-      // 从主题配置提取主题信息（仅用于 UI 层）
+      if (!validationResult.valid) {
+        console.error(
+          `❌ 主题 ${themeId} GTRS 校验失败，拒绝加载:\n`,
+          validationResult.message
+        )
+        return false
+      }
+
+      // ⭐ 校验通过，解析 GTRS JSON
+      const gtrsTheme = JSON.parse(configJsonStr)
+
+      // ⭐ 从 GTRS globalStyle 提取颜色（规范字段名）
+      const style = gtrsTheme.globalStyle || {}
+      const info  = gtrsTheme.themeInfo  || {}
+
+      const primaryColor   = style.primaryColor   || '#4ade80'
+      const secondaryColor = style.secondaryColor || '#22c55e'
+      const bgColor        = style.bgColor        || '#1a1a2e'
+      const textColor      = style.textColor      || '#ffffff'
+      const borderRadius   = style.borderRadius   || '8px'
+      const fontFamily     = style.fontFamily     || 'Arial, sans-serif'
+      const themeName      = info.themeName       || '未命名主题'
+
+      // 构建 UI 层 ThemeConfig（仅供 Vue 组件使用，游戏渲染由 PhaserGame 直接读 GTRS）
       customTheme.value = {
-        id: themeId,
+        id: String(themeId),
         name: themeName,
-        description: themeData.themeInfo?.description || themeData.description || '',
+        description: info.description || '',
         colors: {
-          primary: primaryColor,
-          secondary: secondaryColor,
-          background: bgColor,
-          surface: '#334155',
-          text: textColor,
+          primary:       primaryColor,
+          secondary:     secondaryColor,
+          background:    bgColor,
+          surface:       '#334155',
+          text:          textColor,
           textSecondary: '#94a3b8',
-          accent: '#fbbf24',
-          success: '#22c55e',
-          warning: '#f59e0b',
-          error: '#ef4444'
+          accent:        '#fbbf24',
+          success:       '#22c55e',
+          warning:       '#f59e0b',
+          error:         '#ef4444'
         },
         effects: {
-          shadow: '0 4px 6px rgba(0,0,0,0.3)',
-          glow: `0 0 10px ${primaryColor}`,
-          border: `2px solid ${bgColor}`,
-          borderRadius: '8px'
+          shadow:       '0 4px 6px rgba(0,0,0,0.3)',
+          glow:         `0 0 10px ${primaryColor}`,
+          border:       `2px solid ${bgColor}`,
+          borderRadius
         },
         assets: {
-          snakeHead: { type: 'emoji' as const, value: '🐍' },
-          snakeBody: { type: 'color' as const, value: primaryColor },
-          snakeTail: { type: 'color' as const, value: secondaryColor },
-          food: { type: 'emoji' as const, value: '🍎' },
+          snakeHead:   { type: 'emoji' as const, value: '🐍' },
+          snakeBody:   { type: 'color' as const, value: primaryColor },
+          snakeTail:   { type: 'color' as const, value: secondaryColor },
+          food:        { type: 'emoji' as const, value: '🍎' },
           specialFood: { type: 'emoji' as const, value: '⭐' },
-          background: { type: 'color' as const, value: bgColor },
-          grid: { type: 'color' as const, value: '#334155' },
-          button: { type: 'color' as const, value: '#fbbf24' },
-          scorePanel: { type: 'color' as const, value: 'rgba(26, 26, 46, 0.9)' },
-          pauseOverlay: { type: 'color' as const, value: 'rgba(26, 26, 46, 0.95)' }
+          background:  { type: 'color' as const, value: bgColor },
+          grid:        { type: 'color' as const, value: '#334155' },
+          button:      { type: 'color' as const, value: '#fbbf24' },
+          panel:       { type: 'color' as const, value: 'rgba(26, 26, 46, 0.9)' }
         },
-        audio: {
-          bgm: { enabled: true, volume: 0.5 },
-          eat: { enabled: true, volume: 0.3 },
-          move: { enabled: true, volume: 0.2 },
-          pause: { enabled: true, volume: 0.2 },
-          resume: { enabled: true, volume: 0.2 },
-          gameOver: { enabled: true, volume: 0.4 },
-          levelUp: { enabled: true, volume: 0.6 }
-        },
-        gameSpecific: {
-          resourceUrls: {}
+        sounds: {
+          bgm:     { enabled: true, volume: gtrsTheme.resources?.audio?.bgm?.bgm_gameplay?.volume ?? 0.5 },
+          eat:     { enabled: true, volume: gtrsTheme.resources?.audio?.effect?.effect_eat?.volume     ?? 0.3 },
+          die:     { enabled: true, volume: gtrsTheme.resources?.audio?.effect?.effect_crash?.volume   ?? 0.4 },
+          victory: { enabled: true, volume: gtrsTheme.resources?.audio?.effect?.effect_gameover?.volume ?? 0.4 },
+          ui:      { enabled: true, volume: 0.2 }
         }
       } as ThemeConfig
+
+      // ⭐ 存储原始 GTRS JSON（已校验通过）
+      gtrsRawJson.value = configJsonStr
 
       currentThemeId.value = String(themeId)
       applyThemeToDocument(customTheme.value!)
 
-      console.log('✅ 后端主题加载成功:', customTheme.value.name)
+      console.log('✅ GTRS 主题加载成功:', themeName, '(id =', themeId, ')')
       return true
     } catch (error) {
       console.error('❌ 后端主题加载失败:', error)
@@ -370,7 +389,7 @@ export const useThemeStore = defineStore('theme', () => {
         const success = await loadThemeFromBackend(numericId)
         
         if (!success) {
-          throw new Error(`上次选择的主题 ${numericId} 加载失败`)
+          throw new Error(`上次选择的主题 ${numericId} GTRS 校验失败或加载异常，请重新选择主题`)
         }
       } else {
         // 没有保存的主题，加载默认主题
@@ -378,7 +397,7 @@ export const useThemeStore = defineStore('theme', () => {
       }
     } catch (error: any) {
       console.error('❌ 加载保存的主题失败:', error)
-      throw error // 直接抛出错误，不降级
+      throw error
     }
   }
   
@@ -563,6 +582,7 @@ export const useThemeStore = defineStore('theme', () => {
     currentThemeId,
     currentGameId,
     customTheme,
+    gtrsRawJson, // ⭐ 原始 GTRS JSON 字符串（已校验通过）
     currentTheme,
     isCustomTheme,
     themeList,
