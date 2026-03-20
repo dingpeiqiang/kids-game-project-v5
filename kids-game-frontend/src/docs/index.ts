@@ -57,18 +57,18 @@ export const docCategories = [
         path: '../../../CODING_STANDARDS.md'
       },
       {
+        id: 'ai-coding-guide',
+        title: 'AI 编码指南',
+        icon: '🤖',
+        category: '开发规范',
+        path: '../../../AI_CODING_GUIDE.md'
+      },
+      {
         id: 'development-guide',
         title: '开发指南',
         icon: '💻',
         category: '开发规范',
         path: '03-development/index.md'
-      },
-      {
-        id: 'refactoring',
-        title: '重构指南',
-        icon: '🔄',
-        category: '开发规范',
-        path: '../../../REFACTORING_GUIDE.md'
       }
     ]
   },
@@ -82,60 +82,68 @@ export const docCategories = [
         icon: '🏛️',
         category: '架构设计',
         path: '04-architecture/index.md'
-      },
-      {
-        id: 'permission-design',
-        title: '权限设计',
-        icon: '🔐',
-        category: '架构设计',
-        path: '../../../GAME_PERMISSION_REFACTOR_DESIGN.md'
       }
     ]
   },
   {
-    name: '功能文档',
-    icon: '📊',
+    name: '项目指南',
+    icon: '📚',
     docs: [
       {
-        id: 'admin-dashboard',
-        title: '管理员后台',
-        icon: '🎯',
-        category: '功能文档',
-        path: '../../../ADMIN_DASHBOARD_README.md'
-      },
-      {
-        id: 'fatigue-system',
-        title: '疲劳值系统',
-        icon: '💪',
-        category: '功能文档',
-        path: '../../../UNIFIED_FATIGUE_SYSTEM_SUMMARY.md'
-      },
-      {
-        id: 'registration',
-        title: '注册功能',
-        icon: '📝',
-        category: '功能文档',
-        path: '../../../REGISTRATION_FEATURE.md'
-      }
-    ]
-  },
-  {
-    name: '快速参考',
-    icon: '⚡',
-    docs: [
-      {
-        id: 'quick-reference',
-        title: '快速参考',
+        id: 'guides-index',
+        title: '指南概览',
         icon: '📋',
-        category: '快速参考',
-        path: '../../../QUICK_REFERENCE.md'
+        category: '项目指南',
+        path: '05-guides/index.md'
       },
       {
-        id: 'phase2-reference',
-        title: '阶段二参考',
-        icon: '📖',
-        category: '快速参考',
-        path: '../../../PHASE2_QUICK_REFERENCE.md'
+        id: 'gtrs-overview',
+        title: 'GTRS 主题系统概述',
+        icon: '🎨',
+        category: '项目指南',
+        path: '05-guides/gtrs-overview.md'
+      },
+      {
+        id: 'gtrs-migration',
+        title: 'GTRS 迁移指南',
+        icon: '🔄',
+        category: '项目指南',
+        path: '05-guides/gtrs-migration.md'
+      },
+      {
+        id: 'gtrs-integration',
+        title: 'GTRS 游戏集成指南',
+        icon: '🎮',
+        category: '项目指南',
+        path: '05-guides/gtrs-integration.md'
+      },
+      {
+        id: 'theme-resource-spec',
+        title: '主题资源模板规范',
+        icon: '📐',
+        category: '项目指南',
+        path: '05-guides/theme-resource-spec.md'
+      },
+      {
+        id: 'theme-quickstart',
+        title: '主题快速开始',
+        icon: '⚡',
+        category: '项目指南',
+        path: '05-guides/theme-quickstart.md'
+      },
+      {
+        id: 'game-development',
+        title: '游戏开发对接文档',
+        icon: '🎯',
+        category: '项目指南',
+        path: '05-guides/game-development.md'
+      },
+      {
+        id: 'port-config',
+        title: '端口配置说明',
+        icon: '🔌',
+        category: '项目指南',
+        path: '05-guides/port-config.md'
       }
     ]
   }

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "ajv": "^8.18.0",
     "axios": "^1.6.0",
     "canvas": "^3.2.1",
     "phaser": "^3.70.0",

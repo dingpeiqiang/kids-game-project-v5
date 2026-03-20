@@ -512,11 +512,13 @@ private String content;
 
 ## 相关文档
 
+- [后端开发指南](./backend-dev-guide.md) - 后端开发详细指南
+- [AI 编码指南](./ai-coding-guide.md) - AI 辅助开发指南
 - [API 参考](../02-api-reference/) - 详细接口文档
-- [编码规范](./CODING_STANDARDS.md) - 完整编码规范
 - [架构设计](../04-architecture/) - 系统架构说明
+- [游戏开发指南](../05-guides/snake-game-dev.md) - 贪吃蛇游戏开发
 
 ---
 
-**最后更新**: 2026-03-09  
-**版本**: v1.0.0
+**最后更新**: 2026-03-20
+**版本**: v2.0.0

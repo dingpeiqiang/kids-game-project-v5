@@ -16,7 +16,35 @@ function hexToNumber(hex: string): number {
 
 // 覆盖主题配置
 function overrideGTRS(theme: Partial<GTRSConfig>): void {
-  Object.assign(GTRS, theme)
+  // ⭐ 递归转换资源路径：将 /public/ 替换为 /
+  const convertPaths = (obj: any): any => {
+    if (!obj || typeof obj !== 'object') return obj
+    
+    if (Array.isArray(obj)) {
+      return obj.map(convertPaths)
+    }
+    
+    const result: any = {}
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const value = obj[key]
+        
+        // 如果是 src 字段且以 /public/ 开头，转换为 /
+        if (key === 'src' && typeof value === 'string' && value.startsWith('/public/')) {
+          result[key] = value.replace('/public/', '/')
+        } else if (typeof value === 'object') {
+          result[key] = convertPaths(value)
+        } else {
+          result[key] = value
+        }
+      }
+    }
+    return result
+  }
+  
+  // 转换主题配置中的路径
+  const convertedTheme = convertPaths(theme)
+  Object.assign(GTRS, convertedTheme)
 }
 
 /**

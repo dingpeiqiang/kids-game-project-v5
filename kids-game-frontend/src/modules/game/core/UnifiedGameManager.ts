@@ -10,6 +10,7 @@
 // Phaser 从 CDN 加载为全局变量
 import { BattleGameScene, BattleMode } from '../battle/BattleGameBase';
 import { PlayerType } from '../battle/BattleGameBase';
+import { GameAssetValidator } from './GameAssetValidator';
 
 // 重新导出 PlayerType 以便外部使用
 export { PlayerType };
@@ -456,8 +457,154 @@ export class UnifiedGameManager {
       }
     }
 
-    // 默认：作为 Scene 类处理
-   return this.createPhaserGame(container, sceneOrGameClass, extraConfig);
+    // 默认：作为 Scene 类处理（带资源验证）
+    return this.createPhaserGameWithStrictValidation(container, sceneOrGameClass, extraConfig);
+  }
+
+  /**
+   * 创建 Phaser 游戏实例（带严格资源验证）
+   */
+  private async createPhaserGameWithStrictValidation(
+    container: HTMLElement,
+    sceneClass: any,
+    extraConfig?: any
+  ): Promise<Phaser.Game> {
+    const { width, height } = this.getResolution();
+
+    // 创建场景包装器，注入资源验证
+    const sceneInstance = new sceneClass({
+      key: sceneClass.name || 'MainScene',
+    });
+
+    // 在场景创建前进行资源验证
+    await this.validateGameResources(sceneInstance);
+
+    const config: Phaser.Types.Core.GameConfig = {
+      type: Phaser.AUTO,
+      width,
+      height,
+      parent: container,
+      backgroundColor: 0xf0f9ff,
+      pixelArt: true,
+      roundPixels: true,
+      fps: 60,
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width,
+        height,
+      },
+      scene: [sceneInstance],
+      ...extraConfig,
+    };
+
+    return new Phaser.Game(config);
+  }
+
+  /**
+   * 严格验证游戏资源
+   */
+  private async validateGameResources(scene: Phaser.Scene): Promise<void> {
+    console.log('[UnifiedGameManager] 🔍 开始严格验证游戏资源...');
+
+    const validator = new GameAssetValidator(scene);
+
+    // 注册游戏必需的基础资源（根据游戏类型配置）
+    const gameType = this.gameConfig.gameType;
+    
+    // 从配置中读取资源需求
+    const requiredAssets = this.getRequiredAssetsForGame(gameType);
+    
+    if (requiredAssets.length > 0) {
+      validator.registerAssets(requiredAssets);
+      
+      try {
+        const result = await validator.validateAndLoad();
+        console.log('[UnifiedGameManager] ✅ 游戏资源验证通过:', {
+          loadedCount: result.loadedAssets.length,
+          gameType,
+        });
+      } catch (error: any) {
+        console.error('[UnifiedGameManager] ❌ 游戏资源验证失败:', error);
+        
+        // 抛出详细错误，阻止游戏启动
+        throw new Error(
+          `游戏 "${gameType}" 资源验证失败：${error.message}\n\n` +
+          `游戏无法启动，请先修复上述资源问题。`
+        );
+      }
+    } else {
+      console.warn('[UnifiedGameManager] ⚠️ 未配置资源需求，跳过验证');
+    }
+  }
+
+  /**
+   * 获取游戏所需的资源列表
+   */
+  private getRequiredAssetsForGame(gameType: string): Array<{
+    key: string;
+    type: 'image' | 'audio' | 'json' | 'spritesheet';
+    required: boolean;
+    path?: string;
+  }> {
+    // 根据游戏类型返回不同的资源需求配置
+    // TODO: 这部分应该从游戏配置文件中读取
+    
+    const assetConfigs: Record<string, any> = {
+      'snake-vue3': {
+        images: [
+          { key: 'food', path: '/dist/games/snake-vue3/themes/default/images/food.png' },
+          { key: 'snakeBody', path: '/dist/games/snake-vue3/themes/default/images/snakeBody.png' },
+          { key: 'snakeHead', path: '/dist/games/snake-vue3/themes/default/images/snakeHead.png' },
+          { key: 'snakeTail', path: '/dist/games/snake-vue3/themes/default/images/snakeTail.png' },
+          { key: 'background', path: '/dist/games/snake-vue3/themes/default/images/background.png' },
+        ],
+        audio: [
+          { key: 'bgm_gameplay', path: '/dist/games/audio/snake_bgm_default.wav' },
+          { key: 'snake_eat', path: '/dist/games/audio/snake_eat.wav' },
+          { key: 'snake_gameover', path: '/dist/games/audio/snake_gameover.wav' },
+        ],
+      },
+      // 可以添加更多游戏的配置
+    };
+
+    const config = assetConfigs[gameType];
+    if (!config) {
+      return [];
+    }
+
+    const assets: Array<{
+      key: string;
+      type: 'image' | 'audio' | 'json' | 'spritesheet';
+      required: boolean;
+      path?: string;
+    }> = [];
+
+    // 添加图片资源
+    if (config.images) {
+      config.images.forEach((img: any) => {
+        assets.push({
+          key: img.key,
+          type: 'image',
+          required: true,
+          path: img.path,
+        });
+      });
+    }
+
+    // 添加音频资源
+    if (config.audio) {
+      config.audio.forEach((audio: any) => {
+        assets.push({
+          key: audio.key,
+          type: 'audio',
+          required: true,
+          path: audio.path,
+        });
+      });
+    }
+
+    return assets;
   }
 
   /**

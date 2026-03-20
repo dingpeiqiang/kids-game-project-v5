@@ -15,17 +15,20 @@
 - **缓存**: Redis
 - **认证**: JWT + BCrypt
 - **文档**: Knife4j (Swagger)
+- **云存储**: 腾讯云 COS
 
 ### 前端
 - **框架**: Vue 3 + TypeScript
 - **构建工具**: Vite
-- **UI 组件**: 自定义组件库
+- **UI 组件**: 自定义儿童友好组件库
 - **状态管理**: Pinia
-- **HTTP 客户端**: Fetch API
+- **HTTP 客户端**: Axios
+- **样式**: Tailwind CSS + SCSS
 
 ### 游戏引擎
 - **引擎**: Phaser 3.80
 - **语言**: TypeScript
+- **框架**: Vue 3 + Phaser 集成
 
 ## 项目结构
 
@@ -44,10 +47,27 @@ kids-game-project/
 │   │   ├── docs/            # 📚 项目手册文档
 │   │   └── components/      # 通用组件
 │   └── assets/              # 静态资源
-├── kids-game-frontend/       # 前端（Vue 3 + Phaser）
-├── docs/                     # 📚 项目文档
+├── kids-game-house/          # 独立游戏目录
+│   ├── snake-vue3/          # 贪吃蛇游戏
+│   └── plants-vs-zombie/    # 植物大战僵尸游戏
+├── 学习资料/                  # 学习资料文档
+├── docs/                     # 项目文档
 └── README.md                 # 本文件
 ```
+
+## 📚 项目手册
+
+详细的项目文档位于 `kids-game-frontend/src/docs/` 目录：
+
+| 章节 | 内容 |
+|------|------|
+| [快速开始](./kids-game-frontend/src/docs/QUICK_START.md) | 5分钟快速启动项目 |
+| [开发指南](./kids-game-frontend/src/docs/03-development/index.md) | 开发环境配置、编码规范 |
+| [API 参考](./kids-game-frontend/src/docs/02-api-reference/index.md) | RESTful API 接口文档 |
+| [架构设计](./kids-game-frontend/src/docs/04-architecture/index.md) | 系统架构设计 |
+| [项目指南](./kids-game-frontend/src/docs/05-guides/index.md) | GTRS 主题系统、游戏开发 |
+| [部署运维](./kids-game-frontend/src/docs/07-deployment/index.md) | 环境配置、部署指南 |
+| [运维手册](./kids-game-frontend/src/docs/06-operations/index.md) | 日志查看、故障处理 |
 
 ## 快速开始
 
@@ -71,7 +91,23 @@ npm run dev
 
 ### 游戏平台启动
 
-游戏模块基于 Phaser 3.80 引擎开发，集成在前端项目中。
+独立游戏模块位于 `kids-game-house/` 目录：
+
+```bash
+cd kids-game-house
+
+# 安装依赖
+install-dependencies.bat
+
+# 启动所有游戏
+start-all-games.bat
+```
+
+游戏列表：
+- 贪吃蛇: http://localhost:3003
+- 植物大战僵尸: http://localhost:3004
+
+详细文档请查看 [游戏部署指南](./kids-game-house/README.md)
 
 ## 核心功能
 

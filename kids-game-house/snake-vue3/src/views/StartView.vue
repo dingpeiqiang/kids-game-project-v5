@@ -111,6 +111,7 @@ import { useResponsiveUI } from '@/utils/uiResponsive'
 import GameButton from '@/components/ui/GameButton.vue'
 import SoundToggle from '@/components/ui/SoundToggle.vue'
 import ThemeSelector from '@/components/ui/ThemeSelector.vue'
+import { validateGTRSTheme, type ValidationResult } from '@/utils/gtrs-validator'
 
 const router = useRouter()
 const gameStore = useGameStore()
@@ -185,6 +186,148 @@ const instructionStyle = computed(() => ({
 }))
 
 /**
+ * ⭐ 将主题配置转换为 GTRS JSON 格式用于校验
+ * @param themeConfig 主题配置对象
+ * @returns GTRS 格式的 JSON 字符串
+ */
+const buildGTRSThemeJson = (themeConfig: any): string => {
+  // 从主题配置中提取资源信息，构建符合 GTRS 规范的 JSON
+  const gtrsTheme = {
+    specMeta: {
+      specName: 'GTRS' as const,
+      specVersion: '1.0.0',
+      compatibleVersion: '1.0.0'
+    },
+    themeInfo: {
+      themeId: themeConfig.id || 'default',
+      gameId: 'snake',
+      themeName: themeConfig.name || '默认主题',
+      isDefault: !themeConfig.customTheme,
+      author: themeConfig.author || 'System',
+      description: themeConfig.description || ''
+    },
+    globalStyle: {
+      primaryColor: themeConfig.colors?.primary || '#4ade80',
+      secondaryColor: themeConfig.colors?.secondary || '#22c55e',
+      bgColor: themeConfig.colors?.background || '#1e293b',
+      textColor: themeConfig.colors?.text || '#ffffff',
+      fontFamily: themeConfig.fontFamily || 'Arial',
+      borderRadius: themeConfig.effects?.borderRadius || '8px'
+    },
+    resources: {
+      images: {
+        login: {},
+        // ⭐ 游戏场景资源：必须使用真实图片路径（给 Phaser 用）
+        scene: {
+          food_apple: {
+            src: '/games/snake-vue3/themes/default/images/scene/food_apple.png',
+            type: 'png' as const,
+            alias: '苹果'
+          },
+          food_banana: {
+            src: '/games/snake-vue3/themes/default/images/scene/food_banana.png',
+            type: 'png' as const,
+            alias: '香蕉'
+          },
+          food_cherry: {
+            src: '/games/snake-vue3/themes/default/images/scene/food_cherry.png',
+            type: 'png' as const,
+            alias: '樱桃'
+          },
+          snake_head: {
+            src: '/games/snake-vue3/themes/default/images/scene/snake_head.png',
+            type: 'png' as const,
+            alias: '蛇头'
+          },
+          snake_body: {
+            src: '/games/snake-vue3/themes/default/images/scene/snake_body.png',
+            type: 'png' as const,
+            alias: '蛇身'
+          },
+          snake_tail: {
+            src: '/games/snake-vue3/themes/default/images/scene/snake_tail.png',
+            type: 'png' as const,
+            alias: '蛇尾'
+          },
+          obstacle_rock: {
+            src: '/games/snake-vue3/themes/default/images/scene/obstacle_rock.png',
+            type: 'png' as const,
+            alias: '石头障碍物'
+          },
+          obstacle_wall: {
+            src: '/games/snake-vue3/themes/default/images/scene/obstacle_wall.png',
+            type: 'png' as const,
+            alias: '墙壁障碍物'
+          },
+          scene_bg_grid: {
+            src: '/games/snake-vue3/themes/default/images/scene/grid.png',
+            type: 'png' as const,
+            alias: '网格背景'
+          },
+          scene_bg_main: {
+            src: '/games/snake-vue3/themes/default/images/scene/background.png',
+            type: 'png' as const,
+            alias: '游戏主背景'
+          }
+        },
+        // ⭐ UI 资源：可以使用颜色值（给 Vue 组件用）
+        ui: {
+          button: {
+            src: themeConfig.colors?.primary || '#4ade80',
+            type: 'png' as const,
+            alias: '按钮背景色'
+          },
+          panel: {
+            src: themeConfig.colors?.background || 'rgba(26, 26, 46, 0.9)',
+            type: 'png' as const,
+            alias: '面板背景色'
+          }
+        },
+        // ⭐ 图标资源：使用真实图片或 emoji
+        icon: {
+          snakeHead: {
+            src: themeConfig.assets?.snakeHead?.type === 'image' 
+              ? themeConfig.assets?.snakeHead?.value 
+              : '/games/snake-vue3/themes/default/images/scene/snake_head.png',
+            type: 'png' as const,
+            alias: '蛇头图标'
+          }
+        },
+        effect: {}
+      },
+      audio: {
+        bgm: {
+          main: {
+            src: themeConfig.audio?.bgm?.src || '',
+            type: 'mp3' as const,
+            volume: themeConfig.audio?.bgm?.volume || 0.5,
+            alias: '主背景音乐'
+          }
+        },
+        effect: {
+          eat: {
+            src: themeConfig.audio?.eat?.src || '',
+            type: 'mp3' as const,
+            volume: themeConfig.audio?.eat?.volume || 0.3,
+            alias: '吃东西音效'
+          },
+          gameOver: {
+            src: themeConfig.audio?.gameOver?.src || '',
+            type: 'mp3' as const,
+            volume: themeConfig.audio?.gameOver?.volume || 0.4,
+            alias: '游戏结束音效'
+          }
+        },
+        voice: {}
+      },
+      video: {}
+    }
+  }
+
+  return JSON.stringify(gtrsTheme)
+}
+
+/**
  * ⭐ 开始游戏
  */
 const startGame = async () => {
@@ -244,17 +387,64 @@ const startGame = async () => {
     }
     await new Promise(resolve => setTimeout(resolve, 200))
 
-    // 步骤 3：加载主题
+    // 步骤 3：加载主题并进行严格的 GTRS 资源校验
     checkStep.value = 3
     checkProgress.value = 45
+    statusText.value = '进行 GTRS 严格校验...'
 
     if (!themeId) {
       // 没有主题时使用默认
       console.log('❌ 未选择主题，使用默认主题')
       statusText.value = '✅ 使用默认主题'
     } else {
-      statusText.value = `✅ 主题加载完成`
-      console.log('✅ 主题加载完成:', themeId)
+      // ⭐ GTRS 主题资源严格完整性校验（使用 Ajv Schema）
+      try {
+        // 从 themeStore 获取当前主题的完整配置
+        const currentTheme = themeStore.currentTheme
+        console.log('🔍 开始 GTRS 严格校验:', currentTheme.name)
+        statusText.value = '正在转换主题为 GTRS 格式...'
+        
+        // 将主题配置转换为 GTRS JSON 格式
+        const themeJson = buildGTRSThemeJson(currentTheme)
+        
+        console.log('📋 GTRS JSON 生成完成，开始 Schema 校验...')
+        statusText.value = '正在进行 Schema 严格校验...'
+        
+        // 使用 Ajv 进行完整的 Schema 校验
+        const validationResult: ValidationResult = validateGTRSTheme(themeJson)
+        
+        if (!validationResult.valid) {
+          console.error('❌ GTRS 严格校验失败:', validationResult.message)
+          console.error('详细错误:', validationResult.errors)
+          
+          // 严格模式：显示详细错误信息
+          const errorDetails = validationResult.errors?.map(e => 
+            `• ${e.path}: ${e.message}`
+          ).join('\n') || validationResult.message
+          
+          throw new Error(`GTRS 严格校验失败:\n\n${errorDetails}`)
+        }
+        
+        console.log('✅ GTRS 严格校验通过:', validationResult.message)
+        console.log('📊 校验详情:', {
+          themeName: currentTheme.name,
+          themeId: currentTheme.id,
+          jsonLength: themeJson.length,
+          validationMessage: validationResult.message
+        })
+        
+        statusText.value = '✅ GTRS 严格校验通过'
+        await new Promise(resolve => setTimeout(resolve, 300))
+      } catch (error: any) {
+        console.error('❌ GTRS 严格校验异常:', error)
+        
+        // 严格模式：校验失败时阻断游戏，显示详细错误
+        showCheckModal.value = false
+        checkError.value = `主题资源不符合 GTRS v1.0.0 规范\n\n${error.message}`
+        showErrorModal.value = true
+        isChecking.value = false
+        return // 阻断游戏启动
+      }
     }
 
     await new Promise(resolve => setTimeout(resolve, 200))
