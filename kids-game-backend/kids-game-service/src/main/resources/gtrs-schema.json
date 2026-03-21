@@ -7,6 +7,10 @@
   "required": ["specMeta", "themeInfo", "globalStyle", "resources"],
   "additionalProperties": false,
   "properties": {
+    "$comment": {
+      "type": "string",
+      "description": "JSON Schema 注释字段，用于描述文件用途"
+    },
     "specMeta": {
       "type": "object",
       "description": "规范元信息",
@@ -196,7 +200,8 @@
         "src": {
           "type": "string",
           "minLength": 1,
-          "description": "资源路径（URL或相对路径）"
+          "description": "资源 URL 地址（支持 http://, https://, 相对路径 ./, ../, assets/, /resources/, /public/, /开头的根路径，或颜色值 #RRGGBB）",
+          "pattern": "^(https?://|\\.{1,2}/|assets/|/resources/|/public/|/|#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})).*$"
         },
         "type": {
           "type": "string",
@@ -218,7 +223,8 @@
         "src": {
           "type": "string",
           "minLength": 1,
-          "description": "资源路径"
+          "description": "音频 URL 地址（支持 http://, https://, 相对路径 ./, ../, assets/, /resources/, /public/, /开头的根路径）",
+          "pattern": "^(https?://|\\.{1,2}/|assets/|/resources/|/public/|/).*$"
         },
         "type": {
           "type": "string",

@@ -92,21 +92,33 @@
               </div>
             </div>
             <div class="theme-item-actions">
-              <span
-                :class="['status-badge', theme.status === 'on_sale' ? 'status-on' : 'status-off']"
-              >
-                {{ theme.status === 'on_sale' ? '销售中' : '已下架' }}
-              </span>
-              <button
-                class="btn-action"
-                @click="toggleThemeSale(theme)"
-                :disabled="isToggling"
-              >
-                {{ theme.status === 'on_sale' ? '下架' : '上架' }}
-              </button>
-              <button class="btn-action btn-edit" @click="$emit('edit', theme)">
-                编辑
-              </button>
+              <!-- 审核中的主题显示提示 -->
+              <template v-if="theme.status === 'pending'">
+                <span class="status-badge status-pending">
+                  ⏳ 审核中
+                </span>
+                <span class="pending-hint-text">
+                  请耐心等待管理员审核
+                </span>
+              </template>
+              <!-- 已上架/已下架的主题显示操作按钮 -->
+              <template v-else>
+                <span
+                  :class="['status-badge', theme.status === 'on_sale' ? 'status-on' : 'status-off']"
+                >
+                  {{ theme.status === 'on_sale' ? '销售中' : '已下架' }}
+                </span>
+                <button
+                  class="btn-action"
+                  @click="toggleThemeSale(theme)"
+                  :disabled="isToggling"
+                >
+                  {{ theme.status === 'on_sale' ? '下架' : '上架' }}
+                </button>
+                <button class="btn-action btn-edit" @click="$emit('edit', theme)">
+                  编辑
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -521,6 +533,27 @@ function handleWithdraw(): void {
 .status-badge.status-off {
   background: rgba(136, 136, 136, 0.2);
   color: #888;
+}
+
+.status-badge.status-pending {
+  background: rgba(251, 191, 36, 0.2);
+  color: #f59e0b;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.pending-hint-text {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-left: 4px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .btn-action {

@@ -26,7 +26,7 @@ export function initUIParams(screenW: number, screenH: number): void {
   uiScale = Math.min(
     screenW / UI_DESIGN_WIDTH,
     screenH / UI_DESIGN_HEIGHT,
-    1.2  // 最大放大到 1.2 倍，避免过大
+    1.5  // ⭐ 最大放大到 1.5 倍，显示更大
   )
   
   // 应用全局字体大小到 root

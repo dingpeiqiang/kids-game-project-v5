@@ -221,7 +221,12 @@ function isValidResourceUrl(url: string): boolean {
   if (url.startsWith('/resources/')) {
     return true
   }
-  
+
+  // 游戏主题资源目录（如 /themes/default/images/...）
+  if (url.startsWith('/themes/')) {
+    return true
+  }
+
   return false
 }
 

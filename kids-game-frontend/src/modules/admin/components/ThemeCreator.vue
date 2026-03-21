@@ -44,15 +44,6 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">主题类型 *</label>
-            <select v-model="formData.basic.applicableScope" class="form-select">
-              <option value="all">🌐 应用主题 (用于首页/个人中心等)</option>
-              <option value="specific">🎮 游戏主题 (指定游戏)</option>
-            </select>
-          </div>
-
-          <!-- 仅当选择游戏主题时显示游戏选择器 -->
-          <div v-if="formData.basic.applicableScope === 'specific'" class="form-group">
             <label class="form-label">选择游戏 *</label>
             <select v-model="formData.basic.selectedGameCode" class="form-select">
               <option value="">请选择游戏</option>
@@ -293,7 +284,7 @@
         <h3 class="section-title">👁️ 实时预览</h3>
         <ThemePreview 
           :config="getThemeConfig()" 
-          :preview-type="formData.basic.applicableScope === 'specific' ? 'game' : 'application'"
+          preview-type="game"
           :game-code="formData.basic.selectedGameCode"
         />
       </div>
@@ -341,7 +332,7 @@ const formData = reactive<ThemeFormData>({
     name: '',
     author: '官方设计师',
     description: '',
-    applicableScope: 'all',
+    ownerType: 'GAME',
     price: 0,
   },
   
@@ -458,7 +449,7 @@ function validateForm(): boolean {
     return false;
   }
   
-  if (formData.basic.applicableScope === 'specific' && !formData.basic.selectedGameCode) {
+  if (!formData.basic.selectedGameCode) {
     dialog.warning('请选择游戏');
     return false;
   }

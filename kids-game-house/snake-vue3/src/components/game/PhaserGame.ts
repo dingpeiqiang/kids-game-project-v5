@@ -1,9 +1,10 @@
-// Phaser 游戏引擎封装
+﻿// Phaser 游戏引擎封装
 // 注意：Phaser 通过 CDN 引入，使用全局变量
 import type { SnakeSegment, Food, Difficulty } from '@/types/game'
 import { FOOD_TYPES } from '@/types/game'
 import { initUIParams, updateUIParams } from '@/utils/uiResponsive'
 import { validateGTRSTheme, type GTRSTheme } from '@/utils/gtrs-validator'
+import { useThemeStore } from '@/stores/theme'
 
 // ⭐ 运行时主题对象：null 表示尚未加载，游戏启动前必须通过 loadTheme 赋值
 // 可用 key 集合参见 src/config/GTRS.json（纯占位符，不可直接作为运行主题）
@@ -19,8 +20,43 @@ function hexToNumber(hex: string): number {
 }
 
 /**
- * ⭐ 修复 GTRS 资源 src 路径
- * 规则：/public/xxx → /xxx（兼容旧格式），其余保持不变
+ * ⭐ 将单个资源 src 路径归一化为根路径（/ 开头）
+ *
+ * 支持的输入格式及转换规则：
+ *   http(s)://...   → 原样保留（外链 CDN）
+ *   /themes/xxx    → 原样保留（推荐写法，public/themes/ 目录）
+ *   /assets/xxx    → 原样保留（public/assets/ 目录）
+ *   /public/xxx    → /xxx（旧格式兼容）
+ *   @/xxx          → /xxx（Vite 别名转换）
+ *   themes/xxx     → /themes/xxx（省略开头的 /，自动补充）
+ *   assets/xxx     → /assets/xxx
+ *   其余           → 原样保留（颜色值等）
+ *
+ * 最终所有本地资源均为 / 开头的根路径，基于当前域名+端口解析，
+ * 与页面所在路由无关，任意部署均可正常访问。
+ */
+function normalizeOneSrc(src: string): string {
+  if (!src || typeof src !== 'string') return src
+
+  // 完整 URL（http/https）：直接返回
+  if (src.startsWith('http://') || src.startsWith('https://')) return src
+
+  // 已经是 / 开头：直接返回（支持 /themes/, /assets/ 等）
+  if (src.startsWith('/')) {
+    // 旧格式 /public/xxx → /xxx
+    if (src.startsWith('/public/')) return src.replace('/public/', '/')
+    return src
+  }
+
+  // Vite 别名：@/xxx → /xxx
+  if (src.startsWith('@/')) return src.replace(/^@\\/, '/')
+
+  // 不带 / 前缀的相对路径 → 补充 / 前缀
+  return '/' + src
+}
+
+/**
+ * ⭐ 递归遍历 GTRS 对象，对所有 src 字段执行路径归一化
  */
 function normalizeSrcPaths(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj
@@ -29,7 +65,7 @@ function normalizeSrcPaths(obj: any): any {
   for (const key of Object.keys(obj)) {
     const value = obj[key]
     if (key === 'src' && typeof value === 'string') {
-      result[key] = value.startsWith('/public/') ? value.replace('/public/', '/') : value
+      result[key] = normalizeOneSrc(value)
     } else if (typeof value === 'object') {
       result[key] = normalizeSrcPaths(value)
     } else {
@@ -174,51 +210,59 @@ export class SnakePhaserGame {
   }
 
   /**
-   * ⭐ 从后端加载主题并赋值 GTRS（含严格 GTRS 校验）
+   * ⭐ 加载主题并赋值 GTRS（含严格 GTRS 校验）
    *
-   * 流程：
-   *   1. 请求 /api/theme/download?id=xxx
-   *   2. 从响应中提取 configJson（支持多种格式）
-   *   3. validateGTRSTheme() 严格校验
-   *   4. 校验通过 → applyGTRS 直接赋值
-   *   5. 任何环节失败 → 直接 throw（不静默降级）
+   * 优化：优先使用 themeStore 已加载的 GTRS，避免重复请求
+   *   1. 尝试从 themeStore.gtrsRawJson 获取（已校验通过）
+   *   2. 仅当 gtrsRawJson 为空时才从后端获取
+   *   3. 无论哪种方式，都需要 validateGTRSTheme() 校验
    *
    * @throws Error 主题未登录 / 加载失败 / GTRS 校验不通过时
    */
   private async loadTheme(themeId: string): Promise<void> {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('[PhaserGame] 用户未登录，无法加载主题。请先登录后再启动游戏。')
-    }
-
-    const response = await fetch(`http://localhost:8080/api/theme/download?id=${themeId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-
-    if (!response.ok) {
-      throw new Error(`[PhaserGame] 主题加载失败：HTTP ${response.status}`)
-    }
-
-    const result = await response.json()
-    if (result.code !== 200 || !result.data) {
-      throw new Error(`[PhaserGame] 主题加载失败：服务端 code=${result.code}, message=${result.message}`)
-    }
-
-    // ⭐ 提取 configJson（支持后端多种包装格式）
-    const raw = result.data
+    const themeStore = useThemeStore()
     let configJsonStr: string
 
-    if (typeof raw === 'string') {
-      configJsonStr = raw
-    } else if (raw.configJson !== undefined) {
-      configJsonStr = typeof raw.configJson === 'string'
-        ? raw.configJson
-        : JSON.stringify(raw.configJson)
+    // ⭐ 优先复用 themeStore 已加载的 GTRS（已校验通过）
+    if (themeStore.gtrsRawJson) {
+      console.log('[PhaserGame] ♻️ 复用 themeStore 已加载的 GTRS 主题')
+      configJsonStr = themeStore.gtrsRawJson
     } else {
-      configJsonStr = JSON.stringify(raw)
+      // ⭐ gtrsRawJson 为空，从后端获取
+      const token = localStorage.getItem('token')
+      if (!token) {
+        throw new Error('[PhaserGame] 用户未登录，无法加载主题。请先登录后再启动游戏。')
+      }
+
+      console.log('[PhaserGame] 🔄 从后端加载 GTRS 主题')
+      const response = await fetch(`http://localhost:8080/api/theme/download?id=${themeId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      if (!response.ok) {
+        throw new Error(`[PhaserGame] 主题加载失败：HTTP ${response.status}`)
+      }
+
+      const result = await response.json()
+      if (result.code !== 200 || !result.data) {
+        throw new Error(`[PhaserGame] 主题加载失败：服务端 code=${result.code}, message=${result.message}`)
+      }
+
+      // ⭐ 提取 configJson（支持后端多种包装格式）
+      const raw = result.data
+
+      if (typeof raw === 'string') {
+        configJsonStr = raw
+      } else if (raw.configJson !== undefined) {
+        configJsonStr = typeof raw.configJson === 'string'
+          ? raw.configJson
+          : JSON.stringify(raw.configJson)
+      } else {
+        configJsonStr = JSON.stringify(raw)
+      }
     }
 
-    // ⭐ GTRS 严格校验
+    // ⭐ GTRS 严格校验（无论从哪里获取都需要校验）
     const validationResult = validateGTRSTheme(configJsonStr)
     if (!validationResult.valid) {
       throw new Error(

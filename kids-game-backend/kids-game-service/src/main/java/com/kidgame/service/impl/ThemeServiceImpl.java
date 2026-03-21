@@ -13,6 +13,7 @@ import com.kidgame.dao.mapper.ThemeGameRelationMapper;
 import com.kidgame.dao.mapper.ThemeInfoMapper;
 import com.kidgame.dao.mapper.ThemePurchaseMapper;
 import com.kidgame.service.ThemeService;
+import com.kidgame.service.GTRSSchemaService;
 import com.kidgame.service.dto.ThemeUploadDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +44,9 @@ public class ThemeServiceImpl implements ThemeService {
 
     @Autowired
     private ThemeGameRelationMapper themeGameRelationMapper;
+
+    @Autowired
+    private GTRSSchemaService gtrsSchemaService;
 
     /**
      * 获取主题列表 (分页)
@@ -130,18 +134,78 @@ public class ThemeServiceImpl implements ThemeService {
     @Transactional(rollbackFor = Exception.class)
     public ThemeInfo uploadTheme(Long authorId, ThemeUploadDTO themeData) {
         try {
-            // 1. 创建主题信息
+            // 1. 验证主题配置是否符合GTRS规范
+            String configJson;
+            if (themeData.getConfig() != null) {
+                configJson = JSON.toJSONString(themeData.getConfig());
+            } else if (themeData.getConfigJson() != null) {
+                configJson = themeData.getConfigJson();
+            } else {
+                log.error("主题配置为空：authorId={}, themeName={}", authorId, themeData.getThemeName());
+                throw new RuntimeException("主题配置不能为空");
+            }
+            
+            // 验证GTRS格式
+            GTRSSchemaService.ValidationResult validationResult = gtrsSchemaService.validateTheme(configJson);
+            if (!validationResult.isValid()) {
+                log.error("主题GTRS格式验证失败：authorId={}, themeName={}, message={}", 
+                        authorId, themeData.getThemeName(), validationResult.getMessage());
+                throw new RuntimeException("主题格式不符合GTRS规范：" + validationResult.getMessage());
+            }
+            
+            log.info("主题GTRS格式验证通过：authorId={}, themeName={}", authorId, themeData.getThemeName());
+            
+            // 2. 如果提供了gameCode但ownerId为空，根据gameCode查找游戏ID
+            Long ownerId = themeData.getOwnerId();
+            if ("GAME".equals(themeData.getOwnerType()) && ownerId == null && themeData.getGameCode() != null) {
+                Game game = getGameByCode(themeData.getGameCode());
+                if (game != null) {
+                    ownerId = game.getGameId();
+                    log.info("根据gameCode找到游戏：gameCode={}, gameId={}", themeData.getGameCode(), ownerId);
+                } else {
+                    log.warn("未找到对应游戏：gameCode={}", themeData.getGameCode());
+                    // 可以设置为默认游戏ID或抛出异常
+                }
+            }
+            
+            // 3. 创建主题信息，处理兼容性字段
             ThemeInfo theme = new ThemeInfo();
             theme.setAuthorId(authorId);
-            theme.setThemeName(themeData.getThemeName());
-            theme.setOwnerType(themeData.getOwnerType());
-            theme.setOwnerId(themeData.getOwnerId());
-            theme.setAuthorName(themeData.getAuthorName());
-            theme.setPrice(themeData.getPrice());
-            theme.setStatus(themeData.getStatus());
-            theme.setThumbnailUrl(themeData.getThumbnailUrl());
+            
+            // 主题名称：优先使用themeName，如果为空则使用name
+            String themeName = themeData.getThemeName();
+            if (themeName == null || themeName.isEmpty()) {
+                themeName = themeData.getName();
+            }
+            theme.setThemeName(themeName);
+            
+            // 所有者类型和ID
+            theme.setOwnerType(themeData.getOwnerType() != null ? themeData.getOwnerType() : "GAME");
+            theme.setOwnerId(ownerId);
+            
+            // 作者名称：优先使用authorName，如果为空则使用author
+            String authorName = themeData.getAuthorName();
+            if (authorName == null || authorName.isEmpty()) {
+                authorName = themeData.getAuthor();
+            }
+            theme.setAuthorName(authorName != null ? authorName : "创作者");
+            
+            // 价格
+            theme.setPrice(themeData.getPrice() != null ? themeData.getPrice() : 0);
+            
+            // 状态
+            theme.setStatus(themeData.getStatus() != null ? themeData.getStatus() : "pending");
+            
+            // 缩略图URL：优先使用thumbnailUrl，如果为空则使用thumbnail
+            String thumbnailUrl = themeData.getThumbnailUrl();
+            if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {
+                thumbnailUrl = themeData.getThumbnail();
+            }
+            theme.setThumbnailUrl(thumbnailUrl);
+            
+            // 描述
             theme.setDescription(themeData.getDescription());
-            theme.setConfigJson(JSON.toJSONString(themeData.getConfig()));
+            theme.setConfigJson(configJson);
             theme.setDownloadCount(0);
             theme.setTotalRevenue(0);
             theme.setCreatedAt(LocalDateTime.now());
@@ -158,7 +222,7 @@ public class ThemeServiceImpl implements ThemeService {
             return null;
         } catch (Exception e) {
             log.error("上传主题失败：authorId={}, themeName={}", authorId, themeData.getThemeName(), e);
-            return null;
+            throw e; // 重新抛出异常，让Controller处理
         }
     }
 
@@ -289,18 +353,52 @@ public class ThemeServiceImpl implements ThemeService {
                 log.warn("主题不存在：themeId={}", themeId);
                 return null;
             }
-            
+
             theme.setStatus(onSale ? "on_sale" : "offline");
             theme.setUpdatedAt(LocalDateTime.now());
-            
+
             themeInfoMapper.updateById(theme);
-            
+
             log.info("切换主题上架状态：themeId={}, newStatus={}", themeId, theme.getStatus());
-            
+
             return theme;
         } catch (Exception e) {
             log.error("切换主题上架状态失败：themeId={}", themeId, e);
             return null;
+        }
+    }
+
+    /**
+     * 审批主题（通过/拒绝）
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ThemeInfo approveTheme(Long themeId, Boolean approved) {
+        try {
+            ThemeInfo theme = themeInfoMapper.selectById(themeId);
+            if (theme == null) {
+                log.warn("主题不存在：themeId={}", themeId);
+                return null;
+            }
+
+            // 只有待审核状态才能审批
+            if (!"pending".equals(theme.getStatus())) {
+                log.warn("主题不是待审核状态，无法审批：themeId={}, status={}", themeId, theme.getStatus());
+                return null;
+            }
+
+            // 审批通过 → 上架；审批拒绝 → 下架
+            theme.setStatus(approved ? "on_sale" : "offline");
+            theme.setUpdatedAt(LocalDateTime.now());
+
+            themeInfoMapper.updateById(theme);
+
+            log.info("审批主题：themeId={}, approved={}, newStatus={}", themeId, approved, theme.getStatus());
+
+            return theme;
+        } catch (Exception e) {
+            log.error("审批主题失败：themeId={}", themeId, e);
+            throw e;
         }
     }
 

@@ -14,9 +14,19 @@ public class ThemeUploadDTO {
     private String themeName;
 
     /**
+     * 主题名称别名（兼容前端字段）
+     */
+    private String name;
+
+    /**
      * 作者名称
      */
     private String authorName;
+
+    /**
+     * 作者名称别名（兼容前端字段）
+     */
+    private String author;
 
     /**
      * 价格（游戏币）
@@ -27,6 +37,11 @@ public class ThemeUploadDTO {
      * 缩略图 URL
      */
     private String thumbnailUrl;
+
+    /**
+     * 缩略图 URL 别名（兼容前端字段）
+     */
+    private String thumbnail;
 
     /**
      * 描述
@@ -52,6 +67,11 @@ public class ThemeUploadDTO {
      * 所有者 ID(游戏 ID 或应用 ID)
      */
     private Long ownerId;
+
+    /**
+     * 游戏代码（用于根据代码查找游戏ID）
+     */
+    private String gameCode;
 
     /**
      * 主题配置对象（用于接收 JSON 对象）

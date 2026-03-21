@@ -342,7 +342,6 @@ interface ThemeInfo {
   authorName: string;
   price: number;
   status: string;
-  applicableScope: string;
   thumbnailUrl?: string;
   description?: string;
   downloadCount: number;

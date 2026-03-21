@@ -51,7 +51,7 @@
                 <div class="theme-info">
                   <div class="theme-name">{{ theme.themeName }}</div>
                   <div class="theme-meta">
-                    <span class="tag scope">{{ theme.applicableScope === 'all' ? '通用' : '专属' }}</span>
+                    <span class="tag scope">专属</span>
                     <span class="tag status">{{ getStatusText(theme.status) }}</span>
                   </div>
                 </div>
@@ -174,7 +174,7 @@ interface ThemeInfo {
   authorName: string;
   price: number;
   status: string;
-  applicableScope: string;
+  ownerType?: string;
   thumbnailUrl?: string;
   description?: string;
   isDefault?: boolean;

@@ -204,6 +204,12 @@ import defaultTheme from '@/configs/gtrs-template.json'
 const router = useRouter()
 const route = useRoute()
 
+// 路由参数：从DIY入口带入的原主题ID和游戏ID
+// themeId: 加载原主题配置作为模板
+// gameId: 新主题的 ownerId（数据库主键）
+const routeThemeId = route.query.themeId as string | undefined
+const routeGameId = route.query.gameId ? Number(route.query.gameId) : null
+
 // 编辑模式：表单 / JSON
 const editMode = ref<'form' | 'json'>('form')
 
@@ -340,7 +346,7 @@ const handleDraftRestore = (theme: GTRSTheme) => {
 }
 
 // 发布主题
-const publishTheme = async () => {
+const publishTheme = async (publishData?: { price: number; description: string }) => {
   // 验证主题
   const result = validateGTRSTheme(JSON.stringify(themeData.value))
 
@@ -351,12 +357,45 @@ const publishTheme = async () => {
 
   publishing.value = true
   try {
-    // TODO: 调用后端 API 发布主题
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    // 从 themeData 中提取游戏信息
+    const rawGameId = themeData.value.themeInfo.gameId  // 如 "game_snake_v3"
+    // 将 "game_xxx_yyy" 格式转为 "XXX_YYY" 格式
+    const gameCode = rawGameId 
+      ? rawGameId.replace(/^game_/, '').toUpperCase().replace(/-/g, '_')
+      : null  // "game_snake_v3" → "SNAKE_VUE3"
+    
+    // ownerId = gameId（数据库主键），直接从路由参数获取
+    // DIY 流程：点击已有主题 → 携带 gameId 跳转 → 发布新主题继承同一 gameId
+    const ownerId = routeGameId || null
+    
+    // 构建上传数据
+    const uploadData: any = {
+      name: themeData.value.themeInfo.themeName,
+      author: themeData.value.themeInfo.author || '创作者',
+      price: publishData?.price ?? 0,
+      description: publishData?.description || '',
+      thumbnail: '',
+      config: themeData.value, // 完整的 GTRS 主题数据
+      ownerType: 'GAME',
+      gameCode: gameCode,
+      ownerId: ownerId,        // 直接使用路由传入的 gameId
+      status: 'pending'
+    }
+    
+    console.log('发布主题:', uploadData)
 
-    ElMessage.success('主题发布成功！')
+    // 调用后端 API 发布主题
+    const response = await themeApi.upload(uploadData)
+    
+    ElMessage.success('主题提交成功！等待审核中...')
     isDirty.value = false
+    
+    // 发布成功后返回创作者中心
+    setTimeout(() => {
+      router.push('/creator-center')
+    }, 1500)
   } catch (error) {
+    console.error('发布失败:', error)
     ElMessage.error('发布失败：' + (error as Error).message)
   } finally {
     publishing.value = false
@@ -688,10 +727,8 @@ const showCompletenessResult = () => {
 }
 
 // 处理发布事件
-const handlePublish = async () => {
-  await publishTheme()
-  // 发布成功后返回创作者中心
-  router.push('/creator-center')
+const handlePublish = (publishData: { price: number; description: string }) => {
+  publishTheme(publishData)
 }
 
 // 自动保存
@@ -764,12 +801,14 @@ const loadExistingTheme = async (themeId: string) => {
 }
 
 onMounted(() => {
-  console.log('GTRS 主题编辑器已加载')
+  console.log('GTRS 主题编辑器已加载', {
+    routeThemeId,
+    routeGameId: routeGameId
+  })
 
-  // 检查是否有themeId参数，如果有则加载已有主题
-  const themeId = route.query.themeId as string
-  if (themeId) {
-    loadExistingTheme(themeId)
+  // 检查是否有themeId参数，如果有则加载已有主题作为DIY模板
+  if (routeThemeId) {
+    loadExistingTheme(routeThemeId)
   }
 
   startAutoSave()

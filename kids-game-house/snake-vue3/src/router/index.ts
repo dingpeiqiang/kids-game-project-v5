@@ -3,6 +3,7 @@ import StartView from '@/views/StartView.vue'
 import DifficultyView from '@/views/DifficultyView.vue'
 import SnakeGame from '@/components/game/SnakeGame.vue'
 import GameOverView from '@/views/GameOverView.vue'
+import { initUIParams } from '@/utils/uiResponsive'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -32,6 +33,10 @@ const router = createRouter({
 
 // 全局路由守卫：检查登录状态
 router.beforeEach((to, from, next) => {
+  // ⭐ 初始化 UI 参数（确保所有页面切换时 UI 缩放一致）
+  initUIParams(window.innerWidth, window.innerHeight)
+  console.log('🔀 路由切换:', from.path, '→', to.path, '| UI scale:', window.innerWidth, window.innerHeight)
+  
   // 获取 token
   const token = localStorage.getItem('token')
   

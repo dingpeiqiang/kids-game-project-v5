@@ -9,7 +9,35 @@
 </template>
 
 <script setup lang="ts">
-// 主应用组件
+import { onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { initUIParams } from '@/utils/uiResponsive'
+
+const router = useRouter()
+
+// ⭐ 全局路由守卫：每次路由切换时统一初始化 UI 参数
+router.beforeEach((to, from, next) => {
+  // 使用 window 尺寸确保统一
+  initUIParams(window.innerWidth, window.innerHeight)
+  next()
+})
+
+// 应用首次加载时也初始化 UI 参数
+onMounted(() => {
+  // 初始化 UI 参数
+  initUIParams(window.innerWidth, window.innerHeight)
+  
+  // 监听窗口 resize，实时更新 UI 参数
+  const handleResize = () => {
+    initUIParams(window.innerWidth, window.innerHeight)
+  }
+  window.addEventListener('resize', handleResize)
+  
+  // 组件卸载时移除监听
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize)
+  })
+})
 </script>
 
 <style>

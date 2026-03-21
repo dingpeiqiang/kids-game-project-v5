@@ -58,14 +58,22 @@
         </div>
         
         <div class="card-actions">
-          <button @click="viewThemeDetail(theme)" class="btn-view">👁️ 查看</button>
-          <button @click="editTheme(theme)" class="btn-edit">✏️ 编辑</button>
-          <button 
-            @click="toggleThemeStatus(theme)" 
-            class="btn-toggle"
-          >
-            {{ theme.status === 'on_sale' ? '📥 下架' : '📤 上架' }}
-          </button>
+          <!-- 待审核主题：显示审批按钮 -->
+          <template v-if="theme.status === 'pending'">
+            <button @click="approveTheme(theme, true)" class="btn-approve">✅ 通过</button>
+            <button @click="approveTheme(theme, false)" class="btn-reject">❌ 拒绝</button>
+          </template>
+          <!-- 已上线/已下架主题：显示常规操作 -->
+          <template v-else>
+            <button @click="viewThemeDetail(theme)" class="btn-view">👁️ 查看</button>
+            <button @click="editTheme(theme)" class="btn-edit">✏️ 编辑</button>
+            <button
+              @click="toggleThemeStatus(theme)"
+              class="btn-toggle"
+            >
+              {{ theme.status === 'on_sale' ? '📥 下架' : '📤 上架' }}
+            </button>
+          </template>
           <button @click="deleteTheme(theme)" class="btn-delete">🗑️ 删除</button>
         </div>
       </div>
@@ -303,7 +311,7 @@ async function loadThemes() {
       ...getAuthHeaders()
     });
     
-    if (response.data.success && response.data.data) {
+    if (response.data.code === 200 && response.data.data) {
       themes.value = response.data.data.list || [];
       pagination.total = response.data.data.total || 0;
       pagination.totalPages = Math.ceil(pagination.total / pagination.size);
@@ -341,10 +349,10 @@ async function toggleThemeStatus(theme: ThemeInfo) {
   const newStatus = theme.status === 'on_sale' ? 'offline' : 'on_sale';
   const action = newStatus === 'on_sale' ? '上架' : '下架';
   const onSale = newStatus === 'on_sale';
-  
+
   const confirmed = await useConfirm({ message: `确定要${action}主题"${theme.themeName}"吗？`, title: '确认操作' });
   if (!confirmed) return;
-  
+
   try {
     const response = await axios.post(
       `${API_BASE}/theme/toggle-sale`,
@@ -354,8 +362,8 @@ async function toggleThemeStatus(theme: ThemeInfo) {
         ...getAuthHeaders()
       }
     );
-    
-    if (response.data.success) {
+
+    if (response.data.code === 200) {
       await dialog.success(`${action}成功！`);
       loadThemes();
     } else {
@@ -364,6 +372,37 @@ async function toggleThemeStatus(theme: ThemeInfo) {
   } catch (error: any) {
     console.error('[ThemeManagement] 切换状态失败:', error);
     await dialog.error('操作失败：' + (error.response?.data?.message || error.message || '未知错误'));
+  }
+}
+
+// 审批主题（通过/拒绝）
+async function approveTheme(theme: ThemeInfo, approved: boolean) {
+  const action = approved ? '通过' : '拒绝';
+  const confirmed = await useConfirm({
+    message: `确定要${action}主题"${theme.themeName}"吗？${approved ? '通过后主题将上架。' : '拒绝后主题将下架。'}`,
+    title: '审批确认'
+  });
+  if (!confirmed) return;
+
+  try {
+    const response = await axios.post(
+      `${API_BASE}/theme/approve`,
+      null,
+      {
+        params: { themeId: theme.themeId, approved },
+        ...getAuthHeaders()
+      }
+    );
+
+    if (response.data.code === 200) {
+      await dialog.success(`审批成功！主题已${approved ? '上架' : '下架'}。`);
+      loadThemes();
+    } else {
+      await dialog.error(`审批失败：` + (response.data.message || '未知错误'));
+    }
+  } catch (error: any) {
+    console.error('[ThemeManagement] 审批失败:', error);
+    await dialog.error('审批失败：' + (error.response?.data?.message || error.message || '未知错误'));
   }
 }
 
@@ -379,7 +418,7 @@ async function deleteTheme(theme: ThemeInfo) {
       getAuthHeaders()
     );
     
-    if (response.data.success) {
+    if (response.data.code === 200) {
       await dialog.success('删除成功！');
       loadThemes();
     } else {
@@ -680,6 +719,24 @@ onMounted(() => {
 .btn-toggle {
   color: #e6a23c;
   border-color: #e6a23c;
+}
+
+.btn-approve {
+  color: #52c41a;
+  border-color: #52c41a;
+}
+
+.btn-approve:hover {
+  background: #f6ffed;
+}
+
+.btn-reject {
+  color: #f56c6c;
+  border-color: #f56c6c;
+}
+
+.btn-reject:hover {
+  background: #fff1f0;
 }
 
 .btn-delete {

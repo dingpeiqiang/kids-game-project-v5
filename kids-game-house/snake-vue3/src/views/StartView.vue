@@ -1,5 +1,16 @@
 <template>
-  <div class="w-full h-full flex flex-col items-center justify-center p-4 fade-in" :style="containerStyle">
+  <div class="w-full h-full flex flex-col items-center justify-center p-4 fade-in relative" :style="containerStyle">
+    <!-- 返回用户首页按钮 -->
+    <button
+      @click="goToUserHome"
+      class="absolute top-4 left-4 z-50 home-back-btn"
+      title="返回用户首页"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      <span>返回首页</span>
+    </button>
     <!-- 标题 -->
     <div class="text-center mb-8" :style="titleContainerStyle">
       <h1 class="animate-bounce" :style="snakeEmojiStyle">🐍</h1>
@@ -103,11 +114,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/game'
 import { useThemeStore } from '@/stores/theme'
-import { useResponsiveUI } from '@/utils/uiResponsive'
+import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
 import GameButton from '@/components/ui/GameButton.vue'
 import SoundToggle from '@/components/ui/SoundToggle.vue'
 import ThemeSelector from '@/components/ui/ThemeSelector.vue'
@@ -183,6 +194,15 @@ const instructionStyle = computed(() => ({
   fontSize: ui.getFontSize(14),
   marginTop: ui.getGap(32)
 }))
+
+/**
+ * ⭐ 返回用户首页
+ */
+function goToUserHome() {
+  // 跳转到主系统首页（kids-game-frontend 运行在 3000 端口）
+  const homeUrl = 'http://localhost:3000/'
+  window.location.href = homeUrl
+}
 
 /**
  * ⭐ 开始游戏
@@ -319,12 +339,51 @@ const startGame = async () => {
 }
 
 onMounted(() => {
-  // 确保 UI 已经初始化
+  // ⭐ 首次加载时初始化 UI 参数
+  initUIParams(window.innerWidth, window.innerHeight)
   console.log('StartView mounted, UI scale:', ui.uiScale)
+
+  // 监听窗口大小变化，实时更新 UI 参数
+  window.addEventListener('resize', handleResize)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
+
+// 窗口大小变化时更新 UI 参数
+const handleResize = () => {
+  initUIParams(window.innerWidth, window.innerHeight)
+  console.log('🔄 窗口 resize, UI scale:', ui.uiScale)
+}
 </script>
 
 <style scoped>
+/* 返回首页按钮 */
+.home-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+}
+
+.home-back-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateX(-2px);
+}
+
+.home-back-btn:active {
+  transform: translateX(0);
+}
+
 /* 资源检测 Loading 弹窗 */
 .check-overlay {
   position: fixed;

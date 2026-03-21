@@ -104,6 +104,14 @@ public interface ThemeService {
     ThemeInfo toggleSaleStatus(Long themeId, Boolean onSale);
 
     /**
+     * 审批主题（通过/拒绝）
+     * @param themeId 主题 ID
+     * @param approved true-通过（上架），false-拒绝（下架）
+     * @return 更新后的主题信息
+     */
+    ThemeInfo approveTheme(Long themeId, Boolean approved);
+
+    /**
      * 提现收益
      * @param creatorId 创作者 ID
      * @param amount 提现金额

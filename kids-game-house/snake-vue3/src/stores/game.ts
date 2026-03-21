@@ -146,10 +146,13 @@ export const useGameStore = defineStore('game', () => {
       if (result.success) {
         console.log('✅ 成绩上报成功，消耗疲劳点:', result.consumePoints)
       } else {
-        console.warn('⚠️ 成绩上报失败:', result.message)
+        // ⭐ 非致命错误，仅提示不阻断游戏
+        console.info('ℹ️ 成绩上报未成功（不影响游戏）:', result.message)
       }
     } catch (error) {
-      console.error('❌ 成绩上报异常:', error)
+      // ⭐ 网络错误或后端不可用时，给出友好提示
+      const errorMessage = error instanceof Error ? error.message : '未知错误'
+      console.warn('⚠️ 成绩上报失败（可能原因：后端未启动或网络问题）:', errorMessage)
     }
   }
 

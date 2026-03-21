@@ -315,11 +315,6 @@ export interface ThemeConfig {
 // ==================== 主题信息 (数据库实体) ====================
 
 /**
- * 主题适用范围
- */
-export type ApplicableScope = 'all' | 'specific';
-
-/**
  * 所有者类型：GAME-游戏，APPLICATION-应用
  */
 export type OwnerType = 'GAME' | 'APPLICATION';
@@ -338,12 +333,9 @@ export interface ThemeInfo {
   themeName: string;
   authorName?: string;
   
-  // ⭐ NEW: 所有者类型和 ID
+  // ⭐ 所有者类型和 ID
   ownerType?: OwnerType;
   ownerId?: number | null;
-  
-  // ⚠️ DEPRECATED: 保留以兼容旧版本
-  applicableScope?: ApplicableScope;
   
   price: number;
   status: ThemeStatus;
@@ -391,12 +383,8 @@ export interface GameInfo {
  * 主题列表查询参数
  */
 export interface ThemeListParams {
-  // ⭐ NEW: 新的查询参数
   ownerType?: OwnerType;
   ownerId?: number | null;
-  
-  // ⚠️ DEPRECATED: 保留以兼容旧版本
-  applicableScope?: ApplicableScope;
   gameId?: number;
   gameCode?: string;
   
@@ -412,7 +400,8 @@ export interface ThemeListParams {
 export interface ThemeUploadPayload {
   themeName: string;
   authorName?: string;
-  applicableScope: ApplicableScope;
+  ownerType?: OwnerType;
+  ownerId?: number;
   price?: number;
   description?: string;
   thumbnailUrl?: string;
@@ -457,7 +446,8 @@ export interface ThemeFormData {
     name: string;
     author: string;
     description?: string;
-    applicableScope: ApplicableScope;
+    ownerType?: OwnerType;
+    ownerId?: number;
     selectedGameId?: number;
     selectedGameCode?: string;
     price: number;

@@ -34,9 +34,9 @@
           <span v-if="theme.sourceIcon" class="badge-source">
             {{ theme.sourceIcon }} {{ theme.sourceLabel }}
           </span>
-          <!-- 状态标签（仅我的主题显示） -->
-          <span v-if="theme.source === 'mine' && theme.status" class="badge-status" :class="theme.status">
-            {{ theme.status === 'on_sale' ? '在售' : '下架' }}
+          <!-- 状态标签（有 status 字段就显示） -->
+          <span v-if="theme.status" class="badge-status" :class="theme.status">
+            {{ theme.status === 'on_sale' ? '在售' : theme.status === 'pending' ? '审核中' : '下架' }}
           </span>
           <!-- 适用范围标签 ⭐ UPDATED -->
           <span class="badge-scope" :class="getOwnerTypeClass(theme.ownerType)">
@@ -85,24 +85,34 @@
             </button>
           </template>
 
-          <!-- 我的主题操作 -->
-          <template v-else-if="theme.source === 'mine'">
-            <button 
-              class="btn-action btn-toggle"
-              @click="handleToggle(theme)"
-              :disabled="isToggling"
-            >
-              {{ theme.status === 'on_sale' ? '⬇️ 下架' : '⬆️ 上架' }}
-            </button>
-            <button class="btn-action btn-edit" @click="handleEdit(theme)">
-              ✏️ 编辑
-            </button>
-            <button class="btn-action btn-stats" @click="handleStats(theme)">
-              📊 数据
-            </button>
-            <button class="btn-action btn-delete" @click="handleDelete(theme)">
-              🗑️ 删除
-            </button>
+          <!-- 我的主题/可管理的主题操作 -->
+          <template v-else-if="theme.source === 'mine' || !theme.source">
+            <!-- 审核中的主题不显示操作按钮 -->
+            <template v-if="theme.status === 'pending'">
+              <div class="pending-hint">
+                <span class="pending-icon">⏳</span>
+                <span class="pending-text">审核中，请稍候...</span>
+              </div>
+            </template>
+            <!-- 已上架/已下架的主题显示操作按钮 -->
+            <template v-else>
+              <button 
+                class="btn-action btn-toggle"
+                @click="handleToggle(theme)"
+                :disabled="isToggling"
+              >
+                {{ theme.status === 'on_sale' ? '⬇️ 下架' : '⬆️ 上架' }}
+              </button>
+              <button class="btn-action btn-edit" @click="handleEdit(theme)">
+                ✏️ 编辑
+              </button>
+              <button class="btn-action btn-stats" @click="handleStats(theme)">
+                📊 数据
+              </button>
+              <button class="btn-action btn-delete" @click="handleDelete(theme)">
+                🗑️ 删除
+              </button>
+            </template>
           </template>
 
           <!-- 购买的主题操作 -->
@@ -208,7 +218,7 @@ function handleStats(theme: CloudThemeInfo) {
 
 // 处理删除
 async function handleDelete(theme: CloudThemeInfo) {
-  const confirmed = await useConfirm({ message: `确定要删除主题"${theme.name || theme.themeName}"吗？此操作不可恢复!`, title: '删除确认', confirmVariant: 'danger' });
+  const confirmed = await useConfirm({ message: `确定要删除主题"${theme.name}"吗？此操作不可恢复!`, title: '删除确认', confirmVariant: 'danger' });
   if (confirmed) emit('delete', theme);
 }
 </script>
@@ -542,6 +552,39 @@ async function handleDelete(theme: CloudThemeInfo) {
     &:hover {
       background: rgba(244, 67, 54, 0.2);
     }
+  }
+}
+
+// 审核中提示
+.pending-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(236, 197, 75, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #d97706;
+  grid-column: 1 / -1;
+
+  .pending-icon {
+    font-size: 16px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .pending-text {
+    color: #92400e;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
   }
 }
 </style>

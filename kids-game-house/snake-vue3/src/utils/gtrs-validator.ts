@@ -198,52 +198,44 @@ function validateResourceUrls(theme: any): string[] {
 
 /**
  * 判断是否为有效的资源 URL
- * 支持：http://, https://, 相对路径 (./, ../), assets/, /resources/, /public/, 根路径 (/), 颜色值
+ * 支持：
+ *   - http://, https://                完整 URL
+ *   - ./, ../                          相对路径
+ *   - assets/, themes/, games/         本地资源目录（会被 normalizeSrcPaths 补全为 /assets/... 等）
+ *   - /resources/                      后端资源接口
+ *   - /public/                         旧格式（normalizeSrcPaths 自动去掉 /public 前缀）
+ *   - /（非 //）                       绝对根路径，直接使用当前域名端口
+ *   - #, rgb(), rgba()                 颜色值兜底
  */
 function isValidResourceUrl(url: string): boolean {
   if (!url) return false
-  
+
   // 完整 URL
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return true
-  }
-  
+  if (url.startsWith('http://') || url.startsWith('https://')) return true
+
   // 相对路径
-  if (url.startsWith('./') || url.startsWith('../')) {
-    return true
-  }
-  
-  // assets 目录
-  if (url.startsWith('assets/')) {
-    return true
-  }
-  
+  if (url.startsWith('./') || url.startsWith('../')) return true
+
+  // ⭐ 本地资源目录（不带前导 /，normalizeSrcPaths 会自动补全为 /assets/xxx）
+  if (url.startsWith('assets/')) return true
+  if (url.startsWith('themes/')) return true   // themes/default/images/...
+  if (url.startsWith('games/'))  return true   // games/snake-vue3/...
+  if (url.startsWith('audio/'))  return true   // audio/xxx.mp3
+
   // 后端资源接口
-  if (url.startsWith('/resources/')) {
-    return true
-  }
-  
-  // ⭐ 支持 /public/ 开头的绝对路径（构建后的资源路径）
-  if (url.startsWith('/public/')) {
-    return true
-  }
-  
-  // ⭐ 新增：支持以 / 开头的根路径（会自动使用当前页面的 IP 和端口）
-  // 例如：/games/snake-vue3/themes/default/images/scene/food_apple.png
-  // 实际请求：http://当前页面 IP:端口/games/snake-vue3/themes/default/images/scene/food_apple.png
-  if (url.startsWith('/') && !url.startsWith('//')) {
-    return true
-  }
-  
-  // ⭐ 颜色值作为 src (用于 CSS 颜色兜底)
-  if (url.startsWith('#')) {
-    return true
-  }
-  
-  if (url.startsWith('rgb(') || url.startsWith('rgba(')) {
-    return true
-  }
-  
+  if (url.startsWith('/resources/')) return true
+
+  // 旧格式（normalizeSrcPaths 自动去掉 /public 前缀）
+  if (url.startsWith('/public/')) return true
+
+  // 根路径（自动使用当前页面域名+端口）
+  // 例如：/assets/themes/default/images/scene/food_apple.png
+  if (url.startsWith('/') && !url.startsWith('//')) return true
+
+  // 颜色值兜底
+  if (url.startsWith('#')) return true
+  if (url.startsWith('rgb(') || url.startsWith('rgba(')) return true
+
   return false
 }
 

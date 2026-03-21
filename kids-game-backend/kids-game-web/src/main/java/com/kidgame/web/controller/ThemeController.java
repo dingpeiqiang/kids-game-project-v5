@@ -45,9 +45,8 @@ public class ThemeController {
 
     /**
      * 获取主题列表
-     * @param applicableScope 适用范围筛选（all-应用主题/specific-游戏主题）
-     * @param gameId 游戏ID（仅当applicableScope=specific时有效）
-     * @param gameCode 游戏代码（仅当applicableScope=specific时有效）
+     * @param ownerType 所有者类型：GAME-游戏主题
+     * @param ownerId 所有者 ID（游戏主题时需要）
      * @param status 状态筛选（可选）
      * @param page 页码
      * @param pageSize 每页大小
@@ -77,21 +76,13 @@ public class ThemeController {
                 // 使用 fastjson 将对象转为 Map
                 themeMap = JSON.parseObject(JSON.toJSONString(theme), Map.class);
                 
-                // 查询主题关联的游戏信息
-                if ("specific".equals(theme.getApplicableScope())) {
-                    // 从 theme_game_relation 获取关联的游戏
-                    List<Long> relatedGameIds = themeService.getThemeGames(theme.getThemeId());
-                    if (relatedGameIds != null && !relatedGameIds.isEmpty()) {
-                        // 获取第一个关联游戏的详细信息
-                        for (Long relatedGameId : relatedGameIds) {
-                            var game = themeService.getGameById(relatedGameId);
-                            if (game != null) {
-                                themeMap.put("gameId", game.getGameId());
-                                themeMap.put("gameCode", game.getGameCode());
-                                themeMap.put("gameName", game.getGameName());
-                                break; // 只取第一个
-                            }
-                        }
+                // 通过 ownerType + ownerId 获取游戏信息
+                if ("GAME".equals(theme.getOwnerType()) && theme.getOwnerId() != null) {
+                    var game = themeService.getGameById(theme.getOwnerId());
+                    if (game != null) {
+                        themeMap.put("gameId", game.getGameId());
+                        themeMap.put("gameCode", game.getGameCode());
+                        themeMap.put("gameName", game.getGameName());
                     }
                 }
                 
@@ -135,21 +126,13 @@ public class ThemeController {
             // 将 ThemeInfo 转为 Map
             Map<String, Object> themeMap = JSON.parseObject(JSON.toJSONString(theme), Map.class);
                 
-            // ⭐ 为主题添加游戏关联信息（与 list 接口保持一致）
-            if ("specific".equals(theme.getApplicableScope())) {
-                // 从 theme_game_relation 获取关联的游戏
-                List<Long> relatedGameIds = themeService.getThemeGames(theme.getThemeId());
-                if (relatedGameIds != null && !relatedGameIds.isEmpty()) {
-                    // 获取第一个关联游戏的详细信息
-                    for (Long relatedGameId : relatedGameIds) {
-                        var game = themeService.getGameById(relatedGameId);
-                        if (game != null) {
-                            themeMap.put("gameId", game.getGameId());
-                            themeMap.put("gameCode", game.getGameCode());
-                            themeMap.put("gameName", game.getGameName());
-                            break; // 只取第一个
-                        }
-                    }
+            // 通过 ownerType + ownerId 获取游戏信息
+            if ("GAME".equals(theme.getOwnerType()) && theme.getOwnerId() != null) {
+                var game = themeService.getGameById(theme.getOwnerId());
+                if (game != null) {
+                    themeMap.put("gameId", game.getGameId());
+                    themeMap.put("gameCode", game.getGameCode());
+                    themeMap.put("gameName", game.getGameName());
                 }
             }
                 
@@ -264,20 +247,46 @@ public class ThemeController {
     /**
      * 获取我的主题列表
      * @param request HTTP 请求
-     * @return 主题列表
+     * @return 主题列表（包含游戏关联信息）
      */
     @Operation(summary = "获取我的主题")
     @GetMapping("/my-cloud-themes")
-    public Result<List<ThemeInfo>> getMyThemes(HttpServletRequest request) {
-        
+    public Result<List<Map<String, Object>>> getMyThemes(HttpServletRequest request) {
+            
         try {
             String userIdStr = (String) request.getAttribute("userId");
             Long authorId = Long.valueOf(userIdStr);
-            
-            log.info("获取我的主题. AuthorId: {}", authorId);
-            
+                
+            log.info("获取我的主题。AuthorId: {}", authorId);
+                
             List<ThemeInfo> themes = themeService.getMyThemes(authorId);
-            return Result.success(themes);
+                
+            // ⭐ 为每个主题添加游戏信息（与 list 接口保持一致）
+            List<Map<String, Object>> listWithGameName = new java.util.ArrayList<>();
+            for (ThemeInfo theme : themes) {
+                Map<String, Object> themeMap = new HashMap<>();
+                // 使用 fastjson 将对象转为 Map
+                themeMap = JSON.parseObject(JSON.toJSONString(theme), Map.class);
+                    
+                // 查询主题关联的游戏信息（通过 ownerType + ownerId）
+                if ("GAME".equals(theme.getOwnerType()) && theme.getOwnerId() != null) {
+                    var game = themeService.getGameById(theme.getOwnerId());
+                    if (game != null) {
+                        themeMap.put("gameId", game.getGameId());
+                        themeMap.put("gameCode", game.getGameCode());
+                        themeMap.put("gameName", game.getGameName());
+                    }
+                }
+                    
+                // 如果没有关联游戏，设置默认值
+                if (!themeMap.containsKey("gameName")) {
+                    themeMap.put("gameName", "游戏主题");
+                }
+                    
+                listWithGameName.add(themeMap);
+            }
+                
+            return Result.success(listWithGameName);
         } catch (Exception e) {
             log.error("获取我的主题失败", e);
             return Result.error("获取我的主题失败：" + e.getMessage());
@@ -294,20 +303,50 @@ public class ThemeController {
     @Operation(summary = "切换上架状态")
     @PostMapping("/toggle-sale")
     public Result<ThemeInfo> toggleSaleStatus(
-            @Parameter(description = "主题 ID") 
+            @Parameter(description = "主题 ID")
             @RequestParam Long themeId,
-            @Parameter(description = "是否上架") 
+            @Parameter(description = "是否上架")
             @RequestParam Boolean onSale,
             HttpServletRequest request) {
-        
+
         try {
             log.info("切换主题上架状态. ThemeId: {}, OnSale: {}", themeId, onSale);
-            
+
             ThemeInfo theme = themeService.toggleSaleStatus(themeId, onSale);
             return Result.success(theme);
         } catch (Exception e) {
             log.error("切换主题上架状态失败", e);
             return Result.error("切换主题上架状态失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 审批主题（通过/拒绝）
+     * @param themeId 主题 ID
+     * @param approved true-通过（上架），false-拒绝（下架）
+     * @param request HTTP 请求
+     * @return 更新后的主题信息
+     */
+    @Operation(summary = "审批主题")
+    @PostMapping("/approve")
+    public Result<ThemeInfo> approveTheme(
+            @Parameter(description = "主题 ID")
+            @RequestParam Long themeId,
+            @Parameter(description = "是否通过：true-通过，false-拒绝")
+            @RequestParam Boolean approved,
+            HttpServletRequest request) {
+
+        try {
+            log.info("审批主题. ThemeId: {}, Approved: {}", themeId, approved);
+
+            ThemeInfo theme = themeService.approveTheme(themeId, approved);
+            if (theme == null) {
+                return Result.error("审批失败：主题不存在或状态不允许审批");
+            }
+            return Result.success(theme);
+        } catch (Exception e) {
+            log.error("审批主题失败", e);
+            return Result.error("审批主题失败：" + e.getMessage());
         }
     }
 

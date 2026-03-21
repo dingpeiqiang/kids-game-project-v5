@@ -49,12 +49,6 @@ public class ThemeInfo implements Serializable {
     private String themeName;
 
     /**
-     * 适用范围：all-全游戏/specific-指定游戏
-     */
-    @TableField("applicable_scope")
-    private String applicableScope;
-
-    /**
      * 作者名称
      */
     @TableField("author_name")

@@ -30,9 +30,8 @@ export interface CloudThemeInfo {
   rating?: number;
   status: 'on_sale' | 'offline' | 'pending';
   createdAt: number;
-  applicableScope?: 'all' | 'specific';
   
-  // ⭐ 游戏关联字段（明确分工）
+  // 游戏关联字段
   gameId?: number;        // 游戏 ID - 数据库主键（用于业务逻辑、关系查询）
   gameCode?: string;      // 游戏代码 - 资源加载标识符（用于文件系统路径、必填）
   gameName?: string;      // 游戏名称 - UI 显示用
@@ -107,11 +106,11 @@ class ThemeApiService extends BaseApiService {
 
   /**
    * 获取我上传的云端主题
-   * GET /api/theme/my-cloud-themes?creatorId=xxx
+   * GET /api/theme/my-cloud-themes
+   * 后端从认证信息中获取用户ID，不需要传递参数
    */
-  async getMyThemes(creatorId?: number): Promise<CloudThemeInfo[]> {
-    const params = creatorId ? `?creatorId=${creatorId}` : '';
-    return this.get<CloudThemeInfo[]>(`/api/theme/my-cloud-themes${params}`);
+  async getMyThemes(): Promise<CloudThemeInfo[]> {
+    return this.get<CloudThemeInfo[]>('/api/theme/my-cloud-themes');
   }
 
   /**
@@ -149,10 +148,10 @@ class ThemeApiService extends BaseApiService {
 
   /**
    * 切换主题销售状态
-   * POST /api/theme/toggle-sale
+   * POST /api/theme/toggle-sale?themeId=xxx&onSale=true
    */
   async toggleSale(themeId: string, onSale: boolean): Promise<{ success: boolean }> {
-    return this.post<{ success: boolean }>('/api/theme/toggle-sale', { themeId, onSale });
+    return this.post<{ success: boolean }>(`/api/theme/toggle-sale?themeId=${themeId}&onSale=${onSale}`, null);
   }
 
   /**

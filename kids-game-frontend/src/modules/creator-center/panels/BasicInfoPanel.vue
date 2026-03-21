@@ -195,10 +195,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete, Document, Edit } from '@element-plus/icons-vue'
 import { useUserStore } from '@/core/store/user.store'
+import { gameApi } from '@/services/game-api.service'
 import type { GTRSTheme } from '@/utils/gtrs-validator'
 import ImageCropper from '../components/ImageCropper.vue'
 
@@ -268,12 +269,34 @@ const hasSeenGuide = ref(false)
 const cropperVisible = ref(false)
 const tempImageUrl = ref('')
 
-// 游戏列表
-const gameList = [
-  { label: '贪吃蛇', value: 'game_snake_v3' },
-  { label: '植物大战僵尸', value: 'game_pvz_v1' },
-  { label: '飞行射击', value: 'game_shooter_v1' }
-]
+// 游戏列表（从后端动态加载）
+const gameList = ref<{ label: string; value: string; dbGameId: number }[]>([])
+const selectedDbGameId = ref<number | null>(null)
+
+// 从后端加载游戏列表
+const loadGameList = async () => {
+  try {
+    const games = await gameApi.getList()
+    gameList.value = games.map((g: any) => ({
+      label: g.gameName || g.name,
+      value: `game_${(g.gameCode || '').toLowerCase().replace(/-/g, '_')}`,
+      dbGameId: g.gameId   // 数据库主键
+    }))
+    console.log('游戏列表加载完成:', gameList.value)
+  } catch (e) {
+    console.error('加载游戏列表失败:', e)
+    // 降级为硬编码列表
+    gameList.value = [
+      { label: '贪吃蛇', value: 'game_snake_v3', dbGameId: 0 },
+      { label: '植物大战僵尸', value: 'game_pvz_v1', dbGameId: 0 },
+      { label: '飞行射击', value: 'game_shooter_v1', dbGameId: 0 }
+    ]
+  }
+}
+
+onMounted(() => {
+  loadGameList()
+})
 
 // 标签列表
 const tagList = [
@@ -414,6 +437,11 @@ const handleGameChange = (gameId: string) => {
   const gameName = gameId.replace('game_', '').replace('_v1', '').replace('_v3', '')
   formData.value.themeId = `theme_${gameName}_${Date.now()}`
   isEditMode.value = false
+
+  // 记录数据库 gameId
+  const selected = gameList.value.find(g => g.value === gameId)
+  selectedDbGameId.value = selected ? selected.dbGameId : null
+  console.log('选择游戏:', gameId, '→ 数据库gameId:', selectedDbGameId.value)
 }
 
 // 关闭引导

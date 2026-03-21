@@ -37,8 +37,7 @@ export interface ThemeConfig {
   createdAt?: number;
   updatedAt?: number;
   
-  // 新增字段，支持按应用/游戏查询
-  applicableScope?: 'all' | 'specific';
+  // 游戏关联字段
   gameId?: number;
   gameCode?: string;
   themeId?: number | string;
@@ -344,8 +343,7 @@ class ThemeManager {
           description: cloud.description,
           assets: {},
           styles: {},
-          // 添加额外信息
-          applicableScope: cloud.applicableScope,
+          // 添加游戏关联信息
           gameId: cloud.gameId,
           gameCode: cloud.gameCode,
           themeId: cloud.themeId || cloud.id,

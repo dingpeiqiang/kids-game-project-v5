@@ -25,11 +25,6 @@ public class ThemeResponseDTO {
     private String themeName;
     
     /**
-     * 适用范围：all-全游戏/specific-指定游戏
-     */
-    private String applicableScope;
-    
-    /**
      * 作者名称
      */
     private String authorName;
@@ -87,7 +82,6 @@ public class ThemeResponseDTO {
         dto.setThemeId(theme.getThemeId());
         dto.setAuthorId(theme.getAuthorId());
         dto.setThemeName(theme.getThemeName());
-        dto.setApplicableScope(theme.getApplicableScope());
         dto.setAuthorName(theme.getAuthorName());
         dto.setPrice(theme.getPrice());
         dto.setStatus(theme.getStatus());

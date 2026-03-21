@@ -20,6 +20,13 @@
       <!-- 右侧：控制按钮 -->
       <div class="flex gap-2 pointer-events-auto">
         <button
+          @click="goToHome"
+          class="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg backdrop-blur-sm transition-all"
+          title="返回首页"
+        >
+          🏠
+        </button>
+        <button
           @click="toggleFullscreen"
           class="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg backdrop-blur-sm transition-all"
           :title="isFullscreen ? '退出全屏' : '进入全屏'"
@@ -120,6 +127,7 @@ import ScorePanel from '../ui/ScorePanel.vue'
 import PauseButton from '../ui/PauseButton.vue'
 import SoundToggle from '../ui/SoundToggle.vue'
 import GameButton from '../ui/GameButton.vue'
+import { initUIParams } from '@/utils/uiResponsive'
 
 const router = useRouter()
 const route = useRoute()
@@ -149,6 +157,16 @@ const loadError = ref<{
 // 触摸控制
 let touchStartX = 0
 let touchStartY = 0
+
+/**
+ * 返回首页
+ */
+function goToHome() {
+  // 清理游戏资源
+  cleanupGame()
+  // 跳转到首页
+  router.push('/')
+}
 
 /**
  * 切换全屏
@@ -214,9 +232,24 @@ async function handleRetry() {
 }
 
 /**
+ * 窗口大小变化处理
+ */
+const handleResize = () => {
+  initUIParams(window.innerWidth, window.innerHeight)
+  console.log('🔄 游戏页面 resize, UI scale:', window.innerWidth, window.innerHeight)
+}
+
+/**
  * 初始化游戏
  */
 onMounted(async () => {
+  // ⭐ 初始化 UI 参数（确保与其他页面一致）
+  initUIParams(window.innerWidth, window.innerHeight)
+  console.log('🎮 游戏页面加载，UI scale:', window.innerWidth, window.innerHeight)
+  
+  // 监听窗口大小变化
+  window.addEventListener('resize', handleResize)
+  
   if (gameContainer.value) {
     phaserGameRef.value = new SnakePhaserGame(gameContainer.value)
     // 初始化游戏数据
@@ -275,7 +308,7 @@ onMounted(async () => {
 
     // 监听全屏变化
     document.addEventListener('fullscreenchange', handleFullscreenChange)
-
+    
     // 添加触摸事件监听器（非被动以支持 preventDefault）
     if (gameContainer.value) {
       gameContainer.value.addEventListener('touchmove', handleTouchMove, { passive: false })
@@ -284,17 +317,34 @@ onMounted(async () => {
 })
 
 /**
- * 清理资源
+ * 清理游戏资源
  */
-onUnmounted(() => {
+const cleanupGame = () => {
   if (gameLoop) {
     cancelAnimationFrame(gameLoop)
+    gameLoop = null
   }
+  
   if (phaserGameRef.value) {
     phaserGameRef.value.destroy()
+    phaserGameRef.value = null
   }
+}
+
+/**
+ * 组件卸载时清理资源
+ */
+onUnmounted(() => {
+  // 移除 resize 监听
+  window.removeEventListener('resize', handleResize)
+  
+  // 清理游戏循环和资源
+  cleanupGame()
+  
+  // 移除其他事件监听
   window.removeEventListener('keydown', handleKeyDown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  
   if (gameContainer.value) {
     gameContainer.value.removeEventListener('touchmove', handleTouchMove)
   }

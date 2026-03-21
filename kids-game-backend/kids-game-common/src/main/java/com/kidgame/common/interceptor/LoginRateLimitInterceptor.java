@@ -3,6 +3,7 @@ package com.kidgame.common.interceptor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.method.HandlerMethod;
@@ -17,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "game.rate-limit.enabled", havingValue = "true", matchIfMissing = false)
 public class LoginRateLimitInterceptor implements HandlerInterceptor {
 
     private static final Map<String, AtomicInteger> ipRequestCount = new ConcurrentHashMap<>();

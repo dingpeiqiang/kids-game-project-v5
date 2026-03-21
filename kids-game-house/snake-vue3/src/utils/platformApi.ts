@@ -155,18 +155,22 @@ export async function reportGameResult(request: GameReportRequest): Promise<{
         consumePoints: response.data.data?.consumePoints
       }
     } else {
-      console.error('成绩上报失败:', response.data.message)
-      return { success: false, message: response.data.message }
+      // ⭐ 后端返回错误（如 500），给出友好提示
+      const errMsg = response.data.message || `成绩上报失败 (code: ${response.data.code})`
+      console.info('ℹ️ 成绩上报未成功（后端响应）:', errMsg)
+      return { success: false, message: errMsg }
     }
   } catch (error) {
     const axiosError = error as AxiosError
-    console.error('成绩上报失败:', axiosError.message)
     
-    // 如果是网络错误，给出更友好的提示
+    // ⭐ 网络错误或后端不可用时，给出友好提示
     if (axiosError.code === 'ECONNREFUSED' || axiosError.code === 'ERR_NETWORK') {
+      console.warn('⚠️ 无法连接到平台服务器，请检查后端是否启动')
       return { success: false, message: '无法连接到平台服务器' }
     }
     
+    // ⭐ 其他错误，记录日志但不影响游戏
+    console.info('ℹ️ 成绩上报请求异常:', axiosError.message)
     return { 
       success: false, 
       message: axiosError.response?.data 

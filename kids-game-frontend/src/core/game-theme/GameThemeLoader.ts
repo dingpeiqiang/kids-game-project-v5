@@ -15,7 +15,6 @@ const API_BASE = '/api';
 export interface GameThemeConfig {
   themeId: number;
   themeName: string;
-  applicableScope: 'all' | 'specific';
   gameCode?: string;
   config: ThemeConfig;
 }
@@ -115,7 +114,6 @@ export class GameThemeLoader {
         const themes = themeList.map((theme: any) => ({
           themeId: theme.themeId || theme.id,
           themeName: theme.themeName || theme.name,
-          applicableScope: theme.applicableScope,
           gameCode: theme.gameCode,
           config: theme.config || {},
         }));
@@ -187,7 +185,6 @@ export class GameThemeLoader {
         const themeConfig: GameThemeConfig = {
           themeId,
           themeName: '',
-          applicableScope: 'specific',
           config,
         };
 

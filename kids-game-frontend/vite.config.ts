@@ -78,6 +78,11 @@ export default defineConfig({
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/public/, ''),
         },
+      // 贪吃蛇游戏主题资源代理
+      '/themes': {
+        target: 'http://localhost:3005',
+        changeOrigin: true,
+      },
     },
     // 配置静态资源服务
     fs: {

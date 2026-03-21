@@ -149,7 +149,10 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'publish'): void
+  (e: 'publish', data: {
+    price: number
+    description: string
+  }): void
 }
 
 const props = defineProps<Props>()
@@ -279,24 +282,34 @@ const submitPublish = async () => {
     ? '免费'
     : `${publishOption.value.price} 元`
 
-  await ElMessageBox.confirm(
-    `确定要发布主题「${props.themeData.themeInfo.themeName}」吗？\n\n价格：${priceText}`,
-    '确认发布',
-    {
-      type: 'warning',
-      confirmButtonText: '确定发布',
-      cancelButtonText: '取消'
+  try {
+    await ElMessageBox.confirm(
+      `确定要发布主题「${props.themeData.themeInfo.themeName}」吗？\n\n价格：${priceText}`,
+      '确认发布',
+      {
+        type: 'warning',
+        confirmButtonText: '确定发布',
+        cancelButtonText: '取消'
+      }
+    )
+  } catch (error) {
+    // 用户取消操作，不做任何处理
+    if (error === 'cancel' || (error as Error).message === 'cancel') {
+      return
     }
-  )
+    throw error // 重新抛出其他错误
+  }
 
   publishing.value = true
   try {
-    // TODO: 调用后端 API 发布主题
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    ElMessage.success('主题提交成功！等待审核中...')
-    emit('publish')
+    // 传递价格和发布说明给父组件
+    const finalPrice = publishOption.value.priceType === 'free' ? 0 : publishOption.value.price
+    emit('publish', {
+      price: finalPrice,
+      description: publishOption.value.description
+    })
   } catch (error) {
+    console.error('发布过程中出错:', error)
     ElMessage.error('发布失败：' + (error as Error).message)
   } finally {
     publishing.value = false

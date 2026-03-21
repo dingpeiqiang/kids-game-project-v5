@@ -23,10 +23,10 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private JwtInterceptor jwtInterceptor;
 
-    @Autowired
+    @Autowired(required = false)
     private RateLimitInterceptor rateLimitInterceptor;
 
-    @Autowired
+    @Autowired(required = false)
     private LoginRateLimitInterceptor loginRateLimitInterceptor;
 
     @Autowired
@@ -74,6 +74,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/kid/login",
                         "/api/parent/login",
+                        "/api/auth/login",        // 统一认证登录接口
+                        "/api/auth/public-key",   // 获取公钥接口（登录前需要）
                         "/api/game/list",          // 游戏列表不需要登录
                         "/api/game/code/*",       // 获取游戏信息不需要登录
                         "/api/game/config/**",    // 游戏配置不需要登录
@@ -87,15 +89,19 @@ public class WebConfig implements WebMvcConfigurer {
                         "/favicon.ico"
                 );
     
-        // 接口限流拦截器（通用）
-        registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/api/**")
-                .order(1); // 限流拦截器优先级更高
-    
-        // 登录接口专用限流拦截器
-        registry.addInterceptor(loginRateLimitInterceptor)
-                .addPathPatterns("/api/**/login")
-                .order(2);
+        // 接口限流拦截器（通用）- 通过配置开关控制
+        if (rateLimitInterceptor != null) {
+            registry.addInterceptor(rateLimitInterceptor)
+                    .addPathPatterns("/api/**")
+                    .order(1);
+        }
+        
+        // 登录接口专用限流拦截器 - 通过配置开关控制
+        if (loginRateLimitInterceptor != null) {
+            registry.addInterceptor(loginRateLimitInterceptor)
+                    .addPathPatterns("/api/**/login")
+                    .order(2);
+        }
     }
 
     /**
