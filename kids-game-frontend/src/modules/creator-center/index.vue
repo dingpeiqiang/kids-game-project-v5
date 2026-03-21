@@ -160,6 +160,40 @@
         @buy="handleBuy"
         @download="handleDownload"
       />
+      
+      <!-- ⭐ 分页控件 -->
+      <div v-if="pagination.totalPages > 1" class="pagination-container">
+        <button
+          :disabled="pagination.current <= 1"
+          @click="goToPage(pagination.current - 1)"
+          class="btn-page"
+        >
+          ⬅️ 上一页
+        </button>
+        
+        <div class="page-numbers">
+          <button
+            v-for="page in visiblePages"
+            :key="page"
+            :class="['page-number', { active: page === pagination.current }]"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+        </div>
+        
+        <button
+          :disabled="pagination.current >= pagination.totalPages"
+          @click="goToPage(pagination.current + 1)"
+          class="btn-page"
+        >
+          下一页 ➡️
+        </button>
+        
+        <span class="pagination-info">
+          共 {{ pagination.total }} 条，第 {{ pagination.current }} / {{ pagination.totalPages }} 页
+        </span>
+      </div>
     </main>
   </div>
 </template>
@@ -191,7 +225,7 @@ const userAvatar = computed(() => userStore.parentAvatar || '👨‍👩‍👧'
 
 // 标签页配置（简化版）
 const tabs = [
-  { id: 'my-themes', label: '我的主题', icon: '🎨' },
+  { id: 'my-themes', label: '已有主题', icon: '📦' },
   { id: 'store', label: '主题商店', icon: '🛍️' },
 ];
 
@@ -200,7 +234,16 @@ const currentTab = ref('my-themes');
 
 // 数据状态
 const officialThemes = ref<Array<any>>([]); // 官方主题（从商店获取）
-const myThemes = ref<CloudThemeInfo[]>([]);
+const myThemes = ref<CloudThemeInfo[]>([]); // 自己创建的主题
+const purchasedThemes = ref<CloudThemeInfo[]>([]); // 已购买的主题
+
+// ⭐ 新增：分页状态
+const pagination = ref({
+  current: 1,
+  size: 20,
+  total: 0,
+  totalPages: 0
+});
 
 // 筛选状态
 const filterOwnerType = ref<'GAME' | 'APPLICATION'>('APPLICATION'); // APPLICATION: 应用主题，GAME: 游戏主题
@@ -214,6 +257,7 @@ const allThemes = ref<any[]>([]);
 
 // 加载状态
 const loadingMyThemes = ref(false);
+const loadingPurchasedThemes = ref(false);
 const loadingStore = ref(false);
 const loadingGames = ref(false);
 
@@ -224,35 +268,11 @@ onMounted(() => {
   if (tabFromQuery && tabs.some(t => t.id === tabFromQuery)) {
     currentTab.value = tabFromQuery;
   }
-  
-  loadAllData();
+
   loadGamesList();
+  // 初始加载时根据当前筛选条件加载主题
+  reloadCurrentData();
 });
-
-// 加载所有数据
-async function loadAllData() {
-  // 串行加载，确保顺序执行
-  await loadMyThemes();
-  await loadStoreThemes();  // 先加载商店主题，这会设置 allThemes.value
-  await loadGamesList();
-
-  // 初始加载后合并我的主题
-  console.log('[CreatorCenter] loadAllData - 合并前 allThemes.length:', allThemes.value.length);
-  const themes: any[] = [...allThemes.value];
-  myThemes.value.forEach((theme: any) => {
-    const exists = themes.find(t => t.themeId === theme.themeId);
-    if (!exists) {
-      themes.push({
-        ...theme,
-        source: 'mine',
-        sourceLabel: '我的',
-        sourceIcon: '🎨',
-      });
-    }
-  });
-  allThemes.value = themes;
-  console.log('[CreatorCenter] loadAllData - 合并后 allThemes.length:', allThemes.value.length);
-}
 
 // 加载游戏列表（从后端API 获取）
 async function loadGamesList() {
@@ -304,7 +324,7 @@ async function loadMyThemes() {
       myThemes.value = [];
       return;
     }
-    
+
     // 不再传递creatorId参数，后端会从认证信息中获取用户ID
     const themes = await themeApi.getMyThemes();
     myThemes.value = themes || [];
@@ -320,6 +340,30 @@ async function loadMyThemes() {
     }
   } finally {
     loadingMyThemes.value = false;
+  }
+}
+
+// 加载已购买的主题
+async function loadPurchasedThemes() {
+  loadingPurchasedThemes.value = true;
+  try {
+    // 检查用户是否登录
+    const userId = getCurrentUserId();
+    if (!userId || userId === 0) {
+      console.warn('[CreatorCenter] 用户未登录，无法加载已购买主题');
+      purchasedThemes.value = [];
+      return;
+    }
+
+    // 后端从认证信息中获取用户ID
+    const themes = await themeApi.getPurchasedThemes();
+    purchasedThemes.value = themes || [];
+    console.log('[CreatorCenter] 已购买主题加载成功:', purchasedThemes.value.length, 'userId:', userId);
+  } catch (error) {
+    console.error('[CreatorCenter] 加载已购买主题失败:', error);
+    purchasedThemes.value = [];
+  } finally {
+    loadingPurchasedThemes.value = false;
   }
 }
 
@@ -351,14 +395,19 @@ async function loadStoreThemes() {
     // 使用统一的分页数据格式
     const themes = result.list || [];
 
-    // 使用 ownerType + ownerId
+    // 使用 ownerType + ownerId，并映射显示字段
+    // ⭐ 根据 isOfficial 字段判断是否为官方主题
     officialThemes.value = themes.map((theme: any) => ({
       ...theme,
+      // 映射显示字段（ThemeStore 用 name/author）
+      name: theme.themeName || theme.name,
+      author: theme.authorName || theme.author,
       ownerType: theme.ownerType || 'GAME',
       ownerId: theme.ownerId ?? theme.gameId,
-      source: 'official',
-      sourceLabel: '官方',
-      sourceIcon: '🏛️',
+      // ⭐ 根据 isOfficial 字段设置来源
+      source: theme.isOfficial ? 'official' : 'user',
+      sourceLabel: theme.isOfficial ? '官方' : '用户',
+      sourceIcon: theme.isOfficial ? '🏛️' : '👤',
     }));
 
     // 直接设置为显示的主题
@@ -420,33 +469,83 @@ function handleGameSelectChange(event: Event) {
   }
 }
 
-// 重新加载筛选后的数据
+// 重新加载筛选后的数据 ⭐ 后端分页版本
 async function reloadCurrentData() {
-  // 先调用后端 API 获取官方主题
-  await loadStoreThemes();
-  
-  // 然后合并我的主题（根据筛选条件）
-  const themes: any[] = [...allThemes.value];
-  
-  // 如果筛选条件包含"我的"，添加我的主题
-  if (themeSourceFilter.value === 'all' || themeSourceFilter.value === 'mine') {
-    myThemes.value.forEach((theme: any) => {
-      // 避免重复
-      const exists = themes.find(t => t.themeId === theme.themeId);
-      if (!exists) {
-        themes.push({
-          ...theme,
-          source: 'mine',
-          sourceLabel: '我的',
-          sourceIcon: '🎨',
-        });
+  console.log('[CreatorCenter] reloadCurrentData 开始，当前筛选条件:', {
+    themeSourceFilter: themeSourceFilter.value,
+    filterOwnerType: filterOwnerType.value,
+    selectedGameId: selectedGameId.value
+  });
+
+  try {
+    // ⭐ 核心改进：使用后端分页和过滤
+    const params = {
+      ownerType: filterOwnerType.value,
+      ownerId: selectedGameId.value || undefined,
+      source: themeSourceFilter.value,  // ⭐ 传递来源筛选给后端
+      page: 1,                           // ⭐ 重置到第一页
+      pageSize: 20
+    };
+
+    console.log('[CreatorCenter] 调用 getMyAvailableThemes 参数:', params);
+
+    // ⭐ 后端返回分页数据：{list, total, pageNum, pageSize}
+    const result = await themeApi.getMyAvailableThemes(params);
+    
+    console.log('[CreatorCenter] 可用主题数据:', result);
+
+    // ⭐ 为每个主题添加来源标识（用于 UI 显示）
+    const currentUserId = getCurrentUserId();
+    allThemes.value = result.list.map((theme: any) => {
+      let source: string;
+      let sourceLabel: string;
+      let sourceIcon: string;
+
+      if (theme.isOfficial) {
+        source = 'official';
+        sourceLabel = '官方';
+        sourceIcon = '🏛️';
+      } else if (theme.authorId === currentUserId) {
+        source = 'mine';
+        sourceLabel = '我的';
+        sourceIcon = '🎨';
+      } else {
+        source = 'purchased';
+        sourceLabel = '购买';
+        sourceIcon = '🛒';
       }
+
+      return {
+        ...theme,
+        source,
+        sourceLabel,
+        sourceIcon,
+      };
     });
+
+    // ⭐ 更新分页信息
+    pagination.value.total = result.total;
+    pagination.value.current = (result as any).pageNum || 1;
+    pagination.value.totalPages = Math.ceil(result.total / ((result as any).pageSize || 20));
+
+    console.log('[CreatorCenter] 主题列表更新:', allThemes.value.length, '条，总数:', result.total, {
+      filterOwnerType: filterOwnerType.value,
+      selectedGameId: selectedGameId.value,
+      themeSourceFilter: themeSourceFilter.value
+    });
+
+  } catch (error) {
+    console.error('[CreatorCenter] 加载主题失败:', error);
+    allThemes.value = [];
+    pagination.value.total = 0;
+    pagination.value.current = 1;
+    pagination.value.totalPages = 0;
   }
-  
-  allThemes.value = themes;
-  console.log('[CreatorCenter] 主题列表更新:', themes.length, '条');
 }
+
+
+
+
 
 // 事件处理函数
 function goBack() {
@@ -500,7 +599,7 @@ function handleToggleSale(theme: CloudThemeInfo) {
   const action = newStatus ? '上架' : '下架';
 
   ElMessageBox.confirm(
-    `确定要${action}主题「${theme.name || theme.themeName}」吗？`,
+    `确定要${action}主题「${theme.name}」吗？`,
     '确认操作',
     {
       confirmButtonText: '确定',
@@ -508,13 +607,16 @@ function handleToggleSale(theme: CloudThemeInfo) {
       type: 'warning',
     }
   ).then(async () => {
-    const success = await themeManager.toggleThemeSale(theme.id, newStatus);
-    if (success) {
+    try {
+      // 调用切换上下架 API
+      await themeApi.toggleSale(String(theme.id), newStatus);
+      
       ElMessage.success(`${action}成功！`);
       // 刷新列表以同步状态
-      await loadAllData();
-    } else {
-      ElMessage.error('操作失败，请重试');
+      await reloadCurrentData();
+    } catch (error: any) {
+      console.error('[CreatorCenter] 切换销售状态失败:', error);
+      ElMessage.error('操作失败：' + (error.response?.data?.message || error.message || '未知错误'));
     }
   }).catch(() => {
     // 用户取消
@@ -528,7 +630,41 @@ function handleEdit(theme: CloudThemeInfo) {
 
 function handleDelete(theme: CloudThemeInfo) {
   console.log('[CreatorCenter] 删除主题:', theme);
-  // TODO: 调用 API 删除
+  
+  // 显示确认对话框
+  ElMessageBox.confirm(
+    `确定要删除主题"${theme.name}"吗？此操作不可恢复！`,
+    '删除确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    try {
+      // 调用删除 API
+      await themeApi.delete(String(theme.id));
+      
+      // 删除成功后从列表中移除
+      const index = myThemes.value.findIndex(t => t.id === theme.id);
+      if (index !== -1) {
+        myThemes.value.splice(index, 1);
+      }
+      
+      // 同时从合并列表中移除
+      const allIndex = allThemes.value.findIndex(t => t.id === theme.id);
+      if (allIndex !== -1) {
+        allThemes.value.splice(allIndex, 1);
+      }
+      
+      ElMessage.success('删除成功！');
+    } catch (error: any) {
+      console.error('[CreatorCenter] 删除主题失败:', error);
+      ElMessage.error('删除失败：' + (error.response?.data?.message || error.message || '未知错误'));
+    }
+  }).catch(() => {
+    // 用户取消
+  });
 }
 
 function handleStats(theme: CloudThemeInfo) {
@@ -550,6 +686,82 @@ function handleDownload(themeId: string) {
   console.log('[CreatorCenter] 下载主题:', themeId);
   // TODO: 调用下载 API
 }
+
+// ⭐ 翻页函数
+function goToPage(page: number) {
+  if (page < 1 || page > pagination.value.totalPages) return;
+  
+  console.log('[CreatorCenter] 翻页:', page);
+  pagination.value.current = page;
+  reloadCurrentDataWithPage(page);
+}
+
+// ⭐ 带页码的重新加载
+async function reloadCurrentDataWithPage(page: number) {
+  try {
+    const params = {
+      ownerType: filterOwnerType.value,
+      ownerId: selectedGameId.value || undefined,
+      source: themeSourceFilter.value,
+      page: page,
+      pageSize: 20
+    };
+
+    console.log('[CreatorCenter] 加载第', page, '页，参数:', params);
+
+    const result = await themeApi.getMyAvailableThemes(params);
+    
+    const currentUserId = getCurrentUserId();
+    allThemes.value = result.list.map((theme: any) => {
+      let source: string;
+      let sourceLabel: string;
+      let sourceIcon: string;
+
+      if (theme.isOfficial) {
+        source = 'official';
+        sourceLabel = '官方';
+        sourceIcon = '🏛️';
+      } else if (theme.authorId === currentUserId) {
+        source = 'mine';
+        sourceLabel = '我的';
+        sourceIcon = '🎨';
+      } else {
+        source = 'purchased';
+        sourceLabel = '购买';
+        sourceIcon = '🛒';
+      }
+
+      return {
+        ...theme,
+        source,
+        sourceLabel,
+        sourceIcon,
+      };
+    });
+
+    pagination.value.total = result.total;
+    pagination.value.current = (result as any).pageNum || 1;
+    pagination.value.totalPages = Math.ceil(result.total / ((result as any).pageSize || 20));
+
+    console.log('[CreatorCenter] 第', page, '页加载完成，总数:', result.total);
+  } catch (error) {
+    console.error('[CreatorCenter] 加载主题失败:', error);
+    allThemes.value = [];
+  }
+}
+
+// ⭐ 计算可见的页码
+const visiblePages = computed(() => {
+  const pages: number[] = [];
+  const current = pagination.value.current;
+  const total = pagination.value.totalPages;
+  
+  for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
+    pages.push(i);
+  }
+  
+  return pages;
+});
 
 // 开发模式下的模拟主题数据（我的主题）
 function getMockThemes(): CloudThemeInfo[] {
@@ -909,6 +1121,87 @@ function getMockStoreThemes(): CloudThemeInfo[] {
     color: #4a5568;
     font-weight: 600;
   }
+}
+
+/* ⭐ 分页控件样式 */
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  margin-top: 24px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-page {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #4a5568;
+  font-weight: 500;
+  font-size: 14px;
+
+  &:hover:not(:disabled) {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f7fafc;
+  }
+}
+
+.page-numbers {
+  display: flex;
+  gap: 8px;
+}
+
+.page-number {
+  min-width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #4a5568;
+  font-weight: 500;
+  font-size: 14px;
+
+  &:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+    transform: translateY(-1px);
+  }
+
+  &.active {
+    background: linear-gradient(135deg, #4ECDC4 0%, #45B7D1 100%);
+    border-color: #4ECDC4;
+    color: white;
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+  }
+}
+
+.pagination-info {
+  color: #718096;
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 12px;
 }
 
 /* DIY 面板样式 */

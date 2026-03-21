@@ -96,7 +96,13 @@
             </template>
             <!-- 已上架/已下架的主题显示操作按钮 -->
             <template v-else>
-              <button 
+              <button class="btn-action btn-view" @click="handleView(theme)">
+                👁️ 查看
+              </button>
+              <button class="btn-action btn-diy" @click="handleDIY(theme)">
+                ✨ DIY
+              </button>
+              <button
                 class="btn-action btn-toggle"
                 @click="handleToggle(theme)"
                 :disabled="isToggling"
@@ -104,10 +110,7 @@
                 {{ theme.status === 'on_sale' ? '⬇️ 下架' : '⬆️ 上架' }}
               </button>
               <button class="btn-action btn-edit" @click="handleEdit(theme)">
-                ✏️ 编辑
-              </button>
-              <button class="btn-action btn-stats" @click="handleStats(theme)">
-                📊 数据
+                ✏️ 修改
               </button>
               <button class="btn-action btn-delete" @click="handleDelete(theme)">
                 🗑️ 删除
@@ -471,6 +474,11 @@ async function handleDelete(theme: CloudThemeInfo) {
   gap: 8px;
   padding: 12px 16px;
   border-top: 1px solid #e2e8f0;
+
+  // 当有 5 个按钮时，最后一个按钮占满一行
+  button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
 
 .btn-action {

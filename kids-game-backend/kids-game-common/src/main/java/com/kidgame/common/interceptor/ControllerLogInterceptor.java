@@ -79,10 +79,18 @@ public class ControllerLogInterceptor implements HandlerInterceptor {
 
         long startTime = startTimeHolder.get();
         long endTime = System.currentTimeMillis();
+        long cost = endTime - startTime;
+        String uri = request.getRequestURI();
 
-        // 打印响应日志
-        log.info("========== 请求结束：{}.{} 耗时：{}ms ==========", className, methodName, (endTime - startTime));
-        log.info("响应状态：{}", response.getStatus());
+        // 只打印慢请求（> 500ms）或错误响应
+        if (cost > 500 || response.getStatus() >= 400) {
+            if (cost > 1000) {
+                log.warn("========== 【慢请求】{}.{} 耗时：{}ms ========== URI: {}", className, methodName, cost, uri);
+            } else {
+                log.info("========== 请求结束：{}.{} 耗时：{}ms ========== URI: {}", className, methodName, cost, uri);
+            }
+            log.info("响应状态：{}", response.getStatus());
+        }
 
         // 清理 ThreadLocal
         startTimeHolder.remove();

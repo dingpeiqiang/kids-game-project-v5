@@ -55,19 +55,24 @@ public class ThemeController {
     @Operation(summary = "获取主题列表")
     @GetMapping("/list")
     public Result<Map<String, Object>> listThemes(
-            @Parameter(description = "所有者类型：GAME-游戏主题，APPLICATION-应用主题") 
+            @Parameter(description = "所有者类型：GAME-游戏主题，APPLICATION-应用主题")
             @RequestParam(required = false) String ownerType,
-            @Parameter(description = "所有者 ID（游戏主题时需要）") 
+            @Parameter(description = "所有者 ID（游戏主题时需要）")
             @RequestParam(required = false) Long ownerId,
-            @Parameter(description = "状态筛选：on_sale/offline/pending") 
+            @Parameter(description = "状态筛选：on_sale/offline/pending")
             @RequestParam(required = false) String status,
-            @Parameter(description = "页码") 
+            @Parameter(description = "页码")
             @RequestParam(defaultValue = "1") Integer page,
-            @Parameter(description = "每页大小") 
-            @RequestParam(defaultValue = "20") Integer pageSize) {
+            @Parameter(description = "每页大小")
+            @RequestParam(defaultValue = "20") Integer pageSize,
+            HttpServletRequest request) {
 
         try {
-            Page<ThemeInfo> pageInfo = themeService.listThemes(ownerType, ownerId, status, page, pageSize);
+            // 获取当前登录用户 ID，用于已下架主题过滤
+            String userIdStr = (String) request.getAttribute("userId");
+            Long authorId = (userIdStr != null && !userIdStr.isEmpty()) ? Long.valueOf(userIdStr) : null;
+
+            Page<ThemeInfo> pageInfo = themeService.listThemes(ownerType, ownerId, status, page, pageSize, authorId);
             
             // 为每个主题添加游戏信息（从 theme_game_relation 关联获取）
             List<Map<String, Object>> listWithGameName = new java.util.ArrayList<>();
@@ -294,6 +299,55 @@ public class ThemeController {
     }
 
     /**
+     * 获取已购买的主题列表
+     * @param request HTTP 请求
+     * @return 已购买的主题列表（包含游戏关联信息）
+     */
+    @Operation(summary = "获取已购买的主题")
+    @GetMapping("/purchased-themes")
+    public Result<List<Map<String, Object>>> getPurchasedThemes(HttpServletRequest request) {
+
+        try {
+            String userIdStr = (String) request.getAttribute("userId");
+            Long buyerId = Long.valueOf(userIdStr);
+
+            log.info("获取已购买的主题。BuyerId: {}", buyerId);
+
+            List<ThemeInfo> themes = themeService.getPurchasedThemes(buyerId);
+
+            // ⭐ 为每个主题添加游戏信息（与 list 接口保持一致）
+            List<Map<String, Object>> listWithGameName = new java.util.ArrayList<>();
+            for (ThemeInfo theme : themes) {
+                Map<String, Object> themeMap = new HashMap<>();
+                // 使用 fastjson 将对象转为 Map
+                themeMap = JSON.parseObject(JSON.toJSONString(theme), Map.class);
+
+                // 查询主题关联的游戏信息（通过 ownerType + ownerId）
+                if ("GAME".equals(theme.getOwnerType()) && theme.getOwnerId() != null) {
+                    var game = themeService.getGameById(theme.getOwnerId());
+                    if (game != null) {
+                        themeMap.put("gameId", game.getGameId());
+                        themeMap.put("gameCode", game.getGameCode());
+                        themeMap.put("gameName", game.getGameName());
+                    }
+                }
+
+                // 如果没有关联游戏，设置默认值
+                if (!themeMap.containsKey("gameName")) {
+                    themeMap.put("gameName", "游戏主题");
+                }
+
+                listWithGameName.add(themeMap);
+            }
+
+            return Result.success(listWithGameName);
+        } catch (Exception e) {
+            log.error("获取我的主题失败", e);
+            return Result.error("获取我的主题失败：" + e.getMessage());
+        }
+    }
+
+    /**
      * 切换主题上架状态
      * @param themeId 主题 ID
      * @param onSale 是否上架
@@ -458,16 +512,50 @@ public class ThemeController {
             Long themeId = params.get("themeId");
             log.info("删除主题. ThemeId: {}", themeId);
 
-            // TODO: 实现删除逻辑
-            boolean success = true;
+            boolean success = themeService.deleteTheme(themeId);
+
+            if (!success) {
+                return Result.error("删除失败：主题不存在");
+            }
 
             Map<String, Boolean> result = new HashMap<>();
-            result.put("success", success);
+            result.put("success", true);
 
             return Result.success(result);
         } catch (Exception e) {
             log.error("删除主题失败", e);
             return Result.error("删除主题失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新主题
+     * @param themeId 主题 ID
+     * @param themeData 主题数据
+     * @param request HTTP 请求
+     * @return 更新后的主题信息
+     */
+    @Operation(summary = "更新主题")
+    @PostMapping("/update")
+    public Result<ThemeInfo> updateTheme(
+            @Parameter(description = "主题 ID")
+            @RequestParam Long themeId,
+            @Parameter(description = "主题数据")
+            @RequestBody ThemeUploadDTO themeData,
+            HttpServletRequest request) {
+
+        try {
+            log.info("更新主题. ThemeId: {}", themeId);
+
+            ThemeInfo theme = themeService.updateTheme(themeId, themeData);
+            if (theme == null) {
+                return Result.error("更新失败：主题不存在");
+            }
+
+            return Result.success(theme);
+        } catch (Exception e) {
+            log.error("更新主题失败", e);
+            return Result.error("更新主题失败：" + e.getMessage());
         }
     }
 
@@ -586,6 +674,48 @@ public class ThemeController {
         } catch (Exception e) {
             log.error("快速校验失败", e);
             return Result.error("快速校验失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取用户可用的主题（支持分页和来源筛选）
+     * @param ownerType 所有者类型筛选（GAME-游戏主题/APPLICATION-应用主题，可选）
+     * @param ownerId 所有者 ID（仅当 ownerType=GAME 时有效，可选）
+     * @param source 主题来源筛选：all-全部，official-官方，purchased-购买，mine-我的
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @param request HTTP 请求
+     * @return 用户可用的主题列表（包含分页信息）
+     */
+    @Operation(summary = "获取用户可用的主题")
+    @GetMapping("/my-available-themes")
+    public Result<Map<String, Object>> getMyAvailableThemes(
+            @Parameter(description = "所有者类型：GAME-游戏主题，APPLICATION-应用主题")
+            @RequestParam(required = false) String ownerType,
+            @Parameter(description = "所有者 ID（游戏主题时需要）")
+            @RequestParam(required = false) Long ownerId,
+            @Parameter(description = "主题来源筛选：all-全部，official-官方，purchased-购买，mine-我的")
+            @RequestParam(defaultValue = "all") String source,
+            @Parameter(description = "页码（从 1 开始）")
+            @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量")
+            @RequestParam(defaultValue = "20") Integer pageSize,
+            HttpServletRequest request) {
+
+        try {
+            String userIdStr = (String) request.getAttribute("userId");
+            Long userId = Long.valueOf(userIdStr);
+
+            log.info("获取用户可用的主题。UserId: {}, OwnerType: {}, OwnerId: {}, Source: {}, Page: {}, PageSize: {}", 
+                    userId, ownerType, ownerId, source, page, pageSize);
+
+            // 调用服务层获取分页数据
+            Map<String, Object> result = themeService.getMyAvailableThemesWithPage(userId, ownerType, ownerId, source, page, pageSize);
+
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取用户可用的主题失败", e);
+            return Result.error("获取用户可用的主题失败：" + e.getMessage());
         }
     }
 }

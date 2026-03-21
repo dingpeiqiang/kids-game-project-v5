@@ -31,6 +31,12 @@ public class ThemeInfo implements Serializable {
     private Long authorId;
 
     /**
+     * 是否为官方主题：0-否，1-是
+     */
+    @TableField("is_official")
+    private Boolean isOfficial;
+
+    /**
      * 所有者类型：GAME-游戏，APPLICATION-应用
      */
     @TableField("owner_type")

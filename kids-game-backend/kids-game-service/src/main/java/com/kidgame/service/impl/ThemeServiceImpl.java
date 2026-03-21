@@ -21,7 +21,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 主题业务服务实现
@@ -50,11 +54,12 @@ public class ThemeServiceImpl implements ThemeService {
 
     /**
      * 获取主题列表 (分页)
+     * @param authorId 当前登录用户 ID（用于已下架主题过滤：已下架的非本人主题不显示）
      */
     @Override
-    public Page<ThemeInfo> listThemes(String ownerType, Long ownerId, String status, Integer page, Integer pageSize) {
+    public Page<ThemeInfo> listThemes(String ownerType, Long ownerId, String status, Integer page, Integer pageSize, Long authorId) {
         LambdaQueryWrapper<ThemeInfo> wrapper = new LambdaQueryWrapper<>();
-            
+
         // 根据所有者类型筛选
         if (ownerType != null && !ownerType.isEmpty()) {
             if ("APPLICATION".equals(ownerType)) {
@@ -63,31 +68,44 @@ public class ThemeServiceImpl implements ThemeService {
             } else if ("GAME".equals(ownerType)) {
                 // 游戏主题：仅适用于特定游戏的专用主题
                 wrapper.eq(ThemeInfo::getOwnerType, "GAME");
-                    
+
                 // 如果有指定游戏 ID，进一步筛选
                 if (ownerId != null) {
                     wrapper.eq(ThemeInfo::getOwnerId, ownerId);
                 }
             }
         }
-            
+
         // 状态筛选
         if (status != null && !status.isEmpty()) {
             wrapper.eq(ThemeInfo::getStatus, status);
         }
-            
+
+        // 已下架主题过滤：已下架的非本人创作主题不显示
+        if (authorId != null) {
+            // (status != 'offline') OR (status = 'offline' AND authorId = 当前用户)
+            wrapper.and(w -> w
+                .ne(ThemeInfo::getStatus, "offline")
+                .or(w2 -> w2
+                    .eq(ThemeInfo::getStatus, "offline")
+                    .eq(ThemeInfo::getAuthorId, authorId)
+                )
+            );
+        }
+
         wrapper.orderByDesc(ThemeInfo::getCreatedAt);
-            
+
         return themeInfoMapper.selectPage(new Page<>(page, pageSize), wrapper);
     }
 
     /**
      * 获取游戏主题列表 (分页)
+     * @param authorId 当前登录用户 ID（用于已下架主题过滤）
      */
     @Override
     public Page<ThemeInfo> listGameThemes(Long gameId, String gameCode, String status, Integer page, Integer pageSize) {
-        // 直接根据 owner_id 查询属于该游戏的主题
-        return listThemes("GAME", gameId, status, page, pageSize);
+        // 直接根据 owner_id 查询属于该游戏的主题（authorId 由调用方传入，这里传 null 由调用方处理）
+        return listThemes("GAME", gameId, status, page, pageSize, null);
     }
 
     /**
@@ -171,38 +189,41 @@ public class ThemeServiceImpl implements ThemeService {
             // 3. 创建主题信息，处理兼容性字段
             ThemeInfo theme = new ThemeInfo();
             theme.setAuthorId(authorId);
-            
+
             // 主题名称：优先使用themeName，如果为空则使用name
             String themeName = themeData.getThemeName();
             if (themeName == null || themeName.isEmpty()) {
                 themeName = themeData.getName();
             }
             theme.setThemeName(themeName);
-            
+
             // 所有者类型和ID
             theme.setOwnerType(themeData.getOwnerType() != null ? themeData.getOwnerType() : "GAME");
             theme.setOwnerId(ownerId);
-            
+
+            // ⭐ 是否为官方主题
+            theme.setIsOfficial(themeData.getIsOfficial() != null ? themeData.getIsOfficial() : false);
+
             // 作者名称：优先使用authorName，如果为空则使用author
             String authorName = themeData.getAuthorName();
             if (authorName == null || authorName.isEmpty()) {
                 authorName = themeData.getAuthor();
             }
             theme.setAuthorName(authorName != null ? authorName : "创作者");
-            
+
             // 价格
             theme.setPrice(themeData.getPrice() != null ? themeData.getPrice() : 0);
-            
+
             // 状态
             theme.setStatus(themeData.getStatus() != null ? themeData.getStatus() : "pending");
-            
+
             // 缩略图URL：优先使用thumbnailUrl，如果为空则使用thumbnail
             String thumbnailUrl = themeData.getThumbnailUrl();
             if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {
                 thumbnailUrl = themeData.getThumbnail();
             }
             theme.setThumbnailUrl(thumbnailUrl);
-            
+
             // 描述
             theme.setDescription(themeData.getDescription());
             theme.setConfigJson(configJson);
@@ -457,9 +478,34 @@ public class ThemeServiceImpl implements ThemeService {
         wrapper.eq(ThemePurchase::getThemeId, themeId)
                .eq(ThemePurchase::getBuyerId, userId)
                .eq(ThemePurchase::getIsRefunded, 0);
-        
+
         Long count = themePurchaseMapper.selectCount(wrapper);
         return count > 0;
+    }
+
+    /**
+     * 获取用户已购买的主题列表
+     */
+    @Override
+    public List<ThemeInfo> getPurchasedThemes(Long buyerId) {
+        LambdaQueryWrapper<ThemePurchase> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ThemePurchase::getBuyerId, buyerId)
+               .eq(ThemePurchase::getIsRefunded, 0);
+
+        List<ThemePurchase> purchases = themePurchaseMapper.selectList(wrapper);
+
+        if (purchases == null || purchases.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Long> themeIds = purchases.stream()
+                .map(ThemePurchase::getThemeId)
+                .collect(Collectors.toList());
+
+        LambdaQueryWrapper<ThemeInfo> themeWrapper = new LambdaQueryWrapper<>();
+        themeWrapper.in(ThemeInfo::getThemeId, themeIds);
+
+        return themeInfoMapper.selectList(themeWrapper);
     }
 
     /**
@@ -504,18 +550,326 @@ public class ThemeServiceImpl implements ThemeService {
         if (gameCode == null || gameCode.isEmpty()) {
             return null;
         }
-        
+
         LambdaQueryWrapper<Game> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Game::getGameCode, gameCode);
-        
+
         Game game = gameMapper.selectOne(wrapper);
         if (game != null) {
-            log.debug("通过 gameCode 查询到游戏: code={}, id={}, name={}", 
+            log.debug("通过 gameCode 查询到游戏: code={}, id={}, name={}",
                     gameCode, game.getGameId(), game.getGameName());
         } else {
             log.warn("未找到游戏: gameCode={}", gameCode);
         }
-        
+
         return game;
+    }
+
+    /**
+     * 获取用户可用的主题列表（官方主题 + 用户创作 + 已购买）
+     */
+    @Override
+    public List<ThemeInfo> getMyAvailableThemes(Long userId, String ownerType, Long ownerId) {
+        log.info("获取用户可用主题 - userId: {}, ownerType: {}, ownerId: {}", userId, ownerType, ownerId);
+
+        List<ThemeInfo> allThemes = new java.util.ArrayList<>();
+
+        // 1. 查询官方主题（isOfficial = true）
+        LambdaQueryWrapper<ThemeInfo> officialWrapper = new LambdaQueryWrapper<>();
+        officialWrapper.eq(ThemeInfo::getIsOfficial, true)
+                      .eq(ThemeInfo::getStatus, "on_sale");
+        if (ownerType != null && !ownerType.isEmpty()) {
+            officialWrapper.eq(ThemeInfo::getOwnerType, ownerType);
+            if ("GAME".equals(ownerType) && ownerId != null) {
+                officialWrapper.eq(ThemeInfo::getOwnerId, ownerId);
+            }
+        }
+        List<ThemeInfo> officialThemes = themeInfoMapper.selectList(officialWrapper);
+        log.info("官方主题查询结果 - ownerType: {}, 数量: {}", ownerType, officialThemes.size());
+        allThemes.addAll(officialThemes);
+
+        // 2. 查询用户创作的主题
+        LambdaQueryWrapper<ThemeInfo> myWrapper = new LambdaQueryWrapper<>();
+        myWrapper.eq(ThemeInfo::getAuthorId, userId);
+        if (ownerType != null && !ownerType.isEmpty()) {
+            myWrapper.eq(ThemeInfo::getOwnerType, ownerType);
+            if ("GAME".equals(ownerType) && ownerId != null) {
+                myWrapper.eq(ThemeInfo::getOwnerId, ownerId);
+            }
+        }
+        List<ThemeInfo> myThemes = themeInfoMapper.selectList(myWrapper);
+        log.info("用户主题查询结果 - userId: {}, ownerType: {}, 数量: {}", userId, ownerType, myThemes.size());
+        allThemes.addAll(myThemes);
+
+        // 3. 查询用户已购买的主题
+        LambdaQueryWrapper<ThemePurchase> purchaseWrapper = new LambdaQueryWrapper<>();
+        purchaseWrapper.eq(ThemePurchase::getBuyerId, userId)
+                       .eq(ThemePurchase::getIsRefunded, 0);
+        List<ThemePurchase> purchases = themePurchaseMapper.selectList(purchaseWrapper);
+
+        if (!purchases.isEmpty()) {
+            List<Long> themeIds = purchases.stream()
+                    .map(ThemePurchase::getThemeId)
+                    .collect(Collectors.toList());
+
+            LambdaQueryWrapper<ThemeInfo> purchasedWrapper = new LambdaQueryWrapper<>();
+            purchasedWrapper.in(ThemeInfo::getThemeId, themeIds);
+            if (ownerType != null && !ownerType.isEmpty()) {
+                purchasedWrapper.eq(ThemeInfo::getOwnerType, ownerType);
+                if ("GAME".equals(ownerType) && ownerId != null) {
+                    purchasedWrapper.eq(ThemeInfo::getOwnerId, ownerId);
+                }
+            }
+            List<ThemeInfo> purchasedThemes = themeInfoMapper.selectList(purchasedWrapper);
+            log.info("已购买主题查询结果 - userId: {}, ownerType: {}, 数量: {}", userId, ownerType, purchasedThemes.size());
+            allThemes.addAll(purchasedThemes);
+        } else {
+            log.info("用户无购买记录 - userId: {}", userId);
+        }
+
+        // 去重（基于 themeId）
+        List<ThemeInfo> result = allThemes.stream()
+                .collect(Collectors.toMap(
+                        ThemeInfo::getThemeId,
+                        theme -> theme,
+                        (existing, replacement) -> existing
+                ))
+                .values()
+                .stream()
+                .collect(Collectors.toList());
+
+        log.info("最终去重后主题数量：{}", result.size());
+        return result;
+    }
+    
+    /**
+     * ⭐ 新增：获取用户可用的主题（支持分页和来源筛选）
+     */
+    @Override
+    public Map<String, Object> getMyAvailableThemesWithPage(Long userId, String ownerType, Long ownerId, 
+                                                             String source, Integer page, Integer pageSize) {
+        log.info("获取用户可用主题（分页）- userId: {}, ownerType: {}, ownerId: {}, source: {}, page: {}, pageSize: {}", 
+                userId, ownerType, ownerId, source, page, pageSize);
+    
+        // 1. 构建查询条件
+        LambdaQueryWrapper<ThemeInfo> wrapper = buildQueryWrapper(userId, ownerType, ownerId, source);
+    
+        // 2. 执行分页查询
+        Page<ThemeInfo> pageInfo = new Page<>(page, pageSize);
+        themeInfoMapper.selectPage(pageInfo, wrapper);
+        List<ThemeInfo> themes = pageInfo.getRecords();
+        
+        // 3. 为每个主题添加游戏信息（通过 JSON 序列化添加额外字段）
+        for (int i = 0; i < themes.size(); i++) {
+            ThemeInfo theme = themes.get(i);
+            if ("GAME".equals(theme.getOwnerType()) && theme.getOwnerId() != null) {
+                var game = getGameById(theme.getOwnerId());
+                if (game != null) {
+                    // 使用 JSON 扩展字段，不直接设置到 entity
+                    String jsonStr = JSON.toJSONString(theme);
+                    Map<String, Object> themeMap = JSON.parseObject(jsonStr, Map.class);
+                    themeMap.put("gameId", game.getGameId());
+                    themeMap.put("gameCode", game.getGameCode());
+                    themeMap.put("gameName", game.getGameName());
+                    themes.set(i, JSON.parseObject(JSON.toJSONString(themeMap), ThemeInfo.class));
+                }
+            }
+        }
+    
+        // 4. 返回分页数据
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", themes);
+        result.put("total", pageInfo.getTotal());
+        result.put("pageNum", page);
+        result.put("pageSize", pageSize);
+    
+        log.info("分页查询结果 - total: {}, pageNum: {}, list size: {}", pageInfo.getTotal(), page, themes.size());
+        return result;
+    }
+    
+    /**
+     * 构建查询条件
+     */
+    private LambdaQueryWrapper<ThemeInfo> buildQueryWrapper(Long userId, String ownerType, Long ownerId, String source) {
+        LambdaQueryWrapper<ThemeInfo> wrapper = new LambdaQueryWrapper<>();
+    
+        // 基础条件：已上架
+        wrapper.eq(ThemeInfo::getStatus, "on_sale");
+    
+        // 适用范围筛选
+        if (ownerType != null && !ownerType.isEmpty()) {
+            wrapper.eq(ThemeInfo::getOwnerType, ownerType);
+            if ("GAME".equals(ownerType) && ownerId != null) {
+                wrapper.eq(ThemeInfo::getOwnerId, ownerId);
+            }
+        }
+    
+        // ⭐ 来源筛选
+        switch (source) {
+            case "official":
+                // 官方主题
+                wrapper.eq(ThemeInfo::getIsOfficial, true);
+                break;
+    
+            case "purchased":
+                // 已购买的主题（排除官方和自己创作的）
+                List<Long> purchasedIds = getPurchaseThemeIds(userId);
+                if (purchasedIds.isEmpty()) {
+                    // 如果没有购买记录，返回空结果
+                    wrapper.eq(ThemeInfo::getThemeId, -1L);
+                } else {
+                    wrapper.in(ThemeInfo::getThemeId, purchasedIds)
+                           .ne(ThemeInfo::getIsOfficial, true)
+                           .ne(ThemeInfo::getAuthorId, userId);
+                }
+                break;
+    
+            case "mine":
+                // 自己创作的主题
+                wrapper.eq(ThemeInfo::getAuthorId, userId);
+                break;
+    
+            default: // "all"
+                // 全部：官方主题 + 我的主题 + 已购买主题
+                List<Long> allPurchasedIds = getPurchaseThemeIds(userId);
+                    
+                wrapper.and(w -> w
+                    .eq(ThemeInfo::getIsOfficial, true)
+                    .or(or -> or.eq(ThemeInfo::getAuthorId, userId))
+                );
+                    
+                // 如果有已购买的主题，也包含进来
+                if (!allPurchasedIds.isEmpty()) {
+                    wrapper.or(or -> or
+                        .in(ThemeInfo::getThemeId, allPurchasedIds)
+                        .ne(ThemeInfo::getIsOfficial, true)
+                        .ne(ThemeInfo::getAuthorId, userId)
+                    );
+                }
+                break;
+        }
+    
+        return wrapper;
+    }
+    
+    /**
+     * 获取用户已购买的主题 ID 列表
+     */
+    private List<Long> getPurchaseThemeIds(Long userId) {
+        LambdaQueryWrapper<ThemePurchase> purchaseWrapper = new LambdaQueryWrapper<>();
+        purchaseWrapper.eq(ThemePurchase::getBuyerId, userId)
+                       .eq(ThemePurchase::getIsRefunded, 0);
+        List<ThemePurchase> purchases = themePurchaseMapper.selectList(purchaseWrapper);
+    
+        if (purchases.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+    
+        return purchases.stream()
+                .map(ThemePurchase::getThemeId)
+                .collect(Collectors.toList());
+    }
+    
+    
+    /**
+     * 更新主题
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ThemeInfo updateTheme(Long themeId, ThemeUploadDTO themeData) {
+        try {
+            ThemeInfo theme = themeInfoMapper.selectById(themeId);
+            if (theme == null) {
+                log.warn("主题不存在：themeId={}", themeId);
+                throw new RuntimeException("主题不存在");
+            }
+
+            // 如果提供了新配置，验证并更新
+            if (themeData.getConfig() != null || themeData.getConfigJson() != null) {
+                String configJson;
+                if (themeData.getConfig() != null) {
+                    configJson = JSON.toJSONString(themeData.getConfig());
+                } else {
+                    configJson = themeData.getConfigJson();
+                }
+
+                // 验证GTRS格式
+                GTRSSchemaService.ValidationResult validationResult = gtrsSchemaService.validateTheme(configJson);
+                if (!validationResult.isValid()) {
+                    log.error("主题GTRS格式验证失败：themeId={}, message={}", themeId, validationResult.getMessage());
+                    throw new RuntimeException("主题格式不符合GTRS规范：" + validationResult.getMessage());
+                }
+
+                theme.setConfigJson(configJson);
+            }
+
+            // 更新可编辑字段
+            if (themeData.getThemeName() != null) {
+                theme.setThemeName(themeData.getThemeName());
+            }
+            if (themeData.getAuthorName() != null) {
+                theme.setAuthorName(themeData.getAuthorName());
+            }
+            if (themeData.getPrice() != null) {
+                theme.setPrice(themeData.getPrice());
+            }
+            if (themeData.getThumbnailUrl() != null) {
+                theme.setThumbnailUrl(themeData.getThumbnailUrl());
+            }
+            if (themeData.getDescription() != null) {
+                theme.setDescription(themeData.getDescription());
+            }
+            if (themeData.getStatus() != null) {
+                theme.setStatus(themeData.getStatus());
+            }
+
+            theme.setUpdatedAt(LocalDateTime.now());
+            themeInfoMapper.updateById(theme);
+
+            log.info("更新主题成功：themeId={}, themeName={}", themeId, theme.getThemeName());
+            return theme;
+        } catch (Exception e) {
+            log.error("更新主题失败：themeId={}", themeId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * 删除主题
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteTheme(Long themeId) {
+        try {
+            ThemeInfo theme = themeInfoMapper.selectById(themeId);
+            if (theme == null) {
+                log.warn("主题不存在：themeId={}", themeId);
+                return false;
+            }
+
+            // 删除关联的购买记录
+            LambdaQueryWrapper<ThemePurchase> purchaseWrapper = new LambdaQueryWrapper<>();
+            purchaseWrapper.eq(ThemePurchase::getThemeId, themeId);
+            themePurchaseMapper.delete(purchaseWrapper);
+
+            // 删除关联的收益记录
+            LambdaQueryWrapper<CreatorEarnings> earningsWrapper = new LambdaQueryWrapper<>();
+            earningsWrapper.eq(CreatorEarnings::getThemeId, themeId);
+            creatorEarningsMapper.delete(earningsWrapper);
+
+            // 删除主题游戏关联关系
+            LambdaQueryWrapper<com.kidgame.dao.entity.ThemeGameRelation> relationWrapper = new LambdaQueryWrapper<>();
+            relationWrapper.eq(com.kidgame.dao.entity.ThemeGameRelation::getThemeId, themeId);
+            themeGameRelationMapper.delete(relationWrapper);
+
+            // 物理删除主题记录
+            themeInfoMapper.deleteById(themeId);
+
+            log.info("删除主题成功：themeId={}, themeName={}", themeId, theme.getThemeName());
+            return true;
+        } catch (Exception e) {
+            log.error("删除主题失败：themeId={}", themeId, e);
+            return false;
+        }
     }
 }

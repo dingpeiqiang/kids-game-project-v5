@@ -8,6 +8,7 @@ import com.kidgame.dao.entity.ThemePurchase;
 import com.kidgame.service.dto.ThemeUploadDTO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 主题业务服务
@@ -21,9 +22,10 @@ public interface ThemeService {
      * @param status 状态筛选（可选）
      * @param page 页码
      * @param pageSize 每页大小
+     * @param authorId 当前登录用户 ID（用于已下架主题过滤：已下架的非本人主题不显示）
      * @return 分页结果
      */
-    Page<ThemeInfo> listThemes(String ownerType, Long ownerId, String status, Integer page, Integer pageSize);
+    Page<ThemeInfo> listThemes(String ownerType, Long ownerId, String status, Integer page, Integer pageSize, Long authorId);
 
     /**
      * 获取游戏主题列表（分页，带关系信息）
@@ -120,12 +122,34 @@ public interface ThemeService {
     boolean withdrawEarnings(Long creatorId, Integer amount);
 
     /**
+     * 更新主题
+     * @param themeId 主题 ID
+     * @param themeData 主题数据
+     * @return 更新后的主题信息
+     */
+    ThemeInfo updateTheme(Long themeId, ThemeUploadDTO themeData);
+
+    /**
+     * 删除主题
+     * @param themeId 主题 ID
+     * @return 是否删除成功
+     */
+    boolean deleteTheme(Long themeId);
+
+    /**
      * 检查用户是否已购买主题
      * @param themeId 主题 ID
      * @param userId 用户 ID
      * @return 是否已购买
      */
     boolean hasPurchased(Long themeId, Long userId);
+
+    /**
+     * 获取用户已购买的主题列表
+     * @param buyerId 购买者 ID
+     * @return 已购买的主题列表
+     */
+    List<ThemeInfo> getPurchasedThemes(Long buyerId);
 
     /**
      * 获取创作者总收益
@@ -154,4 +178,26 @@ public interface ThemeService {
      * @return 游戏信息
      */
     Game getGameByCode(String gameCode);
+
+    /**
+     * 获取用户可用的主题列表（官方主题 + 用户创作 + 已购买）
+     * @param userId 用户 ID
+     * @param ownerType 所有者类型筛选（GAME-游戏主题/APPLICATION-应用主题，可选）
+     * @param ownerId 所有者 ID（仅当 ownerType=GAME 时有效，可选）
+     * @return 用户可用的主题列表
+     */
+    List<ThemeInfo> getMyAvailableThemes(Long userId, String ownerType, Long ownerId);
+
+    /**
+     * ⭐ 新增：获取用户可用的主题（支持分页和来源筛选）
+     * @param userId 用户 ID
+     * @param ownerType 所有者类型筛选（GAME-游戏主题/APPLICATION-应用主题，可选）
+     * @param ownerId 所有者 ID（仅当 ownerType=GAME 时有效，可选）
+     * @param source 来源筛选（all-全部，official-官方，purchased-购买，mine-我的）
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 分页数据 {list, total, pageNum, pageSize}
+     */
+    Map<String, Object> getMyAvailableThemesWithPage(Long userId, String ownerType, Long ownerId, 
+                                                      String source, Integer page, Integer pageSize);
 }

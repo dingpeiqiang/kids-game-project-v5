@@ -110,7 +110,7 @@
     <!-- 创建/编辑弹窗 -->
     <KidModal
       v-model:show="showCreateModal"
-      title="➕ 创建官方主题"
+      :title="isEditMode ? '✏️ 编辑主题' : '➕ 创建官方主题'"
       size="lg"
       closable
       show-footer
@@ -233,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, computed, watch } from 'vue';
 import axios from 'axios';
 import KidModal from '@/components/ui/KidModal.vue';
 import { dialog, useConfirm } from '@/composables/useDialog';
@@ -263,6 +263,7 @@ const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDetailModal = ref(false);
 const selectedTheme = ref<ThemeInfo | null>(null);
+const isEditMode = ref(false);
 
 const formData = reactive<Partial<ThemeInfo>>({
   themeName: '',
@@ -277,6 +278,22 @@ const formData = reactive<Partial<ThemeInfo>>({
 const filters = reactive({
   themeName: '',
   status: '',
+});
+
+// 监听弹窗关闭，重置编辑状态
+watch(showCreateModal, (newVal) => {
+  if (!newVal) {
+    isEditMode.value = false;
+    // 重置表单数据
+    formData.themeId = undefined;
+    formData.themeName = '';
+    formData.authorName = '官方';
+    formData.price = 0;
+    formData.thumbnailUrl = '';
+    formData.description = '';
+    formData.configJson = null;
+    formData.status = 'pending';
+  }
 });
 
 const pagination = reactive({
@@ -340,6 +357,7 @@ function viewThemeDetail(theme: ThemeInfo) {
 // 编辑主题
 function editTheme(theme: ThemeInfo) {
   Object.assign(formData, theme);
+  isEditMode.value = true;
   showEditModal.value = true;
   showCreateModal.value = true; // 复用创建弹窗
 }
@@ -436,18 +454,18 @@ async function submitForm() {
     await dialog.warning('请输入主题名称');
     return;
   }
-  
+
   try {
     let configJsonObj;
     try {
-      configJsonObj = typeof formData.configJson === 'string' 
-        ? JSON.parse(formData.configJson) 
+      configJsonObj = typeof formData.configJson === 'string'
+        ? JSON.parse(formData.configJson)
         : formData.configJson;
     } catch (e) {
       await dialog.error('主题配置 JSON 格式错误，请检查');
       return;
     }
-    
+
     const payload = {
       themeName: formData.themeName,
       authorName: formData.authorName,
@@ -457,19 +475,32 @@ async function submitForm() {
       config: configJsonObj,
       status: formData.status,
     };
-    
-    const response = await axios.post(
-      `${API_BASE}/theme/upload`,
-      payload,
-      getAuthHeaders()
-    );
-    
+
+    let response;
+
+    if (isEditMode.value && formData.themeId) {
+      // 编辑模式：调用更新接口
+      response = await axios.post(
+        `${API_BASE}/theme/update?themeId=${formData.themeId}`,
+        payload,
+        getAuthHeaders()
+      );
+    } else {
+      // 创建模式：调用上传接口
+      response = await axios.post(
+        `${API_BASE}/theme/upload`,
+        payload,
+        getAuthHeaders()
+      );
+    }
+
     if (response.data.code === 200) {
-      await dialog.success('保存成功！');
+      await dialog.success(isEditMode.value ? '更新成功！' : '保存成功！');
       showCreateModal.value = false;
+      isEditMode.value = false;
       loadThemes();
     } else {
-      await dialog.error('保存失败：' + (response.data.msg || '未知错误'));
+      await dialog.error((isEditMode.value ? '更新' : '保存') + '失败：' + (response.data.msg || '未知错误'));
     }
   } catch (error: any) {
     console.error('[ThemeManagement] 保存失败:', error);

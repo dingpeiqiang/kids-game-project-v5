@@ -29,6 +29,11 @@ public class ThemeUploadDTO {
     private String author;
 
     /**
+     * 是否为官方主题：0-否，1-是
+     */
+    private Boolean isOfficial;
+
+    /**
      * 价格（游戏币）
      */
     private Integer price;

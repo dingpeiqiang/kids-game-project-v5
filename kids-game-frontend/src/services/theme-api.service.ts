@@ -22,6 +22,7 @@ export interface CloudThemeInfo {
   themeName?: string;
   author: string;
   authorName?: string;
+  authorId?: number; // ⭐ 作者 ID（用于判断主题来源）
   price: number;
   thumbnail?: string;
   thumbnailUrl?: string;
@@ -37,6 +38,11 @@ export interface CloudThemeInfo {
   gameName?: string;      // 游戏名称 - UI 显示用
   
   configJson?: any; // 主题配置 JSON（字符串或对象）
+  
+  // ⭐ 主题来源标识字段
+  isOfficial?: boolean;   // 是否为官方主题
+  ownerType?: 'GAME' | 'APPLICATION'; // 所有者类型
+  ownerId?: number;       // 所有者 ID（游戏主题时关联 gameId）
 }
 
 /**
@@ -114,12 +120,51 @@ class ThemeApiService extends BaseApiService {
   }
 
   /**
+   * 获取已购买的主题列表
+   * GET /api/theme/purchased-themes
+   * 后端从认证信息中获取用户ID，不需要传递参数
+   */
+  async getPurchasedThemes(): Promise<CloudThemeInfo[]> {
+    return this.get<CloudThemeInfo[]>('/api/theme/purchased-themes');
+  }
+
+  /**
+   * ⭐ 获取用户可用的主题列表（支持分页和来源筛选）
+   * GET /api/theme/my-available-themes
+   * 后端从认证信息中获取用户 ID
+   * 
+   * @param params 查询参数
+   * @returns 分页数据 {list, total, pageNum, pageSize}
+   */
+  async getMyAvailableThemes(params?: {
+    ownerType?: 'GAME' | 'APPLICATION';
+    ownerId?: number;
+    source?: 'all' | 'official' | 'purchased' | 'mine';
+    page?: number;
+    pageSize?: number;
+  }): Promise<PageData<CloudThemeInfo>> {
+    const queryParams = new URLSearchParams();
+      
+    if (params?.ownerType) queryParams.append('ownerType', params.ownerType);
+    if (params?.ownerId) queryParams.append('ownerId', params.ownerId.toString());
+    if (params?.source) queryParams.append('source', params.source);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+      
+    const url = `/api/theme/my-available-themes?${queryParams.toString()}`;
+      
+    // 使用 returnPageData: true 确保返回分页格式
+    return this.get<PageData<CloudThemeInfo>>(url, { returnPageData: true });
+  }
+
+  /**
    * 上传主题到云端
    * POST /api/theme/upload
    */
   async upload(payload: ThemeUploadPayload): Promise<CloudThemeInfo> {
     return this.post<CloudThemeInfo>('/api/theme/upload', payload);
   }
+
 
   /**
    * 购买主题

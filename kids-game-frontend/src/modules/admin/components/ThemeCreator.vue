@@ -467,21 +467,22 @@ function saveToLocal() {
 // 上传到云端
 async function saveToCloud() {
   if (!validateForm()) return;
-  
+
   try {
     const payload = {
       themeName: formData.basic.name,
       authorName: formData.basic.author,
-      applicableScope: formData.basic.applicableScope,
+      ownerType: formData.basic.selectedGameCode ? 'GAME' : 'APPLICATION',
+      ownerId: formData.basic.selectedGameId,
       price: formData.basic.price,
       description: formData.basic.description,
       config: getThemeConfig(),
       gameId: formData.basic.selectedGameId,
       gameCode: formData.basic.selectedGameCode,
     };
-    
+
     // TODO: 调用 API 上传
-    
+
     await dialog.success('上传成功!');
     emit('saved', true);
   } catch (error) {

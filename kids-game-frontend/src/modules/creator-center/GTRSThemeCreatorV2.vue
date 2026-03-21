@@ -198,11 +198,13 @@ import PublishPanel from './panels/PublishPanel.vue'
 import DraftManager from './panels/DraftManager.vue'
 import { validateGTRSTheme, type GTRSTheme } from '@/utils/gtrs-validator'
 import defaultTheme from '@/configs/gtrs-template.json'
+import { useUserStore } from '@/core/store/user.store'
 
 // ========== 数据定义 ==========
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 // 路由参数：从DIY入口带入的原主题ID和游戏ID
 // themeId: 加载原主题配置作为模板
@@ -360,18 +362,22 @@ const publishTheme = async (publishData?: { price: number; description: string }
     // 从 themeData 中提取游戏信息
     const rawGameId = themeData.value.themeInfo.gameId  // 如 "game_snake_v3"
     // 将 "game_xxx_yyy" 格式转为 "XXX_YYY" 格式
-    const gameCode = rawGameId 
+    const gameCode = rawGameId
       ? rawGameId.replace(/^game_/, '').toUpperCase().replace(/-/g, '_')
       : null  // "game_snake_v3" → "SNAKE_VUE3"
-    
+
     // ownerId = gameId（数据库主键），直接从路由参数获取
     // DIY 流程：点击已有主题 → 携带 gameId 跳转 → 发布新主题继承同一 gameId
     const ownerId = routeGameId || null
-    
+
+    // ⭐ 获取当前登录用户的真实信息
+    // 后端会从 JWT token 中获取 authorId，这里只需要传递正确的 authorName
+    const currentAuthorName = userStore.parentUsername || '创作者'
+
     // 构建上传数据
     const uploadData: any = {
       name: themeData.value.themeInfo.themeName,
-      author: themeData.value.themeInfo.author || '创作者',
+      authorName: currentAuthorName,  // ⭐ 使用当前登录用户的真实名称
       price: publishData?.price ?? 0,
       description: publishData?.description || '',
       thumbnail: '',
@@ -381,15 +387,15 @@ const publishTheme = async (publishData?: { price: number; description: string }
       ownerId: ownerId,        // 直接使用路由传入的 gameId
       status: 'pending'
     }
-    
+
     console.log('发布主题:', uploadData)
 
     // 调用后端 API 发布主题
     const response = await themeApi.upload(uploadData)
-    
+
     ElMessage.success('主题提交成功！等待审核中...')
     isDirty.value = false
-    
+
     // 发布成功后返回创作者中心
     setTimeout(() => {
       router.push('/creator-center')
