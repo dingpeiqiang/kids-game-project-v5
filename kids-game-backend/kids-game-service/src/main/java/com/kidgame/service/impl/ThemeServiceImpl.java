@@ -712,14 +712,13 @@ public class ThemeServiceImpl implements ThemeService {
                 break;
     
             case "purchased":
-                // 已购买的主题（排除官方和自己创作的）
+                // 已购买的主题（排除自己创作的，但包含官方主题）
                 List<Long> purchasedIds = getPurchaseThemeIds(userId);
                 if (purchasedIds.isEmpty()) {
                     // 如果没有购买记录，返回空结果
                     wrapper.eq(ThemeInfo::getThemeId, -1L);
                 } else {
                     wrapper.in(ThemeInfo::getThemeId, purchasedIds)
-                           .ne(ThemeInfo::getIsOfficial, true)
                            .ne(ThemeInfo::getAuthorId, userId);
                 }
                 break;
