@@ -7,8 +7,10 @@
           <el-icon><ArrowLeft /></el-icon>
           返回创作者中心
         </el-button>
-        <span class="title">🎨 GTRS 主题编辑器</span>
+        <span class="title">🎨 GTRS主题编辑器</span>
         <el-tag v-if="isDirty" type="warning" size="small">未保存</el-tag>
+        <el-tag v-if="isEditMode" type="success" size="small">编辑模式</el-tag>
+        <el-tag v-else-if="hasRouteThemeId" type="info" size="small">DIY 模式</el-tag>
       </div>
       <div class="header-center">
         <!-- 编辑模式切换 -->
@@ -64,6 +66,8 @@
             v-model="themeData"
             :is-dirty="isDirty"
             :panel-json-mode="panelJsonModes.basic"
+            :disable-game-select="hasRouteThemeId"
+            :disable-theme-id="isEditMode"
             @update:is-dirty="isDirty = $event"
             @toggle-json-mode="panelJsonModes.basic = !panelJsonModes.basic"
           />
@@ -206,11 +210,18 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-// 路由参数：从DIY入口带入的原主题ID和游戏ID
+// 路由参数：从 DIY 入口带入的原主题 ID 和游戏 ID
 // themeId: 加载原主题配置作为模板
 // gameId: 新主题的 ownerId（数据库主键）
 const routeThemeId = route.query.themeId as string | undefined
 const routeGameId = route.query.gameId ? Number(route.query.gameId) : null
+const routeMode = route.query.mode as string | undefined  // 'edit' 表示编辑模式
+
+// 是否为编辑模式（相对于 DIY 模式）
+const isEditMode = computed(() => routeMode === 'edit')
+
+// 是否有 routeThemeId，用于判断是否禁用游戏选择
+const hasRouteThemeId = computed(() => !!routeThemeId)
 
 // 编辑模式：表单 / JSON
 const editMode = ref<'form' | 'json'>('form')
@@ -359,16 +370,15 @@ const publishTheme = async (publishData?: { price: number; description: string }
 
   publishing.value = true
   try {
-    // 从 themeData 中提取游戏信息
-    const rawGameId = themeData.value.themeInfo.gameId  // 如 "game_snake_v3"
+    // ⭐ 从 themeData 中获取 ownerType 和 ownerId（GTRS 规范字段）
+    const { ownerType, ownerId } = themeData.value.themeInfo
+    
+    // ⭐ gameCode 从 ownerId 转换（用于资源加载等）
     // 将 "game_xxx_yyy" 格式转为 "XXX_YYY" 格式
+    const rawGameId = themeData.value.themeInfo.gameId || ''  // 兼容旧数据
     const gameCode = rawGameId
       ? rawGameId.replace(/^game_/, '').toUpperCase().replace(/-/g, '_')
       : null  // "game_snake_v3" → "SNAKE_VUE3"
-
-    // ownerId = gameId（数据库主键），直接从路由参数获取
-    // DIY 流程：点击已有主题 → 携带 gameId 跳转 → 发布新主题继承同一 gameId
-    const ownerId = routeGameId || null
 
     // ⭐ 获取当前登录用户的真实信息
     // 后端会从 JWT token 中获取 authorId，这里只需要传递正确的 authorName
@@ -381,14 +391,24 @@ const publishTheme = async (publishData?: { price: number; description: string }
       price: publishData?.price ?? 0,
       description: publishData?.description || '',
       thumbnail: '',
-      config: themeData.value, // 完整的 GTRS 主题数据
-      ownerType: 'GAME',
-      gameCode: gameCode,
-      ownerId: ownerId,        // 直接使用路由传入的 gameId
+      config: themeData.value, // 完整的 GTRS主题数据
+      ownerType: ownerType,    // ⭐ 从 GTRS 数据中获取
+      gameCode: gameCode,      // ⭐ 仅用于资源加载标识
+      ownerId: ownerId,        // ⭐ 数据库主键，用于关联游戏（优先级最高）
       status: 'pending'
     }
 
-    console.log('发布主题:', uploadData)
+    console.log('发布主题:', {
+      ...uploadData,
+      config: '...(省略 GTRS 数据)',
+      routeGameId,
+      isEditMode: isEditMode.value,
+      hasRouteThemeId: hasRouteThemeId.value,
+      themeInfo: {
+        ownerType: themeData.value.themeInfo.ownerType,
+        ownerId: themeData.value.themeInfo.ownerId
+      }
+    })
 
     // 调用后端 API 发布主题
     const response = await themeApi.upload(uploadData)

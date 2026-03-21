@@ -20,7 +20,8 @@ export interface GTRSTheme {
   }
   themeInfo: {
     themeId: string
-    gameId: string
+    ownerType: 'GAME' | 'APPLICATION'
+    ownerId: number
     themeName: string
     isDefault: boolean
     author?: string

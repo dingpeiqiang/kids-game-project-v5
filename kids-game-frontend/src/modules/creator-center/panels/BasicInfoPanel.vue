@@ -45,26 +45,77 @@
         </template>
 
         <el-form ref="formRef" :model="formData" :rules="rules" label-width="120px" size="default">
-          <!-- 主题ID -->
-          <el-form-item label="主题ID" prop="themeId">
+          <!-- 主题 ID -->
+          <el-form-item label="主题 ID" prop="themeId">
             <el-input
               v-model="formData.themeId"
-              placeholder="英文+数字+下划线"
-              :disabled="!isEditMode"
+              placeholder="英文 + 数字 + 下划线"
+              :disabled="!isEditMode || disableThemeId"
             />
-            <div class="form-tip">系统自动生成，一般无需修改</div>
+            <div v-if="disableThemeId" class="form-tip" style="color: #f56c6c;">
+              ℹ️ 当前为编辑模式，不可更改主题 ID
+            </div>
+            <div v-else-if="!isEditMode" class="form-tip">
+              系统自动生成，一般无需修改
+            </div>
           </el-form-item>
 
-          <!-- 游戏选择 -->
-          <el-form-item label="适用游戏" prop="gameId">
-            <el-select v-model="formData.gameId" placeholder="请选择游戏" @change="handleGameChange">
-              <el-option
-                v-for="game in gameList"
-                :key="game.value"
-                :label="game.label"
-                :value="game.value"
-              />
+          <!-- 适用业务类型 -->
+          <el-form-item label="适用业务类型" prop="ownerType">
+            <el-select 
+              v-model="formData.ownerType" 
+              placeholder="请选择业务类型" 
+              :disabled="disableGameSelect"
+              @change="handleOwnerTypeChange"
+            >
+              <el-option label="游戏" value="GAME" />
+              <el-option label="应用" value="APPLICATION" />
             </el-select>
+            <div class="form-tip">选择主题所属的业务类型</div>
+          </el-form-item>
+
+          <!-- 适用业务（根据类型动态加载） -->
+          <el-form-item label="适用业务" prop="ownerId">
+            <el-select 
+              v-model="formData.ownerId" 
+              :placeholder="isLoadingBusiness ? '加载中...' : `请选择${formData.ownerType === 'GAME' ? '游戏' : '应用'}`" 
+              :disabled="disableGameSelect || isLoadingBusiness"
+              @change="handleBusinessChange"
+              filterable
+              clearable
+            >
+              <!-- 空状态提示 -->
+              <template v-if="currentBusinessList.length === 0 && !isLoadingBusiness" #empty>
+                <div style="padding: 20px; text-align: center; color: #999;">
+                  <i class="el-icon-info" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                  <span>暂无{{ formData.ownerType === 'GAME' ? '游戏' : '应用' }}数据</span>
+                </div>
+              </template>
+              
+              <!-- 业务选项 -->
+              <el-option
+                v-for="item in currentBusinessList"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              >
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>{{ item.label }}</span>
+                  <span style="color: #8492a6; font-size: 13px;">
+                    {{ item.code ? item.code : 'ID: ' + item.dbId }}
+                  </span>
+                </div>
+              </el-option>
+            </el-select>
+            <div v-if="disableGameSelect" class="form-tip" style="color: #f56c6c;">
+              ℹ️ {{ disableThemeId ? '当前为编辑模式' : '当前为 DIY 模式' }},不可更改适用业务
+            </div>
+            <div v-else-if="isLoadingBusiness" class="form-tip" style="color: #409EFF;">
+              ⏳ 正在加载{{ formData.ownerType === 'GAME' ? '游戏' : '应用' }}列表...
+            </div>
+            <div v-else class="form-tip">
+              选择具体的{{ formData.ownerType === 'GAME' ? '游戏' : '应用' }}，将决定主题的资源加载路径
+            </div>
           </el-form-item>
 
           <!-- 主题名称 -->
@@ -207,6 +258,8 @@ interface Props {
   modelValue: GTRSTheme
   isDirty: boolean
   panelJsonMode: boolean  // 面板局部 JSON 模式
+  disableGameSelect?: boolean  // 是否禁用游戏选择
+  disableThemeId?: boolean  // 是否禁用主题 ID 编辑
 }
 
 interface Emits {
@@ -215,7 +268,10 @@ interface Emits {
   (e: 'toggleJsonMode'): void  // 切换面板 JSON 模式
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  disableGameSelect: false,
+  disableThemeId: false
+})
 const emit = defineEmits<Emits>()
 
 const userStore = useUserStore()
@@ -246,7 +302,8 @@ initJsonContent()
 // 表单数据
 const formData = ref<GTRSTheme['themeInfo'] & { coverImage?: string; tags?: string[]; contact?: string }>({
   themeId: '',
-  gameId: '',
+  ownerType: 'GAME',  // 固定为 GAME
+  ownerId: undefined as unknown as number,  // 数据库主键
   themeName: '',
   isDefault: false,
   coverImage: '',
@@ -259,6 +316,9 @@ const formData = ref<GTRSTheme['themeInfo'] & { coverImage?: string; tags?: stri
 // 表单引用
 const formRef = ref()
 
+// 加载状态
+const isLoadingBusiness = ref(false)
+
 // 是否为编辑模式
 const isEditMode = ref(false)
 
@@ -270,32 +330,92 @@ const cropperVisible = ref(false)
 const tempImageUrl = ref('')
 
 // 游戏列表（从后端动态加载）
-const gameList = ref<{ label: string; value: string; dbGameId: number }[]>([])
-const selectedDbGameId = ref<number | null>(null)
+type BusinessItem = { 
+  label: string      // 显示名称
+  value: number      // ⭐ 数据库主键（gameId）
+  dbId: number       // 数据库主键（与 value 相同）
+  code?: string      // 业务编码（仅用于显示）
+}
+
+const gameList = ref<BusinessItem[]>([])
+const appList = ref<BusinessItem[]>([])
+const selectedDbId = ref<number | null>(null)
+
+// 当前业务列表（根据类型动态切换）
+const currentBusinessList = computed(() => {
+  if (formData.value.ownerType === 'GAME') {
+    return gameList.value
+  } else {
+    return appList.value
+  }
+})
 
 // 从后端加载游戏列表
 const loadGameList = async () => {
+  isLoadingBusiness.value = true
   try {
     const games = await gameApi.getList()
-    gameList.value = games.map((g: any) => ({
-      label: g.gameName || g.name,
-      value: `game_${(g.gameCode || '').toLowerCase().replace(/-/g, '_')}`,
-      dbGameId: g.gameId   // 数据库主键
-    }))
-    console.log('游戏列表加载完成:', gameList.value)
+    console.log('[BasicInfoPanel] 后端返回的游戏列表:', games)
+    
+    // 调试：检查第一个游戏的结构
+    if (games && games.length > 0) {
+      console.log('[BasicInfoPanel] 游戏对象结构:', JSON.stringify(games[0]))
+    }
+    
+    gameList.value = games.map((g: any) => {
+      // ⭐ 修复：更完整地尝试获取游戏名称
+      // 优先级：gameName > name > title > 显示 gameCode > 显示 ID
+      const label = g.gameName || g.name || g.title || g.gameCode || `游戏${g.gameId}`
+      return {
+        label: label,
+        value: g.gameId,   // ⭐ 直接使用数据库主键 gameId
+        dbId: g.gameId,    // 数据库主键（与 value 相同）
+        code: g.gameCode,  // 业务编码
+        originalData: g    // 保存原始数据，方便调试
+      }
+    })
+    console.log('[BasicInfoPanel] 游戏列表映射完成:', gameList.value.length, '项')
   } catch (e) {
-    console.error('加载游戏列表失败:', e)
+    console.error('[BasicInfoPanel] 加载游戏列表失败:', e)
+    ElMessage.error('加载游戏列表失败，使用默认数据')
     // 降级为硬编码列表
     gameList.value = [
-      { label: '贪吃蛇', value: 'game_snake_v3', dbGameId: 0 },
-      { label: '植物大战僵尸', value: 'game_pvz_v1', dbGameId: 0 },
-      { label: '飞行射击', value: 'game_shooter_v1', dbGameId: 0 }
+      { label: '贪吃蛇大冒险', value: 1, dbId: 1, code: 'snake-vue3' },
+      { label: '植物大战僵尸', value: 2, dbId: 2, code: 'pvz' },
+      { label: '飞行射击', value: 3, dbId: 3, code: 'shooter' }
     ]
+  } finally {
+    isLoadingBusiness.value = false
+  }
+}
+
+// 加载应用列表（预留）
+const loadAppList = async () => {
+  isLoadingBusiness.value = true
+  try {
+    // TODO: 从后端加载应用列表
+    // const apps = await appApi.getList()
+    appList.value = [
+      { label: '示例应用', value: 100, dbId: 100, code: 'example-app' }
+    ]
+    console.log('应用列表加载完成:', appList.value.length, '项')
+  } catch (e) {
+    console.error('加载应用列表失败:', e)
+    appList.value = []
+  } finally {
+    isLoadingBusiness.value = false
   }
 }
 
 onMounted(() => {
-  loadGameList()
+  // ⭐ 根据当前的 ownerType 加载对应的业务列表
+  if (formData.value.ownerType === 'GAME') {
+    loadGameList()
+    loadAppList() // 预加载应用列表（备用）
+  } else {
+    loadAppList()
+    loadGameList() // 预加载游戏列表（备用）
+  }
 })
 
 // 标签列表
@@ -315,7 +435,10 @@ const rules = {
     { required: true, message: '请输入主题 ID', trigger: 'blur' },
     { pattern: /^[a-zA-Z0-9_]+$/, message: '主题 ID 只能包含字母、数字和下划线', trigger: 'blur' }
   ],
-  gameId: [
+  ownerType: [
+    { required: true, message: '请选择所有者类型', trigger: 'change' }
+  ],
+  ownerId: [
     { required: true, message: '请选择适用游戏', trigger: 'change' }
   ],
   themeName: [
@@ -433,15 +556,44 @@ const handleCoverSuccess = (response: any) => {
 }
 
 // 游戏选择变化
-const handleGameChange = (gameId: string) => {
-  const gameName = gameId.replace('game_', '').replace('_v1', '').replace('_v3', '')
-  formData.value.themeId = `theme_${gameName}_${Date.now()}`
+const handleOwnerTypeChange = (newOwnerType: 'GAME' | 'APPLICATION') => {
+  if (props.disableGameSelect) {
+    const modeText = props.disableThemeId ? '编辑' : 'DIY'
+    ElMessage.warning(`当前为${modeText}模式，不可更改业务类型`)
+    return
+  }
+  
+  console.log('切换业务类型:', newOwnerType)
+  
+  // 重置已选择的业务
+  formData.value.ownerId = undefined as unknown as number
+  selectedDbId.value = null
+  
+  // ⭐ 根据新的业务类型重新加载对应的业务列表
+  if (newOwnerType === 'GAME') {
+    loadGameList()
+  } else {
+    loadAppList()
+  }
+}
+
+// 业务选择变化
+const handleBusinessChange = (selectedGameId: number) => {
+  if (props.disableGameSelect) {
+    const modeText = props.disableThemeId ? '编辑' : 'DIY'
+    ElMessage.warning(`当前为${modeText}模式，不可更改适用业务`)
+    return
+  }
+  
+  // ⭐ 根据选中的 gameId 查找业务信息
+  const selected = currentBusinessList.value.find(g => g.value === selectedGameId)
+  if (selected) {
+    // ⭐ 主题 ID 生成规则：theme_{业务类型}_{gameId}_{时间戳}
+    formData.value.themeId = `theme_${formData.value.ownerType.toLowerCase()}_${selectedGameId}_${Date.now()}`
+  }
   isEditMode.value = false
 
-  // 记录数据库 gameId
-  const selected = gameList.value.find(g => g.value === gameId)
-  selectedDbGameId.value = selected ? selected.dbGameId : null
-  console.log('选择游戏:', gameId, '→ 数据库gameId:', selectedDbGameId.value)
+  console.log('选择业务:', selectedGameId, '→ gameId:', selectedGameId)
 }
 
 // 关闭引导
@@ -461,7 +613,18 @@ watch(
   () => props.modelValue.themeInfo,
   (newValue) => {
     if (newValue && JSON.stringify(newValue) !== JSON.stringify(formData.value)) {
+      // ⭐ 先更新 formData
       formData.value = { ...newValue }
+      
+      // ⭐ 如果有 ownerId，确保加载了对应的业务类型列表
+      if (newValue.ownerId && newValue.ownerType) {
+        // 确保列表已加载
+        if (newValue.ownerType === 'GAME' && gameList.value.length === 0) {
+          loadGameList()
+        } else if (newValue.ownerType === 'APPLICATION' && appList.value.length === 0) {
+          loadAppList()
+        }
+      }
     }
   },
   { deep: true, immediate: true }

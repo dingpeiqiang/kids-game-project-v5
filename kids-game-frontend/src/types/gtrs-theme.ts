@@ -17,11 +17,13 @@ export interface SpecMeta {
 
 export interface ThemeInfo {
   themeId: string
-  gameId: string
+  ownerType: 'GAME' | 'APPLICATION'  // 所有者类型
+  ownerId: number                     // 数据库主键
   themeName: string
   isDefault: boolean
   author?: string
   description?: string
+  gameId?: string  // ⭐ 兼容字段，用于生成 gameCode（从 ownerId 转换）
 }
 
 export interface GlobalStyle {

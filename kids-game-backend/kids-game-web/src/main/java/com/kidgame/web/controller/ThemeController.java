@@ -7,6 +7,7 @@ import com.kidgame.common.model.Result;
 import com.kidgame.dao.entity.CreatorEarnings;
 import com.kidgame.dao.entity.ThemeInfo;
 import com.kidgame.dao.entity.ThemePurchase;
+import com.kidgame.dao.entity.UserThemePreference;
 import com.kidgame.service.ThemeService;
 import com.kidgame.service.dto.ThemeUploadDTO;
 import com.kidgame.service.GTRSSchemaService;
@@ -716,6 +717,91 @@ public class ThemeController {
         } catch (Exception e) {
             log.error("获取用户可用的主题失败", e);
             return Result.error("获取用户可用的主题失败：" + e.getMessage());
+        }
+    }
+
+    // ==================== 用户主题偏好相关 API ====================
+
+    /**
+     * ⭐ 获取用户当前使用的主题
+     * @param ownerType 所有者类型（GAME/APPLICATION）
+     * @param ownerId 所有者 ID（游戏 ID 或应用 ID）
+     * @param request HTTP 请求
+     * @return 用户当前主题信息
+     */
+    @Operation(summary = "获取用户当前主题")
+    @GetMapping("/user/current")
+    public Result<UserThemePreference> getUserCurrentTheme(
+            @Parameter(description = "所有者类型：GAME-游戏，APPLICATION-应用")
+            @RequestParam String ownerType,
+            @Parameter(description = "所有者 ID（游戏 ID 或应用 ID）")
+            @RequestParam Long ownerId,
+            HttpServletRequest request) {
+        
+        try {
+            String userIdStr = (String) request.getAttribute("userId");
+            if (userIdStr == null || userIdStr.isEmpty()) {
+                log.warn("未登录用户尝试获取当前主题");
+                return Result.error("请先登录");
+            }
+            
+            Long userId = Long.valueOf(userIdStr);
+            log.info("获取用户当前主题 - userId: {}, ownerType: {}, ownerId: {}", userId, ownerType, ownerId);
+            
+            UserThemePreference preference = themeService.getUserCurrentTheme(userId, ownerType, ownerId);
+            
+            if (preference != null) {
+                return Result.success(preference);
+            } else {
+                // 返回空结果，表示用户暂无偏好
+                return Result.success(null);
+            }
+        } catch (Exception e) {
+            log.error("获取用户当前主题失败", e);
+            return Result.error("获取用户当前主题失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * ⭐ 保存用户主题偏好
+     * @param ownerType 所有者类型
+     * @param ownerId 所有者 ID
+     * @param themeId 主题 ID
+     * @param request HTTP 请求
+     * @return 是否保存成功
+     */
+    @Operation(summary = "保存用户主题偏好")
+    @PostMapping("/user/preference")
+    public Result<Map<String, Boolean>> saveUserPreference(
+            @Parameter(description = "所有者类型：GAME-游戏，APPLICATION-应用")
+            @RequestParam String ownerType,
+            @Parameter(description = "所有者 ID（游戏 ID 或应用 ID）")
+            @RequestParam Long ownerId,
+            @Parameter(description = "主题 ID")
+            @RequestParam Long themeId,
+            HttpServletRequest request) {
+        
+        try {
+            String userIdStr = (String) request.getAttribute("userId");
+            if (userIdStr == null || userIdStr.isEmpty()) {
+                log.warn("未登录用户尝试保存主题偏好");
+                return Result.error("请先登录");
+            }
+            
+            Long userId = Long.valueOf(userIdStr);
+            log.info("保存用户主题偏好 - userId: {}, ownerType: {}, ownerId: {}, themeId: {}", 
+                    userId, ownerType, ownerId, themeId);
+            
+            boolean success = themeService.saveUserPreference(userId, ownerType, ownerId, themeId);
+            
+            if (success) {
+                return Result.success();
+            } else {
+                return Result.error("保存失败：可能主题不存在或与目标匹配");
+            }
+        } catch (Exception e) {
+            log.error("保存用户主题偏好失败", e);
+            return Result.error("保存用户主题偏好失败：" + e.getMessage());
         }
     }
 }

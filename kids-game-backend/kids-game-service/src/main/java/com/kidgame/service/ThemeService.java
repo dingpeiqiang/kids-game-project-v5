@@ -5,6 +5,7 @@ import com.kidgame.dao.entity.CreatorEarnings;
 import com.kidgame.dao.entity.Game;
 import com.kidgame.dao.entity.ThemeInfo;
 import com.kidgame.dao.entity.ThemePurchase;
+import com.kidgame.dao.entity.UserThemePreference;
 import com.kidgame.service.dto.ThemeUploadDTO;
 
 import java.util.List;
@@ -200,4 +201,32 @@ public interface ThemeService {
      */
     Map<String, Object> getMyAvailableThemesWithPage(Long userId, String ownerType, Long ownerId, 
                                                       String source, Integer page, Integer pageSize);
+
+    // ==================== 用户主题偏好相关方法 ====================
+
+    /**
+     * ⭐ 获取用户当前使用的主题
+     * @param userId 用户 ID
+     * @param ownerType 所有者类型（GAME/APPLICATION）
+     * @param ownerId 所有者 ID（游戏 ID 或应用 ID）
+     * @return 用户当前主题，如果没有返回 null
+     */
+    UserThemePreference getUserCurrentTheme(Long userId, String ownerType, Long ownerId);
+
+    /**
+     * ⭐ 保存用户主题偏好
+     * @param userId 用户 ID
+     * @param ownerType 所有者类型
+     * @param ownerId 所有者 ID
+     * @param themeId 主题 ID
+     * @return 是否保存成功
+     */
+    boolean saveUserPreference(Long userId, String ownerType, Long ownerId, Long themeId);
+
+    /**
+     * ⭐ 获取用户对游戏的默认主题（从 user_theme_preference 表）
+     * @param gameId 游戏 ID
+     * @return 默认主题 ID，如果没有返回 null
+     */
+    Long getDefaultThemeForGame(Long gameId);
 }

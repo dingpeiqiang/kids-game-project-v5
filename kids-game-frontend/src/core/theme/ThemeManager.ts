@@ -5,6 +5,7 @@
 
 // Phaser 从 CDN 加载为全局变量
 import { themeApi, type ThemeListParams } from '@/services/theme-api.service';
+import { ThemePreferenceUtil } from '../utils/theme-preference.util';
 
 /**
  * Theme asset configuration
@@ -65,13 +66,26 @@ export interface CloudThemeInfo {
   key: string;
   name: string;
   author: string;
+  authorName?: string; // 作者昵称
   price: number;
   thumbnail?: string;
+  thumbnailUrl?: string; // 兼容字段
   description?: string;
   downloadCount: number;
   rating?: number;
   status: 'on_sale' | 'offline' | 'pending';
   createdAt: number;
+  // 游戏关联字段
+  gameId?: number;
+  gameCode?: string;
+  gameName?: string; // 游戏名称
+  // 来源相关
+  source?: 'official' | 'mine' | 'purchased';
+  isOfficial?: boolean;
+  isDefault?: boolean;
+  isCurrent?: boolean;
+  ownerType?: 'GAME' | 'APPLICATION';
+  ownerId?: number;
 }
 
 /**
@@ -555,6 +569,92 @@ class ThemeManager {
       localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(this.localDiyThemes));
     } catch (error) {
       console.error('[ThemeManager] Failed to save local DIY themes:', error);
+    }
+  }
+
+  // ==================== ⭐ 用户主题偏好相关方法 ====================
+
+  /**
+   * ⭐ 加载用户当前主题
+   * @param userId 用户ID
+   * @param ownerType 所有者类型（GAME/APPLICATION）
+   * @param ownerId 所有者 ID（游戏 ID 或应用 ID）
+   * @returns 主题 ID，如果加载失败返回 null
+   */
+  async loadUserCurrentTheme(
+    userId: number,
+    ownerType: string,
+    ownerId: number
+  ): Promise<number | null> {
+    try {
+      // 直接从后端加载 user_theme_preference ⭐
+      const preference = await themeApi.getUserCurrentTheme(ownerType, ownerId);
+      
+      if (preference && preference.themeId) {
+        console.log('[ThemeManager] 从后端加载用户主题偏好:', preference);
+        return preference.themeId;
+      }
+    } catch (error) {
+      console.error('[ThemeManager] 从后端加载主题失败:', error);
+    }
+    
+    // 用户暂无主题偏好，由调用方使用默认主题
+    console.log('[ThemeManager] 用户暂无主题偏好，使用默认主题');
+    return null;
+  }
+
+  /**
+   * ⭐ 切换用户主题
+   * @param userId 用户 ID
+   * @param ownerType 所有者类型
+   * @param ownerId 所有者 ID
+   * @param themeId 主题 ID
+   * @returns 是否切换成功
+   */
+  async switchUserTheme(
+    userId: number,
+    ownerType: string,
+    ownerId: number,
+    themeId: number
+  ): Promise<boolean> {
+    try {
+      console.log('[ThemeManager] 切换用户主题:', { userId, ownerType, ownerId, themeId });
+      
+      // 1. 保存到后端
+      const success = await themeApi.saveUserPreference(ownerType, ownerId, themeId);
+      
+      if (!success) {
+        throw new Error('保存用户偏好失败');
+      }
+      
+      // 2. 更新本地缓存
+      ThemePreferenceUtil.saveLocal(ownerType, ownerId, themeId);
+      
+      // 3. 直接使用 themeId 作为标识 ⭐
+      await this.switchTheme(themeId.toString());
+      
+      console.log('[ThemeManager] 主题切换成功');
+      return true;
+    } catch (error) {
+      console.error('[ThemeManager] 切换主题失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * ⭐ 加载游戏默认主题
+   * @param gameId 游戏 ID
+   * @returns 默认主题配置
+   */
+  async loadDefaultThemeForGame(gameId: number): Promise<ThemeConfig | null> {
+    try {
+      // TODO: 调用后端 API 获取游戏默认主题
+      // 目前返回 null，由调用方处理
+      console.log('[ThemeManager] 游戏暂无默认主题:', gameId);
+      return null;
+    } catch (error) {
+      console.error('[ThemeManager] 加载游戏默认主题失败:', error);
+      return null;
     }
   }
 }

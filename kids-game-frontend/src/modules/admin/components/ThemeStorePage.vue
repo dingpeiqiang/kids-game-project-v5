@@ -159,28 +159,52 @@
 
             <!-- 卡片底部 -->
             <div class="card-footer">
-              <button
-                v-if="ownedThemeIds.includes(theme.themeId)"
-                @click="useTheme(theme)"
-                class="btn-use"
-              >
-                ✅ 使用
-              </button>
-              <button
-                v-else-if="theme.price === 0"
-                @click="claimFreeTheme(theme)"
-                class="btn-claim"
-              >
-                🎁 领取
-              </button>
-              <button
-                v-else
-                @click="openBuyDialog(theme)"
-                class="btn-buy"
-                :disabled="userBalance < theme.price"
-              >
-                💰 购买
-              </button>
+              <!-- ⭐ 已拥有的主题：显示使用和 DIY 按钮 -->
+              <template v-if="ownedThemeIds.includes(theme.themeId)">
+                <div class="action-buttons">
+                  <!-- 不是默认主题时显示使用按钮 -->
+                  <button
+                    v-if="!theme.isDefault"
+                    @click="useTheme(theme)"
+                    class="btn-use"
+                  >
+                    🎯 使用
+                  </button>
+                  <!-- 已拥有且是默认主题，显示已使用标识 -->
+                  <button
+                    v-if="theme.isDefault"
+                    disabled
+                    class="btn-used"
+                  >
+                    ✓ 已使用
+                  </button>
+                  <!-- DIY 按钮：所有已拥有的主题都显示 -->
+                  <button
+                    @click="openDIYPanel(theme)"
+                    class="btn-diy"
+                  >
+                    ✨ DIY
+                  </button>
+                </div>
+              </template>
+              <!-- 未拥有的主题 -->
+              <template v-else>
+                <button
+                  v-if="theme.price === 0"
+                  @click="claimFreeTheme(theme)"
+                  class="btn-claim"
+                >
+                  🎁 领取
+                </button>
+                <button
+                  v-else
+                  @click="openBuyDialog(theme)"
+                  class="btn-buy"
+                  :disabled="userBalance < theme.price"
+                >
+                  💰 购买
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -271,14 +295,14 @@
               ✅ 使用主题
             </button>
             <button
-              v-else-if="selectedTheme?.price === 0"
+              v-else-if="selectedTheme && selectedTheme.price === 0"
               @click="claimFreeTheme(selectedTheme)"
               class="btn-claim"
             >
               🎁 免费领取
             </button>
             <button
-              v-else
+              v-else-if="selectedTheme"
               @click="openBuyDialog(selectedTheme)"
               class="btn-buy"
               :disabled="userBalance < (selectedTheme?.price || 0)"
@@ -508,22 +532,44 @@ async function claimFreeTheme(theme: ThemeInfo | null) {
 }
 
 // 使用主题
-function useTheme(theme: ThemeInfo | null) {
+async function useTheme(theme: ThemeInfo | null) {
   if (!theme) return;
   
-  // 保存到本地存储
-  localStorage.setItem('current_theme', JSON.stringify({
-    themeId: theme.themeId,
-    themeName: theme.themeName,
-  }));
-  
-  await dialog.success(`已应用主题：${theme.themeName}`);
-  
-  // TODO: 通知游戏应用主题
-  window.postMessage({
-    type: 'THEME_CHANGE',
-    theme: theme,
-  }, '*');
+  try {
+    // 调用后端 API 保存用户偏好
+    const { themeApi } = await import('@/services/theme-api.service');
+    
+    // 保存到用户偏好（APPLICATION 类型，ownerId 为当前用户ID）
+    const userId = 1; // TODO: 从登录信息获取
+    await themeApi.saveUserPreference('APPLICATION', userId, theme.themeId);
+    
+    // 同时保存到本地存储作为缓存
+    localStorage.setItem('current_theme', JSON.stringify({
+      themeId: theme.themeId,
+      themeName: theme.themeName,
+    }));
+    
+    await dialog.success(`已应用主题：${theme.themeName}`);
+    
+    // 刷新主题列表以更新 UI 状态
+    await loadThemes();
+    
+    // 通知游戏应用主题
+    window.postMessage({
+      type: 'THEME_CHANGE',
+      theme: theme,
+    }, '*');
+  } catch (error: any) {
+    console.error('[ThemeStore] 使用主题失败:', error);
+    await dialog.error('操作失败：' + (error.response?.data?.message || error.message));
+  }
+}
+
+// 打开 DIY 面板
+function openDIYPanel(theme: ThemeInfo) {
+  // TODO: 打开主题 DIY 面板
+  console.log('[ThemeStore] 打开 DIY 面板:', theme.themeName);
+  dialog.info('即将进入主题 DIY 创作模式');
 }
 
 // 翻页
@@ -926,8 +972,13 @@ onMounted(() => {
   border-top: 1px solid #e5e7eb;
 }
 
-.card-footer button {
+.action-buttons {
+  display: flex;
+  gap: 8px;
   width: 100%;
+}
+
+.card-footer button {
   padding: 10px;
   border: none;
   border-radius: 8px;
@@ -936,9 +987,49 @@ onMounted(() => {
   transition: all 0.3s;
 }
 
+.btn-use,
+.btn-used,
+.btn-diy,
+.btn-claim,
+.btn-buy {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
 .btn-use {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
+  
+  &:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+  }
+}
+
+.btn-used {
+  background: #e5e7eb;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.btn-diy {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
 }
 
 .btn-claim {

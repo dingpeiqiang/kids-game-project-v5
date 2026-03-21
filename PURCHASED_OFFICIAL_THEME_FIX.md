@@ -131,6 +131,7 @@ curl -X GET "http://localhost:8080/api/theme/my-available-themes?source=official
 - 主题系统重构迁移指南：`THEME_SYSTEM_REFACTOR_MIGRATION.md`
 - 主题来源筛选修复：`THEME_SOURCE_FILTER_FIX.md`
 - 主题查询重构：`THEME_QUERY_REFACTOR.md`
+- **SQL 优化文档**：`THEME_QUERY_SQL_OPTIMIZATION.md`
 
 ## 修改日期
 

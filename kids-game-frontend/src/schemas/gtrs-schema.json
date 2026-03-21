@@ -37,7 +37,7 @@
     "themeInfo": {
       "type": "object",
       "description": "主题基础信息",
-      "required": ["themeId", "gameId", "themeName", "isDefault"],
+      "required": ["themeId", "ownerType", "ownerId", "themeName", "isDefault"],
       "additionalProperties": true,
       "properties": {
         "themeId": {
@@ -45,9 +45,19 @@
           "pattern": "^[a-z0-9_]+$",
           "description": "主题唯一标识，仅英文小写、数字、下划线"
         },
+        "ownerType": {
+          "type": "string",
+          "enum": ["GAME", "APPLICATION"],
+          "description": "所有者类型：GAME（游戏）或 APPLICATION（应用）"
+        },
+        "ownerId": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "所有者 ID（数据库主键）"
+        },
         "gameId": {
           "type": "string",
-          "description": "归属游戏ID"
+          "description": "兼容字段：游戏 ID（已废弃，使用 ownerType + ownerId 替代）"
         },
         "themeName": {
           "type": "string",

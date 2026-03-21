@@ -213,6 +213,8 @@ import { themeApi, gameApi } from '@/services';
 import type { CloudThemeInfo } from '@/core/theme/ThemeManager';
 import { dialog } from '@/composables/useDialog';
 import { getCurrentUserId } from '@/utils/auth';
+import { ThemePreferenceUtil } from '@/core/utils/theme-preference.util';
+import { themeManager } from '@/core/theme/ThemeManager';
 
 const router = useRouter();
 const route = useRoute();
@@ -405,9 +407,9 @@ async function loadStoreThemes() {
       ownerType: theme.ownerType || 'GAME',
       ownerId: theme.ownerId ?? theme.gameId,
       // ⭐ 根据 isOfficial 字段设置来源
-      source: theme.isOfficial ? 'official' : 'user',
-      sourceLabel: theme.isOfficial ? '官方' : '用户',
-      sourceIcon: theme.isOfficial ? '🏛️' : '👤',
+      source: theme.isOfficial ? 'official' : 'purchased',
+      sourceLabel: theme.isOfficial ? '官方' : '已购',
+      sourceIcon: theme.isOfficial ? '🏛️' : '🛒',
     }));
 
     // 直接设置为显示的主题
@@ -585,11 +587,51 @@ function handleDIYTheme(theme?: any) {
   });
 }
 
-function handleUseTheme(theme: any) {
-  console.log('[CreatorCenter] 使用主题:', theme);
-  dialog.success(`已应用主题：${theme.name || theme.themeName}`);
-  // TODO: 应用主题到游戏
-  // themeManager.applyTheme(theme);
+async function handleUseTheme(theme: any) {
+  try {
+    const userId = getCurrentUserId();
+    const ownerType = theme.ownerType || 'GAME';
+    const ownerId = theme.gameId || theme.ownerId;
+    const themeId = theme.themeId || theme.id || theme.themeId;
+    
+    if (!userId) {
+      dialog.error('请先登录');
+      return;
+    }
+    
+    if (!ownerId || !themeId) {
+      dialog.error('主题信息不完整，无法应用');
+      return;
+    }
+    
+    ElMessage.info(`正在应用主题 ${theme.name || theme.themeName}...`);
+    
+    // 1. 调用后端 API 保存偏好
+    const success = await themeApi.saveUserPreference(ownerType, ownerId, themeId);
+    
+    if (!success) {
+      throw new Error('保存用户偏好失败');
+    }
+    
+    // 2. 更新本地缓存
+    ThemePreferenceUtil.saveLocal(ownerType, ownerId, themeId);
+    
+    // 3. 应用主题到当前页面（如果 ThemeManager 已集成）
+    try {
+      await themeManager.switchUserTheme(userId, ownerType, ownerId, themeId);
+    } catch (error) {
+      console.warn('[handleUseTheme] ThemeManager 切换主题失败，但偏好已保存:', error);
+    }
+    
+    ElMessage.success(`已应用主题：${theme.name || theme.themeName}`);
+    
+    // 4. 刷新主题列表显示
+    await reloadCurrentData();
+    
+  } catch (error: any) {
+    console.error('[handleUseTheme] 应用主题失败:', error);
+    ElMessage.error('应用主题失败：' + (error.message || '未知错误'));
+  }
 }
 
 function handleToggleSale(theme: CloudThemeInfo) {
@@ -625,7 +667,26 @@ function handleToggleSale(theme: CloudThemeInfo) {
 
 function handleEdit(theme: CloudThemeInfo) {
   console.log('[CreatorCenter] 编辑主题:', theme);
-  // TODO: 打开编辑表单
+  
+  // ⭐ 编辑模式：传递 themeId 和 gameId，但不生成新主题 ID
+  const query: Record<string, string> = {};
+  
+  // 兼容不同版本的 CloudThemeInfo 接口
+  const themeId = (theme as any).themeId || theme.id;
+  if (themeId) {
+    query.themeId = String(themeId);
+  }
+  if (theme.gameId) {
+    query.gameId = String(theme.gameId);
+  }
+  
+  // 添加一个标记，表示这是编辑模式（非 DIY）
+  query.mode = 'edit';
+  
+  router.push({
+    path: '/creator-center/gtrs-editor',
+    query
+  });
 }
 
 function handleDelete(theme: CloudThemeInfo) {

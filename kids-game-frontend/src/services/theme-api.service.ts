@@ -70,6 +70,20 @@ export interface ThemeUploadPayload {
 }
 
 /**
+ * ⭐ 用户主题偏好数据
+ */
+export interface UserThemePreference {
+  preferenceId?: number;
+  userId: number;
+  ownerType: 'GAME' | 'APPLICATION';
+  ownerId: number;
+  themeId: number;
+  isActive?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
  * 主题 API 服务类
  * 继承 BaseApiService 统一使用 fetch
  */
@@ -282,6 +296,49 @@ class ThemeApiService extends BaseApiService {
    */
   async quickValidate(themeJson: string): Promise<{ valid: boolean }> {
     return this.post<{ valid: boolean }>('/api/theme/quick-validate', { themeJson });
+  }
+
+  // ==================== ⭐ 用户主题偏好相关 API ====================
+
+  /**
+   * ⭐ 获取用户当前使用的主题
+   * @param ownerType 所有者类型
+   * @param ownerId 所有者 ID
+   * @returns 用户主题偏好信息
+   */
+  async getUserCurrentTheme(ownerType: string, ownerId: number): Promise<UserThemePreference | null> {
+    try {
+      const response = await this.get<UserThemePreference>(
+        `/api/theme/user/current?ownerType=${ownerType}&ownerId=${ownerId}`
+      );
+      return response || null;
+    } catch (error) {
+      console.error('[ThemeApi] 获取用户当前主题失败:', error);
+      return null;
+    }
+  }
+
+  /**
+   * ⭐ 保存用户主题偏好
+   * @param ownerType 所有者类型
+   * @param ownerId 所有者 ID
+   * @param themeId 主题 ID
+   * @returns 是否保存成功
+   */
+  async saveUserPreference(
+    ownerType: string,
+    ownerId: number,
+    themeId: number
+  ): Promise<boolean> {
+    try {
+      await this.post(
+        `/api/theme/user/preference?ownerType=${ownerType}&ownerId=${ownerId}&themeId=${themeId}`
+      );
+      return true;
+    } catch (error) {
+      console.error('[ThemeApi] 保存用户主题偏好失败:', error);
+      return false;
+    }
   }
 }
 

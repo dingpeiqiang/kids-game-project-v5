@@ -7,11 +7,13 @@ import com.kidgame.dao.entity.CreatorEarnings;
 import com.kidgame.dao.entity.Game;
 import com.kidgame.dao.entity.ThemeInfo;
 import com.kidgame.dao.entity.ThemePurchase;
+import com.kidgame.dao.entity.UserThemePreference;
 import com.kidgame.dao.mapper.CreatorEarningsMapper;
 import com.kidgame.dao.mapper.GameMapper;
 import com.kidgame.dao.mapper.ThemeGameRelationMapper;
 import com.kidgame.dao.mapper.ThemeInfoMapper;
 import com.kidgame.dao.mapper.ThemePurchaseMapper;
+import com.kidgame.dao.mapper.UserThemePreferenceMapper;
 import com.kidgame.service.ThemeService;
 import com.kidgame.service.GTRSSchemaService;
 import com.kidgame.service.dto.ThemeUploadDTO;
@@ -51,6 +53,9 @@ public class ThemeServiceImpl implements ThemeService {
 
     @Autowired
     private GTRSSchemaService gtrsSchemaService;
+
+    @Autowired
+    private UserThemePreferenceMapper userThemePreferenceMapper;
 
     /**
      * 获取主题列表 (分页)
@@ -659,26 +664,49 @@ public class ThemeServiceImpl implements ThemeService {
         themeInfoMapper.selectPage(pageInfo, wrapper);
         List<ThemeInfo> themes = pageInfo.getRecords();
         
-        // 3. 为每个主题添加游戏信息（通过 JSON 序列化添加额外字段）
-        for (int i = 0; i < themes.size(); i++) {
-            ThemeInfo theme = themes.get(i);
+        // ⭐ 3. 获取用户当前使用的主题 ID（用于标记 isCurrent）
+        Long currentThemeId = null;
+        try {
+            UserThemePreference preference = userThemePreferenceMapper.selectUserCurrentTheme(userId, ownerType, ownerId);
+            if (preference != null) {
+                currentThemeId = preference.getThemeId();
+                log.info("用户当前主题偏好 - userId: {}, ownerType: {}, ownerId: {}, themeId: {}", 
+                        userId, ownerType, ownerId, currentThemeId);
+            }
+        } catch (Exception e) {
+            log.warn("获取用户主题偏好失败，不影响主题列表返回", e);
+        }
+        
+        // 4. 为每个主题添加游戏信息和 isCurrent 标记
+        List<Map<String, Object>> themesWithGame = new java.util.ArrayList<>();
+        for (ThemeInfo theme : themes) {
+            Map<String, Object> themeMap = JSON.parseObject(JSON.toJSONString(theme), Map.class);
+
+            // 查询主题关联的游戏信息
             if ("GAME".equals(theme.getOwnerType()) && theme.getOwnerId() != null) {
                 var game = getGameById(theme.getOwnerId());
                 if (game != null) {
-                    // 使用 JSON 扩展字段，不直接设置到 entity
-                    String jsonStr = JSON.toJSONString(theme);
-                    Map<String, Object> themeMap = JSON.parseObject(jsonStr, Map.class);
                     themeMap.put("gameId", game.getGameId());
                     themeMap.put("gameCode", game.getGameCode());
                     themeMap.put("gameName", game.getGameName());
-                    themes.set(i, JSON.parseObject(JSON.toJSONString(themeMap), ThemeInfo.class));
                 }
             }
+
+            // 如果没有关联游戏，设置默认值
+            if (!themeMap.containsKey("gameName") || themeMap.get("gameName") == null) {
+                themeMap.put("gameName", "游戏主题");
+            }
+            
+            // ⭐ 标记是否为用户当前使用的主题（优先级最高）
+            Boolean isCurrent = (currentThemeId != null && theme.getThemeId().equals(currentThemeId));
+            themeMap.put("isCurrent", isCurrent != null ? isCurrent : false);
+
+            themesWithGame.add(themeMap);
         }
-    
-        // 4. 返回分页数据
+
+        // 5. 返回分页数据
         Map<String, Object> result = new HashMap<>();
-        result.put("list", themes);
+        result.put("list", themesWithGame);
         result.put("total", pageInfo.getTotal());
         result.put("pageNum", page);
         result.put("pageSize", pageSize);
@@ -689,6 +717,11 @@ public class ThemeServiceImpl implements ThemeService {
     
     /**
      * 构建查询条件
+     * 
+     * ⭐ 优化说明：
+     * - 简化 WHERE 条件，避免复杂的 OR 嵌套
+     * - purchased 场景：只排除自己创作的，包含官方主题
+     * - all 场景：官方 + 我的 + 已购买的（允许重复，由前端去重）
      */
     private LambdaQueryWrapper<ThemeInfo> buildQueryWrapper(Long userId, String ownerType, Long ownerId, String source) {
         LambdaQueryWrapper<ThemeInfo> wrapper = new LambdaQueryWrapper<>();
@@ -704,20 +737,21 @@ public class ThemeServiceImpl implements ThemeService {
             }
         }
     
-        // ⭐ 来源筛选
+        // ⭐ 来源筛选 - 简化逻辑
         switch (source) {
             case "official":
-                // 官方主题
+                // 官方主题：只显示官方的
                 wrapper.eq(ThemeInfo::getIsOfficial, true);
                 break;
     
             case "purchased":
-                // 已购买的主题（排除自己创作的，但包含官方主题）
+                // 已购买的主题：查询已购买 ID 列表，排除自己创作的
                 List<Long> purchasedIds = getPurchaseThemeIds(userId);
                 if (purchasedIds.isEmpty()) {
-                    // 如果没有购买记录，返回空结果
+                    // 没有购买记录，返回空结果
                     wrapper.eq(ThemeInfo::getThemeId, -1L);
                 } else {
+                    // 在已购买列表中，且不是自己创作的（包含官方主题）
                     wrapper.in(ThemeInfo::getThemeId, purchasedIds)
                            .ne(ThemeInfo::getAuthorId, userId);
                 }
@@ -729,20 +763,26 @@ public class ThemeServiceImpl implements ThemeService {
                 break;
     
             default: // "all"
-                // 全部：官方主题 + 我的主题 + 已购买主题
+                // 全部可用主题：官方 OR 我的 OR 已购买的
                 List<Long> allPurchasedIds = getPurchaseThemeIds(userId);
-                    
-                wrapper.and(w -> w
-                    .eq(ThemeInfo::getIsOfficial, true)
-                    .or(or -> or.eq(ThemeInfo::getAuthorId, userId))
-                );
-                    
-                // 如果有已购买的主题，也包含进来
-                if (!allPurchasedIds.isEmpty()) {
-                    wrapper.or(or -> or
-                        .in(ThemeInfo::getThemeId, allPurchasedIds)
-                        .ne(ThemeInfo::getIsOfficial, true)
-                        .ne(ThemeInfo::getAuthorId, userId)
+                
+                if (allPurchasedIds.isEmpty()) {
+                    // 没有购买记录：只显示官方和我的
+                    wrapper.and(w -> w
+                        .eq(ThemeInfo::getIsOfficial, true)
+                        .or(or -> or.eq(ThemeInfo::getAuthorId, userId))
+                    );
+                } else {
+                    // 有购买记录：官方 OR 我的 OR 已购买的（排除自己创作的重复项）
+                    wrapper.and(w -> w
+                        .eq(ThemeInfo::getIsOfficial, true)  // 官方主题
+                        .or(or -> or
+                            .eq(ThemeInfo::getAuthorId, userId)  // 我的主题
+                            .or(in -> in
+                                .in(ThemeInfo::getThemeId, allPurchasedIds)  // 已购买
+                                .ne(ThemeInfo::getAuthorId, userId)  // 排除自己创作的
+                            )
+                        )
                     );
                 }
                 break;
@@ -869,6 +909,129 @@ public class ThemeServiceImpl implements ThemeService {
         } catch (Exception e) {
             log.error("删除主题失败：themeId={}", themeId, e);
             return false;
+        }
+    }
+
+    // ==================== 用户主题偏好相关方法实现 ====================
+
+    /**
+     * ⭐ 获取用户当前使用的主题
+     */
+    @Override
+    public UserThemePreference getUserCurrentTheme(Long userId, String ownerType, Long ownerId) {
+        if (userId == null || ownerType == null || ownerId == null) {
+            log.warn("参数为空，无法获取用户当前主题 - userId: {}, ownerType: {}, ownerId: {}", userId, ownerType, ownerId);
+            return null;
+        }
+        
+        try {
+            UserThemePreference preference = userThemePreferenceMapper.selectUserCurrentTheme(userId, ownerType, ownerId);
+            if (preference != null) {
+                log.info("获取用户当前主题成功 - userId: {}, ownerType: {}, ownerId: {}, themeId: {}", 
+                        userId, ownerType, ownerId, preference.getThemeId());
+            } else {
+                log.info("用户暂无主题偏好 - userId: {}, ownerType: {}, ownerId: {}", userId, ownerType, ownerId);
+            }
+            return preference;
+        } catch (Exception e) {
+            log.error("获取用户当前主题失败 - userId: {}, ownerType: {}, ownerId: {}", userId, ownerType, ownerId, e);
+            return null;
+        }
+    }
+
+    /**
+     * ⭐ 保存用户主题偏好
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean saveUserPreference(Long userId, String ownerType, Long ownerId, Long themeId) {
+        if (userId == null || ownerType == null || ownerId == null || themeId == null) {
+            log.warn("参数为空，无法保存用户主题偏好 - userId: {}, ownerType: {}, ownerId: {}, themeId: {}", 
+                    userId, ownerType, ownerId, themeId);
+            return false;
+        }
+        
+        try {
+            // 验证主题是否存在
+            ThemeInfo theme = themeInfoMapper.selectById(themeId);
+            if (theme == null) {
+                log.warn("主题不存在：themeId={}", themeId);
+                return false;
+            }
+            
+            // 验证主题的 ownerType 和 ownerId 是否匹配
+            if (!ownerType.equals(theme.getOwnerType()) || !ownerId.equals(theme.getOwnerId())) {
+                log.warn("主题与目标不匹配 - theme: ownerType={}, ownerId={}, target: ownerType={}, ownerId={}",
+                        theme.getOwnerType(), theme.getOwnerId(), ownerType, ownerId);
+                return false;
+            }
+            
+            // 查询是否已存在偏好记录
+            UserThemePreference existing = userThemePreferenceMapper.selectUserCurrentTheme(userId, ownerType, ownerId);
+            
+            if (existing != null) {
+                // 更新现有记录
+                existing.setThemeId(themeId);
+                existing.setIsActive(1);
+                existing.setUpdatedAt(LocalDateTime.now());
+                int updateResult = userThemePreferenceMapper.updateById(existing);
+                log.info("更新用户主题偏好成功 - userId: {}, ownerType: {}, ownerId: {}, themeId: {}", 
+                        userId, ownerType, ownerId, themeId);
+                return updateResult > 0;
+            } else {
+                // 创建新记录
+                UserThemePreference preference = new UserThemePreference();
+                preference.setUserId(userId);
+                preference.setOwnerType(ownerType);
+                preference.setOwnerId(ownerId);
+                preference.setThemeId(themeId);
+                preference.setIsActive(1);
+                preference.setCreatedAt(LocalDateTime.now());
+                preference.setUpdatedAt(LocalDateTime.now());
+                
+                int insertResult = userThemePreferenceMapper.insert(preference);
+                log.info("创建用户主题偏好成功 - userId: {}, ownerType: {}, ownerId: {}, themeId: {}", 
+                        userId, ownerType, ownerId, themeId);
+                return insertResult > 0;
+            }
+        } catch (Exception e) {
+            log.error("保存用户主题偏好失败 - userId: {}, ownerType: {}, ownerId: {}, themeId: {}", 
+                    userId, ownerType, ownerId, themeId, e);
+            return false;
+        }
+    }
+
+    /**
+     * ⭐ 获取用户对游戏的默认主题（从 user_theme_preference 表）
+     */
+    @Override
+    public Long getDefaultThemeForGame(Long gameId) {
+        if (gameId == null) {
+            log.warn("游戏 ID 为空，无法获取默认主题");
+            return null;
+        }
+        
+        try {
+            // 这里可以扩展为：查找大多数用户为该游戏选择的主题作为推荐默认主题
+            // 目前先返回 theme_info 表中标记为 is_default 的主题
+            LambdaQueryWrapper<ThemeInfo> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ThemeInfo::getOwnerId, gameId)
+                   .eq(ThemeInfo::getOwnerType, "GAME")
+                   .eq(ThemeInfo::getIsDefault, true)
+                   .eq(ThemeInfo::getStatus, "on_sale")
+                   .last("LIMIT 1");
+            
+            ThemeInfo defaultTheme = themeInfoMapper.selectOne(wrapper);
+            if (defaultTheme != null) {
+                log.info("获取游戏默认主题成功 - gameId: {}, themeId: {}", gameId, defaultTheme.getThemeId());
+                return defaultTheme.getThemeId();
+            } else {
+                log.info("游戏暂无默认主题 - gameId: {}", gameId);
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("获取游戏默认主题失败 - gameId: {}", gameId, e);
+            return null;
         }
     }
 }

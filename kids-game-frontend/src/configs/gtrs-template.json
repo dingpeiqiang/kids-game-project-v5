@@ -6,7 +6,8 @@
   },
   "themeInfo": {
     "themeId": "game_default_theme",
-    "gameId": "game_001",
+    "ownerType": "GAME",
+    "ownerId": 1,
     "themeName": "默认主题",
     "isDefault": true,
     "author": "官方",
