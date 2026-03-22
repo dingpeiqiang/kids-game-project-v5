@@ -11,27 +11,21 @@
         <div class="overview-grid">
           <div class="overview-item">
             <div class="overview-label">主题名称</div>
-            <div class="overview-value">{{ themeData.themeInfo.themeName }}</div>
+            <div class="overview-value">{{ themeBasicInfo?.themeName || themeData.themeInfo?.themeName }}</div>
           </div>
           <div class="overview-item">
             <div class="overview-label">适用游戏</div>
-            <div class="overview-value">{{ themeData.themeInfo.gameId }}</div>
+            <div class="overview-value">{{ getGameName(themeBasicInfo?.ownerId ?? null) }}</div>
           </div>
           <div class="overview-item">
             <div class="overview-label">创作者</div>
-            <div class="overview-value">{{ themeData.themeInfo.author }}</div>
+            <div class="overview-value">{{ themeBasicInfo?.authorName || themeData.themeInfo?.author }}</div>
           </div>
           <div class="overview-item">
             <div class="overview-label">标签</div>
             <div class="overview-value">
-              <el-tag
-                v-for="tag in (themeData.themeInfo.tags || [])"
-                :key="tag"
-                size="small"
-              >
-                {{ tag }}
-              </el-tag>
-              <span v-if="!themeData.themeInfo.tags?.length">无</span>
+              <span v-if="!themeBasicInfo?.description && !themeData.themeInfo?.description">无</span>
+              <span v-else>{{ (themeBasicInfo?.description || themeData.themeInfo?.description || '').substring(0, 20) }}...</span>
             </div>
           </div>
         </div>
@@ -85,8 +79,6 @@
           </div>
         </div>
       </div>
-
-      <!-- 发布选项 -->
       <div class="publish-options">
         <h3>⚙️ 发布选项</h3>
         <el-form label-width="120px">
@@ -146,6 +138,24 @@ import type { GTRSTheme } from '@/utils/gtrs-validator'
 
 interface Props {
   themeData: GTRSTheme
+  themeBasicInfo?: {
+    themeId: number
+    authorId: number
+    isOfficial: boolean
+    ownerType: 'GAME' | 'APPLICATION'
+    ownerId: number | null
+    themeName: string
+    authorName: string
+    price: number
+    status: 'pending' | 'on_sale' | 'offline'
+    downloadCount: number
+    totalRevenue: number
+    thumbnailUrl: string
+    description: string
+    isDefault: boolean
+    createdAt: string
+    updatedAt: string
+  }
 }
 
 interface Emits {
@@ -224,18 +234,19 @@ const checkResult = computed(() => {
 
 // 检查项
 const checkItems = computed(() => {
-  const theme = props.themeData
+  const theme = props.themeData as any  // ⭐ 类型断言，兼容旧数据中的 themeInfo
+  const basicInfo = props.themeBasicInfo
 
   return [
     {
       key: 'themeName',
       label: '主题名称已填写',
-      passed: !!theme.themeInfo.themeName
+      passed: !!(basicInfo?.themeName || theme.themeInfo?.themeName)
     },
     {
-      key: 'gameId',
+      key: 'ownerId',
       label: '适用游戏已选择',
-      passed: !!theme.themeInfo.gameId
+      passed: !!(basicInfo?.ownerId)
     },
     {
       key: 'coverImage',
@@ -245,22 +256,29 @@ const checkItems = computed(() => {
     {
       key: 'description',
       label: '主题描述已填写',
-      passed: !!theme.themeInfo.description
+      passed: !!(basicInfo?.description || theme.themeInfo?.description)
     },
     {
       key: 'images',
-      label: '至少包含1张图片',
+      label: '至少包含 1 张图片',
       passed: imageCount.value > 0
     },
     {
       key: 'audio',
-      label: '至少包含1个音频',
+      label: '至少包含 1 个音频',
       passed: audioCount.value > 0
     }
   ]
 })
 
 // ========== 方法 ==========
+
+// 获取游戏名称
+const getGameName = (ownerId: number | null) => {
+  if (!ownerId) return '未知'
+  // TODO: 需要通过 ownerId 查找游戏名称，这里简化处理
+  return `游戏 ID: ${ownerId}`
+}
 
 // 预览主题
 const previewTheme = () => {
@@ -284,7 +302,7 @@ const submitPublish = async () => {
 
   try {
     await ElMessageBox.confirm(
-      `确定要发布主题「${props.themeData.themeInfo.themeName}」吗？\n\n价格：${priceText}`,
+      `确定要发布主题「${props.themeBasicInfo?.themeName || '未命名主题'}」吗？\n\n价格：${priceText}`,
       '确认发布',
       {
         type: 'warning',

@@ -390,10 +390,14 @@ const handleFileSelect = async (event: Event) => {
     const images = JSON.parse(JSON.stringify(props.modelValue.resources.images))
     const categoryData = images[category]
 
+    // 根据文件扩展名判断类型（更可靠），而不是依赖浏览器的 MIME type
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'png'
+    const imageType = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension) ? extension : 'png'
+
     categoryData[key] = {
       ...categoryData[key],
       src: result.url,
-      type: file.type.split('/')[1] || 'png'
+      type: imageType
     }
 
     emit('update:modelValue', {

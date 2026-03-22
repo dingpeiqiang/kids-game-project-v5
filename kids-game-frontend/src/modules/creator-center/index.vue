@@ -151,6 +151,20 @@
         @stats="handleStats"
       />
 
+      <!-- ⭐ 我的主题（仅显示当前用户创建的主题，支持完整管理功能） -->
+      <MyThemesManagement
+        v-if="currentTab === 'mine'"
+        :themes="myThemesOnly"
+        :loading="loadingMyThemesOnly"
+        @diy="handleDIYTheme"
+        @view="handleViewTheme"
+        @use="handleUseTheme"
+        @toggle="handleToggleSale"
+        @edit="handleEdit"
+        @delete="handleDelete"
+        @stats="handleStats"
+      />
+
       <!-- 主题商店（使用合并后的主题列表） -->
       <ThemeStore
         v-if="currentTab === 'store'"
@@ -199,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessageBox, ElMessage } from 'element-plus';
 import BaseHeader from '@/components/layout/BaseHeader.vue';
@@ -227,7 +241,8 @@ const userAvatar = computed(() => userStore.parentAvatar || '👨‍👩‍👧'
 
 // 标签页配置（简化版）
 const tabs = [
-  { id: 'my-themes', label: '已有主题', icon: '📦' },
+  { id: 'my-themes', label: '主题仓库', icon: '🏪' },  // ⭐ 主题仓库：展示所有可用主题（官方+购买+我的）
+  { id: 'mine', label: '我的主题', icon: '🎨' },       // ⭐ 我的主题：仅展示当前账号创建的主题（可管理）
   { id: 'store', label: '主题商店', icon: '🛍️' },
 ];
 
@@ -257,8 +272,12 @@ const games = ref<Array<{ gameId: number; gameName: string; gameCode: string }>>
 // 合并后的主题列表
 const allThemes = ref<any[]>([]);
 
+// ⭐ 我的主题专用数据（仅当前用户创建的）
+const myThemesOnly = ref<any[]>([]);
+
 // 加载状态
 const loadingMyThemes = ref(false);
+const loadingMyThemesOnly = ref(false);  // ⭐ 我的主题加载状态
 const loadingPurchasedThemes = ref(false);
 const loadingStore = ref(false);
 const loadingGames = ref(false);
@@ -272,8 +291,22 @@ onMounted(() => {
   }
 
   loadGamesList();
-  // 初始加载时根据当前筛选条件加载主题
-  reloadCurrentData();
+  // 初始加载时根据当前标签页加载主题
+  if (currentTab.value === 'mine') {
+    loadMyThemesOnly();
+  } else {
+    reloadCurrentData();
+  }
+});
+
+// ⭐ 监听标签页变化，加载对应数据
+watch(currentTab, (newTab, oldTab) => {
+  if (newTab === 'mine') {
+    loadMyThemesOnly();
+  } else if (oldTab === 'mine') {
+    // 从"我的主题"切换到其他标签时，刷新数据
+    reloadCurrentData();
+  }
 });
 
 // 加载游戏列表（从后端API 获取）
@@ -302,14 +335,19 @@ async function loadGamesList() {
     }
   } catch (error) {
     console.error('[CreatorCenter] 加载游戏列表失败:', error);
-    // 使用备用数据
-    games.value = [
-      { gameId: 1, gameName: '飞机大战', gameCode: 'plane-shooter' },
-      { gameId: 2, gameName: '贪吃蛇大冒险', gameCode: 'snake-vue3' },
-      { gameId: 3, gameName: '超级染色体', gameCode: 'chromosome' },
-      { gameId: 4, gameName: '算术大战', gameCode: 'arithmetic' },
-      { gameId: 5, gameName: '植物大战僵尸', gameCode: 'plants-vs-zombie' },
-    ];
+    // 开发环境使用备用数据，生产环境应该提示用户错误
+    if (import.meta.env.DEV) {
+      console.warn('[CreatorCenter] 使用开发环境备用游戏列表');
+      games.value = [
+        { gameId: 1, gameName: '飞机大战', gameCode: 'plane-shooter' },
+        { gameId: 2, gameName: '贪吃蛇大冒险', gameCode: 'snake-vue3' },
+        { gameId: 3, gameName: '超级染色体', gameCode: 'chromosome' },
+        { gameId: 4, gameName: '算术大战', gameCode: 'arithmetic' },
+        { gameId: 5, gameName: '植物大战僵尸', gameCode: 'plants-vs-zombie' },
+      ];
+    } else {
+      games.value = [];
+    }
   } finally {
     loadingGames.value = false;
   }
@@ -342,6 +380,42 @@ async function loadMyThemes() {
     }
   } finally {
     loadingMyThemes.value = false;
+  }
+}
+
+// ⭐ 加载仅当前用户创建的主题（用于"我的主题"标签）
+// 注意：调用 getMyThemes() 获取所有创建的主题（不限状态），而不是 getMyAvailableThemes（只返回 on_sale）
+async function loadMyThemesOnly() {
+  loadingMyThemesOnly.value = true;
+  try {
+    const userId = getCurrentUserId();
+    if (!userId || userId === 0) {
+      console.warn('[CreatorCenter] 用户未登录，无法加载我的主题');
+      myThemesOnly.value = [];
+      return;
+    }
+
+    // 调用 getMyThemes() 获取当前用户创建的所有主题（不限状态）
+    const themes = await themeApi.getMyThemes();
+
+    myThemesOnly.value = (themes || []).map((theme: any) => ({
+      ...theme,
+      source: 'mine',  // 强制标记为"我的"
+      sourceLabel: '我的',
+      sourceIcon: '🎨'
+    }));
+
+    console.log('[CreatorCenter] 我的主题(仅创建)加载成功:', myThemesOnly.value.length);
+  } catch (error) {
+    console.error('[CreatorCenter] 加载我的主题失败:', error);
+    if (import.meta.env.DEV) {
+      // 开发环境使用模拟数据
+      myThemesOnly.value = getMockThemes();
+    } else {
+      myThemesOnly.value = [];
+    }
+  } finally {
+    loadingMyThemesOnly.value = false;
   }
 }
 
@@ -578,7 +652,7 @@ function handleDIYTheme(theme?: any) {
     }
   } else {
     // 创建新主题
-    console.log('[CreatorCenter] 创建新主题 - 跳转到GTRS编辑器');
+    console.log('[CreatorCenter] 创建新主题 - 跳转到 GTRS 编辑器');
   }
 
   router.push({
@@ -691,7 +765,7 @@ function handleEdit(theme: CloudThemeInfo) {
 
 function handleDelete(theme: CloudThemeInfo) {
   console.log('[CreatorCenter] 删除主题:', theme);
-  
+
   // 显示确认对话框
   ElMessageBox.confirm(
     `确定要删除主题"${theme.name}"吗？此操作不可恢复！`,
@@ -705,19 +779,25 @@ function handleDelete(theme: CloudThemeInfo) {
     try {
       // 调用删除 API
       await themeApi.delete(String(theme.id));
-      
+
       // 删除成功后从列表中移除
       const index = myThemes.value.findIndex(t => t.id === theme.id);
       if (index !== -1) {
         myThemes.value.splice(index, 1);
       }
-      
+
       // 同时从合并列表中移除
       const allIndex = allThemes.value.findIndex(t => t.id === theme.id);
       if (allIndex !== -1) {
         allThemes.value.splice(allIndex, 1);
       }
-      
+
+      // ⭐ 同时从我的主题列表中移除
+      const mineIndex = myThemesOnly.value.findIndex(t => t.id === theme.id);
+      if (mineIndex !== -1) {
+        myThemesOnly.value.splice(mineIndex, 1);
+      }
+
       ElMessage.success('删除成功！');
     } catch (error: any) {
       console.error('[CreatorCenter] 删除主题失败:', error);

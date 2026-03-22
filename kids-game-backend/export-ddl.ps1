@@ -7,12 +7,19 @@ Write-Host "正在导出数据库 DDL..." -ForegroundColor Cyan
 Write-Host "======================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 设置数据库配置
-$dbHost = "106.54.7.205"
-$dbPort = "3306"
-$dbUser = "kidsgame"
-$dbPassword = "Kidsgame2026!Secure"
-$dbName = "kidgame"
+# 设置数据库配置（从环境变量读取）
+$dbHost = if ($env:DB_HOST) { $env:DB_HOST } else { "106.54.7.205" }
+$dbPort = if ($env:DB_PORT) { $env:DB_PORT } else { "3306" }
+$dbUser = if ($env:DB_USER) { $env:DB_USER } else { "kidsgame" }
+$dbPassword = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "" }
+$dbName = if ($env:DB_NAME) { $env:DB_NAME } else { "kidgame" }
+
+# 检查密码是否设置
+if (-not $dbPassword) {
+    Write-Host "错误: 请设置环境变量 DB_PASSWORD" -ForegroundColor Red
+    Write-Host "示例: $env:DB_PASSWORD='your_password'; .\export-ddl.ps1" -ForegroundColor Yellow
+    exit 1
+}
 
 # 生成输出文件名
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"

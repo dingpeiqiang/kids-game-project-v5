@@ -45,26 +45,21 @@
         </template>
 
         <el-form ref="formRef" :model="formData" :rules="rules" label-width="120px" size="default">
-          <!-- 主题 ID -->
-          <el-form-item label="主题 ID" prop="themeId">
-            <el-input
-              v-model="formData.themeId"
-              placeholder="英文 + 数字 + 下划线"
-              :disabled="!isEditMode || disableThemeId"
-            />
-            <div v-if="disableThemeId" class="form-tip" style="color: #f56c6c;">
-              ℹ️ 当前为编辑模式，不可更改主题 ID
-            </div>
-            <div v-else-if="!isEditMode" class="form-tip">
-              系统自动生成，一般无需修改
-            </div>
+          <!-- 主题 ID（编辑模式显示只读，其他模式不显示） -->
+          <el-form-item v-if="props.mode === 'edit'" label="主题 ID">
+            <el-input v-model="formData.themeId" disabled />
+            <div class="form-tip">数据库自增 ID</div>
           </el-form-item>
+
+          <!-- 作者 ID（所有模式都不显示） -->
+          <!-- 作者名称（所有模式都不显示） -->
+          <!-- 是否为官方主题（所有模式都不显示） -->
 
           <!-- 适用业务类型 -->
           <el-form-item label="适用业务类型" prop="ownerType">
-            <el-select 
-              v-model="formData.ownerType" 
-              placeholder="请选择业务类型" 
+            <el-select
+              v-model="formData.ownerType"
+              placeholder="请选择业务类型"
               :disabled="disableGameSelect"
               @change="handleOwnerTypeChange"
             >
@@ -76,22 +71,28 @@
 
           <!-- 适用业务（根据类型动态加载） -->
           <el-form-item label="适用业务" prop="ownerId">
-            <el-select 
-              v-model="formData.ownerId" 
-              :placeholder="isLoadingBusiness ? '加载中...' : `请选择${formData.ownerType === 'GAME' ? '游戏' : '应用'}`" 
-              :disabled="disableGameSelect || isLoadingBusiness"
+            <el-select
+              v-model="formData.ownerId"
+              :placeholder="`请选择${formData.ownerType === 'GAME' ? '游戏' : '应用'}`"
               @change="handleBusinessChange"
               filterable
               clearable
             >
               <!-- 空状态提示 -->
-              <template v-if="currentBusinessList.length === 0 && !isLoadingBusiness" #empty>
+              <template v-if="currentBusinessList.length === 0" #empty>
                 <div style="padding: 20px; text-align: center; color: #999;">
-                  <i class="el-icon-info" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
                   <span>暂无{{ formData.ownerType === 'GAME' ? '游戏' : '应用' }}数据</span>
                 </div>
               </template>
-              
+
+              <!-- ⭐ 兜底 option：当已选 ownerId 不在当前列表中时，插入一个临时选项防止显示数字 -->
+              <el-option
+                v-if="formData.ownerId && !currentBusinessList.find(i => i.value === formData.ownerId)"
+                :key="'fallback-' + formData.ownerId"
+                :label="`ID: ${formData.ownerId}（未知业务）`"
+                :value="formData.ownerId"
+              />
+
               <!-- 业务选项 -->
               <el-option
                 v-for="item in currentBusinessList"
@@ -99,21 +100,15 @@
                 :label="item.label"
                 :value="item.value"
               >
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="display: flex; justify-content: space-between; align-items: center;">
                   <span>{{ item.label }}</span>
-                  <span style="color: #8492a6; font-size: 13px;">
-                    {{ item.code ? item.code : 'ID: ' + item.dbId }}
+                  <span style="color: #8492a6; font-size: 13px; margin-left: 16px;">
+                    {{ item.code || 'ID: ' + item.dbId }}
                   </span>
-                </div>
+                </span>
               </el-option>
             </el-select>
-            <div v-if="disableGameSelect" class="form-tip" style="color: #f56c6c;">
-              ℹ️ {{ disableThemeId ? '当前为编辑模式' : '当前为 DIY 模式' }},不可更改适用业务
-            </div>
-            <div v-else-if="isLoadingBusiness" class="form-tip" style="color: #409EFF;">
-              ⏳ 正在加载{{ formData.ownerType === 'GAME' ? '游戏' : '应用' }}列表...
-            </div>
-            <div v-else class="form-tip">
+            <div class="form-tip">
               选择具体的{{ formData.ownerType === 'GAME' ? '游戏' : '应用' }}，将决定主题的资源加载路径
             </div>
           </el-form-item>
@@ -123,16 +118,42 @@
             <el-input
               v-model="formData.themeName"
               placeholder="请输入主题名称"
-              maxlength="20"
+              maxlength="100"
               show-word-limit
             />
-            <div class="form-tip">最多20字，支持中文</div>
+            <div class="form-tip">最多100字</div>
           </el-form-item>
 
-          <!-- 主题封面图 -->
-          <el-form-item prop="coverImage">
+          <!-- 价格 -->
+          <el-form-item label="价格（游戏币）" prop="price">
+            <el-input-number
+              v-model="formData.price"
+              :min="0"
+              :max="99999"
+              controls-position="right"
+              style="width: 200px"
+            />
+            <div class="form-tip">0 表示免费</div>
+          </el-form-item>
+
+          <!-- 状态 -->
+          <el-form-item label="状态" prop="status">
+            <el-select v-model="formData.status" placeholder="请选择状态" style="width: 200px">
+              <el-option label="待审核" value="pending" />
+              <el-option label="已上架" value="on_sale" />
+              <el-option label="已下架" value="offline" />
+            </el-select>
+            <div class="form-tip">只有审核通过的主题才能上架销售</div>
+          </el-form-item>
+
+          <!-- 统计信息（所有模式都不显示） -->
+          <!-- 下载次数 -->
+          <!-- 总收益 -->
+
+          <!-- 缩略图 URL -->
+          <el-form-item prop="thumbnailUrl">
             <template #label>
-              <span>主题封面</span>
+              <span>缩略图 URL</span>
             </template>
             <div class="cover-uploader">
               <el-upload
@@ -142,10 +163,10 @@
                 :auto-upload="false"
                 @change="handleCoverChange"
               >
-                <img v-if="formData.coverImage" :src="formData.coverImage" class="avatar" />
+                <img v-if="formData.thumbnailUrl" :src="formData.thumbnailUrl" class="avatar" />
                 <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
               </el-upload>
-              <div v-if="formData.coverImage" class="crop-actions">
+              <div v-if="formData.thumbnailUrl" class="crop-actions">
                 <el-button size="small" type="primary" @click="openCropper">
                   <el-icon><Edit /></el-icon>
                   裁剪图片
@@ -163,23 +184,6 @@
             </div>
           </el-form-item>
 
-          <!-- 主题标签 -->
-          <el-form-item label="主题标签" prop="tags">
-            <el-select
-              v-model="formData.tags"
-              multiple
-              placeholder="选择标签（可多选）"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="tag in tagList"
-                :key="tag.value"
-                :label="tag.label"
-                :value="tag.value"
-              />
-            </el-select>
-          </el-form-item>
-
           <!-- 主题描述 -->
           <el-form-item label="主题描述" prop="description">
             <el-input
@@ -187,27 +191,14 @@
               type="textarea"
               :rows="4"
               placeholder="请输入主题描述"
-              maxlength="200"
               show-word-limit
             />
-            <div class="form-tip">最多200字</div>
+            <div class="form-tip">描述主题的特点和使用场景</div>
           </el-form-item>
 
-          <!-- 创作者信息 -->
-          <el-form-item label="创作者">
-            <div class="creator-info">
-              <el-avatar :size="40" :src="userStore.currentUser?.avatar" />
-              <div class="creator-details">
-                <div class="creator-name">{{ userStore.currentUser?.nickname }}</div>
-                <div class="creator-id">ID: {{ userStore.currentUser?.id }}</div>
-              </div>
-            </div>
-          </el-form-item>
-
-          <!-- 联系方式 -->
-          <el-form-item label="联系方式">
-            <el-input v-model="formData.contact" placeholder="选填，便于用户联系" />
-          </el-form-item>
+          <!-- 是否为默认主题（所有模式都不显示） -->
+          <!-- 创建时间（所有模式都不显示） -->
+          <!-- 更新时间（所有模式都不显示） -->
         </el-form>
       </el-card>
 
@@ -247,34 +238,94 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElLoading } from 'element-plus'
 import { Plus, Delete, Document, Edit } from '@element-plus/icons-vue'
 import { useUserStore } from '@/core/store/user.store'
-import { gameApi } from '@/services/game-api.service'
-import type { GTRSTheme } from '@/utils/gtrs-validator'
 import ImageCropper from '../components/ImageCropper.vue'
+import { unifiedUploadService } from '@/services/unified-upload.service'
 
 interface Props {
-  modelValue: GTRSTheme
+  modelValue: {
+    themeId: number
+    authorId: number
+    isOfficial: boolean
+    ownerType: 'GAME' | 'APPLICATION'
+    ownerId: number | null
+    themeName: string
+    authorName: string
+    price: number
+    status: 'pending' | 'on_sale' | 'offline'
+    downloadCount: number
+    totalRevenue: number
+    thumbnailUrl: string
+    description: string
+    isDefault: boolean
+    createdAt: string
+    updatedAt: string
+  }
   isDirty: boolean
   panelJsonMode: boolean  // 面板局部 JSON 模式
   disableGameSelect?: boolean  // 是否禁用游戏选择
   disableThemeId?: boolean  // 是否禁用主题 ID 编辑
+  mode?: 'create' | 'diy' | 'edit'  // 模式：创作/DIY/编辑
+  // ⭐ 由父组件统一加载后传入，确保组件挂载时列表已就绪
+  gameList?: { label: string; value: number; dbId: number; code?: string }[]
+  appList?: { label: string; value: number; dbId: number; code?: string }[]
 }
 
 interface Emits {
-  (e: 'update:modelValue', value: GTRSTheme): void
+  (e: 'update:modelValue', value: Props['modelValue']): void
   (e: 'update:isDirty', value: boolean): void
   (e: 'toggleJsonMode'): void  // 切换面板 JSON 模式
 }
 
 const props = withDefaults(defineProps<Props>(), {
   disableGameSelect: false,
-  disableThemeId: false
+  disableThemeId: false,
+  mode: 'create',
+  gameList: () => [],
+  appList: () => []
 })
 const emit = defineEmits<Emits>()
 
 const userStore = useUserStore()
+
+// 表单数据（与 theme_info 表字段对应）
+const formData = ref<{
+  themeId: number
+  authorId: number
+  isOfficial: boolean
+  ownerType: 'GAME' | 'APPLICATION'
+  ownerId: number | null
+  themeName: string
+  authorName: string
+  price: number
+  status: 'pending' | 'on_sale' | 'offline'
+  downloadCount: number
+  totalRevenue: number
+  thumbnailUrl: string
+  description: string
+  isDefault: boolean
+  createdAt: string
+  updatedAt: string
+}>({
+  themeId: 0,
+  authorId: userStore.currentUser?.id || 0,
+  isOfficial: false,
+  ownerType: 'GAME',
+  ownerId: null,
+  themeName: '',
+  authorName: userStore.currentUser?.nickname || '',
+  price: 0,
+  status: 'pending',
+  downloadCount: 0,
+  totalRevenue: 0,
+  thumbnailUrl: '',
+  description: '',
+  isDefault: false,
+  createdAt: '',
+  updatedAt: ''
+})
 
 // JSON 模式相关 - 使用 ref 保存用户输入，初始值从 modelValue 派生
 const jsonContent = ref('')
@@ -282,7 +333,17 @@ const jsonError = ref<string | null>(null)
 
 // 初始化 jsonContent
 const initJsonContent = () => {
-  jsonContent.value = JSON.stringify(props.modelValue.themeInfo || {}, null, 2)
+  // JSON 模式显示表单数据（排除只读字段）
+  const editableData = {
+    ownerType: formData.value.ownerType,
+    ownerId: formData.value.ownerId,
+    themeName: formData.value.themeName,
+    price: formData.value.price,
+    status: formData.value.status,
+    thumbnailUrl: formData.value.thumbnailUrl,
+    description: formData.value.description
+  }
+  jsonContent.value = JSON.stringify(editableData, null, 2)
 }
 
 // 监听 panelJsonMode 变化
@@ -296,28 +357,8 @@ watch(
   }
 )
 
-// 组件挂载时初始化
-initJsonContent()
-
-// 表单数据
-const formData = ref<GTRSTheme['themeInfo'] & { coverImage?: string; tags?: string[]; contact?: string }>({
-  themeId: '',
-  ownerType: 'GAME',  // 固定为 GAME
-  ownerId: undefined as unknown as number,  // 数据库主键
-  themeName: '',
-  isDefault: false,
-  coverImage: '',
-  tags: [],
-  description: '',
-  author: userStore.currentUser?.nickname || '',
-  contact: ''
-})
-
 // 表单引用
 const formRef = ref()
-
-// 加载状态
-const isLoadingBusiness = ref(false)
 
 // 是否为编辑模式
 const isEditMode = ref(false)
@@ -329,94 +370,20 @@ const hasSeenGuide = ref(false)
 const cropperVisible = ref(false)
 const tempImageUrl = ref('')
 
-// 游戏列表（从后端动态加载）
+// 游戏列表（由父组件统一加载传入，组件挂载时已就绪）
 type BusinessItem = { 
   label: string      // 显示名称
-  value: number      // ⭐ 数据库主键（gameId）
+  value: number      // 数据库主键（gameId）
   dbId: number       // 数据库主键（与 value 相同）
   code?: string      // 业务编码（仅用于显示）
 }
 
-const gameList = ref<BusinessItem[]>([])
-const appList = ref<BusinessItem[]>([])
+// 当前业务列表（根据类型动态切换，直接用 props）
+const currentBusinessList = computed<BusinessItem[]>(() => {
+  return formData.value.ownerType === 'GAME' ? props.gameList : props.appList
+})
+
 const selectedDbId = ref<number | null>(null)
-
-// 当前业务列表（根据类型动态切换）
-const currentBusinessList = computed(() => {
-  if (formData.value.ownerType === 'GAME') {
-    return gameList.value
-  } else {
-    return appList.value
-  }
-})
-
-// 从后端加载游戏列表
-const loadGameList = async () => {
-  isLoadingBusiness.value = true
-  try {
-    const games = await gameApi.getList()
-    console.log('[BasicInfoPanel] 后端返回的游戏列表:', games)
-    
-    // 调试：检查第一个游戏的结构
-    if (games && games.length > 0) {
-      console.log('[BasicInfoPanel] 游戏对象结构:', JSON.stringify(games[0]))
-    }
-    
-    gameList.value = games.map((g: any) => {
-      // ⭐ 修复：更完整地尝试获取游戏名称
-      // 优先级：gameName > name > title > 显示 gameCode > 显示 ID
-      const label = g.gameName || g.name || g.title || g.gameCode || `游戏${g.gameId}`
-      return {
-        label: label,
-        value: g.gameId,   // ⭐ 直接使用数据库主键 gameId
-        dbId: g.gameId,    // 数据库主键（与 value 相同）
-        code: g.gameCode,  // 业务编码
-        originalData: g    // 保存原始数据，方便调试
-      }
-    })
-    console.log('[BasicInfoPanel] 游戏列表映射完成:', gameList.value.length, '项')
-  } catch (e) {
-    console.error('[BasicInfoPanel] 加载游戏列表失败:', e)
-    ElMessage.error('加载游戏列表失败，使用默认数据')
-    // 降级为硬编码列表
-    gameList.value = [
-      { label: '贪吃蛇大冒险', value: 1, dbId: 1, code: 'snake-vue3' },
-      { label: '植物大战僵尸', value: 2, dbId: 2, code: 'pvz' },
-      { label: '飞行射击', value: 3, dbId: 3, code: 'shooter' }
-    ]
-  } finally {
-    isLoadingBusiness.value = false
-  }
-}
-
-// 加载应用列表（预留）
-const loadAppList = async () => {
-  isLoadingBusiness.value = true
-  try {
-    // TODO: 从后端加载应用列表
-    // const apps = await appApi.getList()
-    appList.value = [
-      { label: '示例应用', value: 100, dbId: 100, code: 'example-app' }
-    ]
-    console.log('应用列表加载完成:', appList.value.length, '项')
-  } catch (e) {
-    console.error('加载应用列表失败:', e)
-    appList.value = []
-  } finally {
-    isLoadingBusiness.value = false
-  }
-}
-
-onMounted(() => {
-  // ⭐ 根据当前的 ownerType 加载对应的业务列表
-  if (formData.value.ownerType === 'GAME') {
-    loadGameList()
-    loadAppList() // 预加载应用列表（备用）
-  } else {
-    loadAppList()
-    loadGameList() // 预加载游戏列表（备用）
-  }
-})
 
 // 标签列表
 const tagList = [
@@ -431,26 +398,25 @@ const tagList = [
 
 // 表单验证规则
 const rules = {
-  themeId: [
-    { required: true, message: '请输入主题 ID', trigger: 'blur' },
-    { pattern: /^[a-zA-Z0-9_]+$/, message: '主题 ID 只能包含字母、数字和下划线', trigger: 'blur' }
-  ],
   ownerType: [
-    { required: true, message: '请选择所有者类型', trigger: 'change' }
+    { required: true, message: '请选择业务类型', trigger: 'change' }
   ],
   ownerId: [
-    { required: true, message: '请选择适用游戏', trigger: 'change' }
+    { required: true, message: '请选择适用业务', trigger: 'change' }
   ],
   themeName: [
     { required: true, message: '请输入主题名称', trigger: 'blur' },
-    { min: 2, max: 20, message: '主题名称长度为 2-20 个字符', trigger: 'blur' }
+    { min: 2, max: 100, message: '主题名称长度为 2-100 个字符', trigger: 'blur' }
   ],
-  coverImage: [
-    // 封面图为非必填项，仅在校验时提供提示
+  price: [
+    { required: true, message: '请输入价格', trigger: 'blur' },
+    { type: 'number', min: 0, message: '价格不能为负数', trigger: 'blur' }
+  ],
+  status: [
+    { required: true, message: '请选择状态', trigger: 'change' }
   ],
   description: [
-    { required: true, message: '请输入主题描述', trigger: 'blur' },
-    { max: 200, message: '描述最多 200 字', trigger: 'blur' }
+    { required: true, message: '请输入主题描述', trigger: 'blur' }
   ]
 }
 
@@ -460,10 +426,17 @@ const rules = {
 const handleJsonInput = () => {
   try {
     const parsed = JSON.parse(jsonContent.value)
-    emit('update:modelValue', {
-      ...props.modelValue,
-      themeInfo: parsed
-    })
+    // 更新表单数据
+    formData.value = {
+      ...formData.value,
+      ownerType: parsed.ownerType || 'GAME',
+      ownerId: parsed.ownerId || null,
+      themeName: parsed.themeName || '',
+      price: parsed.price || 0,
+      status: parsed.status || 'pending',
+      thumbnailUrl: parsed.thumbnailUrl || '',
+      description: parsed.description || ''
+    }
     emit('update:isDirty', true)
     jsonError.value = null
   } catch (e: any) {
@@ -477,10 +450,12 @@ const formatJson = () => {
     const parsed = JSON.parse(jsonContent.value)
     const formatted = JSON.stringify(parsed, null, 2)
     jsonContent.value = formatted
-    emit('update:modelValue', {
-      ...props.modelValue,
-      themeInfo: parsed
-    })
+    // 更新 formData 的可编辑字段
+    formData.value = {
+      ...formData.value,
+      ...parsed
+    }
+    emit('update:modelValue', formData.value)
     jsonError.value = null
     ElMessage.success('JSON 格式化成功')
   } catch (e: any) {
@@ -507,52 +482,52 @@ const beforeCoverUpload = (file: File) => {
   return true
 }
 
-// 封面选择变化 - 直接设置为封面
-const handleCoverChange = (file: any) => {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    const dataUrl = e.target?.result as string
-    formData.value.coverImage = dataUrl
-    emit('update:modelValue', {
-      ...props.modelValue,
-      themeInfo: formData.value
-    })
-    ElMessage.success('封面上传成功')
+// 封面选择变化 - 使用统一上传服务
+const handleCoverChange = async (file: any) => {
+  try {
+    const loading = ElLoading.service({ text: '正在上传缩略图...' })
+    
+    // ⭐ 使用统一上传服务
+    const result = await unifiedUploadService.uploadImage(file.raw, 'themes/images')
+    
+    // 更新缩略图 URL
+    formData.value.thumbnailUrl = result.url
+    emit('update:modelValue', formData.value)
+    emit('update:isDirty', true)
+    
+    loading.close()
+    ElMessage.success('缩略图上传成功')
+  } catch (error) {
+    console.error('缩略图上传失败:', error)
+    ElMessage.error('缩略图上传失败：' + (error as Error).message)
   }
-  reader.readAsDataURL(file.raw)
 }
 
 // 打开裁剪器
 const openCropper = () => {
-  if (!formData.value.coverImage) {
+  if (!formData.value.thumbnailUrl) {
     ElMessage.warning('请先上传图片')
     return
   }
-  tempImageUrl.value = formData.value.coverImage
+  tempImageUrl.value = formData.value.thumbnailUrl
   cropperVisible.value = true
 }
 
 // 确认裁剪
 const handleCropConfirm = (croppedImage: string) => {
-  formData.value.coverImage = croppedImage
-  emit('update:modelValue', {
-    ...props.modelValue,
-    themeInfo: formData.value
-  })
+  formData.value.thumbnailUrl = croppedImage
+  emit('update:isDirty', true)
 }
 
 // 删除封面
 const removeCover = () => {
-  formData.value.coverImage = ''
-  emit('update:modelValue', {
-    ...props.modelValue,
-    themeInfo: formData.value
-  })
+  formData.value.thumbnailUrl = ''
+  emit('update:isDirty', true)
 }
 
 // 封面上传成功（保留备用）
 const handleCoverSuccess = (response: any) => {
-  ElMessage.success('封面上传成功')
+  ElMessage.success('缩略图上传成功')
 }
 
 // 游戏选择变化
@@ -562,19 +537,10 @@ const handleOwnerTypeChange = (newOwnerType: 'GAME' | 'APPLICATION') => {
     ElMessage.warning(`当前为${modeText}模式，不可更改业务类型`)
     return
   }
-  
   console.log('切换业务类型:', newOwnerType)
-  
-  // 重置已选择的业务
+  // ⭐ 切换类型时必须清空 ownerId，防止旧 id 在新列表中找不到 label
   formData.value.ownerId = undefined as unknown as number
   selectedDbId.value = null
-  
-  // ⭐ 根据新的业务类型重新加载对应的业务列表
-  if (newOwnerType === 'GAME') {
-    loadGameList()
-  } else {
-    loadAppList()
-  }
 }
 
 // 业务选择变化
@@ -584,16 +550,9 @@ const handleBusinessChange = (selectedGameId: number) => {
     ElMessage.warning(`当前为${modeText}模式，不可更改适用业务`)
     return
   }
-  
-  // ⭐ 根据选中的 gameId 查找业务信息
-  const selected = currentBusinessList.value.find(g => g.value === selectedGameId)
-  if (selected) {
-    // ⭐ 主题 ID 生成规则：theme_{业务类型}_{gameId}_{时间戳}
-    formData.value.themeId = `theme_${formData.value.ownerType.toLowerCase()}_${selectedGameId}_${Date.now()}`
-  }
-  isEditMode.value = false
 
   console.log('选择业务:', selectedGameId, '→ gameId:', selectedGameId)
+  emit('update:isDirty', true)
 }
 
 // 关闭引导
@@ -608,38 +567,87 @@ hasSeenGuide.value = localStorage.getItem('gtrs_guide_seen') === 'true'
 
 // ========== 监听 ==========
 
-// 监听外部传入的值（初始化）
+// ⭐ 一次性加载方案：组件挂载时父组件已保证数据就绪，直接赋值即可
+onMounted(() => {
+  // modelValue 现在直接是 themeBasicInfo 对象
+  if (props.modelValue) {
+    formData.value = { ...props.modelValue }
+    console.log('[BasicInfoPanel] onMounted 赋值完成，ownerId:', formData.value.ownerId, '列表长度:', currentBusinessList.value.length)
+    // ⭐ 挂载完成后校验一次 ownerId 是否在列表中
+    validateOwnerIdInList('onMounted')
+    // 初始化 JSON 内容
+    initJsonContent()
+  }
+})
+
+// ⭐ 监听外部 themeBasicInfo 变化（草稿恢复等场景），直接赋值，无需竞态处理
 watch(
-  () => props.modelValue.themeInfo,
+  () => props.modelValue,
   (newValue) => {
-    if (newValue && JSON.stringify(newValue) !== JSON.stringify(formData.value)) {
-      // ⭐ 先更新 formData
-      formData.value = { ...newValue }
-      
-      // ⭐ 如果有 ownerId，确保加载了对应的业务类型列表
-      if (newValue.ownerId && newValue.ownerType) {
-        // 确保列表已加载
-        if (newValue.ownerType === 'GAME' && gameList.value.length === 0) {
-          loadGameList()
-        } else if (newValue.ownerType === 'APPLICATION' && appList.value.length === 0) {
-          loadAppList()
-        }
-      }
+    if (!newValue) return
+    
+    // ⭐ 关键修复：检查是否真的需要更新，避免循环
+    const isDifferent = Object.keys(newValue).some(key => {
+      const typedKey = key as keyof typeof newValue
+      return formData.value[typedKey] !== newValue[typedKey]
+    })
+    
+    if (!isDifferent) {
+      // 数据没有变化，不需要更新，直接返回
+      return
+    }
+    
+    console.log('[BasicInfoPanel] 检测到外部数据变化，更新 formData')
+    // 合并数据，保留已有的只读字段值
+    formData.value = {
+      ...formData.value,
+      ...newValue
+    }
+    console.log('[BasicInfoPanel] watch 赋值，ownerId:', formData.value.ownerId)
+    // 赋值完成后再次校验
+    validateOwnerIdInList('themeInfo-watch')
+  },
+  { deep: false }
+)
+
+// ⭐ 监听业务列表变化（props 更新时），确保 ownerId 能在列表中命中
+watch(
+  currentBusinessList,
+  (newList) => {
+    if (newList.length > 0 && formData.value.ownerId) {
+      validateOwnerIdInList('list-updated')
     }
   },
-  { deep: true, immediate: true }
+  { deep: false }
 )
+
+// ========== 工具方法 ==========
+
+/**
+ * 校验当前 ownerId 是否存在于业务列表中
+ * 如果不在列表中且列表非空，说明数据不一致，打印警告
+ */
+const validateOwnerIdInList = (from: string) => {
+  const ownerId = formData.value.ownerId
+  if (!ownerId) return
+  const list = currentBusinessList.value
+  if (list.length === 0) return  // 列表还没加载，不做判断
+  const found = list.find(item => item.value === ownerId)
+  if (found) {
+    console.log(`[BasicInfoPanel][${from}] ✅ ownerId=${ownerId} 命中: ${found.label}`)
+  } else {
+    console.warn(`[BasicInfoPanel][${from}] ⚠️ ownerId=${ownerId} 在列表中找不到对应项，列表:`, list)
+  }
+}
 
 // 监听表单数据变化
 watch(
   () => formData.value,
-  (newValue) => {
-    if (JSON.stringify(newValue) !== JSON.stringify(props.modelValue.themeInfo)) {
-      emit('update:modelValue', {
-        ...props.modelValue,
-        themeInfo: newValue
-      })
-    }
+  (newVal) => {
+    // ⭐ 关键修复：同步数据到父组件的 themeBasicInfo
+    emit('update:modelValue', newVal)
+    // 同时标记为 dirty
+    emit('update:isDirty', true)
   },
   { deep: true }
 )

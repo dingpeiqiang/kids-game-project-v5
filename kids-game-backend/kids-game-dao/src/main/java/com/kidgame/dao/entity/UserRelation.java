@@ -83,6 +83,22 @@ public class UserRelation implements Serializable {
     @TableLogic
     private Integer deleted;
 
+    // ========== 权限级别常量 ==========
+    /** 仅查看 */
+    public static final int PERMISSION_VIEW_ONLY = 1;
+    /** 部分控制 */
+    public static final int PERMISSION_PARTIAL_CONTROL = 2;
+    /** 完全控制 */
+    public static final int PERMISSION_FULL_CONTROL = 3;
+
+    // ========== 关系状态常量 ==========
+    /** 待确认 */
+    public static final int STATUS_PENDING = 0;
+    /** 已建立 */
+    public static final int STATUS_ESTABLISHED = 1;
+    /** 已取消 */
+    public static final int STATUS_CANCELLED = 2;
+
     /**
      * 关系类型枚举
      */

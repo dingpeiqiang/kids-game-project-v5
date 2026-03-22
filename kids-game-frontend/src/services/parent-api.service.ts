@@ -3,7 +3,7 @@
  */
 import { BaseApiService } from './base-api.service';
 import type { Parent, ParentLimit, Kid, GameRecord, AnswerRecord } from './api.types';
-import { API_CONSTANTS } from './api.types';
+import { API_CONSTANTS, USER_TYPE } from './api.types';
 
 export class ParentApiService extends BaseApiService {
   private static instance: ParentApiService;
@@ -233,7 +233,7 @@ export class ParentApiService extends BaseApiService {
    * 获取家长疲劳点数
    */
   async getFatiguePoints(parentId: number): Promise<number> {
-    return this.get<number>(`/api/user/fatigue/points?userId=${parentId}&userType=1`);
+    return this.get<number>(`/api/user/fatigue/points?userId=${parentId}&userType=${USER_TYPE.PARENT}`);
   }
 }
 

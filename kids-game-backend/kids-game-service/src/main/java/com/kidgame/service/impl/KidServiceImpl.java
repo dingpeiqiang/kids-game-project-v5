@@ -179,10 +179,11 @@ public class KidServiceImpl extends ServiceImpl<KidMapper, Kid> implements KidSe
         relation.setRelationType(UserRelation.RelationType.PARENT_KID);
         relation.setUserA(parent.getParentId());
         relation.setUserB(kidId);
-        relation.setRoleType(UserRelation.RoleType.fromCode(dto.getParentRoleType() != null ? dto.getParentRoleType() : 3));
+        // 默认角色为监护人(3)，默认权限为完全控制(3)，状态为已建立(1)
+        relation.setRoleType(UserRelation.RoleType.fromCode(dto.getParentRoleType() != null ? dto.getParentRoleType() : UserRelation.RoleType.GUARDIAN.getCode()));
         relation.setIsPrimary(true); // 通过手机号注册的，该家长就是主要监护人
-        relation.setPermissionLevel(3);
-        relation.setStatus(1);
+        relation.setPermissionLevel(UserRelation.PERMISSION_FULL_CONTROL);
+        relation.setStatus(UserRelation.STATUS_ESTABLISHED);
         long currentTime = System.currentTimeMillis();
         relation.setCreateTime(currentTime);
         relation.setUpdateTime(currentTime);

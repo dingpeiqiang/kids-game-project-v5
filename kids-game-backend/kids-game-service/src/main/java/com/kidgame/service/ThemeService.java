@@ -85,6 +85,14 @@ public interface ThemeService {
     String downloadTheme(Long themeId, Long userId);
 
     /**
+     * ⭐ 获取主题编辑器专用数据（结构化返回）
+     * @param themeId 主题 ID
+     * @param userId 用户 ID
+     * @return 编辑器专用数据结构
+     */
+    Map<String, Object> getEditorData(Long themeId, Long userId);
+
+    /**
      * 获取我的主题列表
      * @param authorId 作者 ID
      * @return 主题列表

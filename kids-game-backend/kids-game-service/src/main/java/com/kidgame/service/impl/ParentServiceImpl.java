@@ -699,10 +699,11 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
         relation.setRelationType(UserRelation.RelationType.PARENT_KID);
         relation.setUserA(dto.getParentId());
         relation.setUserB(kid.getKidId());
-        relation.setRoleType(UserRelation.RoleType.fromCode(dto.getRoleType() != null ? dto.getRoleType() : 3));
+        // 默认角色为监护人(3)，默认权限为完全控制(3)，状态为已建立(1)
+        relation.setRoleType(UserRelation.RoleType.fromCode(dto.getRoleType() != null ? dto.getRoleType() : UserRelation.RoleType.GUARDIAN.getCode()));
         relation.setIsPrimary(dto.getIsPrimary() != null ? dto.getIsPrimary() : false);
-        relation.setPermissionLevel(dto.getPermissionLevel() != null ? dto.getPermissionLevel() : 3);
-        relation.setStatus(1);
+        relation.setPermissionLevel(dto.getPermissionLevel() != null ? dto.getPermissionLevel() : UserRelation.PERMISSION_FULL_CONTROL);
+        relation.setStatus(UserRelation.STATUS_ESTABLISHED);
         long currentTime = System.currentTimeMillis();
         relation.setCreateTime(currentTime);
         relation.setUpdateTime(currentTime);
@@ -813,10 +814,11 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
         relation.setRelationType(UserRelation.RelationType.PARENT_KID);
         relation.setUserA(parentId);
         relation.setUserB(kid.getKidId());
-        relation.setRoleType(UserRelation.RoleType.fromCode(roleType != null ? roleType : 3));
+        // 默认角色为监护人(3)，默认权限为完全控制(3)，状态为待确认(0)
+        relation.setRoleType(UserRelation.RoleType.fromCode(roleType != null ? roleType : UserRelation.RoleType.GUARDIAN.getCode()));
         relation.setIsPrimary(isPrimary != null ? isPrimary : false);
-        relation.setPermissionLevel(3);
-        relation.setStatus(0); // 待确认
+        relation.setPermissionLevel(UserRelation.PERMISSION_FULL_CONTROL);
+        relation.setStatus(UserRelation.STATUS_PENDING); // 待确认
         long currentTime = System.currentTimeMillis();
         relation.setCreateTime(currentTime);
         relation.setUpdateTime(currentTime);

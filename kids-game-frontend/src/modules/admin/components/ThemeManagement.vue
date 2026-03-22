@@ -29,35 +29,13 @@
     
     <!-- 主题列表 -->
     <div class="theme-grid">
-      <div 
-        v-for="theme in themes" 
-        :key="theme.themeId" 
-        class="theme-card"
-        :class="{ 'disabled': theme.status === 'offline' }"
+      <ThemeCard
+        v-for="theme in themes"
+        :key="theme.themeId"
+        :theme="theme"
+        mode="admin"
       >
-        <div class="card-cover" :style="getCoverStyle(theme.thumbnailUrl)">
-          <span class="cover-icon">🎨</span>
-        </div>
-        
-        <div class="card-body">
-          <div class="theme-title">{{ theme.themeName }}</div>
-          
-          <div class="theme-meta">
-            <span class="tag author">👤 {{ theme.authorName }}</span>
-            <span class="tag price">💰 {{ theme.price || 0 }}币</span>
-          </div>
-          
-          <div class="theme-stats">
-            <span>📥 {{ theme.downloadCount || 0 }}次下载</span>
-            <span>💵 收益：{{ theme.totalRevenue || 0 }}币</span>
-          </div>
-          
-          <div class="status-badge" :class="theme.status">
-            {{ getStatusText(theme.status) }}
-          </div>
-        </div>
-        
-        <div class="card-actions">
+        <template #actions>
           <!-- 待审核主题：显示审批按钮 -->
           <template v-if="theme.status === 'pending'">
             <button @click="approveTheme(theme, true)" class="btn-approve">✅ 通过</button>
@@ -75,8 +53,8 @@
             </button>
           </template>
           <button @click="deleteTheme(theme)" class="btn-delete">🗑️ 删除</button>
-        </div>
-      </div>
+        </template>
+      </ThemeCard>
     </div>
     
     <!-- 分页 -->
@@ -237,6 +215,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue';
 import axios from 'axios';
 import KidModal from '@/components/ui/KidModal.vue';
 import { dialog, useConfirm } from '@/composables/useDialog';
+import ThemeCard from '@/core/theme/components/ThemeCard.vue';
 
 const API_BASE = '/api';
 
@@ -518,19 +497,7 @@ function getStatusText(status: string): string {
   return statusMap[status] || status;
 }
 
-// 获取封面样式
-function getCoverStyle(thumbnailUrl?: string) {
-  if (thumbnailUrl) {
-    return {
-      backgroundImage: `url(${thumbnailUrl})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    };
-  }
-  return {};
-}
-
-// 格式化日期
+// 格式化日期（详情弹窗使用）
 function formatDate(dateStr: string): string {
   if (!dateStr) return '-';
   try {
@@ -617,162 +584,6 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
   margin-bottom: 20px;
-}
-
-.theme-card {
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.theme-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.theme-card.disabled {
-  opacity: 0.6;
-  filter: grayscale(0.5);
-}
-
-.card-cover {
-  height: 160px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.cover-icon {
-  font-size: 64px;
-  opacity: 0.8;
-}
-
-.card-body {
-  padding: 15px;
-}
-
-.theme-title {
-  font-size: 16px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.theme-meta {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.tag {
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.tag.author {
-  background: #e6f7ff;
-  color: #1890ff;
-}
-
-.tag.price {
-  background: #fff7e6;
-  color: #fa8c16;
-}
-
-.theme-stats {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 10px;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.status-badge.on_sale {
-  background: #e6ffed;
-  color: #52c41a;
-}
-
-.status-badge.offline {
-  background: #f5f5f5;
-  color: #999;
-}
-
-.status-badge.pending {
-  background: #fff7e6;
-  color: #fa8c16;
-}
-
-.card-actions {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  padding: 15px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.card-actions button {
-  padding: 6px 12px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  background: white;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.3s;
-}
-
-.card-actions button:hover {
-  background: #f5f7fa;
-}
-
-.btn-view {
-  color: #409eff;
-  border-color: #409eff;
-}
-
-.btn-edit {
-  color: #42b983;
-  border-color: #42b983;
-}
-
-.btn-toggle {
-  color: #e6a23c;
-  border-color: #e6a23c;
-}
-
-.btn-approve {
-  color: #52c41a;
-  border-color: #52c41a;
-}
-
-.btn-approve:hover {
-  background: #f6ffed;
-}
-
-.btn-reject {
-  color: #f56c6c;
-  border-color: #f56c6c;
-}
-
-.btn-reject:hover {
-  background: #fff1f0;
-}
-
-.btn-delete {
-  color: #f56c6c;
-  border-color: #f56c6c;
 }
 
 .pagination {

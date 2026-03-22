@@ -266,6 +266,7 @@ import KidModal from '@/components/ui/KidModal.vue';
 import { modal } from '@/composables/useUnifiedModalV2';
 import KidUnifiedModalV2 from '@/components/ui/KidUnifiedModalV2.vue';
 import { webSocketService } from '@/services/websocket.service';
+import { parentApi } from '@/services/parent-api.service';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -443,11 +444,39 @@ function goToAnswer() {
 }
 
 async function verifyParent() {
-  if (parentPassword.value === '123456') {
+  // 如果家长已登录，直接放行
+  if (userStore.parentUser) {
     showParentModal.value = false;
     router.push('/parent');
-  } else {
-    showMessage('密码错误', 'error');
+    return;
+  }
+
+  // 如果儿童用户已登录，使用儿童账户关联的家长ID验证
+  const parentId = userStore.currentUser?.parentId;
+  if (!parentId) {
+    showMessage('未找到关联的家长账户', 'error');
+    return;
+  }
+
+  if (!parentPassword.value) {
+    showMessage('请输入密码', 'error');
+    return;
+  }
+
+  try {
+    isLoading.value = true;
+    const isValid = await parentApi.verifyPassword(parentId, parentPassword.value);
+    if (isValid) {
+      showParentModal.value = false;
+      parentPassword.value = '';
+      router.push('/parent');
+    } else {
+      showMessage('密码错误', 'error');
+    }
+  } catch (error: any) {
+    showMessage('验证失败：' + (error.message || '未知错误'), 'error');
+  } finally {
+    isLoading.value = false;
   }
 }
 

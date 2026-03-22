@@ -4,7 +4,7 @@
   "title": "Game Theme Resource Specification v1.0.0",
   "description": "GTRS游戏主题资源规范Schema，用于全流程JSON校验",
   "type": "object",
-  "required": ["specMeta", "themeInfo", "globalStyle", "resources"],
+  "required": ["specMeta", "globalStyle", "resources"],
   "additionalProperties": false,
   "properties": {
     "$comment": {

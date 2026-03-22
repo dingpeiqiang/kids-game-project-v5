@@ -206,6 +206,42 @@ class ThemeApiService extends BaseApiService {
   }
 
   /**
+   * ⭐ 获取主题编辑器专用数据（结构化返回）
+   * GET /api/theme/editor-data?id=xxx
+   * 返回结构:
+   * {
+   *   themeInfo: { themeId, themeName, authorName, ownerType, ownerId, ... },
+   *   config: { specMeta, globalStyle, resources }  // 已解析的对象，不是字符串
+   * }
+   */
+  async getEditorData(themeId: string): Promise<{
+    themeInfo: {
+      themeId: number;
+      themeName: string;
+      authorName: string;
+      authorId: number;
+      ownerType: string;
+      ownerId: number;
+      isDefault: boolean;
+      description: string;
+      price: number;
+      status: string;
+      thumbnailUrl: string;
+      downloadCount: number;
+      totalRevenue: number;
+      createdAt: string;
+      updatedAt: string;
+    };
+    config: {
+      specMeta: { specName: string; specVersion: string; compatibleVersion: string };
+      globalStyle: Record<string, any>;
+      resources: Record<string, any>;
+    };
+  }> {
+    return this.get<any>(`/api/theme/editor-data?id=${themeId}`);
+  }
+
+  /**
    * 切换主题销售状态
    * POST /api/theme/toggle-sale?themeId=xxx&onSale=true
    */

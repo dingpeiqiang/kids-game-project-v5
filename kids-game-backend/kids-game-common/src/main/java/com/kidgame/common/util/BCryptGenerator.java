@@ -31,24 +31,31 @@ public class BCryptGenerator {
 
     /**
      * 主方法 - 用于生成密码哈希
+     * 用法：运行 main 方法，从命令行传入要哈希的密码
+     * 示例：java BCryptGenerator password123
      */
     public static void main(String[] args) {
-        // 生成常用密码的 BCrypt 哈希
-        String[] passwords = {"admin123", "123456", "password"};
+        // 从命令行参数获取密码
+        if (args.length == 0) {
+            System.out.println("===========================================");
+            System.out.println("BCrypt Password Generator");
+            System.out.println("===========================================");
+            System.out.println("\n用法: java BCryptGenerator <password>");
+            System.out.println("示例: java BCryptGenerator mySecurePassword");
+            System.out.println("\n提示：BCrypt 每次生成的哈希值都不同（随机盐值）");
+            System.out.println("使用 matches() 方法验证密码即可");
+            return;
+        }
+
+        String password = args[0];
+        String hash = hash(password);
 
         System.out.println("===========================================");
         System.out.println("BCrypt Password Generator");
         System.out.println("===========================================");
-
-        for (String password : passwords) {
-            String hash = hash(password);
-            System.out.println("\nPassword: " + password);
-            System.out.println("Hash: " + hash);
-            System.out.println("-------------------------------------------");
-        }
-
-        // 特别说明：每次运行生成的哈希值都不同（因为盐值随机）
-        // 但都可以验证通过
+        System.out.println("\nPassword: " + password);
+        System.out.println("Hash: " + hash);
+        System.out.println("-------------------------------------------");
         System.out.println("\n提示：BCrypt 每次生成的哈希值都不同（随机盐值）");
         System.out.println("使用 matches() 方法验证密码即可");
     }

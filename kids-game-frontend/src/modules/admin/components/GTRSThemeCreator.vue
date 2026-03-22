@@ -178,8 +178,6 @@
                 <el-slider v-model="item.volume" :min="0" :max="1" :step="0.1" class="volume-slider" />
                 <el-select v-model="item.type" class="type-select">
                   <el-option label="MP3" value="mp3" />
-                  <el-option label="WAV" value="wav" />
-                  <el-option label="OGG" value="ogg" />
                 </el-select>
                 <el-button type="danger" size="small" @click="deleteResource('audio', 'bgm', key)">
                   删除
@@ -204,8 +202,6 @@
                 <el-slider v-model="item.volume" :min="0" :max="1" :step="0.1" class="volume-slider" />
                 <el-select v-model="item.type" class="type-select">
                   <el-option label="MP3" value="mp3" />
-                  <el-option label="WAV" value="wav" />
-                  <el-option label="OGG" value="ogg" />
                 </el-select>
                 <el-button type="danger" size="small" @click="deleteResource('audio', 'effect', key)">
                   删除

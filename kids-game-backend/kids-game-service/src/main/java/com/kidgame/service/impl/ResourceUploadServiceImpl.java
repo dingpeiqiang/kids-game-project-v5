@@ -1,6 +1,7 @@
 package com.kidgame.service.impl;
 
 import com.kidgame.common.exception.BusinessException;
+import com.kidgame.service.AudioConverterService;
 import com.kidgame.service.ResourceUploadService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,14 +39,22 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
     @Value("${resource.cdn.domain:}")
     private String cdnDomain;
     
+    // 注入音频转换服务
+    private final AudioConverterService audioConverterService;
+    
+    public ResourceUploadServiceImpl(AudioConverterService audioConverterService) {
+        this.audioConverterService = audioConverterService;
+    }
+    
     // 允许的图片类型
     private static final List<String> IMAGE_TYPES = Arrays.asList(
         "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"
     );
     
-    // 允许的音频类型
+    // 允许的音频类型（包含 WebM）
     private static final List<String> AUDIO_TYPES = Arrays.asList(
-        "audio/mp3", "audio/mpeg", "audio/wav", "audio/ogg", "audio/x-wav"
+        "audio/mp3", "audio/mpeg", "audio/wav", "audio/ogg", "audio/x-wav",
+        "audio/webm", "audio/x-matroska"  // 添加 WebM 支持
     );
     
     // 最大文件大小 (MB)
@@ -109,8 +118,11 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
         try {
             // 1. 验证文件类型
             String contentType = file.getContentType();
+            log.info("🎵 收到音频上传请求：originalName={}, size={}, type={}", 
+                    file.getOriginalFilename(), file.getSize(), contentType);
+            
             if (contentType == null || !AUDIO_TYPES.contains(contentType)) {
-                throw new BusinessException("不支持的音频类型，仅支持：MP3, WAV, OGG");
+                throw new BusinessException("不支持的音频类型，仅支持：MP3, WAV, OGG, WebM");
             }
             
             // 2. 验证文件大小
@@ -118,14 +130,39 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
                 throw new BusinessException("音频大小不能超过 10MB");
             }
             
-            // 3. 生成文件名
-            String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename != null && originalFilename.contains(".") 
-                ? originalFilename.substring(originalFilename.lastIndexOf(".")) 
+            // 3. 🎯 如果是 WebM/WAV 格式，自动转换为 MP3
+            String originalExtension = getFileExtension(file.getOriginalFilename());
+            boolean needConvert = "webm".equalsIgnoreCase(originalExtension) ||
+                                 "wav".equalsIgnoreCase(originalExtension) ||
+                                 "m4a".equalsIgnoreCase(originalExtension);
+            
+            if (needConvert) {
+                log.info("🔄 检测到 {} 格式，开始转换为 MP3...", originalExtension);
+                
+                try {
+                    // 调用转换服务
+                    String mp3RelativePath = audioConverterService.convertToMp3(file);
+                    
+                    // 构建完整 URL
+                    String url = buildResourceUrlFromPath(category, mp3RelativePath);
+                    
+                    log.info("✅ 音频转换并上传成功：originalName={} -> MP3, url={}", 
+                            file.getOriginalFilename(), url);
+                    
+                    return url;
+                } catch (Exception e) {
+                    log.error("❌ 音频转换失败，使用原始格式上传", e);
+                    // 转换失败，降级到原始格式上传
+                }
+            }
+            
+            // 4. 生成文件名（使用原始格式）
+            String extension = originalExtension != null && !originalExtension.isEmpty() 
+                ? "." + originalExtension 
                 : ".mp3";
             String filename = UUID.randomUUID().toString().replace("-", "") + extension;
             
-            // 4. 创建目录
+            // 5. 创建目录
             LocalDate now = LocalDate.now();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
             String datePath = now.format(formatter);
@@ -136,15 +173,15 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
                 dir.mkdirs();
             }
             
-            // 5. 保存文件
+            // 6. 保存文件
             Path filePath = Paths.get(dirPath, filename);
             Files.copy(file.getInputStream(), filePath);
             
-            // 6. 返回 URL
+            // 7. 返回 URL
             String url = buildResourceUrl(category, datePath, filename);
             
-            log.info("音频上传成功：originalName={}, size={}, url={}", 
-                    originalFilename, file.getSize(), url);
+            log.info("✅ 音频上传成功（原始格式）：originalName={}, size={}, url={}", 
+                    file.getOriginalFilename(), file.getSize(), url);
             
             return url;
             
@@ -204,5 +241,32 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
         }
         
         return path.replace("/", File.separator);
+    }
+    
+    /**
+     * 构建资源 URL（从路径）
+     */
+    private String buildResourceUrlFromPath(String category, String relativePath) {
+        String fullPath = Paths.get(category, relativePath).toString().replace("\\", "/");
+        
+        if (cdnDomain != null && !cdnDomain.isEmpty()) {
+            return cdnDomain.endsWith("/") ? cdnDomain + fullPath : cdnDomain + "/" + fullPath;
+        }
+        
+        return "/resources/" + fullPath;
+    }
+    
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return "mp3";
+        }
+        String ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+        if (ext.contains(";")) {
+            ext = ext.split(";")[0];
+        }
+        return ext;
     }
 }

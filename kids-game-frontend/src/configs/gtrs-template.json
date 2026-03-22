@@ -4,15 +4,6 @@
     "specVersion": "1.0.0",
     "compatibleVersion": "1.0.0"
   },
-  "themeInfo": {
-    "themeId": "game_default_theme",
-    "ownerType": "GAME",
-    "ownerId": 1,
-    "themeName": "默认主题",
-    "isDefault": true,
-    "author": "官方",
-    "description": "游戏默认兜底主题"
-  },
   "globalStyle": {
     "primaryColor": "#FF6B6B",
     "secondaryColor": "#4ECDC4",

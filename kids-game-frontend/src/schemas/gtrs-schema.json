@@ -2,9 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://kids-game.com/schemas/gtrs-v1.0.0.json",
   "title": "Game Theme Resource Specification v1.0.0",
-  "description": "GTRS游戏主题资源规范Schema，用于全流程JSON校验",
+  "description": "GTRS游戏主题资源规范Schema，用于全流程JSON校验。⭐ themeInfo节点已废弃，改由数据库theme_info表提供，configJson只存储specMeta+globalStyle+resources。",
   "type": "object",
-  "required": ["specMeta", "themeInfo", "globalStyle", "resources"],
+  "required": ["specMeta", "globalStyle", "resources"],
   "additionalProperties": true,
   "properties": {
     "$comment": {
@@ -35,50 +35,8 @@
       }
     },
     "themeInfo": {
-      "type": "object",
-      "description": "主题基础信息",
-      "required": ["themeId", "ownerType", "ownerId", "themeName", "isDefault"],
-      "additionalProperties": true,
-      "properties": {
-        "themeId": {
-          "type": "string",
-          "pattern": "^[a-z0-9_]+$",
-          "description": "主题唯一标识，仅英文小写、数字、下划线"
-        },
-        "ownerType": {
-          "type": "string",
-          "enum": ["GAME", "APPLICATION"],
-          "description": "所有者类型：GAME（游戏）或 APPLICATION（应用）"
-        },
-        "ownerId": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "所有者 ID（数据库主键）"
-        },
-        "gameId": {
-          "type": "string",
-          "description": "兼容字段：游戏 ID（已废弃，使用 ownerType + ownerId 替代）"
-        },
-        "themeName": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 100,
-          "description": "主题名称，支持中文"
-        },
-        "isDefault": {
-          "type": "boolean",
-          "description": "是否为默认兜底主题"
-        },
-        "author": {
-          "type": "string",
-          "description": "创作者名称"
-        },
-        "description": {
-          "type": "string",
-          "maxLength": 500,
-          "description": "主题描述"
-        }
-      }
+      "type": "null",
+      "description": "⭐ 已废弃：主题基础信息已迁移到数据库 theme_info 表，不再在 configJson 中存储"
     },
     "globalStyle": {
       "type": "object",
@@ -188,7 +146,7 @@
         },
         "type": {
           "type": "string",
-          "enum": ["mp3", "wav", "ogg"],
+          "enum": ["mp3"],
           "description": "音频格式"
         },
         "alias": {

@@ -217,6 +217,13 @@
                 <version>${jsch.version}</version>
             </dependency>
 
+            <!-- 音频格式转换（FFmpeg Java 绑定）-->
+            <dependency>
+                <groupId>org.bytedeco</groupId>
+                <artifactId>javacv-platform</artifactId>
+                <version>1.5.9</version>
+            </dependency>
+
             <!-- javax.annotation API (Jakarta EE 兼容) -->
             <dependency>
                 <groupId>jakarta.annotation</groupId>

@@ -8,6 +8,7 @@ import com.kidgame.dao.entity.CreatorEarnings;
 import com.kidgame.dao.entity.ThemeInfo;
 import com.kidgame.dao.entity.ThemePurchase;
 import com.kidgame.dao.entity.UserThemePreference;
+import com.kidgame.dao.mapper.ThemeInfoMapper;
 import com.kidgame.service.ThemeService;
 import com.kidgame.service.dto.ThemeUploadDTO;
 import com.kidgame.service.GTRSSchemaService;
@@ -37,6 +38,9 @@ public class ThemeController {
 
     @Autowired
     private ThemeService themeService;
+
+    @Autowired
+    private ThemeInfoMapper themeInfoMapper;
 
     @Autowired
     private GTRSSchemaService gtrsSchemaService;
@@ -231,22 +235,75 @@ public class ThemeController {
             
             Long userId = Long.valueOf(userIdStr);
             log.info("下载主题. ThemeId: {}, UserId: {}", id, userId);
-            
-            String configJson = themeService.downloadTheme(id, userId);
-            
-            // 检查 configJson 是否为 null 或空
-            if (configJson == null || configJson.trim().isEmpty()) {
+
+            // ⭐ 获取主题表字段
+            ThemeInfo themeInfo = themeInfoMapper.selectById(id);
+            if (themeInfo == null) {
+                log.warn("主题不存在：themeId={}", id);
+                return Result.error("主题不存在");
+            }
+
+            // 获取 GTRS JSON（只含 globalStyle + resources）
+            String gtrsJson = themeService.downloadTheme(id, userId);
+
+            // 检查 GTRS JSON 是否为 null 或空
+            if (gtrsJson == null || gtrsJson.trim().isEmpty()) {
                 log.warn("主题配置为空或未购买：themeId={}, userId={}", id, userId);
                 return Result.error("主题配置不可用，请先购买或联系管理员");
             }
-            
+
+            // ⭐ 返回完整数据：表字段 + GTRS JSON（前端会组合使用）
             Map<String, Object> result = new HashMap<>();
-            result.put("configJson", configJson);
-            
+            Map<String, Object> themeInfoMap = new HashMap<>();
+            themeInfoMap.put("ownerType", themeInfo.getOwnerType());
+            themeInfoMap.put("ownerId", themeInfo.getOwnerId());
+            themeInfoMap.put("themeName", themeInfo.getThemeName());
+            themeInfoMap.put("isDefault", themeInfo.getIsDefault() != null && themeInfo.getIsDefault());
+            themeInfoMap.put("author", themeInfo.getAuthorName());
+            themeInfoMap.put("description", themeInfo.getDescription());
+            result.put("themeInfo", themeInfoMap);
+            result.put("config", gtrsJson);  // GTRS JSON（specMeta + globalStyle + resources）
+
             return Result.success(result);
         } catch (Exception e) {
             log.error("下载主题失败", e);
             return Result.error("下载主题失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * ⭐ 获取主题编辑器专用数据（结构化返回，方便加载和查看）
+     * @param id 主题 ID
+     * @param request HTTP 请求
+     * @return 主题编辑器数据
+     */
+    @Operation(summary = "获取主题编辑器数据")
+    @GetMapping("/editor-data")
+    public Result<Map<String, Object>> getEditorData(
+            @Parameter(description = "主题 ID")
+            @RequestParam Long id,
+            HttpServletRequest request) {
+
+        try {
+            String userIdStr = (String) request.getAttribute("userId");
+
+            if (userIdStr == null || userIdStr.isEmpty()) {
+                log.warn("未登录用户尝试获取编辑器数据：themeId={}", id);
+                return Result.error("请先登录");
+            }
+
+            Long userId = Long.valueOf(userIdStr);
+            log.info("获取主题编辑器数据. ThemeId: {}, UserId: {}", id, userId);
+
+            Map<String, Object> editorData = themeService.getEditorData(id, userId);
+            if (editorData == null) {
+                return Result.error("主题不存在或无权访问");
+            }
+
+            return Result.success(editorData);
+        } catch (Exception e) {
+            log.error("获取主题编辑器数据失败", e);
+            return Result.error("获取主题编辑器数据失败：" + e.getMessage());
         }
     }
 

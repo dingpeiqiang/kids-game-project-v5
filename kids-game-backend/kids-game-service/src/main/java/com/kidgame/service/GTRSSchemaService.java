@@ -70,10 +70,10 @@ public class GTRSSchemaService {
      */
     public ValidationResult validateTheme(JsonNode jsonNode) {
         try {
-            // 1. 检查基础结构
-            if (!jsonNode.has("specMeta") || !jsonNode.has("themeInfo") ||
+            // 1. 检查基础结构 ⭐ themeInfo 已废弃，不再强制要求
+            if (!jsonNode.has("specMeta") ||
                 !jsonNode.has("globalStyle") || !jsonNode.has("resources")) {
-                return ValidationResult.error("缺少必需的顶级字段：specMeta、themeInfo、globalStyle、resources");
+                return ValidationResult.error("缺少必需的顶级字段：specMeta、globalStyle、resources（themeInfo 已废弃）");
             }
 
             // 2. 检查规范名称
@@ -128,14 +128,14 @@ public class GTRSSchemaService {
     /**
      * 快速校验（仅检查关键字段，用于前端实时预览）
      *
-     * @param themeJson 主题JSON字符串
+     * @param themeJson 主题 JSON 字符串
      * @return 是否通过
      */
     public boolean quickValidate(String themeJson) {
         try {
             JsonNode jsonNode = objectMapper.readTree(themeJson);
+            // ⭐ themeInfo 已废弃，不再强制要求
             return jsonNode.has("specMeta") &&
-                   jsonNode.has("themeInfo") &&
                    jsonNode.has("globalStyle") &&
                    jsonNode.has("resources");
         } catch (Exception e) {

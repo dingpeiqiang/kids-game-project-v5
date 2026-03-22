@@ -13,6 +13,35 @@ export const API_CONSTANTS = {
 } as const;
 
 /**
+ * 游戏状态枚举
+ */
+export const GAME_STATUS = {
+  OFFLINE: 0,   // 下架
+  ON_SALE: 1,   // 上架
+} as const;
+export type GameStatus = typeof GAME_STATUS[keyof typeof GAME_STATUS];
+
+/**
+ * 主题状态枚举
+ */
+export const THEME_STATUS = {
+  OFFLINE: 'offline',    // 下架
+  ON_SALE: 'on_sale',    // 上架
+  PENDING: 'pending',     // 待审核
+} as const;
+export type ThemeStatus = typeof THEME_STATUS[keyof typeof THEME_STATUS];
+
+/**
+ * 用户类型枚举
+ */
+export const USER_TYPE = {
+  KID: 1,
+  PARENT: 2,
+  ADMIN: 3,
+} as const;
+export type UserType = typeof USER_TYPE[keyof typeof USER_TYPE];
+
+/**
  * API 响应接口
  */
 export interface ApiResponse<T = any> {

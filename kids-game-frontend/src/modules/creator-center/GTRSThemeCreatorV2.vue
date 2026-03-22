@@ -43,8 +43,16 @@
 
     <!-- 主体内容 -->
     <div class="creator-body">
-      <!-- 表单模式：左侧导航 -->
-      <template v-if="editMode === 'form'">
+      <!-- ⭐ 初始化 loading：数据未就绪时显示，防止子组件拿到空数据 -->
+      <div v-if="!dataReady" class="init-loading">
+        <el-skeleton :rows="8" animated style="padding: 40px;" />
+        <div style="text-align:center; color:#909399; margin-top:16px;">
+          正在加载主题数据，请稍候...
+        </div>
+      </div>
+
+      <!-- ⭐ 数据就绪后才渲染表单，子组件 onMounted 时拿到的是完整数据 -->
+      <template v-else-if="editMode === 'form'">
         <div class="left-navigation">
           <div
             v-for="tab in tabs"
@@ -63,14 +71,18 @@
           <!-- 基本信息面板 -->
           <BasicInfoPanel
             v-if="currentTab === 'basic'"
-            v-model="themeData"
+            v-model="themeBasicInfo"
             :is-dirty="isDirty"
             :panel-json-mode="panelJsonModes.basic"
             :disable-game-select="hasRouteThemeId"
             :disable-theme-id="isEditMode"
+            :mode="editorMode"
+            :game-list="gameList"
+            :app-list="appList"
             @update:is-dirty="isDirty = $event"
             @toggle-json-mode="panelJsonModes.basic = !panelJsonModes.basic"
           />
+
 
           <!-- 全局样式面板 -->
           <GlobalStylePanel
@@ -112,13 +124,14 @@
           <PublishPanel
             v-if="currentTab === 'publish'"
             :theme-data="themeData"
+            :theme-basic-info="themeBasicInfo"
             @publish="handlePublish"
           />
         </div>
       </template>
 
-      <!-- JSON 模式 -->
-      <template v-else>
+      <!-- ⭐ JSON 模式（同样在 dataReady 后才显示） -->
+      <template v-else-if="editMode === 'json'">
         <div class="json-editor-container">
           <div class="json-toolbar">
             <el-button size="small" @click="formatJson" :disabled="!!jsonFormatError">
@@ -145,6 +158,7 @@
         </div>
       </template>
     </div>
+
 
     <!-- 工具栏 -->
     <div class="toolbar">
@@ -203,6 +217,7 @@ import DraftManager from './panels/DraftManager.vue'
 import { validateGTRSTheme, type GTRSTheme } from '@/utils/gtrs-validator'
 import defaultTheme from '@/configs/gtrs-template.json'
 import { useUserStore } from '@/core/store/user.store'
+import { gameApi } from '@/services/game-api.service'
 
 // ========== 数据定义 ==========
 
@@ -223,6 +238,17 @@ const isEditMode = computed(() => routeMode === 'edit')
 // 是否有 routeThemeId，用于判断是否禁用游戏选择
 const hasRouteThemeId = computed(() => !!routeThemeId)
 
+// 编辑器模式：'create' (创作) / 'diy' (DIY) / 'edit' (编辑)
+const editorMode = computed(() => {
+  if (routeMode === 'edit') {
+    return 'edit'
+  } else if (routeThemeId) {
+    return 'diy'
+  } else {
+    return 'create'
+  }
+})
+
 // 编辑模式：表单 / JSON
 const editMode = ref<'form' | 'json'>('form')
 
@@ -236,6 +262,15 @@ const draftManagerRef = ref()
 // JSON 模式相关
 const themeJson = ref('')
 const jsonFormatError = ref<string | null>(null)
+
+// ⭐ 一次性加载方案：所有数据就绪后才渲染表单，彻底避免子组件的初始化竞态
+const dataReady = ref(false)     // 数据就绪门控，true 后才挂载各面板
+const initLoading = ref(false)   // 初始化 loading 状态
+
+// 业务列表（由父组件统一加载，传给 BasicInfoPanel，确保数据先于表单就绪）
+type BusinessItem = { label: string; value: number; dbId: number; code?: string }
+const gameList = ref<BusinessItem[]>([])
+const appList = ref<BusinessItem[]>([{ label: '示例应用', value: 100, dbId: 100, code: 'example-app' }])
 
 // 各面板的局部 JSON 模式状态（相互独立）
 const panelJsonModes = ref({
@@ -252,12 +287,6 @@ const createEmptyThemeData = (): GTRSTheme => ({
     specVersion: '1.0.0',
     compatibleVersion: '1.0.0'
   },
-  themeInfo: {
-    themeId: '',
-    gameId: '',
-    themeName: '',
-    isDefault: false
-  },
   globalStyle: {},
   resources: {
     images: {},
@@ -267,6 +296,44 @@ const createEmptyThemeData = (): GTRSTheme => ({
 })
 
 const themeData = ref<GTRSTheme>(createEmptyThemeData())
+
+// ⭐ 主题基本信息（独立存储，对应 theme_info 表字段）
+// 在上传时需要这些数据，但不在 GTRS JSON 中
+const themeBasicInfo = ref<{
+  themeId: number
+  authorId: number
+  isOfficial: boolean
+  ownerType: 'GAME' | 'APPLICATION'
+  ownerId: number | null
+  themeName: string
+  authorName: string
+  price: number
+  status: 'pending' | 'on_sale' | 'offline'
+  downloadCount: number
+  totalRevenue: number
+  thumbnailUrl: string
+  description: string
+  isDefault: boolean
+  createdAt: string
+  updatedAt: string
+}>({
+  themeId: 0,
+  authorId: userStore.currentUser?.id || 0,
+  isOfficial: false,
+  ownerType: 'GAME',
+  ownerId: routeGameId,
+  themeName: '',
+  authorName: userStore.currentUser?.nickname || '',
+  price: 0,
+  status: 'pending',
+  downloadCount: 0,
+  totalRevenue: 0,
+  thumbnailUrl: '',
+  description: '',
+  isDefault: false,
+  createdAt: '',
+  updatedAt: ''
+})
 
 // 导航标签
 const tabs = [
@@ -370,15 +437,8 @@ const publishTheme = async (publishData?: { price: number; description: string }
 
   publishing.value = true
   try {
-    // ⭐ 从 themeData 中获取 ownerType 和 ownerId（GTRS 规范字段）
-    const { ownerType, ownerId } = themeData.value.themeInfo
-    
-    // ⭐ gameCode 从 ownerId 转换（用于资源加载等）
-    // 将 "game_xxx_yyy" 格式转为 "XXX_YYY" 格式
-    const rawGameId = themeData.value.themeInfo.gameId || ''  // 兼容旧数据
-    const gameCode = rawGameId
-      ? rawGameId.replace(/^game_/, '').toUpperCase().replace(/-/g, '_')
-      : null  // "game_snake_v3" → "SNAKE_VUE3"
+    // ⭐ 从 themeBasicInfo 获取基本信息（theme_info 表字段）
+    const { ownerType, ownerId, themeName, description, thumbnailUrl } = themeBasicInfo.value
 
     // ⭐ 获取当前登录用户的真实信息
     // 后端会从 JWT token 中获取 authorId，这里只需要传递正确的 authorName
@@ -386,27 +446,30 @@ const publishTheme = async (publishData?: { price: number; description: string }
 
     // 构建上传数据
     const uploadData: any = {
-      name: themeData.value.themeInfo.themeName,
-      authorName: currentAuthorName,  // ⭐ 使用当前登录用户的真实名称
-      price: publishData?.price ?? 0,
-      description: publishData?.description || '',
-      thumbnail: '',
-      config: themeData.value, // 完整的 GTRS主题数据
-      ownerType: ownerType,    // ⭐ 从 GTRS 数据中获取
-      gameCode: gameCode,      // ⭐ 仅用于资源加载标识
-      ownerId: ownerId,        // ⭐ 数据库主键，用于关联游戏（优先级最高）
-      status: 'pending'
+      // ⭐ theme_info 表字段
+      themeName: themeName,
+      authorName: currentAuthorName,
+      price: publishData?.price ?? themeBasicInfo.value.price,
+      description: publishData?.description || description,
+      thumbnail: thumbnailUrl,
+      ownerType: ownerType,
+      ownerId: ownerId,
+      status: 'pending',
+
+      // ⭐ GTRS 配置（只包含 specMeta + globalStyle + resources）
+      configJson: JSON.stringify(themeData.value)
     }
 
     console.log('发布主题:', {
       ...uploadData,
-      config: '...(省略 GTRS 数据)',
+      configJson: '...(省略 GTRS 数据)',
       routeGameId,
       isEditMode: isEditMode.value,
       hasRouteThemeId: hasRouteThemeId.value,
-      themeInfo: {
-        ownerType: themeData.value.themeInfo.ownerType,
-        ownerId: themeData.value.themeInfo.ownerId
+      themeBasicInfo: {
+        ownerType: themeBasicInfo.value.ownerType,
+        ownerId: themeBasicInfo.value.ownerId,
+        themeName: themeBasicInfo.value.themeName
       }
     })
 
@@ -763,55 +826,60 @@ const startAutoSave = () => {
     if (isDirty.value) {
       saveDraft()
     }
-  }, 30000) // 30秒自动保存
+  }, 30000) // 30 秒自动保存
 }
 
 // ========== 生命周期 ==========
 
-// 加载已有主题 - 严格按照 configJson 结构，不做任何补充
+// 加载已有主题 - 使用编辑器专用接口获取结构化数据
 const loadExistingTheme = async (themeId: string) => {
   try {
     const loading = ElLoading.service({ text: '正在加载主题...' })
-    const result = await themeApi.download(themeId)
+
+    // ⭐ 使用新的编辑器专用接口，返回结构化数据
+    const result = await themeApi.getEditorData(themeId)
     loading.close()
 
-    // BaseApiService 已经解包了 ApiResponse，所以 result 应该是 { configJson: "..." }
-    let configJson: string | undefined
+    // ⭐ 后端返回格式：{ themeInfo: {...}, config: {...}, resourceSummary: {...} }
+    const { themeInfo: themeInfoData, config: gtrsConfig } = result
 
-    if (typeof result === 'string') {
-      configJson = result
-    } else if (result && 'configJson' in result) {
-      configJson = (result as any).configJson
-    } else {
-      configJson = undefined
-    }
-
-    if (!configJson) {
+    if (!gtrsConfig) {
       ElMessage.error('主题配置为空，无法加载')
       router.push('/creator-center')
       return
     }
 
-    // 解析 GTRS JSON
-    let themeConfig: GTRSTheme
-    try {
-      themeConfig = JSON.parse(configJson)
-    } catch {
-      ElMessage.error('主题配置解析失败，格式错误')
-      router.push('/creator-center')
-      return
-    }
-
     // 验证是否是 GTRS 格式
-    if (!themeConfig.specMeta || themeConfig.specMeta.specName !== 'GTRS') {
+    if (!gtrsConfig.specMeta || gtrsConfig.specMeta.specName !== 'GTRS') {
       ElMessage.error('该主题不是有效的GTRS格式，无法编辑')
       router.push('/creator-center')
       return
     }
 
-    // 严格加载：直接使用解析出的数据，完全按照 configJson 的报文结构
-    // 不做任何补充、不添加默认值
-    themeData.value = themeConfig
+    // ⭐ 直接使用已解析的配置对象（不需要 JSON.parse）
+    themeData.value = gtrsConfig
+
+    // ⭐ 将 themeInfo 数据赋值到 themeBasicInfo
+    if (themeInfoData) {
+      // 强制转换 ownerId 类型为数字（与 gameList.value 类型对齐）
+      const rawOwnerId = themeInfoData.ownerId
+      themeInfoData.ownerId = typeof rawOwnerId === 'string'
+        ? (rawOwnerId === '' || isNaN(Number(rawOwnerId)) ? 0 : Number(rawOwnerId))
+        : (rawOwnerId ?? 0)
+      console.log('[loadExistingTheme] ownerId 类型转换:', rawOwnerId, '→', themeInfoData.ownerId)
+
+      // 合并 themeInfo 数据到 themeBasicInfo
+      themeBasicInfo.value = {
+        ...themeBasicInfo.value,
+        ...themeInfoData
+      }
+
+      // ⭐ 打印资源汇总，方便调试和查看
+      if (result.resourceSummary) {
+        console.log('[loadExistingTheme] 资源汇总:', result.resourceSummary)
+      }
+    }
+
     isDirty.value = false
 
     // 同步更新 JSON 文本区域（如果当前是 JSON 模式）
@@ -826,15 +894,54 @@ const loadExistingTheme = async (themeId: string) => {
   }
 }
 
-onMounted(() => {
-  console.log('GTRS 主题编辑器已加载', {
-    routeThemeId,
-    routeGameId: routeGameId
-  })
+onMounted(async () => {
+  console.log('GTRS 主题编辑器已加载', { routeThemeId, routeGameId })
 
-  // 检查是否有themeId参数，如果有则加载已有主题作为DIY模板
-  if (routeThemeId) {
-    loadExistingTheme(routeThemeId)
+  initLoading.value = true
+  try {
+    // ⭐ 第一步：并行加载游戏列表和应用列表，两者都就绪后再进行下一步
+    await Promise.allSettled([
+      // 加载游戏列表
+      gameApi.getList().then((games: any[]) => {
+        gameList.value = games.map((g: any) => {
+          // ⭐ 处理 gameId 类型，确保 value 与 ownerId 类型一致
+          const gameId = g.gameId ?? g.id
+          const numericId = typeof gameId === 'string' 
+            ? (gameId === '' || isNaN(Number(gameId)) ? 0 : Number(gameId))
+            : (gameId ?? 0)
+          return {
+            label: g.gameName || g.name || g.title || g.gameCode || `游戏${gameId}`,
+            value: numericId,
+            dbId: numericId,
+            code: g.gameCode
+          }
+        })
+        console.log('[GTRSThemeCreatorV2] 游戏列表加载完成:', gameList.value.length, '项', gameList.value)
+      }).catch((e: any) => {
+        console.error('[GTRSThemeCreatorV2] 游戏列表加载失败，使用降级数据', e)
+        gameList.value = [
+          { label: '贪吃蛇大冒险', value: 1, dbId: 1, code: 'snake-vue3' },
+          { label: '植物大战僵尸', value: 2, dbId: 2, code: 'pvz' },
+          { label: '飞行射击', value: 3, dbId: 3, code: 'shooter' }
+        ]
+      }),
+      // 应用列表（暂无后端 API，使用空数组；有需要时替换为实际请求）
+      Promise.resolve().then(() => {
+        appList.value = []  // 暂无应用类型业务，留空即可
+        console.log('[GTRSThemeCreatorV2] 应用列表就绪（暂无数据）')
+      })
+    ])
+
+    // ⭐ 第二步：加载已有主题（DIY/编辑模式）
+    // 此时 gameList/appList 已就绪，themeData 里的 ownerId 可以在列表中正确匹配
+    if (routeThemeId) {
+      await loadExistingTheme(routeThemeId)
+    }
+  } finally {
+    // ⭐ 第三步：所有数据就绪，开门渲染表单
+    dataReady.value = true
+    initLoading.value = false
+    console.log('[GTRSThemeCreatorV2] ✅ 数据就绪，开始渲染表单面板。gameList:', gameList.value.length, '项')
   }
 
   startAutoSave()
@@ -980,6 +1087,16 @@ watch(editMode, (newMode) => {
   display: flex;
   overflow: hidden;
 }
+
+.init-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #fff;
+  padding: 40px;
+}
+
 
 .left-navigation {
   width: 200px;

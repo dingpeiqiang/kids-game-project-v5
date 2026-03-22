@@ -81,8 +81,8 @@
             <span>📊 排序：{{ game.sortOrder || '-' }}</span>
           </div>
           
-          <div class="status-badge" :class="game.status === 1 ? 'enabled' : 'disabled'">
-            {{ game.status === 1 ? '✓ 已上架' : '✗ 已下架' }}
+          <div class="status-badge" :class="game.status === GAME_STATUS.ON_SALE ? 'enabled' : 'disabled'">
+            {{ game.status === GAME_STATUS.ON_SALE ? '✓ 已上架' : '✗ 已下架' }}
           </div>
         </div>
         
@@ -106,7 +106,7 @@
             @click="toggleGameStatus(game)" 
             class="btn-toggle"
           >
-            {{ game.status === 1 ? '📥 下架' : '📤 上架' }}
+            {{ game.status === GAME_STATUS.ON_SALE ? '📥 下架' : '📤 上架' }}
           </button>
           <button @click="viewStats(game)" class="btn-stats">📈 统计</button>
         </div>
@@ -627,6 +627,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { adminApi, type Game, type GameStats } from '@/services/admin-api.service';
 import { gameModeApi } from '@/services/game-mode-api.service';
+import { GAME_STATUS } from '@/services/api.types';
 import { themeApi } from '@/services/theme-api.service';
 import type { GameModeConfiguration } from '@/modules/game/types/game.types';
 import GameFormModal from '@/components/ui/GameFormModal.vue';
@@ -694,7 +695,7 @@ const formData = reactive<any>({
   description: '',
   sortOrder: 0,
   consumePointsPerMinute: 1,
-  status: 1
+  status: GAME_STATUS.ON_SALE
 });
 
 // 加载游戏列表
@@ -754,8 +755,8 @@ function editGame(game: Game) {
 
 // 切换游戏状态
 async function toggleGameStatus(game: Game) {
-  const newStatus = game.status === 1 ? 0 : 1;
-  const action = newStatus === 1 ? '上架' : '下架';
+  const newStatus = game.status === GAME_STATUS.ON_SALE ? GAME_STATUS.OFFLINE : GAME_STATUS.ON_SALE;
+  const action = newStatus === GAME_STATUS.ON_SALE ? '上架' : '下架';
   
   const confirmed = await useConfirm({ message: `确定要${action}游戏"${game.gameName}"吗？`, title: '确认操作' });
   if (!confirmed) return;
@@ -1219,7 +1220,7 @@ async function batchPublish() {
   
   try {
     for (const gameId of selectedGames.value) {
-      await adminApi.updateGameStatus(gameId, 1);
+      await adminApi.updateGameStatus(gameId, GAME_STATUS.ON_SALE);
     }
     selectedGames.value = [];
     await loadGames();
@@ -1267,7 +1268,7 @@ function closeModals() {
     description: '',
     sortOrder: 0,
     consumePointsPerMinute: 1,
-    status: 1
+    status: GAME_STATUS.ON_SALE
   });
 }
 

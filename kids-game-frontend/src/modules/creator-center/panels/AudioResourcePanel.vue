@@ -82,7 +82,7 @@
                   </div>
                   <div class="info-row">
                     <span class="info-label">格式:</span>
-                    <span class="info-value">{{ item.type || 'mp3' }}</span>
+                    <span class="info-value">{{ item.type || getFormatFromSrc(item.src) }}</span>
                   </div>
                   <div class="info-row">
                     <span class="info-label">音量:</span>
@@ -372,6 +372,7 @@ import { Document, Edit, Delete, Microphone, VideoPause, VideoPlay, Check, Close
 import type { GTRSTheme } from '@/utils/gtrs-validator'
 import { unifiedUploadService } from '@/services/unified-upload.service'
 import AudioDebug from '@/utils/audio-debug'
+// ⭐ 后端已支持自动转码，无需前端转换
 
 interface Props {
   modelValue: GTRSTheme
@@ -526,6 +527,28 @@ const getAudioUrl = (path: string): string => {
   // 相对路径转换为完整 URL
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
   return path.startsWith('/resources/') ? `${baseUrl}${path}` : `${window.location.origin}${path}`
+}
+
+// 从 src URL 提取格式（扩展名）
+const getFormatFromSrc = (src: string): string => {
+  if (!src) return '未知'
+  
+  // 处理查询参数，先去掉
+  const cleanSrc = src.split('?')[0]
+  const extension = cleanSrc.split('.').pop()?.toLowerCase()
+  
+  // 常见的音频格式映射
+  const formatMap: Record<string, string> = {
+    'mp3': 'mp3',
+    'wav': 'wav',
+    'ogg': 'ogg',
+    'webm': 'webm',
+    'm4a': 'm4a',
+    'flac': 'flac',
+    'aac': 'aac'
+  }
+  
+  return formatMap[extension || ''] || extension || '未知'
 }
 
 // ========== 录音功能 ==========
@@ -801,14 +824,16 @@ const confirmUploadRecording = async () => {
   try {
     uploading.value[uploadKey] = true
 
-    // 将 Blob 转换为 File
+    // ⭐ 简化：直接上传 WebM，后端会自动转换为 MP3
     const file = new File(
       [previewAudioBlob.value],
       `recording_${Date.now()}.webm`,
-      { type: 'audio/webm' }
+      { type: previewAudioBlob.value.type }
     )
 
-    // 上传到服务器
+    console.log('🎵 上传音频到后端服务器，文件名:', file.name, '类型:', file.type)
+
+    // 上传到服务器（后端会自动转 MP3）
     const result = await unifiedUploadService.uploadAudio(file)
 
     // 如果有旧音频，尝试删除服务器端的旧文件
@@ -826,10 +851,11 @@ const confirmUploadRecording = async () => {
     const audios = JSON.parse(JSON.stringify(props.modelValue.resources.audio))
     const categoryData = audios[category]
 
+    // ⭐ 后端已转换 MP3，type 直接设为 mp3
     categoryData[key] = {
       ...categoryData[key],
       src: result.url,
-      type: 'webm'
+      type: 'mp3'
     }
 
     emit('update:modelValue', {
@@ -856,7 +882,7 @@ const confirmUploadRecording = async () => {
       recordingTimer.value = null
     }
 
-    ElMessage.success(oldAudio.src ? '录音上传成功，已替换原音频' : '录音上传成功')
+    ElMessage.success(oldAudio.src ? '录音上传成功（后端已自动转为 MP3）' : '录音上传成功')
   } catch (error: any) {
     console.error('录音上传失败:', error)
     ElMessage.error(`上传失败：${error.message || '未知错误'}`)
@@ -1092,7 +1118,7 @@ const confirmTrim = async () => {
       }
     }
 
-    // 转换为 WAV Blob
+    // 转换为 WAV Blob（使用已有的 audioBufferToWav 函数）
     const wavBlob = audioBufferToWav(trimmedBuffer)
 
     // 更新预览音频
@@ -1619,10 +1645,14 @@ const handleFileSelect = async (event: Event) => {
     const audios = JSON.parse(JSON.stringify(props.modelValue.resources.audio))
     const categoryData = audios[category]
 
+    // 根据文件扩展名判断类型（更可靠），而不是依赖浏览器的 MIME type
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'mp3'
+    const audioType = ['mp3', 'wav', 'ogg', 'webm'].includes(extension) ? extension : 'mp3'
+
     categoryData[key] = {
       ...categoryData[key],
       src: result.url,
-      type: file.type.split('/')[1] || 'mp3'
+      type: audioType
     }
 
     emit('update:modelValue', {

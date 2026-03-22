@@ -11,21 +11,14 @@ const ajv = new Ajv({ allErrors: true })
 
 /**
  * GTRS主题数据类型
+ * ⭐ themeInfo 节点已废弃，改由数据库 theme_info 表提供
+ * configJson 只存储：specMeta + globalStyle + resources
  */
 export interface GTRSTheme {
   specMeta: {
     specName: 'GTRS'
     specVersion: string
     compatibleVersion: string
-  }
-  themeInfo: {
-    themeId: string
-    ownerType: 'GAME' | 'APPLICATION'
-    ownerId: number
-    themeName: string
-    isDefault: boolean
-    author?: string
-    description?: string
   }
   globalStyle: {
     primaryColor?: string
@@ -60,7 +53,7 @@ export interface ImageResource {
 
 export interface AudioResource {
   src: string
-  type: 'mp3' | 'wav' | 'ogg'
+  type: 'mp3'
   volume: number
   alias: string
 }
@@ -86,11 +79,11 @@ export function validateGTRSTheme(themeJson: string): ValidationResult {
   try {
     const theme = JSON.parse(themeJson)
 
-    // 1. 检查基础结构
-    if (!theme.specMeta || !theme.themeInfo || !theme.globalStyle || !theme.resources) {
+    // 1. 检查基础结构（themeInfo 可选，由数据库表提供）
+    if (!theme.specMeta || !theme.globalStyle || !theme.resources) {
       return {
         valid: false,
-        message: '缺少必需的顶级字段：specMeta、themeInfo、globalStyle、resources'
+        message: '缺少必需的顶级字段：specMeta、globalStyle、resources'
       }
     }
 

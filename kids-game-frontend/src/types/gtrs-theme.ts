@@ -4,7 +4,7 @@
 
 export interface GTRSTheme {
   specMeta: SpecMeta
-  themeInfo: ThemeInfo
+  themeInfo?: ThemeInfo | null  // ⭐ 可选，用于兼容旧数据，新规范中已废弃
   globalStyle: GlobalStyle
   resources: Resources
 }
@@ -63,7 +63,7 @@ export interface ImageResource {
 
 export interface AudioResource {
   src: string
-  type: 'mp3' | 'wav' | 'ogg'
+  type: 'mp3'
   volume: number
   alias: string
 }

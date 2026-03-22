@@ -11,6 +11,7 @@
 import { BattleGameScene, BattleMode } from '../battle/BattleGameBase';
 import { PlayerType } from '../battle/BattleGameBase';
 import { GameAssetValidator } from './GameAssetValidator';
+import { envConfig } from '@/core/config/env';
 
 // 重新导出 PlayerType 以便外部使用
 export { PlayerType };
@@ -549,20 +550,23 @@ export class UnifiedGameManager {
   }> {
     // 根据游戏类型返回不同的资源需求配置
     // TODO: 这部分应该从游戏配置文件中读取
-    
+
+    // 使用配置的 resourceBaseUrl 作为基础路径
+    const resourceBase = envConfig.resourceBaseUrl;
+
     const assetConfigs: Record<string, any> = {
       'snake-vue3': {
         images: [
-          { key: 'food', path: '/dist/games/snake-vue3/themes/default/images/food.png' },
-          { key: 'snakeBody', path: '/dist/games/snake-vue3/themes/default/images/snakeBody.png' },
-          { key: 'snakeHead', path: '/dist/games/snake-vue3/themes/default/images/snakeHead.png' },
-          { key: 'snakeTail', path: '/dist/games/snake-vue3/themes/default/images/snakeTail.png' },
-          { key: 'background', path: '/dist/games/snake-vue3/themes/default/images/background.png' },
+          { key: 'food', path: `${resourceBase}/games/snake-vue3/themes/default/images/food.png` },
+          { key: 'snakeBody', path: `${resourceBase}/games/snake-vue3/themes/default/images/snakeBody.png` },
+          { key: 'snakeHead', path: `${resourceBase}/games/snake-vue3/themes/default/images/snakeHead.png` },
+          { key: 'snakeTail', path: `${resourceBase}/games/snake-vue3/themes/default/images/snakeTail.png` },
+          { key: 'background', path: `${resourceBase}/games/snake-vue3/themes/default/images/background.png` },
         ],
         audio: [
-          { key: 'bgm_gameplay', path: '/dist/games/audio/snake_bgm_default.wav' },
-          { key: 'snake_eat', path: '/dist/games/audio/snake_eat.wav' },
-          { key: 'snake_gameover', path: '/dist/games/audio/snake_gameover.wav' },
+          { key: 'bgm_gameplay', path: `${resourceBase}/games/audio/snake_bgm_default.mp3` },
+          { key: 'snake_eat', path: `${resourceBase}/games/audio/snake_eat.mp3` },
+          { key: 'snake_gameover', path: `${resourceBase}/games/audio/snake_gameover.mp3` },
         ],
       },
       // 可以添加更多游戏的配置

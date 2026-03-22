@@ -149,3 +149,16 @@
 - 后端 `gtrs-schema.json` 在 `kids-game-backend/kids-game-service/src/main/resources/gtrs-schema.json`
 - 前端和后端各有一份独立的 Schema，修改时**必须同步更新**
 - IDE 沙箱环境禁止使用原生 `confirm()`/`alert()`/`prompt()`，必须用 Element Plus 组件
+
+### GTRS 编辑器专用接口（2026-03-22）
+- **新增接口**：`GET /api/theme/editor-data?id=xxx`
+- **用途**：为 GTRS 编辑器提供结构化的主题数据，方便加载和查看
+- **返回结构**：
+  ```json
+  {
+    "themeInfo": { "themeId", "themeName", "authorName", "ownerType", "ownerId", ... },
+    "config": { "specMeta", "globalStyle", "resources" }  // 已解析的对象，不是字符串
+  }
+  ```
+- **后端实现**：`ThemeController.getEditorData()` → `ThemeService.getEditorData()` → `ThemeServiceImpl.getEditorData()`
+- **前端使用**：`GTRSThemeCreatorV2.vue` 的 `loadExistingTheme()` 调用 `themeApi.getEditorData()`

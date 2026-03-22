@@ -359,6 +359,9 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { dialog } from '@/composables/useDialog';
+import { useUserStore } from '@/core/store/user.store';
+
+const userStore = useUserStore();
 
 interface ThemeInfo {
   themeId: number;
@@ -534,13 +537,19 @@ async function claimFreeTheme(theme: ThemeInfo | null) {
 // 使用主题
 async function useTheme(theme: ThemeInfo | null) {
   if (!theme) return;
-  
+
   try {
     // 调用后端 API 保存用户偏好
     const { themeApi } = await import('@/services/theme-api.service');
-    
+
+    // 从登录信息获取当前用户ID
+    const userId = userStore.currentUser?.id || userStore.parentUser?.parentId;
+    if (!userId) {
+      await dialog.error('请先登录');
+      return;
+    }
+
     // 保存到用户偏好（APPLICATION 类型，ownerId 为当前用户ID）
-    const userId = 1; // TODO: 从登录信息获取
     await themeApi.saveUserPreference('APPLICATION', userId, theme.themeId);
     
     // 同时保存到本地存储作为缓存
