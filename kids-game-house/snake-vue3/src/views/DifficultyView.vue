@@ -16,12 +16,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '@/stores/game'
 import type { Difficulty } from '@/types/game'
 import DifficultySelector from '@/components/ui/DifficultySelector.vue'
 import GameButton from '@/components/ui/GameButton.vue'
+import { initUIParams } from '@/utils/uiResponsive'
 
 const router = useRouter()
 const route = useRoute()
@@ -48,4 +49,10 @@ const startGame = () => {
     query: { theme_id: themeId }
   })
 }
+
+// ⭐ 初始化 UI 参数，确保与 StartView 计算逻辑一致
+onMounted(() => {
+  initUIParams(window.innerWidth, window.innerHeight)
+  console.log('DifficultyView mounted, UI params initialized')
+})
 </script>

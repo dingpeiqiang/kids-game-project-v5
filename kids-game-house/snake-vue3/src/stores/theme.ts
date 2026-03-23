@@ -271,38 +271,55 @@ export const useThemeStore = defineStore('theme', () => {
       const data = result.data
       let configJsonStr: string
 
-      if (typeof data === 'string') {
-        configJsonStr = data
-      } else if (data.configJson !== undefined) {
-        configJsonStr = typeof data.configJson === 'string'
-          ? data.configJson
-          : JSON.stringify(data.configJson)
-      } else if (data.config !== undefined) {
+      console.log('📦 后端返回完整数据:', JSON.stringify(data, null, 2))
+
+      // ⭐ 后端返回结构化数据：{ themeInfo: {...}, config: {...} }
+      // config 字段现在是对象，不需要二次解析
+      if (data.config !== undefined) {
+        // 如果 config 已经是对象，直接转为 JSON 字符串
         configJsonStr = typeof data.config === 'string'
           ? data.config
           : JSON.stringify(data.config)
+      } else if (typeof data === 'string') {
+        // 兼容：后端直接返回 JSON 字符串
+        configJsonStr = data
+      } else if (data.configJson !== undefined) {
+        // 兼容：使用 configJson 字段（旧版接口）
+        configJsonStr = typeof data.configJson === 'string'
+          ? data.configJson
+          : JSON.stringify(data.configJson)
       } else {
+        // ⭐ 如果后端直接返回 GTRS 对象，直接使用
         configJsonStr = JSON.stringify(data)
       }
 
-      // ⭐ 动态 import gtrs-validator（避免循环依赖问题）
+      console.log('📝 提取的 configJson 字符串:', configJsonStr.substring(0, 200) + '...')
+
+      // ⭐ 动态 import gtrs-validator（使用共享库）
       const { validateGTRSTheme } = await import('@/utils/gtrs-validator')
       const validationResult = validateGTRSTheme(configJsonStr)
 
       if (!validationResult.valid) {
         console.error(
-          `❌ 主题 ${themeId} GTRS 校验失败，拒绝加载:\n`,
+          `❌ 主题 ${themeId} GTRS 校验失败，拒绝加载:`,
           validationResult.message
         )
+        console.error('📦 原始数据:', JSON.stringify(data, null, 2))
+        console.error('📝 configJson 字符串:', configJsonStr)
         return false
       }
 
       // ⭐ 校验通过，解析 GTRS JSON
       const gtrsTheme = JSON.parse(configJsonStr)
 
-      // ⭐ 从 GTRS globalStyle 提取颜色（规范字段名）
+      // ⭐ 从外层 data 获取 themeInfo（后端返回的结构）
+      // 结构：{ themeInfo: {...}, config: { specMeta, globalStyle, resources } }
+      const backendThemeInfo = data.themeInfo || {}
+      
+      // ⭐ 从 GTRS config 中提取 globalStyle（规范字段名）
       const style = gtrsTheme.globalStyle || {}
-      const info  = gtrsTheme.themeInfo  || {}
+      // ⭐ themeInfo 字段已废弃，使用后端返回的 themeInfo
+      const info = backendThemeInfo
 
       const primaryColor   = style.primaryColor   || '#4ade80'
       const secondaryColor = style.secondaryColor || '#22c55e'
@@ -310,13 +327,30 @@ export const useThemeStore = defineStore('theme', () => {
       const textColor      = style.textColor      || '#ffffff'
       const borderRadius   = style.borderRadius   || '8px'
       const fontFamily     = style.fontFamily     || 'Arial, sans-serif'
-      const themeName      = info.themeName       || '未命名主题'
+      // ⭐ 主题名称从后端返回的 themeInfo 中获取
+      const themeName      = info.themeName || `主题 ${themeId}`
+
+      // ⭐ 将 themeInfo 合并到 gtrsTheme 中，供 PhaserGame 使用
+      // 虽然 themeInfo 字段已废弃，但为了兼容现有代码，暂时保留
+      const gtrsThemeWithInfo = {
+        ...gtrsTheme,
+        themeInfo: {
+          themeId: String(themeId),
+          themeName: themeName,
+          isDefault: info.isDefault || false,
+          author: info.author,
+          description: info.description
+        }
+      }
+
+      // ⭐ 存储原始 GTRS JSON（已校验通过）+ themeInfo
+      gtrsRawJson.value = JSON.stringify(gtrsThemeWithInfo)
 
       // 构建 UI 层 ThemeConfig（仅供 Vue 组件使用，游戏渲染由 PhaserGame 直接读 GTRS）
       customTheme.value = {
         id: String(themeId),
         name: themeName,
-        description: info.description || '',
+        description: info.description || '',  // ⭐ 从后端 themeInfo 中获取
         colors: {
           primary:       primaryColor,
           secondary:     secondaryColor,

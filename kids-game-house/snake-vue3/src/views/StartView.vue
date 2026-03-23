@@ -122,11 +122,15 @@ import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
 import GameButton from '@/components/ui/GameButton.vue'
 import SoundToggle from '@/components/ui/SoundToggle.vue'
 import ThemeSelector from '@/components/ui/ThemeSelector.vue'
+import { SnakePhaserGame } from '@/components/game/PhaserGame'
 
 const router = useRouter()
 const gameStore = useGameStore()
 const themeStore = useThemeStore()
 const ui = useResponsiveUI()
+
+// PhaserGame 实例（用于播放主菜单音乐）
+let phaserGameInstance: SnakePhaserGame | null = null
 
 // ⭐ 检查中状态
 const isChecking = ref(false)
@@ -345,10 +349,64 @@ onMounted(() => {
 
   // 监听窗口大小变化，实时更新 UI 参数
   window.addEventListener('resize', handleResize)
+
+  // ⭐ 初始化一个隐藏的 PhaserGame 实例用于播放主菜单背景音乐
+  initMainMenuBGM()
 })
+
+/**
+ * ⭐ 初始化主菜单背景音乐（创建隐藏的 PhaserGame 实例）
+ */
+const initMainMenuBGM = async () => {
+  try {
+    const themeId = themeStore.currentThemeId
+    if (!themeId) {
+      console.log('🎵 主菜单：未选择主题，跳过 BGM 初始化')
+      return
+    }
+
+    // 创建一个隐藏的容器来初始化 PhaserGame
+    const container = document.createElement('div')
+    container.style.display = 'none'
+    document.body.appendChild(container)
+
+    // 初始化 PhaserGame 实例
+    phaserGameInstance = new SnakePhaserGame(container)
+    
+    // 加载主题并播放主菜单音乐
+    await phaserGameInstance.start('easy', themeId)
+    
+    // 播放主菜单背景音乐
+    setTimeout(() => {
+      if (phaserGameInstance) {
+        phaserGameInstance.playBgmMain()
+        console.log('🎵 主菜单：开始播放 BGM_Main')
+      }
+    }, 500)
+
+    console.log('✅ 主菜单：BGM 初始化完成')
+  } catch (error) {
+    console.warn('⚠️ 主菜单：BGM 初始化失败', error)
+  }
+}
+
+/**
+ * ⭐ 清理主菜单 BGM 资源
+ */
+const cleanupMainMenuBGM = () => {
+  if (phaserGameInstance) {
+    phaserGameInstance.stopAllBgm()
+    phaserGameInstance.destroy()
+    phaserGameInstance = null
+    console.log('🧹 主菜单：BGM 资源已清理')
+  }
+}
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  
+  // ⭐ 清理主菜单 BGM 资源
+  cleanupMainMenuBGM()
 })
 
 // 窗口大小变化时更新 UI 参数

@@ -262,7 +262,15 @@ public class ThemeController {
             themeInfoMap.put("author", themeInfo.getAuthorName());
             themeInfoMap.put("description", themeInfo.getDescription());
             result.put("themeInfo", themeInfoMap);
-            result.put("config", gtrsJson);  // GTRS JSON（specMeta + globalStyle + resources）
+            
+            // ⭐ 将 GTRS JSON 字符串解析为对象返回，避免前端二次解析
+            try {
+                Object configObj = JSON.parse(gtrsJson);
+                result.put("config", configObj);  // 直接返回结构化对象
+            } catch (Exception e) {
+                log.error("解析主题配置失败：themeId={}, error={}", id, e.getMessage());
+                return Result.error("主题配置格式错误");
+            }
 
             return Result.success(result);
         } catch (Exception e) {

@@ -24,20 +24,36 @@ export default defineConfig({
     hmr: {
       overlay: true // 显示错误遮罩
     },
+    proxy: {
       '/public': {
         target: 'http://localhost:3000',
         changeOrigin: true,
 //         rewrite: (path) => path.replace(/^\/public/, ''),
       },
-        '/files': {
-          target: 'http://106.54.7.205',
-          changeOrigin: true,
-  //         rewrite: (path) => path.replace(/^\/public/, ''),
-        },
-    // 确保 WAV 文件使用正确的 MIME 类型
-    headers: {
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp'
+      // ⭐ 音频资源代理：将远程服务器资源代理到本地
+      '/files': {
+        target: 'http://106.54.7.205',
+        changeOrigin: true,
+        secure: false, // 允许 HTTPS 证书错误
+        // 添加 CORS 响应头，解决跨域问题
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // 设置必要的请求头
+            proxyReq.setHeader('Access-Control-Allow-Origin', '*')
+          })
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            // 设置 CORS 响应头
+            proxyRes.headers['Access-Control-Allow-Origin'] = '*'
+            proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+            proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+          })
+        }
+      },
+      // ⚠️ 注意：不要设置 COEP/COOP 响应头，会导致跨域资源被阻止
+      // headers: {
+      //   'Cross-Origin-Opener-Policy': 'same-origin',
+      //   'Cross-Origin-Embedder-Policy': 'require-corp'
+      // },
     },
     // 排除特定文件的热更新
     watch: {

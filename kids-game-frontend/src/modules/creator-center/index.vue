@@ -61,20 +61,34 @@
           <!-- 游戏选择器（仅当选择游戏主题时显示） -->
           <div v-if="filterOwnerType === 'GAME'" class="game-selector-inline">
             <span class="filter-label">选择游戏：</span>
-            <select 
-              class="game-select"
-              :value="selectedGameId"
-              @change="handleGameSelectChange"
-            >
-              <option value="">请选择游戏</option>
-              <option 
-                v-for="game in games" 
-                :key="game.gameId" 
-                :value="game.gameId"
+            <div class="game-select-wrapper">
+              <!-- 全部游戏按钮 -->
+              <button 
+                class="game-select-all-btn"
+                :class="{ active: selectedGameId === null || selectedGameId === undefined }"
+                @click="handleSelectAllGames"
+                title="显示所有游戏主题"
               >
-                {{ game.gameName }}
-              </option>
-            </select>
+                🎮 全部
+              </button>
+              
+              <!-- Element Plus Select 组件（支持搜索过滤） -->
+              <el-select
+                v-model="selectedGameId"
+                filterable
+                placeholder="请选择游戏"
+                clearable
+                style="flex: 1; min-width: 200px;"
+                @change="handleGameSelectChange"
+              >
+                <el-option
+                  v-for="game in filteredGames"
+                  :key="game.gameId"
+                  :label="`${game.gameName} (${game.gameCode})`"
+                  :value="game.gameId"
+                />
+              </el-select>
+            </div>
           </div>
         </div>
         
@@ -269,6 +283,10 @@ const selectedGameId = ref<number>();
 const selectedGameCode = ref<string>();
 const games = ref<Array<{ gameId: number; gameName: string; gameCode: string }>>([]);
 
+// ⭐ 游戏模糊检索相关
+const gameSearchKeyword = ref('');
+const filteredGames = ref<Array<{ gameId: number; gameName: string; gameCode: string }>>([]);
+
 // 合并后的主题列表
 const allThemes = ref<any[]>([]);
 
@@ -340,6 +358,9 @@ async function loadGamesList() {
       selectedGameId.value = games.value[0].gameId;
       selectedGameCode.value = games.value[0].gameCode;
     }
+    
+    // 初始化过滤后的游戏列表（显示全部）
+    filteredGames.value = [...games.value];
   } catch (error) {
     console.error('[CreatorCenter] 加载游戏列表失败:', error);
     // 开发环境使用备用数据，生产环境应该提示用户错误
@@ -570,6 +591,40 @@ function handleSourceFilterChange(source: 'all' | 'official' | 'purchased' | 'mi
   }
 }
 
+// ⭐ 选择全部游戏
+function handleSelectAllGames() {
+  selectedGameId.value = undefined;
+  selectedGameCode.value = undefined;
+  gameSearchKeyword.value = '';
+  filteredGames.value = [...games.value];
+  
+  console.log('[CreatorCenter] 选择全部游戏');
+  
+  // 重新加载数据
+  if (currentTab.value === 'mine') {
+    loadMyThemesOnly();
+  } else {
+    reloadCurrentData();
+  }
+}
+
+// ⭐ 游戏模糊检索
+function filterGames() {
+  const keyword = gameSearchKeyword.value.trim().toLowerCase();
+  
+  if (!keyword) {
+    filteredGames.value = [...games.value];
+  } else {
+    filteredGames.value = games.value.filter(game => {
+      const nameMatch = game.gameName.toLowerCase().includes(keyword);
+      const codeMatch = game.gameCode.toLowerCase().includes(keyword);
+      return nameMatch || codeMatch;
+    });
+  }
+  
+  console.log('[CreatorCenter] 游戏搜索结果:', filteredGames.value.length, '个匹配项');
+}
+
 // 游戏选择处理函数
 function handleGameSelectChange(event: Event) {
   const target = event.target as HTMLSelectElement;
@@ -627,7 +682,7 @@ async function reloadCurrentData() {
 
     // 获取当前用户的主题偏好设置
     const currentUserId = getCurrentUserId();
-    let userPreferences = { list: [] };
+    let userPreferences: any = { list: [] };
 
     // 只有当用户已登录时才获取偏好设置
     if (currentUserId && currentUserId !== 0) {
@@ -1017,7 +1072,7 @@ const visiblePages = computed(() => {
 });
 
 // 开发模式下的模拟主题数据（我的主题）
-function getMockThemes(): CloudThemeInfo[] {
+function getMockThemes(): any[] {
   return [
     {
       id: 'mock-1',
@@ -1059,10 +1114,10 @@ function getMockThemes(): CloudThemeInfo[] {
       rating: 4.2,
       status: 'pending',
       ownerType: 'APPLICATION',
-      ownerId: null,
+      ownerId: null as any,
       gameCode: '',
       gameName: '',
-      createdAt: '2024-01-20T14:45:00Z',
+      createdAt: '2024-01-20T14:45:00Z' as any,
       source: 'mine',
       sourceLabel: '我的',
       sourceIcon: '🎨'
@@ -1071,7 +1126,7 @@ function getMockThemes(): CloudThemeInfo[] {
 }
 
 // 开发模式下的模拟商店主题数据
-function getMockStoreThemes(): CloudThemeInfo[] {
+function getMockStoreThemes(): any[] {
   return [
     {
       id: 'store-mock-1',
@@ -1089,10 +1144,10 @@ function getMockStoreThemes(): CloudThemeInfo[] {
       rating: 4.8,
       status: 'on_sale',
       ownerType: 'APPLICATION',
-      ownerId: null,
+      ownerId: null as any,
       gameCode: '',
       gameName: '',
-      createdAt: '2024-01-10T09:00:00Z',
+      createdAt: '2024-01-10T09:00:00Z' as any,
       source: 'official',
       sourceLabel: '官方',
       sourceIcon: '🏛️'
@@ -1137,10 +1192,10 @@ function getMockStoreThemes(): CloudThemeInfo[] {
       rating: 4.7,
       status: 'on_sale',
       ownerType: 'APPLICATION',
-      ownerId: null,
+      ownerId: null as any,
       gameCode: '',
       gameName: '',
-      createdAt: '2024-01-18T16:20:00Z',
+      createdAt: '2024-01-18T16:20:00Z' as any,
       source: 'official',
       sourceLabel: '官方',
       sourceIcon: '🏛️'
@@ -1335,8 +1390,19 @@ function getMockStoreThemes(): CloudThemeInfo[] {
   gap: 8px;
 }
 
-.game-select {
-  padding: 8px 12px;
+.game-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 600px;
+}
+
+.game-select-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
   background: #f7fafc;
   border: 2px solid #e2e8f0;
   border-radius: 8px;
@@ -1344,15 +1410,20 @@ function getMockStoreThemes(): CloudThemeInfo[] {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  min-width: 150px;
-  
-  &:focus {
-    outline: none;
-    border-color: #4ECDC4;
-  }
+  transition: all 0.2s;
+  white-space: nowrap;
   
   &:hover {
+    background: #edf2f7;
     border-color: #cbd5e0;
+    transform: translateY(-1px);
+  }
+  
+  &.active {
+    background: #4ECDC4;
+    border-color: #4ECDC4;
+    color: white;
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
   }
 }
 

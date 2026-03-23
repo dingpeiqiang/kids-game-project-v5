@@ -3,8 +3,19 @@
 import type { SnakeSegment, Food, Difficulty } from '@/types/game'
 import { FOOD_TYPES } from '@/types/game'
 import { initUIParams, updateUIParams } from '@/utils/uiResponsive'
-import { validateGTRSTheme, type GTRSTheme } from '@/utils/gtrs-validator'
+import { validateGTRSTheme, type GTRSTheme as BaseGTRSTheme } from '@/utils/gtrs-validator'
 import { useThemeStore } from '@/stores/theme'
+
+// ⭐ 扩展 GTRSTheme 类型，添加 themeInfo 字段（兼容旧代码）
+export interface GTRSTheme extends BaseGTRSTheme {
+  themeInfo?: {
+    themeId: string
+    themeName: string
+    isDefault: boolean
+    author?: string
+    description?: string
+  }
+}
 
 // ⭐ 运行时主题对象：null 表示尚未加载，游戏启动前必须通过 loadTheme 赋值
 // 可用 key 集合参见 src/config/GTRS.json（纯占位符，不可直接作为运行主题）
@@ -273,7 +284,7 @@ export class SnakePhaserGame {
     // 校验通过，直接赋值（不兜底合并）
     const themeConfig: GTRSTheme = JSON.parse(configJsonStr)
     applyGTRS(themeConfig)
-    console.log(`[PhaserGame] ✅ GTRS 主题已加载: ${GTRS!.themeInfo.themeName} (id=${themeId})`)
+    console.log(`[PhaserGame] ✅ GTRS 主题已加载：${GTRS!.themeInfo?.themeName || '未命名'} (id=${themeId})`)
   }
 
   /**
@@ -301,7 +312,7 @@ export class SnakePhaserGame {
     this.Adapt.screenH = this.containerElement.clientHeight
 
     console.log('📏 设备真实尺寸:', `${this.Adapt.screenW} × ${this.Adapt.screenH}`)
-    console.log('🎨 当前主题:', assertGTRS().themeInfo.themeName)
+    console.log('🎨 当前主题:', assertGTRS().themeInfo?.themeName || '未命名')
 
     // ⭐ 添加资源加载进度监听
     const totalResourcesToLoad = this.countResourcesToLoad()
