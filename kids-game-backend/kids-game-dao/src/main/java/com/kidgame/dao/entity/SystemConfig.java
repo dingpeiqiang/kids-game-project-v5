@@ -1,8 +1,6 @@
 package com.kidgame.dao.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
 /**
@@ -26,6 +24,12 @@ public class SystemConfig {
     private String configValue;
 
     /**
+     * 配置类型：STRING-字符串，INT-整数，JSON-JSON对象
+     */
+    @TableField("config_type")
+    private String configType;
+
+    /**
      * 配置描述
      */
     private String description;
@@ -33,7 +37,13 @@ public class SystemConfig {
     /**
      * 配置分组 (fatigue/game/answer/system)
      */
+    @TableField("config_group")
     private String configGroup;
+
+    /**
+     * 状态：0-禁用，1-启用
+     */
+    private Integer status;
 
     /**
      * 创建时间
@@ -44,4 +54,10 @@ public class SystemConfig {
      * 更新时间
      */
     private Long updateTime;
+
+    /**
+     * 逻辑删除
+     */
+    @TableLogic
+    private Integer deleted;
 }

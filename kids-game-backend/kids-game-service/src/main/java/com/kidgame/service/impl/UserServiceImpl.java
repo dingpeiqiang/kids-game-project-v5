@@ -9,8 +9,12 @@ import com.kidgame.common.config.RsaKeyConfig;
 import com.kidgame.common.util.JwtUtil;
 import com.kidgame.common.util.RsaUtil;
 import com.kidgame.dao.entity.BaseUser;
+import com.kidgame.dao.entity.FatiguePointsLog;
+import com.kidgame.dao.entity.UserLevel;
 import com.kidgame.dao.entity.UserProfile;
 import com.kidgame.dao.mapper.BaseUserMapper;
+import com.kidgame.dao.mapper.FatiguePointsLogMapper;
+import com.kidgame.dao.mapper.UserLevelMapper;
 import com.kidgame.dao.mapper.UserProfileMapper;
 import com.kidgame.service.UserService;
 import com.kidgame.service.cache.UserCacheService;
@@ -48,6 +52,12 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserProfileMapper userProfileMapper;
+
+    @Autowired
+    private UserLevelMapper userLevelMapper;
+
+    @Autowired
+    private FatiguePointsLogMapper fatiguePointsLogMapper;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -124,7 +134,62 @@ public class UserServiceImpl implements UserService {
 
         userProfileMapper.insert(profile);
 
+        // 初始化用户等级（所有用户）
+        initializeUserLevel(user.getUserId());
+
+        // 如果是儿童用户，初始化疲劳点
+        if (user.getUserType() != null && user.getUserType() == 0) {
+            initializeFatiguePoints(user.getUserId());
+        }
+
         return user;
+    }
+
+    /**
+     * 初始化用户等级
+     * @param userId 用户 ID
+     */
+    private void initializeUserLevel(Long userId) {
+        UserLevel level = new UserLevel();
+        level.setUserId(userId);
+        level.setCurrentLevel(1);
+        level.setCurrentExp(0);
+        level.setNextLevelExp(100);
+        level.setLevelTitle("新手");
+        level.setTotalExp(0);
+        level.setCreateTime(System.currentTimeMillis());
+        level.setUpdateTime(System.currentTimeMillis());
+
+        userLevelMapper.insert(level);
+        log.info("初始化用户等级成功。UserId: {}", userId);
+    }
+
+    /**
+     * 初始化疲劳点（仅儿童用户）
+     * @param userId 用户 ID
+     */
+    private void initializeFatiguePoints(Long userId) {
+        // 设置初始疲劳点为 10
+        BaseUser user = baseUserMapper.selectById(userId);
+        if (user != null) {
+            user.setFatiguePoints(10);
+            user.setDailyAnswerPoints(0);
+            user.setFatigueUpdateTime(System.currentTimeMillis());
+            baseUserMapper.updateById(user);
+
+            // 记录疲劳点日志
+            FatiguePointsLog fatigueLog = new FatiguePointsLog();
+            fatigueLog.setUserId(userId);
+            fatigueLog.setChangeType(3); // 3-每日重置/初始赠送
+            fatigueLog.setChangePoints(10);
+            fatigueLog.setCurrentPoints(10);
+            fatigueLog.setRelatedType("SYSTEM");
+            fatigueLog.setRemark("新用户注册赠送 10 点疲劳点");
+            fatigueLog.setCreateTime(System.currentTimeMillis());
+
+            fatiguePointsLogMapper.insert(fatigueLog);
+            log.info("初始化儿童用户疲劳点成功。UserId: {}, Points: 10", userId);
+        }
     }
 
     @Override

@@ -215,8 +215,15 @@ export const useGameStore = defineStore('game', () => {
     // 检测是否吃到食物
     if (head.x === food.value.position.x && head.y === food.value.position.y) {
       addScore(food.value.score)
-      emitEvent('eat', { position: food.value.position, score: food.value.score })
-      generateFood()
+      // ⭐ 记录被吃掉的食物位置，用于动画效果
+      const eatenPosition = { ...food.value.position }
+      emitEvent('eat', { position: eatenPosition, score: food.value.score })
+      
+      // ⭐ 延迟生成新食物，让玩家看到食物被吃掉的效果（播放声音 + 粒子效果）
+      // 延迟时间约 200ms，与 eat 声音时长匹配
+      setTimeout(() => {
+        generateFood()
+      }, 200)
     } else {
       snake.value.pop()
     }

@@ -65,10 +65,40 @@ public class UserControlConfig implements Serializable {
     private Integer dailyAnswerLimit;
 
     /**
-     * 屏蔽的游戏ID列表（保留JSON字段，兼容旧数据）
-     * 新增数据建议使用t_blocked_game表
+     * 屏蔽的游戏 ID 列表（保留 JSON 字段，兼容旧数据）
+     * 新增数据建议使用 t_blocked_game 表
      */
     private String blockedGames;
+    
+    /**
+     * 疲劳点阈值（低于此值不能玩游戏）
+     */
+    private Integer fatiguePointThreshold;
+    
+    /**
+     * 强制休息时长（分钟）
+     */
+    private Integer restDuration;
+    
+    /**
+     * 疲劳控制模式：0-关闭，1-智能控制，2-严格控
+     */
+    private Integer fatigueControlMode;
+    
+    /**
+     * 连续游戏提醒间隔（分钟）
+     */
+    private Integer continuousPlayReminder;
+    
+    /**
+     * 每日游戏次数限制
+     */
+    private Integer dailyGameLimit;
+    
+    /**
+     * 单次游戏最小间隔（分钟）
+     */
+    private Integer gameInterval;
 
     /**
      * 创建时间

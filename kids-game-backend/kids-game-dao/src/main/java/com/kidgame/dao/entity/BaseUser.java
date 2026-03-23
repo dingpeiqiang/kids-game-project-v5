@@ -86,9 +86,24 @@ public class BaseUser implements Serializable {
     private Long lastLoginTime;
 
     /**
-     * 最后登录IP
+     * 最后登录 IP
      */
     private String lastLoginIp;
+    
+    /**
+     * 密码加密盐值
+     */
+    private String passwordSalt;
+    
+    /**
+     * 登录失败次数
+     */
+    private Integer loginFailureCount;
+    
+    /**
+     * 锁定截止时间（毫秒时间戳）
+     */
+    private Long lockedUntil;
 
     /**
      * 创建时间
