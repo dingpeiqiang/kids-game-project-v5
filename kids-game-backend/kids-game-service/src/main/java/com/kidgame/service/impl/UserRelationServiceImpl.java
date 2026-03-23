@@ -1,6 +1,7 @@
 package com.kidgame.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kidgame.common.constant.ErrorCode;
 import com.kidgame.common.exception.BusinessException;
@@ -152,6 +153,29 @@ public class UserRelationServiceImpl extends ServiceImpl<UserRelationMapper, Use
             wrapper.eq(UserRelation::getRelationType, relationType);
         }
         return getBaseMapper().selectCount(wrapper) > 0;
+    }
+
+    @Override
+    public com.baomidou.mybatisplus.extension.plugins.pagination.Page<UserRelation> listRelations(
+            Long guardianUserId, Long kidUserId, Integer page, Integer size) {
+        // 创建分页对象
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<UserRelation> mpPage = 
+            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+        
+        LambdaQueryWrapper<UserRelation> wrapper = new LambdaQueryWrapper<>();
+        
+        // 可选过滤条件
+        if (guardianUserId != null) {
+            wrapper.eq(UserRelation::getUserA, guardianUserId);
+        }
+        if (kidUserId != null) {
+            wrapper.eq(UserRelation::getUserB, kidUserId);
+        }
+        
+        wrapper.eq(UserRelation::getStatus, 1);
+        
+        // 使用 Service 层的 page 方法进行分页查询
+        return this.page(mpPage, wrapper);
     }
 
     private UserRelation createRelationAndReturn(UserRelation relation) {

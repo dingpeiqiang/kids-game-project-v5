@@ -50,67 +50,42 @@
     
     <!-- 游戏列表（卡片视图） -->
     <div class="game-grid">
-      <div 
-        v-for="game in games" 
-        :key="game.gameId" 
-        class="game-card"
-        :class="{ 'disabled': game.status === 0 }"
+      <GameCard
+        v-for="game in games"
+        :key="game.gameId"
+        :game="game"
       >
-        <div class="card-checkbox">
+        <template #actions>
           <input 
             type="checkbox" 
             :checked="selectedGames.includes(game.gameId)"
             @change="toggleSelection(game.gameId)"
+            style="margin-right: 8px;"
           />
-        </div>
-        
-        <div class="card-cover" :style="getCoverStyle(game.coverUrl, game.category)">
-          <span class="cover-icon">{{ getGameIcon(game.category) }}</span>
-        </div>
-        
-        <div class="card-body">
-          <div class="game-title">{{ game.gameName }}</div>
-          
-          <div class="game-meta">
-            <span class="tag category">{{ getCategoryText(game.category || '') }}</span>
-            <span class="tag grade">{{ game.grade || '-' }}</span>
-          </div>
-          
-          <div class="game-stats">
-            <span>👥 {{ game.onlineCount || 0 }}人在线</span>
-            <span>📊 排序：{{ game.sortOrder || '-' }}</span>
-          </div>
-          
-          <div class="status-badge" :class="game.status === GAME_STATUS.ON_SALE ? 'enabled' : 'disabled'">
-            {{ game.status === GAME_STATUS.ON_SALE ? '✓ 已上架' : '✗ 已下架' }}
-          </div>
-        </div>
-        
-        <div class="card-actions">
-          <button @click="editGame(game)" class="btn-edit">✏️ 编辑</button>
+          <button @click="editGame(game)" class="btn-action btn-edit">✏️ 编辑</button>
           <button 
             @click="openModeConfig(game)" 
-            class="btn-mode"
+            class="btn-action btn-mode"
             title="配置游戏模式"
           >
             🎮 模式
           </button>
           <button 
             @click="openThemeManagement(game)" 
-            class="btn-theme"
+            class="btn-action btn-theme"
             title="管理游戏主题"
           >
             🎨 主题
           </button>
           <button 
             @click="toggleGameStatus(game)" 
-            class="btn-toggle"
+            class="btn-action btn-toggle"
           >
             {{ game.status === GAME_STATUS.ON_SALE ? '📥 下架' : '📤 上架' }}
           </button>
-          <button @click="viewStats(game)" class="btn-stats">📈 统计</button>
-        </div>
-      </div>
+          <button @click="viewStats(game)" class="btn-action btn-stats">📈 统计</button>
+        </template>
+      </GameCard>
     </div>
     
     <!-- 分页 -->
@@ -628,6 +603,7 @@ import type { GameModeConfiguration } from '@/modules/game/types/game.types';
 import GameFormModal from '@/components/ui/GameFormModal.vue';
 import KidModal from '@/components/ui/KidModal.vue';
 import ThemeSelector from './ThemeSelector.vue';
+import GameCard from './GameCard.vue';
 import { dialog, useConfirm } from '@/composables/useDialog';
 
 // 数据
@@ -2604,5 +2580,50 @@ input:checked + .toggle-slider:before {
 .code-editor {
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 12px;
+}
+
+/* ========== 游戏卡片操作按钮样式 ========== */
+.btn-action {
+  padding: 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  
+  &:hover {
+    background: #f9fafb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  &.btn-edit {
+    color: #3b82f6;
+    border-color: #3b82f6;
+  }
+  
+  &.btn-mode {
+    color: #10b981;
+    border-color: #10b981;
+  }
+  
+  &.btn-theme {
+    color: #ec4899;
+    border-color: #ec4899;
+  }
+  
+  &.btn-toggle {
+    color: #f59e0b;
+    border-color: #f59e0b;
+  }
+  
+  &.btn-stats {
+    color: #6366f1;
+    border-color: #6366f1;
+  }
 }
 </style>

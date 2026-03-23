@@ -27,10 +27,10 @@ export interface ConfigListParams {
 }
 
 /**
- * 获取管控配置列表
+ * 获取管控配置列表（分页）
  */
 export function getConfigList(params: ConfigListParams) {
-  return request<any, { list: UserControlConfig[]; total: number }>({
+  return request<any, { records: UserControlConfig[]; total: number }>({
     url: '/api/user-control-config/list',
     method: 'get',
     params
@@ -38,7 +38,17 @@ export function getConfigList(params: ConfigListParams) {
 }
 
 /**
- * 获取管控配置详情
+ * 根据用户 ID 获取单个配置
+ */
+export function getConfigByUserId(userId: number) {
+  return request<UserControlConfig>({
+    url: `/api/user-control-config/user/${userId}`,
+    method: 'get'
+  })
+}
+
+/**
+ * 获取管控配置详情（通过 configId）
  */
 export function getConfigDetail(configId: number) {
   return request<UserControlConfig>({

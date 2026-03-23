@@ -5,10 +5,10 @@ import com.kidgame.dao.entity.GameTag;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 游戏标签Mapper
+ * 游戏标签 Mapper
  *
  * @author kids-game-platform
- * @since 1.0.0
+ * @since 2.0.0
  */
 @Mapper
 public interface GameTagMapper extends BaseMapper<GameTag> {

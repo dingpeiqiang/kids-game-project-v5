@@ -99,6 +99,63 @@ kids-game-project/
 
 ## 5. 编码规范（强制执行）
 
+### 加载状态规范
+
+#### **骨架屏使用规范** 📋
+
+**必须使用骨架屏的场景**：
+1. ✅ **列表数据加载** - 用户列表、关系列表、配置列表等
+   ```vue
+   <TableSkeleton v-if="loading && data.length === 0" :rows="10" />
+   ```
+
+2. ✅ **卡片内容加载** - 统计卡片、信息卡片等
+   ```vue
+   <CardSkeleton v-if="loading" :count="4" />
+   ```
+
+3. ✅ **详情页加载** - 用户详情、游戏详情等
+   ```vue
+   <TextSkeleton v-if="loading" :lines="5" />
+   ```
+
+**禁止使用骨架屏的场景**：
+1. ❌ 简单操作（< 0.5 秒）- 使用按钮 loading 状态
+2. ❌ 全屏加载 - 使用品牌 Logo + Loading 文字
+3. ❌ 表单提交 - 使用按钮 loading 状态
+
+**标准三段式结构**：
+```vue
+<template>
+  <div>
+    <!-- 加载中：骨架屏 -->
+    <TableSkeleton v-if="loading && data.length === 0" />
+    
+    <!-- 有数据：真实内容 -->
+    <el-table v-else-if="data.length > 0" :data="data">
+      <!-- 表格列 -->
+    </el-table>
+    
+    <!-- 空状态：友好提示 -->
+    <EmptyState v-else description="暂无数据" show-refresh />
+  </div>
+</template>
+```
+
+**导入规范**：
+```typescript
+// ✅ 统一从 skeleton.ts 导入
+import { TableSkeleton, CardSkeleton } from '@/utils/skeleton'
+import EmptyState from '@/components/EmptyState.vue'
+
+// ❌ 不要分散导入或重复定义
+```
+
+**相关文件**：
+- [`SKELETON_SCREEN_STANDARD.md`](./SKELETON_SCREEN_STANDARD.md) - 完整骨架屏规范
+- [`/src/utils/skeleton.ts`](../../src/utils/skeleton.ts) - 骨架屏工具类
+- [`/src/components/EmptyState.vue`](../../src/components/EmptyState.vue) - 空状态组件
+
 ### 后端 Java
 ```java
 // 命名

@@ -39,52 +39,30 @@ public class Game implements Serializable {
      * 适龄阶段
      */
     private String grade;
-
+    
     /**
-     * 游戏图标URL
+     * 标签列表（逗号分隔）
+     */
+    private String tags;
+    
+    /**
+     * 游戏图标 URL
      */
     private String iconUrl;
 
     /**
-     * 游戏封面URL
+     * 是否推荐：0-否，1-是
      */
-    private String coverUrl;
-
-    /**
-     * 游戏资源CDN地址
-     */
-    private String resourceUrl;
-
-    /**
-     * 游戏描述
-     */
-    private String description;
-
+    @TableField("is_featured")
+    private Integer isFeatured;
+    
     /**
      * 前端模块路径
      */
     private String modulePath;
 
     /**
-     * 游戏访问地址URL（独立部署时使用）
-     */
-    @TableField("game_url")
-    private String gameUrl;
-
-    /**
-     * 游戏密钥（用于签名验证）
-     */
-    @TableField("game_secret")
-    private String gameSecret;
-
-    /**
-     * 游戏配置（透传给游戏的JSON配置）
-     */
-    @TableField("game_config")
-    private String gameConfig;
-
-    /**
-     * 状态：0-禁用，1-启用
+     * 状态：0-草稿，1-待审核，2-已上架，3-已下架，4-审核驳回
      */
     private Integer status;
 
@@ -94,9 +72,27 @@ public class Game implements Serializable {
     private Integer sortOrder;
 
     /**
+     * 创建人 ID
+     */
+    @TableField("creator_id")
+    private Long creatorId;
+
+    /**
+     * 上架时间
+     */
+    @TableField("publish_time")
+    private Long publishTime;
+
+    /**
      * 每分钟消耗疲劳点数
      */
     private Integer consumePointsPerMinute;
+
+    /**
+     * 启动所需最低疲劳度
+     */
+    @TableField("min_fatigue_to_start")
+    private Integer minFatigueToStart;
 
     /**
      * 在线人数

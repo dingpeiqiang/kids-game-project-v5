@@ -46,6 +46,19 @@
         <el-table-column prop="userId" label="用户 ID" width="80" />
         <el-table-column prop="username" label="用户名" />
         <el-table-column prop="nickname" label="昵称" />
+        <el-table-column label="头像" width="100">
+          <template #default="{ row }">
+            <el-avatar 
+              v-if="row.avatar" 
+              :src="row.avatar" 
+              :size="40"
+              shape="circle"
+            />
+            <el-avatar v-else :size="40" shape="circle">
+              <el-icon><User /></el-icon>
+            </el-avatar>
+          </template>
+        </el-table-column>
         <el-table-column label="用户类型" width="100">
           <template #default="{ row }">
             <el-tag :type="getUserTypeTag(row.userType)">
@@ -96,6 +109,15 @@
         </el-table-column>
       </el-table>
 
+      <!-- 空状态提示 -->
+      <EmptyState
+        v-if="!loading && userList.length === 0"
+        description="暂无用户数据"
+        height="400px"
+        show-refresh
+        @refresh="fetchUserList"
+      />
+
       <!-- 分页 -->
       <el-pagination
         v-model:current-page="pagination.page"
@@ -103,8 +125,8 @@
         :total="pagination.total"
         :page-sizes="[10, 20, 50, 100]"
         layout="total, sizes, prev, pager, next, jumper"
-        @size-change="fetchUserList"
-        @current-change="fetchUserList"
+        @size-change="handleSizeChange"
+        @current-change="handlePageChange"
         class="pagination"
       />
     </el-card>
@@ -343,6 +365,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUserList, enableUser, disableUser, batchDisableUsers, updateUser, resetPassword } from '@/api/user'
 import AvatarSelector from '@/components/AvatarSelector.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 // 用户类型定义
 interface BaseUser {
@@ -471,34 +494,68 @@ const formatTime = (timestamp: number | null | undefined): string => {
 // 获取用户列表
 const fetchUserList = async () => {
   loading.value = true
+  console.log('[UserManagement] ========== 开始请求 ==========')
+  console.log('[UserManagement] 当前 pagination:', pagination)
+  console.log('[UserManagement] 请求参数:', {
+    userType: searchForm.userType,
+    status: searchForm.status,
+    page: pagination.page,
+    size: pagination.size
+  })
+  
   try {
-    const res = await getUserList({
-      userType: searchForm.userType ? String(searchForm.userType) : undefined,
-      status: searchForm.status ? String(searchForm.status) : undefined,
+    const params: any = {
       page: pagination.page,
       size: pagination.size
-    })
+    }
+    
+    // 只有当值存在时才添加筛选条件
+    if (searchForm.userType !== undefined && searchForm.userType !== null) {
+      params.userType = String(searchForm.userType)
+    }
+    if (searchForm.status !== undefined && searchForm.status !== null) {
+      params.status = String(searchForm.status)
+    }
+    
+    const res = await getUserList(params)
     
     console.log('[UserManagement] API 返回数据:', res)
+    console.log('[UserManagement] 完整返回结构:', JSON.stringify(res, null, 2))
     
-    // ✅ 兼容两种数据格式：
-    // 格式 1: { list: [...], total: 100 } (分页格式)
-    // 格式 2: [...] (直接数组)
-    if (res.data && Array.isArray(res.data.list)) {
-      // 分页格式
-      userList.value = res.data.list
-      pagination.total = res.data.total || res.data.list.length
-      console.log('[UserManagement] 使用分页格式')
-    } else if (Array.isArray(res.data)) {
-      // 直接数组格式
-      userList.value = res.data
-      pagination.total = res.data.length
-      console.log('[UserManagement] 使用数组格式')
-    } else {
-      // 空数据
-      userList.value = []
-      pagination.total = 0
-      console.log('[UserManagement] 无数据')
+    // 后端返回格式：Result<Page<BaseUser>>
+    // 即：{ code: 200, msg: 'success', data: { records: [...], total: 100, size: 10, current: 1 } }
+    const resAny = res as any
+    if (resAny && typeof resAny === 'object' && 'code' in resAny) {
+      const pageData = resAny.data
+      console.log('[UserManagement] pageData:', pageData)
+      
+      if (pageData && typeof pageData === 'object') {
+        if ('records' in pageData) {
+          // MyBatis-Plus Page 对象格式
+          userList.value = pageData.records || []
+          
+          // 优先使用 total 字段，如果不存在则使用 records.length
+          pagination.total = pageData.total !== undefined && pageData.total !== null 
+            ? pageData.total 
+            : pageData.records?.length || 0
+          
+          // 不从后端更新 size，保持前端设置的值
+          // 因为 MyBatis-Plus 返回的 size 可能与前端不一致
+          
+          console.log('[UserManagement] 使用 MyBatis-Plus 分页格式')
+          console.log('[UserManagement] total:', pagination.total, '当前 size:', pagination.size)
+        } else if ('list' in pageData) {
+          // 旧版分页格式
+          userList.value = pageData.list
+          pagination.total = pageData.total !== undefined ? pageData.total : pageData.list.length
+          console.log('[UserManagement] 使用 list 分页格式')
+        } else if (Array.isArray(pageData)) {
+          // 直接数组
+          userList.value = pageData
+          pagination.total = pageData.length
+          console.log('[UserManagement] 使用数组格式')
+        }
+      }
     }
     
     loading.value = false
@@ -520,6 +577,21 @@ const handleReset = () => {
   searchForm.userType = undefined
   searchForm.status = undefined
   pagination.page = 1
+  fetchUserList()
+}
+
+// 处理分页变化
+const handlePageChange = (newPage: number) => {
+  console.log('[UserManagement] 分页变化:', newPage)
+  pagination.page = newPage
+  fetchUserList()
+}
+
+// 处理每页数量变化
+const handleSizeChange = (newSize: number) => {
+  console.log('[UserManagement] 每页数量变化:', newSize)
+  pagination.size = newSize
+  pagination.page = 1 // 重置到第一页
   fetchUserList()
 }
 
@@ -760,8 +832,24 @@ onMounted(() => {
   .search-card {
     margin-bottom: 20px;
     
+    :deep(.el-card__body) {
+      padding: 18px;
+    }
+    
     .el-form {
       margin-bottom: 0;
+      
+      .el-form-item {
+        margin-right: 24px;
+        
+        &:last-child {
+          margin-right: 0;
+        }
+      }
+      
+      .el-select {
+        width: 150px;
+      }
     }
   }
   

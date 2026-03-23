@@ -27,10 +27,8 @@
 
       <el-table v-loading="loading" :data="relationList" border stripe>
         <el-table-column prop="relationId" label="关系 ID" width="80" />
-        <el-table-column prop="guardianUserId" label="监护人 ID" width="100" />
-        <el-table-column prop="guardianNickname" label="监护人昵称" />
-        <el-table-column prop="kidUserId" label="儿童 ID" width="100" />
-        <el-table-column prop="kidNickname" label="儿童昵称" />
+        <el-table-column prop="userA" label="监护人 ID" width="100" />
+        <el-table-column prop="userB" label="儿童 ID" width="100" />
         <el-table-column label="关系类型" width="120">
           <template #default="{ row }">
             <el-tag>{{ getRelationTypeText(row.relationType) }}</el-tag>
@@ -133,10 +131,10 @@ import {
   setPrimaryGuardian
 } from '@/api/relation'
 import { getUserList } from '@/api/user'
-import type { UserRelation } from '@/types/user'
+import type { UserRelation as APIUserRelation } from '@/api/relation'
 import type { BaseUser } from '@/types/user'
 
-interface RelationUserRelation extends UserRelation {
+interface RelationUserRelation extends APIUserRelation {
   guardianUserId: number
   guardianNickname: string
   kidUserId: number
@@ -164,7 +162,7 @@ interface Pagination {
 
 // 响应式数据
 const loading = ref(false)
-const relationList = ref<UserRelation[]>([])
+const relationList = ref<APIUserRelation[]>([])
 const bindDialogVisible = ref(false)
 
 // 用户列表（用于下拉选择）
@@ -225,12 +223,14 @@ const getPermissionLevelTag = (level: string): string => {
 const loadUsersForSelect = async () => {
   try {
     // 加载所有家长用户（userType: 1）
-    const guardianRes = await getUserList({ userType: '1', page: 1, size: 100 })
-    guardianUsers.value = guardianRes.list || []
+    const guardianRes = await getUserList({ page: 1, size: 100 })
+    // 过滤出家长用户
+    guardianUsers.value = (guardianRes.list || []).filter(u => u.userType === 1)
     
     // 加载所有儿童用户（userType: 0）
-    const kidRes = await getUserList({ userType: '0', page: 1, size: 100 })
-    kidUsers.value = kidRes.list || []
+    const kidRes = await getUserList({ page: 1, size: 100 })
+    // 过滤出儿童用户
+    kidUsers.value = (kidRes.list || []).filter(u => u.userType === 0)
   } catch (error) {
     console.error('加载用户列表失败:', error)
   }
@@ -247,13 +247,39 @@ const fetchRelationList = async () => {
       size: pagination.size
     })
     
-    // res 已经是 UserRelation[] 类型
-    relationList.value = (res as any) || []
-    pagination.total = relationList.value.length
+    console.log('[RelationManagement] API 返回数据:', res)
+    
+    // 后端返回分页对象 { records: [...], total: 100 }
+    if (res && typeof res === 'object' && 'records' in res) {
+      relationList.value = res.records || []
+      pagination.total = res.total || res.records?.length || 0
+    } else if (res && typeof res === 'object' && 'data' in res) {
+      // 兼容旧格式 { data: [...] }
+      const data = (res as any).data
+      if (Array.isArray(data)) {
+        relationList.value = data
+        pagination.total = data.length
+      } else if (data && typeof data === 'object' && 'records' in data) {
+        // { data: { records: [...], total: 100 } }
+        relationList.value = data.records || []
+        pagination.total = data.total || data.records?.length || 0
+      }
+    } else if (Array.isArray(res)) {
+      // 直接数组
+      relationList.value = res as any[]
+      pagination.total = (res as any[]).length
+    } else {
+      relationList.value = []
+      pagination.total = 0
+    }
+    
     loading.value = false
   } catch (error) {
+    console.error('[RelationManagement] 获取关系列表失败:', error)
     ElMessage.error('获取关系列表失败')
     loading.value = false
+    relationList.value = []
+    pagination.total = 0
   }
 }
 
@@ -309,7 +335,7 @@ const confirmBindRelation = async () => {
 // 设置主监护人
 const handleSetPrimary = async (row: RelationUserRelation) => {
   try {
-    await setPrimaryGuardian(row.guardianUserId, row.kidUserId)
+    await setPrimaryGuardian(row.userA, row.userB)
     ElMessage.success('设置成功')
     fetchRelationList()
   } catch (error) {
@@ -321,7 +347,7 @@ const handleSetPrimary = async (row: RelationUserRelation) => {
 const handleUnbind = async (row: RelationUserRelation) => {
   try {
     await ElMessageBox.confirm(
-      `确定要解绑 ${row.guardianNickname} 和 ${row.kidNickname} 的监护关系吗？`,
+      `确定要解绑用户 ${row.userA} 和 ${row.userB} 的监护关系吗？`,
       '警告',
       {
         confirmButtonText: '确定',
@@ -330,7 +356,7 @@ const handleUnbind = async (row: RelationUserRelation) => {
       }
     )
     
-    await unbindRelation(row.guardianUserId, row.kidUserId)
+    await unbindRelation(row.userA, row.userB)
     ElMessage.success('解绑成功')
     fetchRelationList()
   } catch (error: any) {

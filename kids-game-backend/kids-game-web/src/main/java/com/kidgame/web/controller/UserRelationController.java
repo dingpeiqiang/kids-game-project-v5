@@ -88,9 +88,21 @@ public class UserRelationController {
     @Operation(summary = "检查关系是否存在")
     @GetMapping("/check")
     public Result<Boolean> checkRelationExists(
-            @Parameter(description = "监护人ID") @RequestParam Long guardianUserId,
-            @Parameter(description = "儿童ID") @RequestParam Long kidUserId) {
+            @Parameter(description = "监护人 ID") @RequestParam Long guardianUserId,
+            @Parameter(description = "儿童 ID") @RequestParam Long kidUserId) {
         boolean exists = userRelationService.checkRelationExists(guardianUserId, kidUserId);
         return Result.success(exists);
+    }
+
+    @Operation(summary = "获取所有关系列表（分页）")
+    @GetMapping("/list")
+    public Result<com.baomidou.mybatisplus.extension.plugins.pagination.Page<UserRelation>> listRelations(
+            @Parameter(description = "监护人 ID（可选）") @RequestParam(required = false) Long guardianUserId,
+            @Parameter(description = "儿童 ID（可选）") @RequestParam(required = false) Long kidUserId,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<UserRelation> mpPage = 
+            userRelationService.listRelations(guardianUserId, kidUserId, page, size);
+        return Result.success(mpPage);
     }
 }

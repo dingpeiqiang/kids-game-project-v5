@@ -1,11 +1,11 @@
 import request from '@/utils/request'
+import type { UserRelation as BackendUserRelation } from '@/types/user'
 
-export interface UserRelation {
+// 使用后端实际的 UserRelation 类型
+export interface UserRelation extends BackendUserRelation {
   relationId: number
-  guardianUserId: number
-  guardianNickname: string
-  kidUserId: number
-  kidNickname: string
+  userA: number  // 监护人 ID
+  userB: number  // 儿童 ID
   relationType: 'FATHER' | 'MOTHER' | 'GUARDIAN' | 'TUTOR'
   isPrimary: boolean
   permissionLevel: 'FULL' | 'PARTIAL' | 'VIEW_ONLY'
@@ -25,7 +25,7 @@ export interface RelationListParams {
  * 获取关系列表
  */
 export function getRelationList(params: RelationListParams) {
-  return request<any, { list: UserRelation[]; total: number }>({
+  return request<any, { records: UserRelation[]; total: number }>({
     url: '/api/user-relation/list',
     method: 'get',
     params

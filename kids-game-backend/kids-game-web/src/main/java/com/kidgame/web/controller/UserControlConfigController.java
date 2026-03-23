@@ -27,6 +27,23 @@ public class UserControlConfigController {
         return Result.success(result);
     }
 
+    @Operation(summary = "新增管控配置")
+    @PostMapping("/add")
+    public Result<Long> addConfig(@RequestBody UserControlConfig config) {
+        Long configId = userControlConfigService.createConfig(config);
+        return Result.success(configId);
+    }
+
+    @Operation(summary = "更新管控配置")
+    @PutMapping("/update")
+    public Result<Void> updateConfig(@RequestBody UserControlConfig config) {
+        if (config.getConfigId() == null) {
+            throw new IllegalArgumentException("配置 ID 不能为空");
+        }
+        userControlConfigService.updateConfig(config);
+        return Result.success();
+    }
+
     @Operation(summary = "获取用户管控配置")
     @GetMapping("/user/{userId}")
     public Result<UserControlConfig> getConfig(
@@ -101,8 +118,36 @@ public class UserControlConfigController {
     @Operation(summary = "删除管控配置")
     @DeleteMapping("/user/{userId}")
     public Result<Void> deleteConfig(
-            @Parameter(description = "用户ID（儿童）") @PathVariable Long userId) {
+            @Parameter(description = "用户 ID（儿童）") @PathVariable Long userId) {
         userControlConfigService.deleteByUserId(userId);
         return Result.success();
+    }
+
+    @Operation(summary = "删除管控配置（按配置 ID）")
+    @DeleteMapping("/delete")
+    public Result<Void> deleteConfigById(
+            @Parameter(description = "配置 ID") @RequestParam Long configId) {
+        userControlConfigService.deleteConfig(configId);
+        return Result.success();
+    }
+
+    @Operation(summary = "分页查询管控配置列表")
+    @GetMapping("/list")
+    public Result<java.util.Map<String, Object>> listConfigs(
+            @Parameter(description = "儿童 ID（可选）") @RequestParam(required = false) Long kidId,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<UserControlConfig> mpPage = 
+            userControlConfigService.listConfigs(kidId, page, size);
+        
+        // 转换为标准分页格式
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("records", mpPage.getRecords());
+        result.put("total", mpPage.getTotal());
+        result.put("size", mpPage.getSize());
+        result.put("current", mpPage.getCurrent());
+        result.put("pages", mpPage.getPages());
+        
+        return Result.success(result);
     }
 }

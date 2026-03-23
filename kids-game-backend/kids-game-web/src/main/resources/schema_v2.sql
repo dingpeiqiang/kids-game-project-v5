@@ -152,6 +152,15 @@ CREATE TABLE t_game (
     game_name VARCHAR(100) NOT NULL COMMENT '游戏名称',
     category VARCHAR(50) COMMENT '游戏分类：MATH-数学，LANGUAGE-语言，SCIENCE-科学，ART-艺术',
     grade VARCHAR(20) COMMENT '适龄阶段',
+    
+    -- 新增字段（游戏管理重构 v2.0 - 轻量级）
+    tags VARCHAR(500) COMMENT '标签列表（逗号分隔）',
+    is_featured TINYINT DEFAULT 0 COMMENT '是否推荐：0-否，1-是',
+    creator_id BIGINT COMMENT '创建人 ID',
+    publish_time BIGINT COMMENT '上架时间',
+    min_fatigue_to_start INT DEFAULT 0 COMMENT '启动所需最低疲劳度',
+    
+    -- 原有字段
     icon_url VARCHAR(255) COMMENT '游戏图标 URL',
     cover_url VARCHAR(255) COMMENT '游戏封面 URL',
     resource_url VARCHAR(255) COMMENT '游戏资源 CDN 地址',
@@ -160,43 +169,56 @@ CREATE TABLE t_game (
     game_url VARCHAR(255) COMMENT '游戏访问地址 URL（独立部署时使用）',
     game_secret VARCHAR(255) COMMENT '游戏密钥（用于签名验证）',
     game_config JSON COMMENT '游戏配置（透传给游戏的 JSON 配置）',
-    status TINYINT DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
+    
+    -- 状态字段（更新注释：5 状态）
+    status TINYINT DEFAULT 0 COMMENT '状态：0-草稿，1-待审核，2-已上架，3-已下架，4-审核驳回',
     sort_order INT DEFAULT 0 COMMENT '排序',
     consume_points_per_minute INT DEFAULT 1 COMMENT '每分钟消耗疲劳点数',
     online_count INT DEFAULT 0 COMMENT '在线人数',
-    total_play_count BIGINT DEFAULT 0 COMMENT '总游戏次数',
-    total_play_duration BIGINT DEFAULT 0 COMMENT '总游戏时长（秒）',
-    average_rating DECIMAL(3,2) DEFAULT 0.00 COMMENT '平均评分',
+    
+    -- 删除冗余统计字段（已移至 t_game_statistics 表）
+    -- total_play_count BIGINT DEFAULT 0 COMMENT '总游戏次数',
+    -- total_play_duration BIGINT DEFAULT 0 COMMENT '总游戏时长（秒）',
+    -- average_rating DECIMAL(3,2) DEFAULT 0.00 COMMENT '平均评分',
+    
+    create_time BIGINT DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000) COMMENT '创建时间',
+    update_time BIGINT DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000) COMMENT '更新时间',
+    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除',
+    
+    -- 索引
+    INDEX idx_category (category),
+    INDEX idx_grade (grade),
+    INDEX idx_status (status),
+    INDEX idx_tags (tags),
+    INDEX idx_creator (creator_id),
+    INDEX idx_featured (is_featured)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='游戏信息表';
+
+-- 游戏标签表（重构版 v2.0）
+DROP TABLE IF EXISTS t_game_tag;
+CREATE TABLE t_game_tag (
+    tag_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '标签 ID',
+    tag_code VARCHAR(50) UNIQUE NOT NULL COMMENT '标签代码',
+    tag_name VARCHAR(50) NOT NULL COMMENT '标签名称',
+    category VARCHAR(50) COMMENT '所属分类',
+    icon VARCHAR(50) COMMENT '图标 emoji',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    status TINYINT DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
     create_time BIGINT DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000) COMMENT '创建时间',
     update_time BIGINT DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000) COMMENT '更新时间',
     deleted TINYINT DEFAULT 0 COMMENT '逻辑删除',
     INDEX idx_category (category),
-    INDEX idx_grade (grade),
     INDEX idx_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='游戏信息表';
-
--- 游戏标签表
-DROP TABLE IF EXISTS t_game_tag;
-CREATE TABLE t_game_tag (
-    tag_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '标签 ID',
-    tag_name VARCHAR(50) NOT NULL COMMENT '标签名称',
-    tag_type VARCHAR(20) DEFAULT 'CATEGORY' COMMENT '标签类型：CATEGORY-分类，FEATURE-特性，RECOMMEND-推荐',
-    sort_order INT DEFAULT 0 COMMENT '排序',
-    create_time BIGINT DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000) COMMENT '创建时间',
-    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除',
-    UNIQUE KEY uk_tag_name_type (tag_name, tag_type, deleted),
-    INDEX idx_tag_type (tag_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='游戏标签表';
 
--- 游戏标签关联表
+-- 游戏标签关联表（重构版 v2.0）
 DROP TABLE IF EXISTS t_game_tag_relation;
 CREATE TABLE t_game_tag_relation (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    relation_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '关联 ID',
     game_id BIGINT NOT NULL COMMENT '游戏 ID',
     tag_id BIGINT NOT NULL COMMENT '标签 ID',
     create_time BIGINT DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000) COMMENT '创建时间',
-    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除',
-    UNIQUE KEY uk_game_tag (game_id, tag_id, deleted),
+    UNIQUE KEY uk_game_tag (game_id, tag_id),
     INDEX idx_game_id (game_id),
     INDEX idx_tag_id (tag_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='游戏标签关联表';

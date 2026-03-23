@@ -293,46 +293,35 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(
-    circle at center,
-    rgba(255, 215, 0, 0.25),
-    rgba(147, 112, 219, 0.2),
-    rgba(255, 105, 180, 0.15)
-  );
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
   padding: 20px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  animation: overlayGlow 0.5s ease-out;
+  animation: overlayFade 0.3s ease-out;
 }
 
-@keyframes overlayGlow {
+@keyframes overlayFade {
   from {
     opacity: 0;
-    backdrop-filter: blur(0px);
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(10px);
   }
 }
 
 .kid-unified-modal {
-  background: linear-gradient(135deg, #ffffff 0%, #f8f4ff 50%, #fff5f8 100%);
-  border: 2px solid rgba(147, 112, 219, 0.2);
-  border-radius: 28px;
-  padding: 1.75rem 2rem;
+  background: #ffffff;
+  border: 1px solid #e4e7ed;
+  border-radius: 12px;
+  padding: 1.5rem;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 
-    0 20px 60px rgba(147, 112, 219, 0.25),
-    0 0 60px rgba(255, 182, 193, 0.15),
-    inset 0 0 30px rgba(255, 255, 255, 0.5);
-  will-change: transform, opacity;
+    0 12px 32px rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.08);
   position: relative;
   overflow-x: hidden;
 }
@@ -342,28 +331,34 @@ onUnmounted(() => {
   position: absolute;
   top: 16px;
   right: 16px;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.05);
-  color: #666;
-  font-size: 28px;
+  border: 1px solid #dcdfe6;
+  background: #ffffff;
+  color: #909399;
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
   
   &:hover {
-    background: rgba(0, 0, 0, 0.1);
-    transform: rotate(90deg);
+    background: #f5f7fa;
+    border-color: #c0c4cc;
+    color: #606266;
+    transform: none;
+  }
+  
+  &:active {
+    background: #e4e7ed;
   }
 }
 
-// 装饰元素
+// 装饰元素（简化版）
 .modal-decorations {
   position: absolute;
   top: 0;
@@ -371,42 +366,10 @@ onUnmounted(() => {
   right: 0;
   pointer-events: none;
   overflow: hidden;
-  height: 40px;
+  height: 0;
   
   .decoration {
-    position: absolute;
-    font-size: 24px;
-    animation: float 3s ease-in-out infinite;
-    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
-  }
-  
-  .decoration-1 {
-    left: 20px;
-    top: -8px;
-    animation-delay: 0s;
-  }
-  
-  .decoration-2 {
-    left: 50%;
-    top: -12px;
-    transform: translateX(-50%);
-    animation-delay: 0.5s;
-    font-size: 28px;
-  }
-  
-  .decoration-3 {
-    right: 20px;
-    top: -8px;
-    animation-delay: 1s;
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-12px) rotate(10deg);
+    display: none;
   }
 }
 
@@ -419,89 +382,35 @@ onUnmounted(() => {
 }
 
 .modal-icon {
-  font-size: 4rem;
+  font-size: 3rem;
   text-align: center;
-  animation: celebrateBounce 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
   position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    inset: -12px;
-    background: radial-gradient(circle, rgba(255, 215, 0, 0.3), transparent);
-    border-radius: 50%;
-    animation: iconRadiance 2s ease-in-out infinite;
-  }
-}
-
-@keyframes celebrateBounce {
-  0% {
-    opacity: 0;
-    transform: scale(0.3) rotate(-30deg);
-  }
-  50% {
-    transform: scale(1.25) rotate(10deg);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
-  }
-}
-
-@keyframes iconRadiance {
-  0%, 100% {
-    transform: scale(0.8);
-    opacity: 0.4;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 0.8;
-  }
 }
 
 // 标题
 .modal-title {
-  margin: 0 0 0.75rem 0;
-  font-size: 2rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #ff69b4 0%, #ffd700 25%, #00bfff 50%, #ff1493 75%, #ff69b4 100%);
-  background-size: 300% 300%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #303133;
   text-align: center;
-  letter-spacing: 1px;
-  animation: gradientFlow 3s ease-in-out infinite;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-@keyframes gradientFlow {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+  line-height: 1.4;
 }
 
 // 副标题
 .modal-subtitle {
-  margin: 0 0 1.25rem 0;
+  margin: 0 0 1rem 0;
   font-size: 1rem;
   text-align: center;
-  color: #666;
-  font-weight: 600;
-  background: linear-gradient(180deg, rgba(255, 105, 180, 0.1), rgba(0, 191, 255, 0.1));
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 2px dashed rgba(147, 112, 219, 0.2);
+  color: #606266;
+  font-weight: 400;
   line-height: 1.6;
 }
 
 // 内容区域
 .modal-content {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
   min-height: 20px;
 }
 
@@ -511,12 +420,9 @@ onUnmounted(() => {
   justify-content: space-around;
   gap: 1rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, 
-    rgba(255, 217, 102, 0.15) 0%, 
-    rgba(102, 126, 234, 0.15) 50%, 
-    rgba(255, 105, 180, 0.15) 100%);
-  border: 2px dashed rgba(147, 112, 219, 0.3);
-  border-radius: 20px;
+  background: #f8f9fa;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
 }
 
 .stat-item {
@@ -524,36 +430,19 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  animation: statPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) backwards;
-}
-
-@keyframes statPop {
-  from {
-    opacity: 0;
-    transform: scale(0.5) rotate(-180deg);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
-  }
 }
 
 .stat-label {
   font-size: 0.85rem;
-  color: #666;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #909399;
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
 .stat-value {
-  font-size: 1.85rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 2px 8px rgba(102, 126, 234, 0.3));
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #303133;
 }
 
 // 操作按钮
@@ -575,144 +464,100 @@ onUnmounted(() => {
 .modal-action {
   flex: 1;
   min-width: 120px;
-  padding: 0.875rem 1.5rem;
-  border: none;
-  border-radius: 16px;
-  font-size: 1rem;
-  font-weight: 700;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
   white-space: nowrap;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.3),
-      transparent
-    );
-    transition: left 0.5s;
-  }
-  
-  &:hover::before {
-    left: 100%;
-  }
 }
 
 .modal-action:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .modal-action:active {
-  transform: translateY(-1px) scale(0.98);
+  transform: translateY(0);
 }
 
 // 按钮变体
 .modal-action.variant-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #409eff;
+  border-color: #409eff;
   color: white;
 }
 
 .modal-action.variant-secondary {
-  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
-  color: #333;
+  background: #f4f4f5;
+  border-color: #d4d4d8;
+  color: #606266;
 }
 
 .modal-action.variant-success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #67c23a;
+  border-color: #67c23a;
   color: white;
 }
 
 .modal-action.variant-danger {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: #f56c6c;
+  border-color: #f56c6c;
   color: white;
 }
 
 .modal-action.variant-warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: #e6a23c;
+  border-color: #e6a23c;
   color: white;
 }
 
 // 类型特定样式
 .kid-unified-modal.type-info .modal-title { 
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #409eff;
 }
 
 .kid-unified-modal.type-success .modal-title { 
-  background: linear-gradient(135deg, #10b981, #059669);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #67c23a;
 }
 
 .kid-unified-modal.type-warning .modal-title { 
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #e6a23c;
 }
 
 .kid-unified-modal.type-error .modal-title { 
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #f56c6c;
 }
 
 .kid-unified-modal.type-question .modal-title { 
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #8b5cf6;
 }
 
 .kid-unified-modal.type-result .modal-title { 
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #667eea;
 }
 
 .kid-unified-modal.type-reward .modal-title { 
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #fbbf24;
 }
 
 .kid-unified-modal.type-levelup .modal-title { 
-  background: linear-gradient(135deg, #10b981, #059669);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #10b981;
 }
 
 .kid-unified-modal.type-gameover .modal-title { 
-  background: linear-gradient(135deg, #6b7280, #4b5563);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #6b7280;
 }
 
 // 遮罩过渡
 .overlay-enter-active,
 .overlay-leave-active {
-  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.3s ease;
 }
 
 .overlay-enter-from,
@@ -722,21 +567,21 @@ onUnmounted(() => {
 
 // 弹窗过渡
 .modal-enter-active {
-  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.3s ease;
 }
 
 .modal-leave-active {
-  transition: all 0.4s ease;
+  transition: all 0.2s ease;
 }
 
 .modal-enter-from {
   opacity: 0;
-  transform: translateY(-80px) scale(0.7) rotate(-15deg);
+  transform: translateY(-20px) scale(0.95);
 }
 
 .modal-leave-to {
   opacity: 0;
-  transform: scale(0.85) rotate(5deg);
+  transform: scale(0.98);
 }
 
 // 响应式设计

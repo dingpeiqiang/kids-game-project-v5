@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kidgame.dao.entity.*;
 import com.kidgame.dao.mapper.*;
 import com.kidgame.service.AdminService;
+import com.kidgame.service.GameConfigService;
 import com.kidgame.service.dto.admin.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Autowired
     private GameRecordMapper gameRecordMapper;
+
+    @Autowired
+    private GameConfigService gameConfigService;
 
     @Override
     public DashboardOverviewDTO getDashboardOverview() {
@@ -470,9 +474,9 @@ public class AdminServiceImpl implements AdminService {
         game.setCategory(dto.getCategory());
         game.setGrade(dto.getGrade());
         game.setIconUrl(dto.getIconUrl());
-        game.setCoverUrl(dto.getCoverUrl());
-        game.setResourceUrl(dto.getResourceUrl());
-        game.setDescription(dto.getDescription());
+        // game.setCoverUrl(dto.getCoverUrl());           // 已删除，使用 t_game_config 表存储
+        // game.setResourceUrl(dto.getResourceUrl());     // 已删除，使用 t_game_config 表存储
+        // game.setDescription(dto.getDescription());      // 已删除，使用 t_game_config 表存储
         game.setModulePath(dto.getModulePath());
         game.setSortOrder(dto.getSortOrder());
         game.setConsumePointsPerMinute(dto.getConsumePointsPerMinute());
@@ -489,6 +493,9 @@ public class AdminServiceImpl implements AdminService {
         
         gameMapper.insert(game);
         log.info("创建游戏成功。GameId: {}, GameCode: {}", game.getGameId(), game.getGameCode());
+        
+        // 保存资源配置到 t_game_config 表
+        saveGameResources(game.getGameId(), dto);
         
         return game;
     }
@@ -513,15 +520,16 @@ public class AdminServiceImpl implements AdminService {
         if (dto.getIconUrl() != null) {
             game.setIconUrl(dto.getIconUrl());
         }
-        if (dto.getCoverUrl() != null) {
-            game.setCoverUrl(dto.getCoverUrl());
-        }
-        if (dto.getResourceUrl() != null) {
-            game.setResourceUrl(dto.getResourceUrl());
-        }
-        if (dto.getDescription() != null) {
-            game.setDescription(dto.getDescription());
-        }
+        // 以下字段已删除，使用 t_game_config 表管理
+        // if (dto.getCoverUrl() != null) {
+        //     game.setCoverUrl(dto.getCoverUrl());         // 已删除
+        // }
+        // if (dto.getResourceUrl() != null) {
+        //     game.setResourceUrl(dto.getResourceUrl());   // 已删除
+        // }
+        // if (dto.getDescription() != null) {
+        //     game.setDescription(dto.getDescription());   // 已删除
+        // }
         if (dto.getModulePath() != null) {
             game.setModulePath(dto.getModulePath());
         }
@@ -539,6 +547,9 @@ public class AdminServiceImpl implements AdminService {
         
         gameMapper.updateById(game);
         log.info("更新游戏成功。GameId: {}", gameId);
+        
+        // 更新资源配置
+        updateGameResources(gameId, dto);
     }
 
     @Override
@@ -592,5 +603,35 @@ public class AdminServiceImpl implements AdminService {
         String categoryLetter = gameName.substring(0, 1).toUpperCase();
         String timestamp = String.valueOf(System.currentTimeMillis()).substring(5);
         return prefix + categoryLetter + timestamp;
+    }
+
+    /**
+     * 保存游戏资源配置
+     */
+    private void saveGameResources(Long gameId, GameCreateDTO dto) {
+        if (dto.getCoverUrl() != null && !dto.getCoverUrl().isEmpty()) {
+            gameConfigService.saveGameConfig(gameId, "cover_url", dto.getCoverUrl(), "游戏封面图");
+        }
+        if (dto.getResourceUrl() != null && !dto.getResourceUrl().isEmpty()) {
+            gameConfigService.saveGameConfig(gameId, "resource_url", dto.getResourceUrl(), "游戏资源 CDN 地址");
+        }
+        if (dto.getDescription() != null && !dto.getDescription().isEmpty()) {
+            gameConfigService.saveGameConfig(gameId, "description", dto.getDescription(), "游戏描述");
+        }
+    }
+
+    /**
+     * 更新游戏资源配置
+     */
+    private void updateGameResources(Long gameId, GameUpdateDTO dto) {
+        if (dto.getCoverUrl() != null) {
+            gameConfigService.saveGameConfig(gameId, "cover_url", dto.getCoverUrl(), "游戏封面图");
+        }
+        if (dto.getResourceUrl() != null) {
+            gameConfigService.saveGameConfig(gameId, "resource_url", dto.getResourceUrl(), "游戏资源 CDN 地址");
+        }
+        if (dto.getDescription() != null) {
+            gameConfigService.saveGameConfig(gameId, "description", dto.getDescription(), "游戏描述");
+        }
     }
 }

@@ -149,6 +149,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/ModalDemo.vue'),
     meta: { title: '弹窗组件演示', requiresAuth: false },
   },
+  // 弹窗样式优化测试
+  {
+    path: '/test-modal-optimization',
+    name: 'TestModalOptimization',
+    component: () => import('@/views/TestModalOptimization.vue'),
+    meta: { title: '弹窗样式优化测试', requiresAuth: false },
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',

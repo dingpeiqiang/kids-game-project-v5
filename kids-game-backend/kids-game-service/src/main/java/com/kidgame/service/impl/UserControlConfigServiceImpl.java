@@ -1,6 +1,7 @@
 package com.kidgame.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kidgame.common.constant.ErrorCode;
 import com.kidgame.common.exception.BusinessException;
@@ -8,6 +9,8 @@ import com.kidgame.dao.entity.UserControlConfig;
 import com.kidgame.dao.mapper.UserControlConfigMapper;
 import com.kidgame.service.UserControlConfigService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
@@ -22,6 +25,9 @@ import java.time.LocalTime;
 @Service
 public class UserControlConfigServiceImpl extends ServiceImpl<UserControlConfigMapper, UserControlConfig>
         implements UserControlConfigService {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Override
     public Long createConfig(UserControlConfig config) {
@@ -254,5 +260,85 @@ public class UserControlConfigServiceImpl extends ServiceImpl<UserControlConfigM
         if (config != null) {
             deleteConfig(config.getConfigId());
         }
+    }
+
+    @Override
+    public Page<UserControlConfig> listConfigs(Long kidId, Integer page, Integer size) {
+        // 构建查询 SQL
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT c.*, ");
+        sql.append("       u1.nickname AS child_nickname, ");
+        sql.append("       u2.nickname AS guardian_nickname ");
+        sql.append("FROM t_user_control_config c ");
+        sql.append("LEFT JOIN t_user u1 ON c.user_id = u1.user_id ");
+        sql.append("LEFT JOIN t_user u2 ON c.guardian_id = u2.user_id ");
+        sql.append("WHERE c.deleted = 0 ");
+        
+        if (kidId != null) {
+            sql.append("AND c.user_id = ? ");
+        }
+        
+        sql.append("ORDER BY c.create_time DESC ");
+        
+        // 计算总数
+        String countSql = "SELECT COUNT(*) FROM t_user_control_config c WHERE c.deleted = 0" + 
+                         (kidId != null ? " AND c.user_id = ?" : "");
+        Long total;
+        if (kidId != null) {
+            total = jdbcTemplate.queryForObject(countSql, Long.class, kidId);
+        } else {
+            total = jdbcTemplate.queryForObject(countSql, Long.class);
+        }
+        
+        // 分页查询数据
+        int offset = (page - 1) * size;
+        String dataSql = sql.toString() + "LIMIT ?,?";
+        
+        java.util.List<UserControlConfig> records;
+        if (kidId != null) {
+            records = jdbcTemplate.query(dataSql, new Object[]{kidId, offset, size}, (rs, rowNum) -> {
+                UserControlConfig config = mapResultSetToConfig(rs);
+                return config;
+            });
+        } else {
+            records = jdbcTemplate.query(dataSql, new Object[]{offset, size}, (rs, rowNum) -> {
+                UserControlConfig config = mapResultSetToConfig(rs);
+                return config;
+            });
+        }
+        
+        // 构建分页对象
+        Page<UserControlConfig> pageObj = new Page<>(page, size, total);
+        pageObj.setRecords(records);
+        return pageObj;
+    }
+    
+    /**
+     * 将 ResultSet 映射为 UserControlConfig 对象
+     */
+    private UserControlConfig mapResultSetToConfig(java.sql.ResultSet rs) throws java.sql.SQLException {
+        UserControlConfig config = new UserControlConfig();
+        config.setConfigId(rs.getLong("config_id"));
+        config.setUserId(rs.getLong("user_id"));
+        config.setGuardianId(rs.getObject("guardian_id", Long.class));
+        config.setChildNickname(rs.getString("child_nickname"));
+        config.setGuardianNickname(rs.getString("guardian_nickname"));
+        config.setDailyDuration(rs.getInt("daily_duration"));
+        config.setSingleDuration(rs.getInt("single_duration"));
+        config.setAllowedTimeStart(rs.getString("allowed_time_start"));
+        config.setAllowedTimeEnd(rs.getString("allowed_time_end"));
+        config.setAnswerGetPoints(rs.getInt("answer_get_points"));
+        config.setDailyAnswerLimit(rs.getInt("daily_answer_limit"));
+        config.setBlockedGames(rs.getString("blocked_games"));
+        config.setFatiguePointThreshold(rs.getObject("fatigue_point_threshold", Integer.class));
+        config.setRestDuration(rs.getObject("rest_duration", Integer.class));
+        config.setFatigueControlMode(rs.getString("fatigue_control_mode"));
+        config.setContinuousPlayReminder(rs.getObject("continuous_play_reminder", Integer.class));
+        config.setDailyGameLimit(rs.getObject("daily_game_limit", Integer.class));
+        config.setGameInterval(rs.getObject("game_interval", Integer.class));
+        config.setCreateTime(rs.getLong("create_time"));
+        config.setUpdateTime(rs.getLong("update_time"));
+        config.setDeleted(rs.getInt("deleted"));
+        return config;
     }
 }

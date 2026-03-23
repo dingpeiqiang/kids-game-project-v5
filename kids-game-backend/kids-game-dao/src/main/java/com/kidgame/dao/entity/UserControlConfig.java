@@ -25,14 +25,26 @@ public class UserControlConfig implements Serializable {
     private Long configId;
 
     /**
-     * 儿童用户ID
+     * 儿童用户 ID
      */
     private Long userId;
-
+        
     /**
-     * 监护人用户ID（可为NULL，表示全局配置）
+     * 儿童昵称（关联查询字段，非表字段）
+     */
+    @TableField(exist = false)
+    private String childNickname;
+    
+    /**
+     * 监护人用户 ID（可为 NULL，表示全局配置）
      */
     private Long guardianId;
+        
+    /**
+     * 监护人昵称（关联查询字段，非表字段）
+     */
+    @TableField(exist = false)
+    private String guardianNickname;
 
     /**
      * 每日时长上限（分钟）
@@ -81,9 +93,9 @@ public class UserControlConfig implements Serializable {
     private Integer restDuration;
     
     /**
-     * 疲劳控制模式：0-关闭，1-智能控制，2-严格控
+     * 疲劳控制模式：SOFT-软性，FORCED-强制，OFF-关闭
      */
-    private Integer fatigueControlMode;
+    private String fatigueControlMode;
     
     /**
      * 连续游戏提醒间隔（分钟）

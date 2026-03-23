@@ -90,6 +90,13 @@ public class UserServiceImpl implements UserService {
         if (userType == null) {
             return null;
         }
+        
+        // 支持数字字符串格式
+        if (userType.matches("\\d+")) {
+            return Integer.parseInt(userType);
+        }
+        
+        // 支持英文字符串格式
         switch (userType.toUpperCase()) {
             case "KID":
                 return 0;
@@ -396,7 +403,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<BaseUser> listUsers(String userType, String status, Integer page, Integer size) {
+    public Page<BaseUser> listUsers(String userType, String status, Integer page, Integer size) {
         QueryWrapper<BaseUser> wrapper = new QueryWrapper<>();
         if (userType != null) {
             wrapper.eq("user_type", convertUserTypeToInt(userType));
@@ -405,9 +412,24 @@ public class UserServiceImpl implements UserService {
             wrapper.eq("status", Integer.parseInt(status));
         }
         wrapper.orderByDesc("create_time");
-
-        Page<BaseUser> pageObj = new Page<>(page, size);
-        return baseUserMapper.selectPage(pageObj, wrapper).getRecords();
+        
+        // 计算分页偏移量
+        int offset = (page - 1) * size;
+        
+        // 先查询总数
+        Long total = baseUserMapper.selectCount(wrapper);
+        
+        // 手动添加分页限制
+        wrapper.last("LIMIT " + offset + "," + size);
+        
+        // 查询当前页数据
+        List<BaseUser> records = baseUserMapper.selectList(wrapper);
+        
+        // 构建分页对象
+        Page<BaseUser> mpPage = new Page<>(page, size, total);
+        mpPage.setRecords(records);
+        
+        return mpPage;
     }
 
     @Override

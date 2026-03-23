@@ -1,5 +1,6 @@
 package com.kidgame.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kidgame.dao.entity.UserControlConfig;
 
 /**
@@ -14,7 +15,7 @@ public interface UserControlConfigService {
      * 创建管控配置
      *
      * @param config 配置信息
-     * @return 配置ID
+     * @return 配置 ID
      */
     Long createConfig(UserControlConfig config);
 
@@ -28,14 +29,14 @@ public interface UserControlConfigService {
     /**
      * 删除管控配置
      *
-     * @param configId 配置ID
+     * @param configId 配置 ID
      */
     void deleteConfig(Long configId);
 
     /**
      * 获取用户的管控配置
      *
-     * @param userId 用户ID
+     * @param userId 用户 ID
      * @return 管控配置
      */
     UserControlConfig getConfigByUserId(Long userId);
@@ -43,8 +44,8 @@ public interface UserControlConfigService {
     /**
      * 获取用户和监护人的管控配置
      *
-     * @param userId 用户ID
-     * @param guardianId 监护人ID
+     * @param userId 用户 ID
+     * @param guardianId 监护人 ID
      * @return 管控配置
      */
     UserControlConfig getConfig(Long userId, Long guardianId);
@@ -56,6 +57,16 @@ public interface UserControlConfigService {
      * @return 保存后的配置
      */
     UserControlConfig saveConfig(UserControlConfig config);
+
+    /**
+     * 分页查询管控配置列表
+     *
+     * @param kidId 儿童 ID（可选）
+     * @param page 页码
+     * @param size 每页数量
+     * @return 分页结果
+     */
+    Page<UserControlConfig> listConfigs(Long kidId, Integer page, Integer size);
 
     /**
      * 更新每日时间限制

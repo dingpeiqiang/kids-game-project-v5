@@ -147,8 +147,8 @@
 
         <el-form-item label="疲劳控制模式">
           <el-radio-group v-model="form.fatigueControlMode">
-            <el-radio label="SOFT">软性控制（提醒但不强制）</el-radio>
-            <el-radio label="HARD">强制控制（到点强制下线）</el-radio>
+            <el-radio value="SOFT">软性控制（提醒但不强制）</el-radio>
+            <el-radio value="FORCED">强制控制（到点强制下线）</el-radio>
           </el-radio-group>
         </el-form-item>
 
@@ -173,9 +173,13 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-
-// TODO: 导入 API
-// import { getConfigList, saveConfig, deleteConfig } from '@/api/controlConfig'
+import {
+  getConfigList,
+  addConfig,
+  updateConfig,
+  deleteConfig
+} from '@/api/controlConfig'
+import type { UserControlConfig } from '@/api/controlConfig'
 
 interface ControlConfig {
   configId: number
@@ -191,7 +195,7 @@ interface ControlConfig {
   dailyAnswerLimit: number
   fatiguePointThreshold?: number
   restDuration?: number
-  fatigueControlMode: 'SOFT' | 'HARD'
+  fatigueControlMode: 'SOFT' | 'FORCED'
   blockedGames?: string
 }
 
@@ -207,7 +211,7 @@ interface Pagination {
 
 // 响应式数据
 const loading = ref(false)
-const configList = ref<ControlConfig[]>([])
+const configList = ref<UserControlConfig[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 
@@ -240,35 +244,26 @@ const form = reactive<Partial<ControlConfig>>({
 const fetchConfigList = async () => {
   loading.value = true
   try {
-    // TODO: 调用真实 API
-    // const res = await getConfigList({ ... })
+    const res = await getConfigList({
+      kidId: searchForm.kidId ? Number(searchForm.kidId) : undefined,
+      page: pagination.page,
+      size: pagination.size
+    })
     
-    // Mock 数据
-    setTimeout(() => {
-      configList.value = [
-        {
-          configId: 1,
-          userId: 3,
-          childNickname: '张小宝',
-          guardianId: 2,
-          guardianNickname: '张妈妈',
-          dailyDuration: 60,
-          singleDuration: 30,
-          allowedTimeStart: '06:00:00',
-          allowedTimeEnd: '22:00:00',
-          answerGetPoints: 1,
-          dailyAnswerLimit: 10,
-          fatiguePointThreshold: 60,
-          restDuration: 15,
-          fatigueControlMode: 'SOFT',
-          blockedGames: 'game1,game2'
-        }
-      ]
-      pagination.total = configList.value.length
-      loading.value = false
-    }, 500)
+    // 解析分页数据
+    const resAny = res as any
+    if (resAny && typeof resAny === 'object' && 'records' in resAny) {
+      configList.value = resAny.records || []
+      pagination.total = resAny.total !== undefined && resAny.total !== null ? resAny.total : resAny.records?.length || 0
+    } else if (resAny.data && typeof resAny.data === 'object' && 'records' in resAny.data) {
+      // 兼容旧格式
+      configList.value = resAny.data.records || []
+      pagination.total = resAny.data.total !== undefined && resAny.data.total !== null ? resAny.data.total : resAny.data.records?.length || 0
+    }
+    
+    loading.value = false
   } catch (error) {
-    ElMessage.error('获取配置列表失败')
+    ElMessage.error('获取配置列表失败：' + (error as any)?.message || '未知错误')
     loading.value = false
   }
 }
@@ -308,17 +303,17 @@ const handleAddConfig = () => {
 }
 
 // 编辑配置
-const handleEdit = (row: ControlConfig) => {
+const handleEdit = (row: UserControlConfig) => {
   isEdit.value = true
   Object.assign(form, { ...row })
   dialogVisible.value = true
 }
 
 // 删除配置
-const handleDelete = async (row: ControlConfig) => {
+const handleDelete = async (row: UserControlConfig) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除 ${row.childNickname} 的管控配置吗？`,
+      `确定要删除 ${row.childNickname || '该儿童'} 的管控配置吗？`,
       '警告',
       {
         confirmButtonText: '确定',
@@ -327,14 +322,13 @@ const handleDelete = async (row: ControlConfig) => {
       }
     )
 
-    // TODO: 调用 API
-    // await deleteConfig(row.configId)
+    await deleteConfig(row.configId)
 
     ElMessage.success('删除成功')
     fetchConfigList()
   } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error('删除失败：' + (error as any)?.message || '未知错误')
     }
   }
 }
@@ -342,23 +336,22 @@ const handleDelete = async (row: ControlConfig) => {
 // 提交表单
 const handleSubmit = async () => {
   if (!form.userId) {
-    ElMessage.warning('请填写儿童 ID')
+    ElMessage.warning('请选择儿童用户')
     return
   }
 
   try {
-    // TODO: 调用 API
-    // if (isEdit.value) {
-    //   await updateConfig(form)
-    // } else {
-    //   await saveConfig(form)
-    // }
+    if (isEdit.value) {
+      await updateConfig(form)
+    } else {
+      await addConfig(form)
+    }
 
     ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
     dialogVisible.value = false
     fetchConfigList()
   } catch (error) {
-    ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
+    ElMessage.error((error as any)?.message || (isEdit.value ? '更新失败' : '创建失败'))
   }
 }
 

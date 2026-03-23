@@ -1,5 +1,6 @@
 import request from '@/utils/request'
 import type { BaseUser } from '@/types/user'
+import { catchError } from '@/utils/errorHandler'
 
 export interface UserListParams {
   userType?: string
@@ -11,12 +12,17 @@ export interface UserListParams {
 /**
  * 获取用户列表（管理员）
  */
-export function getUserList(params: UserListParams) {
-  return request<any, { list: BaseUser[]; total: number }>({
-    url: '/api/user/list', // ✅ 使用正确的后端接口路径
-    method: 'get',
-    params
-  })
+export async function getUserList(params: UserListParams) {
+  try {
+    return await request<any, { list: BaseUser[]; total: number }>({
+      url: '/api/user/list',
+      method: 'get',
+      params
+    })
+  } catch (error) {
+    console.error('[API Error] getUserList:', error)
+    throw error
+  }
 }
 
 /**

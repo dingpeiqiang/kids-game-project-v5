@@ -1,5 +1,6 @@
 package com.kidgame.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kidgame.dao.entity.UserRelation;
 
 import java.util.List;
@@ -117,10 +118,22 @@ public interface UserRelationService {
     /**
      * 检查用户关系是否存在（带关系类型）
      *
-     * @param userA 用户A
-     * @param userB 用户B
+     * @param userA 用户 A
+     * @param userB 用户 B
      * @param relationType 关系类型
      * @return 是否存在
      */
     boolean checkRelationExists(Long userA, Long userB, Integer relationType);
+
+    /**
+     * 查询用户关系列表（分页）
+     *
+     * @param guardianUserId 监护人 ID（可选）
+     * @param kidUserId 儿童 ID（可选）
+     * @param page 页码
+     * @param size 每页数量
+     * @return 分页结果
+     */
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<UserRelation> listRelations(
+        Long guardianUserId, Long kidUserId, Integer page, Integer size);
 }

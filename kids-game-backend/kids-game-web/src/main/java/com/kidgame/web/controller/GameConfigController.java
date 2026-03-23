@@ -1,10 +1,12 @@
 package com.kidgame.web.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.kidgame.common.model.Result;
 import com.kidgame.dao.entity.Game;
 import com.kidgame.dao.entity.GameConfigEntity;
 import com.kidgame.dao.mapper.GameConfigMapper;
 import com.kidgame.dao.mapper.GameMapper;
+import com.kidgame.service.GameConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +29,9 @@ public class GameConfigController {
 
     @Autowired
    private GameMapper gameMapper;
+    
+    @Autowired
+   private GameConfigService gameConfigService;
 
     /**
      * 获取指定游戏的所有配置
@@ -124,5 +129,84 @@ public class GameConfigController {
         queryWrapper.eq(Game::getGameCode, gameCode);
         Game game = gameMapper.selectOne(queryWrapper);
         return game != null ? game.getGameId() : null;
+    }
+    
+    // ========== 管理端 API（/admin 前缀）==========
+    
+    /**
+     * 【管理端】获取游戏所有配置
+     * @param gameId 游戏 ID
+     * @return 配置列表
+     */
+    @GetMapping("/admin/{gameId}/configs")
+    public Result<Map<String, String>> getAllConfigs(@PathVariable Long gameId) {
+        log.info("[管理端] 获取游戏配置，gameId: {}", gameId);
+        
+        Map<String, String> configs = gameConfigService.getAllGameConfigs(gameId);
+        return Result.success(configs);
+    }
+    
+    /**
+     * 【管理端】保存或更新配置
+     * @param gameId 游戏 ID
+     * @param configKey 配置键
+     * @param configValue 配置值
+     * @param description 配置描述
+     * @return 操作结果
+     */
+    @PostMapping("/admin/{gameId}/config")
+    public Result<Void> saveConfig(@PathVariable Long gameId,
+                                   @RequestParam String configKey,
+                                   @RequestParam String configValue,
+                                   @RequestParam(required = false) String description) {
+        log.info("[管理端] 保存配置，gameId: {}, key: {}, value: {}", gameId, configKey, configValue);
+        
+        gameConfigService.saveGameConfig(gameId, configKey, configValue, description);
+        return Result.success();
+    }
+    
+    /**
+     * 【管理端】批量保存配置
+     * @param gameId 游戏 ID
+     * @param configs 配置 Map
+     * @return 操作结果
+     */
+    @PostMapping("/admin/{gameId}/configs")
+    public Result<Void> batchSaveConfigs(@PathVariable Long gameId,
+                                         @RequestBody Map<String, String> configs) {
+        log.info("[管理端] 批量保存配置，gameId: {}, count: {}", gameId, configs.size());
+        
+        gameConfigService.batchSaveGameConfig(gameId, configs);
+        return Result.success();
+    }
+    
+    /**
+     * 【管理端】删除配置
+     * @param gameId 游戏 ID
+     * @param configKey 配置键
+     * @return 操作结果
+     */
+    @DeleteMapping("/admin/{gameId}/config/{configKey}")
+    public Result<Void> deleteConfig(@PathVariable Long gameId,
+                                     @PathVariable String configKey) {
+        log.info("[管理端] 删除配置，gameId: {}, key: {}", gameId, configKey);
+        
+        gameConfigService.deleteGameConfig(gameId, configKey);
+        return Result.success();
+    }
+    
+    /**
+     * 【管理端】按前缀查询配置
+     * @param gameId 游戏 ID
+     * @param prefix 前缀（如：screenshot_）
+     * @return 配置列表
+     */
+    @GetMapping("/admin/{gameId}/configs/by-prefix")
+    public Result<List<GameConfigEntity>> getConfigsByPrefix(@PathVariable Long gameId,
+                                                              @RequestParam String prefix) {
+        log.info("[管理端] 按前缀查询配置，gameId: {}, prefix: {}", gameId, prefix);
+        
+        List<GameConfigEntity> configs = gameConfigService.getConfigsByPrefix(gameId, prefix);
+        return Result.success(configs);
     }
 }

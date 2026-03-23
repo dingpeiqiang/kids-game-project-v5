@@ -1,5 +1,6 @@
 package com.kidgame.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kidgame.dao.entity.BaseUser;
 import com.kidgame.dao.entity.UserProfile;
 import com.kidgame.service.dto.AuthRequestDTO;
@@ -73,7 +74,7 @@ public interface UserService {
     /**
      * 分页查询用户列表
      */
-    List<BaseUser> listUsers(String userType, String status, Integer page, Integer size);
+    Page<BaseUser> listUsers(String userType, String status, Integer page, Integer size);
 
     /**
      * 统一认证（支持儿童/家长/管理员）

@@ -124,13 +124,23 @@ public class BaseUserController {
 
     @Operation(summary = "获取所有用户（分页）")
     @GetMapping("/list")
-    public Result<List<BaseUser>> listUsers(
+    public Result<Map<String, Object>> listUsers(
             @Parameter(description = "用户类型（可选）") @RequestParam(required = false) String userType,
             @Parameter(description = "状态（可选）") @RequestParam(required = false) String status,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size) {
-        List<BaseUser> users = userService.listUsers(userType, status, page, size);
-        return Result.success(users);
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<BaseUser> mpPage = 
+            userService.listUsers(userType, status, page, size);
+        
+        // 转换为标准分页格式，避免字段名不一致
+        Map<String, Object> result = new HashMap<>();
+        result.put("records", mpPage.getRecords());
+        result.put("total", mpPage.getTotal());
+        result.put("size", mpPage.getSize());
+        result.put("current", mpPage.getCurrent());
+        result.put("pages", mpPage.getPages());
+        
+        return Result.success(result);
     }
 
     @Operation(summary = "刷新 Token")
