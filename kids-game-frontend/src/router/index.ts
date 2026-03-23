@@ -76,7 +76,19 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'users',
-        component: () => import('@/modules/admin/components/UserManagement.vue'),
+        component: () => import('@/views/admin/UserManagement.vue'),
+      },
+      {
+        path: 'relations',
+        component: () => import('@/views/admin/RelationManagement.vue'),
+      },
+      {
+        path: 'configs',
+        component: () => import('@/views/admin/ControlConfig.vue'),
+      },
+      {
+        path: 'stats',
+        component: () => import('@/views/admin/UserStats.vue'),
       },
       {
         path: 'games',

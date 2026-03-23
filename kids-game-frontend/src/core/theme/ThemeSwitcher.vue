@@ -124,6 +124,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import axios from 'axios';
+import { API_CONSTANTS } from '@/services/api.types';
 
 interface ThemeInfo {
   themeId: number;
@@ -158,7 +159,7 @@ const purchasedThemeIds = ref<number[]>([]);
 
 // 获取认证头
 function getAuthHeaders() {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem(API_CONSTANTS.TOKEN_KEY)
   return {
     headers: {
       Authorization: token ? `Bearer ${token}` : '',

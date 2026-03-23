@@ -159,6 +159,26 @@ export class KidApiService extends BaseApiService {
 export const kidApi = KidApiService.getInstance();
 ```
 
+### 统一 API 调用组件
+
+**核心文件**：`src/utils/request.ts` + `src/services/api.types.ts`
+
+**使用规范**：
+```typescript
+// ✅ 正确：使用统一封装
+import request from '@/utils/request'
+import { API_CONSTANTS } from '@/services/api.types'
+
+const token = localStorage.getItem(API_CONSTANTS.TOKEN_KEY)
+const users = await request({ url: '/api/admin/users', method: 'get' })
+
+// ❌ 禁止：直接使用 axios 或硬编码 Token
+const token = localStorage.getItem('token')  // ❌
+await axios.get('/api/admin/users')          // ❌
+```
+
+**特性**：自动添加 Token、统一错误处理、401 跳转登录。
+
 ### 公共组件使用与抽取
 
 **组件目录结构**：
@@ -226,7 +246,7 @@ const result = await confirm({
 
 ## 6. 数据库规范（关键）
 
-**权威定义**：`kids-game-db-sql.sql` - 以 SQL 文件为准
+**权威定义**：`schema_v2` - 以 SQL 文件为准
 
 ```sql
 -- 表名：小写 + 下划线前缀

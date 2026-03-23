@@ -10,30 +10,33 @@
 -- ================================================
 
 -- 1.1 管理员用户（2 个）
+-- 密码：password123 (BCrypt 哈希：$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6)
 INSERT INTO t_user (user_type, username, password, nickname, avatar, status, fatigue_points, last_login_time) VALUES
-(2, 'admin', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '超级管理员', '/avatars/admin.png', 1, 0, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
-(2, 'operator', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '运营管理员', '/avatars/operator.png', 1, 0, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000);
+(2, 'admin', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '超级管理员', '/avatars/admin.png', 1, 0, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
+(2, 'operator', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '运营管理员', '/avatars/operator.png', 1, 0, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000);
 
 -- 1.2 家长用户（5 个）
+-- 密码：password123
 INSERT INTO t_user (user_type, username, password, nickname, avatar, status, fatigue_points) VALUES
-(1, 'parent1', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '张妈妈', '/avatars/parent1.png', 1, 0),
-(1, 'parent2', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '李爸爸', '/avatars/parent2.png', 1, 0),
-(1, 'parent3', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '王妈妈', '/avatars/parent3.png', 1, 0),
-(1, 'parent4', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '赵爸爸', '/avatars/parent4.png', 1, 0),
-(1, 'parent5', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '刘妈妈', '/avatars/parent5.png', 1, 0);
+(1, 'parent1', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '张妈妈', '/avatars/parent1.png', 1, 0),
+(1, 'parent2', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '李爸爸', '/avatars/parent2.png', 1, 0),
+(1, 'parent3', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '王妈妈', '/avatars/parent3.png', 1, 0),
+(1, 'parent4', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '赵爸爸', '/avatars/parent4.png', 1, 0),
+(1, 'parent5', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '刘妈妈', '/avatars/parent5.png', 1, 0);
 
 -- 1.3 儿童用户（10 个）
+-- 密码：password123
 INSERT INTO t_user (user_type, username, password, nickname, avatar, status, fatigue_points, daily_answer_points) VALUES
-(0, 'kid001', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '张小宝', '/avatars/kid1.png', 1, 10, 5),
-(0, 'kid002', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '李小贝', '/avatars/kid2.png', 1, 10, 3),
-(0, 'kid003', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '王小星', '/avatars/kid3.png', 1, 10, 8),
-(0, 'kid004', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '赵小辰', '/avatars/kid4.png', 1, 10, 2),
-(0, 'kid005', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '刘小宇', '/avatars/kid5.png', 1, 10, 6),
-(0, 'kid006', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '黄小轩', '/avatars/kid6.png', 1, 10, 4),
-(0, 'kid007', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '周小怡', '/avatars/kid7.png', 1, 10, 7),
-(0, 'kid008', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '吴小涵', '/avatars/kid8.png', 1, 10, 1),
-(0, 'kid009', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '郑小琪', '/avatars/kid9.png', 1, 10, 9),
-(0, 'kid010', '$2a$10$XoLvF5C2dz9.7JHK8sN.TOxl9yYp4CqQKZqxM5xGvPqB3z8Rj1fWm', '孙小睿', '/avatars/kid10.png', 1, 10, 0);
+(0, 'kid001', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '张小宝', '/avatars/kid1.png', 1, 10, 5),
+(0, 'kid002', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '李小贝', '/avatars/kid2.png', 1, 10, 3),
+(0, 'kid003', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '王小星', '/avatars/kid3.png', 1, 10, 8),
+(0, 'kid004', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '赵小辰', '/avatars/kid4.png', 1, 10, 2),
+(0, 'kid005', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '刘小宇', '/avatars/kid5.png', 1, 10, 6),
+(0, 'kid006', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '黄小轩', '/avatars/kid6.png', 1, 10, 4),
+(0, 'kid007', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '周小怡', '/avatars/kid7.png', 1, 10, 7),
+(0, 'kid008', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '吴小涵', '/avatars/kid8.png', 1, 10, 1),
+(0, 'kid009', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '郑小琪', '/avatars/kid9.png', 1, 10, 9),
+(0, 'kid010', '$2b$10$kI/VYImYHOzGwaEr87PyxeiOEaQT5OZXTO8ePLl.qVKzhurP5hKS6', '孙小睿', '/avatars/kid10.png', 1, 10, 0);
 
 -- ================================================
 -- 2. 用户扩展信息

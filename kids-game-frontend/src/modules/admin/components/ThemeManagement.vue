@@ -216,6 +216,7 @@ import axios from 'axios';
 import KidModal from '@/components/ui/KidModal.vue';
 import { dialog, useConfirm } from '@/composables/useDialog';
 import ThemeCard from '@/core/theme/components/ThemeCard.vue';
+import { API_CONSTANTS } from '@/services/api.types';
 
 const API_BASE = '/api';
 
@@ -284,7 +285,7 @@ const pagination = reactive({
 
 // 获取认证头
 function getAuthHeaders() {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem(API_CONSTANTS.TOKEN_KEY);
   return {
     headers: {
       Authorization: token ? `Bearer ${token}` : '',

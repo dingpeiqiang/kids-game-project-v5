@@ -360,6 +360,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { dialog } from '@/composables/useDialog';
 import { useUserStore } from '@/core/store/user.store';
+import { API_CONSTANTS } from '@/services/api.types';
 
 const userStore = useUserStore();
 
@@ -412,7 +413,7 @@ const sortOptions = [
 
 // 获取认证头
 function getAuthHeaders() {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem(API_CONSTANTS.TOKEN_KEY);
   return {
     headers: {
       Authorization: token ? `Bearer ${token}` : '',

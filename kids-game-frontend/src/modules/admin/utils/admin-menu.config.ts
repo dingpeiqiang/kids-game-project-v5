@@ -23,6 +23,24 @@ export const adminMenuItems: MenuItem[] = [
     path: '/admin/users'
   },
   {
+    id: 'relations',
+    name: '关系管理',
+    icon: '🔗',
+    path: '/admin/relations'
+  },
+  {
+    id: 'configs',
+    name: '管控配置',
+    icon: '⚙️',
+    path: '/admin/configs'
+  },
+  {
+    id: 'stats',
+    name: '统计报表',
+    icon: '📈',
+    path: '/admin/stats'
+  },
+  {
     id: 'games',
     name: '游戏管理',
     icon: '🎮',

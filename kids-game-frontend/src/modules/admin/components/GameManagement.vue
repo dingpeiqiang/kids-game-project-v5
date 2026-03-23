@@ -327,11 +327,6 @@
       confirm-text="关闭"
       @confirm="showModeConfigModal = false"
     >
-              </div>
-            </div>
-          </div>
-
-          <!-- 模式列表内容在KidModal slot中 -->
       <div class="mode-list">
         <div v-for="(config, index) in modeConfigs" :key="config.id || index" class="mode-card">
           <div class="mode-card-header">

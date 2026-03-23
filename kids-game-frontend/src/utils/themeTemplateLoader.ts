@@ -3,6 +3,8 @@
  * 从游戏项目中加载主题资源模板配置
  */
 
+import { API_CONSTANTS } from '@/services/api.types';
+
 export interface ResourceSpec {
   width?: number;
   height?: number;
@@ -69,7 +71,7 @@ export async function loadGameThemeTemplate(gameCode: string): Promise<ThemeTemp
     
     // ⭐ 方案 2：从后端API 加载（带 Token）
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem(API_CONSTANTS.TOKEN_KEY);
       const apiResponse = await fetch(`/api/game/theme-template?gameCode=${gameCode}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : ''
