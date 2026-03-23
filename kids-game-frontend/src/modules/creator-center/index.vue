@@ -78,8 +78,8 @@
           </div>
         </div>
         
-        <!-- 第二行：主题来源筛选 -->
-        <div class="filter-row">
+        <!-- 第二行：主题来源筛选（仅在"主题仓库"和"主题商店"显示） -->
+        <div v-if="currentTab !== 'mine'" class="filter-row">
           <div class="filter-group">
             <span class="filter-label">主题来源：</span>
             <button 
@@ -127,8 +127,8 @@
           <span v-if="filterOwnerType === 'GAME' && selectedGameCode" class="stat-item">
             当前游戏：<strong>{{ games.find(g => g.gameId === selectedGameId)?.gameName || selectedGameCode }}</strong>
           </span>
-          <span class="stat-item">
-            来源: <strong>{{ 
+          <span v-if="currentTab !== 'mine'" class="stat-item">
+            来源：<strong>{{ 
               themeSourceFilter === 'all' ? '全部' : 
               themeSourceFilter === 'official' ? '官方' : 
               themeSourceFilter === 'purchased' ? '购买' : '我的' 

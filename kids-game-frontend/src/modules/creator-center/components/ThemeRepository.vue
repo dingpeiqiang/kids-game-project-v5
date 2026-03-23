@@ -647,12 +647,8 @@ async function handleDelete(theme: CloudThemeInfo) {
   padding: 10px 14px;
   border-top: 1px solid #e2e8f0;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-
-  button:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
 }
 
 .btn-action {

@@ -519,11 +519,24 @@ function getOwnerTypeClass(ownerType?: 'GAME' | 'APPLICATION'): string {
   padding: 12px 16px; // 增加内边距
   border-top: 1px solid #f1f5f9; // 更浅的分隔线
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px; // 增加间距
 
-  button:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
+  // 当按钮数量不是4的倍数时，最后一个按钮填充剩余空间
+  button:last-child {
+    // 当按钮总数是2或3个时，让最后一个按钮填满剩余空间
+    &:nth-child(2):last-child {
+      grid-column: span 2;
+    }
+    &:nth-child(3):last-child {
+      grid-column: span 2;
+    }
+    &:nth-child(5):last-child {
+      grid-column: span 2;
+    }
+    &:nth-child(6):last-child {
+      grid-column: 1 / -1;
+    }
   }
 }
 </style>
