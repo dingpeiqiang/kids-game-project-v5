@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://kids-game.com/schemas/gtrs-v1.0.0.json",
   "title": "Game Theme Resource Specification v1.0.0",
-  "description": "GTRS游戏主题资源规范Schema，用于全流程JSON校验。⭐ themeInfo节点已废弃，改由数据库theme_info表提供，configJson只存储specMeta+globalStyle+resources。",
+  "description": "GTRS 游戏主题资源规范 Schema，用于全流程 JSON 校验。configJson 存储 specMeta+globalStyle+resources。",
   "type": "object",
   "required": ["specMeta", "globalStyle", "resources"],
   "additionalProperties": true,

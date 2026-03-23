@@ -84,6 +84,25 @@ export interface UserThemePreference {
 }
 
 /**
+ * ⭐ 草稿数据
+ */
+export interface ThemeDraft {
+  draftId: number;
+  draftName: string;
+  themeName?: string;
+  ownerType: 'GAME' | 'APPLICATION';
+  ownerId?: number;
+  gameCode?: string;
+  gameName?: string;
+  configJson: string;
+  thumbnailUrl?: string;
+  size: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
  * 主题 API 服务类
  * 继承 BaseApiService 统一使用 fetch
  */
@@ -400,6 +419,52 @@ class ThemeApiService extends BaseApiService {
       console.error('[ThemeApi] 保存用户主题偏好失败:', error);
       return false;
     }
+  }
+
+  // ==================== 草稿功能 API ====================
+
+  /**
+   * 保存草稿
+   * POST /api/theme/draft
+   */
+  async saveDraft(params: {
+    draftName: string;
+    themeName?: string;
+    ownerType: 'GAME' | 'APPLICATION';
+    ownerId?: number;
+    configJson: string;
+    thumbnailUrl?: string;
+  }): Promise<{
+    draftId: number;
+    draftName: string;
+    createdAt: string;
+    updatedAt: string;
+  }> {
+    return this.post<any>('/api/theme/draft', params);
+  }
+
+  /**
+   * 获取我的草稿列表
+   * GET /api/theme/draft/my
+   */
+  async getMyDrafts(): Promise<{ list: ThemeDraft[]; total: number }> {
+    return this.get<any>('/api/theme/draft/my');
+  }
+
+  /**
+   * 获取草稿详情
+   * GET /api/theme/draft/{draftId}
+   */
+  async getDraftDetail(draftId: number): Promise<ThemeDraft> {
+    return this.get<ThemeDraft>(`/api/theme/draft/${draftId}`);
+  }
+
+  /**
+   * 删除草稿
+   * DELETE /api/theme/draft/{draftId}
+   */
+  async deleteDraft(draftId: number): Promise<{ success: boolean }> {
+    return this.delete<{ success: boolean }>(`/api/theme/draft/${draftId}`);
   }
 }
 

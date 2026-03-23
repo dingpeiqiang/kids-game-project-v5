@@ -347,10 +347,6 @@ export interface ThemeInfo {
   isDefault?: boolean; // 是否为默认主题
   createdAt: Date | string;
   updatedAt: Date | string;
-  
-  // ⚠️ DEPRECATED: 关联的游戏信息 (仅游戏主题，已废弃)
-  gameId?: number;
-  gameCode?: string;
 }
 
 /**

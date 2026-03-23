@@ -76,13 +76,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { RefreshRight, Download, Delete } from '@element-plus/icons-vue'
+import { draftApi, type Draft, DraftContentType } from '@/services/draft-api.service'
 import type { GTRSTheme } from '@/utils/gtrs-validator'
 
-interface Draft {
+interface DraftItem {
   id: string
   name: string
   coverImage: string
-  themeData: GTRSTheme
+  themeData: any
   updatedAt: string
   size: number
   tags: string[]
@@ -105,61 +106,38 @@ const visible = computed({
   set: (val) => emit('update:modelValue', val)
 })
 
-const draftList = ref<Draft[]>([])
+const draftList = ref<DraftItem[]>([])
 const selectedDraftId = ref('')
 
 // 加载草稿列表
-const loadDrafts = () => {
-  const draftsJson = localStorage.getItem('gtrs_drafts')
-  if (draftsJson) {
-    try {
-      draftList.value = JSON.parse(draftsJson)
-      // 按更新时间降序排序
-      draftList.value.sort((a, b) => 
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      )
-    } catch (error) {
-      console.error('加载草稿失败:', error)
-    }
+const loadDrafts = async () => {
+  try {
+    const response = await draftApi.getMyDrafts(DraftContentType.THEME)
+    draftList.value = response.list.map((draft: Draft) => ({
+      id: String(draft.draftId),
+      name: draft.draftName,
+      coverImage: draft.thumbnailUrl || '',
+      themeData: draft.contentJson,
+      updatedAt: draft.updatedAt,
+      size: draft.contentSize,
+      tags: draft.tags ? draft.tags.split(',') : []
+    }))
+
+    console.log('[DraftManager] 草稿列表加载成功:', draftList.value.length, '条')
+  } catch (error) {
+    console.error('加载草稿失败:', error)
+    ElMessage.error('加载草稿列表失败')
   }
 }
 
-// 保存草稿
-const saveDraft = (theme: GTRSTheme, name: string) => {
-  const drafts = [...draftList.value]
-  
-  // 检查是否已存在同名草稿
-  const existingIndex = drafts.findIndex(d => d.id === theme.themeInfo.themeId)
-  
-  const draft: Draft = {
-    id: theme.themeInfo.themeId,
-    name: name || theme.themeInfo.themeName || '未命名草稿',
-    coverImage: theme.themeInfo.coverImage || '',
-    themeData: theme,
-    updatedAt: new Date().toISOString(),
-    size: JSON.stringify(theme).length,
-    tags: theme.themeInfo.tags || []
-  }
-
-  if (existingIndex >= 0) {
-    // 更新现有草稿
-    drafts[existingIndex] = draft
-  } else {
-    // 添加新草稿
-    drafts.push(draft)
-  }
-
-  // 保存到 localStorage（最多保留 10 个草稿）
-  if (drafts.length > 10) {
-    drafts.splice(10)
-  }
-
-  localStorage.setItem('gtrs_drafts', JSON.stringify(drafts))
-  draftList.value = drafts
+// 保存草稿（不再需要，由父组件调用后端 API）
+const saveDraft = () => {
+  // 不再需要，由父组件调用 draftApi.saveDraft()
+  console.log('[DraftManager] saveDraft 已废弃，请使用父组件的保存逻辑')
 }
 
 // 恢复草稿
-const handleRestore = async (draft: Draft) => {
+const handleRestore = async (draft: DraftItem) => {
   try {
     await ElMessageBox.confirm(
       `确定要恢复草稿"${draft.name}"吗？当前未保存的更改将丢失。`,
@@ -171,33 +149,48 @@ const handleRestore = async (draft: Draft) => {
       }
     )
 
-    emit('restore', draft.themeData)
+    // 解析 contentJson
+    const themeData = typeof draft.themeData === 'string'
+      ? JSON.parse(draft.themeData)
+      : draft.themeData
+
+    emit('restore', themeData)
     ElMessage.success('草稿已恢复')
     visible.value = false
-  } catch {
-    // 用户取消
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('恢复草稿失败:', error)
+    }
   }
 }
 
 // 下载草稿
-const handleDownload = (draft: Draft) => {
-  const dataStr = JSON.stringify(draft.themeData, null, 2)
-  const blob = new Blob([dataStr], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${draft.name}.json`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+const handleDownload = (draft: DraftItem) => {
+  try {
+    const configJson = typeof draft.themeData === 'string'
+      ? draft.themeData
+      : JSON.stringify(draft.themeData, null, 2)
 
-  ElMessage.success('草稿已下载')
+    const blob = new Blob([configJson], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${draft.name}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    ElMessage.success('草稿已下载')
+  } catch (error) {
+    console.error('下载草稿失败:', error)
+    ElMessage.error('下载草稿失败')
+  }
 }
 
 // 删除草稿
-const handleDelete = async (draft: Draft) => {
+const handleDelete = async (draft: DraftItem) => {
   try {
     await ElMessageBox.confirm(
       `确定要删除草稿"${draft.name}"吗？此操作不可恢复。`,
@@ -209,14 +202,19 @@ const handleDelete = async (draft: Draft) => {
       }
     )
 
+    // 调用通用草稿 API 删除草稿
+    await draftApi.deleteDraft(Number(draft.id))
+
     const index = draftList.value.findIndex(d => d.id === draft.id)
     if (index >= 0) {
       draftList.value.splice(index, 1)
-      localStorage.setItem('gtrs_drafts', JSON.stringify(draftList.value))
       ElMessage.success('草稿已删除')
     }
-  } catch {
-    // 用户取消
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('删除草稿失败:', error)
+      ElMessage.error('删除草稿失败：' + (error?.message || '未知错误'))
+    }
   }
 }
 

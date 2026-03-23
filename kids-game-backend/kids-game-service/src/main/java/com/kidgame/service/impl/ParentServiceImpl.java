@@ -43,7 +43,9 @@ import java.util.List;
 
 /**
  * 家长业务服务实现
+ * @deprecated 已废弃，请使用 UserServiceImpl + UserRelationServiceImpl + UserControlConfigServiceImpl 替代
  */
+@Deprecated
 @Slf4j
 @Service
 public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> implements ParentService {

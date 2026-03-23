@@ -21,7 +21,9 @@ import java.util.List;
 
 /**
  * 家长控制器
+ * @deprecated 已废弃，请使用 UserController + UserRelationController 替代
  */
+@Deprecated
 @Tag(name = "家长管理", description = "家长管控相关接口")
 @RestController
 @RequestMapping("/api/parent")

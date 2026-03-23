@@ -10,9 +10,8 @@ import gtrsSchema from '../schemas/gtrs-schema.json'
 const ajv = new Ajv({ allErrors: true })
 
 /**
- * GTRS主题数据类型
- * ⭐ themeInfo 节点已废弃，改由数据库 theme_info 表提供
- * configJson 只存储：specMeta + globalStyle + resources
+ * GTRS 主题数据类型
+ * configJson 存储：specMeta + globalStyle + resources
  */
 export interface GTRSTheme {
   specMeta: {
@@ -79,7 +78,7 @@ export function validateGTRSTheme(themeJson: string): ValidationResult {
   try {
     const theme = JSON.parse(themeJson)
 
-    // 1. 检查基础结构（themeInfo 可选，由数据库表提供）
+    // 1. 检查基础结构
     if (!theme.specMeta || !theme.globalStyle || !theme.resources) {
       return {
         valid: false,
@@ -248,7 +247,6 @@ export function quickValidate(themeJson: string): boolean {
     const theme = JSON.parse(themeJson)
     return !!(
       theme.specMeta &&
-      theme.themeInfo &&
       theme.globalStyle &&
       theme.resources
     )

@@ -11,7 +11,9 @@ import java.util.List;
 
 /**
  * 家长业务服务
+ * @deprecated 已废弃，请使用 UserService + UserRelationService + UserControlConfigService 替代
  */
+@Deprecated
 public interface ParentService extends IService<Parent> {
 
     /**

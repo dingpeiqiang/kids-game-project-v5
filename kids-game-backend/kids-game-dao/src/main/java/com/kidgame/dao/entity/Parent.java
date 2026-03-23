@@ -7,7 +7,9 @@ import java.io.Serializable;
 
 /**
  * 家长用户实体
+ * @deprecated 已废弃，请使用 BaseUser + UserProfile 替代（user_type=1 表示家长）
  */
+@Deprecated
 @Data
 @TableName("t_parent")
 public class Parent implements Serializable {

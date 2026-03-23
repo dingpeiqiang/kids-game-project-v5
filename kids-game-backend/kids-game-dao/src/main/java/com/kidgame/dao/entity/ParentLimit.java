@@ -7,7 +7,9 @@ import java.io.Serializable;
 
 /**
  * 家长管控规则实体
+ * @deprecated 已废弃，请使用 UserControlConfig 替代
  */
+@Deprecated
 @Data
 @TableName("t_parent_limit")
 public class ParentLimit implements Serializable {

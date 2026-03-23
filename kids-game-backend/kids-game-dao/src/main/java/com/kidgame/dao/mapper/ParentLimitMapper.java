@@ -6,7 +6,9 @@ import org.apache.ibatis.annotations.Mapper;
 
 /**
  * 家长管控规则 Mapper
+ * @deprecated 已废弃，请使用 UserControlConfigMapper 替代
  */
+@Deprecated
 @Mapper
 public interface ParentLimitMapper extends BaseMapper<ParentLimit> {
 }

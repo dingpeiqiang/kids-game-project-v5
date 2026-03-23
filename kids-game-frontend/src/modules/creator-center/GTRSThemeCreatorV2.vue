@@ -349,12 +349,6 @@
             @toggle-json-mode="panelJsonModes.audio = !panelJsonModes.audio"
           />
 
-          <!-- 实时预览面板 -->
-          <PreviewPanel
-            v-if="currentTab === 'preview'"
-            :theme-data="themeData"
-          />
-
           <!-- 发布面板 -->
           <PublishPanel
             v-if="currentTab === 'publish'"
@@ -446,7 +440,7 @@ import GlobalStylePanel from './panels/GlobalStylePanel.vue'
 import ImageResourcePanel from './panels/ImageResourcePanel.vue'
 import AudioResourcePanel from './panels/AudioResourcePanel.vue'
 import { themeApi } from '@/services/theme-api.service'
-import PreviewPanel from './panels/PreviewPanel.vue'
+import { draftApi, DraftContentType } from '@/services/draft-api.service'
 import PublishPanel from './panels/PublishPanel.vue'
 import DraftManager from './panels/DraftManager.vue'
 import { validateGTRSTheme, type GTRSTheme } from '@/utils/gtrs-validator'
@@ -492,7 +486,7 @@ const editorMode = computed(() => {
 // 编辑模式：表单 / JSON
 const editMode = ref<'form' | 'json'>('form')
 
-const currentTab = ref<'basic' | 'style' | 'image' | 'audio' | 'preview' | 'publish'>('basic')
+const currentTab = ref<'basic' | 'style' | 'image' | 'audio' | 'publish'>('basic')
 const isDirty = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
@@ -581,7 +575,6 @@ const tabs = [
   { key: 'style', label: '全局样式', icon: '🎨' },
   { key: 'image', label: '图片资源', icon: '🖼️' },
   { key: 'audio', label: '音频资源', icon: '🔊' },
-  { key: 'preview', label: '实时预览', icon: '👁️' },
   { key: 'publish', label: '发布主题', icon: '📤' }
 ]
 
@@ -693,26 +686,53 @@ const activeResourceCollapse = ref<string[]>(['images', 'audio'])
 const saveDraft = async () => {
   saving.value = true
   try {
-    // TODO: 调用后端 API 保存草稿
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // 保存到草稿管理器
-    if (draftManagerRef.value) {
-      draftManagerRef.value.saveDraft(
-        themeData.value,
-        themeData.value.themeInfo.themeName
-      )
+    // 验证主题数据
+    const result = validateGTRSTheme(JSON.stringify(themeData.value))
+    if (!result.valid) {
+      ElMessage.error('主题校验失败：' + result.message)
+      return
     }
-    
+
+    // 从 themeBasicInfo 获取基本信息
+    const { ownerType, ownerId, themeName, thumbnailUrl } = themeBasicInfo.value
+    const draftName = themeName || '未命名草稿'
+
+    // 将 themeData 转换为 JSON 字符串
+    const contentJson = JSON.stringify(themeData.value)
+
+    // 构建元数据（用于存储主题特有的信息）
+    const metadataJson = JSON.stringify({
+      ownerType,
+      ownerId,
+      themeName
+    })
+
+    // 调用通用草稿 API 保存草稿
+    const response = await draftApi.saveDraft({
+      contentType: DraftContentType.THEME,
+      draftName,
+      draftTitle: themeName,
+      contentJson,
+      metadataJson,
+      thumbnailUrl,
+      relatedEntityType: ownerType,
+      relatedEntityId: ownerId
+    })
+
     // 先保存到撤销栈（在修改 isDirty 之前）
     undoStack.value.push(JSON.parse(JSON.stringify(themeData.value)))
-    
+
     // 然后标记为已保存
     isDirty.value = false
-    
+
     ElMessage.success('草稿保存成功')
-  } catch (error) {
-    ElMessage.error('保存失败：' + (error as Error).message)
+
+    // 如果草稿管理器已打开，刷新草稿列表
+    if (draftManagerVisible.value && draftManagerRef.value) {
+      draftManagerRef.value.loadDrafts()
+    }
+  } catch (error: any) {
+    ElMessage.error('保存失败：' + (error?.message || error?.toString()))
   } finally {
     saving.value = false
   }
@@ -724,10 +744,50 @@ const showDraftManager = () => {
 }
 
 // 恢复草稿
-const handleDraftRestore = (theme: GTRSTheme) => {
-  themeData.value = JSON.parse(JSON.stringify(theme))
-  isDirty.value = true
-  ElMessage.success('草稿已恢复')
+const handleDraftRestore = async (theme: any) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要恢复此草稿吗？当前未保存的更改将丢失。',
+      '确认恢复',
+      {
+        type: 'warning',
+        confirmButtonText: '恢复',
+        cancelButtonText: '取消'
+      }
+    )
+
+    // 解析 configJson
+    const configData = typeof theme.configJson === 'string'
+      ? JSON.parse(theme.configJson)
+      : theme.configJson
+
+    // 恢复主题数据
+    themeData.value = configData
+
+    // 如果草稿中有主题信息，也恢复 themeBasicInfo
+    if (theme.themeName) {
+      themeBasicInfo.value.themeName = theme.themeName
+    }
+    if (theme.ownerType) {
+      themeBasicInfo.value.ownerType = theme.ownerType
+    }
+    if (theme.ownerId) {
+      themeBasicInfo.value.ownerId = theme.ownerId
+    }
+    if (theme.thumbnailUrl) {
+      themeBasicInfo.value.thumbnailUrl = theme.thumbnailUrl
+    }
+
+    isDirty.value = true
+    ElMessage.success('草稿已恢复')
+    
+    // 关闭草稿管理器
+    draftManagerVisible.value = false
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('恢复草稿失败：' + (error?.message || error?.toString()))
+    }
+  }
 }
 
 // 发布主题
@@ -882,9 +942,9 @@ const checkCompleteness = (): CompletenessCheckResult => {
       result.errors.push({ category: 'themeInfo.themeName', field: 'themeName', message: `主题名称太长（当前：${themeInfo.themeName.length}字符，最多50字符）`, path: '基本信息 > 主题名称' })
     }
 
-    if (!themeInfo.gameId) {
+    if (!themeInfo.ownerId) {
       result.passed = false
-      result.errors.push({ category: 'themeInfo.gameId', field: 'gameId', message: '未选择适用游戏', path: '基本信息 > 适用游戏' })
+      result.errors.push({ category: 'themeInfo.ownerId', field: 'ownerId', message: '未选择适用游戏', path: '基本信息 > 适用游戏' })
     }
 
     if (themeInfo.isDefault === undefined || themeInfo.isDefault === null) {
