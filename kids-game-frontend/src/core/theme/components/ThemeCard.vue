@@ -539,4 +539,110 @@ function getOwnerTypeClass(ownerType?: 'GAME' | 'APPLICATION'): string {
     }
   }
 }
+
+// 操作按钮样式（共享给所有使用 ThemeCard 的地方）
+.btn-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 11px;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  // 查看按钮
+  &.btn-view {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+
+    &:hover:not(:disabled) {
+      background: rgba(102, 126, 234, 0.2);
+    }
+  }
+
+  // DIY按钮
+  &.btn-diy {
+    background: linear-gradient(135deg, #4ECDC4 0%, #45B7D1 100%);
+    color: white;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(78, 205, 196, 0.4);
+    }
+  }
+
+  // 使用按钮
+  &.btn-use {
+    background: rgba(72, 187, 120, 0.1);
+    color: #38a169;
+
+    &:hover:not(:disabled) {
+      background: rgba(72, 187, 120, 0.2);
+    }
+  }
+
+  // 上架/下架按钮
+  &.btn-toggle {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+
+    &:hover:not(:disabled) {
+      background: rgba(102, 126, 234, 0.2);
+    }
+  }
+
+  // 编辑按钮
+  &.btn-edit {
+    background: rgba(78, 205, 196, 0.1);
+    color: #4ECDC4;
+
+    &:hover:not(:disabled) {
+      background: rgba(78, 205, 196, 0.2);
+    }
+  }
+
+  // 删除按钮
+  &.btn-delete {
+    background: rgba(244, 67, 54, 0.1);
+    color: #F44336;
+
+    &:hover:not(:disabled) {
+      background: rgba(244, 67, 54, 0.2);
+    }
+  }
+
+  // 通过按钮
+  &.btn-approve {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+
+    &:hover:not(:disabled) {
+      background: rgba(16, 185, 129, 0.2);
+    }
+  }
+
+  // 拒绝按钮
+  &.btn-reject {
+    background: rgba(244, 67, 54, 0.1);
+    color: #F44336;
+
+    &:hover:not(:disabled) {
+      background: rgba(244, 67, 54, 0.2);
+    }
+  }
+}
 </style>

@@ -100,6 +100,15 @@ public interface ThemeService {
     List<ThemeInfo> getMyThemes(Long authorId);
 
     /**
+     * ⭐ 获取我的主题列表（支持按 ownerType 和 ownerId 筛选）
+     * @param authorId 作者 ID
+     * @param ownerType 所有者类型筛选（GAME-游戏主题/APPLICATION-应用主题，可选）
+     * @param ownerId 所有者 ID（仅当 ownerType=GAME 时有效，可选）
+     * @return 主题列表
+     */
+    List<ThemeInfo> getMyThemes(Long authorId, String ownerType, Long ownerId);
+
+    /**
      * 获取创作者收益
      * @param creatorId 创作者 ID
      * @return 收益记录列表
@@ -220,6 +229,13 @@ public interface ThemeService {
      * @return 用户当前主题，如果没有返回 null
      */
     UserThemePreference getUserCurrentTheme(Long userId, String ownerType, Long ownerId);
+
+    /**
+     * ⭐ 获取用户所有主题偏好设置
+     * @param userId 用户 ID
+     * @return 用户主题偏好列表
+     */
+    List<UserThemePreference> getUserPreferences(Long userId);
 
     /**
      * ⭐ 保存用户主题偏好

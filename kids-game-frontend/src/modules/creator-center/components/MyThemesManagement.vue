@@ -8,6 +8,14 @@
       <p v-if="mode !== 'admin'" class="section-desc">展示我创作的主题（支持上架、下架、编辑等操作）</p>
     </div>
 
+    <!-- ⭐ 调试信息 -->
+    <div v-if="false" class="debug-info">
+      <p>加载状态: {{ loading }}</p>
+      <p>主题数量: {{ themes.length }}</p>
+      <p>模式: {{ mode }}</p>
+      <p>主题数据: {{ themes }}</p>
+    </div>
+
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
@@ -89,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import type { CloudThemeInfo } from '@/core/theme/ThemeManager';
 import { useConfirm } from '@/composables/useDialog';
 import ThemeCard from '@/core/theme/components/ThemeCard.vue';
@@ -116,6 +124,15 @@ const emit = defineEmits<{
 
 // 操作锁
 const isToggling = ref(false);
+
+// ⭐ 调试日志
+watch(() => props.themes, (newThemes) => {
+  console.log('[MyThemesManagement] themes prop 变化:', {
+    length: newThemes.length,
+    themes: newThemes,
+    loading: props.loading
+  });
+}, { immediate: true });
 
 // 格式化日期
 function formatDate(date: string | number | undefined) {

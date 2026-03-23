@@ -127,10 +127,18 @@ class ThemeApiService extends BaseApiService {
   /**
    * 获取我上传的云端主题
    * GET /api/theme/my-cloud-themes
-   * 后端从认证信息中获取用户ID，不需要传递参数
+   * 后端从认证信息中获取用户ID
+   * @param params 可选筛选参数：ownerType, ownerId
    */
-  async getMyThemes(): Promise<CloudThemeInfo[]> {
-    return this.get<CloudThemeInfo[]>('/api/theme/my-cloud-themes');
+  async getMyThemes(params?: {
+    ownerType?: 'GAME' | 'APPLICATION';
+    ownerId?: number;
+  }): Promise<CloudThemeInfo[]> {
+    const queryParams = new URLSearchParams();
+    if (params?.ownerType) queryParams.append('ownerType', params.ownerType);
+    if (params?.ownerId) queryParams.append('ownerId', String(params.ownerId));
+    const queryString = queryParams.toString();
+    return this.get<CloudThemeInfo[]>(`/api/theme/my-cloud-themes${queryString ? '?' + queryString : ''}`);
   }
 
   /**
@@ -351,6 +359,23 @@ class ThemeApiService extends BaseApiService {
     } catch (error) {
       console.error('[ThemeApi] 获取用户当前主题失败:', error);
       return null;
+    }
+  }
+
+  /**
+   * ⭐ 获取用户所有主题偏好设置
+   * @param userId 用户 ID
+   * @returns 用户主题偏好列表
+   */
+  async getUserPreferences(userId: number): Promise<{ list: UserThemePreference[] }> {
+    try {
+      const response = await this.get<{ list: UserThemePreference[] }>(
+        `/api/theme/user/preferences?userId=${userId}`
+      );
+      return response || { list: [] };
+    } catch (error) {
+      console.error('[ThemeApi] 获取用户主题偏好列表失败:', error);
+      return { list: [] };
     }
   }
 

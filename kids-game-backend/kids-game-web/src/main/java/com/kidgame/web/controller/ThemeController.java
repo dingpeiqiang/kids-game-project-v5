@@ -309,28 +309,35 @@ public class ThemeController {
 
     /**
      * 获取我的主题列表
+     * @param ownerType 所有者类型：GAME-游戏主题，APPLICATION-应用主题（可选）
+     * @param ownerId 所有者 ID（游戏主题时需要，可选）
      * @param request HTTP 请求
      * @return 主题列表（包含游戏关联信息）
      */
     @Operation(summary = "获取我的主题")
     @GetMapping("/my-cloud-themes")
-    public Result<List<Map<String, Object>>> getMyThemes(HttpServletRequest request) {
-            
+    public Result<List<Map<String, Object>>> getMyThemes(
+            @Parameter(description = "所有者类型：GAME-游戏主题，APPLICATION-应用主题")
+            @RequestParam(required = false) String ownerType,
+            @Parameter(description = "所有者 ID（游戏主题时需要）")
+            @RequestParam(required = false) Long ownerId,
+            HttpServletRequest request) {
+
         try {
             String userIdStr = (String) request.getAttribute("userId");
             Long authorId = Long.valueOf(userIdStr);
-                
-            log.info("获取我的主题。AuthorId: {}", authorId);
-                
-            List<ThemeInfo> themes = themeService.getMyThemes(authorId);
-                
+
+            log.info("获取我的主题。AuthorId: {}, ownerType: {}, ownerId: {}", authorId, ownerType, ownerId);
+
+            List<ThemeInfo> themes = themeService.getMyThemes(authorId, ownerType, ownerId);
+
             // ⭐ 为每个主题添加游戏信息（与 list 接口保持一致）
             List<Map<String, Object>> listWithGameName = new java.util.ArrayList<>();
             for (ThemeInfo theme : themes) {
                 Map<String, Object> themeMap = new HashMap<>();
                 // 使用 fastjson 将对象转为 Map
                 themeMap = JSON.parseObject(JSON.toJSONString(theme), Map.class);
-                    
+
                 // 查询主题关联的游戏信息（通过 ownerType + ownerId）
                 if ("GAME".equals(theme.getOwnerType()) && theme.getOwnerId() != null) {
                     var game = themeService.getGameById(theme.getOwnerId());
@@ -340,15 +347,15 @@ public class ThemeController {
                         themeMap.put("gameName", game.getGameName());
                     }
                 }
-                    
+
                 // 如果没有关联游戏，设置默认值
                 if (!themeMap.containsKey("gameName")) {
                     themeMap.put("gameName", "游戏主题");
                 }
-                    
+
                 listWithGameName.add(themeMap);
             }
-                
+
             return Result.success(listWithGameName);
         } catch (Exception e) {
             log.error("获取我的主题失败", e);
@@ -816,6 +823,44 @@ public class ThemeController {
         } catch (Exception e) {
             log.error("获取用户当前主题失败", e);
             return Result.error("获取用户当前主题失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * ⭐ 获取用户所有主题偏好设置
+     * @param userId 用户 ID
+     * @param request HTTP 请求
+     * @return 用户主题偏好列表
+     */
+    @Operation(summary = "获取用户主题偏好列表")
+    @GetMapping("/user/preferences")
+    public Result<Map<String, Object>> getUserPreferences(
+            @Parameter(description = "用户 ID（可选，不传则从认证信息获取）")
+            @RequestParam(required = false) Long userId,
+            HttpServletRequest request) {
+
+        try {
+            // 如果没有传 userId，从认证信息中获取
+            if (userId == null) {
+                String userIdStr = (String) request.getAttribute("userId");
+                if (userIdStr == null || userIdStr.isEmpty()) {
+                    log.warn("未登录用户尝试获取主题偏好列表");
+                    return Result.error("请先登录");
+                }
+                userId = Long.valueOf(userIdStr);
+            }
+
+            log.info("获取用户主题偏好列表 - userId: {}", userId);
+
+            List<UserThemePreference> preferences = themeService.getUserPreferences(userId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("list", preferences);
+
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取用户主题偏好列表失败", e);
+            return Result.error("获取用户主题偏好列表失败：" + e.getMessage());
         }
     }
 

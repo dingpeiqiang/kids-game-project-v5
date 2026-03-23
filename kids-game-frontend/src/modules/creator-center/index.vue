@@ -309,6 +309,13 @@ watch(currentTab, (newTab, oldTab) => {
   }
 });
 
+// ⭐ 监听筛选条件变化，在"我的主题"页面重新加载数据
+watch([filterOwnerType, selectedGameId], () => {
+  if (currentTab.value === 'mine') {
+    loadMyThemesOnly();
+  }
+});
+
 // 加载游戏列表（从后端API 获取）
 async function loadGamesList() {
   loadingGames.value = true;
@@ -371,13 +378,7 @@ async function loadMyThemes() {
     console.log('[CreatorCenter] 我的主题加载成功:', myThemes.value.length, 'userId:', userId);
   } catch (error) {
     console.error('[CreatorCenter] 加载我的主题失败:', error);
-    // 在开发环境下可以使用模拟数据
-    if (import.meta.env.DEV) {
-      console.log('[CreatorCenter] 使用开发模式模拟数据');
-      myThemes.value = getMockThemes();
-    } else {
-      myThemes.value = [];
-    }
+    myThemes.value = [];
   } finally {
     loadingMyThemes.value = false;
   }
@@ -385,6 +386,7 @@ async function loadMyThemes() {
 
 // ⭐ 加载仅当前用户创建的主题（用于"我的主题"标签）
 // 注意：调用 getMyThemes() 获取所有创建的主题（不限状态），而不是 getMyAvailableThemes（只返回 on_sale）
+// ⭐ 支持"适用范围"筛选：应用主题 vs 游戏主题（后端筛选）
 async function loadMyThemesOnly() {
   loadingMyThemesOnly.value = true;
   try {
@@ -395,25 +397,61 @@ async function loadMyThemesOnly() {
       return;
     }
 
-    // 调用 getMyThemes() 获取当前用户创建的所有主题（不限状态）
-    const themes = await themeApi.getMyThemes();
+    // ⭐ 调用支持筛选参数的接口，后端根据 ownerType 和 ownerId 进行筛选
+    const params: any = {};
+    if (filterOwnerType.value) {
+      params.ownerType = filterOwnerType.value;
+      // 如果是游戏主题且选择了具体游戏，传递 ownerId
+      if (filterOwnerType.value === 'GAME' && selectedGameId.value) {
+        params.ownerId = selectedGameId.value;
+      }
+    }
 
-    myThemesOnly.value = (themes || []).map((theme: any) => ({
-      ...theme,
-      source: 'mine',  // 强制标记为"我的"
-      sourceLabel: '我的',
-      sourceIcon: '🎨'
-    }));
+    console.log('[CreatorCenter] 调用 getMyThemes 参数:', params);
+    const allCreatedThemes = await themeApi.getMyThemes(params);
 
-    console.log('[CreatorCenter] 我的主题(仅创建)加载成功:', myThemesOnly.value.length);
+    console.log('[CreatorCenter] getMyThemes 返回结果:', allCreatedThemes, '长度:', (allCreatedThemes || []).length);
+
+    // 获取当前用户的主题偏好设置
+    const userPreferences = await themeApi.getUserPreferences(userId).catch(() => ({ list: [] }));
+
+    // 创建一个用于快速查找当前使用主题的映射
+    const preferenceMap = new Map();
+    (userPreferences.list || []).forEach((pref: any) => {
+      const key = `${pref.ownerType}_${pref.ownerId}`;
+      preferenceMap.set(key, pref.themeId);
+    });
+
+    myThemesOnly.value = (allCreatedThemes || []).map((theme: any) => {
+      const ownerType = theme.ownerType || 'GAME';
+      const ownerId = theme.gameId || theme.ownerId;
+      const themeId = theme.themeId || theme.id;
+      const key = `${ownerType}_${ownerId}`;
+
+      console.log('[CreatorCenter] 处理主题数据:', {
+        themeId,
+        ownerType,
+        ownerId,
+        originalTheme: theme
+      });
+
+      return {
+        ...theme,
+        source: 'mine',  // 强制标记为"我的"
+        sourceLabel: '我的',
+        sourceIcon: '🎨',
+        isCurrent: preferenceMap.get(key) === themeId, // 判断是否为当前使用的主题
+      };
+    });
+
+
+    console.log('[CreatorCenter] 我的主题(仅创建)加载成功:', myThemesOnly.value.length, {
+      filterOwnerType: filterOwnerType.value,
+      selectedGameId: selectedGameId.value
+    });
   } catch (error) {
     console.error('[CreatorCenter] 加载我的主题失败:', error);
-    if (import.meta.env.DEV) {
-      // 开发环境使用模拟数据
-      myThemesOnly.value = getMockThemes();
-    } else {
-      myThemesOnly.value = [];
-    }
+    myThemesOnly.value = [];
   } finally {
     loadingMyThemesOnly.value = false;
   }
@@ -492,16 +530,8 @@ async function loadStoreThemes() {
     console.log('[CreatorCenter] 商店主题加载成功:', officialThemes.value.length, '条');
   } catch (error) {
     console.error('[CreatorCenter] 加载商店主题失败:', error);
-    // 在开发环境下可以使用模拟数据
-    if (import.meta.env.DEV) {
-      console.log('[CreatorCenter] 使用开发模式模拟商店数据');
-      officialThemes.value = getMockStoreThemes();
-      allThemes.value = officialThemes.value;
-    } else {
-      // 生产环境下显示空状态
-      officialThemes.value = [];
-      allThemes.value = [];
-    }
+    officialThemes.value = [];
+    allThemes.value = [];
   } finally {
     loadingStore.value = false;
   }
@@ -510,7 +540,7 @@ async function loadStoreThemes() {
 // 筛选功能处理函数 ⭐ NEW
 function handleOwnerTypeChange(ownerType: 'GAME' | 'APPLICATION') {
   filterOwnerType.value = ownerType;
-  
+
   // 重置游戏选择
   if (ownerType === 'GAME' && games.value.length > 0) {
     selectedGameId.value = games.value[0].gameId;
@@ -519,17 +549,25 @@ function handleOwnerTypeChange(ownerType: 'GAME' | 'APPLICATION') {
     selectedGameId.value = undefined;
     selectedGameCode.value = undefined;
   }
-  
-  // 重新筛选
-  reloadCurrentData();
+
+  // 根据当前标签页重新筛选
+  if (currentTab.value === 'mine') {
+    loadMyThemesOnly();
+  } else {
+    reloadCurrentData();
+  }
 }
 
 // 主题来源筛选处理函数
 function handleSourceFilterChange(source: 'all' | 'official' | 'purchased' | 'mine') {
   themeSourceFilter.value = source;
-  
-  // 重新筛选
-  reloadCurrentData();
+
+  // 根据当前标签页重新筛选
+  if (currentTab.value === 'mine') {
+    loadMyThemesOnly();
+  } else {
+    reloadCurrentData();
+  }
 }
 
 // 游戏选择处理函数
@@ -537,11 +575,17 @@ function handleGameSelectChange(event: Event) {
   const target = event.target as HTMLSelectElement;
   const gameId = Number(target.value);
   const game = games.value.find(g => g.gameId === gameId);
-  
+
   if (game) {
     selectedGameId.value = game.gameId;
     selectedGameCode.value = game.gameCode;
-    reloadCurrentData();
+
+    // 根据当前标签页重新筛选
+    if (currentTab.value === 'mine') {
+      loadMyThemesOnly();
+    } else {
+      reloadCurrentData();
+    }
   }
 }
 
@@ -552,6 +596,8 @@ async function reloadCurrentData() {
     filterOwnerType: filterOwnerType.value,
     selectedGameId: selectedGameId.value
   });
+
+  loadingMyThemes.value = true;
 
   try {
     // ⭐ 核心改进：使用后端分页和过滤
@@ -567,11 +613,39 @@ async function reloadCurrentData() {
 
     // ⭐ 后端返回分页数据：{list, total, pageNum, pageSize}
     const result = await themeApi.getMyAvailableThemes(params);
-    
+
     console.log('[CreatorCenter] 可用主题数据:', result);
 
-    // ⭐ 为每个主题添加来源标识（用于 UI 显示）
+    if (!result || !result.list) {
+      console.warn('[CreatorCenter] 返回数据格式异常:', result);
+      allThemes.value = [];
+      pagination.value.total = 0;
+      pagination.value.current = 1;
+      pagination.value.totalPages = 0;
+      return;
+    }
+
+    // 获取当前用户的主题偏好设置
     const currentUserId = getCurrentUserId();
+    let userPreferences = { list: [] };
+
+    // 只有当用户已登录时才获取偏好设置
+    if (currentUserId && currentUserId !== 0) {
+      try {
+        userPreferences = await themeApi.getUserPreferences(currentUserId);
+      } catch (error) {
+        console.warn('[CreatorCenter] 获取用户偏好失败，使用空数据:', error);
+      }
+    }
+
+    // 创建一个用于快速查找当前使用主题的映射
+    const preferenceMap = new Map();
+    (userPreferences.list || []).forEach((pref: any) => {
+      const key = `${pref.ownerType}_${pref.ownerId}`;
+      preferenceMap.set(key, pref.themeId);
+    });
+
+    // ⭐ 为每个主题添加来源标识和当前使用状态（用于 UI 显示）
     allThemes.value = result.list.map((theme: any) => {
       let source: string;
       let sourceLabel: string;
@@ -591,18 +665,24 @@ async function reloadCurrentData() {
         sourceIcon = '🛒';
       }
 
+      const ownerType = theme.ownerType || 'GAME';
+      const ownerId = theme.gameId || theme.ownerId;
+      const themeId = theme.themeId || theme.id;
+      const key = `${ownerType}_${ownerId}`;
+
       return {
         ...theme,
         source,
         sourceLabel,
         sourceIcon,
+        isCurrent: preferenceMap.get(key) === themeId, // 判断是否为当前使用的主题
       };
     });
 
     // ⭐ 更新分页信息
-    pagination.value.total = result.total;
+    pagination.value.total = result.total || 0;
     pagination.value.current = (result as any).pageNum || 1;
-    pagination.value.totalPages = Math.ceil(result.total / ((result as any).pageSize || 20));
+    pagination.value.totalPages = Math.ceil((result.total || 0) / ((result as any).pageSize || 20));
 
     console.log('[CreatorCenter] 主题列表更新:', allThemes.value.length, '条，总数:', result.total, {
       filterOwnerType: filterOwnerType.value,
@@ -612,10 +692,13 @@ async function reloadCurrentData() {
 
   } catch (error) {
     console.error('[CreatorCenter] 加载主题失败:', error);
+    ElMessage.error('加载主题失败，请稍后重试');
     allThemes.value = [];
     pagination.value.total = 0;
     pagination.value.current = 1;
     pagination.value.totalPages = 0;
+  } finally {
+    loadingMyThemes.value = false;
   }
 }
 
@@ -630,7 +713,26 @@ function goBack() {
 
 function handleViewTheme(theme: any) {
   console.log('[CreatorCenter] 查看主题:', theme);
-  dialog.info(`查看主题：${theme.name || theme.themeName}\n${theme.description || '暂无描述'}`);
+  
+  // ⭐ 复用到 GTRS 编辑器，使用 view 模式
+  const query: Record<string, string> = {
+    mode: 'view'  // 查看模式
+  };
+  
+  // 传递主题 ID 用于加载主题配置
+  if (theme.themeId || theme.id) {
+    query.themeId = String(theme.themeId || theme.id);
+  }
+  
+  // 传递游戏 ID（如果有）
+  if (theme.gameId) {
+    query.gameId = String(theme.gameId);
+  }
+  
+  router.push({
+    path: '/creator-center/gtrs-editor',
+    query
+  });
 }
 
 function handleDIYTheme(theme?: any) {
@@ -699,8 +801,14 @@ async function handleUseTheme(theme: any) {
     
     ElMessage.success(`已应用主题：${theme.name || theme.themeName}`);
     
-    // 4. 刷新主题列表显示
-    await reloadCurrentData();
+    // 4. 根据当前标签页刷新对应的数据
+    if (currentTab.value === 'mine') {
+      // 我的主题标签：重新加载 myThemesOnly
+      await loadMyThemesOnly();
+    } else {
+      // 其他标签：重新加载 allThemes
+      await reloadCurrentData();
+    }
     
   } catch (error: any) {
     console.error('[handleUseTheme] 应用主题失败:', error);
@@ -726,10 +834,14 @@ function handleToggleSale(theme: CloudThemeInfo) {
     try {
       // 调用切换上下架 API
       await themeApi.toggleSale(String(theme.id), newStatus);
-      
+
       ElMessage.success(`${action}成功！`);
-      // 刷新列表以同步状态
-      await reloadCurrentData();
+      // 根据当前标签页刷新列表以同步状态
+      if (currentTab.value === 'mine') {
+        await loadMyThemesOnly();
+      } else {
+        await reloadCurrentData();
+      }
     } catch (error: any) {
       console.error('[CreatorCenter] 切换销售状态失败:', error);
       ElMessage.error('操作失败：' + (error.response?.data?.message || error.message || '未知错误'));

@@ -463,7 +463,30 @@ public class ThemeServiceImpl implements ThemeService {
         LambdaQueryWrapper<ThemeInfo> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ThemeInfo::getAuthorId, authorId)
                .orderByDesc(ThemeInfo::getCreatedAt);
-        
+
+        return themeInfoMapper.selectList(wrapper);
+    }
+
+    /**
+     * ⭐ 获取我的主题（支持按 ownerType 和 ownerId 筛选）
+     */
+    @Override
+    public List<ThemeInfo> getMyThemes(Long authorId, String ownerType, Long ownerId) {
+        LambdaQueryWrapper<ThemeInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ThemeInfo::getAuthorId, authorId);
+
+        // 如果指定了 ownerType，则添加筛选条件
+        if (ownerType != null && !ownerType.isEmpty()) {
+            wrapper.eq(ThemeInfo::getOwnerType, ownerType);
+
+            // 如果是游戏主题且指定了 ownerId，则添加 ownerId 筛选
+            if ("GAME".equals(ownerType) && ownerId != null) {
+                wrapper.eq(ThemeInfo::getOwnerId, ownerId);
+            }
+        }
+
+        wrapper.orderByDesc(ThemeInfo::getCreatedAt);
+
         return themeInfoMapper.selectList(wrapper);
     }
 
@@ -1034,14 +1057,14 @@ public class ThemeServiceImpl implements ThemeService {
             log.warn("参数为空；无法获取用户使用的主题；userId: {}, ownerType: {}, ownerId: {}", userId, ownerType, ownerId);
             return null;
         }
-        
+
         try {
             UserThemePreference preference = userThemePreferenceMapper.selectUserCurrentTheme(userId, ownerType, ownerId);
             if (preference != null) {
-                log.info("获取用户当前主题成功；userId: {}, ownerType: {}, ownerId: {}, themeId: {}", 
+                log.info("获取用户当前主题成功；userId: {}, ownerType: {}, ownerId: {}, themeId: {}",
                         userId, ownerType, ownerId, preference.getThemeId());
             } else {
-                log.info("用户没有主题锅忓ソ；userId: {}, ownerType: {}, ownerId: {}", userId, ownerType, ownerId);
+                log.info("用户没有主题偏好；userId: {}, ownerType: {}, ownerId: {}", userId, ownerType, ownerId);
             }
             return preference;
         } catch (Exception e) {
@@ -1051,17 +1074,42 @@ public class ThemeServiceImpl implements ThemeService {
     }
 
     /**
-     * 保存用户主题锅忓ソ
+     * ⭐ 获取用户所有主题偏好设置
+     */
+    @Override
+    public List<UserThemePreference> getUserPreferences(Long userId) {
+        if (userId == null) {
+            log.warn("参数为空；无法获取用户主题偏好列表；userId: {}", userId);
+            return new java.util.ArrayList<>();
+        }
+
+        try {
+            LambdaQueryWrapper<UserThemePreference> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(UserThemePreference::getUserId, userId)
+                   .orderByDesc(UserThemePreference::getCreatedAt);
+
+            List<UserThemePreference> preferences = userThemePreferenceMapper.selectList(wrapper);
+            log.info("获取用户主题偏好列表成功；userId: {}, 数量: {}", userId, preferences.size());
+
+            return preferences;
+        } catch (Exception e) {
+            log.error("获取用户主题偏好列表失败；userId: {}", userId, e);
+            return new java.util.ArrayList<>();
+        }
+    }
+
+    /**
+     * 保存用户主题偏好
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean saveUserPreference(Long userId, String ownerType, Long ownerId, Long themeId) {
         if (userId == null || ownerType == null || ownerId == null || themeId == null) {
-            log.warn("参数为空；无法保存用户主题锅忓ソ；userId: {}, ownerType: {}, ownerId: {}, themeId: {}", 
+            log.warn("参数为空；无法保存用户主题偏好；userId: {}, ownerType: {}, ownerId: {}, themeId: {}",
                     userId, ownerType, ownerId, themeId);
             return false;
         }
-        
+
         try {
             // 验证主题是否存在
             ThemeInfo theme = themeInfoMapper.selectById(themeId);
@@ -1069,7 +1117,7 @@ public class ThemeServiceImpl implements ThemeService {
                 log.warn("主题不存在；themeId={}", themeId);
                 return false;
             }
-            
+
             // 验证主题的 ownerType 和 ownerId 是否匹配
             if (!ownerType.equals(theme.getOwnerType()) || !ownerId.equals(theme.getOwnerId())) {
                 log.warn("主题不匹配；theme: ownerType={}, ownerId={}, target: ownerType={}, ownerId={}",

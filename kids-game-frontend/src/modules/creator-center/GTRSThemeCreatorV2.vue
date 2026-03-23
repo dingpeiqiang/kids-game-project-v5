@@ -5,33 +5,37 @@
       <div class="header-left">
         <el-button @click="goBack" class="back-btn">
           <el-icon><ArrowLeft /></el-icon>
-          返回创作者中心
+          {{ isViewOnlyMode ? '关闭' : '返回创作者中心' }}
         </el-button>
-        <span class="title">🎨 GTRS主题编辑器</span>
-        <el-tag v-if="isDirty" type="warning" size="small">未保存</el-tag>
-        <el-tag v-if="isEditMode" type="success" size="small">编辑模式</el-tag>
-        <el-tag v-else-if="hasRouteThemeId" type="info" size="small">DIY 模式</el-tag>
+        <span class="title">🎨 GTRS 主题编辑器</span>
+        <el-tag v-if="isViewOnlyMode" type="info" size="small">👁️ 查看模式</el-tag>
+        <el-tag v-else-if="isDirty" type="warning" size="small">未保存</el-tag>
+        <el-tag v-else-if="isEditMode" type="success" size="small">编辑模式</el-tag>
+        <el-tag v-else-if="hasRouteThemeId && !isViewOnlyMode" type="info" size="small">DIY 模式</el-tag>
       </div>
       <div class="header-center">
-        <!-- 编辑模式切换 -->
-        <el-radio-group v-model="editMode" size="small">
+        <!-- ⭐ 查看模式下隐藏模式切换 -->
+        <el-radio-group v-if="!isViewOnlyMode" v-model="editMode" size="small">
           <el-radio-button value="form">表单模式</el-radio-button>
-          <el-radio-button value="json">JSON模式</el-radio-button>
+          <el-radio-button value="json">JSON 模式</el-radio-button>
         </el-radio-group>
       </div>
       <div class="header-right">
-        <el-button @click="showDraftManager">
-          <el-icon><FolderOpened /></el-icon>
-          草稿管理
-        </el-button>
-        <el-button @click="saveDraft" :loading="saving">
-          <el-icon><Document /></el-icon>
-          保存草稿
-        </el-button>
-        <el-button type="primary" @click="publishTheme" :loading="publishing">
-          <el-icon><Promotion /></el-icon>
-          发布主题
-        </el-button>
+        <!-- ⭐ 查看模式下隐藏所有操作按钮 -->
+        <template v-if="!isViewOnlyMode">
+          <el-button @click="showDraftManager">
+            <el-icon><FolderOpened /></el-icon>
+            草稿管理
+          </el-button>
+          <el-button @click="saveDraft" :loading="saving">
+            <el-icon><Document /></el-icon>
+            保存草稿
+          </el-button>
+          <el-button type="primary" @click="publishTheme" :loading="publishing">
+            <el-icon><Promotion /></el-icon>
+            发布主题
+          </el-button>
+        </template>
       </div>
 
       <!-- 草稿管理对话框 -->
@@ -50,6 +54,237 @@
           正在加载主题数据，请稍候...
         </div>
       </div>
+
+      <!-- ⭐ 查看模式下固定显示预览面板 -->
+      <template v-if="isViewOnlyMode">
+        <div class="view-only-preview">
+          <!-- 查看模式下的主题详情展示 -->
+          <el-card shadow="hover" class="theme-detail-card">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">👁️ 主题详情</span>
+                <el-tag type="info" size="small">只读模式</el-tag>
+              </div>
+            </template>
+            
+            <div class="theme-detail-content">
+              <!-- 封面图 -->
+              <div class="detail-section">
+                <h4 class="section-title">📸 主题封面</h4>
+                <div class="cover-image-wrapper">
+                  <el-image
+                    v-if="themeBasicInfo.thumbnailUrl"
+                    :src="themeBasicInfo.thumbnailUrl"
+                    fit="cover"
+                    class="cover-image"
+                    :preview-src-list="[themeBasicInfo.thumbnailUrl]"
+                  >
+                    <template #placeholder>
+                      <div class="image-placeholder">🎨</div>
+                    </template>
+                  </el-image>
+                  <div v-else class="cover-placeholder">
+                    <span>🎨 暂无封面</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 基本信息 -->
+              <div class="detail-section">
+                <h4 class="section-title">📋 基本信息</h4>
+                <el-descriptions :column="2" border>
+                  <el-descriptions-item label="主题名称">
+                    {{ themeBasicInfo.themeName || '未命名' }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="主题 ID">
+                    {{ themeBasicInfo.themeId }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="作者">
+                    {{ themeBasicInfo.authorName || '未知' }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="适用范围">
+                    <el-tag size="small" :type="themeBasicInfo.ownerType === 'GAME' ? 'primary' : 'warning'">
+                      {{ themeBasicInfo.ownerType === 'GAME' ? '🎮 游戏' : '📱 应用' }}
+                    </el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="主题来源" v-if="themeBasicInfo.isOfficial !== undefined">
+                    <el-tag size="small" :type="themeBasicInfo.isOfficial ? 'warning' : 'info'">
+                      {{ themeBasicInfo.isOfficial ? '🏛️ 官方' : '🎨 个人' }}
+                    </el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="状态">
+                    <el-tag size="small" :type="getStatusType(themeBasicInfo.status)">
+                      {{ getStatusText(themeBasicInfo.status) }}
+                    </el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="价格" :span="2">
+                    <el-tag size="small" :type="themeBasicInfo.price === 0 ? 'success' : 'warning'">
+                      {{ themeBasicInfo.price === 0 ? '免费' : `¥${themeBasicInfo.price}` }}
+                    </el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="主题描述" :span="2">
+                    {{ themeBasicInfo.description || '暂无描述' }}
+                  </el-descriptions-item>
+                </el-descriptions>
+              </div>
+              
+              <!-- 统计数据 -->
+              <div class="detail-section">
+                <h4 class="section-title">📊 统计数据</h4>
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <div class="stat-value">{{ themeBasicInfo.downloadCount || 0 }}</div>
+                    <div class="stat-label">下载次数</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value">{{ themeBasicInfo.totalRevenue || 0 }}</div>
+                    <div class="stat-label">总收益 (¥)</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value">{{ formatDate(themeBasicInfo.createdAt) }}</div>
+                    <div class="stat-label">创建时间</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value">{{ formatDate(themeBasicInfo.updatedAt) }}</div>
+                    <div class="stat-label">更新时间</div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 资源统计 -->
+              <div class="detail-section" v-if="themeData.resources">
+                <h4 class="section-title">🎨 资源配置</h4>
+                
+                <!-- 资源概览 -->
+                <div class="resource-stats">
+                  <div class="resource-item">
+                    <span class="resource-icon">🖼️</span>
+                    <span class="resource-label">图片资源</span>
+                    <span class="resource-count">
+                      {{ countResources(themeData.resources.images) }} 个
+                    </span>
+                  </div>
+                  <div class="resource-item">
+                    <span class="resource-icon">🎵</span>
+                    <span class="resource-label">音频资源</span>
+                    <span class="resource-count">
+                      {{ countResources(themeData.resources.audio) }} 个
+                    </span>
+                  </div>
+                </div>
+                
+                <!-- 图片资源详情 -->
+                <div class="resource-detail" v-if="themeData.resources.images && Object.keys(themeData.resources.images).length > 0">
+                  <el-collapse v-model="activeResourceCollapse" class="resource-collapse">
+                    <el-collapse-item name="images">
+                      <template #title>
+                        <div class="collapse-title">
+                          <span>🖼️ 图片资源详情</span>
+                          <el-tag size="small" type="info">{{ countResources(themeData.resources.images) }} 个</el-tag>
+                        </div>
+                      </template>
+                      
+                      <div class="resource-list">
+                        <div 
+                          v-for="(category, categoryKey) in themeData.resources.images" 
+                          :key="categoryKey"
+                          class="resource-category"
+                        >
+                          <h5 class="category-title">{{ getCategoryLabel(categoryKey) }}</h5>
+                          <div class="resource-grid">
+                            <div 
+                              v-for="(resource, resourceKey) in category" 
+                              :key="resourceKey"
+                              class="resource-card"
+                            >
+                              <div class="resource-preview">
+                                <el-image
+                                  v-if="resource.src && resource.src !== '[待上传]'"
+                                  :src="resource.src"
+                                  fit="contain"
+                                  class="resource-thumb"
+                                  :preview-src-list="[resource.src]"
+                                  preview-teleported
+                                >
+                                  <template #placeholder>
+                                    <div class="image-loading">加载中...</div>
+                                  </template>
+                                  <template #error>
+                                    <div class="image-error">
+                                      <span>加载失败</span>
+                                    </div>
+                                  </template>
+                                </el-image>
+                                <div v-else class="no-resource">
+                                  <span>🚫</span>
+                                  <p>未上传</p>
+                                </div>
+                              </div>
+                              <div class="resource-info">
+                                <p class="resource-name" :title="resource.alias || resourceKey">{{ resource.alias || resourceKey }}</p>
+                                <p class="resource-size" v-if="resource.width && resource.height">
+                                  {{ resource.width }} × {{ resource.height }}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
+                </div>
+                
+                <!-- 音频资源详情 -->
+                <div class="resource-detail" v-if="themeData.resources.audio && Object.keys(themeData.resources.audio).length > 0">
+                  <el-collapse v-model="activeResourceCollapse" class="resource-collapse">
+                    <el-collapse-item name="audio">
+                      <template #title>
+                        <div class="collapse-title">
+                          <span>🎵 音频资源详情</span>
+                          <el-tag size="small" type="info">{{ countResources(themeData.resources.audio) }} 个</el-tag>
+                        </div>
+                      </template>
+                      
+                      <div class="resource-list">
+                        <div 
+                          v-for="(category, categoryKey) in themeData.resources.audio" 
+                          :key="categoryKey"
+                          class="resource-category"
+                        >
+                          <h5 class="category-title">{{ getCategoryLabel(categoryKey) }}</h5>
+                          <div class="resource-grid">
+                            <div 
+                              v-for="(resource, resourceKey) in category" 
+                              :key="resourceKey"
+                              class="resource-card audio-card"
+                            >
+                              <div class="resource-preview">
+                                <div class="audio-placeholder">
+                                  <span>🎵</span>
+                                </div>
+                              </div>
+                              <div class="resource-info">
+                                <p class="resource-name" :title="resource.alias || resourceKey">{{ resource.alias || resourceKey }}</p>
+                                <audio 
+                                  v-if="resource.src && resource.src !== '[待上传]'" 
+                                  :src="resource.src" 
+                                  controls 
+                                  class="audio-player"
+                                />
+                                <p v-else class="no-audio">未上传</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
+                </div>
+              </div>
+            </div>
+          </el-card>
+        </div>
+      </template>
 
       <!-- ⭐ 数据就绪后才渲染表单，子组件 onMounted 时拿到的是完整数据 -->
       <template v-else-if="editMode === 'form'">
@@ -230,7 +465,10 @@ const userStore = useUserStore()
 // gameId: 新主题的 ownerId（数据库主键）
 const routeThemeId = route.query.themeId as string | undefined
 const routeGameId = route.query.gameId ? Number(route.query.gameId) : null
-const routeMode = route.query.mode as string | undefined  // 'edit' 表示编辑模式
+const routeMode = route.query.mode as string | undefined  // 'edit' 表示编辑模式，'view' 表示查看模式
+
+// ⭐ 新增：是否为只读查看模式
+const isViewOnlyMode = computed(() => routeMode === 'view')
 
 // 是否为编辑模式（相对于 DIY 模式）
 const isEditMode = computed(() => routeMode === 'edit')
@@ -238,9 +476,11 @@ const isEditMode = computed(() => routeMode === 'edit')
 // 是否有 routeThemeId，用于判断是否禁用游戏选择
 const hasRouteThemeId = computed(() => !!routeThemeId)
 
-// 编辑器模式：'create' (创作) / 'diy' (DIY) / 'edit' (编辑)
+// 编辑器模式：'create' (创作) / 'diy' (DIY) / 'edit' (编辑) / 'view' (查看)
 const editorMode = computed(() => {
-  if (routeMode === 'edit') {
+  if (routeMode === 'view') {
+    return 'view'
+  } else if (routeMode === 'edit') {
     return 'edit'
   } else if (routeThemeId) {
     return 'diy'
@@ -364,6 +604,12 @@ const switchTab = (tab: string) => {
 
 // 返回创作者中心
 const goBack = async () => {
+  if (isViewOnlyMode.value) {
+    // 查看模式下直接返回，不需要提示
+    router.push('/creator-center')
+    return
+  }
+  
   if (isDirty.value) {
     try {
       await ElMessageBox.confirm(
@@ -383,6 +629,65 @@ const goBack = async () => {
     router.push('/creator-center')
   }
 }
+
+// 获取状态文本
+const getStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    pending: '审核中',
+    on_sale: '已上架',
+    offline: '已下架'
+  }
+  return statusMap[status] || status
+}
+
+// 获取状态类型
+const getStatusType = (status: string) => {
+  const typeMap: Record<string, 'warning' | 'success' | 'info'> = {
+    pending: 'warning',
+    on_sale: 'success',
+    offline: 'info'
+  }
+  return typeMap[status] || 'info'
+}
+
+// 格式化日期
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return 'N/A'
+  try {
+    return new Date(dateStr).toLocaleDateString('zh-CN')
+  } catch {
+    return 'N/A'
+  }
+}
+
+// 统计资源数量
+const countResources = (resources?: any) => {
+  if (!resources) return 0
+  let count = 0
+  Object.values(resources).forEach((category: any) => {
+    if (category && typeof category === 'object') {
+      count += Object.keys(category).length
+    }
+  })
+  return count
+}
+
+// 获取分类标签
+const getCategoryLabel = (categoryKey: string) => {
+  const categoryMap: Record<string, string> = {
+    login: '登录页',
+    scene: '场景',
+    ui: 'UI 元素',
+    icon: '图标',
+    effect: '特效',
+    bgm: '背景音乐',
+    voice: '语音'
+  }
+  return categoryMap[categoryKey] || categoryKey
+}
+
+// 查看模式下的活动折叠面板
+const activeResourceCollapse = ref<string[]>(['images', 'audio'])
 
 // 保存草稿
 const saveDraft = async () => {
@@ -851,7 +1156,7 @@ const loadExistingTheme = async (themeId: string) => {
 
     // 验证是否是 GTRS 格式
     if (!gtrsConfig.specMeta || gtrsConfig.specMeta.specName !== 'GTRS') {
-      ElMessage.error('该主题不是有效的GTRS格式，无法编辑')
+      ElMessage.error('该主题不是有效的 GTRS 格式，无法编辑')
       router.push('/creator-center')
       return
     }
@@ -868,10 +1173,39 @@ const loadExistingTheme = async (themeId: string) => {
         : (rawOwnerId ?? 0)
       console.log('[loadExistingTheme] ownerId 类型转换:', rawOwnerId, '→', themeInfoData.ownerId)
 
-      // 合并 themeInfo 数据到 themeBasicInfo
-      themeBasicInfo.value = {
-        ...themeBasicInfo.value,
-        ...themeInfoData
+      // ⭐ 查看模式下，完整填充 themeBasicInfo
+      if (isViewOnlyMode.value) {
+        themeBasicInfo.value = {
+          themeId: themeInfoData.themeId || Number(themeId),
+          authorId: themeInfoData.authorId || 0,
+          isOfficial: themeInfoData.isOfficial || false,
+          ownerType: themeInfoData.ownerType || 'APPLICATION',
+          ownerId: themeInfoData.ownerId || 0,
+          themeName: themeInfoData.themeName || '未命名主题',
+          authorName: themeInfoData.authorName || '未知作者',
+          price: themeInfoData.price || 0,
+          status: themeInfoData.status || 'pending',
+          downloadCount: themeInfoData.downloadCount || 0,
+          totalRevenue: themeInfoData.totalRevenue || 0,
+          thumbnailUrl: themeInfoData.thumbnailUrl || '',
+          description: themeInfoData.description || '',
+          isDefault: themeInfoData.isDefault || false,
+          gameCode: themeInfoData.gameCode || '',
+          gameId: themeInfoData.gameId || null,
+          createdAt: themeInfoData.createdAt,
+          updatedAt: themeInfoData.updatedAt
+        }
+      } else {
+        // DIY 或编辑模式下保持原有逻辑
+        themeBasicInfo.value = {
+          ...themeBasicInfo.value,
+          ...themeInfoData
+        }
+        
+        // DIY 模式：生成新的 themeId
+        if (!isEditMode.value && !isViewOnlyMode.value) {
+          themeBasicInfo.value.themeId = Date.now()
+        }
       }
 
       // ⭐ 打印资源汇总，方便调试和查看
@@ -1186,5 +1520,346 @@ watch(editMode, (newMode) => {
   align-items: center;
   padding: 0 20px;
   gap: 12px;
+}
+
+// ⭐ 查看模式专用样式
+.view-only-preview {
+  width: 100%;
+  height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding: 24px;
+  background: #f5f7fa;
+}
+
+.theme-detail-card {
+  max-width: 1000px;
+  margin: 0 auto;
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .theme-detail-content {
+    .detail-section {
+      margin-bottom: 32px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 16px;
+        padding-left: 12px;
+        border-left: 4px solid #4ECDC4;
+      }
+    }
+    
+    .cover-image-wrapper {
+      max-width: 600px;
+      margin: 0 auto;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      
+      .cover-image {
+        width: 100%;
+        height: 300px;
+        
+        .image-placeholder {
+          width: 100%;
+          height: 300px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          font-size: 48px;
+        }
+      }
+      
+      .cover-placeholder {
+        width: 100%;
+        height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-size: 18px;
+        font-weight: 500;
+      }
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      
+      .stat-item {
+        text-align: center;
+        padding: 16px;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border-radius: 8px;
+        
+        .stat-value {
+          font-size: 24px;
+          font-weight: 700;
+          color: #0284c7;
+          margin-bottom: 8px;
+        }
+        
+        .stat-label {
+          font-size: 12px;
+          color: #64748b;
+        }
+      }
+    }
+    
+    .resource-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      
+      .resource-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-radius: 8px;
+        
+        .resource-icon {
+          font-size: 24px;
+        }
+        
+        .resource-label {
+          font-size: 14px;
+          color: #92400e;
+          flex: 1;
+        }
+        
+        .resource-count {
+          font-size: 18px;
+          font-weight: 600;
+          color: #78350f;
+        }
+      }
+    }
+    
+    // 资源详情
+    .resource-detail {
+      margin-top: 20px;
+      
+      .resource-collapse {
+        border: 1px solid #e4e7ed;
+        border-radius: 8px;
+        overflow: hidden;
+        
+        .collapse-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+          font-weight: 500;
+        }
+      }
+      
+      .resource-list {
+        padding: 16px;
+        
+        .resource-category {
+          margin-bottom: 24px;
+          
+          &:last-child {
+            margin-bottom: 0;
+          }
+          
+          .category-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #606266;
+            margin-bottom: 12px;
+            padding-left: 8px;
+            border-left: 3px solid #4ECDC4;
+          }
+          
+          .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            
+              .resource-card {
+                border: 1px solid #e4e7ed;
+                border-radius: 8px;
+                overflow: hidden; // 防止内容溢出
+                transition: all 0.3s;
+                display: flex; // 使用 flex 布局
+                flex-direction: column; // 垂直排列
+                
+                &:hover {
+                  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                  transform: translateY(-2px);
+                }
+                
+                &.audio-card {
+                  .resource-preview {
+                    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+                  }
+                }
+                
+                .resource-preview {
+                  width: 100%;
+                  height: 120px;
+                  background: #f5f7fa;
+                  position: relative;
+                  overflow: hidden; // 防止图片溢出
+                  flex-shrink: 0; // 不压缩预览区
+                  
+                  .resource-thumb {
+                    width: 100%;
+                    height: 100%;
+                    display: flex; // 确保图片容器也是 flex
+                    align-items: center;
+                    justify-content: center;
+                    background: #fff; // 白色背景，更好展示图片
+                    position: relative; // 定位上下文
+                    
+                    // 限制预览图的最大尺寸
+                    :deep(.el-image__inner) {
+                      max-width: 100% !important;
+                      max-height: 100% !important;
+                      object-fit: contain !important; // 保持比例，不裁剪
+                      display: block; // 移除 inline 默认样式
+                      margin: auto; // 居中显示
+                    }
+                    
+                    .image-loading {
+                      width: 100%;
+                      height: 100%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: #909399;
+                      font-size: 12px;
+                    }
+                  }
+                  
+                  // 图片加载失败提示
+                  .image-error {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: #fef0f0;
+                    color: #f56c6c;
+                    font-size: 12px;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                  }
+                  
+                  .no-resource {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    color: #909399;
+                    
+                    span {
+                      font-size: 32px;
+                      margin-bottom: 8px;
+                    }
+                    
+                    p {
+                      font-size: 12px;
+                      margin: 0;
+                    }
+                  }
+                }
+                
+                .resource-info {
+                  padding: 12px;
+                  flex: 1; // 占据剩余空间
+                  min-height: 80px; // 最小高度保证
+                  
+                  .resource-name {
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: #303133;
+                    margin: 0 0 8px 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                  }
+                  
+                  .resource-size {
+                    font-size: 11px;
+                    color: #909399;
+                    margin: 0;
+                  }
+                  
+                  .audio-player {
+                    width: 100%;
+                    margin-top: 8px;
+                  }
+                  
+                  .no-audio {
+                    font-size: 12px;
+                    color: #909399;
+                    margin: 8px 0 0 0;
+                  }
+                }
+              }
+          }
+        }
+      }
+    }
+  }
+}
+
+// ⭐ 图片预览弹窗样式 - 限制最大尺寸
+.el-image-viewer__wrapper {
+  img {
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+    object-fit: contain !important;
+  }
+}
+
+// 防止预览时的闪烁和重影
+.el-image-viewer {
+  .el-image-viewer__overlay {
+    background-color: rgba(0, 0, 0, 0.9) !important;
+  }
+  
+  // 确保预览窗口正确定位
+  position: fixed;
+  z-index: 10000;
+}
+
+// 响应式
+@media (max-width: 768px) {
+  .view-only-preview {
+    padding: 16px;
+  }
+  
+  .theme-detail-card {
+    .theme-detail-content {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .resource-stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
 }
 </style>
