@@ -51,6 +51,41 @@ public class Game implements Serializable {
     private String iconUrl;
 
     /**
+     * 游戏封面 URL
+     */
+    @TableField("cover_url")
+    private String coverUrl;
+
+    /**
+     * 游戏资源 CDN 地址
+     */
+    @TableField("resource_url")
+    private String resourceUrl;
+
+    /**
+     * 游戏描述
+     */
+    private String description;
+
+    /**
+     * 游戏访问地址 URL（独立部署时使用）
+     */
+    @TableField("game_url")
+    private String gameUrl;
+
+    /**
+     * 游戏密钥（用于签名验证）
+     */
+    @TableField("game_secret")
+    private String gameSecret;
+
+    /**
+     * 游戏配置（透传给游戏的 JSON 配置）
+     */
+    @TableField("game_config")
+    private String gameConfig;
+
+    /**
      * 是否推荐：0-否，1-是
      */
     @TableField("is_featured")
@@ -63,6 +98,7 @@ public class Game implements Serializable {
 
     /**
      * 状态：0-草稿，1-待审核，2-已上架，3-已下架，4-审核驳回
+     * 使用 GameStatusEnum 枚举：DRAFT, PENDING_REVIEW, ON_SALE, OFFLINE, REJECTED
      */
     private Integer status;
 

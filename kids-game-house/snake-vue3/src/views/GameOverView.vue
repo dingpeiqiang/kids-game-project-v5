@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full flex flex-col items-center justify-center p-4 fade-in overflow-y-auto" :style="containerStyle">
+  <div class="w-full h-full flex flex-col items-center justify-center px-4 fade-in overflow-y-auto" :style="containerStyle">
     <!-- 游戏结束图标 -->
     <div class="animate-bounce mb-4 md:mb-6" :style="emojiStyle">😢</div>
     
@@ -31,14 +31,41 @@
     </div>
 
     <!-- 按钮 -->
-    <div class="flex flex-col gap-3 md:gap-4 w-full max-w-xs px-4" :style="buttonContainerStyle">
-      <GameButton variant="primary" @click="playAgain" class="w-full" :style="buttonStyle">
+    <div class="flex flex-col md:flex-row flex-wrap gap-2 md:gap-3 w-full max-w-md justify-center" :style="buttonContainerStyle">
+      <GameButton
+        variant="primary"
+        @click="playAgain"
+        class="flex-1 min-w-[140px] max-w-[180px]"
+        :fontSize="16"
+        :paddingLeft="20"
+        :paddingRight="20"
+        :paddingTop="10"
+        :paddingBottom="10"
+      >
         🔄 再来一局
       </GameButton>
-      <GameButton variant="secondary" @click="goHome" class="w-full" :style="buttonStyle">
+      <GameButton
+        variant="secondary"
+        @click="goHome"
+        class="flex-1 min-w-[140px] max-w-[180px]"
+        :fontSize="16"
+        :paddingLeft="20"
+        :paddingRight="20"
+        :paddingTop="10"
+        :paddingBottom="10"
+      >
         🏠 返回首页
       </GameButton>
-      <GameButton variant="success" @click="changeDifficulty" class="w-full" :style="buttonStyle">
+      <GameButton
+        variant="success"
+        @click="changeDifficulty"
+        class="flex-1 min-w-[140px] max-w-[180px]"
+        :fontSize="16"
+        :paddingLeft="20"
+        :paddingRight="20"
+        :paddingTop="10"
+        :paddingBottom="10"
+      >
         ⚙️ 更改难度
       </GameButton>
     </div>
@@ -67,8 +94,8 @@ const isNewHighScore = computed(() => {
 
 // 动态样式计算
 const containerStyle = computed(() => ({
-  paddingTop: ui.getPadding(32),
-  paddingBottom: ui.getPadding(32)
+  paddingTop: ui.getPadding(16),
+  paddingBottom: ui.getPadding(16)
 }))
 
 const emojiStyle = computed(() => ({
@@ -80,8 +107,8 @@ const titleStyle = computed(() => ({
 }))
 
 const scoreCardStyle = computed(() => ({
-  padding: ui.getPadding(24),
-  marginBottom: ui.getGap(24)
+  padding: ui.getPadding(16),
+  marginBottom: ui.getGap(20)
 }))
 
 const labelStyle = computed(() => ({
@@ -101,9 +128,9 @@ const infoStyle = computed(() => ({
 }))
 
 const achievementStyle = computed(() => ({
-  padding: ui.getPadding(16),
-  marginBottom: ui.getGap(24),
-  borderRadius: ui.getBorderRadius(12)
+  padding: ui.getPadding(12),
+  marginBottom: ui.getGap(20),
+  borderRadius: ui.getBorderRadius(10)
 }))
 
 const achievementTextStyle = computed(() => ({
@@ -111,13 +138,10 @@ const achievementTextStyle = computed(() => ({
 }))
 
 const buttonContainerStyle = computed(() => ({
-  gap: ui.getGap(16),
-  paddingLeft: ui.getPadding(16),
-  paddingRight: ui.getPadding(16)
-}))
-
-const buttonStyle = computed(() => ({
-  fontSize: ui.getFontSize(18)
+  gap: ui.getGap(12),
+  paddingLeft: ui.getPadding(12),
+  paddingRight: ui.getPadding(12),
+  marginTop: ui.getGap(20)
 }))
 
 const playAgain = () => {

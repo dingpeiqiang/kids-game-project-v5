@@ -78,12 +78,8 @@ body {
   user-select: none;
 }
 
-/* 响应式字体 */
-@media (max-width: 640px) {
-  html {
-    font-size: 14px;
-  }
-}
+/* 响应式字体 - 由 UI 缩放算法统一管理 */
+/* 移除固定字体大小设置，避免与 UI 缩放算法冲突 */
 
 /* 滚动条美化 */
 ::-webkit-scrollbar {

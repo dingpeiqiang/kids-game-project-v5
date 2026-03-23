@@ -99,7 +99,9 @@ public class AdminController {
 
     /**
      * 游戏管理 - 列表
+     * @deprecated 请使用 GameManagementController
      */
+    @Deprecated
     @Operation(summary = "获取游戏列表（分页）")
     @GetMapping("/games")
     public Result<Page<Game>> listGames(
@@ -122,7 +124,9 @@ public class AdminController {
 
     /**
      * 游戏管理 - 更新状态
+     * @deprecated 请使用 GameManagementController
      */
+    @Deprecated
     @Operation(summary = "更新游戏状态")
     @PutMapping("/games/{gameId}/status")
     public Result<Void> updateGameStatus(
@@ -134,7 +138,9 @@ public class AdminController {
 
     /**
      * 游戏管理 - 创建游戏
+     * @deprecated 请使用 GameManagementController
      */
+    @Deprecated
     @Operation(summary = "创建游戏")
     @PostMapping("/games")
     public Result<Game> createGame(@RequestBody GameCreateDTO dto) {
@@ -143,20 +149,10 @@ public class AdminController {
     }
 
     /**
-     * 游戏管理 - 更新游戏
-     */
-    @Operation(summary = "更新游戏信息")
-    @PutMapping("/games/{gameId}")
-    public Result<Void> updateGame(
-            @Parameter(description = "游戏 ID") @PathVariable Long gameId,
-            @RequestBody GameUpdateDTO dto) {
-        adminService.updateGame(gameId, dto);
-        return Result.success();
-    }
-
-    /**
      * 游戏管理 - 批量删除
+     * @deprecated 请使用 GameManagementController
      */
+    @Deprecated
     @Operation(summary = "批量删除游戏")
     @DeleteMapping("/games/batch")
     public Result<Void> batchDeleteGames(
@@ -167,7 +163,9 @@ public class AdminController {
 
     /**
      * 游戏管理 - 获取统计
+     * @deprecated 请使用 GameManagementController
      */
+    @Deprecated
     @Operation(summary = "获取游戏统计信息")
     @GetMapping("/games/{gameId}/stats")
     public Result<GameStatsDTO> getGameStats(@PathVariable Long gameId) {

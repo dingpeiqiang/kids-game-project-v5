@@ -1,31 +1,32 @@
 <template>
-  <div class="flex flex-col gap-3 md:gap-4 w-full">
+  <div class="flex flex-col w-full" :style="containerStyle">
     <div
       v-for="diff in difficulties"
       :key="diff.name"
       @click="selectDifficulty(diff.name)"
       :class="[
-        'p-3 md:p-4 rounded-xl cursor-pointer btn-bounce transition-all border-2 select-none',
+        'cursor-pointer btn-bounce transition-all border-2 select-none',
         selected === diff.name
           ? 'border-green-400 bg-green-400/20 scale-[1.02] shadow-lg shadow-green-400/30'
           : 'border-gray-600 bg-gray-700/50 hover:border-gray-500 hover:bg-gray-700/70'
       ]"
+      :style="cardStyle"
     >
-      <div class="flex justify-between items-center">
+      <div class="flex justify-between items-start gap-3">
         <div class="flex-1 min-w-0">
-          <h3 class="text-lg md:text-xl font-bold truncate" :style="{ color: diff.color }">
+          <h3 class="font-bold truncate" :style="{ ...nameStyle, color: diff.color }">
             {{ diff.nameCN }}
           </h3>
-          <p class="text-gray-400 text-xs md:text-sm mt-1 line-clamp-1">{{ diff.description }}</p>
+          <p class="text-gray-400 mt-1 line-clamp-1" :style="descriptionStyle">{{ diff.description }}</p>
+          <div class="flex flex-wrap gap-1 md:gap-2 text-gray-300" :style="paramsStyle">
+            <span class="text-xs md:text-sm">⚡ 速度：{{ getSpeedLabel(diff.speed) }}</span>
+            <span class="text-xs md:text-sm">💰 倍率：x{{ diff.scoreMultiplier }}</span>
+            <span class="text-xs md:text-sm">🎁 奖励：{{ Math.round(diff.rareFoodChance * 100) }}%</span>
+          </div>
         </div>
-        <div class="text-2xl md:text-3xl ml-3 flex-shrink-0">
+        <div class="ml-2 flex-shrink-0" :style="iconStyle">
           {{ selected === diff.name ? '✅' : '⭕' }}
         </div>
-      </div>
-      <div class="mt-2 md:mt-3 flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm text-gray-300">
-        <span class="whitespace-nowrap">⚡ 速度：{{ getSpeedLabel(diff.speed) }}</span>
-        <span class="whitespace-nowrap">💰 倍率：x{{ diff.scoreMultiplier }}</span>
-        <span class="whitespace-nowrap">🎁 奖励：{{ Math.round(diff.rareFoodChance * 100) }}%</span>
       </div>
     </div>
   </div>
@@ -33,11 +34,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useResponsiveUI } from '@/utils/uiResponsive'
 import { DIFFICULTY_CONFIGS, type Difficulty } from '@/types/game'
 import { useAudioStore } from '@/stores/audio'
 
 const props = defineProps<{
   modelValue: Difficulty
+  uiScale?: number  // ⭐ 支持从父组件传入 uiScale（可选）
 }>()
 
 const emit = defineEmits<{
@@ -45,8 +48,39 @@ const emit = defineEmits<{
 }>()
 
 const audioStore = useAudioStore()
+const ui = useResponsiveUI()
 const difficulties = Object.values(DIFFICULTY_CONFIGS)
 const selected = computed(() => props.modelValue)
+
+// 动态样式计算
+const containerStyle = computed(() => ({
+  gap: ui.getGap(16)
+}))
+
+const cardStyle = computed(() => ({
+  padding: ui.getPadding(16),
+  borderRadius: ui.getBorderRadius(12),
+  // ⭐ 如果传入了 uiScale，使用传入的值覆盖（用于特殊场景）
+  transform: props.uiScale ? `scale(${props.uiScale})` : undefined
+}))
+
+const nameStyle = computed(() => ({
+  fontSize: ui.getFontSize(20)
+}))
+
+const descriptionStyle = computed(() => ({
+  fontSize: ui.getFontSize(14)
+}))
+
+const iconStyle = computed(() => ({
+  fontSize: ui.getFontSize(28)
+}))
+
+const paramsStyle = computed(() => ({
+  marginTop: ui.getGap(8),
+  gap: ui.getGap(8),
+  fontSize: ui.getFontSize(12)  // ⭐ 稍微调小字体，避免溢出
+}))
 
 const selectDifficulty = (diff: Difficulty) => {
   audioStore.playClickSound()

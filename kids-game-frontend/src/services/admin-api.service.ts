@@ -331,6 +331,13 @@ class AdminApiService extends BaseApiService {
   async getGameStats(gameId: number): Promise<GameStats> {
     return this.get<GameStats>(`/api/admin/games/${gameId}/stats`);
   }
+
+  /**
+   * 提交游戏审核
+   */
+  async submitReview(gameId: number): Promise<void> {
+    await this.post<void>(`/api/admin/games/${gameId}/submit-review`);
+  }
 }
 
 export const adminApi = AdminApiService.getInstance();

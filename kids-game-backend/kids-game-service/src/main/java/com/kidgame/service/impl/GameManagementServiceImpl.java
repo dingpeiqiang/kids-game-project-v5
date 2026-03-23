@@ -1,5 +1,6 @@
 package com.kidgame.service.impl;
 
+import com.kidgame.common.enums.GameStatusEnum;
 import com.kidgame.dao.entity.Game;
 import com.kidgame.dao.mapper.GameManagementMapper;
 import com.kidgame.service.GameManagementService;
@@ -53,7 +54,7 @@ public class GameManagementServiceImpl implements GameManagementService {
         if (dto.getConsumePointsPerMinute() != null) game.setConsumePointsPerMinute(dto.getConsumePointsPerMinute());
         if (dto.getMinFatigueToStart() != null) game.setMinFatigueToStart(dto.getMinFatigueToStart());
         
-        game.setStatus(0); // 默认为草稿状态
+        game.setStatus(GameStatusEnum.DRAFT.getCode()); // 默认为草稿状态
         game.setCreatorId(operatorId);
         game.setCreateTime(System.currentTimeMillis());
         game.setUpdateTime(System.currentTimeMillis());
@@ -167,8 +168,16 @@ public class GameManagementServiceImpl implements GameManagementService {
             throw new RuntimeException("游戏不存在：" + gameId);
         }
 
+        // 验证状态流转
+        GameStatusEnum currentStatus = GameStatusEnum.valueOfCode(game.getStatus());
+        GameStatusEnum targetStatus = GameStatusEnum.ON_SALE;
+        
+        if (currentStatus != null && !currentStatus.canTransitionTo(targetStatus)) {
+            throw new RuntimeException("当前状态不允许上架操作。当前状态：" + currentStatus.getDescription());
+        }
+
         // 更新游戏状态为已上架
-        game.setStatus(2);
+        game.setStatus(targetStatus.getCode());
         game.setPublishTime(System.currentTimeMillis());
         game.setUpdateTime(System.currentTimeMillis());
         gameManagementMapper.updateById(game);
@@ -189,8 +198,16 @@ public class GameManagementServiceImpl implements GameManagementService {
             throw new RuntimeException("游戏不存在：" + gameId);
         }
 
+        // 验证状态流转
+        GameStatusEnum currentStatus = GameStatusEnum.valueOfCode(game.getStatus());
+        GameStatusEnum targetStatus = GameStatusEnum.OFFLINE;
+        
+        if (currentStatus != null && !currentStatus.canTransitionTo(targetStatus)) {
+            throw new RuntimeException("当前状态不允许下架操作。当前状态：" + currentStatus.getDescription());
+        }
+
         // 更新游戏状态为已下架
-        game.setStatus(3);
+        game.setStatus(targetStatus.getCode());
         game.setUpdateTime(System.currentTimeMillis());
         gameManagementMapper.updateById(game);
 
@@ -207,8 +224,16 @@ public class GameManagementServiceImpl implements GameManagementService {
             throw new RuntimeException("游戏不存在：" + gameId);
         }
 
+        // 验证状态流转
+        GameStatusEnum currentStatus = GameStatusEnum.valueOfCode(game.getStatus());
+        GameStatusEnum targetStatus = GameStatusEnum.PENDING_REVIEW;
+        
+        if (currentStatus != null && !currentStatus.canTransitionTo(targetStatus)) {
+            throw new RuntimeException("当前状态不允许提交审核。当前状态：" + currentStatus.getDescription());
+        }
+
         // 更新状态为待审核
-        game.setStatus(1);
+        game.setStatus(targetStatus.getCode());
         game.setUpdateTime(System.currentTimeMillis());
         gameManagementMapper.updateById(game);
 
@@ -225,15 +250,28 @@ public class GameManagementServiceImpl implements GameManagementService {
             throw new RuntimeException("游戏不存在：" + gameId);
         }
 
-        // 根据审核结果更新状态
-        if (dto.getReviewStatus() == 1) {
-            // 审核通过
-            game.setStatus(2); // 已上架
-        } else {
-            // 审核驳回
-            game.setStatus(4); // 审核驳回
+        // 验证当前状态是否为待审核
+        GameStatusEnum currentStatus = GameStatusEnum.valueOfCode(game.getStatus());
+        if (currentStatus != GameStatusEnum.PENDING_REVIEW) {
+            throw new RuntimeException("只有待审核状态的游戏才能进行审核。当前状态：" + currentStatus.getDescription());
         }
 
+        // 根据审核结果更新状态
+        GameStatusEnum targetStatus;
+        if (dto.getReviewStatus() == 1) {
+            // 审核通过，流转到已上架
+            targetStatus = GameStatusEnum.ON_SALE;
+        } else {
+            // 审核驳回，流转到审核驳回
+            targetStatus = GameStatusEnum.REJECTED;
+        }
+
+        // 验证状态流转
+        if (!currentStatus.canTransitionTo(targetStatus)) {
+            throw new RuntimeException("状态流转失败。从 " + currentStatus.getDescription() + " 无法流转到 " + targetStatus.getDescription());
+        }
+
+        game.setStatus(targetStatus.getCode());
         game.setUpdateTime(System.currentTimeMillis());
         gameManagementMapper.updateById(game);
 

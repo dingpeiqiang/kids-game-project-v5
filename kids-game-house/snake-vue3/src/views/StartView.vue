@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full flex flex-col items-center justify-center p-4 fade-in relative" :style="containerStyle">
+  <div class="w-full h-full flex flex-col items-center justify-center px-4 fade-in relative" :style="containerStyle">
     <!-- 返回用户首页按钮 -->
     <button
       @click="goToUserHome"
@@ -39,20 +39,24 @@
       variant="primary"
       @click="startGame"
       :disabled="isChecking"
-      class="mb-4"
-      :style="buttonStyle"
+      class="mb-3"
+      :fontSize="18"
+      :paddingLeft="32"
+      :paddingRight="32"
+      :paddingTop="16"
+      :paddingBottom="16"
     >
       {{ isChecking ? '🔍 检查资源中...' : '🎮 开始游戏' }}
     </GameButton>
 
     <!-- 音效开关 -->
-    <div class="mt-6 flex items-center justify-center gap-6">
+    <div class="mt-4 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4" :style="soundToggleContainerStyle">
       <SoundToggle />
       <ThemeSelector />
     </div>
 
     <!-- 操作说明 -->
-    <div class="mt-8 text-center text-gray-400" :style="instructionStyle">
+    <div class="mt-4 text-center text-gray-400" :style="instructionStyle">
       <p>💡 键盘方向键 / WASD 控制方向</p>
       <p>📱 手机滑动屏幕控制方向</p>
     </div>
@@ -107,7 +111,35 @@
         <div class="error-icon">⚠️</div>
         <h3 class="error-title">资源检查失败</h3>
         <p class="error-message">{{ checkError }}</p>
-        <button class="error-btn" @click="showErrorModal = false">我知道了</button>
+        
+        <!-- 重试次数提示 -->
+        <div v-if="retryCount > 0 && retryCount < maxRetryCount" class="retry-hint">
+          <span>已重试 {{ retryCount }} 次</span>
+        </div>
+        
+        <!-- 操作按钮 -->
+        <div class="error-actions">
+          <button 
+            v-if="retryCount < maxRetryCount" 
+            class="error-btn error-btn-retry" 
+            @click="retryCheck"
+          >
+            🔄 重试
+          </button>
+          <button 
+            class="error-btn error-btn-close" 
+            @click="showErrorModal = false; isChecking = false"
+          >
+            关闭
+          </button>
+          <button 
+            v-if="retryCount >= maxRetryCount" 
+            class="error-btn error-btn-home" 
+            @click="goToUserHome"
+          >
+            🏠 返回首页
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -140,18 +172,21 @@ const showErrorModal = ref(false)
 const checkProgress = ref(0)
 const checkStep = ref(0)
 const statusText = ref('准备检测...')
+const retryCount = ref(0)
+const maxRetryCount = 3
+const lastCheckThemeId = ref<string | null>(null)
 
 const highScore = computed(() => gameStore.highScore)
 const playCount = computed(() => gameStore.playCount)
 
 // 动态样式计算
 const containerStyle = computed(() => ({
-  paddingTop: ui.getPadding(32),
-  paddingBottom: ui.getPadding(32)
+  paddingTop: ui.getPadding(16),
+  paddingBottom: ui.getPadding(16)
 }))
 
 const titleContainerStyle = computed(() => ({
-  marginBottom: ui.getGap(32)
+  marginBottom: ui.getGap(24)
 }))
 
 const snakeEmojiStyle = computed(() => ({
@@ -169,8 +204,8 @@ const subtitleStyle = computed(() => ({
 }))
 
 const scoreCardStyle = computed(() => ({
-  padding: ui.getPadding(24),
-  marginBottom: ui.getGap(32)
+  padding: ui.getPadding(16),
+  marginBottom: ui.getGap(24)
 }))
 
 const trophyIconStyle = computed(() => ({
@@ -199,6 +234,12 @@ const instructionStyle = computed(() => ({
   marginTop: ui.getGap(32)
 }))
 
+const soundToggleContainerStyle = computed(() => ({
+  gap: ui.getGap(16)
+}))
+
+// 移除 buttonStyle，现在通过 props 传递
+
 /**
  * ⭐ 返回用户首页
  */
@@ -206,6 +247,42 @@ function goToUserHome() {
   // 跳转到主系统首页（kids-game-frontend 运行在 3000 端口）
   const homeUrl = 'http://localhost:3000/'
   window.location.href = homeUrl
+}
+
+/**
+ * ⭐ 处理错误
+ */
+const handleError = (error: Error | string, friendlyMessage?: string) => {
+  const errorObj = typeof error === 'string' ? new Error(error) : error
+  console.error('❌ 游戏启动失败:', errorObj)
+
+  // 获取友好的错误信息
+  let message = friendlyMessage || '游戏准备失败，请稍后重试'
+  
+  // 根据错误类型提供更具体的建议
+  if (errorObj.message.includes('GTRS') || errorObj.message.includes('主题')) {
+    message = friendlyMessage || '主题资源加载失败，请检查网络或重新选择主题'
+  }
+
+  // 显示错误弹窗
+  checkError.value = message
+  showErrorModal.value = true
+}
+
+/**
+ * ⭐ 重试检查
+ */
+const retryCheck = () => {
+  if (retryCount.value >= maxRetryCount) {
+    handleError(new Error('MAX_RETRY'), '多次尝试失败，建议返回首页重新开始')
+    return
+  }
+
+  retryCount.value++
+  console.log(`🔄 第 ${retryCount.value} 次重试`)
+  
+  // 重新执行检查流程
+  startGame()
 }
 
 /**
@@ -220,19 +297,27 @@ const startGame = async () => {
 
   console.log('🎮 开始游戏按钮被点击')
 
+  // 重置状态
   isChecking.value = true
   checkError.value = null
-  showCheckModal.value = true
   showErrorModal.value = false
   checkProgress.value = 0
   checkStep.value = 0
   statusText.value = '开始检测...'
+  showCheckModal.value = false  // 先不显示，延迟显示避免闪烁
 
-  console.log('✅ Loading 弹窗已显示:', showCheckModal.value)
+  // 延迟 200ms 显示 loading，避免视觉卡顿
+  const loadingTimer = setTimeout(() => {
+    if (isChecking.value) {
+      showCheckModal.value = true
+      console.log('✅ Loading 弹窗已显示:', showCheckModal.value)
+    }
+  }, 200)
 
   try {
     // 获取当前选择的主题 ID
     const themeId = themeStore.currentThemeId
+    lastCheckThemeId.value = themeId  // 记录用于重试
     console.log('🎨 使用主题 ID:', themeId)
 
     // ⭐ 开始完整的游戏检测流程
@@ -243,9 +328,9 @@ const startGame = async () => {
     statusText.value = '验证用户登录状态...'
     const token = localStorage.getItem('token')
     if (!token) {
+      clearTimeout(loadingTimer)
       showCheckModal.value = false
-      checkError.value = '用户未登录，请先登录后再开始游戏'
-      showErrorModal.value = true
+      handleError(new Error('USER_NOT_LOGIN'), '请先登录再玩游戏哦~')
       isChecking.value = false
       return
     }
@@ -282,7 +367,10 @@ const startGame = async () => {
       // 这里直接使用已校验的 gtrsRawJson
       const gtrsJson = themeStore.gtrsRawJson
       if (!gtrsJson) {
-        throw new Error('GTRS 主题未加载，请先选择主题')
+        clearTimeout(loadingTimer)
+        handleError(new Error('THEME_NOT_LOADED'), '还没有选择喜欢的主题呢，请先选择一个主题')
+        isChecking.value = false
+        return
       }
 
       const gtrsData = JSON.parse(gtrsJson)
@@ -330,14 +418,15 @@ const startGame = async () => {
   } catch (error: any) {
     console.error('❌ 游戏启动失败:', error)
 
-    // 显示错误提示
-    const errorMessage = error.message || '游戏启动失败，请重试'
+    // 清除 loading 定时器
+    clearTimeout(loadingTimer)
 
     // 关闭 loading 弹窗，显示错误弹窗
     showCheckModal.value = false
-    checkError.value = errorMessage
-    showErrorModal.value = true
-
+    
+    // 使用统一的错误处理
+    handleError(error, error.message || '游戏启动失败，请重试')
+    
     isChecking.value = false
   }
 }
@@ -455,7 +544,7 @@ const handleResize = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 99999;
+  z-index: 100;
   backdrop-filter: blur(10px);
   animation: fadeIn 0.3s ease;
 }
@@ -532,17 +621,21 @@ const handleResize = () => {
 .check-steps {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
-  padding: 0 0.5rem;
+  margin-bottom: ui.getGap(24);
+  padding: 0 ui.getGap(8);
+  gap: ui.getGap(8);
+  flex-wrap: wrap;
 }
 
 .step {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: ui.getGap(8);
   opacity: 0.3;
   transition: all 0.3s;
+  flex: 0 0 auto;
+  min-width: 60px;
 }
 
 .step.active {
@@ -554,8 +647,8 @@ const handleResize = () => {
 }
 
 .step-icon {
-  width: 32px;
-  height: 32px;
+  width: ui.getWidth(32);
+  height: ui.getHeight(32);
   border-radius: 50%;
   background: #4b5563;
   color: #9ca3af;
@@ -563,8 +656,9 @@ const handleResize = () => {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: ui.getFontSize(14);
   transition: all 0.3s;
+  flex-shrink: 0;
 }
 
 .step.active .step-icon {
@@ -580,9 +674,11 @@ const handleResize = () => {
 }
 
 .step-text {
-  font-size: 0.75rem;
+  font-size: ui.getFontSize(12);
   color: #9ca3af;
   font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .step.active .step-text {
@@ -600,7 +696,7 @@ const handleResize = () => {
 }
 
 .check-hint {
-  font-size: 0.875rem;
+  font-size: ui.getFontSize(14);
   color: #6b7280;
   margin: 0;
 }
@@ -621,12 +717,12 @@ const handleResize = () => {
 }
 
 .status-text {
-  font-size: 0.875rem;
+  font-size: ui.getFontSize(14);
   color: #10b981;
   font-weight: 600;
   text-align: center;
   margin: 0;
-  min-height: 1.25rem;
+  min-height: ui.getHeight(20);
   transition: all 0.3s ease;
 }
 
@@ -643,7 +739,7 @@ const handleResize = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100000;
+  z-index: 200;
   backdrop-filter: blur(10px);
   animation: fadeIn 0.3s ease;
 }
@@ -673,23 +769,80 @@ const handleResize = () => {
 }
 
 .error-message {
-  font-size: 0.875rem;
+  font-size: ui.getFontSize(14);
   color: #d1d5db;
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 ui.getGap(24) 0;
   line-height: 1.6;
   white-space: pre-line;
 }
 
+/* 重试次数提示 */
+.retry-hint {
+  margin-bottom: ui.getGap(16);
+  padding: ui.getPadding(8) ui.getPadding(16);
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: ui.getBorderRadius(8);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.retry-hint span {
+  font-size: ui.getFontSize(14);
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+/* 错误操作按钮组 */
+.error-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .error-btn {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
   border: none;
-  border-radius: 12px;
-  padding: 0.75rem 2rem;
-  font-size: 0.875rem;
+  border-radius: ui.getBorderRadius(12);
+  padding: ui.getPadding(12) ui.getPadding(24);
+  font-size: ui.getFontSize(14);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  flex: 1;
+  min-width: 80px;
+}
+
+/* 重试按钮 */
+.error-btn-retry {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.error-btn-retry:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* 关闭按钮 */
+.error-btn-close {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+}
+
+.error-btn-close:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
+}
+
+/* 返回首页按钮 */
+.error-btn-home {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.error-btn-home:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 .error-btn:hover {
@@ -700,44 +853,57 @@ const handleResize = () => {
 /* 响应式 */
 @media (max-width: 640px) {
   .check-modal {
-    padding: 2rem 1.5rem;
+    padding: ui.getPadding(32) ui.getPadding(24);
   }
 
   .check-icon {
-    font-size: 2.5rem;
+    font-size: ui.getFontSize(64);
   }
 
   .check-title {
-    font-size: 1.25rem;
+    font-size: ui.getFontSize(32);
   }
 
   .check-steps {
-    flex-direction: column;
-    gap: 0.75rem;
-    align-items: flex-start;
+    flex-direction: row;
+    gap: ui.getGap(4);
+    justify-content: center;
   }
 
   .step {
-    flex-direction: row;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: ui.getGap(4);
+    min-width: 50px;
   }
 
   .step-icon {
-    width: 28px;
-    height: 28px;
-    font-size: 0.75rem;
+    width: ui.getWidth(28);
+    height: ui.getHeight(28);
+    font-size: ui.getFontSize(12);
   }
 
   .step-text {
-    font-size: 0.875rem;
+    font-size: ui.getFontSize(11);
   }
 
   .check-status {
-    padding: 0.5rem 0.75rem;
+    padding: ui.getPadding(8) ui.getPadding(12);
   }
 
   .status-text {
-    font-size: 0.75rem;
+    font-size: ui.getFontSize(12);
+  }
+  
+  .error-modal {
+    padding: ui.getPadding(32) ui.getPadding(24);
+  }
+  
+  .error-icon {
+    font-size: ui.getFontSize(48);
+  }
+  
+  .error-title {
+    font-size: ui.getFontSize(24);
   }
 }
 </style>

@@ -23,11 +23,15 @@ export function initUIParams(screenW: number, screenH: number): void {
   
   // 计算 UI 缩放比（基于屏幕尺寸，而非 cellSize）
   // 保证 UI 在不同屏幕上都是最优显示
-  uiScale = Math.min(
+  const rawScale = Math.min(
     screenW / UI_DESIGN_WIDTH,
-    screenH / UI_DESIGN_HEIGHT,
-    1.5  // ⭐ 最大放大到 1.5 倍，显示更大
+    screenH / UI_DESIGN_HEIGHT
   )
+  
+  // 增加最小/最大阈值保护
+  // 最小缩放 0.65（防止在非常小的屏幕上UI过小）
+  // 最大缩放 1.5（防止在超大屏幕上UI过大）
+  uiScale = Math.max(0.65, Math.min(rawScale, 1.5))
   
   // 应用全局字体大小到 root
   applyGlobalFontSize()

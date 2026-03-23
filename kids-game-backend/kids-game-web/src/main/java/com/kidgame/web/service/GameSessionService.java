@@ -1,7 +1,9 @@
 package com.kidgame.web.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.kidgame.common.enums.GameStatusEnum;
 import com.kidgame.common.exception.BusinessException;
+import com.kidgame.common.util.GameStatusUtil;
 import com.kidgame.dao.entity.Game;
 import com.kidgame.dao.entity.BaseUser;
 import com.kidgame.dao.entity.GameRecord;
@@ -51,7 +53,7 @@ public class GameSessionService {
     public GameSession startGame(Long userId, Long gameId) {
         // 检查游戏是否存在
         Game game = gameMapper.selectById(gameId);
-        if (game == null || game.getStatus() != 1) {
+        if (game == null || !GameStatusUtil.canPlay(game.getStatus())) {
             throw new BusinessException("游戏不存在或已下架");
         }
 

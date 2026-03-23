@@ -16,7 +16,7 @@ IF @snake_shooter_game_id IS NULL THEN
     '/images/games/snake_shooter_icon.png',
     '/images/games/snake_shooter_cover.jpg',
     '控制炮台射击蛇关节，无限闯关的解压神器！无需操作自动射击，体验关节破碎的爽快感！',
-  1,  -- status: 1=启用
+  2,  -- status: 2=已上架
   1,  -- sort_order
     '../games/snake-shooter/SnakeShooterGame',
   UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000,

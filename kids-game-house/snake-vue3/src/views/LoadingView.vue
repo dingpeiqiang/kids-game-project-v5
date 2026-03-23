@@ -47,7 +47,16 @@
     <!-- 加载失败提示 -->
     <div v-if="loadError" class="mt-6 p-4 bg-red-900/30 border border-red-500 rounded-lg" :style="errorBoxStyle">
       <p class="text-red-400 text-center" :style="errorMessageStyle">⚠️ {{ errorMessage }}</p>
-      <GameButton variant="primary" @click="continueAnyway" class="mt-4" :style="errorButtonStyle">
+      <GameButton
+        variant="primary"
+        @click="continueAnyway"
+        class="mt-4"
+        :fontSize="14"
+        :paddingLeft="24"
+        :paddingRight="24"
+        :paddingTop="8"
+        :paddingBottom="8"
+      >
         继续游戏
       </GameButton>
     </div>
@@ -167,14 +176,6 @@ const errorBoxStyle = computed(() => ({
 
 const errorMessageStyle = computed(() => ({
   fontSize: ui.getFontSize(14)
-}))
-
-const errorButtonStyle = computed(() => ({
-  fontSize: ui.getFontSize(14),
-  paddingLeft: ui.getPadding(24),
-  paddingRight: ui.getPadding(24),
-  paddingTop: ui.getPadding(8),
-  paddingBottom: ui.getPadding(8)
 }))
 
 /**

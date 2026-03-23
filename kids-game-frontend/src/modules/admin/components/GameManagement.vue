@@ -20,8 +20,11 @@
         
         <select v-model="filters.status" class="filter-select">
           <option value="">全部状态</option>
-          <option value="1">启用</option>
-          <option value="0">禁用</option>
+          <option :value="GAME_STATUS.DRAFT">📝 草稿</option>
+          <option :value="GAME_STATUS.PENDING_REVIEW">⏳ 待审核</option>
+          <option :value="GAME_STATUS.ON_SALE">📤 已上架</option>
+          <option :value="GAME_STATUS.OFFLINE">📥 已下架</option>
+          <option :value="GAME_STATUS.REJECTED">❌ 审核驳回</option>
         </select>
         
         <button @click="loadGames" class="btn-search">🔍 搜索</button>
@@ -80,8 +83,9 @@
           <button 
             @click="toggleGameStatus(game)" 
             class="btn-action btn-toggle"
+            :title="getGameStatusActionText(game)"
           >
-            {{ game.status === GAME_STATUS.ON_SALE ? '📥 下架' : '📤 上架' }}
+            {{ getGameStatusActionText(game) }}
           </button>
           <button @click="viewStats(game)" class="btn-action btn-stats">📈 统计</button>
         </template>
@@ -595,9 +599,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { adminApi, type Game, type GameStats } from '@/services/admin-api.service';
+import { adminApi, type GameStats } from '@/services/admin-api.service';
 import { gameModeApi } from '@/services/game-mode-api.service';
-import { GAME_STATUS } from '@/services/api.types';
+import { GAME_STATUS, getGameStatusText, getGameStatusColor, getGameStatusIcon, getGameStatusBgClass, type Game } from '@/services/api.types';
 import { themeApi } from '@/services/theme-api.service';
 import type { GameModeConfiguration } from '@/modules/game/types/game.types';
 import GameFormModal from '@/components/ui/GameFormModal.vue';
@@ -724,10 +728,64 @@ function editGame(game: Game) {
   showEditModal.value = true;
 }
 
+// 获取游戏状态操作按钮文本
+function getGameStatusActionText(game: Game): string {
+  switch (game.status) {
+    case GAME_STATUS.ON_SALE:
+      return '📥 下架';
+    case GAME_STATUS.OFFLINE:
+      return '📤 上架';
+    case GAME_STATUS.DRAFT:
+      return '📤 提交审核';
+    case GAME_STATUS.PENDING_REVIEW:
+      return '⏳ 审核中';
+    case GAME_STATUS.REJECTED:
+      return '🔄 重新提交';
+    default:
+      return '📤 上架';
+  }
+}
+
+// 获取游戏状态样式类
+function getGameStatusClass(status: number): string {
+  const classMap: Record<number, string> = {
+    [GAME_STATUS.DRAFT]: 'status-draft',
+    [GAME_STATUS.PENDING_REVIEW]: 'status-pending',
+    [GAME_STATUS.ON_SALE]: 'status-onsale',
+    [GAME_STATUS.OFFLINE]: 'status-offline',
+    [GAME_STATUS.REJECTED]: 'status-rejected',
+  };
+  return classMap[status] || 'status-draft';
+}
+
 // 切换游戏状态
 async function toggleGameStatus(game: Game) {
-  const newStatus = game.status === GAME_STATUS.ON_SALE ? GAME_STATUS.OFFLINE : GAME_STATUS.ON_SALE;
-  const action = newStatus === GAME_STATUS.ON_SALE ? '上架' : '下架';
+  let newStatus: number;
+  let action: string;
+  
+  // 根据当前状态决定下一个状态
+  switch (game.status) {
+    case GAME_STATUS.ON_SALE:
+      newStatus = GAME_STATUS.OFFLINE;
+      action = '下架';
+      break;
+    case GAME_STATUS.OFFLINE:
+      newStatus = GAME_STATUS.ON_SALE;
+      action = '上架';
+      break;
+    case GAME_STATUS.DRAFT:
+      await submitReview(game);
+      return;
+    case GAME_STATUS.REJECTED:
+      await submitReview(game);
+      return;
+    case GAME_STATUS.PENDING_REVIEW:
+      await dialog.warning('游戏正在审核中，无法操作');
+      return;
+    default:
+      newStatus = GAME_STATUS.ON_SALE;
+      action = '上架';
+  }
   
   const confirmed = await useConfirm({ message: `确定要${action}游戏"${game.gameName}"吗？`, title: '确认操作' });
   if (!confirmed) return;
@@ -738,6 +796,21 @@ async function toggleGameStatus(game: Game) {
   } catch (error) {
     console.error(`${action}游戏失败:`, error);
     await dialog.error(`${action}游戏失败，请重试`);
+  }
+}
+
+// 提交审核
+async function submitReview(game: Game) {
+  const confirmed = await useConfirm({ message: `确定要提交游戏"${game.gameName}"审核吗？`, title: '确认提交' });
+  if (!confirmed) return;
+  
+  try {
+    await adminApi.submitReview(game.gameId);
+    await dialog.success('提交审核成功！');
+    await loadGames();
+  } catch (error) {
+    console.error('提交审核失败:', error);
+    await dialog.error('提交审核失败，请重试');
   }
 }
 
@@ -1500,6 +1573,40 @@ onMounted(() => {
   margin-bottom: 0.75rem;
 }
 
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.status-badge.status-draft {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.status-badge.status-pending {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.status-badge.status-onsale {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.status-badge.status-offline {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.status-badge.status-rejected {
+  background-color: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
 .game-meta {
   display: flex;
   gap: 0.5rem;
@@ -1529,24 +1636,6 @@ onMounted(() => {
   font-size: 0.8rem;
   color: #666;
   margin-bottom: 0.75rem;
-}
-
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-align: center;
-}
-
-.status-badge.enabled {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-badge.disabled {
-  background: #fee2e2;
-  color: #991b1b;
 }
 
 .card-actions {

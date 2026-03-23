@@ -53,8 +53,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useThemeStore } from '@/stores/theme'
+import { useResponsiveUI } from '@/utils/uiResponsive'
 
 const themeStore = useThemeStore()
+const ui = useResponsiveUI()
 
 const showPanel = ref(false)
 
@@ -145,7 +147,12 @@ function resetTheme() {
 }
 
 .theme-icon {
-  font-size: 18px;
+  font-size: v-bind('ui.getFontSize(18)');
+  margin-right: v-bind('ui.getGap(6)');
+}
+
+.theme-label {
+  font-size: v-bind('ui.getFontSize(14)');
 }
 
 /* 背景遮罩 */
@@ -190,7 +197,7 @@ function resetTheme() {
 }
 
 .theme-header h3 {
-  font-size: 18px;
+  font-size: v-bind('ui.getFontSize(18)');
   margin: 0;
   font-weight: bold;
 }
@@ -198,7 +205,7 @@ function resetTheme() {
 .close-btn {
   background: transparent;
   border: none;
-  font-size: 24px;
+  font-size: v-bind('ui.getFontSize(24)');
   cursor: pointer;
   opacity: 0.7;
   transition: opacity 0.2s;
@@ -212,16 +219,17 @@ function resetTheme() {
 .theme-list {
   display: flex;
   flex-direction: column;
-  padding: 8px;
+  padding: v-bind('ui.getPadding(8)');
+  gap: v-bind('ui.getGap(8)');
 }
 
 .theme-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  margin-bottom: 8px;
-  border-radius: 12px;
+  gap: v-bind('ui.getGap(12)');
+  padding: v-bind('ui.getPadding(16)');
+  margin-bottom: v-bind('ui.getGap(8)');
+  border-radius: v-bind('ui.getBorderRadius(12)');
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid transparent;
@@ -242,26 +250,28 @@ function resetTheme() {
 }
 
 .theme-preview {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
+  width: v-bind('ui.getWidth(48)');
+  height: v-bind('ui.getHeight(48)');
+  border-radius: v-bind('ui.getBorderRadius(10)');
   background: linear-gradient(135deg, var(--item-primary), var(--item-secondary));
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  min-width: v-bind('ui.getWidth(48)');
 }
 
 .preview-colors {
   display: flex;
-  gap: 4px;
+  gap: v-bind('ui.getGap(4)');
 }
 
 .color-dot {
-  width: 12px;
-  height: 12px;
+  width: v-bind('ui.getWidth(12)');
+  height: v-bind('ui.getHeight(12)');
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  border: v-bind('ui.getWidth(2)') solid rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
 }
 
 .theme-info {
@@ -273,46 +283,46 @@ function resetTheme() {
 
 .theme-name {
   font-weight: bold;
-  font-size: 15px;
+  font-size: v-bind('ui.getFontSize(15)');
 }
 
 .theme-desc {
-  font-size: 12px;
+  font-size: v-bind('ui.getFontSize(12)');
   opacity: 0.7;
 }
 
 .check-icon {
-  width: 28px;
-  height: 28px;
+  width: v-bind('ui.getWidth(28)');
+  height: v-bind('ui.getHeight(28)');
   border-radius: 50%;
   background: var(--item-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: v-bind('ui.getFontSize(16)');
   font-weight: bold;
   color: white;
   flex-shrink: 0;
 }
 
 .theme-footer {
-  padding: 16px 20px;
+  padding: v-bind('ui.getPadding(16)') v-bind('ui.getPadding(20)');
   border-top: 1px solid;
   position: sticky;
   bottom: 0;
   background: inherit;
-  border-radius: 0 0 16px 16px;
+  border-radius: v-bind('ui.getBorderRadius(16)') v-bind('ui.getBorderRadius(16)') 0 0;
 }
 
 .reset-btn {
   width: 100%;
-  padding: 10px;
+  padding: v-bind('ui.getPadding(10)');
   border: none;
-  border-radius: 8px;
+  border-radius: v-bind('ui.getBorderRadius(8)');
   background: #ef4444;
   color: white;
   cursor: pointer;
-  font-size: 14px;
+  font-size: v-bind('ui.getFontSize(14)');
   font-weight: 500;
   transition: opacity 0.2s;
 }
@@ -365,12 +375,22 @@ function resetTheme() {
   }
   
   .theme-item {
-    padding: 12px;
+    padding: v-bind('ui.getPadding(12)');
   }
   
   .theme-preview {
-    width: 40px;
-    height: 40px;
+    width: v-bind('ui.getWidth(40)');
+    height: v-bind('ui.getHeight(40)');
+  }
+  
+  .theme-header h3 {
+    font-size: v-bind('ui.getFontSize(18)');
+  }
+  
+  .close-btn {
+    width: v-bind('ui.getWidth(28)');
+    height: v-bind('ui.getHeight(28)');
+    font-size: v-bind('ui.getFontSize(20)');
   }
 }
 </style>

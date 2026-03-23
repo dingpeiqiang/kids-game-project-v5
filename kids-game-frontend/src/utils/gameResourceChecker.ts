@@ -7,6 +7,7 @@
  */
 
 import { gameApi } from '@/services/game-api.service';
+import { isOnSale, canPlay } from '@/services/api.types';
 import { themeApi } from '@/services/theme-api.service';
 
 export interface ResourceCheckResult {
@@ -94,7 +95,7 @@ export async function checkGameResources(
 
     // 5. 检查游戏配置
     console.log('[ResourceChecker] 步骤 5: 检查游戏配置...');
-    if (gameInfo.status !== 1) {
+    if (!canPlay(gameInfo.status)) {
       return {
         passed: false,
         errorMessage: '游戏已下线或维护中，请稍后再试',
@@ -169,7 +170,7 @@ async function checkUrlAccessible(url: string): Promise<{ accessible: boolean; r
 export async function quickCheckGame(gameCode: string): Promise<boolean> {
   try {
     const game = await gameApi.getByCode(gameCode);
-    return !!(game && game.gameUrl && game.status === 1);
+    return !!(game && (game as any).gameUrl && canPlay(game.status));
   } catch (error) {
     return false;
   }
