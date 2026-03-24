@@ -37,7 +37,7 @@
     <!-- 开始按钮 -->
     <GameButton
       variant="primary"
-      @click="startGame"
+      @click="goToDifficulty"
       :disabled="isChecking"
       class="mb-3"
       :fontSize="18"
@@ -46,7 +46,7 @@
       :paddingTop="16"
       :paddingBottom="16"
     >
-      {{ isChecking ? '🔍 检查资源中...' : '🎮 开始游戏' }}
+      🎮 开始游戏
     </GameButton>
 
     <!-- 音效开关 -->
@@ -60,88 +60,6 @@
       <p>💡 键盘方向键 / WASD 控制方向</p>
       <p>📱 手机滑动屏幕控制方向</p>
     </div>
-
-    <!-- 资源检测 Loading 弹窗 -->
-    <div v-if="showCheckModal" class="check-overlay">
-      <div class="check-modal">
-        <div class="check-icon">🔍</div>
-        <h3 class="check-title">正在检测游戏资源</h3>
-        
-        <!-- 进度条 -->
-        <div class="check-progress">
-          <div class="progress-bar" :style="{ width: checkProgress + '%' }"></div>
-        </div>
-
-        <!-- 检测步骤 -->
-        <div class="check-steps">
-          <div class="step" :class="{ active: checkStep >= 1, completed: checkStep > 1 }">
-            <span class="step-icon">{{ checkStep > 1 ? '✓' : '1' }}</span>
-            <span class="step-text">验证登录</span>
-          </div>
-          <div class="step" :class="{ active: checkStep >= 2, completed: checkStep > 2 }">
-            <span class="step-icon">{{ checkStep > 2 ? '✓' : '2' }}</span>
-            <span class="step-text">初始化音频</span>
-          </div>
-          <div class="step" :class="{ active: checkStep >= 3, completed: checkStep > 3 }">
-            <span class="step-icon">{{ checkStep > 3 ? '✓' : '3' }}</span>
-            <span class="step-text">加载主题</span>
-          </div>
-          <div class="step" :class="{ active: checkStep >= 4, completed: checkStep > 4 }">
-            <span class="step-icon">{{ checkStep > 4 ? '✓' : '4' }}</span>
-            <span class="step-text">资源完整性检查</span>
-          </div>
-          <div class="step" :class="{ active: checkStep >= 5 }">
-            <span class="step-icon">5</span>
-            <span class="step-text">启动游戏</span>
-          </div>
-        </div>
-
-        <!-- 实时检测状态 -->
-        <div class="check-status">
-          <p class="status-text">{{ statusText }}</p>
-        </div>
-
-        <p class="check-hint">请稍候，正在为您准备最佳游戏体验...</p>
-      </div>
-    </div>
-
-    <!-- 错误提示弹窗 -->
-    <div v-if="showErrorModal" class="error-overlay" @click="showErrorModal = false">
-      <div class="error-modal" @click.stop>
-        <div class="error-icon">⚠️</div>
-        <h3 class="error-title">资源检查失败</h3>
-        <p class="error-message">{{ checkError }}</p>
-        
-        <!-- 重试次数提示 -->
-        <div v-if="retryCount > 0 && retryCount < maxRetryCount" class="retry-hint">
-          <span>已重试 {{ retryCount }} 次</span>
-        </div>
-        
-        <!-- 操作按钮 -->
-        <div class="error-actions">
-          <button 
-            v-if="retryCount < maxRetryCount" 
-            class="error-btn error-btn-retry" 
-            @click="retryCheck"
-          >
-            🔄 重试
-          </button>
-          <button 
-            class="error-btn error-btn-close" 
-            @click="showErrorModal = false; isChecking = false"
-          >
-            关闭
-          </button>
-          <button 
-            v-if="retryCount >= maxRetryCount" 
-            class="error-btn error-btn-home" 
-            @click="goToUserHome"
-          >
-            🏠 返回首页
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -150,6 +68,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/game'
 import { useThemeStore } from '@/stores/theme'
+import { useAudioStore } from '@/stores/audio'  // ⭐ 添加导入
 import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
 import GameButton from '@/components/ui/GameButton.vue'
 import SoundToggle from '@/components/ui/SoundToggle.vue'
@@ -159,6 +78,7 @@ import { SnakePhaserGame } from '@/components/game/PhaserGame'
 const router = useRouter()
 const gameStore = useGameStore()
 const themeStore = useThemeStore()
+const audioStore = useAudioStore()  // ⭐ 初始化 audioStore
 const ui = useResponsiveUI()
 
 // PhaserGame 实例（用于播放主菜单音乐）
@@ -247,6 +167,29 @@ function goToUserHome() {
   // 跳转到主系统首页（kids-game-frontend 运行在 3000 端口）
   const homeUrl = 'http://localhost:3000/'
   window.location.href = homeUrl
+}
+
+/**
+ * ⭐ 跳转到难度选择页面
+ */
+function goToDifficulty() {
+  audioStore.playClickSound()
+  
+  // 获取当前选择的主题 ID
+  const themeId = themeStore.currentThemeId
+  console.log('🎨 跳转到难度选择，主题 ID:', themeId)
+  
+  // ⭐ 保存主题 ID 到 localStorage，供"再来一局"使用
+  if (themeId) {
+    localStorage.setItem('current-theme-id', themeId)
+    console.log('💾 已保存主题 ID 到 localStorage:', themeId)
+  }
+  
+  // 直接跳转到难度选择页面（带上 theme_id 参数）
+  router.push({
+    path: '/difficulty',
+    query: { theme_id: themeId }
+  })
 }
 
 /**
@@ -409,6 +352,12 @@ const startGame = async () => {
 
     // 关闭 loading 弹窗
     showCheckModal.value = false
+
+    // ⭐ 保存当前主题 ID 到 localStorage，供"再来一局"使用
+    if (themeId) {
+      localStorage.setItem('current-theme-id', themeId)
+      console.log('💾 已保存主题 ID 到 localStorage:', themeId)
+    }
 
     // 跳转到难度选择页面（带上 theme_id 参数）
     router.push({

@@ -74,13 +74,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '@/stores/game'
 import { useAudioStore } from '@/stores/audio'
 import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
 import GameButton from '@/components/ui/GameButton.vue'
 
 const router = useRouter()
+const route = useRoute()  // ⭐ 添加 route 获取当前路由参数
 const gameStore = useGameStore()
 const audioStore = useAudioStore()
 const ui = useResponsiveUI()
@@ -146,9 +147,22 @@ const buttonContainerStyle = computed(() => ({
 
 const playAgain = () => {
   audioStore.playClickSound()
+  
+  // ⭐ 获取当前主题 ID（从父组件或 localStorage）
+  const currentThemeId = route.query.theme_id as string || localStorage.getItem('current-theme-id') || 'default'
+  
+  console.log('🔄 再来一局，使用主题 ID:', currentThemeId)
+  
   gameStore.resetGame()
   gameStore.startGame()
-  router.push('/game')
+  
+  // ⭐ 跳转到游戏页面时带上 theme_id 参数
+  router.push({
+    path: '/game',
+    query: {
+      theme_id: currentThemeId
+    }
+  })
 }
 
 const goHome = () => {

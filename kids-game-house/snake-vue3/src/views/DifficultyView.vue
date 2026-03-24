@@ -67,19 +67,23 @@ const buttonContainerStyle = computed(() => ({
 }))
 
 const goBack = () => {
-  // 不再使用 audioStore，由 Phaser 游戏统一管理音效
   router.push('/')
 }
 
 const startGame = () => {
-  // 不再使用 audioStore，由 Phaser 游戏统一管理音效
+  // 获取主题 ID 并传递到游戏页面
+  const themeId = route.query.theme_id as string || localStorage.getItem('current-theme-id') || ''
+  console.log('🎨 难度选择完成，使用主题 ID:', themeId)
+  
+  // 保存主题 ID 到 localStorage
+  if (themeId) {
+    localStorage.setItem('current-theme-id', themeId)
+  }
+  
+  // 设置难度并跳转到游戏页面
   gameStore.setDifficulty(selectedDifficulty.value)
   gameStore.startGame()
-
-  // 获取主题 ID 并传递到游戏页面
-  const themeId = route.query.theme_id as string
-  console.log('🎨 难度选择完成，使用主题 ID:', themeId)
-
+  
   router.push({
     path: '/game',
     query: { theme_id: themeId }

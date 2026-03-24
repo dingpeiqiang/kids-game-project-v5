@@ -21,6 +21,9 @@ export interface GTRSTheme extends BaseGTRSTheme {
 // 可用 key 集合参见 src/config/GTRS.json（纯占位符，不可直接作为运行主题）
 let GTRS: GTRSTheme | null = null
 
+// ⭐ 全局图片资源缓存 Map，避免重复加载相同资源
+const imageCache = new Map<string, HTMLImageElement | HTMLCanvasElement>()
+
 // Hex 颜色字符串转数字
 function hexToNumber(hex: string): number {
   if (!hex) return 0x000000
@@ -113,6 +116,7 @@ export class SnakePhaserGame {
   private config: Phaser.Types.Core.GameConfig
   private game: Phaser.Game | null = null
   private scene: Phaser.Scene | null = null
+  private isReady: boolean = false  // ⭐ 标记资源是否加载完成
 
   // 👉 唯一设计基准（美术作图标准，不代表画布大小）
   private readonly DESIGN_WIDTH = 720   // 设计宽度
@@ -214,10 +218,15 @@ export class SnakePhaserGame {
     url.searchParams.set('theme_id', themeId)
     window.history.replaceState({}, '', url.toString())
 
-    // 主题加载失败时直接向上抛出，由调用方（Vue 组件）处理 UI 提示
+    // ⭐ 先加载主题（含 GTRS 校验和资源下载）
+    console.log('[PhaserGame] 🚀 开始加载主题...')
     await this.loadTheme(themeId)
+    console.log('[PhaserGame] ✅ 主题加载完成，准备启动 Phaser 游戏引擎')
 
+    // ⭐ 主题加载完成后，再初始化 Phaser 游戏实例
     this.game = new Phaser.Game(this.config)
+    
+    console.log('[PhaserGame] ⏳ 等待 Phaser 资源预加载完成...')
   }
 
   /**
@@ -426,6 +435,10 @@ export class SnakePhaserGame {
 
     // ⭐ 统一创建所有游戏元素（商业方案：方便 resize 时重建）
     this.createAllGameElements(scene)
+    
+    // ⭐ 标记资源已加载完成，可以启动游戏循环
+    this.isReady = true
+    console.log('[PhaserGame] ✅ 场景创建完成，资源已就绪，isReady = true')
   }
 
   /**
@@ -530,14 +543,20 @@ export class SnakePhaserGame {
     // ⭐ 直接使用 GTRS 规范 key：scene_bg_main / scene_bg_grid
     const bgKey = this.getThemeAssetKey('scene_bg_main')
     if (bgKey) {
-      // 使用 GTRS 背景图片
-      const bgImage = scene.add.image(
+      // ⭐ 使用 GTRS 背景图片 - 平铺模式（不拉伸）
+      const bgImage = scene.add.tileSprite(
         this.Adapt.screenW / 2,
         this.Adapt.screenH / 2,
+        this.Adapt.screenW,
+        this.Adapt.screenH,
         bgKey
       )
-      bgImage.setDisplaySize(this.Adapt.screenW, this.Adapt.screenH)
       bgImage.setDepth(-1)
+      
+      console.log('🖼️ 背景图片已平铺:', {
+        size: `${this.Adapt.screenW.toFixed(0)} × ${this.Adapt.screenH.toFixed(0)}`,
+        mode: 'tile (repeat)'
+      })
     } else {
       // 默认全屏渐变背景 - 使用 GTRS 背景色
       const bgColor = assertGTRS().globalStyle.bgColor || '#1a1a2e'
@@ -561,14 +580,20 @@ export class SnakePhaserGame {
     // ⭐ 直接使用 GTRS 规范 key：scene_bg_grid
     const gridBgKey = this.getThemeAssetKey('scene_bg_grid')
     if (gridBgKey) {
-      // 使用网格背景图片
-      const gridBg = scene.add.image(
+      // ⭐ 使用网格背景图片 - 平铺模式（不拉伸）
+      const gridBg = scene.add.tileSprite(
         offsetX + gameWidth / 2,
         offsetY + gameHeight / 2,
+        gameWidth,
+        gameHeight,
         gridBgKey
       )
-      gridBg.setDisplaySize(gameWidth, gameHeight)
       gridBg.setDepth(0)
+      
+      console.log('🔲 网格背景已平铺:', {
+        size: `${gameWidth.toFixed(0)} × ${gameHeight.toFixed(0)}`,
+        mode: 'tile (repeat)'
+      })
     } else {
       // 绘制游戏区域边框 - 线条粗细按 cellSize 比例
       const borderWidth = Math.max(2, this.Adapt.cellSize * 0.06)
@@ -1036,6 +1061,8 @@ export class SnakePhaserGame {
    *
    * Phaser key = GTRS scene key（例如 "snake_head"、"food_apple"）
    * 确保 key 与 GTRS JSON 完全一致，游戏渲染时直接通过 GTRS key 取图
+   * 
+   * ⭐ 优化：使用全局缓存避免重复加载相同资源
    */
   private loadGTRSImages(scene: Phaser.Scene): void {
     const sceneImages = assertGTRS().resources?.images?.scene
@@ -1043,11 +1070,33 @@ export class SnakePhaserGame {
       console.warn('[GTRS] ⚠️ resources.images.scene 不存在，跳过图片加载')
       return
     }
-
+  
     for (const [key, resource] of Object.entries(sceneImages)) {
       if (resource?.src) {
-        scene.load.image(key, resource.src)
-        console.log(`[GTRS] 📷 加载场景图片: ${key} (${resource.alias}) -> ${resource.src}`)
+        // ⭐ 检查是否已在缓存中
+        const cachedImage = imageCache.get(resource.src)
+        if (cachedImage) {
+          // 已缓存：直接使用缓存的图片
+          console.log(`[GTRS] ♻️ 复用已缓存图片：${key} -> ${resource.src}`)
+          // Phaser 的 texture manager 可以直接添加已存在的 Image 对象
+          if (!scene.textures.exists(key)) {
+            scene.textures.addImage(key, cachedImage)
+          }
+        } else {
+          // 未缓存：正常加载并保存到缓存
+          scene.load.image(key, resource.src)
+          console.log(`[GTRS] 📷 加载场景图片：${key} (${resource.alias}) -> ${resource.src}`)
+              
+          // 监听加载完成事件，保存到缓存
+          scene.load.once(`filecomplete-image-${key}`, () => {
+            const img = scene.textures.get(key).getSourceImage()
+            // ⭐ 类型检查：只缓存 Image 或 Canvas 元素
+            if (img instanceof HTMLImageElement || img instanceof HTMLCanvasElement) {
+              imageCache.set(resource.src!, img)
+              console.log(`[GTRS] 💾 已缓存图片：${resource.src}`)
+            }
+          })
+        }
       } else {
         console.warn(`[GTRS] ⚠️ 场景图片 ${key} 无效（src 为空），跳过`)
       }
@@ -1119,6 +1168,36 @@ export class SnakePhaserGame {
    */
   private hasThemeAsset(gtrsKey: string): boolean {
     return !!this.getThemeAssetKey(gtrsKey)
+  }
+
+  /**
+   * ⭐ 检查游戏是否已准备就绪（资源加载完成）
+   */
+  isGameReady(): boolean {
+    return this.isReady
+  }
+  
+  /**
+   * ⭐ 等待游戏准备完成的 Promise
+   */
+  waitForReady(timeout = 10000): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.isReady) {
+        resolve()
+        return
+      }
+      
+      const startTime = Date.now()
+      const checkInterval = setInterval(() => {
+        if (this.isReady) {
+          clearInterval(checkInterval)
+          resolve()
+        } else if (Date.now() - startTime > timeout) {
+          clearInterval(checkInterval)
+          reject(new Error('等待游戏准备超时'))
+        }
+      }, 50)
+    })
   }
 
   // ========== 音频控制 ==========

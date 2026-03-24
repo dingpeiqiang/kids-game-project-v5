@@ -1,5 +1,33 @@
 <template>
   <div class="snake-game-container relative w-full h-screen overflow-hidden">
+    <!-- ⭐ 资源检测 Loading 覆盖层 -->
+    <div
+      v-if="isLoading"
+      class="loading-overlay absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="loading-container max-w-md mx-4 p-6 text-center">
+        <!-- Loading 图标 -->
+        <div class="loading-icon text-6xl mb-4 animate-bounce">🔍</div>
+        
+        <!-- 标题 -->
+        <h2 class="loading-title text-2xl font-bold text-white mb-4">{{ loadingTitle }}</h2>
+        
+        <!-- 进度条 -->
+        <div class="progress-container bg-gray-700 rounded-full h-3 mb-4 overflow-hidden">
+          <div
+            class="progress-bar bg-gradient-to-r from-green-400 to-blue-500 h-full transition-all duration-300"
+            :style="{ width: progress + '%' }"
+          ></div>
+        </div>
+        
+        <!-- 当前步骤 -->
+        <p class="loading-text text-white/80 text-sm mb-2">{{ loadingText }}</p>
+        
+        <!-- 提示信息 -->
+        <p class="hint-text text-white/50 text-xs">请稍候，正在为您准备最佳游戏体验...</p>
+      </div>
+    </div>
+    
     <!-- 游戏画布容器 -->
     <div
       ref="gameContainer"
@@ -122,6 +150,7 @@ import { ref, onMounted, onUnmounted, watch, provide, readonly } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGameStore, type GameEventType } from '@/stores/game'
 import { useSettingsStore } from '@/stores/settings'
+import { useThemeStore } from '@/stores/theme'  // ⭐ 添加导入
 import { SnakePhaserGame } from './PhaserGame'
 import ScorePanel from '../ui/ScorePanel.vue'
 import PauseButton from '../ui/PauseButton.vue'
@@ -133,8 +162,15 @@ const router = useRouter()
 const route = useRoute()
 const gameStore = useGameStore()
 const settingsStore = useSettingsStore()
+const themeStore = useThemeStore()  // ⭐ 初始化 themeStore
 
 const gameContainer = ref<HTMLElement | null>(null)
+
+// ⭐ 资源加载状态
+const isLoading = ref(true)
+const progress = ref(0)
+const loadingTitle = ref('正在初始化游戏')
+const loadingText = ref('准备中...')
 
 // 使用 ref 存储 PhaserGame 实例，并提供给子组件
 const phaserGameRef = ref<SnakePhaserGame | null>(null)
@@ -251,6 +287,10 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   
   if (gameContainer.value) {
+    // ⭐ 先执行资源检测和缓存加载
+    await performResourceCheck()
+    
+    // ⭐ 检测通过后创建 Phaser 游戏实例
     phaserGameRef.value = new SnakePhaserGame(gameContainer.value)
     // 初始化游戏数据
     gameStore.resetGame()
@@ -261,9 +301,18 @@ onMounted(async () => {
     const themeId = route.query.theme_id as string
     console.log('🎨 游戏启动，主题 ID:', themeId)
 
-    // 等待主题配置加载完成后再启动游戏
+    // ⭐ 等待主题配置加载完成后再启动游戏
     try {
+      console.log('[SnakeGame] 🚀 开始调用 phaserGameRef.value.start()...')
       await phaserGameRef.value.start(settingsStore.difficulty, themeId)
+      console.log('[SnakeGame] ✅ Phaser 游戏实例已创建，等待资源预加载...')
+      
+      // ⭐ 关键修复：等待 Phaser 场景的 create 阶段完成，确保所有资源已就绪
+      console.log('[SnakeGame] ⏳ 等待游戏资源准备就绪...')
+      await phaserGameRef.value.waitForReady(10000)  // 最多等待 10 秒
+      console.log('[SnakeGame] ✅ 游戏资源已就绪，开始游戏循环')
+      
+      startGameLoop()
     } catch (err) {
       const error = err as Error
       loadError.value = {
@@ -274,9 +323,6 @@ onMounted(async () => {
       console.error('[SnakeGame] 游戏加载失败', err)
       return
     }
-
-    // 开始游戏循环
-    startGameLoop()
 
     // 设置游戏事件回调（音效）
     gameStore.setEventCallback((event: GameEventType, data?: any) => {
@@ -315,6 +361,91 @@ onMounted(async () => {
     }
   }
 })
+
+/**
+ * ⭐ 执行资源检测和缓存加载
+ */
+async function performResourceCheck() {
+  try {
+    isLoading.value = true
+    progress.value = 0
+    loadingTitle.value = '正在初始化游戏'
+    loadingText.value = '准备中...'
+    
+    // 步骤 1：检查用户登录状态
+    progress.value = 10
+    loadingText.value = '验证用户登录状态...'
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('请先登录再玩游戏哦~')
+    }
+    console.log('✅ 用户已登录')
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
+    // 步骤 2：检查主题选择
+    progress.value = 30
+    loadingText.value = '检查主题配置...'
+    const themeId = route.query.theme_id as string || localStorage.getItem('current-theme-id') || ''
+    if (!themeId) {
+      throw new Error('还没有选择喜欢的主题呢，请先选择一个主题')
+    }
+    console.log('🎨 使用主题 ID:', themeId)
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
+    // 步骤 3：验证 GTRS 主题
+    progress.value = 50
+    loadingText.value = '验证 GTRS 主题...'
+    const gtrsJson = themeStore.gtrsRawJson
+    if (!gtrsJson) {
+      throw new Error('主题资源未加载，请重新选择主题')
+    }
+    
+    const gtrsData = JSON.parse(gtrsJson)
+    console.log('✅ GTRS 主题已加载:', gtrsData.themeInfo?.themeName || '未知主题')
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    // 步骤 4：预热图片资源缓存
+    progress.value = 70
+    loadingText.value = '预热图片资源缓存...'
+    console.log('♻️ 开始预热图片资源缓存...')
+    
+    // 创建一个临时的 Phaser 实例来触发资源加载
+    const tempContainer = document.createElement('div')
+    tempContainer.style.display = 'none'
+    document.body.appendChild(tempContainer)
+    
+    const tempGame = new SnakePhaserGame(tempContainer)
+    await tempGame.start(settingsStore.difficulty, themeId)
+    
+    // 等待资源加载完成
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // 清理临时实例
+    tempGame.destroy()
+    document.body.removeChild(tempContainer)
+    
+    console.log('✅ 图片资源缓存已预热完成')
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
+    // 步骤 5：准备就绪
+    progress.value = 90
+    loadingText.value = '准备游戏环境...'
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    progress.value = 100
+    loadingText.value = '游戏已就绪，即将开始...'
+    
+    // 短暂延迟后关闭 Loading
+    await new Promise(resolve => setTimeout(resolve, 500))
+    isLoading.value = false
+    
+    console.log('✅ 资源检测完成，开始游戏')
+  } catch (error: any) {
+    console.error('❌ 资源检测失败:', error)
+    isLoading.value = false
+    throw error
+  }
+}
 
 /**
  * 清理游戏资源
