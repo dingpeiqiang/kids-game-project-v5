@@ -292,16 +292,11 @@ onMounted(async () => {
     
     // ⭐ 检测通过后创建 Phaser 游戏实例
     phaserGameRef.value = new SnakePhaserGame(gameContainer.value)
-    // 初始化游戏数据
-    gameStore.resetGame()
-    gameStore.startGame()
-    gameStore.generateFood()
-
-    // 获取主题 ID 并传递给 Phaser 游戏
+    
+    // 👉 关键：等待 Phaser 启动完成，获取 cellSize
     const themeId = route.query.theme_id as string
     console.log('🎨 游戏启动，主题 ID:', themeId)
-
-    // ⭐ 等待主题配置加载完成后再启动游戏
+    
     try {
       console.log('[SnakeGame] 🚀 开始调用 phaserGameRef.value.start()...')
       await phaserGameRef.value.start(settingsStore.difficulty, themeId)
@@ -311,6 +306,15 @@ onMounted(async () => {
       console.log('[SnakeGame] ⏳ 等待游戏资源准备就绪...')
       await phaserGameRef.value.waitForReady(10000)  // 最多等待 10 秒
       console.log('[SnakeGame] ✅ 游戏资源已就绪，开始游戏循环')
+      
+      // 👉 获取 cellSize 并初始化游戏数据
+      const cellSize = phaserGameRef.value.getCellSize()
+      console.log('📏 获取 cellSize:', cellSize.toFixed(2))
+      
+      // 使用 cellSize 初始化游戏状态
+      gameStore.resetGame(cellSize)
+      gameStore.startGame()
+      gameStore.generateFood(cellSize)
       
       startGameLoop()
     } catch (err) {
@@ -513,18 +517,22 @@ watch(() => gameStore.isGameOver, (gameOver) => {
 })
 
 /**
- * 游戏主循环
+ * 游戏主循环（平滑移动版本 + 优化）
  */
 function startGameLoop() {
-  function loop() {
+  let lastTime = performance.now()
+  
+  function loop(currentTime: number) {
     if (gameStore.isPlaying && !gameStore.isPaused && !gameStore.isGameOver) {
-      const now = Date.now()
-      const config = gameStore.currentConfig
+      // 👉 计算时间增量（秒）
+      const deltaTime = (currentTime - lastTime) / 1000
+      lastTime = currentTime
       
-      if (now - lastMoveTime > config.speed) {
-        gameStore.moveSnake()
-        lastMoveTime = now
-      }
+      // 👉 获取 cellSize 并传入（确保碰撞检测准确）
+      const cellSize = phaserGameRef.value?.getCellSize() || 50
+      
+      // 👉 传入 deltaTime 和 cellSize，实现精确的平滑移动和碰撞检测
+      gameStore.moveSnake(deltaTime, cellSize)
       
       // 更新粒子
       gameStore.updateParticles()
@@ -533,17 +541,18 @@ function startGameLoop() {
     gameLoop = requestAnimationFrame(loop)
   }
   
-  loop()
+  loop(performance.now())
 }
 
 /**
- * 渲染游戏画面
+ * 渲染游戏画面（带蛇头旋转）
  */
 function renderGame() {
   const game = getPhaserGame()
   if (!game) return
 
-  game.renderSnake(gameStore.snake)
+  // 👉 传入蛇头旋转角度
+  game.renderSnake(gameStore.snake, gameStore.headRotation)
   game.renderFood(gameStore.food)
   game.renderObstacles(gameStore.obstacles)  // 渲染障碍物
 

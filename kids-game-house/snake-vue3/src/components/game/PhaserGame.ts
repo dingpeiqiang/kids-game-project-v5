@@ -6,6 +6,9 @@ import { initUIParams, updateUIParams } from '@/utils/uiResponsive'
 import { validateGTRSTheme, type GTRSTheme as BaseGTRSTheme } from '@/utils/gtrs-validator'
 import { useThemeStore } from '@/stores/theme'
 
+// 👉 声明全局 Phaser 变量（解决 TypeScript 编译问题）
+declare const Phaser: any
+
 // ⭐ 扩展 GTRSTheme 类型，添加 themeInfo 字段（兼容旧代码）
 export interface GTRSTheme extends BaseGTRSTheme {
   themeInfo?: {
@@ -227,6 +230,13 @@ export class SnakePhaserGame {
     this.game = new Phaser.Game(this.config)
     
     console.log('[PhaserGame] ⏳ 等待 Phaser 资源预加载完成...')
+  }
+  
+  /**
+   * 👉 获取当前 cellSize（供外部调用，如 gameStore 初始化）
+   */
+  getCellSize(): number {
+    return this.Adapt.cellSize
   }
 
   /**
@@ -577,10 +587,10 @@ export class SnakePhaserGame {
       cellSize: this.Adapt.cellSize.toFixed(2)
     })
 
-    // ⭐ 直接使用 GTRS 规范 key：scene_bg_grid
+    // ⭐ 使用 GTRS 网格背景图片 - 平铺模式（不拉伸）
     const gridBgKey = this.getThemeAssetKey('scene_bg_grid')
     if (gridBgKey) {
-      // ⭐ 使用网格背景图片 - 平铺模式（不拉伸）
+      // 👉 关键：使用 tileSprite 平铺，保持原始比例
       const gridBg = scene.add.tileSprite(
         offsetX + gameWidth / 2,
         offsetY + gameHeight / 2,
@@ -588,11 +598,13 @@ export class SnakePhaserGame {
         gameHeight,
         gridBgKey
       )
+      
       gridBg.setDepth(0)
       
       console.log('🔲 网格背景已平铺:', {
-        size: `${gameWidth.toFixed(0)} × ${gameHeight.toFixed(0)}`,
-        mode: 'tile (repeat)'
+        tileSize: `${gameWidth.toFixed(0)} × ${gameHeight.toFixed(0)}`,
+        cellSize: this.Adapt.cellSize.toFixed(2),
+        mode: 'tile (repeat, no stretch)'
       })
     } else {
       // 绘制游戏区域边框 - 线条粗细按 cellSize 比例
@@ -665,9 +677,9 @@ export class SnakePhaserGame {
   }
 
   /**
-   * 渲染蛇
+   * 渲染蛇（带旋转角度）
    */
-  renderSnake(snake: SnakeSegment[]): void {
+  renderSnake(snake: SnakeSegment[], headRotation: number = 0): void {
     if (!this.scene || !this.snakeGroup) return
 
     const scene = this.scene
@@ -685,10 +697,11 @@ export class SnakePhaserGame {
 
     // 绘制蛇身
     snake.forEach((segment, index) => {
-      const x = offsetX + segment.x * cellSize + cellSize / 2
-      const y = offsetY + segment.y * cellSize + cellSize / 2
-      // 蛇身大小 = cellSize 的 90%，留出间隙
-      const size = cellSize * 0.9
+      // 👉 segment.x 已经是中心点坐标，直接加上 offsetX 即可
+      const x = offsetX + segment.x
+      const y = offsetY + segment.y
+      // 蛇身大小 = cellSize 的 70%，留出明显间隙（配合距离约束）
+      const size = cellSize * 0.70
 
       if (index === 0) {
         // 蛇头 - 直接使用 GTRS key "snake_head"
@@ -697,6 +710,8 @@ export class SnakePhaserGame {
           const sprite = scene.add.image(x, y, headKey)
           const displaySize = Math.max(size, 16)
           sprite.setDisplaySize(displaySize, displaySize)
+          // 👉 应用旋转角度（转换为度数，Phaser 使用度数）
+          sprite.setRotation(headRotation)
           group.add(sprite)
         } else {
           this.createSnakeHead(scene, x, y, size)
@@ -706,7 +721,7 @@ export class SnakePhaserGame {
         const tailKey = this.getThemeAssetKey('snake_tail')
         if (tailKey) {
           const sprite = scene.add.image(x, y, tailKey)
-          const displaySize = Math.max(size * 0.8, 16)
+          const displaySize = Math.max(size * 0.7, 16)  // 蛇尾更小，渐变效果
           sprite.setDisplaySize(displaySize, displaySize)
           group.add(sprite)
         } else {
@@ -786,10 +801,10 @@ export class SnakePhaserGame {
     const offsetX = (this.Adapt.screenW - gameWidth) / 2
     const offsetY = this.Adapt.safeTop + (this.Adapt.screenH - this.Adapt.safeTop - this.Adapt.safeBottom - gameHeight) / 2
 
-    const x = offsetX + food.position.x * cellSize + cellSize / 2
-    const y = offsetY + food.position.y * cellSize + cellSize / 2
-    // 食物主体大小 = cellSize 的 70%
-    const baseSize = cellSize * 0.7
+    const x = offsetX + food.position.x  // 👉 position 已经是中心点，直接加 offsetX
+    const y = offsetY + food.position.y
+    // 食物主体大小 = cellSize 的 85%，更好地填充网格
+    const baseSize = cellSize * 0.85
 
     if (this.foodSprite) {
       this.foodSprite.destroy()
@@ -888,8 +903,8 @@ export class SnakePhaserGame {
 
     // 渲染每个障碍物
     obstacles.forEach((obstacle) => {
-      const x = offsetX + obstacle.x * cellSize + cellSize / 2
-      const y = offsetY + obstacle.y * cellSize + cellSize / 2
+      const x = offsetX + obstacle.x  // 👉 position 已经是中心点，直接加 offsetX
+      const y = offsetY + obstacle.y
       // 障碍物大小 = cellSize 的 95%，几乎填满格子
       const size = cellSize * 0.95
 
