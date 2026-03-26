@@ -556,26 +556,10 @@ function startGameLoop() {
       // 👉 传入 deltaTime 和 cellSize，实现精确的平滑移动和碰撞检测
       gameStore.moveSnake(deltaTime, cellSize)
       
-      // 🎁 更新道具系统并检测碰撞
-      const game = getPhaserGame() as any
-      if (game && game.getItemSystem && game.getItemSystem()) {
-        const itemSystem = game.getItemSystem()
-        // 🎁 使用 ItemManager 检测碰撞
-        const itemManager = itemSystem.getItemManager()
-        if (itemManager && gameStore.snake.length > 0) {
-          const head = gameStore.snake[0]
-          const collisions = itemManager.checkItemCollision(gameStore.snake)
-          for (const item of collisions) {  // ✅ collision 就是 item 本身
-            // ✅ 标记道具为非活跃 (必须在 applyItemEffect 之前)
-            item.active = false
-            // ✅ 应用效果
-            itemManager.applyItemEffect(item, gameStore.snake, {})
-          }
-          // ✅ 立即清理不活跃的道具
-          itemManager['removeInactiveItems']()
-        }
-        // 更新道具状态
-        itemSystem.update(gameStore.snake)
+      // 🎁 同步蛇数据到 PhaserGame，供 Phaser update 循环中的道具碰撞检测使用
+      const game = getPhaserGame()
+      if (game) {
+        game.updateSnakeData(gameStore.snake)
       }
       
       // 更新粒子

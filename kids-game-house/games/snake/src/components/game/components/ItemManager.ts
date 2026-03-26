@@ -198,7 +198,10 @@ export class ItemManager {
       }
     }
 
-    // 🎁 随机位置生成道具 (使用网格坐标，与蛇的坐标系一致)
+    // 🎁 随机位置生成道具
+    // ✅ 修复：使用与蛇相同的坐标系 —— 中心点像素坐标
+    // 蛇的坐标：gridX * cellSize + cellSize/2
+    // 道具坐标保持一致，确保碰撞检测正确
     const cellSize = this.adaptParams.cellSize
     const col = Math.floor(Math.random() * this.gridCols)
     const row = Math.floor(Math.random() * this.gridRows)
@@ -208,8 +211,8 @@ export class ItemManager {
     const item: GameItem = {
       type: selectedType,
       position: {
-        x: col * cellSize,  // ✅ 网格坐标转像素坐标
-        y: row * cellSize
+        x: col * cellSize + cellSize / 2,  // ✅ 与蛇坐标系一致（中心点坐标）
+        y: row * cellSize + cellSize / 2
       },
       duration: this.getItemDuration(selectedType),
       createdAt: Date.now(),
@@ -279,7 +282,8 @@ export class ItemManager {
     if (!head) return []  // 🛡️ 安全检查
     
     const cellSize = this.adaptParams.cellSize
-    const collisionThreshold = cellSize * 0.5
+    // ✅ 修复：碰撞阈值调大，确保蛇头（约 0.7*cellSize）能触碰到道具（约 0.4*cellSize）
+    const collisionThreshold = cellSize * 0.6
     
     const collectedItems: GameItem[] = []
     
@@ -292,8 +296,15 @@ export class ItemManager {
       )
       
       if (distance < collisionThreshold) {
+        // ✅ 修复：立即标记为非激活，防止重复收集
+        item.active = false
         collectedItems.push(item)
       }
+    }
+    
+    // 立即移除已收集的道具
+    if (collectedItems.length > 0) {
+      this.removeInactiveItems()
     }
     
     return collectedItems

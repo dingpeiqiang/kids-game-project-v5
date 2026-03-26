@@ -1,5 +1,28 @@
 # 项目长期记忆
 
+## 贪吃蛇道具系统 Bug 修复（2026-03-26）
+
+### 问题描述
+蛇碰到道具没有任何效果，且道具不消失。
+
+### 根本原因（4 个 Bug）
+1. **`PhaserGame.update()` 传入空数组**：`this.itemSystem.update([])` 导致碰撞检测永远无效
+2. **坐标系不一致**：`ItemManager.spawnItem()` 用 `col * cellSize`（左上角坐标），蛇坐标是 `col * cellSize + cellSize/2`（中心点坐标），两者偏移半格，碰不上
+3. **`ItemSystem.render()` 偏移错误**：计算 offsetY 时未考虑 `safeTop`，道具显示位置与碰撞位置不对应
+4. **`ItemSystem.update()` 重复处理**：调用 `applyItemEffect` 但已在 `checkItemCollision` 内部标记删除，逻辑混乱
+
+### 修复方案
+- `PhaserGame.ts`：新增 `currentSnake` 字段 + `updateSnakeData()` 方法，`update()` 传入真实蛇数据
+- `ItemManager.ts`：`spawnItem()` 改为 `col * cellSize + cellSize/2`；`checkItemCollision()` 内立即标记 `active=false` 并 removeInactive
+- `ItemSystem.ts`：`render()` 接受 `adaptParams` 参数，用与 `renderSnake` 完全相同的偏移公式（含 safeTop）；`update()` 移除重复的 `applyItemEffect` 调用
+- `SnakeGame.vue`：游戏循环中调用 `game.updateSnakeData(gameStore.snake)` 同步蛇位置
+
+### 关键文件
+- `kids-game-house/games/snake/src/components/game/PhaserGame.ts`
+- `kids-game-house/games/snake/src/components/game/components/ItemManager.ts`
+- `kids-game-house/games/snake/src/components/game/components/ItemSystem.ts`
+- `kids-game-house/games/snake/src/components/game/SnakeGame.vue`
+
 ## 贪吃蛇游戏 GTRS 规范适配（完成于 2026-03-20）
 
 ### 项目路径

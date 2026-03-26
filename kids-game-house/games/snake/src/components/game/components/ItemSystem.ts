@@ -218,23 +218,26 @@ export class ItemSystem {
   update(snake: any[], foodRenderer?: FoodRenderer): void {
     if (!this.isInitialized || !this.itemManager) return
 
-    // 更新道具管理器状态
+    // 更新道具管理器状态（处理超时道具）
     this.itemManager.update()
 
-    // 检测碰撞
+    // ✅ 修复：checkItemCollision 已在内部标记 active=false 并 removeInactiveItems
+    // 只需处理收集事件，不再重复调用 applyItemEffect
     const collectedItems = this.itemManager.checkItemCollision(snake)
 
     // 处理收集的道具
     for (const item of collectedItems) {
-      this.itemManager.applyItemEffect(item, snake, (snake as any).gameData || {})
-      
-      // 触发收集事件
+      // 触发收集事件（效果由 PhaserGame.handleItemCollected 负责应用）
       if (this.onItemCollected) {
         this.onItemCollected({
           item,
           snake,
           timestamp: Date.now()
         })
+      }
+      
+      if (this.config.debugMode) {
+        console.log(`🎁 道具已收集并从场景移除：${item.type}`)
       }
     }
 
@@ -283,8 +286,9 @@ export class ItemSystem {
    * 
    * @param scene Phaser 场景
    * @param graphics Phaser 图形对象
+   * @param adaptParams 适配参数（含 screenW/screenH/safeTop/safeBottom/cellSize）
    */
-  render(scene: any, graphics: any): void {
+  render(scene: any, graphics: any, adaptParams?: any): void {
     if (!this.isInitialized || !this.itemManager) return
 
     const activeItems = this.itemManager.getActiveItems()
@@ -292,20 +296,34 @@ export class ItemSystem {
     const gridCols = this.itemManager['gridCols']
     const gridRows = this.itemManager['gridRows']
     
-    // 🎁 计算游戏区域偏移 (与 renderSnake 保持一致)
-    const gameWidth = gridCols * cellSize
-    const gameHeight = gridRows * cellSize
-    const offsetX = (scene.scale.width - gameWidth) / 2
-    const offsetY = (scene.scale.height - gameHeight) / 2
+    // ✅ 修复：与 renderSnake/renderFood 保持完全一致的偏移计算方式
+    // 必须考虑 safeTop，否则道具位置与蛇位置不对应
+    let offsetX: number
+    let offsetY: number
+    
+    if (adaptParams && adaptParams.safeTop !== undefined) {
+      // 使用与 PhaserGame 相同的偏移计算逻辑
+      const gameWidth = gridCols * cellSize
+      const gameHeight = gridRows * cellSize
+      offsetX = (adaptParams.screenW - gameWidth) / 2
+      offsetY = adaptParams.safeTop + (adaptParams.screenH - adaptParams.safeTop - adaptParams.safeBottom - gameHeight) / 2
+    } else {
+      // 兜底：只用 scene 尺寸（不含 safeTop）
+      const gameWidth = gridCols * cellSize
+      const gameHeight = gridRows * cellSize
+      offsetX = (scene.scale.width - gameWidth) / 2
+      offsetY = (scene.scale.height - gameHeight) / 2
+    }
 
     // 🎁 清理旧的文本对象
     this.itemTexts.forEach(text => text.destroy())
     this.itemTexts.clear()
 
     for (const item of activeItems) {
-      // 🎁 加上游戏区域偏移
-      const x = offsetX + item.position.x + cellSize / 2
-      const y = offsetY + item.position.y + cellSize / 2
+      // ✅ 修复：道具坐标已经是游戏区域内的中心点坐标，直接加 offset 即可
+      // item.position.x/y 与蛇坐标系相同（gridX * cellSize + cellSize/2）
+      const x = offsetX + item.position.x
+      const y = offsetY + item.position.y
       
       // 根据道具类型绘制不同颜色
       const color = this.getItemColor(item.type)

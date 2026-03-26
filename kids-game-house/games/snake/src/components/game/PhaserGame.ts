@@ -240,6 +240,9 @@ export class SnakePhaserGame {
   // 👉 道具系统实例
   private itemSystem: ItemSystem
   
+  // 👉 当前蛇数据缓存（供 Phaser update 循环读取）
+  private currentSnake: any[] = []
+  
   // 👉 游戏数据（包含道具效果状态）
   private gameData = {
     speedMultiplier: 1.0,     // 速度倍率 (1.0 = 正常)
@@ -893,16 +896,25 @@ export class SnakePhaserGame {
     
     // 🎁 更新道具系统 (自动处理生成、碰撞)
     if (this.itemSystem.getIsInitialized()) {
-      // 注意：需要在游戏主循环中手动调用 checkItemCollision
-      // 这里只是更新道具状态和定时生成
-      this.itemSystem.update([])  // 空数组，仅更新状态
+      // ✅ 修复：传入真实蛇坐标数据，道具碰撞检测需要蛇头位置
+      // 蛇的坐标是游戏区域内的相对像素坐标（不含 offsetX/offsetY）
+      const snakeData = this.currentSnake || []
+      this.itemSystem.update(snakeData)
       
       // 🎁 渲染道具 (在 Phaser 场景中)
       if (this.scene && this.itemSystem['graphics']) {
         this.itemSystem['graphics'].clear()  // 清空上一帧
-        this.itemSystem.render(this.scene, this.itemSystem['graphics'])
+        this.itemSystem.render(this.scene, this.itemSystem['graphics'], this.Adapt)
       }
     }
+  }
+  
+  /**
+   * 🎁 更新当前蛇数据（供 update 循环使用）
+   * Vue 组件每帧调用此方法同步蛇的位置
+   */
+  updateSnakeData(snake: any[]): void {
+    this.currentSnake = snake
   }
 
   // ============================================================================
