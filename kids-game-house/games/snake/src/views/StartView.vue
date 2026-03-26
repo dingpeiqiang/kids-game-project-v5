@@ -40,17 +40,17 @@
       @click="goToDifficulty"
       :disabled="isChecking"
       class="mb-3"
-      :fontSize="18"
-      :paddingLeft="32"
-      :paddingRight="32"
-      :paddingTop="16"
-      :paddingBottom="16"
+      :fontSize="23.4"
+      :paddingLeft="41.6"
+      :paddingRight="41.6"
+      :paddingTop="20.8"
+      :paddingBottom="20.8"
     >
       🎮 开始游戏
     </GameButton>
 
     <!-- 音效开关 -->
-    <div class="mt-4 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4" :style="soundToggleContainerStyle">
+    <div class="mt-4 flex flex-col items-center justify-center gap-2 md:gap-4" :style="soundToggleContainerStyle">
       <SoundToggle />
       <ThemeSelector />
     </div>
@@ -101,61 +101,63 @@ const playCount = computed(() => gameStore.playCount)
 
 // 动态样式计算
 const containerStyle = computed(() => ({
-  paddingTop: ui.getPadding(16),
-  paddingBottom: ui.getPadding(16)
+  // 🎨 上下边距各 2%,内容自动放大适配
+  paddingTop: '2%',
+  paddingBottom: '2%',
+  height: '96%' // 100% - 2% - 2% = 96%
 }))
 
 const titleContainerStyle = computed(() => ({
-  marginBottom: ui.getGap(24)
+  marginBottom: ui.getGap(34.85)  // 🎨 累计放大 45% (24 * 1.452)
 }))
 
 const snakeEmojiStyle = computed(() => ({
-  fontSize: ui.getFontSize(96),  // 对应 text-6xl ~ text-8xl
-  marginBottom: ui.getGap(16)
+  fontSize: ui.getFontSize(139.39),  // 🎨 累计放大 45% (96 * 1.452)
+  marginBottom: ui.getGap(23.23)  // 🎨 累计放大 45% (16 * 1.452)
 }))
 
 const titleStyle = computed(() => ({
-  fontSize: ui.getFontSize(48),  // 对应 text-4xl ~ text-6xl
+  fontSize: ui.getFontSize(69.7),  // 🎨 累计放大 45% (48 * 1.452)
 }))
 
 const subtitleStyle = computed(() => ({
-  fontSize: ui.getFontSize(18),
-  marginTop: ui.getGap(16)
+  fontSize: ui.getFontSize(26.14),  // 🎨 累计放大 45% (18 * 1.452)
+  marginTop: ui.getGap(23.23)  // 🎨 累计放大 45% (16 * 1.452)
 }))
 
 const scoreCardStyle = computed(() => ({
-  padding: ui.getPadding(16),
-  marginBottom: ui.getGap(24)
+  padding: ui.getPadding(23.23),  // 🎨 累计放大 45% (16 * 1.452)
+  marginBottom: ui.getGap(34.85)  // 🎨 累计放大 45% (24 * 1.452)
 }))
 
 const trophyIconStyle = computed(() => ({
-  fontSize: ui.getFontSize(40)
+  fontSize: ui.getFontSize(58.08)  // 🎨 累计放大 45% (40 * 1.452)
 }))
 
 const labelStyle = computed(() => ({
-  fontSize: ui.getFontSize(14)
+  fontSize: ui.getFontSize(20.33)  // 🎨 累计放大 45% (14 * 1.452)
 }))
 
 const scoreNumberStyle = computed(() => ({
-  fontSize: ui.getFontSize(36),
+  fontSize: ui.getFontSize(52.27),  // 🎨 累计放大 45% (36 * 1.452)
   fontWeight: 'bold'
 }))
 
 const buttonStyle = computed(() => ({
-  fontSize: ui.getFontSize(20),
-  paddingLeft: ui.getPadding(48),
-  paddingRight: ui.getPadding(48),
-  paddingTop: ui.getPadding(24),
-  paddingBottom: ui.getPadding(24)
+  fontSize: ui.getFontSize(29.04),  // 🎨 累计放大 45% (20 * 1.452)
+  paddingLeft: ui.getPadding(69.7),  // 🎨 累计放大 45% (48 * 1.452)
+  paddingRight: ui.getPadding(69.7),
+  paddingTop: ui.getPadding(34.85),  // 🎨 累计放大 45% (24 * 1.452)
+  paddingBottom: ui.getPadding(34.85)
 }))
 
 const instructionStyle = computed(() => ({
-  fontSize: ui.getFontSize(14),
-  marginTop: ui.getGap(32)
+  fontSize: ui.getFontSize(20.33),  // 🎨 累计放大 45% (14 * 1.452)
+  marginTop: ui.getGap(46.46)  // 🎨 累计放大 45% (32 * 1.452)
 }))
 
 const soundToggleContainerStyle = computed(() => ({
-  gap: ui.getGap(16)
+  gap: ui.getGap(23.23)  // 🎨 累计放大 45% (16 * 1.452)
 }))
 
 // 移除 buttonStyle，现在通过 props 传递

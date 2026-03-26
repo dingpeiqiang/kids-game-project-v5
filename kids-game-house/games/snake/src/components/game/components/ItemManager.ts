@@ -198,15 +198,17 @@ export class ItemManager {
       }
     }
 
-    // 随机位置生成道具
+    // 🎁 随机位置生成道具 (使用网格坐标，与蛇的坐标系一致)
     const cellSize = this.adaptParams.cellSize
     const col = Math.floor(Math.random() * this.gridCols)
     const row = Math.floor(Math.random() * this.gridRows)
     
+    console.log('🔍 道具生成调试:', { col, row, cellSize, gridCols: this.gridCols, gridRows: this.gridRows })
+    
     const item: GameItem = {
       type: selectedType,
       position: {
-        x: col * cellSize,
+        x: col * cellSize,  // ✅ 网格坐标转像素坐标
         y: row * cellSize
       },
       duration: this.getItemDuration(selectedType),
@@ -274,6 +276,8 @@ export class ItemManager {
     if (!snake || snake.length === 0) return []
     
     const head = snake[0]
+    if (!head) return []  // 🛡️ 安全检查
+    
     const cellSize = this.adaptParams.cellSize
     const collisionThreshold = cellSize * 0.5
     

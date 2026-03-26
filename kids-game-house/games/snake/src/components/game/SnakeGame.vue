@@ -75,9 +75,9 @@
       class="pause-overlay absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center"
     >
       <div class="text-center">
-        <div class="text-4xl mb-4">⏸️</div>
-        <div class="text-2xl font-bold text-white mb-4">游戏暂停</div>
-        <GameButton @click="gameStore.togglePause()" variant="primary">
+        <div class="text-5xl mb-4">⏸️</div>
+        <div class="text-3xl font-bold text-white mb-6">游戏暂停</div>
+        <GameButton @click="gameStore.togglePause()" variant="primary" :fontSize="20" :paddingLeft="32" :paddingRight="32" :paddingTop="14" :paddingBottom="14">
           继续游戏
         </GameButton>
       </div>
@@ -460,9 +460,11 @@ const cleanupGame = () => {
     gameLoop = null
   }
   
+  // 🎁 销毁 PhaserGame 实例 (会清理道具系统)
   if (phaserGameRef.value) {
     phaserGameRef.value.destroy()
-    phaserGameRef.value = null
+    // ⚠️ 不要立即设置为 null，让 onUnmounted 也能访问
+    // phaserGameRef.value = null  // 删除这行!
   }
 }
 
@@ -475,6 +477,16 @@ onUnmounted(() => {
   
   // 清理游戏循环和资源
   cleanupGame()
+  
+  // 🎁 清理道具系统 (防止内存泄漏)
+  const phaserGame = phaserGameRef.value as any
+  if (phaserGame && phaserGame.getItemSystem) {
+    const itemSystem = phaserGame.getItemSystem()
+    if (itemSystem) {
+      itemSystem.cleanup()
+      console.log('🎁 组件卸载，道具系统已清理')
+    }
+  }
   
   // 移除其他事件监听
   window.removeEventListener('keydown', handleKeyDown)
@@ -509,6 +521,16 @@ watch(() => gameStore.isGameOver, (gameOver) => {
     // 只触发一次轻微震动
     game?.shakeScreen()
 
+    // 🎁 清理道具系统 (停止生成定时器)
+    const phaserGame = phaserGameRef.value as any
+    if (phaserGame && phaserGame.getItemSystem) {
+      const itemSystem = phaserGame.getItemSystem()
+      if (itemSystem) {
+        itemSystem.cleanup()  // 清理道具系统
+        console.log('🎁 游戏结束，道具系统已清理')
+      }
+    }
+
     // 延迟跳转到游戏结束页面
     setTimeout(() => {
       router.push('/gameover')
@@ -534,6 +556,28 @@ function startGameLoop() {
       // 👉 传入 deltaTime 和 cellSize，实现精确的平滑移动和碰撞检测
       gameStore.moveSnake(deltaTime, cellSize)
       
+      // 🎁 更新道具系统并检测碰撞
+      const game = getPhaserGame() as any
+      if (game && game.getItemSystem && game.getItemSystem()) {
+        const itemSystem = game.getItemSystem()
+        // 🎁 使用 ItemManager 检测碰撞
+        const itemManager = itemSystem.getItemManager()
+        if (itemManager && gameStore.snake.length > 0) {
+          const head = gameStore.snake[0]
+          const collisions = itemManager.checkItemCollision(gameStore.snake)
+          for (const item of collisions) {  // ✅ collision 就是 item 本身
+            // ✅ 标记道具为非活跃 (必须在 applyItemEffect 之前)
+            item.active = false
+            // ✅ 应用效果
+            itemManager.applyItemEffect(item, gameStore.snake, {})
+          }
+          // ✅ 立即清理不活跃的道具
+          itemManager['removeInactiveItems']()
+        }
+        // 更新道具状态
+        itemSystem.update(gameStore.snake)
+      }
+      
       // 更新粒子
       gameStore.updateParticles()
     }
@@ -548,13 +592,16 @@ function startGameLoop() {
  * 渲染游戏画面（带蛇头旋转）
  */
 function renderGame() {
-  const game = getPhaserGame()
+  const game = getPhaserGame() as any
   if (!game) return
 
   // 👉 传入蛇头旋转角度
   game.renderSnake(gameStore.snake, gameStore.headRotation)
   game.renderFood(gameStore.food)
   game.renderObstacles(gameStore.obstacles)  // 渲染障碍物
+
+  // 🎁 渲染道具 - 注意：不要在这里渲染，由 ItemSystem 自己管理
+  // 道具渲染应该在 Phaser 的 update 循环中，避免每帧创建新对象
 
   // 渲染粒子
   gameStore.particles.forEach(particle => {

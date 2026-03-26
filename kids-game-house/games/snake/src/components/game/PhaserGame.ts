@@ -28,6 +28,7 @@ import { FOOD_TYPES } from '@/types/game'
 import { initUIParams, updateUIParams } from '@/utils/uiResponsive'
 import { validateGTRSTheme, type GTRSTheme as BaseGTRSTheme } from '@/utils/gtrs-validator'
 import { useThemeStore } from '@/stores/theme'
+import { ItemSystem, type ItemCollectEvent } from './components/ItemSystem'
 
 // 👉 声明全局 Phaser 变量（解决 TypeScript 编译问题）
 declare const Phaser: any
@@ -233,6 +234,21 @@ export class SnakePhaserGame {
   private particles: Phaser.GameObjects.Particles.ParticleEmitter | null = null  // ⚠️ 粒子系统
 
   // ============================================================================
+  // 🎁【游戏特定层】道具系统（贪吃蛇示例）
+  // ============================================================================
+  
+  // 👉 道具系统实例
+  private itemSystem: ItemSystem
+  
+  // 👉 游戏数据（包含道具效果状态）
+  private gameData = {
+    speedMultiplier: 1.0,     // 速度倍率 (1.0 = 正常)
+    hasShield: false,         // 是否拥有护盾
+    hasMagnet: false,         // 是否拥有磁铁
+    scoreMultiplier: 1.0      // 分数倍率 (1.0 = 正常)
+  }
+
+  // ============================================================================
   // 🔧【可复用框架层】音频管理对象（所有游戏通用）
   // ============================================================================
   
@@ -267,6 +283,15 @@ export class SnakePhaserGame {
   constructor(element: HTMLElement, onGameComplete?: () => void) {
     this.onGameComplete = onGameComplete
     this.containerElement = element
+    
+    // 🎁 初始化道具系统
+    this.itemSystem = new ItemSystem({
+      enabled: true,
+      spawnInterval: 10000,    // 10 秒生成一个道具
+      maxActiveItems: 3,       // 最多 3 个活跃道具
+      itemLifetime: 10000,     // 道具存活 10 秒
+      debugMode: true         // 开启调试模式
+    })
 
     console.log('📐 游戏设计基准:', {
       designSize: `${this.DESIGN_WIDTH} × ${this.DESIGN_HEIGHT}`,
@@ -353,6 +378,14 @@ export class SnakePhaserGame {
    */
   getCellSize(): number {
     return this.Adapt.cellSize
+  }
+
+  /**
+   * 🎁 获取道具系统实例
+   * 📌 说明：供外部访问道具系统
+   */
+  getItemSystem(): ItemSystem {
+    return this.itemSystem
   }
 
   /**
@@ -550,6 +583,30 @@ export class SnakePhaserGame {
       gameAreaSize: `${actualGameWidth.toFixed(0)} × ${actualGameHeight.toFixed(0)}`,
       offset: `x=${((this.Adapt.screenW - actualGameWidth) / 2).toFixed(1)}, y=${(this.Adapt.safeTop + (this.Adapt.screenH - this.Adapt.safeTop - this.Adapt.safeBottom - actualGameHeight) / 2).toFixed(1)}`
     })
+
+    // 🎁 初始化道具系统 (确保 cellSize 已正确计算)
+    if (this.Adapt.cellSize <= 0) {
+      console.warn('⚠️ cellSize 未正确计算，重新执行适配...')
+      // 👉 重新计算适配参数，而不是递归调用 preload
+      this.Adapt.scale = Math.min(
+        this.Adapt.screenW / this.DESIGN_WIDTH,
+        this.Adapt.screenH / this.DESIGN_HEIGHT
+      )
+      this.Adapt.safeTop = Math.max(44, this.Adapt.screenH * 0.05)
+      this.Adapt.safeBottom = Math.max(34, this.Adapt.screenH * 0.08)
+      
+      const baseCellSize = 50
+      const gameAreaWidth = this.GRID_COLS * baseCellSize
+      const gameAreaHeight = this.GRID_ROWS * baseCellSize
+      const availableWidth = (this.Adapt.screenW - 20) * 0.95
+      const availableHeight = (this.Adapt.screenH - this.Adapt.safeTop - this.Adapt.safeBottom) * 0.9
+      const finalScale = Math.min(availableWidth / gameAreaWidth, availableHeight / gameAreaHeight, 1.5)
+      this.Adapt.cellSize = baseCellSize * finalScale
+    }
+    
+    console.log('🎁 初始化道具系统，cellSize:', this.Adapt.cellSize.toFixed(2))
+    this.itemSystem.initialize(this.Adapt, this.GRID_COLS, this.GRID_ROWS)
+    console.log('🎁 道具系统已初始化')
   }
 
   /**
@@ -563,6 +620,12 @@ export class SnakePhaserGame {
       width: scene.scale.width,
       height: scene.scale.height
     })
+
+    // 🎁 设置道具系统的场景 (用于渲染)
+    if (this.itemSystem && this.itemSystem.getIsInitialized()) {
+      this.itemSystem.setScene(scene)
+      console.log('🎁 道具系统场景已设置')
+    }
     
     // ⭐ 重要：使用 Phaser 画布的实际尺寸更新 Adapt，确保后续绘制正确
     this.Adapt.screenW = scene.scale.width
@@ -578,6 +641,11 @@ export class SnakePhaserGame {
 
     // ⭐ 统一创建所有游戏元素（商业方案：方便 resize 时重建）
     this.createAllGameElements(scene)
+    
+    // 🎁 设置道具收集回调
+    this.itemSystem.setOnItemCollected((event) => {
+      this.handleItemCollected(event)
+    })
     
     // ⭐ 标记资源已加载完成，可以启动游戏循环
     this.isReady = true
@@ -822,6 +890,130 @@ export class SnakePhaserGame {
    */
   update(time: number, delta: number): void {
     // Phaser 的 update 循环，用于动画等
+    
+    // 🎁 更新道具系统 (自动处理生成、碰撞)
+    if (this.itemSystem.getIsInitialized()) {
+      // 注意：需要在游戏主循环中手动调用 checkItemCollision
+      // 这里只是更新道具状态和定时生成
+      this.itemSystem.update([])  // 空数组，仅更新状态
+      
+      // 🎁 渲染道具 (在 Phaser 场景中)
+      if (this.scene && this.itemSystem['graphics']) {
+        this.itemSystem['graphics'].clear()  // 清空上一帧
+        this.itemSystem.render(this.scene, this.itemSystem['graphics'])
+      }
+    }
+  }
+
+  // ============================================================================
+  // 🎁【游戏特定层】道具系统处理方法
+  // ============================================================================
+  
+  /**
+   * 🎁 处理道具收集事件
+   */
+  private handleItemCollected(event: any): void {
+    const item = event.item
+    console.log(`🎁 收集到道具：${item.type}`)
+    
+    // 根据道具类型应用效果
+    switch (item.type) {
+      case 'speed_boost':
+        this.applySpeedBoost()
+        break
+      case 'slow_down':
+        this.applySlowDown()
+        break
+      case 'shield':
+        this.applyShield()
+        break
+      case 'magnet':
+        this.applyMagnet()
+        break
+      case 'double_score':
+        this.applyDoubleScore()
+        break
+      case 'length_reduce':
+        this.applyLengthReduce()
+        break
+    }
+  }
+
+  /**
+   * 🎁 应用加速道具
+   */
+  private applySpeedBoost(): void {
+    this.gameData.speedMultiplier = 1.5
+    console.log('⚡ 加速道具生效！速度 +50%')
+    
+    setTimeout(() => {
+      this.gameData.speedMultiplier = 1.0
+      console.log('⚡ 加速道具效果结束')
+    }, 5000)
+  }
+
+  /**
+   * 🎁 应用减速道具
+   */
+  private applySlowDown(): void {
+    this.gameData.speedMultiplier = 0.5
+    console.log('🐢 减速道具生效！速度 -50%')
+    
+    setTimeout(() => {
+      this.gameData.speedMultiplier = 1.0
+      console.log('🐢 减速道具效果结束')
+    }, 5000)
+  }
+
+  /**
+   * 🎁 应用护盾道具
+   */
+  private applyShield(): void {
+    this.gameData.hasShield = true
+    console.log('🛡️ 护盾道具生效！免疫一次碰撞')
+    
+    setTimeout(() => {
+      this.gameData.hasShield = false
+      console.log('🛡️ 护盾道具效果结束')
+    }, 10000)
+  }
+
+  /**
+   * 🎁 应用磁铁道具
+   */
+  private applyMagnet(): void {
+    this.gameData.hasMagnet = true
+    console.log('🧲 磁铁道具生效！自动吸引食物')
+    
+    setTimeout(() => {
+      this.gameData.hasMagnet = false
+      console.log('🧲 磁铁道具效果结束')
+    }, 8000)
+  }
+
+  /**
+   * 🎁 应用双倍分数道具
+   */
+  private applyDoubleScore(): void {
+    this.gameData.scoreMultiplier = 2.0
+    console.log('✨ 双倍分数生效！得分 x2')
+    
+    setTimeout(() => {
+      this.gameData.scoreMultiplier = 1.0
+      console.log('✨ 双倍分数效果结束')
+    }, 10000)
+  }
+
+  /**
+   * 🎁 应用缩短蛇身道具
+   */
+  private applyLengthReduce(): void {
+    // 注意：蛇身缩短需要在游戏主循环中实际修改蛇数据
+    // 这里只是提示效果
+    console.log('✂️ 蛇身缩短！移除 3 节')
+    
+    // TODO: 需要在游戏主循环中添加逻辑来实际缩短蛇身
+    // 例如：设置一个标志位，在 update 中检查并执行
   }
 
   // ============================================================================
@@ -1175,6 +1367,12 @@ export class SnakePhaserGame {
   destroy(): void {
     // 停止所有音频
     this.stopAllBgm()
+    
+    // 🎁 清理道具系统 (防止内存泄漏)
+    if (this.itemSystem) {
+      this.itemSystem.cleanup()
+      console.log('🎁 PhaserGame 销毁，道具系统已清理')
+    }
     
     if (this.game) {
       this.game.destroy(true)

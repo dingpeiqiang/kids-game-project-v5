@@ -31,40 +31,40 @@
     </div>
 
     <!-- 按钮 -->
-    <div class="flex flex-col md:flex-row flex-wrap gap-2 md:gap-3 w-full max-w-md justify-center" :style="buttonContainerStyle">
+    <div class="flex flex-col items-center gap-2 w-full max-w-sm" :style="buttonContainerStyle">
       <GameButton
         variant="primary"
         @click="playAgain"
-        class="flex-1 min-w-[140px] max-w-[180px]"
-        :fontSize="16"
-        :paddingLeft="20"
-        :paddingRight="20"
-        :paddingTop="10"
-        :paddingBottom="10"
+        class="w-full min-w-[140px] max-w-[180px]"
+        :fontSize="24.96"
+        :paddingLeft="31.2"
+        :paddingRight="31.2"
+        :paddingTop="15.6"
+        :paddingBottom="15.6"
       >
         🔄 再来一局
       </GameButton>
       <GameButton
         variant="secondary"
         @click="goHome"
-        class="flex-1 min-w-[140px] max-w-[180px]"
-        :fontSize="16"
-        :paddingLeft="20"
-        :paddingRight="20"
-        :paddingTop="10"
-        :paddingBottom="10"
+        class="w-full min-w-[140px] max-w-[180px]"
+        :fontSize="24.96"
+        :paddingLeft="31.2"
+        :paddingRight="31.2"
+        :paddingTop="15.6"
+        :paddingBottom="15.6"
       >
         🏠 返回首页
       </GameButton>
       <GameButton
         variant="success"
         @click="changeDifficulty"
-        class="flex-1 min-w-[140px] max-w-[180px]"
-        :fontSize="16"
-        :paddingLeft="20"
-        :paddingRight="20"
-        :paddingTop="10"
-        :paddingBottom="10"
+        class="w-full min-w-[140px] max-w-[180px]"
+        :fontSize="24.96"
+        :paddingLeft="31.2"
+        :paddingRight="31.2"
+        :paddingTop="15.6"
+        :paddingBottom="15.6"
       >
         ⚙️ 更改难度
       </GameButton>
@@ -95,47 +95,49 @@ const isNewHighScore = computed(() => {
 
 // 动态样式计算
 const containerStyle = computed(() => ({
-  paddingTop: ui.getPadding(16),
-  paddingBottom: ui.getPadding(16)
+  // 🎨 上下边距各 2%,内容自动放大适配
+  paddingTop: '2%',
+  paddingBottom: '2%',
+  height: '96%' // 100% - 2% - 2% = 96%
 }))
 
 const emojiStyle = computed(() => ({
-  fontSize: ui.getFontSize(96)  // 对应 text-6xl ~ text-8xl
+  fontSize: ui.getFontSize(139.39)  // 🎨 累计放大 45% (96 * 1.452)
 }))
 
 const titleStyle = computed(() => ({
-  fontSize: ui.getFontSize(40)  // 对应 text-3xl ~ text-5xl
+  fontSize: ui.getFontSize(58.08)  // 🎨 累计放大 45% (40 * 1.452)
 }))
 
 const scoreCardStyle = computed(() => ({
-  padding: ui.getPadding(16),
-  marginBottom: ui.getGap(20)
+  padding: ui.getPadding(23.23),  // 🎨 累计放大 45% (16 * 1.452)
+  marginBottom: ui.getGap(29.04)  // 🎨 累计放大 45% (20 * 1.452)
 }))
 
 const labelStyle = computed(() => ({
-  fontSize: ui.getFontSize(14)
+  fontSize: ui.getFontSize(20.33)  // 🎨 累计放大 45% (14 * 1.452)
 }))
 
 const scoreNumberStyle = computed(() => ({
-  fontSize: ui.getFontSize(48)  // 对应 text-4xl ~ text-5xl
+  fontSize: ui.getFontSize(69.7)  // 🎨 累计放大 45% (48 * 1.452)
 }))
 
 const highlightNumberStyle = computed(() => ({
-  fontSize: ui.getFontSize(24)  // 对应 text-xl ~ text-2xl
+  fontSize: ui.getFontSize(34.85)  // 🎨 累计放大 45% (24 * 1.452)
 }))
 
 const infoStyle = computed(() => ({
-  fontSize: ui.getFontSize(18)
+  fontSize: ui.getFontSize(26.14)  // 🎨 累计放大 45% (18 * 1.452)
 }))
 
 const achievementStyle = computed(() => ({
-  padding: ui.getPadding(12),
-  marginBottom: ui.getGap(20),
-  borderRadius: ui.getBorderRadius(10)
+  padding: ui.getPadding(17.42),  // 🎨 累计放大 45% (12 * 1.452)
+  marginBottom: ui.getGap(29.04),  // 🎨 累计放大 45% (20 * 1.452)
+  borderRadius: ui.getBorderRadius(14.52)  // 🎨 累计放大 45% (10 * 1.452)
 }))
 
 const achievementTextStyle = computed(() => ({
-  fontSize: ui.getFontSize(16)
+  fontSize: ui.getFontSize(23.23)  // 🎨 累计放大 45% (16 * 1.452)
 }))
 
 const buttonContainerStyle = computed(() => ({

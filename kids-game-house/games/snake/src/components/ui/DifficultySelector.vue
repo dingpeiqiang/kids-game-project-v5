@@ -54,32 +54,32 @@ const selected = computed(() => props.modelValue)
 
 // 动态样式计算
 const containerStyle = computed(() => ({
-  gap: ui.getGap(16)
+  gap: ui.getGap(21.12)  // 🎨 再放大 20% (17.6 * 1.2)
 }))
 
 const cardStyle = computed(() => ({
-  padding: ui.getPadding(16),
-  borderRadius: ui.getBorderRadius(12),
+  padding: ui.getPadding(21.12),  // 🎨 再放大 20% (17.6 * 1.2)
+  borderRadius: ui.getBorderRadius(15.84),  // 🎨 再放大 20% (13.2 * 1.2)
   // ⭐ 如果传入了 uiScale，使用传入的值覆盖（用于特殊场景）
   transform: props.uiScale ? `scale(${props.uiScale})` : undefined
 }))
 
 const nameStyle = computed(() => ({
-  fontSize: ui.getFontSize(20)
+  fontSize: ui.getFontSize(31.68)  // 🎨 再放大 20% (26.4 * 1.2)
 }))
 
 const descriptionStyle = computed(() => ({
-  fontSize: ui.getFontSize(14)
+  fontSize: ui.getFontSize(22.18)  // 🎨 再放大 20% (18.48 * 1.2)
 }))
 
 const iconStyle = computed(() => ({
-  fontSize: ui.getFontSize(28)
+  fontSize: ui.getFontSize(44.35)  // 🎨 再放大 20% (36.96 * 1.2)
 }))
 
 const paramsStyle = computed(() => ({
-  marginTop: ui.getGap(8),
-  gap: ui.getGap(8),
-  fontSize: ui.getFontSize(12)  // ⭐ 稍微调小字体，避免溢出
+  marginTop: ui.getGap(12.67),  // 🎨 再放大 20% (10.56 * 1.2)
+  gap: ui.getGap(12.67),  // 🎨 再放大 20% (10.56 * 1.2)
+  fontSize: ui.getFontSize(19.01)  // 🎨 再放大 20% (15.84 * 1.2)
 }))
 
 const selectDifficulty = (diff: Difficulty) => {

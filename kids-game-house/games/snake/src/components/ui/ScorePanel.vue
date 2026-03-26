@@ -23,22 +23,23 @@ const props = defineProps<{
 const ui = useResponsiveUI()
 
 const containerStyle = computed(() => ({
-  paddingLeft: ui.getPadding(8),
-  paddingRight: ui.getPadding(8),
-  paddingTop: ui.getPadding(6),
-  paddingBottom: ui.getPadding(6),
-  borderRadius: ui.getBorderRadius(8)
+  // 🎨 放大容器内边距
+  paddingLeft: ui.getPadding(16),
+  paddingRight: ui.getPadding(16),
+  paddingTop: ui.getPadding(10),
+  paddingBottom: ui.getPadding(10),
+  borderRadius: ui.getBorderRadius(12)
 }))
 
 const labelStyle = computed(() => ({
-  fontSize: ui.getFontSize(10)  // 更小的标签字体
+  fontSize: ui.getFontSize(14)  // 🎨 放大标签字体
 }))
 
 const scoreStyle = computed(() => ({
-  fontSize: ui.getFontSize(18)  // 适中的分数显示
+  fontSize: ui.getFontSize(28)  // 🎨 放大分数显示
 }))
 
 const highScoreStyle = computed(() => ({
-  fontSize: ui.getFontSize(14)  // 适中的最高分显示
+  fontSize: ui.getFontSize(20)  // 🎨 放大最高分显示
 }))
 </script>

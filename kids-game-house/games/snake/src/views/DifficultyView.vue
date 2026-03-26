@@ -2,30 +2,30 @@
   <div class="w-full h-full flex flex-col items-center justify-center px-4 fade-in overflow-y-auto" :style="containerStyle">
     <h2 class="font-bold text-white text-center" :style="titleStyle">选择难度</h2>
 
-    <DifficultySelector v-model="selectedDifficulty" class="w-full max-w-md" :uiScale="uiScale" />
+    <DifficultySelector v-model="selectedDifficulty" class="w-full max-w-lg" :uiScale="uiScale" />
 
-    <div class="flex flex-col md:flex-row gap-2 md:gap-3 w-full max-w-md justify-center" :style="buttonContainerStyle">
+    <div class="flex flex-col items-center gap-2 w-full max-w-lg" :style="buttonContainerStyle">
       <GameButton
         variant="secondary"
         @click="goBack"
-        class="flex-1 min-w-[120px]"
-        :fontSize="18"
-        :paddingLeft="24"
-        :paddingRight="24"
-        :paddingTop="12"
-        :paddingBottom="12"
+        class="w-full"
+        :fontSize="25.92"
+        :paddingLeft="34.56"
+        :paddingRight="34.56"
+        :paddingTop="17.28"
+        :paddingBottom="17.28"
       >
         🔙 返回
       </GameButton>
       <GameButton
         variant="primary"
         @click="startGame"
-        class="flex-1 min-w-[120px]"
-        :fontSize="18"
-        :paddingLeft="24"
-        :paddingRight="24"
-        :paddingTop="12"
-        :paddingBottom="12"
+        class="w-full"
+        :fontSize="25.92"
+        :paddingLeft="34.56"
+        :paddingRight="34.56"
+        :paddingTop="17.28"
+        :paddingBottom="17.28"
       >
         ▶️ 开始
       </GameButton>
@@ -52,18 +52,20 @@ const uiScale = computed(() => ui.uiScale)
 
 // 动态样式计算
 const containerStyle = computed(() => ({
-  paddingTop: ui.getPadding(16),
-  paddingBottom: ui.getPadding(16)
+  // 🎨 上下边距各 2%,内容自动放大适配
+  paddingTop: '2%',
+  paddingBottom: '2%',
+  height: '96%' // 100% - 2% - 2% = 96%
 }))
 
 const titleStyle = computed(() => ({
-  fontSize: ui.getFontSize(40),  // 对应 text-3xl ~ text-5xl
-  marginBottom: ui.getGap(24)
+  fontSize: ui.getFontSize(83.64),  // 🎨 累计放大 109% (40 * 2.09088)
+  marginBottom: ui.getGap(50.18)  // 🎨 累计放大 109% (24 * 2.09088)
 }))
 
 const buttonContainerStyle = computed(() => ({
-  gap: ui.getGap(12),
-  marginTop: ui.getGap(24)
+  gap: ui.getGap(25.09),  // 🎨 累计放大 109% (12 * 2.09088)
+  marginTop: ui.getGap(50.18)  // 🎨 累计放大 109% (24 * 2.09088)
 }))
 
 const goBack = () => {

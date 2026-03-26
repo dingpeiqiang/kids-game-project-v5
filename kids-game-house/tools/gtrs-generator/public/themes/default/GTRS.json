@@ -49,58 +49,58 @@
             "bgm": {
                 "bgm_main": {
                     "alias": "主菜单音乐",
-                    "src": "/themes/default/assets/audio/bgm_main.mp3",
-                    "type": "mp3",
+                    "src": "/themes/default/assets/audio/bgm_main.wav",
+                    "type": "wav",
                     "volume": 0.6
                 },
                 "bgm_gameplay": {
                     "alias": "游戏音乐",
-                    "src": "/themes/default/assets/audio/bgm_gameplay.mp3",
-                    "type": "mp3",
+                    "src": "/themes/default/assets/audio/bgm_gameplay.wav",
+                    "type": "wav",
                     "volume": 0.5
                 },
                 "bgm_victory": {
                     "alias": "胜利音乐",
-                    "src": "/themes/default/assets/audio/bgm_victory.mp3",
-                    "type": "mp3",
+                    "src": "/themes/default/assets/audio/bgm_victory.wav",
+                    "type": "wav",
                     "volume": 0.7
                 },
                 "bgm_defeat": {
                     "alias": "失败音乐",
-                    "src": "/themes/default/assets/audio/bgm_defeat.mp3",
-                    "type": "mp3",
+                    "src": "/themes/default/assets/audio/bgm_defeat.wav",
+                    "type": "wav",
                     "volume": 0.5
                 }
             },
             "effect": {
                 "effect_fire": {
                     "alias": "射击音效",
-                    "src": "/themes/default/assets/audio/effect_fire.mp3",
-                    "type": "mp3",
+                    "src": "/themes/default/assets/audio/effect_fire.wav",
+                    "type": "wav",
                     "volume": 0.6
                 },
                 "effect_explosion": {
                     "alias": "爆炸音效",
-                    "src": "/themes/default/assets/audio/effect_explosion.mp3",
-                    "type": "mp3",
+                    "src": "/themes/default/assets/audio/effect_explosion.wav",
+                    "type": "wav",
                     "volume": 0.7
                 },
                 "effect_hit": {
                     "alias": "击中音效",
-                    "src": "/themes/default/assets/audio/effect_hit.mp3",
-                    "type": "mp3",
+                    "src": "/themes/default/assets/audio/effect_hit.wav",
+                    "type": "wav",
                     "volume": 0.5
                 },
                 "effect_powerup": {
                     "alias": "道具音效",
-                    "src": "/themes/default/assets/audio/effect_powerup.mp3",
-                    "type": "mp3",
+                    "src": "/themes/default/assets/audio/effect_powerup.wav",
+                    "type": "wav",
                     "volume": 0.6
                 },
                 "effect_button_click": {
                     "alias": "按钮音效",
-                    "src": "/themes/default/assets/audio/effect_button_click.mp3",
-                    "type": "mp3",
+                    "src": "/themes/default/assets/audio/effect_button_click.wav",
+                    "type": "wav",
                     "volume": 0.5
                 }
             },

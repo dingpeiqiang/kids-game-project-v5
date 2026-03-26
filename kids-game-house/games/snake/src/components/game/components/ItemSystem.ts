@@ -48,6 +48,11 @@ export class ItemSystem {
   private onItemCollected?: (event: ItemCollectEvent) => void
   private isInitialized: boolean = false
   
+  // 🎁 渲染相关
+  private scene: any = null
+  private graphics: any = null
+  private itemTexts: Map<string, any> = new Map()  // 存储道具文本对象
+  
   // 道具渲染缓存
   private itemTextures: Map<ItemType, string> = new Map()
 
@@ -101,6 +106,53 @@ export class ItemSystem {
     
     this.isInitialized = true
     console.log('✅ 道具系统初始化完成')
+  }
+
+  /**
+   * 🎁 清理道具系统 (游戏结束时调用)
+   */
+  cleanup(): void {
+    console.log('🎁 清理道具系统...')
+    
+    // 停止生成定时器
+    if (this.spawnTimer) {
+      clearInterval(this.spawnTimer)
+      this.spawnTimer = null
+      console.log('⏰ 道具生成定时器已停止')
+    }
+    
+    // 清理所有道具
+    if (this.itemManager) {
+      this.itemManager.clearAllItems()
+      console.log('🎁 所有道具已清理')
+    }
+    
+    // 清理渲染对象
+    if (this.graphics) {
+      this.graphics.destroy()
+      this.graphics = null
+      console.log('🎨 Graphics 对象已清理')
+    }
+    
+    // 清理文本对象
+    this.itemTexts.forEach(text => text.destroy())
+    this.itemTexts.clear()
+    console.log('📝 文本对象已清理')
+    
+    this.scene = null
+    this.isInitialized = false
+    console.log('✅ 道具系统清理完成')
+  }
+
+  /**
+   * 🎁 设置渲染场景 (在 Phaser 场景中调用)
+   */
+  setScene(scene: any): void {
+    this.scene = scene
+    // 创建一个持久的 graphics 对象
+    if (scene && !this.graphics) {
+      this.graphics = scene.add.graphics()
+    }
   }
 
   /**
@@ -237,13 +289,29 @@ export class ItemSystem {
 
     const activeItems = this.itemManager.getActiveItems()
     const cellSize = this.itemManager['adaptParams'].cellSize
+    const gridCols = this.itemManager['gridCols']
+    const gridRows = this.itemManager['gridRows']
+    
+    // 🎁 计算游戏区域偏移 (与 renderSnake 保持一致)
+    const gameWidth = gridCols * cellSize
+    const gameHeight = gridRows * cellSize
+    const offsetX = (scene.scale.width - gameWidth) / 2
+    const offsetY = (scene.scale.height - gameHeight) / 2
+
+    // 🎁 清理旧的文本对象
+    this.itemTexts.forEach(text => text.destroy())
+    this.itemTexts.clear()
 
     for (const item of activeItems) {
-      const x = item.position.x + cellSize / 2
-      const y = item.position.y + cellSize / 2
+      // 🎁 加上游戏区域偏移
+      const x = offsetX + item.position.x + cellSize / 2
+      const y = offsetY + item.position.y + cellSize / 2
       
       // 根据道具类型绘制不同颜色
       const color = this.getItemColor(item.type)
+      
+      // 🎁 设置道具图层的深度 (与蛇同一层)
+      graphics.setDepth(5)  // 蛇在默认层 (0-10),道具设为 5
       
       // 绘制道具外框
       graphics.lineStyle(2, color, 1)
@@ -254,10 +322,17 @@ export class ItemSystem {
       graphics.fillStyle(color, alpha)
       graphics.fillCircle(x, y, cellSize * 0.35)
       
-      // 绘制道具图标
+      // 🎁 创建新的文本对象并保存引用
       const icon = this.getItemIcon(item.type)
-      graphics.fillStyle(0xffffff, 1)
-      graphics.fillText(icon, x - 5, y + 5)
+      const text = scene.add.text(x, y, icon, {
+        fontSize: `${cellSize * 0.6}px`,
+        color: '#ffffff'
+      }).setOrigin(0.5)
+      text.setDepth(15)  // ✅ 文字在最上层，高于蛇和道具
+      
+      // 存储文本对象，下次渲染时清理
+      const key = `${item.type}_${item.position.x}_${item.position.y}`
+      this.itemTexts.set(key, text)
     }
   }
 
