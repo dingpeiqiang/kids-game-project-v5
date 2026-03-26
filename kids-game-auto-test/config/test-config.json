@@ -1,0 +1,105 @@
+{
+  "games": {
+    "plane-shooter": {
+      "name": "Plane Shooter (飞机大战)",
+      "url": "http://localhost:8081/",
+      "type": "shooter",
+      "testScenarios": [
+        "start_screen",
+        "difficulty_selection",
+        "theme_selection",
+        "gameplay_flow",
+        "shooting_mechanism",
+        "collision_detection"
+      ]
+    },
+    "snake": {
+      "name": "Snake (贪吃蛇)",
+      "url": "http://localhost:3005/",
+      "type": "arcade",
+      "testScenarios": [
+        "start_screen",
+        "difficulty_selection",
+        "theme_selection",
+        "movement_control",
+        "food_collection",
+        "collision_detection"
+      ]
+    },
+    "tank-battle": {
+      "name": "Tank Battle (坦克大战)",
+      "url": "http://localhost:3002/",
+      "type": "action",
+      "testScenarios": [
+        "start_screen",
+        "level_selection",
+        "theme_selection",
+        "tank_movement",
+        "shooting_mechanism",
+        "enemy_ai"
+      ]
+    },
+    "plants-vs-zombie": {
+      "name": "Plants vs Zombie (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "type": "strategy",
+      "testScenarios": [
+        "start_screen",
+        "level_selection",
+        "plant_placement",
+        "zombie_spawn",
+        "resource_management",
+        "wave_progression"
+      ]
+    }
+  },
+  "performance": {
+    "thresholds": {
+      "loadTime": 5000,
+      "frameRate": 30,
+      "memoryUsage": 512,
+      "cpuUsage": 50
+    },
+    "metrics": [
+      "load_time",
+      "first_paint",
+      "first_contentful_paint",
+      "time_to_interactive",
+      "frame_rate",
+      "memory_usage"
+    ]
+  },
+  "ai": {
+    "enabled": true,
+    "pythonPath": "python",
+    "analyzerScript": "ai/analyzer.py",
+    "features": {
+      "visualQuality": true,
+      "userExperience": true,
+      "accessibilityScore": true,
+      "engagementAnalysis": true
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "combined",
+    "outputDir": "logs",
+    "maxSize": "10MB",
+    "maxFiles": "5d"
+  },
+  "reporting": {
+    "formats": ["html", "json", "excel"],
+    "outputDir": "reports",
+    "includeScreenshots": true,
+    "includeVideos": true,
+    "emailNotification": false
+  },
+  "browser": {
+    "defaultViewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "timeout": 60000,
+    "retryAttempts": 3
+  }
+}

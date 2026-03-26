@@ -6,7 +6,7 @@ echo ============================================================
 echo.
 
 echo [1/1] 安装贪吃蛇游戏依赖...
-cd /d %~dp0snake-vue3
+cd /d %~dp0snake
 call npm install
 if %errorlevel% neq 0 (
     echo 贪吃蛇游戏依赖安装失败！

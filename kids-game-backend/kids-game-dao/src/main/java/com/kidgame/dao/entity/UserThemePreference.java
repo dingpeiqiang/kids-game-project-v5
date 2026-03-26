@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * @since 1.0.0
  */
 @Data
-@TableName("user_theme_preference")
+@TableName("t_user_theme_preference")
 public class UserThemePreference implements Serializable {
 
     private static final long serialVersionUID = 1L;

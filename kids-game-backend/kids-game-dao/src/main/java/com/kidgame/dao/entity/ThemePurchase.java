@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 主题购买记录实体
  */
 @Data
-@TableName("theme_purchase")
+@TableName("t_theme_purchase")
 public class ThemePurchase implements Serializable {
 
     private static final long serialVersionUID = 1L;

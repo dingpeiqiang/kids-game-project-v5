@@ -1,0 +1,103 @@
+# ==================== 全局忽略 ====================
+# IDE 配置
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Lingma 配置
+.lingma/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.temp
+*.log
+*.bak
+*.swp
+*.swo
+*~
+
+# 编译输出
+target/
+build/
+dist/
+out/
+
+# ==================== Java 后端 (Maven) ====================
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot
+spring-boot-devtools.properties
+application-local.yml
+application-local.properties
+
+# 证书和密钥
+*.jks
+*.keystore
+*cos_credential.json
+COS_TEMPORARY_CREDENTIAL.md
+
+# ==================== Node.js/Vue 前端 ====================
+# 依赖
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+
+# 构建输出
+dist/
+.eslintcache
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 编辑器
+.vscode-test/
+*.vsix
+
+# ==================== Vue/React 特定 ====================
+# Vite
+.vite/
+vite.config.ts.timestamp-*
+
+# TypeScript
+tsconfig.tsbuildinfo
+
+# ==================== 游戏模块特定 ====================
+# Plants vs Zombie
+plants-vs-zombie/node_modules/
+plants-vs-zombie/dist/
+
+# Snake Vue3
+snake-vue3/node_modules/
+snake-vue3/dist/
+
+# ==================== 文档和其他 ====================
+# 自动生成的文档
+*.md.backup
+*.md.bak
+
+# 测试覆盖率
+coverage/
+.nyc_output/
+
+# 调试文件
+.debug/

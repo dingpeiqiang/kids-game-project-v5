@@ -71,7 +71,20 @@ kids-game-project/
 
 ## 快速开始
 
-### 后端启动
+### 🚀 一键启动（推荐）
+
+**开发模式（混合架构 - 独立部署）**：
+```bash
+# 根目录执行
+start-dev-all.bat
+```
+- ✅ 自动启动后端、前端、所有游戏
+- 🌐 访问主平台：http://localhost:5173
+- 🔥 支持热重载，快速迭代
+
+### 分步启动
+
+#### 后端启动
 
 ```bash
 # 1. 配置数据库（修改 application.yml）
@@ -89,15 +102,36 @@ npm install
 npm run dev
 ```
 
-### 游戏平台启动
+### 🎮 游戏平台启动
 
-独立游戏模块位于 `kids-game-house/` 目录：
+**独立游戏模块**位于 `kids-game-house/` 目录，支持混合架构：
 
+#### 方式一：独立部署（开发环境）
 ```bash
 cd kids-game-house
 
 # 安装依赖
 install-dependencies.bat
+
+# 启动所有游戏（独立端口）
+start-all-games.bat
+
+# 访问各游戏：
+# - 贪吃蛇：http://localhost:3003
+# - 飞机大战：http://localhost:3002
+# - 染色体：http://localhost:3001
+```
+
+#### 方式二：整合部署（生产环境）
+```bash
+# 根目录执行
+build-production.bat
+
+# 输出到 kids-game-frontend/dist/
+# 游戏资源路径：/games/{gameCode}/
+```
+
+📖 **详细说明**: [混合架构指南](./docs/HYBRID_ARCHITECTURE.md)
 
 # 启动所有游戏
 start-all-games.bat

@@ -1,0 +1,111 @@
+﻿{
+    "$comment": "GTRS v1.0.0 飞机大战 内置默认主题",
+    "specMeta": {
+        "compatibleVersion": "1.0.0",
+        "specName": "GTRS",
+        "specVersion": "1.0.0"
+    },
+    "themeInfo": {
+        "themeId": "plane_shooter_default",
+        "gameId": "plane-shooter",
+        "themeName": "飞机大战 - 默认主题",
+        "isDefault": true,
+        "author": "官方",
+        "description": "飞机大战默认主题配置"
+    },
+    "globalStyle": {
+        "bgColor": "#0a0a28",
+        "borderRadius": "8px",
+        "fontFamily": "Arial, sans-serif",
+        "primaryColor": "#4ade80",
+        "secondaryColor": "#3b82f6",
+        "textColor": "#ffffff"
+    },
+    "resources": {
+        "images": {
+            "login": {},
+            "scene": {
+                "scene_bg_main": {
+                    "alias": "太空背景",
+                    "src": "/themes/default/assets/scene/background.png",
+                    "type": "png"
+                },
+                "scene_bg_stars": {
+                    "alias": "星空",
+                    "src": "/themes/default/assets/scene/stars.png",
+                    "type": "png"
+                },
+                "scene_grid": {
+                    "alias": "网格",
+                    "src": "/themes/default/assets/scene/grid.png",
+                    "type": "png"
+                }
+            },
+            "ui": {},
+            "icon": {},
+            "effect": {}
+        },
+        "audio": {
+            "bgm": {
+                "bgm_main": {
+                    "alias": "主菜单音乐",
+                    "src": "/themes/default/assets/audio/bgm_main.mp3",
+                    "type": "wav",
+                    "volume": 0.6
+                },
+                "bgm_gameplay": {
+                    "alias": "游戏音乐",
+                    "src": "/themes/default/assets/audio/bgm_gameplay.mp3",
+                    "type": "wav",
+                    "volume": 0.5
+                },
+                "bgm_victory": {
+                    "alias": "胜利音乐",
+                    "src": "/themes/default/assets/audio/bgm_victory.mp3",
+                    "type": "wav",
+                    "volume": 0.7
+                },
+                "bgm_defeat": {
+                    "alias": "失败音乐",
+                    "src": "/themes/default/assets/audio/bgm_defeat.mp3",
+                    "type": "wav",
+                    "volume": 0.5
+                }
+            },
+            "effect": {
+                "effect_fire": {
+                    "alias": "射击音效",
+                    "src": "/themes/default/assets/audio/effect_fire.mp3",
+                    "type": "wav",
+                    "volume": 0.6
+                },
+                "effect_explosion": {
+                    "alias": "爆炸音效",
+                    "src": "/themes/default/assets/audio/effect_explosion.mp3",
+                    "type": "wav",
+                    "volume": 0.7
+                },
+                "effect_hit": {
+                    "alias": "击中音效",
+                    "src": "/themes/default/assets/audio/effect_hit.mp3",
+                    "type": "wav",
+                    "volume": 0.5
+                },
+                "effect_powerup": {
+                    "alias": "道具音效",
+                    "src": "/themes/default/assets/audio/effect_powerup.mp3",
+                    "type": "wav",
+                    "volume": 0.6
+                },
+                "effect_button_click": {
+                    "alias": "按钮音效",
+                    "src": "/themes/default/assets/audio/effect_button_click.mp3",
+                    "type": "wav",
+                    "volume": 0.5
+                }
+            },
+            "voice": {}
+        },
+        "video": {}
+    }
+}

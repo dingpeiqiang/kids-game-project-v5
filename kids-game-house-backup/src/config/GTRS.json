@@ -1,0 +1,182 @@
+{
+    "$comment": "GTRS v1.0.0 坦克大战游戏内置默认主题。此文件随游戏代码一起发布，必须通过 GTRS 严格校验。禁止删除或损坏任何必填字段。",
+    "globalStyle": {
+        "bgColor": "#1a1a2e",
+        "borderRadius": "8px",
+        "fontFamily": "Arial, sans-serif",
+        "primaryColor": "#4ade80",
+        "secondaryColor": "#22c55e",
+        "textColor": "#ffffff"
+    },
+    "resources": {
+        "audio": {
+            "bgm": {
+                "bgm_main": {
+                    "alias": "主菜单背景音乐",
+                    "src": "/themes/default/audio/bgm_main.mp3",
+                    "type": "mp3",
+                    "volume": 0.5
+                },
+                "bgm_gameplay": {
+                    "alias": "游戏中背景音乐",
+                    "src": "/themes/default/audio/bgm_gameplay.mp3",
+                    "type": "mp3",
+                    "volume": 0.4
+                },
+                "bgm_victory": {
+                    "alias": "胜利音乐",
+                    "src": "/themes/default/audio/bgm_victory.mp3",
+                    "type": "mp3",
+                    "volume": 0.6
+                },
+                "bgm_defeat": {
+                    "alias": "失败音乐",
+                    "src": "/themes/default/audio/bgm_defeat.mp3",
+                    "type": "mp3",
+                    "volume": 0.5
+                }
+            },
+            "effect": {
+                "effect_button_click": {
+                    "alias": "按钮点击音效",
+                    "src": "/themes/default/audio/sfx_button_click.mp3",
+                    "type": "mp3",
+                    "volume": 0.4
+                },
+                "effect_fire": {
+                    "alias": "开火音效",
+                    "src": "/themes/default/audio/sfx_fire.mp3",
+                    "type": "mp3",
+                    "volume": 0.6
+                },
+                "effect_explosion": {
+                    "alias": "爆炸音效",
+                    "src": "/themes/default/audio/sfx_explosion.mp3",
+                    "type": "mp3",
+                    "volume": 0.7
+                },
+                "effect_hit": {
+                    "alias": "击中音效",
+                    "src": "/themes/default/audio/sfx_hit.mp3",
+                    "type": "mp3",
+                    "volume": 0.5
+                },
+                "effect_powerup_appear": {
+                    "alias": "道具出现音效",
+                    "src": "/themes/default/audio/sfx_powerup_appear.mp3",
+                    "type": "mp3",
+                    "volume": 0.6
+                },
+                "effect_powerup_pickup": {
+                    "alias": "拾取道具音效",
+                    "src": "/themes/default/audio/sfx_powerup_pickup.mp3",
+                    "type": "mp3",
+                    "volume": 0.6
+                },
+                "effect_base_destroyed": {
+                    "alias": "基地被毁音效",
+                    "src": "/themes/default/audio/sfx_base_destroyed.mp3",
+                    "type": "mp3",
+                    "volume": 0.8
+                }
+            },
+            "voice": {}
+        },
+        "images": {
+            "effect": {
+                "explosion_1": {
+                    "alias": "爆炸帧 1",
+                    "src": "/themes/default/images/effect/explosion_1.png",
+                    "type": "png"
+                },
+                "explosion_2": {
+                    "alias": "爆炸帧 2",
+                    "src": "/themes/default/images/effect/explosion_2.png",
+                    "type": "png"
+                },
+                "explosion_3": {
+                    "alias": "爆炸帧 3",
+                    "src": "/themes/default/images/effect/explosion_3.png",
+                    "type": "png"
+                },
+                "explosion_4": {
+                    "alias": "爆炸帧 4",
+                    "src": "/themes/default/images/effect/explosion_4.png",
+                    "type": "png"
+                }
+            },
+            "icon": {
+                "powerup_clock": {
+                    "alias": "时间冻结道具",
+                    "src": "/themes/default/images/icon/powerup_clock.png",
+                    "type": "png"
+                },
+                "powerup_life": {
+                    "alias": "额外生命道具",
+                    "src": "/themes/default/images/icon/powerup_life.png",
+                    "type": "png"
+                },
+                "powerup_shovel": {
+                    "alias": "基地加固道具",
+                    "src": "/themes/default/images/icon/powerup_shovel.png",
+                    "type": "png"
+                },
+                "powerup_star": {
+                    "alias": "武器升级道具",
+                    "src": "/themes/default/images/icon/powerup_star.png",
+                    "type": "png"
+                }
+            },
+            "login": {},
+            "scene": {
+                "base": {
+                    "alias": "基地 (完好)",
+                    "src": "/themes/default/images/scene/base.png",
+                    "type": "png"
+                },
+                "base_destroyed": {
+                    "alias": "基地 (被毁)",
+                    "src": "/themes/default/images/scene/base_destroyed.png",
+                    "type": "png"
+                },
+                "background": {
+                    "alias": "游戏主背景",
+                    "src": "/themes/default/images/scene/background.png",
+                    "type": "png"
+                },
+                "grass": {
+                    "alias": "草地掩护",
+                    "src": "/themes/default/images/scene/grass.png",
+                    "type": "png"
+                },
+                "grid": {
+                    "alias": "网格背景",
+                    "src": "/themes/default/images/scene/grid.png",
+                    "type": "png"
+                },
+                "wall_brick": {
+                    "alias": "砖墙障碍物",
+                    "src": "/themes/default/images/scene/wall_brick.png",
+                    "type": "png"
+                },
+                "wall_steel": {
+                    "alias": "钢墙障碍物",
+                    "src": "/themes/default/images/scene/wall_steel.png",
+                    "type": "png"
+                },
+                "water": {
+                    "alias": "水域障碍",
+                    "src": "/themes/default/images/scene/water.png",
+                    "type": "png"
+                }
+            },
+            "ui": {}
+        },
+        "video": {}
+    },
+    "specMeta": {
+        "compatibleVersion": "1.0.0",
+        "specName": "GTRS",
+        "specVersion": "1.0.0"
+    }
+}

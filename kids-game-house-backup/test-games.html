@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>游戏部署测试页面</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 { color: white; text-align: center; margin-bottom: 20px; }
+    .test-section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .test-section h2 {
+      color: #333;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .game-container {
+      width: 100%;
+      height: 500px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      background: #f5f5f5;
+      margin: 10px 0;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .warning { background: #fff3cd; color: #856404; }
+    .info { background: #d1ecf1; color: #0c5460; }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover { background: #5568d3; }
+    .log {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    .log-entry { margin: 2px 0; }
+    .log-time { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>🎮 独立游戏部署测试</h1>
+
+  <div class="test-section">
+    <h2>1. 环境检查</h2>
+    <div id="env-check"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>2. 超级染色体 (Port 3001)</h2>
+    <div class="game-container">
+      <iframe id="chromosome-iframe" 
+              src="http://localhost:3001?session_id=test123&user_id=001&user_name=测试玩家"
+              width="100%" 
+              height="100%" 
+              frameborder="0"
+              allowfullscreen>
+      </iframe>
+    </div>
+    <div id="chromosome-status" class="status info">等待加载...</div>
+    <button onclick="testGame('chromosome', 'http://localhost:3001')">测试游戏</button>
+    <button onclick="reloadGame('chromosome-iframe')">重新加载</button>
+  </div>
+
+  <div class="test-section">
+    <h2>3. 飞机大战 (Port 3002)</h2>
+    <div class="game-container">
+      <iframe id="plane-iframe" 
+              src="http://localhost:3002?session_id=test123&user_id=001&user_name=测试玩家"
+              width="100%" 
+              height="100%" 
+              frameborder="0"
+              allowfullscreen>
+      </iframe>
+    </div>
+    <div id="plane-status" class="status info">等待加载...</div>
+    <button onclick="testGame('plane', 'http://localhost:3002')">测试游戏</button>
+    <button onclick="reloadGame('plane-iframe')">重新加载</button>
+  </div>
+
+  <div class="test-section">
+    <h2>4. 贪吃蛇 (Port 3003)</h2>
+    <div class="game-container">
+      <iframe id="snake-iframe" 
+              src="http://localhost:3003?session_id=test123&user_id=001&user_name=测试玩家"
+              width="100%" 
+              height="100%" 
+              frameborder="0"
+              allowfullscreen>
+      </iframe>
+    </div>
+    <div id="snake-status" class="status info">等待加载...</div>
+    <button onclick="testGame('snake', 'http://localhost:3003')">测试游戏</button>
+    <button onclick="reloadGame('snake-iframe')">重新加载</button>
+  </div>
+
+  <div class="test-section">
+    <h2>3. 通信日志</h2>
+    <div id="log" class="log"></div>
+    <button onclick="clearLog()">清空日志</button>
+  </div>
+
+  <script>
+    let logEntries = [];
+
+    // 页面加载时检查环境
+    window.addEventListener('load', checkEnvironment);
+
+    // 监听来自游戏的消息
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      addLog(`收到消息: ${JSON.stringify(message).substring(0, 200)}...`);
+
+      if (message.type) {
+        switch (message.type) {
+          case 'GAME_LOADED':
+            updateStatus(message.sessionId || 'unknown', '游戏加载完成', 'success');
+            break;
+          case 'GAME_STATUS':
+            addLog(`游戏状态更新: ${message.data?.status}, 分数: ${message.data?.score}`);
+            break;
+          case 'GAME_OVER':
+            addLog(`游戏结束: 分数=${message.data?.score}, 状态=${message.data?.status}`);
+            updateStatus(message.sessionId || 'unknown', '游戏结束', 'success');
+            break;
+          case 'GAME_ERROR':
+            addLog(`游戏错误: ${message.data?.error}`);
+            updateStatus(message.sessionId || 'unknown', `错误: ${message.data?.error}`, 'error');
+            break;
+        }
+      }
+    });
+
+    function checkEnvironment() {
+      const envDiv = document.getElementById('env-check');
+      let html = '<ul>';
+
+      // 检查 Node.js
+      html += '<li>Node.js: ' + (window.Node ? '支持' : '不适用') + '</li>';
+
+      // 检查 localStorage
+      html += '<li>LocalStorage: ' + (typeof localStorage !== 'undefined' ? '支持' : '不支持') + '</li>';
+
+      // 检查 postMessage
+      html += '<li>postMessage: ' + (window.postMessage ? '支持' : '不支持') + '</li>';
+
+      // 检查 iframe
+      html += '<li>Iframe: ' + (window.HTMLIFrameElement ? '支持' : '不支持') + '</li>';
+
+      html += '</ul>';
+      envDiv.innerHTML = html;
+      addLog('环境检查完成');
+    }
+
+    function testGame(gameName, url) {
+      addLog(`开始测试游戏: ${gameName}`);
+      
+      fetch(url, { mode: 'cors' })
+        .then(response => {
+          if (response.ok) {
+            updateStatus(gameName, `游戏服务器正常 (${response.status})`, 'success');
+            addLog(`${gameName}: 服务器响应正常`);
+          } else {
+            updateStatus(gameName, `游戏服务器错误 (${response.status})`, 'warning');
+            addLog(`${gameName}: 服务器响应 ${response.status}`);
+          }
+        })
+        .catch(error => {
+          updateStatus(gameName, `无法连接游戏服务器`, 'error');
+          addLog(`${gameName}: 连接失败 - ${error.message}`);
+        });
+    }
+
+    function reloadGame(iframeId) {
+      const iframe = document.getElementById(iframeId);
+      if (iframe) {
+        iframe.src = iframe.src;
+        addLog(`重新加载 iframe: ${iframeId}`);
+      }
+    }
+
+    function updateStatus(gameName, message, type) {
+      const statusId = gameName + '-status';
+      const statusEl = document.getElementById(statusId);
+      if (statusEl) {
+        statusEl.textContent = message;
+        statusEl.className = 'status ' + type;
+      }
+    }
+
+    function addLog(message) {
+      const time = new Date().toLocaleTimeString();
+      const entry = `<div class="log-entry"><span class="log-time">[${time}]</span> ${message}</div>`;
+      logEntries.unshift(entry);
+      
+      const logEl = document.getElementById('log');
+      logEl.innerHTML = logEntries.join('');
+      
+      // 限制日志条数
+      if (logEntries.length > 50) {
+        logEntries.pop();
+      }
+    }
+
+    function clearLog() {
+      logEntries = [];
+      document.getElementById('log').innerHTML = '';
+      addLog('日志已清空');
+    }
+  </script>
+</body>
+</html>

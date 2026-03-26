@@ -6,7 +6,7 @@ echo ============================================================
 echo.
 
 echo [1/1] 启动贪吃蛇游戏 (端口 3003)
-start "Snake Vue3 Game" cmd /k "cd /d %~dp0snake-vue3 && npm run dev"
+start "Snake Game" cmd /k "cd /d %~dp0snake && npm run dev"
 
 echo.
 echo ============================================================
@@ -14,7 +14,7 @@ echo 所有游戏已启动!
 echo ============================================================
 echo.
 echo 访问地址:
-echo   - 贪吃蛇:     http://localhost:3003
+echo   - 贪吃蛇：http://localhost:3003
 echo.
 echo 按任意键关闭此窗口...
 pause >nul

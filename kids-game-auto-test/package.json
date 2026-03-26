@@ -1,0 +1,44 @@
+{
+  "name": "kids-game-auto-test",
+  "version": "1.0.0",
+  "description": "Kids Game 自动化测试平台 - AI 驱动的游戏测试和质量分析",
+  "main": "src/index.js",
+  "scripts": {
+    "setup": "powershell -ExecutionPolicy Bypass -File ./setup.ps1",
+    "test:all": "node src/index.js --mode=all",
+    "test:game": "node src/index.js --mode=single",
+    "test:performance": "node src/index.js --mode=performance",
+    "test:ai-analysis": "python ai/analyzer.py",
+    "record": "node src/recorder.js",
+    "report": "node src/report-generator.js",
+    "clean": "node src/cleanup.js"
+  },
+  "keywords": [
+    "kids-game",
+    "automation",
+    "testing",
+    "ai-analysis",
+    "quality-assurance"
+  ],
+  "author": "Kids Game Team",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^21.0.0",
+    "playwright": "^1.40.0",
+    "axios": "^1.6.0",
+    "winston": "^3.11.0",
+    "moment": "^2.29.0",
+    "lodash": "^4.17.21",
+    "commander": "^12.0.0",
+    "exceljs": "^4.4.0",
+    "nodemailer": "^7.0.0",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

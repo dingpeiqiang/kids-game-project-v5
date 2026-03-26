@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 主题 - 游戏关系实体（多对多）
  */
 @Data
-@TableName("theme_game_relation")
+@TableName("t_theme_game_relation")
 public class ThemeGameRelation implements Serializable {
 
     private static final long serialVersionUID = 1L;

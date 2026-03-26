@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 对应数据库表：theme_assets
  */
 @Data
-@TableName("theme_assets")
+@TableName("t_theme_assets")
 public class ThemeAsset implements Serializable {
 
     private static final long serialVersionUID = 1L;

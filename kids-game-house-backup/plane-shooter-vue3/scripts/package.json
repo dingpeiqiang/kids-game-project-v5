@@ -1,0 +1,12 @@
+{
+  "name": "plane-shooter-scripts",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "飞机大战游戏资源生成工具",
+  "scripts": {
+    "generate": "node generate-resources.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.33.0"
+  }
+}
