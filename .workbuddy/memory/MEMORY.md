@@ -1,27 +1,35 @@
 # 项目长期记忆
 
-## 贪吃蛇道具系统 Bug 修复（2026-03-26）
+## 贪吃蛇道具系统 Bug 修复（2026-03-26，两轮）
 
-### 问题描述
-蛇碰到道具没有任何效果，且道具不消失。
+### 第一轮：碰撞检测不工作、道具不消失（根本 4 个 Bug）
+1. `PhaserGame.update()` 传入空数组 → 改为传入 `currentSnake`
+2. 坐标系不一致：道具用左上角坐标，蛇用中心点坐标 → 统一为 `col * cellSize + cellSize/2`
+3. `ItemSystem.render()` offsetY 未含 safeTop → 接受 adaptParams 参数修正
+4. `ItemSystem.update()` 重复调用 applyItemEffect → 删除重复逻辑
 
-### 根本原因（4 个 Bug）
-1. **`PhaserGame.update()` 传入空数组**：`this.itemSystem.update([])` 导致碰撞检测永远无效
-2. **坐标系不一致**：`ItemManager.spawnItem()` 用 `col * cellSize`（左上角坐标），蛇坐标是 `col * cellSize + cellSize/2`（中心点坐标），两者偏移半格，碰不上
-3. **`ItemSystem.render()` 偏移错误**：计算 offsetY 时未考虑 `safeTop`，道具显示位置与碰撞位置不对应
-4. **`ItemSystem.update()` 重复处理**：调用 `applyItemEffect` 但已在 `checkItemCollision` 内部标记删除，逻辑混乱
+### 第二轮：道具效果看不出来（数据孤岛问题）
+**根本原因**：`PhaserGame.gameData` 与 `gameStore` 完全脱节——速度改了 gameData 但 moveSnake 读 gameStore；分数改了 gameData 但 addScore 直接加原始分
 
-### 修复方案
-- `PhaserGame.ts`：新增 `currentSnake` 字段 + `updateSnakeData()` 方法，`update()` 传入真实蛇数据
-- `ItemManager.ts`：`spawnItem()` 改为 `col * cellSize + cellSize/2`；`checkItemCollision()` 内立即标记 `active=false` 并 removeInactive
-- `ItemSystem.ts`：`render()` 接受 `adaptParams` 参数，用与 `renderSnake` 完全相同的偏移公式（含 safeTop）；`update()` 移除重复的 `applyItemEffect` 调用
-- `SnakeGame.vue`：游戏循环中调用 `game.updateSnakeData(gameStore.snake)` 同步蛇位置
+**修复方案**：
+- `game.ts`（store）新增 `itemEffects` 状态 + `applyItemEffect()` 统一入口 + `resetItemEffects()`
+- `moveSnake()` 使用 `effectiveSpeed = currentConfig.speed * itemEffects.speedMultiplier`
+- `addScore()` 用 `Math.round(points * itemEffects.scoreMultiplier)` 
+- 碰撞检测（边界/自身/障碍物）先判 `hasShield` 消耗护盾再 endGame
+- `length_reduce` 直接 `snake.value.splice()` 实际缩短 3 节
+- `PhaserGame` 新增 `onItemEffect` 回调字段 + `setItemEffectCallback()`，由 `SnakeGame.vue` 注入 `gameStore.applyItemEffect`（不在 Phaser class 内调用 useGameStore，避免热更新后方法丢失）
+- 道具收集音效：`playSound('item_collect')` → 映射到 `effect_levelup`
+- `SnakeGame.vue` 新增道具效果状态栏 UI（彩色徽章 + 倒计时进度条）
+- `resetItemEffects()` 改为逐字段重置（不整体替换），避免路由过渡动画期间 template 访问 undefined
+
+### ⚠️ 关键教训：Pinia useGameStore() 必须在 Vue 组件 setup 上下文中调用，不能在 Phaser class 内部调用
 
 ### 关键文件
-- `kids-game-house/games/snake/src/components/game/PhaserGame.ts`
+- `kids-game-house/games/snake/src/stores/game.ts` - 道具效果状态中心
+- `kids-game-house/games/snake/src/components/game/PhaserGame.ts` - 收集回调委托给 store
+- `kids-game-house/games/snake/src/components/game/SnakeGame.vue` - 道具效果 UI 显示
 - `kids-game-house/games/snake/src/components/game/components/ItemManager.ts`
 - `kids-game-house/games/snake/src/components/game/components/ItemSystem.ts`
-- `kids-game-house/games/snake/src/components/game/SnakeGame.vue`
 
 ## 贪吃蛇游戏 GTRS 规范适配（完成于 2026-03-20）
 

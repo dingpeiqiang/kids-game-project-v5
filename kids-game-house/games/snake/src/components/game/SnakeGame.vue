@@ -69,6 +69,31 @@
       </div>
     </div>
     
+    <!-- 🎁 道具效果状态栏 - 显示当前激活的道具效果 -->
+    <div
+      v-if="gameStore.isPlaying && gameStore.itemEffects?.activeEffects?.length > 0"
+      class="item-effects-bar absolute top-16 left-0 right-0 flex justify-center gap-2 pointer-events-none px-4"
+    >
+      <transition-group name="effect-badge">
+        <div
+          v-for="effect in gameStore.itemEffects?.activeEffects"
+          :key="effect.type"
+          class="effect-badge flex items-center gap-1 px-3 py-1 rounded-full text-white text-sm font-bold shadow-lg backdrop-blur-sm"
+          :class="getEffectBadgeClass(effect.type)"
+        >
+          <span class="text-base">{{ effect.icon }}</span>
+          <span>{{ getEffectLabel(effect.type) }}</span>
+          <!-- 倒计时进度条 -->
+          <div class="effect-timer w-12 h-1.5 bg-white/30 rounded-full overflow-hidden ml-1">
+            <div
+              class="h-full bg-white rounded-full transition-all duration-1000"
+              :style="{ width: getEffectProgress(effect) + '%' }"
+            ></div>
+          </div>
+        </div>
+      </transition-group>
+    </div>
+    
     <!-- 暂停覆盖层 -->
     <div
       v-if="gameStore.isPaused"
@@ -246,6 +271,10 @@ async function handleRetry() {
 
     // 创建新游戏
     phaserGameRef.value = new SnakePhaserGame(gameContainer.value)
+    // 🎁 注入道具效果回调（必须在 Vue 上下文中设置，确保 Pinia store 正常访问）
+    phaserGameRef.value.setItemEffectCallback((type: string) => {
+      gameStore.applyItemEffect(type)
+    })
     gameStore.resetGame()
     gameStore.startGame()
     gameStore.generateFood()
@@ -292,6 +321,10 @@ onMounted(async () => {
     
     // ⭐ 检测通过后创建 Phaser 游戏实例
     phaserGameRef.value = new SnakePhaserGame(gameContainer.value)
+    // 🎁 注入道具效果回调（必须在 Vue 上下文中设置，确保 Pinia store 正常访问）
+    phaserGameRef.value.setItemEffectCallback((type: string) => {
+      gameStore.applyItemEffect(type)
+    })
     
     // 👉 关键：等待 Phaser 启动完成，获取 cellSize
     const themeId = route.query.theme_id as string
@@ -412,24 +445,30 @@ async function performResourceCheck() {
     progress.value = 70
     loadingText.value = '预热图片资源缓存...'
     console.log('♻️ 开始预热图片资源缓存...')
-    
+
     // 创建一个临时的 Phaser 实例来触发资源加载
     const tempContainer = document.createElement('div')
     tempContainer.style.display = 'none'
     document.body.appendChild(tempContainer)
-    
+
     const tempGame = new SnakePhaserGame(tempContainer)
+
+    // 📥 注入加载进度回调，实时更新 UI 进度条
+    tempGame.setProgressCallback((p: number) => {
+      // 将 0-100 的加载进度映射到 70-95 的 UI 进度
+      const uiProgress = 70 + (p / 100) * 25
+      progress.value = Math.min(95, uiProgress)
+      loadingText.value = `加载资源: ${Math.round(p)}%`
+    })
+
+    // 等待资源加载完成（start 内部会等待所有资源加载完）
     await tempGame.start(settingsStore.difficulty, themeId)
-    
-    // 等待资源加载完成
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
+
     // 清理临时实例
     tempGame.destroy()
     document.body.removeChild(tempContainer)
-    
+
     console.log('✅ 图片资源缓存已预热完成')
-    await new Promise(resolve => setTimeout(resolve, 200))
     
     // 步骤 5：准备就绪
     progress.value = 90
@@ -537,6 +576,57 @@ watch(() => gameStore.isGameOver, (gameOver) => {
     }, 800)  // 缩短到 800ms
   }
 })
+
+// ============================================================================
+// 🎁 道具效果 UI 辅助函数
+// ============================================================================
+
+/**
+ * 获取道具效果徽章的样式类
+ */
+function getEffectBadgeClass(type: string): string {
+  const classMap: Record<string, string> = {
+    'speed_boost': 'bg-yellow-500/80 border border-yellow-300/50',
+    'slow_down':   'bg-gray-500/80 border border-gray-300/50',
+    'shield':      'bg-blue-500/80 border border-blue-300/50',
+    'magnet':      'bg-pink-500/80 border border-pink-300/50',
+    'double_score':'bg-green-500/80 border border-green-300/50',
+    'length_reduce':'bg-orange-500/80 border border-orange-300/50',
+  }
+  return classMap[type] || 'bg-white/20'
+}
+
+/**
+ * 获取道具效果标签文字
+ */
+function getEffectLabel(type: string): string {
+  const labelMap: Record<string, string> = {
+    'speed_boost':  '加速',
+    'slow_down':    '减速',
+    'shield':       '护盾',
+    'magnet':       '磁铁',
+    'double_score': '双倍分',
+    'length_reduce':'已缩短',
+  }
+  return labelMap[type] || type
+}
+
+/**
+ * 获取道具效果倒计时进度（0-100）
+ */
+function getEffectProgress(effect: { type: string; endTime: number }): number {
+  const durationMap: Record<string, number> = {
+    'speed_boost':  5000,
+    'slow_down':    5000,
+    'shield':       10000,
+    'magnet':       8000,
+    'double_score': 10000,
+    'length_reduce': 1500,
+  }
+  const total = durationMap[effect.type] || 5000
+  const remaining = Math.max(0, effect.endTime - Date.now())
+  return (remaining / total) * 100
+}
 
 /**
  * 游戏主循环（平滑移动版本 + 优化）
@@ -793,5 +883,42 @@ function handleTouchEnd(event: TouchEvent) {
 
 .error-details::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* 🎁 道具效果徽章动画 */
+.item-effects-bar {
+  z-index: 15;
+}
+
+.effect-badge-enter-active {
+  animation: effectIn 0.3s ease;
+}
+.effect-badge-leave-active {
+  animation: effectOut 0.3s ease forwards;
+}
+.effect-badge-move {
+  transition: transform 0.3s ease;
+}
+
+@keyframes effectIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes effectOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.7);
+  }
 }
 </style>

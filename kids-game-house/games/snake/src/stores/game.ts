@@ -55,6 +55,121 @@ export const useGameStore = defineStore('game', () => {
   // 👉 新增：蛇头旋转角度（用于视觉表现，单位：弧度）
   const headRotation = ref(0)
 
+  // 🎁 道具效果状态（全部在 store 中统一管理，UI 和逻辑都从这里读取）
+  const itemEffects = ref({
+    speedMultiplier: 1.0,    // 速度倍率（0.5 减速 / 1.0 正常 / 1.5 加速）
+    scoreMultiplier: 1.0,    // 得分倍率（1.0 正常 / 2.0 双倍）
+    hasShield: false,        // 护盾状态（免疫一次碰撞）
+    hasMagnet: false,        // 磁铁状态（暂未实装，预留）
+    activeEffects: [] as Array<{ type: string; icon: string; endTime: number }>  // 当前激活效果列表（供 UI 显示）
+  })
+
+  // 🎁 道具效果计时器管理（防止 effect 堆叠时计时器泄漏）
+  const itemTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+  /**
+   * 🎁 应用道具效果（统一入口，供 PhaserGame 调用）
+   */
+  const applyItemEffect = (type: string) => {
+    const addActiveEffect = (icon: string, durationMs: number) => {
+      const endTime = Date.now() + durationMs
+      // 先移除同类效果（避免堆叠显示）
+      itemEffects.value.activeEffects = itemEffects.value.activeEffects.filter(e => e.type !== type)
+      itemEffects.value.activeEffects.push({ type, icon, endTime })
+      // 定时清理显示
+      setTimeout(() => {
+        itemEffects.value.activeEffects = itemEffects.value.activeEffects.filter(e => e.type !== type)
+      }, durationMs)
+    }
+
+    const clearTimer = (key: string) => {
+      const old = itemTimers.get(key)
+      if (old) clearTimeout(old)
+    }
+
+    switch (type) {
+      case 'speed_boost':
+        clearTimer('speed')
+        itemEffects.value.speedMultiplier = 1.5
+        addActiveEffect('⚡', 5000)
+        console.log('⚡ 加速道具生效！速度 +50%')
+        itemTimers.set('speed', setTimeout(() => {
+          itemEffects.value.speedMultiplier = 1.0
+          console.log('⚡ 加速效果结束')
+        }, 5000))
+        break
+
+      case 'slow_down':
+        clearTimer('speed')
+        itemEffects.value.speedMultiplier = 0.5
+        addActiveEffect('🐢', 5000)
+        console.log('🐢 减速道具生效！速度 -50%')
+        itemTimers.set('speed', setTimeout(() => {
+          itemEffects.value.speedMultiplier = 1.0
+          console.log('🐢 减速效果结束')
+        }, 5000))
+        break
+
+      case 'shield':
+        clearTimer('shield')
+        itemEffects.value.hasShield = true
+        addActiveEffect('🛡️', 10000)
+        console.log('🛡️ 护盾道具生效！免疫一次碰撞')
+        itemTimers.set('shield', setTimeout(() => {
+          itemEffects.value.hasShield = false
+          console.log('🛡️ 护盾效果结束')
+        }, 10000))
+        break
+
+      case 'magnet':
+        clearTimer('magnet')
+        itemEffects.value.hasMagnet = true
+        addActiveEffect('🧲', 8000)
+        console.log('🧲 磁铁道具生效！')
+        itemTimers.set('magnet', setTimeout(() => {
+          itemEffects.value.hasMagnet = false
+          console.log('🧲 磁铁效果结束')
+        }, 8000))
+        break
+
+      case 'double_score':
+        clearTimer('score')
+        itemEffects.value.scoreMultiplier = 2.0
+        addActiveEffect('✨', 10000)
+        console.log('✨ 双倍分数生效！得分 x2')
+        itemTimers.set('score', setTimeout(() => {
+          itemEffects.value.scoreMultiplier = 1.0
+          console.log('✨ 双倍分数效果结束')
+        }, 10000))
+        break
+
+      case 'length_reduce':
+        // 一次性效果：立即缩短蛇身 3 节
+        if (snake.value.length > 3) {
+          const removeCount = Math.min(3, snake.value.length - 3)
+          snake.value.splice(snake.value.length - removeCount, removeCount)
+          console.log(`✂️ 蛇身缩短 ${removeCount} 节！`)
+        }
+        addActiveEffect('✂️', 1500)
+        break
+    }
+  }
+
+  /**
+   * 🎁 重置所有道具效果（游戏开始/结束时调用）
+   */
+  const resetItemEffects = () => {
+    // 清理所有计时器
+    itemTimers.forEach(timer => clearTimeout(timer))
+    itemTimers.clear()
+    // ✅ 逐字段重置，避免整体替换导致 template 短暂访问 undefined
+    itemEffects.value.speedMultiplier = 1.0
+    itemEffects.value.scoreMultiplier = 1.0
+    itemEffects.value.hasShield = false
+    itemEffects.value.hasMagnet = false
+    itemEffects.value.activeEffects = []
+  }
+
   // 从 localStorage 加载
   const loadFromStorage = () => {
     try {
@@ -98,6 +213,7 @@ export const useGameStore = defineStore('game', () => {
     isGameOver.value = false
     playCount.value++
     gameStartTime.value = Date.now()  // 记录游戏开始时间
+    resetItemEffects()  // 🎁 重置道具效果状态
     saveToStorage()
   }
 
@@ -106,6 +222,7 @@ export const useGameStore = defineStore('game', () => {
     isPlaying.value = false
     isGameOver.value = true
     emitEvent('gameover')
+    resetItemEffects()  // 🎁 游戏结束时清理所有道具效果
     if (score.value > highScore.value) {
       highScore.value = score.value
       saveToStorage()
@@ -164,9 +281,11 @@ export const useGameStore = defineStore('game', () => {
     isPaused.value = !isPaused.value
   }
 
-  // 增加分数（带难度智能提升）
+  // 增加分数（带难度 + 道具倍率）
   const addScore = (points: number) => {
-    score.value += points
+    // 🎁 应用道具得分倍率（如双倍分数道具）
+    const multiplied = Math.round(points * itemEffects.value.scoreMultiplier)
+    score.value += multiplied
     if (score.value > highScore.value) {
       highScore.value = score.value
       saveToStorage()
@@ -200,10 +319,13 @@ export const useGameStore = defineStore('game', () => {
 
     direction.value = { ...nextDirection.value }
     
+    // 🎁 应用道具速度倍率（加速/减速道具）
+    const effectiveSpeed = currentConfig.value.speed * itemEffects.value.speedMultiplier
+    
     // 👉 计算新头部位置
     const newHead = { ...snake.value[0] }
-    newHead.x += direction.value.x * currentConfig.value.speed * dt
-    newHead.y += direction.value.y * currentConfig.value.speed * dt
+    newHead.x += direction.value.x * effectiveSpeed * dt
+    newHead.y += direction.value.y * effectiveSpeed * dt
 
     const gridCols = 32
     const gridRows = 18
@@ -215,6 +337,19 @@ export const useGameStore = defineStore('game', () => {
       newHead.y < 0 || 
       newHead.y >= gridRows * cellSize
     ) {
+      // 🛡️ 护盾免疫边界碰撞（消耗护盾）
+      if (itemEffects.value.hasShield) {
+        itemEffects.value.hasShield = false
+        itemEffects.value.activeEffects = itemEffects.value.activeEffects.filter(e => e.type !== 'shield')
+        const shieldTimer = itemTimers.get('shield')
+        if (shieldTimer) { clearTimeout(shieldTimer); itemTimers.delete('shield') }
+        console.log('🛡️ 护盾抵挡了一次边界碰撞！')
+        // 反弹蛇头回边界内
+        newHead.x = Math.max(cellSize * 0.5, Math.min(gridCols * cellSize - cellSize * 0.5, newHead.x))
+        newHead.y = Math.max(cellSize * 0.5, Math.min(gridRows * cellSize - cellSize * 0.5, newHead.y))
+        snake.value[0] = newHead
+        return
+      }
       endGame()
       emitEvent('crash')  // 触发自杀音效
       return
@@ -249,6 +384,15 @@ export const useGameStore = defineStore('game', () => {
     // 碰撞检测（圆形碰撞，更精确）
     const snakeRadius = cellSize * 0.4
     
+    // 🛡️ 护盾消耗辅助函数
+    const consumeShield = () => {
+      itemEffects.value.hasShield = false
+      itemEffects.value.activeEffects = itemEffects.value.activeEffects.filter(e => e.type !== 'shield')
+      const shieldTimer = itemTimers.get('shield')
+      if (shieldTimer) { clearTimeout(shieldTimer); itemTimers.delete('shield') }
+      console.log('🛡️ 护盾消耗！')
+    }
+    
     // 👉 自身碰撞（从第 5 节开始检测，避免误判）
     for (let i = 5; i < snake.value.length; i++) {
       const segment = snake.value[i]
@@ -258,6 +402,7 @@ export const useGameStore = defineStore('game', () => {
       const distance = Math.sqrt(dx * dx + dy * dy)
       
       if (distance < snakeRadius * 1.5) {  // 稍微放宽判定
+        if (itemEffects.value.hasShield) { consumeShield(); return }
         endGame()
         emitEvent('crash')  // 触发碰撞音效
         return
@@ -272,6 +417,7 @@ export const useGameStore = defineStore('game', () => {
       const distance = Math.sqrt(dx * dx + dy * dy)
       
       if (distance < snakeRadius + obstacleRadius) {
+        if (itemEffects.value.hasShield) { consumeShield(); return }
         endGame()
         emitEvent('crash')  // 触发撞击音效
         return
@@ -501,6 +647,7 @@ export const useGameStore = defineStore('game', () => {
     nextDirection.value = { x: 1, y: 0 }
     particles.value = []
     headRotation.value = 0  // 重置旋转角度
+    resetItemEffects()  // 🎁 重置道具效果
   }
 
   // 计算属性
@@ -535,6 +682,8 @@ export const useGameStore = defineStore('game', () => {
     nextDirection,
     particles,
     headRotation,  // 👉 导出蛇头旋转角度
+    // 🎁 道具效果状态
+    itemEffects,
     // 方法
     startGame,
     startGameWithInit,
@@ -553,6 +702,8 @@ export const useGameStore = defineStore('game', () => {
     updateParticles,
     createParticles,
     setEventCallback,
+    applyItemEffect,     // 🎁 道具效果统一入口
+    resetItemEffects,    // 🎁 重置道具效果
     // 计算属性
     currentScore,
     currentHighScore,

@@ -242,14 +242,6 @@ export class SnakePhaserGame {
   
   // 👉 当前蛇数据缓存（供 Phaser update 循环读取）
   private currentSnake: any[] = []
-  
-  // 👉 游戏数据（包含道具效果状态）
-  private gameData = {
-    speedMultiplier: 1.0,     // 速度倍率 (1.0 = 正常)
-    hasShield: false,         // 是否拥有护盾
-    hasMagnet: false,         // 是否拥有磁铁
-    scoreMultiplier: 1.0      // 分数倍率 (1.0 = 正常)
-  }
 
   // ============================================================================
   // 🔧【可复用框架层】音频管理对象（所有游戏通用）
@@ -267,6 +259,26 @@ export class SnakePhaserGame {
   
   // 👉 游戏完成回调
   private onGameComplete?: () => void
+
+  // 🎁 道具效果回调（由外部 Vue 层注入，避免在 Phaser class 内部调用 useGameStore()）
+  private onItemEffect?: (type: string) => void
+
+  // 📥 资源加载进度回调（用于外部 UI 显示真实加载进度）
+  private onProgress?: (progress: number) => void
+
+  /**
+   * 🎁 注入道具效果回调（在 Vue setup 中调用，确保 Pinia 上下文正确）
+   */
+  setItemEffectCallback(callback: (type: string) => void): void {
+    this.onItemEffect = callback
+  }
+
+  /**
+   * 📥 注入加载进度回调（用于外部 UI 显示真实加载进度）
+   */
+  setProgressCallback(callback: (progress: number) => void): void {
+    this.onProgress = callback
+  }
   
   // 👉 容器元素引用
   private containerElement: HTMLElement | null = null
@@ -510,10 +522,14 @@ export class SnakePhaserGame {
       loadedResources++
       const progress = (loadedResources / totalResourcesToLoad) * 100
       console.log(`📥 资源加载进度：${loadedResources}/${totalResourcesToLoad} (${progress.toFixed(1)}%)`)
+      // 📥 回调给外部 UI
+      this.onProgress?.(progress)
     })
 
     scene.load.on('complete', () => {
       console.log('✅ 所有资源加载完成')
+      // 📥 确保最终进度为 100%
+      this.onProgress?.(100)
     })
 
     scene.load.on('error', (key: string, type: string, message: string) => {
@@ -927,105 +943,25 @@ export class SnakePhaserGame {
   private handleItemCollected(event: any): void {
     const item = event.item
     console.log(`🎁 收集到道具：${item.type}`)
-    
-    // 根据道具类型应用效果
-    switch (item.type) {
-      case 'speed_boost':
-        this.applySpeedBoost()
-        break
-      case 'slow_down':
-        this.applySlowDown()
-        break
-      case 'shield':
-        this.applyShield()
-        break
-      case 'magnet':
-        this.applyMagnet()
-        break
-      case 'double_score':
-        this.applyDoubleScore()
-        break
-      case 'length_reduce':
-        this.applyLengthReduce()
-        break
+
+    // 🔊 播放道具收集音效
+    this.playSound('item_collect')
+
+    // ✅ 使用外部注入的回调（由 SnakeGame.vue 在 Vue 上下文中设置）
+    // 避免在 Phaser class 内部调用 useGameStore() 导致热更新后方法丢失
+    if (this.onItemEffect) {
+      this.onItemEffect(item.type)
+    } else {
+      console.warn('⚠️ onItemEffect 回调未设置，道具效果不会生效')
     }
   }
 
   /**
-   * 🎁 应用加速道具
+   * 🎁 获取当前道具效果状态（供外部读取，如 UI 显示）
+   * @deprecated 改用 gameStore.itemEffects 直接访问
    */
-  private applySpeedBoost(): void {
-    this.gameData.speedMultiplier = 1.5
-    console.log('⚡ 加速道具生效！速度 +50%')
-    
-    setTimeout(() => {
-      this.gameData.speedMultiplier = 1.0
-      console.log('⚡ 加速道具效果结束')
-    }, 5000)
-  }
-
-  /**
-   * 🎁 应用减速道具
-   */
-  private applySlowDown(): void {
-    this.gameData.speedMultiplier = 0.5
-    console.log('🐢 减速道具生效！速度 -50%')
-    
-    setTimeout(() => {
-      this.gameData.speedMultiplier = 1.0
-      console.log('🐢 减速道具效果结束')
-    }, 5000)
-  }
-
-  /**
-   * 🎁 应用护盾道具
-   */
-  private applyShield(): void {
-    this.gameData.hasShield = true
-    console.log('🛡️ 护盾道具生效！免疫一次碰撞')
-    
-    setTimeout(() => {
-      this.gameData.hasShield = false
-      console.log('🛡️ 护盾道具效果结束')
-    }, 10000)
-  }
-
-  /**
-   * 🎁 应用磁铁道具
-   */
-  private applyMagnet(): void {
-    this.gameData.hasMagnet = true
-    console.log('🧲 磁铁道具生效！自动吸引食物')
-    
-    setTimeout(() => {
-      this.gameData.hasMagnet = false
-      console.log('🧲 磁铁道具效果结束')
-    }, 8000)
-  }
-
-  /**
-   * 🎁 应用双倍分数道具
-   */
-  private applyDoubleScore(): void {
-    this.gameData.scoreMultiplier = 2.0
-    console.log('✨ 双倍分数生效！得分 x2')
-    
-    setTimeout(() => {
-      this.gameData.scoreMultiplier = 1.0
-      console.log('✨ 双倍分数效果结束')
-    }, 10000)
-  }
-
-  /**
-   * 🎁 应用缩短蛇身道具
-   */
-  private applyLengthReduce(): void {
-    // 注意：蛇身缩短需要在游戏主循环中实际修改蛇数据
-    // 这里只是提示效果
-    console.log('✂️ 蛇身缩短！移除 3 节')
-    
-    // TODO: 需要在游戏主循环中添加逻辑来实际缩短蛇身
-    // 例如：设置一个标志位，在 update 中检查并执行
+  getItemEffects(): null {
+    return null
   }
 
   // ============================================================================
@@ -1718,7 +1654,8 @@ export class SnakePhaserGame {
           crash:        'effect_crash',
           gameover:     'effect_gameover',
           levelup:      'effect_levelup',
-          button_click: 'effect_button_click'
+          button_click: 'effect_button_click',
+          item_collect: 'effect_levelup'  // 🎁 道具收集音效（用升级音）
         }
         actualKey = legacySoundMap[soundKey] || soundKey
       }
