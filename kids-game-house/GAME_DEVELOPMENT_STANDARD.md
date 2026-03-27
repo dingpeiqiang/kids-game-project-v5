@@ -92,8 +92,6 @@ cd plane-shooter
 
 #### 🎨 文件级复用清单
 
-#### 🎨 文件级复用清单
-
 **完全不需要修改的文件（100% 复制）**：
 
 | 组件 | 文件路径 | 功能说明 | 复用度 |
@@ -152,11 +150,11 @@ cd plane-shooter
 - ❌ 修改路由和构建配置
 
 ---
-
-## 🚀 开发流程总览
-
-### 四个阶段（直接复制贪吃蛇）
-
+**安装如下流程开发**：
+        第一阶段：游戏设计与 游戏GTRS 资源规范JSON
+        第二阶段：GTRS 资源配置生成和GTRS.json
+        第三阶段：复制贪吃蛇代码 删除新游戏不能用的代码
+        第四阶段：游戏完成后，针对游戏设计内容，哪些还未完成
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  第一阶段：设计与 GTRS 资源规范                            │
@@ -172,25 +170,22 @@ cd plane-shooter
 │  │    创建资源目录                                       │
 │  ├─ 2.3 Node 工具生成 PNG 图片资源                        │
 │  ├─ 2.4 Node 工具生成 MP3 音频资源                        │
-│  └─ 2.5 生成 GTRS JSON 配置                              │
+│  └─ 2.5 生成 GTRS JSON 配置，注意与设计和资源路径匹配
+   └─ 2.6 生成 游戏注册 SQL 配置
+      │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│  第三阶段：复制贪吃蛇代码与适配                           │
+│  第三阶段：复制贪吃蛇代码并开发                           │
 │  ├─ 3.1 直接复制 games/snake 整个目录                    │
 │  ├─ 3.2 修改 package.json 游戏名称                       │
-│  ├─ 3.3 只修改 PhaserGame.ts 游戏逻辑                    │
+│  ├─ 3.3 删除贪吃蛇自有逻辑代码部分
+    3.4 按照游戏设计内容，编写新游戏代码逻辑                    │
 │  ├─ 3.4 测试验证                                        │
 │  └─ 3.5 构建打包                                        │
 └─────────────────────────────────────────────────────────┘
                           ↓
-┌─────────────────────────────────────────────────────────┐
-│  第四阶段：游戏注册与部署                                 │
-│  ├─ 4.1 执行游戏注册 SQL                                │
-│  ├─ 4.2 运行游戏注册脚本                                │
-│  ├─ 4.3 部署到生产环境                                  │
-│  └─ 4.4 验证上线                                        │
-└─────────────────────────────────────────────────────────┘
+
 ```
 
 ### 关键目录说明
@@ -237,10 +232,6 @@ kids-game-house/
 - ✅ **直接复制** `games/snake` 的完整代码 - 保证 100% 一致的代码结构
 - ✅ **最小化修改** - 只修改 PhaserGame.ts 和 GTRS.json，其他文件保持不变
 
----
-
----
-
 ## 📐 第一阶段：设计与 GTRS 资源规范
 
 ### 1.1 游戏设计文档
@@ -250,7 +241,6 @@ kids-game-house/
 创建文件：`game-design.md`
 
 ```
-
 
 ```
 
@@ -991,101 +981,14 @@ node convert-wav-to-mp3.mjs /path/to/your/audio
 3. 🎮 实现 Phaser 游戏场景核心逻辑
 4. ⚙️ 配置 GTRS.json 资源映射
 
----
 
-### 3.1 直接复制贪吃蛇目录
-
-```bash
-# 1. 直接复制整个 snake 目录
-cd kids-game-house/games
-cp -r snake {game-code}
-
-# 2. 进入新游戏目录
-cd {game-code}
-
-# 3. 清理 node_modules（不需要复制）
-Remove-Item node_modules -Recurse -Force  # PowerShell
-rm -rf node_modules  # Linux/Mac
-
-# 4. 修改 package.json 中的 name 字段
-{
-  "name": "{game-code}",  # ⚠️ 修改这里
-  ...
-}
-```
-
-**⚠️ 重要说明**：
-- ❌ **不需要**配置 vite.config.ts 路径别名
-- ❌ **不需要**使用 @kids-game/framework
-- ❌ **不需要**修改 main.ts、App.vue 等初始化代码
-- ✅ **直接复制**即可，所有代码已经可以正常运行
-
-### 3.2 适配游戏逻辑
-
-**必需修改的文件**：
-
-| 文件 | 修改内容 | 复用度 | 说明 |
-|------|----------|--------|------|
-| `src/config/GTRS.json` | 更新资源配置 | 30% | 修改资源映射关系 |
-| `src/stores/game.ts` | 修改游戏状态逻辑 | 80% | 保留核心框架，调整游戏特定状态 |
-| `src/views/StartView.vue` | 更新游戏标题、描述 | 90% | 仅修改文本内容 |
-| `src/views/GameView.vue` | 调整画布尺寸（可选） | 95% | 通常不需要修改 |
-| `src/phaser/PhaserGame.ts` | **核心游戏逻辑** | 30% | 保留初始化框架，重写游戏场景 |
-| `public/themes/default/*` | 资源文件 | 0% | 完全重新生成 |
-
-**完全不需要修改的文件**：
-
-| 文件 | 功能说明 |
-|------|----------|
-| `src/views/HomeView.vue` | 平台首页 |
-| `src/components/DifficultySelector.vue` | 难度选择器 |
-| `src/components/LoadingProgress.vue` | 加载进度条 |
-| `src/components/GameToolbar.vue` | 顶部工具栏 |
-| `src/views/GameOverView.vue` | 游戏结束界面 |
-| `src/router/index.ts` | 路由配置 |
-| `vite.config.ts` | 构建配置 |
-| `src/utils/platformApi.ts` | 平台 API |
-| `src/stores/index.ts` | Store 配置 |
-
-### 3.3 测试验证
-
-**UI 组件自动生效验证**：
-
-启动开发服务器后，验证以下 UI 组件是否正常复用：
-
-- [ ] **游戏首页** - 能在平台首页看到新游戏图标
-- [ ] **难度选择** - 点击游戏后出现难度选择器
-- [ ] **进度加载** - 开始游戏时显示资源加载进度条
-- [ ] **顶部工具栏** - 游戏界面上方有返回、暂停、音量按钮
-- [ ] **游戏结束** - 游戏结束时显示分数统计和星级评价
-
-```bash
-# 1. 安装依赖
-cd {game-code}-vue3
-npm install
-
-# 2. 启动开发服务器
-npm run dev
-
-# 3. 访问 http://localhost:3002
-# 验证上述 UI 组件是否正常工作
-```
 
 **预期结果**：
 - ✅ 所有 UI 组件与贪吃蛇游戏一致
 - ✅ 无需手动调整任何样式和布局
 - ✅ 响应式、动画效果、交互逻辑完全正常
 
-### 3.4 构建打包
 
-```bash
-# 生产环境构建
-npm run build
-
-# 输出目录：dist/
-```
-
----
 
 ## 🚀 第四阶段：游戏注册与部署 ⭐ 包含 t_game 和 t_theme_info
 
@@ -1099,7 +1002,7 @@ npm run build
 
 创建文件：`register-game.sql` 存放到游戏目录的public下，与GTRS.json同级
 
-```sql
+```
 -- ============================================
 -- {游戏名称} 游戏注册 SQL 脚本
 -- 说明：将游戏注册到数据库
@@ -1271,311 +1174,6 @@ async function registerGame() {
 registerGame();
 ```
 
-### 4.3 部署到生产环境
-
-#### 前端部署
-
-```bash
-# 1. 构建生产版本
-npm run build
-
-# 2. 将 dist 目录复制到 Web 服务器
-# 例如：Nginx、Apache 等
-
-# 3. 配置反向代理
-# 将 /games/{game-code} 代理到对应的端口
-```
-
-#### 后端部署
-
-```bash
-# 1. 确认数据库已更新
-# - t_game 表有记录
-# - t_theme_info 表有记录
-
-# 2. 重启后端服务
-# 确保游戏列表 API 能读取到新游戏
-
-# 3. 验证 API
-GET /api/games/list
-# 应该返回新游戏的信息
-```
-
-### 4.4 验证上线
-
-**检查清单**:
-- [ ] 游戏在平台首页可见
-- [ ] 点击图标能正常加载游戏
-- [ ] 游戏开始、进行中、结束流程正常
-- [ ] 积分系统正常工作
-- [ ] 主题切换正常（如有多个主题）
-- [ ] 排行榜功能正常
-- [ ] 移动端适配正常
-
----
-
-## 📊 资源格式规范
-
-### ⭐ 重要：音频格式强制要求
-
-**所有音频资源必须使用 MP3 格式**，原因如下：
-
-| 特性 | WAV | MP3 |
-|------|-----|-----|
-| **文件大小** | 大（10-50MB/分钟） | 小（1-5MB/分钟） |
-| **压缩比** | 无损，原始 PCM | 有损压缩，12:1 |
-| **网络加载** | ❌ 慢，占用带宽 | ✅ 快，节省流量 |
-| **浏览器兼容** | ✅ 支持 | ✅ 支持 |
-| **音质** | 完美 | 高质量（192kbps+ 难以区分） |
-| **平台要求** | ❌ 不推荐 | ✅ 标准格式 |
-
-**结论**：
-- ✅ **背景音乐** - 必须 MP3（文件大，需压缩）
-- ✅ **音效** - 必须 MP3（数量多，累积体积大）
-- ❌ **WAV** - 仅作为中间格式，转换后立即删除
-
----
-
-### 图片资源
-
-| 资源类型 | 格式要求 | 尺寸建议 | 用途 |
-|---------|---------|---------|------|
-| **背景图** | PNG | 720x1280 | 游戏主背景 |
-| **精灵图** | PNG | 按需 | 角色、道具等 |
-| **UI 元素** | PNG | 按需 | 按钮、图标等 |
-| **封面图** | PNG/JPEG | 400x300 | 游戏展示 |
-
-### 音频资源
-
-| 资源类型 | 格式要求 | 时长建议 | 用途 |
-|---------|---------|---------|------|
-| **背景音乐** | MP3 | 1-3 分钟 | BGM |
-| **音效** | MP3 | 0.1-1 秒 | SFX |
-
----
-
-## ⚡ 最小化改动原则
-
-### 可以直接复用的部分
-
-#### ✅ 100% 复用（基础设施层 + 通用框架层）:
-
-**Infrastructure Layer - 完全不需要修改**:
-- `Vue 3` - 视图层框架
-- `Pinia` - 状态管理库
-- `Axios` - HTTP 客户端
-- `Vite` - 构建工具
-
-**Framework Layer - 直接导入使用**:
-- `@kids-game/framework/types` - TypeScript 类型定义
-- `@kids-game/framework/stores` - useGameStore 状态管理
-- `@kids-game/framework/utils/platformApi` - 平台通信 API
-- `@kids-game/framework/utils/initGame` - 应用初始化函数
-- `@kids-game/framework/components/GameUIOverlay` - 通用 UI 覆盖层
-- `DifficultySelector.vue` - 难度选择器组件
-- `LoadingProgress.vue` - 加载进度条组件
-- `GameToolbar.vue` - 顶部工具栏组件
-- `GameOverView.vue` - 游戏结束界面
-
-#### ✅ 小幅度修改 (80-90% 复用):
-
-**Game-Specific Layer - 核心框架保留，修改游戏特定逻辑**:
-- `src/stores/game.ts` - 继承 framework 的 useGameStore，添加游戏特定状态
-- `src/views/StartView.vue` - 只修改标题、描述等文本
-- `src/phaser/PhaserGame.ts` - 保留初始化、通信逻辑，修改游戏场景实现
-
-#### ✅ 中度修改 (50-70% 复用):
-
-- `vite.config.ts` - 只需要配置 framework 路径别名
-- `src/App.vue` - 使用 framework 的 GameUIOverlay 和 useGameStore
-- `src/main.ts` - 使用 framework 的 initGame 初始化
-
-#### ✅ 大量修改 (0-30% 复用):
-
-- **游戏场景类** (`src/phaser/scenes/{Game}Scene.ts`) - 核心玩法逻辑完全重新实现
-- **游戏对象** (`src/phaser/objects/*`) - 玩家、敌人、道具等特定对象
-- **资源配置** (`src/config/GTRS.json`) - 资源映射关系根据实际游戏调整
-- **资源文件** (`public/themes/default/*`) - PNG/MP3 资源文件完全重新生成
-
----
-
-### 修改优先级
-
-1. **先改资源配置** (GTRS.json、资源文件)
-2. **再改游戏逻辑** (Phaser 游戏场景)
-3. **最后改 UI 文本** (Vue 组件)
-
----
-
-## ✅ 检查清单
-
-### 第一阶段检查清单
-
-- [ ] 游戏设计文档完成
-- [ ] GTRS Schema 定义清晰
-- [ ] 资源清单完整
-
-### 第二阶段检查清单
-
-- [ ] 目录结构正确 (`/themes/default/assets/`)
-- [ ] 资源生成脚本可运行
-- [ ] 所有 PNG 图片生成成功
-- [ ] 所有 MP3 音频生成成功
-- [ ] GTRS.json 配置生成并复制到两个位置
-
-### 第三阶段检查清单
-
-- [ ] 项目框架复制完成
-- [ ] package.json 更新
-- [ ] GTRS.json 配置更新
-- [ ] 游戏逻辑适配完成
-- [ ] 开发服务器启动成功
-- [ ] 游戏能正常运行
-
-### 第四阶段检查清单
-
-- [ ] SQL 脚本包含 `t_game` 表插入
-- [ ] SQL 脚本包含 `t_theme_info` 表插入
-- [ ] 游戏注册到数据库
-- [ ] 主题配置上传成功
-- [ ] 后端 API 能查询到新游戏
-- [ ] 前端能正常显示和启动游戏
-
----
-
-## 📎 附录
-
-### A. UI 组件复用清单 ⭐ 重要 + Framework 集成
-
-#### 完全不需要修改的组件（100% 复用 - Framework 提供）
-
-| 组件 | 来源 | 功能说明 | 验证点 |
-|------|------|----------|--------|
-| **HomeView** | games/snake | 展示所有游戏列表 | 能看到新游戏图标 |
-| **DifficultySelector** | framework | 选择简单/普通/困难 | 点击游戏后弹出 |
-| **LoadingProgress** | framework | 显示 GTRS 资源加载进度 | 开始游戏时显示百分比 |
-| **GameToolbar** | framework | 返回、暂停、音量控制 | 游戏界面上方可见 |
-| **GameOverView** | framework | 显示分数、星级、重来按钮 | 游戏结束后弹出 |
-| **GameUIOverlay** | framework | 游戏 UI 覆盖层（暂停/结束菜单） | 自动显示/隐藏 |
-| **useGameStore** | framework | 通用游戏状态管理 | start/pause/end 等方法 |
-| **platformApi** | framework | 与后端通信接口 | getSessionToken/reportResult |
-| **initGame** | framework | 应用初始化函数 | createApp/use 等 |
-
-#### 只需修改文本的组件（90% 复用）
-
-| 组件 | 修改内容 | 示例 |
-|------|----------|------|
-| `StartView.vue` | 游戏标题、描述、开始按钮文本 | "贪吃蛇" → "飞机大战" |
-
-#### 需要适配的组件（70-80% 复用）
-
-| 组件 | 适配内容 | 说明 |
-|------|----------|------|
-| `stores/game.ts` | 扩展 gameStore | 添加游戏特定状态（生命数、道具等） |
-| `GameView.vue` | 画布尺寸（可选） | 通常保持 720x1280 |
-
-#### 完全重新实现的部分
-
-| 部分 | 文件 | 说明 |
-|------|------|------|
-| 游戏场景 | `src/phaser/scenes/{Game}Scene.ts` | 核心游戏玩法逻辑 |
-| 游戏对象 | `src/phaser/objects/*` | 玩家、敌人、道具等 |
-| 资源配置 | `src/config/GTRS.json` | 资源映射关系 |
-| 资源文件 | `public/themes/default/*` | PNG/MP3 资源文件 |
-
----
-
-**完全不需要修改的组件（100% 复用）**：
-
-| 组件 | 文件路径 | 功能说明 | 验证点 |
-|------|----------|----------|--------|
-| 游戏首页 | `src/views/HomeView.vue` | 展示所有游戏列表 | 能看到新游戏图标 |
-| 难度选择 | `src/components/DifficultySelector.vue` | 选择简单/普通/困难 | 点击游戏后弹出 |
-| 进度加载 | `src/components/LoadingProgress.vue` | 显示 GTRS 资源加载进度 | 开始游戏时显示百分比 |
-| 顶部工具栏 | `src/components/GameToolbar.vue` | 返回、暂停、音量控制 | 游戏界面上方可见 |
-| 结束界面 | `src/views/GameOverView.vue` | 显示分数、星级、重来按钮 | 游戏结束后弹出 |
-| 路由配置 | `src/router/index.ts` | 游戏路由规则 | 无需修改直接可用 |
-| 构建配置 | `vite.config.ts` | Vite 打包配置 | 无需修改直接可用 |
-| 平台 API | `src/utils/platformApi.ts` | 与后端通信接口 | 无需修改直接可用 |
-
-**只需修改文本的组件（90% 复用）**：
-
-| 组件 | 修改内容 | 示例 |
-|------|----------|------|
-| `StartView.vue` | 游戏标题、描述、开始按钮文本 | "贪吃蛇" |
-
-**需要适配的组件（70-80% 复用）**：
-
-| 组件 | 适配内容 | 说明 |
-|------|----------|------|
-| `stores/game.ts` | 游戏状态字段 | 分数、生命数、道具等 |
-| `GameView.vue` | 画布尺寸（可选） | 通常保持 720x1280 |
-
-**完全重新实现的部分**：
-
-| 部分 | 文件 | 说明 |
-|------|------|------|
-| 游戏场景 | `src/phaser/scenes/{Game}Scene.ts` | 核心游戏玩法逻辑 |
-| 游戏对象 | `src/phaser/objects/*` | 玩家、敌人、道具等 |
-| 资源配置 | `src/config/GTRS.json` | 资源映射关系 |
-| 资源文件 | `public/themes/default/*` | PNG/MP3 资源文件 |
-
----
-
-### B. 参考项目
-
-| 项目 | 路径 | 用途 |
-|------|------|------|
-| **贪吃蛇** | `games/snake` | 主要参考对象，完整代码直接复制 |
-
-
-
----
-
-### C. 常用 SQL 查询
-
-```sql
--- 查询所有已注册游戏
-SELECT game_id, game_code, game_name, category, status 
-FROM t_game 
-ORDER BY sort_order;
-
--- 查询某个游戏的所有主题
-SELECT t.theme_id, t.theme_name, t.price, t.status
-FROM t_theme_info t
-JOIN t_game g ON t.owner_id = g.game_id
-WHERE g.game_code = '{GAME_CODE}'
-  AND t.owner_type = 'GAME';
-
--- 查询游戏及其主题数量
-SELECT 
-    g.game_code,
-    g.game_name,
-    COUNT(t.theme_id) AS theme_count
-FROM t_game g
-LEFT JOIN t_theme_info t ON g.game_id = t.owner_id AND t.owner_type = 'GAME'
-GROUP BY g.game_id;
-```
-
-### C. 故障排查
-
-**问题 1: 游戏无法启动**
-- 检查端口是否被占用
-- 检查 GTRS.json 路径是否正确
-- 查看浏览器控制台错误信息
-
-**问题 2: 资源加载失败**
-- 确认资源文件确实存在于 `/themes/default/assets/`
-- 检查 GTRS.json 中的 `src` 路径是否匹配
-- 查看网络请求 404 错误
-
-**问题 3: 游戏注册后不可见**
-- 确认 `t_game` 表 status = 1 (active)
-- 重启后端服务刷新缓存
-- 检查前端 API 调用是否正常
-
----
-
 ## 🎉 总结
 
 本规范基于贪吃蛇项目的成功经验，采用**"直接复制 + 最小化改造"**的核心思路，让 AI 最大化聚焦于游戏内容本身，提供了一套完整、可复用的游戏开发流程。
@@ -1622,8 +1220,7 @@ GROUP BY g.game_id;
 
 ### 关键成功要素
 
-✅ **直接复制贪吃蛇** - 不要重新造轮子，不要引入 framework  
-✅ **最小化改动适配** - 只关注 PhaserGame.ts 和游戏资源  
+✅ **直接复制贪吃蛇** - 不要重新造轮子，不要引入 framework   
 ✅ **AI 专注游戏本质** - 让 AI 发挥创造力在游戏玩法上，而不是通用功能  
 ✅ **工具化自动化** - 能脚本化的绝不手工  
 ✅ **规范化配置** - GTRS 是主题系统的基石  

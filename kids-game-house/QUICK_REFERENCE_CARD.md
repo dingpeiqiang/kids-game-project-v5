@@ -1,207 +1,360 @@
-# 🎯 新目录结构 - 快速参考卡
+# 🎮 贪吃蛇游戏开发框架 - 快速参考卡
 
-**更新日期**: 2026-03-26  
-**状态**: ✅ 已完成迁移
-
----
-
-## 📂 一分钟了解新结构
-
-### 核心概念
-
-```
-🔧 tools/      → 所有开发工具（集中管理）
-🎮 games/      → 所有游戏项目（独立清晰）
-📦 resources/  → 公共资源库（高效复用）
-📚 docs/       → 统一文档库（易于查找）
-```
+**版本**: v1.0 | **日期**: 2026-03-27 | **适用**: Phaser 3.x + Vue 3.x
 
 ---
 
-## 🚀 常用命令速查
+## 📊 代码复用率概览
 
-### 创建新游戏
-
-```bash
-# 使用模板快速创建
-cd tools/shared-scripts
-node create-game.ps1 -GameName my-new-game -Template shooter
+```
+┌─────────────────────────────────────┐
+│  可复用框架层 (80%) - 直接复制       │ 
+│  ├─ Phaser 引擎封装 (PhaserGame.ts:1-600)
+│  ├─ GTRS 主题加载系统                │
+│  ├─ 屏幕自适应系统                  │
+│  ├─ 音频管理系统                    │
+│  ├─ 资源管理系统                    │
+│  └─ 道具系统（可选）                │
+├─────────────────────────────────────┤
+│  游戏特定层 (20%) - 需要修改         │
+│  ├─ 游戏对象渲染方法                │
+│  ├─ 游戏逻辑实现                    │
+│  └─ 特定规则                        │
+└─────────────────────────────────────┘
 ```
 
-### 生成游戏资源
+---
 
+## 🚀 新游戏开发 5 步曲
+
+### Step 1: 复制框架文件
 ```bash
-# 方法 1: 使用 GTRS 生成器
-cd tools/gtrs-generator/src
-node generate-resources.mjs --game=my-new-game
-
-# 方法 2: PowerShell
-.\generate-resources.ps1 -GameName my-new-game
+cp games/snake/src/components/game/PhaserGame.ts \
+   games/your-game/src/components/game/YourGamePhaser.ts
 ```
 
-### 转换音频格式
-
-```bash
-# 在任意游戏目录
-cd games/my-new-game
-
-# 使用统一工具
-..\..\tools\audio-converter\convert-to-mp3.ps1 -InputDir public\themes\default\assets\audio
+### Step 2: 修改类名和配置
+```typescript
+export class YourGamePhaserGame {
+  private readonly GRID_COLS = 20  // 👈 修改列数
+  private readonly GRID_ROWS = 15  // 👈 修改行数
+  private readonly BASE_CELL_SIZE = 60  // 👈 修改单元格大小
+  
+  // 👇 修改游戏对象引用
+  private player: Phaser.GameObjects.Sprite | null = null
+  private enemies: Phaser.GameObjects.Group | null = null
+}
 ```
 
-### 启动游戏开发
+### Step 3: 实现渲染方法
+```typescript
+private renderPlayer(data: any): void {
+  // 👈 实现你的玩家渲染逻辑
+}
 
+private renderEnemies(data: any): void {
+  // 👈 实现你的敌人渲染逻辑
+}
+```
+
+### Step 4: 创建 Vue 组件
+```vue
+<script setup lang="ts">
+import { YourGamePhaserGame } from './YourGamePhaser'
+
+const game = new YourGamePhaserGame(container, () => {
+  console.log('游戏完成!')
+})
+
+await game.start('medium', 'theme_id')
+</script>
+```
+
+### Step 5: 测试运行
 ```bash
-# 进入对应游戏目录
-cd games/plane-shooter
-
-# 安装依赖
-npm install
-
-# 启动开发服务器
 npm run dev
-
-# 访问 http://localhost:8081
-```
-
-### 部署游戏
-
-```bash
-# 部署单个游戏
-cd tools/shared-scripts
-.\deploy-game.ps1 -GameName plane-shooter -Environment production
-
-# 部署所有游戏
-.\deploy-all-games.ps1
 ```
 
 ---
 
-## 📁 目录位置速查
+## 📦 核心组件 API
 
-| 我要找... | 位置 | 示例 |
-|----------|------|------|
-| **资源生成工具** | `tools/gtrs-generator/src/` | `generate-resources.mjs` |
-| **音频转换工具** | `tools/audio-converter/` | `convert-to-mp3.ps1` |
-| **我的游戏** | `games/{game-name}/` | `games/plane-shooter/` |
-| **公共素材** | `resources/` | `resources/images/backgrounds/` |
-| **开发文档** | `docs/development-guide/` | `QUICK_START.md` |
-| **工具手册** | `docs/tools-manual/` | `AUDIO_CONVERSION_GUIDE.md` |
-| **游戏设计** | `docs/game-designs/` | `plane-shooter-design.md` |
-
----
-
-## 🔍 常见问题快速解答
-
-### Q: 如何添加新游戏？
-
-**A**: 
-```bash
-1. 在 games/ 下创建目录
-2. 复制模板或使用创建工具
-3. 修改 package.json 和配置
-4. 生成游戏资源
+### 1. GTRSLoader - 主题加载器
+```typescript
+const loader = new GTRSLoader()
+await loader.loadTheme('theme_id')
+const theme = loader.assertGTRS()
+const assetKey = loader.getThemeAssetKey('snake_head')
 ```
 
-### Q: 工具升级怎么办？
-
-**A**: 
-```bash
-1. 在 tools/ 中更新工具
-2. 测试工具功能
-3. 通知团队升级内容
-✅ 所有游戏自动受益
+### 2. ScreenAdapter - 屏幕适配器
+```typescript
+const adapter = new ScreenAdapter(
+  720, 1280,    // 设计尺寸
+  32, 18,       // 网格行列数
+  50            // 基础单元格大小
+)
+adapter.calculateParams(width, height)
+// 输出：adapt.cellSize, adapt.safeTop, adapt.safeBottom
 ```
 
-### Q: 如何共享资源？
-
-**A**: 
-```bash
-1. 将资源放到 resources/
-2. 按类型分类（images/audio/fonts）
-3. 更新资源索引
-4. 在游戏中引用
+### 3. AudioManager - 音频管理器
+```typescript
+const audio = new AudioManager()
+audio.playBgm('main', { src: 'bgm.mp3', volume: 0.6, loop: true })
+audio.playSound('eat', { src: 'eat.mp3', volume: 0.8 })
+audio.setSoundEnabled(false)
 ```
 
-### Q: 文档放哪里？
-
-**A**: 
-```bash
-- 开发指南 → docs/development-guide/
-- 工具说明 → docs/tools-manual/
-- 游戏设计 → docs/game-designs/{game-name}.md
+### 4. ItemSystem - 道具系统
+```typescript
+const itemSystem = new ItemSystem({
+  enabled: true,
+  spawnInterval: 10000,
+  maxActiveItems: 3,
+  itemLifetime: 10000
+})
+itemSystem.initialize(adaptParams, GRID_COLS, GRID_ROWS)
+itemSystem.setScene(scene)
+itemSystem.update(snake, food)
 ```
 
 ---
 
-## ⚡ 对比：之前 vs 现在
+## 🎯 关键配置项
 
-| 任务 | 之前 | 现在 |
+### 游戏配置（必须修改）
+```typescript
+private readonly DESIGN_WIDTH = 720      // 竖屏/横屏基准
+private readonly DESIGN_HEIGHT = 1280
+
+private readonly GRID_COLS = 32          // 👈 游戏网格列数
+private readonly GRID_ROWS = 18          // 👈 游戏网格行数
+private readonly BASE_CELL_SIZE = 50     // 👈 单元格大小（像素）
+```
+
+### 游戏对象（必须定义）
+```typescript
+// 👇 根据你的游戏定义对象
+private player: Phaser.GameObjects.Sprite | null = null
+private enemies: Phaser.GameObjects.Group | null = null
+private bullets: Phaser.GameObjects.Group | null = null
+private obstacles: Phaser.GameObjects.Group | null = null
+```
+
+---
+
+## 🔧 常用代码片段
+
+### 屏幕适配计算（直接复制）
+```typescript
+private calculateAdaptParams(w: number, h: number): void {
+  this.Adapt.screenW = w
+  this.Adapt.screenH = h
+  this.Adapt.safeTop = Math.max(44, h * 0.05)
+  this.Adapt.safeBottom = Math.max(34, h * 0.08)
+  
+  const baseCellSize = 50
+  const gameAreaWidth = this.GRID_COLS * baseCellSize
+  const gameAreaHeight = this.GRID_ROWS * baseCellSize
+  
+  const availableWidth = (w - 20) * 0.95
+  const availableHeight = (h - this.Adapt.safeTop - this.Adapt.safeBottom) * 0.9
+  
+  const finalScale = Math.min(
+    availableWidth / gameAreaWidth,
+    availableHeight / gameAreaHeight,
+    1.5
+  )
+  this.Adapt.cellSize = baseCellSize * finalScale
+}
+```
+
+### GTRS 主题加载（直接复制）
+```typescript
+private async loadTheme(themeId: string): Promise<void> {
+  const themeStore = useThemeStore()
+  let configJsonStr: string
+  
+  if (themeStore.gtrsRawJson) {
+    configJsonStr = themeStore.gtrsRawJson
+  } else {
+    const token = localStorage.getItem('token')
+    const response = await fetch(
+      `http://localhost:8080/api/theme/download?id=${themeId}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    )
+    const result = await response.json()
+    configJsonStr = result.data
+  }
+  
+  const validationResult = validateGTRSTheme(configJsonStr)
+  if (!validationResult.valid) {
+    throw new Error(`GTRS 校验失败：${validationResult.message}`)
+  }
+  
+  applyGTRS(JSON.parse(configJsonStr))
+}
+```
+
+### 资源加载进度监听（直接复制）
+```typescript
+scene.load.on('filecomplete', () => {
+  loadedResources++
+  const progress = (loadedResources / totalResourcesToLoad) * 100
+  this.onProgress?.(progress)
+})
+
+scene.load.on('complete', () => {
+  this.onProgress?.(100)
+})
+```
+
+---
+
+## ⚠️ 常见陷阱与解决方案
+
+### ❌ 错误：在 Phaser 中调用 Pinia
+```typescript
+// ❌ 错误
+const gameStore = useGameStore()
+gameStore.setScore(100)
+
+// ✅ 正确：通过回调注入
+this.setItemEffectCallback((type) => {
+  gameStore.applyItemEffect(type)
+})
+```
+
+### ❌ 错误：硬编码颜色值
+```typescript
+// ❌ 错误
+const color = 0x4ade80
+
+// ✅ 正确：从主题读取
+const color = this.themeColors.snakeBody
+```
+
+### ❌ 错误：忽略屏幕适配
+```typescript
+// ❌ 错误
+const size = 50
+
+// ✅ 正确：使用动态 cellSize
+const size = this.Adapt.cellSize * 0.7
+```
+
+### ❌ 错误：容器未添加到 DOM
+```typescript
+// ❌ 错误
+const container = document.createElement('div')
+await game.preload(container)  // clientWidth = 0
+
+// ✅ 正确：先添加到 DOM
+document.body.appendChild(container)
+await game.preload(container)  // 有正确的尺寸
+```
+
+---
+
+## 📋 检查清单
+
+### 启动前检查
+- [ ] 容器元素已添加到 DOM
+- [ ] 容器元素有正确的尺寸
+- [ ] 用户已登录（如果需要加载主题）
+- [ ] Phaser 场景已正确初始化
+
+### 预加载阶段检查
+- [ ] 等待 preload() 完成
+- [ ] 检查控制台无错误日志
+- [ ] 确认 GTRS 主题已加载
+- [ ] 确认屏幕适配参数已计算
+
+### 创建场景阶段检查
+- [ ] 在 Phaser create 回调中调用
+- [ ] 检查所有游戏元素已创建
+- [ ] 确认音频开始播放
+
+---
+
+## 🎨 游戏类型推荐配置
+
+### 竖屏游戏（贪吃蛇、俄罗斯方块）
+```typescript
+DESIGN_WIDTH = 720
+DESIGN_HEIGHT = 1280
+GRID_COLS = 32
+GRID_ROWS = 18
+BASE_CELL_SIZE = 50
+```
+
+### 横屏游戏（飞机大战、坦克大战）
+```typescript
+DESIGN_WIDTH = 1280
+DESIGN_HEIGHT = 720
+GRID_COLS = 20
+GRID_ROWS = 12
+BASE_CELL_SIZE = 60
+```
+
+### 棋盘类游戏（扑克、棋类）
+```typescript
+DESIGN_WIDTH = 1000
+DESIGN_HEIGHT = 1000
+GRID_COLS = 10
+GRID_ROWS = 10
+BASE_CELL_SIZE = 80
+```
+
+---
+
+## 📚 详细文档索引
+
+| 文档 | 用途 | 位置 |
 |------|------|------|
-| **找工具** | ❌ 每个游戏翻一遍 | ✅ tools/ 一目了然 |
-| **加游戏** | ❌ 复制大量代码 | ✅ 使用模板快速创建 |
-| **转音频** | ❌ 每个游戏写脚本 | ✅ 统一工具一次搞定 |
-| **查文档** | ❌ 到处找 .md 文件 | ✅ docs/ 分类清晰 |
-| **用资源** | ❌ 重复存储浪费 | ✅ 公共资源库复用 |
+| [REUSABLE_GAME_FRAMEWORK.md](./REUSABLE_GAME_FRAMEWORK.md) | 完整框架指南 | kids-game-house/ |
+| [SNAKE_CODE_REFERENCE.md](./SNAKE_CODE_REFERENCE.md) | 详细代码注释 | kids-game-house/ |
+| [GAME_DEVELOPMENT_STANDARD.md](./GAME_DEVELOPMENT_STANDARD.md) | 开发标准 | kids-game-house/ |
+| [COMPONENT_USAGE_GUIDE.md](./games/snake/src/components/game/components/COMPONENT_USAGE_GUIDE.md) | 组件使用 | games/snake/src/components/game/components/ |
 
 ---
 
-## 🎯 最佳实践小贴士
+## 💡 最佳实践
 
-### ✅ DO (推荐)
+### ✅ 推荐
+- 保持框架层代码不变（PhaserGame.ts 前 600 行）
+- 使用组件化架构（GTRSLoader, ScreenAdapter 等）
+- 优先从主题读取资源配置
+- 提供降级方案（无主题时的备选）
+- 详细的注释和日志输出
 
-- ✅ 使用统一的工具目录
-- ✅ 遵循命名规范（小写 + 连字符）
-- ✅ 公共资源放到 resources/
-- ✅ 文档及时更新到 docs/
-- ✅ 使用版本控制管理变更
-
-### ❌ DON'T (避免)
-
-- ❌ 在每个游戏中复制工具
-- ❌ 使用大写字母或空格命名
-- ❌ 私有化公共资源
-- ❌ 文档散落在各处
-- ❌ 跳过测试直接上线
+### ❌ 避免
+- 修改框架层代码
+- 硬编码配置值
+- 在 Phaser class 内部直接调用 Pinia
+- 忽略屏幕适配计算
+- 缺少错误处理
 
 ---
 
-## 📞 需要帮助？
+## 🔗 快速链接
 
-### 快速链接
+### 核心文件
+- [PhaserGame.ts](./games/snake/src/components/game/PhaserGame.ts) - 游戏主类
+- [SnakeGame.vue](./games/snake/src/components/game/SnakeGame.vue) - Vue 组件示例
+- [ItemSystem.ts](./games/snake/src/components/game/components/ItemSystem.ts) - 道具系统
 
-- 📖 [完整设计方案](./REFACTOR_DIRECTORY_STRUCTURE_PROPOSAL.md)
-- 🚀 [详细迁移指南](./MIGRATION_GUIDE.md)
-- ✅ [完成报告](./REFACTOR_COMPLETE.md)
-- 🛠️ [工具 README](./tools/README.md)
+### 工具函数
+- [gtrs-validator.ts](./games/snake/src/utils/gtrs-validator.ts) - GTRS 校验
+- [uiResponsive.ts](./games/snake/src/utils/uiResponsive.ts) - UI 响应式
 
-### 联系团队
-
-- 💬 技术讨论群
-- 📧 团队邮件列表
-- 📝 Wiki 知识库
-
----
-
-## 🎊 成功口诀
-
-```
-工具集中用 tools/
-游戏独立在 games/
-资源共享 resources/
-文档统一 docs/
-
-命名规范要牢记
-团队协作更高效
-新人上手更容易
-项目管理更清晰
-```
+### 类型定义
+- [game.ts](./games/snake/src/types/game.ts) - 游戏类型定义
+- [GTRSTheme](./shared/game-framework/src/types/gtrs.ts) - GTRS 主题类型
 
 ---
 
-**打印此卡片贴在桌前，快速适应新架构！** 📌
-
-**最后更新**: 2026-03-26  
-**维护者**: Lingma AI Assistant
-
-🚀 **让我们一起享受更高效的开发体验！**
+**最后更新**: 2026-03-27  
+**维护者**: Sitech AI Team  
+**反馈**: 如有问题请提交 Issue 或联系开发团队

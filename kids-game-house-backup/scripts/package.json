@@ -1,9 +1,0 @@
-{
-  "name": "tank-battle-scripts",
-  "version": "1.0.0",
-  "type": "module",
-  "description": "坦克大战 GTRS 资源生成工具",
-  "dependencies": {
-    "sharp": "^0.33.0"
-  }
-}

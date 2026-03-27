@@ -1,26 +1,57 @@
 /**
- * Kids Game Framework
- * 儿童游戏通用框架 - 统一导出
+ * 🎮 Kids Game Framework
+ * 
+ * 儿童游戏开发通用框架
+ * 基于 Phaser 3 + Vue 3 + Pinia
+ * 
+ * @version 1.0.0
+ * @author Kids Game Platform Team
  */
 
-// 类型定义
-export * from './types/game.types'
+// ============================================================================
+// 🎯 核心引擎
+// ============================================================================
+export { GameEngine } from './core/GameEngine'
+export type { GameEngineConfig } from './core/GameEngine'
 
-// 核心 Store
+// ============================================================================
+// 📦 可复用组件
+// ============================================================================
+export { GTRSLoader } from './components/GTRSLoader'
+export { ScreenAdapter } from './components/ScreenAdapter'
+export { AudioManager } from './components/AudioManager'
+export { ItemSystem } from './components/ItemSystem'
+export { ItemManager } from './components/ItemManager'
+
+// ============================================================================
+// 📊 Store
+// ============================================================================
 export { useGameStore } from './stores/game.store'
+export { useThemeStore } from './stores/theme.store'
 
-// 工具函数
-export {
-  getSessionToken,
-  getGameId,
-  verifySession,
-  reportGameResult,
-  isStandaloneMode
-} from './utils/platformApi'
-export { default as platformApi } from './utils/platformApi'
+// ============================================================================
+// 📝 类型定义
+// ============================================================================
+export type { 
+  Difficulty,
+  DifficultyConfig,
+  GameState,
+  Position,
+  Food,
+  Particle
+} from './types/game.types'
+export { DIFFICULTY_CONFIGS, FOOD_TYPES } from './types/game.types'
 
-// 应用初始化
-export { initGame } from './utils/initGame'
+// ============================================================================
+// 🛠️ 工具函数
+// ============================================================================
+export { validateGTRSTheme } from './utils/gtrs-validator'
+export type { GTRSTheme, ValidationResult } from './utils/gtrs-validator'
+export * from './utils/color-utils'
+export * from './utils/math-utils'
 
-// 配置常量
-export { GAME_CODE, GAME_ID_MAP, DIFFICULTY_CONFIGS, DEFAULT_GAME_CONFIG } from './config/game.config'
+// ============================================================================
+// ⚙️ 配置
+// ============================================================================
+export * from './config/game.config'
+export * from './config/default.config'

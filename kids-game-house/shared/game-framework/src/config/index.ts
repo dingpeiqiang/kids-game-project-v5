@@ -1,15 +1,22 @@
 /**
- * 📊 Store 统一导出
+ * ⚙️ 配置统一导出
  */
 
 // ============================================================================
-// 🎮 游戏状态 Store
+// 🎮 游戏配置
 // ============================================================================
 
-export { useGameStore } from './game.store'
+export { 
+  GAME_CODE,
+  GAME_ID_MAP,
+  DIFFICULTY_CONFIGS,
+  DEFAULT_GAME_CONFIG,
+  THEME_MODE_CONFIG,
+  AUDIO_CONFIG
+} from './game.config'
 
 // ============================================================================
-// 🎨 主题 Store
+// ⚙️ 默认配置
 // ============================================================================
 
-export { useThemeStore } from './theme.store'
+export { DEFAULT_CONFIG } from './default.config'
