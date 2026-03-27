@@ -1,0 +1,27 @@
+{
+  "name": "ai-audio-generator",
+  "version": "1.0.0",
+  "description": "AI 音频生成工具 - 使用 Suno/11 Labs 生成游戏音效和音乐",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "generate": "node src/index.js",
+    "generate:music": "node src/music.js",
+    "generate:sfx": "node src/sfx.js",
+    "generate:voice": "node src/voice.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.7"
+  },
+  "keywords": [
+    "ai",
+    "audio",
+    "music",
+    "sfx",
+    "game",
+    "suno"
+  ],
+  "author": "",
+  "license": "MIT"
+}

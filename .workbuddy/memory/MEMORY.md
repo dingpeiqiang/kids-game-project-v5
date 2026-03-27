@@ -1,195 +1,335 @@
 # 项目长期记忆
 
-## 贪吃蛇道具系统 Bug 修复（2026-03-26，两轮）
+## 项目结构概览
 
-### 第一轮：碰撞检测不工作、道具不消失（根本 4 个 Bug）
-1. `PhaserGame.update()` 传入空数组 → 改为传入 `currentSnake`
-2. 坐标系不一致：道具用左上角坐标，蛇用中心点坐标 → 统一为 `col * cellSize + cellSize/2`
-3. `ItemSystem.render()` offsetY 未含 safeTop → 接受 adaptParams 参数修正
-4. `ItemSystem.update()` 重复调用 applyItemEffect → 删除重复逻辑
+| 子工程 | 说明 |
+|--------|------|
+| `kids-game-framework/` | **独立游戏框架 npm 包** `@kids-game/framework`（2026-03-27 新增）|
+| `kids-game-house/` | 各个游戏实现（snake 等），引用 framework |
+| `kids-game-frontend/` | 平台前端（Vue3 + Element Plus）|
+| `kids-game-backend/` | 平台后端（Spring Boot）|
+| `kids-game-auto-test/` | 自动化测试工具 |
 
-### 第二轮：道具效果看不出来（数据孤岛问题）
-**根本原因**：`PhaserGame.gameData` 与 `gameStore` 完全脱节——速度改了 gameData 但 moveSnake 读 gameStore；分数改了 gameData 但 addScore 直接加原始分
+---
 
-**修复方案**：
-- `game.ts`（store）新增 `itemEffects` 状态 + `applyItemEffect()` 统一入口 + `resetItemEffects()`
-- `moveSnake()` 使用 `effectiveSpeed = currentConfig.speed * itemEffects.speedMultiplier`
-- `addScore()` 用 `Math.round(points * itemEffects.scoreMultiplier)` 
-- 碰撞检测（边界/自身/障碍物）先判 `hasShield` 消耗护盾再 endGame
-- `length_reduce` 直接 `snake.value.splice()` 实际缩短 3 节
-- `PhaserGame` 新增 `onItemEffect` 回调字段 + `setItemEffectCallback()`，由 `SnakeGame.vue` 注入 `gameStore.applyItemEffect`（不在 Phaser class 内调用 useGameStore，避免热更新后方法丢失）
-- 道具收集音效：`playSound('item_collect')` → 映射到 `effect_levelup`
-- `SnakeGame.vue` 新增道具效果状态栏 UI（彩色徽章 + 倒计时进度条）
-- `resetItemEffects()` 改为逐字段重置（不整体替换），避免路由过渡动画期间 template 访问 undefined
+## 脚手架（2026-03-27 更新）
 
-### ⚠️ 关键教训：Pinia useGameStore() 必须在 Vue 组件 setup 上下文中调用，不能在 Phaser class 内部调用
+将框架重构为**项目脚手架**，支持一键创建新游戏 + AI 迭代开发。
 
-### 关键文件
-- `kids-game-house/games/snake/src/stores/game.ts` - 道具效果状态中心
-- `kids-game-house/games/snake/src/components/game/PhaserGame.ts` - 收集回调委托给 store
-- `kids-game-house/games/snake/src/components/game/SnakeGame.vue` - 道具效果 UI 显示
-- `kids-game-house/games/snake/src/components/game/components/ItemManager.ts`
-- `kids-game-house/games/snake/src/components/game/components/ItemSystem.ts`
+### 使用方式
+```bash
+cd kids-game-framework
+node bin/create-game.js my-game --output ../games
+cd ../games/my-game
+npm install && npm run dev
+```
 
-## 贪吃蛇游戏 GTRS 规范适配（完成于 2026-03-20）
+### 框架屏幕适配（2026-03-27 更新，参考贪吃蛇方案）
+
+**全屏适配需要 4 层配合**（缺一不可）：
+
+1. **index.html**: `viewport-fit=cover` + `env(safe-area-inset-*)` body padding
+2. **App.vue**: `100vw × 100vh` + `overflow: hidden` + 安全区域 padding
+3. **GameView.vue**: `h-screen w-full overflow-hidden` + `touch-action: none`
+4. **Phaser config**: `mode: RESIZE` + `width: '100%', height: '100%'` + `autoCenter: CENTER_BOTH`
+
+**两种使用方式**：
+
+1. **函数模式**（模板 `game/index.ts`）— 脚手架生成即用：
+   - `SCALE_CONFIG.mode` 默认 `RESIZE`（全屏填满）
+   - 游戏逻辑中用 `scene.scale.width/height` 获取实时画布尺寸
+
+2. **继承模式**（`GameEngine` 类）— 复杂游戏：
+   - `GameEngineConfig.scaleMode` 默认 `RESIZE`
+   - `canvasWidth/canvasHeight` 默认 `'100%'`
+
+**关键区别**：`RESIZE`（画布跟随容器，全屏）vs `FIT`（固定画布等比缩放，不撑满）
+
+### ⚠️ Phaser API 注意点
+- `physics.add.existing()` 对 `Rectangle`/`Arc` 可能不生效
+- `physics.add.rectangle`/`physics.add.circle` **不存在**
+- 简单游戏推荐纯手动位置更新（delta 计算），不依赖 Arcade Physics
+
+### 测试游戏 Demo
+- `games/test-game/` — 接金币游戏，用于验证脚手架
+- 使用手动位置更新（无 Arcade Physics），Scale.RESIZE 全屏适配
+
+---
+
+## kids-game-framework 子工程提取（2026-03-27）
+
+将 `kids-game-house/shared/game-framework` 重构为独立顶层子工程 `kids-game-framework/`。
+
+**包名**：`@kids-game/framework`，支持子路径导入（`/core`、`/components`、`/stores`、`/types`、`/utils`）。
+
+**关键设计**：
+- 移除所有 `@/` 路径别名，改为相对路径（框架作为独立包发布必须用相对路径）
+- 外部依赖（vue、pinia、phaser、axios）设为 peerDependencies 或 devDependencies，不打进包里
+- `tsconfig.json` 路径别名 `@framework/*` 仅供内部开发时用
+- TypeScript 编译零错误验证通过（`npx tsc --noEmit`）
+
+**主要文件**：
+- `src/core/GameEngine.ts` - 核心引擎基类，所有游戏继承
+- `src/components/ScreenAdapter.ts` - 屏幕适配
+- `src/components/AudioManager.ts` - 音频管理
+- `src/components/GTRSLoader.ts` - GTRS 主题加载
+- `src/components/ItemManager.ts` / `ItemSystem.ts` - 道具系统
+- `src/stores/game.store.ts` - 游戏状态 Pinia store
+- `src/stores/theme.store.ts` - 主题状态 Pinia store
+- `src/types/` - 完整 TS 类型定义
+- `src/utils/gtrs-validator.ts` - GTRS 格式校验
+
+**游戏使用方式**（在游戏的 package.json 中）：
+```json
+"dependencies": {
+  "@kids-game/framework": "file:../../kids-game-framework"
+}
+```
+
+---
+
+## GTRS 规范（Game Theme Resource Specification v1.0.0）
+
+**4个顶级字段**：`specMeta` / `themeInfo` / `globalStyle` / `resources`  
+**资源结构**：`resources.images.scene`（场景图）、`resources.audio.bgm`（背景乐）、`resources.audio.effect`（音效）  
+**key 命名**：英文小写+下划线，如 `snake_head`、`food_apple`、`scene_bg_main`、`effect_eat`
+
+**设计决策**：
+- `GTRS.json` 是纯结构定义（key 枚举），src 全空，不作运行兜底
+- 无主题必须报错（`assertGTRS()` 直接 throw，不静默降级）
+- 资源路径不含 `/public/` 前缀；`normalizeSrcPaths()` 自动兼容旧格式
+- Phaser key = GTRS scene key，完全对应无映射
+- 前后端各有一份独立 Schema（`gtrs-schema.json`），修改时必须同步
+
+**主题上传链路（ownerId = gameId）**：
+- DIY 流程：已有主题 → DIY → 路由携带 `themeId` + `gameId` → 编辑器加载 → 发布时用路由中的 `gameId` 作 `ownerId`
+- `applicableScope` 字段已废弃，统一用 `ownerType=GAME` + `ownerId`
+
+**关键接口**：
+- `GET /api/theme/download?id=xxx` - 下载主题（需登录）
+- `GET /api/theme/editor-data?id=xxx` - 编辑器专用，返回结构化数据（config 已解析为对象）
+- `POST /api/theme/approve?themeId=xxx&approved=true/false` - 审批主题
+
+**关键文件（前端）**：
+- `kids-game-frontend/src/utils/gtrs-validator.ts` - GTRS Schema 校验（Ajv）
+- `kids-game-frontend/src/schemas/gtrs-schema.json` - GTRS JSON Schema
+
+---
+
+## 贪吃蛇游戏（kids-game-house/games/snake/）
 
 ### 项目路径
-`kids-game-house/snake-vue3/`
+`kids-game-house/games/snake/`（注意：旧路径 `snake-vue3/` 已迁移）
 
-### GTRS 规范核心约定
-- **GTRS v1.0.0**：4 个顶级字段 `specMeta` / `themeInfo` / `globalStyle` / `resources`
-- **资源结构**：`resources.images.scene`（场景图）、`resources.audio.bgm`（背景乐）、`resources.audio.effect`（音效）
-- **key 命名规范**：英文小写+下划线，例如 `snake_head`、`food_apple`、`scene_bg_main`、`effect_eat`
+### 道具系统 Bug 修复（2026-03-26）
+
+**第一轮（碰撞检测/道具不消失）**：
+1. `PhaserGame.update()` 传入空数组 → 改为传入 `currentSnake`
+2. 坐标系不一致：道具左上角 vs 蛇中心点 → 统一为 `col * cellSize + cellSize/2`
+3. `ItemSystem.render()` offsetY 未含 safeTop → 接受 adaptParams 参数修正
+4. `ItemSystem.update()` 重复调用 applyItemEffect → 删除重复
+
+**第二轮（数据孤岛问题）**：
+- `game.ts` 新增 `itemEffects` 状态 + `applyItemEffect()` + `resetItemEffects()`
+- `moveSnake()` 使用 `effectiveSpeed = currentConfig.speed * itemEffects.speedMultiplier`
+- `addScore()` 用 `Math.round(points * itemEffects.scoreMultiplier)`
+- `PhaserGame` 新增 `onItemEffect` 回调 + `setItemEffectCallback()`，由 `SnakeGame.vue` 注入（不在 Phaser class 内调用 useGameStore）
+- `resetItemEffects()` 改为逐字段重置，避免路由过渡时 template 访问 undefined
+
+### ⚠️ 关键约束：Pinia useGameStore() 必须在 Vue 组件 setup 上下文中调用，不能在 Phaser class 内部调用（用回调注入模式替代）
 
 ### 关键文件
+- `src/stores/game.ts` - 道具效果状态中心
+- `src/components/game/PhaserGame.ts` - 收集回调委托给 store
+- `src/components/game/SnakeGame.vue` - 道具效果 UI 显示
+
+### 框架 UI 对齐（2026-03-27）
+
+将游戏 UI 组件导入改为使用框架版本：
+
+**修改的文件**：
+- `src/views/StartView.vue` - GameButton, SoundToggle, ThemeSelector
+- `src/views/GameOverView.vue` - GameButton
+- `src/views/LoadingView.vue` - GameButton
+- `src/views/DifficultyView.vue` - DifficultySelector, GameButton
+- `src/components/game/SnakeGame.vue` - ScorePanel, PauseButton, SoundToggle, GameButton
+
+**导入方式**：
+```typescript
+import { GameButton, SoundToggle, ThemeSelector, ScorePanel, PauseButton, DifficultySelector } from '@kids-game/framework'
+```
+
+**说明**：保留游戏特定的难度配置（DIFFICULTY_CONFIGS），因为它包含游戏特定的参数。
+
+---
+
+## 认证安全策略
+
+**严格认证模式**：所有主题相关 API 必须登录。
+- JWT 拦截器拦截所有 `/api/**`，ThemeController 类加 `@RequireLogin`
+- **公开接口**：`/api/auth/*`、`/api/kid/login`、`/api/parent/login`、`/api/game/list`、`/api/game/code/*`、`/api/game/config/**`、`/api/question/random`
+- **需认证**：所有 `/api/theme/**`
+
+---
+
+## 硬编码审计与修复（2026-03-22）
+
+**P0 修复**：
+- BCryptGenerator.java：移除硬编码密码，改为命令行参数传入
+- export-ddl.ps1：改为从环境变量 `DB_PASSWORD` 读取
+- home/index.vue：verifyParent 改为调用 `parentApi.verifyPassword()` API
+- ThemeStorePage.vue：用户ID改为从 `userStore.currentUser?.id` 或 `parentUser?.parentId` 动态获取
+
+**P1 常量提取**：
+- 前端：`src/services/api.types.ts` 新增 `GAME_STATUS`、`THEME_STATUS`、`USER_TYPE` 枚举
+- 后端：`UserRelation.java` 新增 `PERMISSION_*`、`STATUS_*` 常量
+
+**P2 路径配置化**：`UnifiedGameManager.ts` 使用 `envConfig.resourceBaseUrl` 替代硬编码路径
+
+---
+
+## Framework 重构（2026-03-27）
+
+### 问题背景
+原有的 `kids-game-framework` 包含大量贪吃蛇特定代码（如 `Food`, `FOOD_TYPES`, `snake` 相关逻辑），导致框架不可复用。
+
+### 重构内容
+
+**阶段1：优化 snake 游戏结构**
+1. `stores/game.ts` - 添加清晰的结构注释，标记通用/游戏特定部分
+2. `PhaserGame.ts` - 清理冗长的注释标注，统一命名
+3. `types/game-base.types.ts` - 新建通用接口定义文件
+4. `types/game.ts` - 添加注释，区分通用/贪吃蛇特定
+
+**阶段2：重建 framework**
+1. `types/game.types.ts` - 移除贪吃蛇特定类型（`Food`, `FOOD_TYPES`），保留通用类型
+2. `stores/game.store.ts` - 重写为通用游戏状态 store，移除贪吃蛇特定逻辑
+3. `index.ts` - 更新导出，反映新的干净结构
+4. TypeScript 编译验证通过
+
+### 新框架结构
+```
+kids-game-framework/src/
+├── index.ts              # 主入口
+├── core/                 # 核心引擎
+├── components/           # 可复用组件
+│   ├── ScreenAdapter.ts
+│   ├── AudioManager.ts
+│   ├── GTRSLoader.ts
+│   └── ItemSystem.ts
+├── stores/               # Pinia Stores
+│   ├── game.store.ts     # 通用游戏状态
+│   └── theme.store.ts
+├── types/                # 类型定义
+│   ├── game.types.ts     # 通用游戏类型
+│   └── gtrs.types.ts     # GTRS 规范类型
+├── utils/                # 工具函数
+└── config/               # 配置常量
+```
+
+---
+
+## 技术规范与注意点
+
+- **IDE 沙箱**：禁止原生 `confirm()`/`alert()`/`prompt()`，必须用 Element Plus（`ElMessageBox`、`ElMessage`）
+- **音频格式**：统一使用 `.mp3`（同时存在 .wav 时优先用 mp3）
+- **前后端 Schema 同步**：`kids-game-frontend/src/schemas/gtrs-schema.json` 与 `kids-game-backend/.../gtrs-schema.json` 必须同步修改
+- **vue-tsc 兼容**：使用 `npx tsc --noEmit` 而非 `vue-tsc` 进行类型检查（vue-tsc 有版本兼容问题）
+
+---
+
+## Framework UI 框架（2026-03-27）
+
+### 新增 UI 组件
+
+通过**配置化 + 模板化**方式，将贪吃蛇 UI 抽象到框架中。
+
+### UI 组件 (`components/ui/`)
+
+| 组件 | 类型 | 说明 |
+|------|------|------|
+| `GameButton.vue` | 组件 | 游戏按钮，支持变体、尺寸、禁用状态 |
+| `ScorePanel.vue` | 组件 | 分数面板，显示当前分/最高分 |
+| `ThemeSelector.vue` | 组件 | 主题选择器，依赖 themeStore |
+| `PauseButton.vue` | 组件 | 暂停按钮（抽象后，emit 事件） |
+| `SoundToggle.vue` | 组件 | 音效开关（抽象后，emit 事件） |
+| `DifficultySelector.vue` | 组件 | 难度选择器（配置化，传入 difficultyConfig） |
+
+### 页面级模板 (`components/views/`)
+
+| 组件 | 类型 | 说明 |
+|------|------|------|
+| `StartView.vue` | 模板 | 开始页面，支持插槽自定义 |
+| `GameOverView.vue` | 模板 | 游戏结束页面，支持插槽自定义 |
+| `LoadingView.vue` | 模板 | 加载页面，配置化步骤 |
+| `GameContainer.vue` | 容器 | 游戏容器，整合所有 UI |
+| `LoadingOverlay.vue` | 组件 | 加载覆盖层 |
+| `ControlsHint.vue` | 组件 | 操作提示 |
+| `ItemEffectsBar.vue` | 组件 | 道具效果栏 |
+
+### UI 类型定义 (`types/ui.types.ts`)
+
+- `ButtonVariant`, `ButtonSize`, `ButtonConfig`
+- `DifficultyLevel`, `DifficultyConfig`
+- `LoadingStep`, `LoadingState`
+- `GameStatus`, `GameResult`
+- `HUDConfig`, `ControlHint`
+- `GameContainerProps`, `GameContainerEmits`
+
+### 使用示例
+
+```vue
+<!-- 游戏使用框架 StartView -->
+<StartView
+  game-name="🐍 贪吃蛇"
+  :high-score="100"
+  @start="handleStart"
+>
+  <template #title>
+    <h1>🐍 快乐贪吃蛇</h1>
+  </template>
+</StartView>
+
+<!-- 游戏使用框架 GameContainer -->
+<GameContainer
+  :status="gameStatus"
+  :score="score"
+  :high-score="highScore"
+  :is-paused="isPaused"
+  :item-effects="itemEffects"
+  :loading-steps="loadingSteps"
+  @pause="handlePause"
+  @resume="handleResume"
+  @home="handleHome"
+  @input="handleInput"
+>
+  <template #game>
+    <!-- Phaser 游戏画布 -->
+  </template>
+</GameContainer>
+```
+
+### 模板文件 (`templates/`)
+
 | 文件 | 说明 |
 |------|------|
-| `src/config/GTRS.json` | **纯占位符**，枚举本游戏合法 key，src 全空，不作运行兜底 |
-| `src/components/game/PhaserGame.ts` | Phaser 游戏引擎封装，完全从 GTRS 读取资源 |
-| `src/stores/theme.ts` | Vue UI 层主题状态，从 GTRS globalStyle 提取颜色 |
-| `src/utils/gtrs-validator.ts` | GTRS JSON Schema 严格校验工具（Ajv） |
+| `register-game.sql` | 游戏数据库注册 SQL 模板 |
+| `GTRS.json` | GTRS 主题资源规范模板 |
+| `README.md` | 模板使用说明文档 |
 
-> ⚠️ `public/games/.../gtrs-theme.json` 已删除（多余）
+### 游戏项目结构规范
 
-### 设计决策：无主题必须报错
-- `GTRS.json` 是纯结构定义（key 枚举），**src 全空**，不可直接运行
-- 游戏运行时 `GTRS` 变量初始值为 `null`
-- `assertGTRS()` 函数：未加载时直接 `throw`，快速定位问题
-- `loadTheme()` 任何失败（未登录 / HTTP 错误 / GTRS 校验不通过）均直接 `throw`，不静默降级
-- `start(difficulty, themeId)` 中 `themeId` 必填，否则 `throw`
-
-### 路径规范
-- 资源路径 **不含** `/public/` 前缀：`/games/snake-vue3/themes/default/...`
-- `normalizeSrcPaths()` 函数自动兼容旧格式 `/public/xxx` → `/xxx`
-
-### Phaser 资源加载规则
-- Phaser key = GTRS scene key（完全对应，无映射）
-- `loadGTRSImages()` 遍历 `resources.images.scene` 批量加载
-- `getThemeAssetKey()` 优先级：食物类型映射 > 直接 key 命中 > 兼容别名
-
-### 主题上传链路（ownerId = gameId）
-- **DIY 流程**：基于已有主题点击 DIY → 跳转 GTRS 编辑器，路由携带 `themeId` + `gameId` → 编辑器加载原主题配置作为模板 → 发布新主题时直接使用路由中的 `gameId` 作为 `ownerId`
-- **creator-center/index.vue** `handleDIYTheme(theme)`：将 `theme.gameId` 传入路由参数 `query.gameId`
-- **GTRSThemeCreatorV2.vue**：从 `route.query.gameId` 读取，发布时直接传给 `ownerId`，不再走 `gameApi.getByCode` 查询
-- 后端 `ThemeUploadDTO` 接收 `ownerId`（Long），优先使用，为空时才通过 `gameCode` 反查
-- BasicInfoPanel 游戏列表从 `gameApi.getList()` 动态加载（替代硬编码）
-
-### 主题字段清理（废弃 applicableScope）
-- `applicableScope`（all/specific）与 `ownerType`（APPLICATION/GAME）+ `ownerId` 功能完全重复，已废弃
-- 所有主题均为游戏主题（`ownerType = 'GAME'`，`ownerId = gameId`），不再区分通用/专属
-- 后端：ThemeInfo、ThemeResponseDTO 删除 `applicableScope` 字段；Controller/Service 中相关判断改为 `ownerType`
-- 前端：删除 `ApplicableScope` 类型、`convertApplicableScopeToOwnerType()` 函数、各组件中的 `applicableScope` 字段
-
-### 主题审批功能（2026-03-21 12:20）
-- 后端新增 `ThemeService.approveTheme(themeId, approved)` 方法：审批通过 → `status=on_sale`，拒绝 → `status=offline`，只能对待审核主题操作
-- 后端新增 `POST /api/theme/approve?themeId=xxx&approved=true/false` 接口
-- 前端 `ThemeManagement.vue`：待审核主题卡片显示 ✅通过 / ❌拒绝 按钮，其他状态显示常规操作
-
-### 主题加载链路
-后端 API `/api/theme/download?id=xxx` → 提取 `configJson` → `validateGTRSTheme()` 校验  
-→ 通过：`applyGTRS()` 直接赋值（不 deepMerge）  
-→ 失败：直接 `throw`，由 Vue 组件显示报错 UI
-
-### CSS 变量（applyThemeToDocument）
-从 `ThemeConfig.colors.*` 写入 `--theme-primary`、`--theme-secondary`、`--theme-background` 等  
-`ThemeConfig.colors` 从 GTRS `globalStyle` 字段提取（`primaryColor` / `secondaryColor` / `bgColor` / `textColor`）
-
-### 音频文件
-- 实际文件同时存在 `.mp3` 和 `.wav`，统一使用 **mp3** 格式
-- 音频路径：`/games/snake-vue3/themes/default/audio/bgm_main.mp3` 等
-
-## 认证安全策略（更新于 2026-03-21）
-
-### 严格认证模式
-- **原则**：所有主题相关API必须要求登录认证，未登录用户完全无法操作
-- **实现**：
-  1. JWT拦截器拦截所有`/api/**`路径
-  2. `ThemeController`类添加`@RequireLogin`注解
-  3. 移除主题API的排除项，强制所有主题操作都经过认证检查
-
-### 认证流程
-1. **公开接口**（允许未登录访问）：
-   - `/api/auth/public-key` - 获取RSA公钥
-   - `/api/auth/login` - 统一登录接口
-   - `/api/kid/login`, `/api/parent/login` - 特定用户登录
-   - `/api/game/list`, `/api/game/code/*` - 游戏信息
-   - `/api/game/config/**` - 游戏配置
-   - `/api/question/random` - 随机题目
-
-2. **需要认证的接口**：
-   - 所有主题API：`/api/theme/**`
-   - 包括：主题列表、详情、上传、购买、下载、校验等所有操作
-
-### 技术要点
-- `@RequireLogin`注解：类或方法级别，JWT拦截器会根据此注解决定是否验证token
-- 排除路径机制：在WebConfig中配置，被排除的路径跳过JWT拦截
-- token验证：从Authorization头或token参数获取Bearer token进行验证
-
-## 游戏资源生成（完成于 2026-03-21）
-
-### 资源文件位置
-- 图片：`kids-game-house/snake-vue3/public/themes/default/images/scene/`
-- 音频：`kids-game-house/snake-vue3/public/themes/default/audio/`
-
-### 图片资源（10个）
-使用 Node.js + Canvas 生成像素风格图片：
-- snake_head.png - 绿色蛇头（带眼睛）
-- snake_body.png - 绿色蛇身（带高光）
-- snake_tail.png - 渐变蛇尾
-- food_apple.png - 红苹果（带叶子高光）
-- food_banana.png - 黄色香蕉
-- food_cherry.png - 双樱桃（带梗叶）
-- obstacle_rock.png - 灰色石头（带纹理）
-- obstacle_wall.png - 砖块墙壁
-- scene_bg_main.png - 深色渐变星空背景（720x1280）
-- scene_bg_grid.png - 网格背景（720x1280）
-
-### 音频资源（8个）
-使用 FFmpeg 合成：
-- bgm_main.mp3 (47KB) - 主菜单温暖上行和弦
-- bgm_gameplay.mp3 (63KB) - 游戏中节奏感 BGM
-- bgm_gameover.mp3 (40KB) - 游戏结束低沉下行
-- effect_eat.mp3 - 吃到食物清脆上升音
-- effect_crash.mp3 - 碰撞低频撞击声
-- effect_gameover.mp3 - 游戏结束下降音
-- effect_levelup.mp3 - 升级欢快和弦
-- effect_button_click.mp3 - 按钮点击短促音
-
-### 生成脚本
-- `generate-better-resources.cjs` - Node.js Canvas 图片生成
-- `generate-better-audio.cjs` - FFmpeg 音频合成
-
-## GTRS 编辑器/发布修复（更新于 2026-03-21）
-
-### 修复的问题清单
-1. **前端 vite 代理缺少 /themes**：前端无法访问 `localhost:3005` 的主题资源
-   - 修复：`kids-game-frontend/vite.config.ts` 添加 `/themes` → `localhost:3005` 代理
-2. **GTRS 校验不支持 /themes/ 路径**：`isValidResourceUrl()` 缺少该前缀
-   - 修复：`kids-game-frontend/src/utils/gtrs-validator.ts` 添加 `/themes/` 支持
-3. **Schema 不支持 $comment 字段**：前后端 Schema 都缺少 `$comment` 定义
-   - 修复：`kids-game-frontend/src/schemas/gtrs-schema.json` 和 `kids-game-backend/.../gtrs-schema.json` 添加 `$comment` 属性
-4. **上架按钮不触发后端**：`handleToggleSale()` 只有 TODO，没有实际调用
-   - 修复：`kids-game-frontend/.../index.vue` 实现 `ElMessageBox.confirm` + `themeManager.toggleThemeSale()`
-5. **toggle-sale API 前后端参数不匹配**：前端发 JSON body，后端期望 `@RequestParam`
-   - 修复：`theme-api.service.ts` 改为 URL 参数 `?themeId=xxx&onSale=true`
-6. **confirm() 沙箱被禁**：IDE 内嵌浏览器不支持 `confirm()`/`alert()`
-   - 修复：改用 Element Plus 的 `ElMessageBox` 和 `ElMessage`
-
-### 关键注意点
-- 后端 `ThemeController` 在 `kids-game-backend/kids-game-web/src/main/java/com/kidgame/web/controller/ThemeController.java`
-- 后端 `gtrs-schema.json` 在 `kids-game-backend/kids-game-service/src/main/resources/gtrs-schema.json`
-- 前端和后端各有一份独立的 Schema，修改时**必须同步更新**
-- IDE 沙箱环境禁止使用原生 `confirm()`/`alert()`/`prompt()`，必须用 Element Plus 组件
-
-### GTRS 编辑器专用接口（2026-03-22）
-- **新增接口**：`GET /api/theme/editor-data?id=xxx`
-- **用途**：为 GTRS 编辑器提供结构化的主题数据，方便加载和查看
-- **返回结构**：
-  ```json
-  {
-    "themeInfo": { "themeId", "themeName", "authorName", "ownerType", "ownerId", ... },
-    "config": { "specMeta", "globalStyle", "resources" }  // 已解析的对象，不是字符串
-  }
-  ```
-- **后端实现**：`ThemeController.getEditorData()` → `ThemeService.getEditorData()` → `ThemeServiceImpl.getEditorData()`
-- **前端使用**：`GTRSThemeCreatorV2.vue` 的 `loadExistingTheme()` 调用 `themeApi.getEditorData()`
+```
+games/
+└── my-game/
+    ├── public/themes/default/
+    │   ├── GTRS.json
+    │   ├── audio/
+    │   └── images/
+    ├── src/
+    │   ├── components/game/
+    │   ├── stores/
+    │   ├── views/
+    │   └── main.ts
+    └── register-game.sql
+```

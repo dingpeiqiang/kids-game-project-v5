@@ -1,0 +1,34 @@
+{
+  "name": "@kids-game/theme-resource-generator",
+  "version": "1.0.0",
+  "description": "游戏主题资源自动生成工具 - 从 GDD 到完整资源",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "generate-theme-resources": "./src/cli.js"
+  },
+  "scripts": {
+    "generate": "node src/cli.js",
+    "validate": "node src/validate.js",
+    "clean": "node src/clean.js"
+  },
+  "keywords": [
+    "game-theme",
+    "resource-generator",
+    "gdd-parser",
+    "placeholder-generator"
+  ],
+  "author": "Kids Game Team",
+  "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.33.2",
+    "@napi-rs/canvas": "^0.1.50",
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1",
+    "lodash": "^4.17.21"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

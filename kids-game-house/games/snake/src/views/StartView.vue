@@ -70,6 +70,7 @@ import { useGameStore } from '@/stores/game'
 import { useThemeStore } from '@/stores/theme'
 import { useAudioStore } from '@/stores/audio'  // ⭐ 添加导入
 import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
+// 使用本地 UI 组件
 import GameButton from '@/components/ui/GameButton.vue'
 import SoundToggle from '@/components/ui/SoundToggle.vue'
 import ThemeSelector from '@/components/ui/ThemeSelector.vue'
@@ -856,5 +857,26 @@ const handleResize = () => {
   .error-title {
     font-size: ui.getFontSize(24);
   }
+}
+
+/* 确保容器正确居中 */
+.w-full.h-full.flex.flex-col.items-center.justify-center {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 强制居中覆盖 */
+.fade-in.relative {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 </style>

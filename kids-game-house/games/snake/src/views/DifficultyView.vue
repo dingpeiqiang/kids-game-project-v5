@@ -39,6 +39,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '@/stores/game'
 import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
 import type { Difficulty } from '@/types/game'
+// 使用本地 UI 组件
 import DifficultySelector from '@/components/ui/DifficultySelector.vue'
 import GameButton from '@/components/ui/GameButton.vue'
 

@@ -1311,7 +1311,7 @@ GROUP BY g.game_id;
 - 查看网络请求 404 错误
 
 **问题 3: 游戏注册后不可见**
-- 确认 `t_game` 表 status = 1 (active)
+- 确认 `t_game` 表 status = 2 (已上架/ON_SALE)
 - 重启后端服务刷新缓存
 - 检查前端 API 调用是否正常
 

@@ -14,7 +14,7 @@ VALUES(
     '/images/games/snake_icon.png',
     '/images/games/snake_icon.png',  -- 封面暂时使用同一图标
     '经典贪吃蛇游戏，控制小蛇吃食物，不断变长，挑战最高分！支持多种难度和稀有食物。锻炼手眼协调能力和反应速度！',
-    1,  -- status: 1=启用
+    2,  -- status: 2=已上架 (ON_SALE)
     5,  -- sort_order: 排序顺序
     1,  -- consume_points_per_minute: 每分钟消耗 1 点疲劳值
     '../games/snake-vue3/SnakeGame',
@@ -57,12 +57,12 @@ INSERT INTO t_game_config(game_id, config_key, config_value, description, create
 (@game_id, 'speed_increase_factor', '0.95', '分数增加时速度倍率（越小越快）', UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000);
 
 -- 3. 排行榜维度配置
-INSERT INTO t_leaderboard_dimension(game_id, dimension_code, dimension_name, sort_order, data_type, icon, description, create_time, update_time) VALUES
-(@game_id, 'highest_score', '最高分数', 1, 'INT', '🏆', '单局游戏获得的最高分数', UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
-(@game_id, 'total_score', '累计分数', 2, 'INT', '💰', '所有游戏累计总分数', UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
-(@game_id, 'games_played', '游戏次数', 3, 'INT', '🎮', '总游戏次数', UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
-(@game_id, 'longest_snake', '最长蛇身', 4, 'INT', '🐍', '最长的蛇身长度', UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
-(@game_id, 'total_food_eaten', '总食物数', 5, 'INT', '🍎', '累计吃到的食物总数', UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000);
+INSERT INTO t_leaderboard_config(game_id, dimension_code, dimension_name, dimension_type, sort_order, is_enabled, create_time, update_time) VALUES
+(@game_id, 'highest_score', '最高分数', 'SCORE', 'DESC', 1, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
+(@game_id, 'total_score', '累计分数', 'SCORE', 'DESC', 1, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
+(@game_id, 'games_played', '游戏次数', 'COUNT', 'DESC', 1, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
+(@game_id, 'longest_snake', '最长蛇身', 'COUNT', 'DESC', 1, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000),
+(@game_id, 'total_food_eaten', '总食物数', 'COUNT', 'DESC', 1, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000, UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000);
 
 -- 4. 游戏模式配置
 INSERT INTO t_game_mode_config(game_id, mode_type, mode_name, enabled, config_json, sort_order, create_time, update_time) VALUES
@@ -95,6 +95,10 @@ INSERT INTO t_game_config(game_id, config_key, config_value, description, create
 -- ============================================
 -- 说明:
 -- 1. 执行此 SQL 后，游戏将注册到数据库中
--- 2. 前端会通过 UnifiedGameManager 动态加载该游戏
--- 3. 游戏使用 Vue3 + Canvas 实现，支持响应式设计
--- 4. 游戏配置可通过 admin 后台进行修改
+-- 2. t_game 表存储游戏基本信息
+-- 3. t_game_config 表存储游戏参数配置
+-- 4. t_leaderboard_config 表存储排行榜维度配置
+-- 5. t_game_mode_config 表存储游戏模式配置
+-- 6. 前端会通过 UnifiedGameManager 动态加载该游戏
+-- 7. 游戏使用 Vue3 + Canvas 实现，支持响应式设计
+-- 8. 游戏配置可通过 admin 后台进行修改

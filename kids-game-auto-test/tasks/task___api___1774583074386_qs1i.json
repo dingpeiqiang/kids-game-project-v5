@@ -1,0 +1,138 @@
+{
+  "taskId": "task___api___1774583074386_qs1i",
+  "gameId": "__api__",
+  "gameName": "Backend API Tests",
+  "suiteId": "api_suite_1774583074385",
+  "status": "SKIPPED",
+  "priority": "HIGH",
+  "createdAt": "2026-03-27T03:44:34.386Z",
+  "queuedAt": "2026-03-27T03:44:34.387Z",
+  "startedAt": null,
+  "finishedAt": "2026-03-27T03:44:34.393Z",
+  "duration": 0,
+  "progress": 100,
+  "testCases": [
+    {
+      "id": "API_AUTH_LOGIN",
+      "name": "登录接口测试",
+      "description": "验证 POST /api/auth/login 正常返回 JWT Token",
+      "category": "api",
+      "priority": "P0",
+      "type": "api",
+      "steps": [
+        "发送 POST /api/auth/login 携带有效凭据",
+        "验证响应 code === 200",
+        "验证 data.token 非空字符串"
+      ],
+      "assertions": [
+        {
+          "type": "api_status_ok",
+          "description": "HTTP 状态码 200"
+        },
+        {
+          "type": "api_code_ok",
+          "description": "业务 code === 200"
+        },
+        {
+          "type": "api_field_exists",
+          "field": "token",
+          "description": "data.token 字段存在"
+        }
+      ],
+      "apiSpec": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "body": {
+          "username": "admin",
+          "password": "admin123",
+          "userType": "ADMIN"
+        },
+        "authRequired": false
+      },
+      "soft": false,
+      "caseId": "global_API_AUTH_LOGIN",
+      "gameId": "__api__",
+      "gameName": "Backend API",
+      "url": "http://localhost:8080",
+      "tags": [
+        "api_auth_login",
+        "api",
+        "api"
+      ],
+      "createdAt": "2026-03-27T03:44:34.385Z",
+      "apiOptions": {
+        "baseUrl": "http://localhost:8080",
+        "username": "admin",
+        "password": "admin123",
+        "userType": "ADMIN"
+      },
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "API_GAME_LIST",
+      "name": "游戏列表接口测试",
+      "description": "验证 GET /api/game/list 正常返回游戏列表",
+      "category": "api",
+      "priority": "P0",
+      "type": "api",
+      "steps": [
+        "使用有效 Token 请求 GET /api/game/list",
+        "验证响应 code === 200",
+        "验证 data 为数组或分页对象"
+      ],
+      "assertions": [
+        {
+          "type": "api_status_ok",
+          "description": "HTTP 200"
+        },
+        {
+          "type": "api_code_ok",
+          "description": "业务 code 200"
+        },
+        {
+          "type": "api_data_not_null",
+          "description": "data 非 null"
+        }
+      ],
+      "apiSpec": {
+        "method": "GET",
+        "path": "/api/game/list",
+        "authRequired": true
+      },
+      "soft": false,
+      "caseId": "global_API_GAME_LIST",
+      "gameId": "__api__",
+      "gameName": "Backend API",
+      "url": "http://localhost:8080",
+      "tags": [
+        "api_game_list",
+        "api",
+        "api"
+      ],
+      "createdAt": "2026-03-27T03:44:34.385Z",
+      "apiOptions": {
+        "baseUrl": "http://localhost:8080",
+        "username": "admin",
+        "password": "admin123",
+        "userType": "ADMIN"
+      },
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    }
+  ],
+  "summary": {
+    "status": "SKIPPED",
+    "error": "Backend not reachable"
+  },
+  "meta": {
+    "triggeredBy": "pipeline-api",
+    "priority": [
+      "P0"
+    ],
+    "taskType": "api",
+    "generatedAt": "2026-03-27T03:44:34.385Z"
+  }
+}

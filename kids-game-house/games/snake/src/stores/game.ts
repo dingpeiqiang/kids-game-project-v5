@@ -1,15 +1,39 @@
+/**
+ * 🎮 贪吃蛇游戏 Store
+ * 
+ * 本文件包含游戏的所有业务逻辑：
+ * - 通用游戏状态管理（分数、难度、存储等）
+ * - 贪吃蛇特定逻辑（蛇移动、碰撞检测、食物生成等）
+ * - 道具效果系统
+ * 
+ * 结构说明：
+ * - 第 1-100 行：类型定义和配置
+ * - 第 100-250 行：通用游戏状态（可复用到其他游戏）
+ * - 第 250-600 行：贪吃蛇特定逻辑
+ * - 第 600 行以后：游戏控制方法
+ */
+// 🎮 贪吃蛇游戏 Store
+// ============================================================================
+// 架构说明：
+// - 本文件是贪吃蛇游戏的完整业务逻辑实现
+// - 通用状态管理部分（分数、难度、存储）可作为其他游戏的参考
+// - 贪吃蛇特定逻辑（蛇移动、碰撞检测）保留在此文件中
+// ============================================================================
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Difficulty, GameState, Position, Food, Particle } from '@/types/game'
 import { DIFFICULTY_CONFIGS } from '@/types/game'
 import { getSessionToken, isStandaloneMode, reportGameResult, getGameId } from '@/utils/platformApi'
+import type { ItemEffectState } from '@/types/game-base.types'
 
-// 游戏事件类型
+// ============================================================================
+// 🎯 第一部分：通用游戏状态（可复用到其他游戏）
+// ============================================================================
 export type GameEventType = 'eat' | 'crash' | 'gameover' | 'levelup'
 type GameEventCallback = (event: GameEventType, data?: any) => void
 
 export const useGameStore = defineStore('game', () => {
-  // 游戏状态
+  // ─── 通用游戏状态 ───
   const isPlaying = ref(false)
   const isPaused = ref(false)
   const isGameOver = ref(false)
@@ -17,15 +41,14 @@ export const useGameStore = defineStore('game', () => {
   const highScore = ref(0)
   const playCount = ref(0)
   const difficulty = ref<Difficulty>('medium')
-  const snakeLength = ref(3)
 
-  // 独立部署模式相关
+  // ─── 独立部署模式相关（通用） ───
   const standaloneMode = ref(isStandaloneMode())
   const sessionToken = ref(getSessionToken())
   const gameId = ref(getGameId())
-  const gameStartTime = ref<number | null>(null)  // 游戏开始时间（时间戳）
+  const gameStartTime = ref<number | null>(null)
 
-  // 游戏事件回调
+  // ─── 游戏事件系统（通用） ───
   let eventCallback: GameEventCallback | null = null
 
   // 设置事件回调
@@ -40,7 +63,11 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 游戏运行时数据
+  // ============================================================================
+  // 🎯 第二部分：贪吃蛇特定游戏数据（其他游戏需要替换）
+  // ============================================================================
+  // ─── 蛇身数据 ───
+  const snakeLength = ref(3)
   const snake = ref<Position[]>([
     { x: 16 * 50, y: 9 * 50 },  // 👉 从中间开始（像素坐标）
     { x: 15 * 50, y: 9 * 50 },
@@ -52,23 +79,27 @@ export const useGameStore = defineStore('game', () => {
   const nextDirection = ref<Position>({ x: 1, y: 0 })
   const particles = ref<Particle[]>([])
   
-  // 👉 新增：蛇头旋转角度（用于视觉表现，单位：弧度）
+  // 👉 蛇头旋转角度（用于视觉表现，单位：弧度）
   const headRotation = ref(0)
 
-  // 🎁 道具效果状态（全部在 store 中统一管理，UI 和逻辑都从这里读取）
-  const itemEffects = ref({
-    speedMultiplier: 1.0,    // 速度倍率（0.5 减速 / 1.0 正常 / 1.5 加速）
-    scoreMultiplier: 1.0,    // 得分倍率（1.0 正常 / 2.0 双倍）
-    hasShield: false,        // 护盾状态（免疫一次碰撞）
-    hasMagnet: false,        // 磁铁状态（暂未实装，预留）
-    activeEffects: [] as Array<{ type: string; icon: string; endTime: number }>  // 当前激活效果列表（供 UI 显示）
+  // ============================================================================
+  // 🎯 第三部分：道具效果系统（可扩展为通用框架）
+  // ============================================================================
+  // 道具效果状态（全部在 store 中统一管理，UI 和逻辑都从这里读取）
+  const itemEffects = ref<ItemEffectState>({
+    speedMultiplier: 1.0,
+    scoreMultiplier: 1.0,
+    hasShield: false,
+    hasMagnet: false,
+    activeEffects: []
   })
 
-  // 🎁 道具效果计时器管理（防止 effect 堆叠时计时器泄漏）
+  // 道具效果计时器管理（防止 effect 堆叠时计时器泄漏）
   const itemTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
   /**
-   * 🎁 应用道具效果（统一入口，供 PhaserGame 调用）
+   * 应用道具效果（贪吃蛇特定实现）
+   * 其他游戏可以替换这个方法来实现自己的道具效果
    */
   const applyItemEffect = (type: string) => {
     const addActiveEffect = (icon: string, durationMs: number) => {
@@ -156,19 +187,23 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * 🎁 重置所有道具效果（游戏开始/结束时调用）
+   * 重置所有道具效果（游戏开始/结束时调用）
    */
   const resetItemEffects = () => {
     // 清理所有计时器
     itemTimers.forEach(timer => clearTimeout(timer))
     itemTimers.clear()
-    // ✅ 逐字段重置，避免整体替换导致 template 短暂访问 undefined
+    // 逐字段重置，避免整体替换导致 template 短暂访问 undefined
     itemEffects.value.speedMultiplier = 1.0
     itemEffects.value.scoreMultiplier = 1.0
     itemEffects.value.hasShield = false
     itemEffects.value.hasMagnet = false
     itemEffects.value.activeEffects = []
   }
+
+  // ============================================================================
+  // 🎯 第四部分：通用存储功能（可复用到其他游戏）
+  // ============================================================================
 
   // 从 localStorage 加载
   const loadFromStorage = () => {
@@ -204,7 +239,11 @@ export const useGameStore = defineStore('game', () => {
     return Math.floor((Date.now() - gameStartTime.value) / 1000)
   }
 
-  // 开始游戏
+  // ============================================================================
+  // 🎯 第五部分：游戏生命周期方法
+  // ============================================================================
+
+  // 开始游戏（通用逻辑 + 贪吃蛇特定初始化）
   const startGame = () => {
     score.value = 0
     snakeLength.value = 3
@@ -295,7 +334,11 @@ export const useGameStore = defineStore('game', () => {
   // 获取当前难度配置
   const currentConfig = computed(() => DIFFICULTY_CONFIGS[difficulty.value])
 
-  // 设置方向（防止反向，使用点积判断）
+  // ============================================================================
+  // 🎯 第六部分：贪吃蛇特定游戏逻辑（核心玩法）
+  // ============================================================================
+
+  // 设置方向（贪吃蛇特定）
   const setDirection = (newDir: Position) => {
     // 不能直接反向（使用点积判断）
     const dot = newDir.x * direction.value.x + newDir.y * direction.value.y
@@ -310,7 +353,10 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 移动蛇（平滑版本 - 带距离约束跟随）
+  /**
+   * 移动蛇（贪吃蛇特定核心逻辑）
+   * 包含：平滑移动、碰撞检测、得分处理
+   */
   const moveSnake = (deltaTime?: number, cellSize: number = 50) => {
     if (!food.value || isGameOver.value) return
 
@@ -474,7 +520,10 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 生成食物（像素坐标版本 - 性能优化）
+  /**
+   * 生成食物（贪吃蛇特定）
+   * 其他游戏可以替换为自己的物品生成逻辑
+   */
   const generateFood = (cellSize: number = 50) => {
     // 👉 横屏配置：32 列 × 18 行
     const gridCols = 32
@@ -536,7 +585,11 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 更新粒子（像素坐标版本）
+  // ============================================================================
+  // 🎯 第七部分：粒子效果（通用，可复用到其他游戏）
+  // ============================================================================
+
+  // 更新粒子
   const updateParticles = () => {
     particles.value = particles.value.filter(p => {
       p.x += p.vx
@@ -546,7 +599,7 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
-  // 创建粒子效果（像素坐标版本）
+  // 创建粒子效果
   const createParticles = (x: number, y: number, color: string, cellSize: number = 50) => {
     // 👉 根据 cellSize 调整粒子大小和速度
     const particleScale = cellSize / 50
@@ -570,10 +623,14 @@ export const useGameStore = defineStore('game', () => {
     saveToStorage()
   }
 
-  // 开始游戏时初始化（像素坐标版本）
+  // ============================================================================
+  // 🎯 第八部分：贪吃蛇特定初始化和生成逻辑
+  // ============================================================================
+
+  // 开始游戏时初始化（贪吃蛇特定）
   const startGameWithInit = (cellSize: number = 50) => {
     startGame()
-    // 👉 初始位置：每个网格的中心点
+    // 初始位置：每个网格的中心点
     snake.value = [
       { x: 16 * cellSize + cellSize/2, y: 9 * cellSize + cellSize/2 },  // 蛇头（中间）
       { x: 15 * cellSize + cellSize/2, y: 9 * cellSize + cellSize/2 },  // 第二节
@@ -583,11 +640,11 @@ export const useGameStore = defineStore('game', () => {
     nextDirection.value = { x: 1, y: 0 }
     particles.value = []
     generateObstacles(cellSize)  // 生成障碍物
-    generateFood(cellSize)  // 👈 传入 cellSize
-    headRotation.value = 0  // 重置旋转角度
+    generateFood(cellSize)
+    headRotation.value = 0
   }
 
-  // 生成障碍物（像素坐标版本）
+  // 生成障碍物（贪吃蛇特定）
   const generateObstacles = (cellSize: number = 50) => {
     obstacles.value = []
     
@@ -626,29 +683,31 @@ export const useGameStore = defineStore('game', () => {
     console.log(`✅ 生成 ${obstacleCount} 个障碍物`)
   }
 
-  // 重置游戏（像素坐标版本）
+  // 重置游戏（贪吃蛇特定）
   const resetGame = (cellSize: number = 50) => {
     isPlaying.value = false
     isPaused.value = false
     isGameOver.value = false
     score.value = 0
     snakeLength.value = 3
-    // 👉 初始位置：每个网格的中心点
-    // 第 16 列中心 = 16 * cellSize + cellSize/2
-    // 第 15 列中心 = 15 * cellSize + cellSize/2
+    // 初始位置：每个网格的中心点
     snake.value = [
       { x: 16 * cellSize + cellSize/2, y: 9 * cellSize + cellSize/2 },  // 蛇头（中间）
       { x: 15 * cellSize + cellSize/2, y: 9 * cellSize + cellSize/2 },  // 第二节
       { x: 14 * cellSize + cellSize/2, y: 9 * cellSize + cellSize/2 }   // 第三节
     ]
     food.value = null
-    obstacles.value = []  // 清空障碍物
+    obstacles.value = []
     direction.value = { x: 1, y: 0 }
     nextDirection.value = { x: 1, y: 0 }
     particles.value = []
-    headRotation.value = 0  // 重置旋转角度
-    resetItemEffects()  // 🎁 重置道具效果
+    headRotation.value = 0
+    resetItemEffects()
   }
+
+  // ============================================================================
+  // 🎯 第九部分：计算属性和导出
+  // ============================================================================
 
   // 计算属性
   const currentScore = computed(() => score.value)
@@ -659,8 +718,11 @@ export const useGameStore = defineStore('game', () => {
   // 初始化加载
   loadFromStorage()
 
+  // ============================================================================
+  // 🎯 导出部分
+  // ============================================================================
   return {
-    // 状态
+    // ─── 通用状态 ───
     isPlaying,
     isPaused,
     isGameOver,
@@ -674,17 +736,17 @@ export const useGameStore = defineStore('game', () => {
     sessionToken,
     gameId,
     gameStartTime,
-    // 游戏运行时数据
+    // ─── 贪吃蛇特定数据 ───
     snake,
     food,
-    obstacles,  // 导出障碍物
+    obstacles,
     direction,
     nextDirection,
     particles,
-    headRotation,  // 👉 导出蛇头旋转角度
-    // 🎁 道具效果状态
+    headRotation,
+    // ─── 道具效果系统 ───
     itemEffects,
-    // 方法
+    // ─── 通用方法 ───
     startGame,
     startGameWithInit,
     endGame,
@@ -695,16 +757,17 @@ export const useGameStore = defineStore('game', () => {
     setDifficulty,
     resetGame,
     saveToStorage,
+    // ─── 贪吃蛇特定方法 ───
     setDirection,
     moveSnake,
     generateFood,
-    generateObstacles,  // 导出障碍物生成方法
+    generateObstacles,
     updateParticles,
     createParticles,
     setEventCallback,
-    applyItemEffect,     // 🎁 道具效果统一入口
-    resetItemEffects,    // 🎁 重置道具效果
-    // 计算属性
+    applyItemEffect,
+    resetItemEffects,
+    // ─── 计算属性 ───
     currentScore,
     currentHighScore,
     currentPlayCount,

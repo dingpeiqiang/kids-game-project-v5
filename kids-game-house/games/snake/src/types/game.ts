@@ -1,4 +1,13 @@
-// 游戏类型定义
+/**
+ * 🎮 贪吃蛇游戏类型定义
+ * 
+ * 本文件包含贪吃蛇游戏特有的类型定义
+ * 通用类型定义见 game-base.types.ts
+ */
+
+// ============================================================================
+// 通用类型（可抽到框架层）
+// ============================================================================
 
 export type Difficulty = 'easy' | 'medium' | 'hard'
 
@@ -45,6 +54,10 @@ export interface Particle {
   size: number
 }
 
+// ============================================================================
+// 贪吃蛇特定配置
+// ============================================================================
+
 export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   easy: {
     name: 'easy',
@@ -75,6 +88,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   }
 }
 
+// 食物类型配置（贪吃蛇特定）
 export const FOOD_TYPES = {
   apple: { score: 10, color: '#ef4444', chance: 0.7 },
   banana: { score: 20, color: '#fbbf24', chance: 0.15 },

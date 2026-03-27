@@ -78,6 +78,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '@/stores/game'
 import { useAudioStore } from '@/stores/audio'
 import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
+// 使用本地 UI 组件
 import GameButton from '@/components/ui/GameButton.vue'
 
 const router = useRouter()
@@ -190,3 +191,35 @@ onMounted(() => {
   audioStore.stopBGM()
 })
 </script>
+
+<style scoped>
+.fade-in {
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 确保容器正确居中 */
+.w-full.h-full.flex.flex-col.items-center.justify-center {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 强制居中覆盖 */
+.fade-in.overflow-y-auto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+</style>

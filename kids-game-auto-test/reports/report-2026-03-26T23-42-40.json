@@ -1,0 +1,308 @@
+{
+  "meta": {
+    "generatedAt": "2026-03-26T23:42:40.015Z",
+    "version": "1.2.0",
+    "platform": "kids-game-auto-test"
+  },
+  "summary": {},
+  "overall": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "warned": 0,
+    "errored": 0
+  },
+  "duration": 56280,
+  "startTime": "2026-03-27T02:41:43.734Z",
+  "endTime": "2026-03-27T02:42:40.015Z",
+  "games": [
+    {
+      "name": "plane-shooter",
+      "displayName": "飞机大战",
+      "status": "PASSED",
+      "duration": 14070,
+      "tests": [
+        {
+          "name": "页面标题检测",
+          "status": "PASSED",
+          "duration": 120,
+          "details": "title=\"飞机大战\""
+        },
+        {
+          "name": "Canvas 元素存在",
+          "status": "PASSED",
+          "duration": 350,
+          "details": "canvas found"
+        },
+        {
+          "name": "Canvas 渲染内容检测",
+          "status": "PASSED",
+          "duration": 1500,
+          "details": "canvas has content"
+        },
+        {
+          "name": "游戏启动",
+          "status": "PASSED",
+          "duration": 800,
+          "details": "clicked + Enter"
+        },
+        {
+          "name": "移动控制测试",
+          "status": "PASSED",
+          "duration": 1200,
+          "details": "arrow keys responded"
+        },
+        {
+          "name": "游戏持续运行 5 秒",
+          "status": "PASSED",
+          "duration": 5000,
+          "details": "still rendering after 5s"
+        },
+        {
+          "name": "帧率采样",
+          "status": "PASSED",
+          "duration": 2100,
+          "details": "FPS: 58"
+        },
+        {
+          "name": "内存稳定性",
+          "status": "PASSED",
+          "duration": 3000,
+          "details": "delta: +2.93MB"
+        }
+      ],
+      "metrics": {
+        "loadTime": 850,
+        "firstContentfulPaint": 510,
+        "largestContentfulPaint": 765,
+        "timeToInteractive": 1050,
+        "frameRate": 58,
+        "memoryUsage": 85,
+        "jsCpuTime": 255
+      },
+      "issues": [],
+      "aiScore": {
+        "overall": 88,
+        "performance": 94,
+        "stability": 76
+      },
+      "logs": []
+    },
+    {
+      "name": "snake",
+      "displayName": "贪吃蛇",
+      "status": "PASSED",
+      "duration": 14070,
+      "tests": [
+        {
+          "name": "页面标题检测",
+          "status": "PASSED",
+          "duration": 120,
+          "details": "title=\"贪吃蛇\""
+        },
+        {
+          "name": "Canvas 元素存在",
+          "status": "PASSED",
+          "duration": 350,
+          "details": "canvas found"
+        },
+        {
+          "name": "Canvas 渲染内容检测",
+          "status": "PASSED",
+          "duration": 1500,
+          "details": "canvas has content"
+        },
+        {
+          "name": "游戏启动",
+          "status": "PASSED",
+          "duration": 800,
+          "details": "clicked + Enter"
+        },
+        {
+          "name": "移动控制测试",
+          "status": "PASSED",
+          "duration": 1200,
+          "details": "arrow keys responded"
+        },
+        {
+          "name": "游戏持续运行 5 秒",
+          "status": "PASSED",
+          "duration": 5000,
+          "details": "still rendering after 5s"
+        },
+        {
+          "name": "帧率采样",
+          "status": "PASSED",
+          "duration": 2100,
+          "details": "FPS: 60"
+        },
+        {
+          "name": "内存稳定性",
+          "status": "PASSED",
+          "duration": 3000,
+          "details": "delta: +2.55MB"
+        }
+      ],
+      "metrics": {
+        "loadTime": 700,
+        "firstContentfulPaint": 420,
+        "largestContentfulPaint": 630,
+        "timeToInteractive": 900,
+        "frameRate": 60,
+        "memoryUsage": 70,
+        "jsCpuTime": 210
+      },
+      "issues": [],
+      "aiScore": {
+        "overall": 77,
+        "performance": 83,
+        "stability": 79
+      },
+      "logs": []
+    },
+    {
+      "name": "tank-battle",
+      "displayName": "坦克大战",
+      "status": "PASSED",
+      "duration": 14070,
+      "tests": [
+        {
+          "name": "页面标题检测",
+          "status": "PASSED",
+          "duration": 120,
+          "details": "title=\"坦克大战\""
+        },
+        {
+          "name": "Canvas 元素存在",
+          "status": "PASSED",
+          "duration": 350,
+          "details": "canvas found"
+        },
+        {
+          "name": "Canvas 渲染内容检测",
+          "status": "PASSED",
+          "duration": 1500,
+          "details": "canvas has content"
+        },
+        {
+          "name": "游戏启动",
+          "status": "PASSED",
+          "duration": 800,
+          "details": "clicked + Enter"
+        },
+        {
+          "name": "移动控制测试",
+          "status": "PASSED",
+          "duration": 1200,
+          "details": "arrow keys responded"
+        },
+        {
+          "name": "游戏持续运行 5 秒",
+          "status": "PASSED",
+          "duration": 5000,
+          "details": "still rendering after 5s"
+        },
+        {
+          "name": "帧率采样",
+          "status": "PASSED",
+          "duration": 2100,
+          "details": "FPS: 55"
+        },
+        {
+          "name": "内存稳定性",
+          "status": "PASSED",
+          "duration": 3000,
+          "details": "delta: +2.48MB"
+        }
+      ],
+      "metrics": {
+        "loadTime": 950,
+        "firstContentfulPaint": 570,
+        "largestContentfulPaint": 855,
+        "timeToInteractive": 1150,
+        "frameRate": 55,
+        "memoryUsage": 100,
+        "jsCpuTime": 285
+      },
+      "issues": [],
+      "aiScore": {
+        "overall": 71,
+        "performance": 90,
+        "stability": 86
+      },
+      "logs": []
+    },
+    {
+      "name": "plants-vs-zombies",
+      "displayName": "植物大战僵尸",
+      "status": "PASSED",
+      "duration": 14070,
+      "tests": [
+        {
+          "name": "页面标题检测",
+          "status": "PASSED",
+          "duration": 120,
+          "details": "title=\"植物大战僵尸\""
+        },
+        {
+          "name": "Canvas 元素存在",
+          "status": "PASSED",
+          "duration": 350,
+          "details": "canvas found"
+        },
+        {
+          "name": "Canvas 渲染内容检测",
+          "status": "PASSED",
+          "duration": 1500,
+          "details": "canvas has content"
+        },
+        {
+          "name": "游戏启动",
+          "status": "PASSED",
+          "duration": 800,
+          "details": "clicked + Enter"
+        },
+        {
+          "name": "移动控制测试",
+          "status": "PASSED",
+          "duration": 1200,
+          "details": "arrow keys responded"
+        },
+        {
+          "name": "游戏持续运行 5 秒",
+          "status": "PASSED",
+          "duration": 5000,
+          "details": "still rendering after 5s"
+        },
+        {
+          "name": "帧率采样",
+          "status": "PASSED",
+          "duration": 2100,
+          "details": "FPS: 50"
+        },
+        {
+          "name": "内存稳定性",
+          "status": "PASSED",
+          "duration": 3000,
+          "details": "delta: +0.21MB"
+        }
+      ],
+      "metrics": {
+        "loadTime": 1100,
+        "firstContentfulPaint": 660,
+        "largestContentfulPaint": 990,
+        "timeToInteractive": 1300,
+        "frameRate": 50,
+        "memoryUsage": 120,
+        "jsCpuTime": 330
+      },
+      "issues": [],
+      "aiScore": {
+        "overall": 82,
+        "performance": 67,
+        "stability": 84
+      },
+      "logs": []
+    }
+  ]
+}

@@ -1,461 +1,532 @@
-# 🤖 Kids Game 自动化测试平台
+# Kids Game Auto Test Platform
 
-**版本**: 1.0.0  
-**创建日期**: 2026-03-26  
-**状态**: ✅ 已就绪
+> 基于 **Playwright** 的 Kids Game 自动化测试平台  
+> 覆盖功能测试、性能监控、日志分析、AI 体验评分、后端 API 测试、实时 Web 监控面板
 
----
-
-## 📋 项目简介
-
-Kids Game 自动化测试平台是一个 AI 驱动的综合测试解决方案，用于：
-
-- ✅ **自动化游戏测试** - 模拟用户操作，执行完整游戏流程
-- ✅ **性能监控** - 实时分析游戏性能和资源使用
-- ✅ **日志分析** - 智能分析前后端日志，发现问题
-- ✅ **AI 体验评估** - 结合 AI 评估游戏体验和质量
-- ✅ **报告生成** - 自动生成详细的测试报告和数据分析
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org)
+[![Playwright](https://img.shields.io/badge/Playwright-1.58%2B-2EAD33)](https://playwright.dev)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue)](#)
 
 ---
 
-## 🎯 核心功能
+## 目录
 
-### 1. 自动化游戏测试 🎮
-
-**测试场景**:
-- ✅ 开始界面加载
-- ✅ 难度选择功能
-- ✅ 主题选择功能
-- ✅ 游戏流程完整性
-- ✅ UI 交互响应
-- ✅ 音频播放控制
-- ✅ 碰撞检测逻辑
-- ✅ 游戏状态管理
-
-**支持的游戏**:
-- Plane Shooter (飞机大战)
-- Snake (贪吃蛇)
-- Tank Battle (坦克大战)
-- Plants vs Zombie (植物大战僵尸)
+- [支持游戏](#支持游戏)
+- [快速开始](#快速开始)
+- [安装详解](#安装详解)
+- [运行测试](#运行测试)
+- [完整流水线（Pipeline）](#完整流水线pipeline)
+- [Web 监控面板](#web-监控面板)
+- [后端 API 对接](#后端-api-对接)
+- [测试结果上报](#测试结果上报)
+- [配置说明](#配置说明)
+- [环境变量](#环境变量)
+- [测试报告](#测试报告)
+- [项目结构](#项目结构)
+- [常见问题](#常见问题)
 
 ---
 
-### 2. 性能监控 📊
+## 支持游戏
 
-**监控指标**:
-- ⏱️ 加载时间 (Load Time)
-- 🎨 首次绘制 (First Paint)
-- ✨ 首次内容绘制 (FCP)
-- 🚀 可交互时间 (TTI)
-- 🎬 帧率 (Frame Rate)
-- 💾 内存使用 (Memory Usage)
-- ⚡ CPU 使用率
-
-**性能阈值**:
-```json
-{
-  "loadTime": "< 5000ms",
-  "frameRate": "> 30 FPS",
-  "memoryUsage": "< 512MB",
-  "cpuUsage": "< 50%"
-}
-```
+| 游戏 Key | 游戏名 | 默认端口 | 类型 |
+|---|---|---|---|
+| `plane-shooter` | 飞机大战 | 8081 | 射击 |
+| `snake` | 贪吃蛇 | 3005 | 街机 |
+| `tank-battle` | 坦克大战 | 3002 | 动作 |
+| `plants-vs-zombie` | 植物大战僵尸 | 3004 | 策略 |
 
 ---
 
-### 3. 日志分析 🔍
+## 快速开始
 
-**分析内容**:
-- 📄 前端 Console 日志
-- 🌐 网络请求日志
-- 🎮 游戏事件日志
-- ⚠️ 错误和警告信息
-- 📈 性能指标日志
-
-**智能检测**:
-- ❌ JavaScript 错误
-- 🐛 资源加载失败
-- ⚠️ 性能瓶颈
-- 🔒 安全问题
-- 📱 兼容性问题
-
----
-
-### 4. AI 游戏体验分析 🧠
-
-**AI 评估维度**:
-- 🎨 **视觉质量评分** - 画面美观度、动画流畅度
-- 🎮 **用户体验评分** - 操作便捷性、反馈及时性
-- ♿ **无障碍性评分** - 可访问性、包容性设计
-- 📊 **参与度分析** - 趣味性、挑战性平衡
-
-**AI 模型**:
-- 基于 Python 的机器学习模型
-- 计算机视觉分析
-- 自然语言处理
-- 情感分析
-
----
-
-## 🚀 快速开始
-
-### 安装步骤
-
-#### 1. 环境要求
-
-- Node.js >= 18.0.0
-- npm >= 9.0.0
-- Python >= 3.8 (可选，用于 AI 分析)
-- FFmpeg (可选，用于视频录制)
-
-#### 2. 安装依赖
+### 1. 安装依赖 + Playwright 浏览器
 
 ```bash
-cd kids-game-auto-test
-
-# Windows PowerShell
-.\setup.ps1
-
-# 或者手动安装
-npm install
+node setup.js
 ```
 
-#### 3. 配置
+> **中国用户**（npm/Playwright 下载慢）：
+> ```bash
+> node setup.js --mirror
+> ```
 
-编辑 `config/test-config.json`:
+### 2. 启动游戏服务（确保游戏在对应端口运行）
+
+```bash
+# 示例：在 kids-game-project-v5 目录启动各游戏
+cd ../plane-shooter && npm run dev
+cd ../snake        && npm run dev
+# ... 其他游戏同理
+```
+
+### 3. 运行测试
+
+```bash
+npm run test:all:headless      # 无头模式，测试全部游戏
+npm run test:all:parallel      # 并发模式（更快）
+node src/index.js --game=snake # 测试单个游戏
+```
+
+### 4. 启动完整流水线（推荐）
+
+```bash
+npm run pipeline:ci            # 扫描→生成→执行→报告（CI 推荐）
+npm run dashboard              # 启动 Web 监控面板并自动打开浏览器
+```
+
+---
+
+## 完整流水线（Pipeline）
+
+Pipeline 将自动完成：**扫描游戏代码 → 生成测试用例 → 创建任务 → 监控执行**。
+
+```bash
+# 基础运行
+node src/pipeline.js
+
+# 常用组合
+node src/pipeline.js --headless --report                  # 无头 + HTML 报告
+node src/pipeline.js --headless --report --junit          # 额外生成 JUnit XML（CI 集成）
+node src/pipeline.js --api-mode --headless --report       # UI + API 双测
+node src/pipeline.js --api-only --junit                   # 纯 API 测试
+node src/pipeline.js --dashboard --dashboard-open         # 实时监控面板
+
+# npm 快捷命令
+npm run pipeline              # 基础运行
+npm run pipeline:headless     # 无头 + HTML 报告
+npm run pipeline:ci           # CI 推荐（P0+P1 + JUnit + 并发=2）
+npm run pipeline:api          # API+UI 双测
+npm run pipeline:api-only     # 纯 API 测试
+npm run dashboard             # 监控面板（自动打开浏览器）
+npm run dashboard:ci          # CI 监控模式（无头 + JUnit + 报告）
+```
+
+### Pipeline CLI 参数
+
+| 参数 | 说明 | 默认值 |
+|---|---|---|
+| `--headless` | 无头浏览器（CI 推荐） | false |
+| `--concurrency <n>` | 并发任务数 | 1 |
+| `--priority <p>` | 优先级过滤 P0/P1/P2 | P0,P1,P2 |
+| `--scan-only` | 只扫描代码 | - |
+| `--generate-only` | 扫描+生成用例 | - |
+| `--clear-tasks` | 执行前清空完成任务 | - |
+| `--report` | 生成 HTML 报告 | - |
+| `--junit` | 生成 JUnit XML（CI）| - |
+| `--csv` | 生成 CSV 报告 | - |
+| `--api-mode` | UI + API 双测 | - |
+| `--api-only` | 纯 API 测试 | - |
+| `--backend-url <url>` | 后端地址 | http://localhost:8080 |
+| `--backend-user <u>` | 后端用户名 | admin |
+| `--backend-pass <p>` | 后端密码 | admin123 |
+| `--dashboard` | 启动 Web 监控面板 | - |
+| `--dashboard-port <n>` | 面板端口 | 9090 |
+| `--dashboard-open` | 自动打开浏览器 | - |
+| `--report-backend` | 将结果上报至后端 | - |
+
+---
+
+## Web 监控面板
+
+启动后可在浏览器中实时查看所有测试任务的执行状态：
+
+```bash
+# 方式一：pipeline 附带启动
+node src/pipeline.js --headless --dashboard --dashboard-open
+
+# 方式二：npm 快捷命令
+npm run dashboard
+```
+
+面板功能：
+- **实时 SSE 推送**：任务状态变化即时展示，无需手动刷新
+- **状态过滤**：按 RUNNING / QUEUED / PASSED / FAILED 过滤
+- **游戏名搜索**：快速定位指定游戏的任务
+- **进度条**：展示每个任务的用例执行进度
+- **日志查看**：点击「日志」按钮查看任务详细运行日志
+- **重试**：对已完成任务点击「↺ 重试」重新加入队列
+
+默认地址：`http://localhost:9090`
+
+---
+
+## 后端 API 对接
+
+平台支持与 kids-game-backend（Spring Boot，端口 8080）集成：
+
+```bash
+# 启动时连接后端，获取游戏列表并执行 API 测试
+node src/pipeline.js --api-mode --backend-url=http://localhost:8080
+
+# 只跑 API 测试（不启动浏览器）
+node src/pipeline.js --api-only --backend-url=http://localhost:8080
+```
+
+**API 测试用例（自动生成）：**
+
+| 类型 | 用例 | 断言 |
+|---|---|---|
+| 全局 | 登录接口 / 游戏列表 / 今日统计 / 仪表盘 | HTTP 2xx + 业务 code + 字段验证 |
+| 游戏级 | 游戏详情 / 按 code 查询 / 配置 / 启动会话 | 字段存在 + 类型 + 响应时间 |
+| 安全 | 未授权访问 | HTTP 401/403 |
+
+后端不可达时，所有 API 任务自动 **SKIPPED**，流水线正常完成。
+
+---
+
+## 测试结果上报
+
+### JUnit XML（推荐 CI 使用）
+
+```bash
+node src/pipeline.js --junit
+```
+
+生成到 `reports/junit-{timestamp}.xml`，可直接导入 Jenkins / GitLab CI / GitHub Actions：
+
+```yaml
+# GitLab CI 示例
+test:
+  script:
+    - node src/pipeline.js --headless --junit
+  artifacts:
+    reports:
+      junit: reports/junit-*.xml
+```
+
+### CSV 报告
+
+```bash
+node src/pipeline.js --csv
+```
+
+生成到 `reports/test-results-{timestamp}.csv`，含 BOM 可直接用 Excel 打开。
+
+### 上报后端 API
+
+```bash
+node src/pipeline.js --api-mode --report-backend
+```
+
+测试完成后将汇总结果 POST 到 `POST /api/test/report`。
+
+---
+
+### setup.js 参数
+
+| 参数 | 说明 |
+|------|------|
+| `(无参数)` | 安装 npm 依赖 + Chromium + 验证 |
+| `--all-browsers` | 安装 Chromium + Firefox + WebKit |
+| `--skip-browsers` | 仅安装 npm 依赖，不下载浏览器 |
+| `--check-only` | 仅检测环境，不安装任何内容 |
+| `--force` | 强制重新安装浏览器 |
+| `--skip-verify` | 跳过安装后冒烟测试 |
+| `--mirror` | 使用 npmmirror.com 加速（推荐国内用户）|
+| `--verbose` | 显示详细安装日志 |
+
+```bash
+node setup.js --check-only      # 仅检测环境
+node setup.js --force           # 强制重新安装浏览器
+node setup.js --all-browsers    # 安装全部浏览器
+node setup.js --mirror          # 镜像加速安装
+```
+
+### 手动安装浏览器
+
+```bash
+npm run install:browsers         # 安装 Chromium
+npm run install:browsers:all     # 安装全部浏览器
+npx playwright install chromium  # 等价命令
+```
+
+---
+
+## 运行测试
+
+### npm 脚本
+
+```bash
+# 基础测试
+npm run test:all             # 全部游戏（有头模式）
+npm run test:all:headless    # 全部游戏（无头，CI 推荐）
+npm run test:all:parallel    # 全部游戏（并发无头，最快）
+
+# 单游戏
+npm run test:game            # 需配合 --game 参数
+node src/index.js --game=snake --headless
+
+# 视频录制
+npm run test:record          # 全部游戏 + 录制视频
+node src/index.js --game=snake --record
+
+# 工具
+npm run setup:check          # 检测环境
+npm run clean                # 清理 reports/screenshots/videos
+```
+
+### CLI 参数
+
+```bash
+node src/index.js [options]
+
+  --mode <mode>       测试模式：all | single | performance | ai  (default: all)
+  --game <name>       指定游戏 key（见上方表格）
+  --headless          无头模式（无浏览器窗口）
+  --record            录制测试视频（保存到 videos/）
+  --parallel          并发测试所有游戏
+  --timeout <ms>      全局超时，单位毫秒  (default: 60000)
+  --config <path>     自定义配置文件路径
+  -V, --version       输出版本号
+```
+
+**示例：**
+
+```bash
+# 无头 + 录制
+node src/index.js --game=plane-shooter --headless --record
+
+# 并发 + 自定义超时
+node src/index.js --mode=all --parallel --headless --timeout=90000
+
+# 使用自定义配置
+node src/index.js --config=./my-config.json
+
+# 开启调试日志
+DEBUG=1 node src/index.js --game=snake
+```
+
+---
+
+## 配置说明
+
+配置文件：`config/test-config.json`
+
+### 浏览器配置
 
 ```json
 {
-  "games": {
-    "plane-shooter": {
-      "url": "http://localhost:8081/"
-    }
-  },
-  "ai": {
-    "enabled": true
+  "browser": {
+    "engine": "chromium",          // chromium | firefox | webkit
+    "defaultViewport": { "width": 1920, "height": 1080 },
+    "timeout": 60000,              // 默认超时（ms）
+    "slowMo": 0,                   // 操作间延迟（ms，调试用）
+    "recordVideo": false           // 全局视频录制开关
   }
 }
 ```
 
----
+### 性能阈值
 
-## 📖 使用指南
-
-### 运行所有测试
-
-```bash
-# 测试所有游戏
-npm run test:all
-
-# 无头模式（不显示浏览器）
-npm run test:all -- --headless
-
-# 录制测试过程
-npm run test:all -- --record
-```
-
-### 测试单个游戏
-
-```bash
-# 测试飞机大战
-npm run test:game -- --game=plane-shooter
-
-# 测试贪吃蛇
-npm run test:game -- --game=snake
-```
-
-### 性能测试
-
-```bash
-# 运行性能测试
-npm run test:performance
-```
-
-### AI 分析
-
-```bash
-# 运行 AI 体验分析（需要 Python）
-npm run test:ai-analysis
-```
-
-### 生成报告
-
-```bash
-# 生成 HTML 报告
-npm run report
-
-# 生成 Excel 报告
-npm run report -- --format=excel
-```
-
----
-
-## 📁 目录结构
-
-```
-kids-game-auto-test/
-├── src/                      # 源代码
-│   ├── index.js              # 主程序入口
-│   ├── orchestrator.js       # 测试协调器
-│   ├── game-simulator.js     # 游戏模拟器
-│   ├── performance-monitor.js # 性能监控器
-│   ├── log-analyzer.js       # 日志分析器
-│   ├── ai-experience-analyzer.js # AI 体验分析器
-│   └── report-generator.js   # 报告生成器
-│
-├── config/                   # 配置文件
-│   └── test-config.json      # 测试配置
-│
-├── ai/                       # AI 分析模块
-│   ├── analyzer.py           # Python AI 分析脚本
-│   └── models/               # AI 模型文件
-│
-├── utils/                    # 工具函数
-│   ├── logger.js             # 日志工具
-│   └── helpers.js            # 辅助函数
-│
-├── logs/                     # 日志输出
-├── reports/                  # 测试报告
-├── recordings/               # 录制的视频
-└── screenshots/              # 截图
-```
-
----
-
-## 📊 测试报告示例
-
-### HTML 报告包含
-
-1. **总体概览**
-   - 测试通过率
-   - 总耗时
-   - 问题统计
-
-2. **游戏详情**
-   - 每个游戏的详细测试结果
-   - 性能指标图表
-   - 问题列表
-
-3. **性能分析**
-   - 加载时间对比
-   - 帧率曲线
-   - 内存使用趋势
-
-4. **AI 评分**
-   - 视觉质量评分
-   - 用户体验评分
-   - 改进建议
-
----
-
-## 🛠️ 高级功能
-
-### 自定义测试场景
-
-创建自定义测试脚本 `tests/custom-test.js`:
-
-```javascript
-const { GameSimulator } = require('../src/game-simulator');
-
-async function customTest() {
-    const simulator = new GameSimulator({
-        url: 'http://localhost:8081/'
-    });
-    
-    // 自定义测试逻辑
-    await simulator.customAction('click', '.special-button');
-    await simulator.assertExists('.reward-panel');
+```json
+{
+  "performance": {
+    "thresholds": {
+      "loadTime": 5000,     // 页面加载时间上限（ms）
+      "frameRate": 30,      // 最低帧率（FPS）
+      "memoryUsage": 512,   // 最大内存（MB）
+      "lcpTime": 2500       // Largest Contentful Paint（ms）
+    }
+  }
 }
 ```
 
-### 集成 CI/CD
+### 添加新游戏
 
-**GitHub Actions 示例**:
+在 `config/test-config.json` 的 `games` 对象中添加：
 
-```yaml
-name: Game Tests
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v2
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: |
-          cd kids-game-auto-test
-          npm install
-      
-      - name: Run tests
-        run: |
-          cd kids-game-auto-test
-          npm run test:all -- --headless
-      
-      - name: Upload reports
-        uses: actions/upload-artifact@v2
-        with:
-          name: test-reports
-          path: kids-game-auto-test/reports/
+```json
+{
+  "games": {
+    "my-new-game": {
+      "name": "My New Game (新游戏)",
+      "url": "http://localhost:3006/",
+      "type": "arcade",
+      "testScenarios": [
+        "start_screen",
+        "movement_control",
+        "collision_detection"
+      ]
+    }
+  }
+}
 ```
+
+支持的 `testScenarios`：
+
+| 场景 | 说明 |
+|------|------|
+| `start_screen` | 检测开始页面和按钮 |
+| `difficulty_selection` | 检测难度选择 |
+| `theme_selection` | 检测皮肤/主题切换 |
+| `gameplay_flow` | 点击开始并检测游戏激活 |
+| `shooting_mechanism` | Space 键射击 |
+| `movement_control` | 方向键移动 |
+| `collision_detection` | 碰撞检测基础验证 |
+| `plant_placement` | 点击格子放置植物（PvZ） |
+| `food_collection` | 食物/物品收集（贪吃蛇） |
 
 ---
 
-## 🔧 故障排除
+## 环境变量
 
-### 常见问题
+可通过环境变量或项目根目录的 `.env` 文件覆盖配置：
 
-#### Q1: 依赖缺失错误（MODULE_NOT_FOUND）
-
-**错误示例**:
-```
-Error: Cannot find module 'proxy-from-env'
-```
-
-**解决方案**:
 ```bash
-# 方法 1: 使用自动修复脚本（推荐）
-cd kids-game-auto-test
-.\fix-dependencies.ps1
+# 浏览器
+BROWSER_ENGINE=firefox        # 使用 Firefox 引擎
+TEST_TIMEOUT=90000            # 全局超时（ms）
+TEST_RECORD=true              # 开启视频录制
 
-# 方法 2: 手动重新安装
-npm install
+# 游戏 URL 覆盖（适用于 CI 环境）
+GAME_URL_SNAKE=http://10.0.1.5:3005/
+GAME_URL_PLANE_SHOOTER=http://10.0.1.5:8081/
 
-# 方法 3: 清理缓存后重新安装
-npm cache clean --force
-rm -rf node_modules package-lock.json
-npm install
+# 性能阈值覆盖
+PERF_LOAD_TIME=8000           # 允许更慢的加载时间
+PERF_FRAME_RATE=24            # 允许更低的帧率
 
-# 方法 4: 安装特定缺失的包
-npm install proxy-from-env --save
+# AI 分析
+AI_ENABLED=false              # 禁用 AI 分析
 ```
 
-**预防措施**:
-- 定期运行 `.\fix-dependencies.ps1` 检查和修复依赖
-- 确保使用 Node.js >= 18.0.0
-- 使用稳定的网络连接下载依赖
+`.env` 文件示例（项目根目录）：
+
+```dotenv
+BROWSER_ENGINE=chromium
+TEST_TIMEOUT=60000
+TEST_RECORD=false
+GAME_URL_SNAKE=http://localhost:3005/
+AI_ENABLED=true
+```
+
+> **优先级**：系统环境变量 > `.env` 文件 > `config/test-config.json`
 
 ---
 
-#### Q2: 浏览器无法启动
+## 测试报告
 
-**解决方案**:
+测试完成后，报告保存在 `reports/` 目录：
+
+| 格式 | 文件 | 说明 |
+|------|------|------|
+| HTML | `report-YYYY-MM-DD.html` | 可视化报告，可直接浏览器打开 |
+| JSON | `report-YYYY-MM-DD.json` | 原始数据，可供 CI/CD 解析 |
+| Excel | `report-YYYY-MM-DD.xlsx` | 电子表格，便于分享和对比 |
+
+其他产物：
+
+- `screenshots/` — 测试失败时自动截图
+- `videos/` — 开启 `--record` 时的录制视频
+
+---
+
+## 项目结构
+
+```
+kids-game-auto-test/
+├── config/
+│   └── test-config.json        # 主配置文件
+├── src/
+│   ├── index.js                # CLI 入口
+│   ├── orchestrator.js         # 测试协调器（核心）
+│   ├── game-simulator.js       # Playwright 游戏操作
+│   ├── performance-monitor.js  # 性能指标采集
+│   ├── log-analyzer.js         # 浏览器日志收集
+│   ├── ai-experience-analyzer.js  # AI 体验评分
+│   ├── report-generator.js     # 报告生成（HTML/JSON/Excel）
+│   ├── config/
+│   │   └── config-loader.js    # 配置加载 + 环境变量覆盖
+│   └── utils/
+│       ├── logger.js           # Winston 日志
+│       └── helpers.js          # 工具函数（withRetry / sleep 等）
+├── reports/                    # 测试报告输出
+├── screenshots/                # 失败截图
+├── videos/                     # 录制视频
+├── setup.js                    # 安装脚本
+└── package.json
+```
+
+---
+
+## 常见问题
+
+### Q: Playwright 浏览器下载很慢？
+
 ```bash
-# 清理缓存
-npm cache clean --force
-
-# 重新安装依赖
-rm -rf node_modules package-lock.json
-npm install
-
-# 检查 Puppeteer
-npx puppeteer browsers install chrome
+node setup.js --mirror
+# 或者手动设置镜像：
+set PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright/
+npx playwright install chromium
 ```
 
-#### Q2: 测试超时
+### Q: 游戏页面加载超时？
 
-**解决方案**:
-- 增加 timeout 配置
-- 检查游戏服务器是否运行
-- 查看日志了解详情
+在 `config/test-config.json` 中增加超时时间：
 
-#### Q3: AI 分析不可用
-
-**解决方案**:
-- 确保 Python 已安装
-- 安装 Python 依赖：`pip install -r ai/requirements.txt`
-- 检查 Python 路径配置
-
----
-
-## 📈 性能优化建议
-
-### 并行测试
-
-修改 `orchestrator.js` 实现并发测试：
-
-```javascript
-// 并行执行多个游戏测试
-const games = Object.keys(config.games);
-await Promise.all(games.map(game => testGame(game)));
+```json
+{ "browser": { "timeout": 90000 } }
 ```
 
-### 资源复用
+或者用环境变量临时覆盖：
 
-- 复用浏览器实例
-- 共享页面上下文
-- 缓存常用选择器
+```bash
+TEST_TIMEOUT=120000 node src/index.js --game=snake
+```
 
----
+### Q: 测试显示 `WARNED` 状态？
 
-## 🎯 最佳实践
+`WARNED` 表示无严重错误，但有性能阈值超标或控制台警告。查看 HTML 报告了解具体问题。
 
-### ✅ DO
+### Q: 如何只跑性能测试？
 
-- ✅ 定期运行自动化测试
-- ✅ 在 CI/CD 中集成测试
-- ✅ 保存历史报告进行对比
-- ✅ 及时修复发现的问题
-- ✅ 持续更新测试场景
+```bash
+node src/index.js --mode=performance
+```
 
-### ❌ DON'T
+### Q: 并发模式下浏览器内存占用过高？
 
-- ❌ 不要在生产环境运行测试
-- ❌ 不要忽略测试失败
-- ❌ 不要过度依赖自动化（保留人工测试）
-- ❌ 不要在低配机器上运行所有测试
+并发模式 (`--parallel`) 会为每个游戏启动独立浏览器实例。  
+可改为串行模式：
 
----
+```bash
+node src/index.js --mode=all --headless   # 不加 --parallel
+```
 
-## 📞 支持和贡献
+### Q: `npm install` 报错（Windows）？
 
-### 报告问题
+以管理员权限运行：
 
-发现问题？请提交 Issue：
-- 详细描述问题
-- 附上日志和截图
-- 说明复现步骤
-
-### 贡献代码
-
-欢迎 Pull Request：
-- Fork 项目
-- 创建功能分支
-- 添加测试用例
-- 提交 PR
+```powershell
+# 在 PowerShell 管理员模式下
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+node setup.js
+```
 
 ---
 
-## 📄 许可证
+## 技术架构
 
-MIT License
+```
+CLI (index.js)
+    └── TestOrchestrator
+           ├── GameSimulator       ← Playwright: browser/context/page
+           ├── PerformanceMonitor  ← Navigation Timing + page.metrics()
+           ├── LogAnalyzer         ← console/request/response/pageerror
+           ├── AIExperienceAnalyzer
+           └── ReportGenerator     ← HTML / JSON / Excel
+```
+
+**Playwright 三层模型：**
+
+```
+chromium.launch()
+  └── browser.newContext({ viewport, recordVideo? })
+         └── context.newPage()
+                └── page.goto() → test scenarios → page.video().path()
+```
 
 ---
 
-## 👥 团队成员
-
-- 开发：Kids Game Team
-- 测试：QA Team
-- AI 分析：Data Science Team
-
----
-
-## 📧 联系方式
-
-- Email: team@kidsgame.com
-- 内部群组：Kids Game Development
-
----
-
-**最后更新**: 2026-03-26  
-**版本**: 1.0.0  
-**状态**: ✅ Production Ready
-
-🚀 **让自动化测试助力高质量交付！**
+*最后更新：2026-03-27 | v1.2.0*

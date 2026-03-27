@@ -1,201 +1,221 @@
 /**
  * 日志分析器
  * 功能：收集和分析前后端日志，检测问题
+ *
+ * Playwright 迁移点：
+ * - page.on('console', msg)  → msg.type() / msg.text() 与 Puppeteer 相同
+ * - page.on('request', req)  → req.url() / req.method() 相同
+ * - page.on('response', res) → res.url() / res.status() 相同
+ * - page.on('pageerror', err) → err.message 相同
+ * - page.on('requestfailed', req) → req.failure() 相同
+ *   Playwright 中 failure() 返回 errorText（string），无需 ?.errorText
+ *
+ * 其他优化：
+ * - URL 去重（Set）
+ * - 5xx → critical，4xx → warning
+ * - clear() 支持多轮复用
  */
 
 const { logger } = require('./utils/logger');
 
 class LogAnalyzer {
     constructor() {
-        this.consoleLogs = [];
-        this.networkLogs = [];
-        this.errors = [];
-        this.warnings = [];
+        this.consoleLogs  = [];
+        this.networkLogs  = [];
+        this.errors       = [];
+        this.warnings     = [];
+        this._collecting  = false;
+        this._failedUrls  = new Set();
     }
 
-    async analyze(gameName) {
-        logger.info(`Starting log analysis for ${gameName}...`);
-        
-        try {
-            const result = {
-                gameName: gameName,
-                consoleLogs: this.consoleLogs,
-                networkLogs: this.networkLogs,
-                errors: this.errors,
-                warnings: this.warnings,
-                issues: this.categorizeIssues(),
-                timestamp: new Date().toISOString()
-            };
-            
-            logger.info(`Log analysis completed. Found ${result.issues.length} issues.`);
-            
-            return result;
-            
-        } catch (error) {
-            logger.error('Log analysis failed:', error);
-            throw error;
-        }
-    }
-
+    /**
+     * 绑定到 Playwright page，开始收集日志
+     * ⚠️ 必须在 page.goto() 之前调用！
+     * @param {import('playwright').Page} page
+     */
     startCollecting(page) {
-        logger.info('Starting log collection...');
-        
-        // 收集 Console 日志
-        page.on('console', (msg) => {
-            const logEntry = {
-                type: msg.type(),
-                text: msg.text(),
+        if (this._collecting) return;
+        this._collecting = true;
+        logger.info('Log collection started (Playwright)');
+
+        // ── Console 日志 ──────────────────────────────────────────────────────
+        page.on('console', msg => {
+            const entry = {
+                type:      msg.type(),
+                text:      msg.text(),
                 timestamp: new Date().toISOString(),
-                location: msg.location()
+                location:  msg.location()          // { url, lineNumber, columnNumber }
             };
-            
-            this.consoleLogs.push(logEntry);
-            
-            // 实时记录重要日志
-            if (msg.type() === 'error') {
-                logger.error(`[Console] ${logEntry.text}`);
+            this.consoleLogs.push(entry);
+
+            if (entry.type === 'error') {
+                logger.error(`[Console] ${entry.text}`);
                 this.errors.push({
-                    type: 'console_error',
-                    message: logEntry.text,
-                    timestamp: logEntry.timestamp,
-                    severity: 'critical'
+                    type:      'console_error',
+                    message:   entry.text,
+                    location:  entry.location,
+                    timestamp: entry.timestamp,
+                    severity:  'critical'
                 });
-            } else if (msg.type() === 'warning') {
-                logger.warn(`[Console] ${logEntry.text}`);
+            } else if (entry.type === 'warning') {
+                logger.warn(`[Console] ${entry.text}`);
                 this.warnings.push({
-                    type: 'console_warning',
-                    message: logEntry.text,
-                    timestamp: logEntry.timestamp,
-                    severity: 'warning'
+                    type:      'console_warning',
+                    message:   entry.text,
+                    timestamp: entry.timestamp,
+                    severity:  'warning'
                 });
             }
         });
-        
-        // 收集网络请求
-        page.on('request', (request) => {
+
+        // ── 网络请求 ──────────────────────────────────────────────────────────
+        page.on('request', request => {
             this.networkLogs.push({
-                type: 'request',
-                url: request.url(),
-                method: request.method(),
+                type:      'request',
+                url:       request.url(),
+                method:    request.method(),
                 timestamp: new Date().toISOString()
             });
         });
-        
-        page.on('response', (response) => {
-            const logEntry = {
-                type: 'response',
-                url: response.url(),
-                status: response.status(),
+
+        // ── 网络响应 ──────────────────────────────────────────────────────────
+        page.on('response', response => {
+            const status = response.status();
+            const entry = {
+                type:       'response',
+                url:        response.url(),
+                status,
                 statusText: response.statusText(),
-                timestamp: new Date().toISOString()
+                timestamp:  new Date().toISOString()
             };
-            
-            this.networkLogs.push(logEntry);
-            
-            // 检测失败的请求
-            if (response.status() >= 400) {
-                logger.warn(`[Network] ${response.status()} ${response.url()}`);
+            this.networkLogs.push(entry);
+
+            if (status >= 500) {
+                logger.error(`[Network] ${status} ${response.url()}`);
+                this.errors.push({
+                    type:      'network_server_error',
+                    message:   `HTTP ${status}: ${response.url()}`,
+                    url:       response.url(),
+                    timestamp: entry.timestamp,
+                    severity:  'critical'
+                });
+            } else if (status >= 400) {
+                logger.warn(`[Network] ${status} ${response.url()}`);
                 this.warnings.push({
-                    type: 'network_error',
-                    message: `HTTP ${response.status()}: ${response.url()}`,
-                    url: response.url(),
-                    timestamp: logEntry.timestamp,
-                    severity: 'warning'
+                    type:      'network_client_error',
+                    message:   `HTTP ${status}: ${response.url()}`,
+                    url:       response.url(),
+                    timestamp: entry.timestamp,
+                    severity:  'warning'
                 });
             }
         });
-        
-        // 收集页面错误
-        page.on('pageerror', (error) => {
+
+        // ── 页面级 JS 错误 ────────────────────────────────────────────────────
+        page.on('pageerror', error => {
             logger.error(`[Page Error] ${error.message}`);
             this.errors.push({
-                type: 'page_error',
-                message: error.message,
-                stack: error.stack,
+                type:      'page_error',
+                message:   error.message,
+                stack:     error.stack,
                 timestamp: new Date().toISOString(),
-                severity: 'critical'
+                severity:  'critical'
             });
         });
-        
-        // 收集请求失败
-        page.on('requestfailed', (request) => {
-            logger.error(`[Request Failed] ${request.url()}`);
-            this.errors.push({
-                type: 'request_failed',
-                url: request.url(),
-                errorText: request.failure()?.errorText || 'Unknown',
+
+        // ── 资源请求失败（去重）─────────────────────────────────────────────
+        page.on('requestfailed', request => {
+            const url = request.url();
+            if (this._failedUrls.has(url)) return;
+            this._failedUrls.add(url);
+
+            // Playwright: request.failure() 返回字符串（errorText），Puppeteer 返回对象
+            const errorText = request.failure() || 'Unknown';
+            logger.warn(`[Request Failed] ${errorText} — ${url}`);
+            this.warnings.push({
+                type:      'request_failed',
+                url,
+                errorText,
+                timestamp: new Date().toISOString(),
+                severity:  'warning'
+            });
+        });
+
+        // ── Dialog 自动处理（避免 alert 阻塞测试）────────────────────────────
+        page.on('dialog', async dialog => {
+            logger.warn(`[Dialog] ${dialog.type()}: "${dialog.message()}" → auto-dismissed`);
+            this.warnings.push({
+                type:    'dialog',
+                kind:    dialog.type(),
+                message: dialog.message(),
                 timestamp: new Date().toISOString(),
                 severity: 'warning'
             });
+            await dialog.dismiss().catch(() => {});
         });
-        
-        logger.info('Log collection started');
     }
 
+    /**
+     * 分析已收集的日志
+     * @param {string} gameName
+     */
+    async analyze(gameName) {
+        logger.info(`Analyzing logs for ${gameName}...`);
+        const issues = this.categorizeIssues();
+        logger.info(`Log analysis: ${this.errors.length} errors, ${this.warnings.length} warnings, ${issues.length} total issues`);
+
+        return {
+            gameName,
+            consoleLogs:  this.consoleLogs.length,
+            networkLogs:  this.networkLogs.length,
+            errors:       this.errors.length,
+            warnings:     this.warnings.length,
+            issues,
+            timestamp:    new Date().toISOString()
+        };
+    }
+
+    // ─── 分类 & 优先级 ────────────────────────────────────────────────────────
+
     categorizeIssues() {
-        const issues = [];
-        
-        // 分类错误
-        for (const error of this.errors) {
-            issues.push({
-                ...error,
-                category: 'error',
-                priority: this.getErrorPriority(error.type)
-            });
-        }
-        
-        // 分类警告
-        for (const warning of this.warnings) {
-            issues.push({
-                ...warning,
-                category: 'warning',
-                priority: this.getWarningPriority(warning.type)
-            });
-        }
-        
-        // 按优先级排序
+        const issues = [
+            ...this.errors.map(e  => ({ ...e,  category: 'error',   priority: this.getErrorPriority(e.type) })),
+            ...this.warnings.map(w => ({ ...w, category: 'warning', priority: this.getWarningPriority(w.type) }))
+        ];
         issues.sort((a, b) => b.priority - a.priority);
-        
         return issues;
     }
 
-    getErrorPriority(errorType) {
-        const priorities = {
-            'page_error': 10,          // 最高优先级
-            'console_error': 9,
-            'request_failed': 7,
-            'network_error': 8
-        };
-        
-        return priorities[errorType] || 5;
+    getErrorPriority(type) {
+        return ({ page_error: 10, console_error: 9, network_server_error: 8, request_failed: 7 })[type] || 5;
     }
 
-    getWarningPriority(warningType) {
-        const priorities = {
-            'console_warning': 6,
-            'network_error': 7,
-            'resource_warning': 5
-        };
-        
-        return priorities[warningType] || 4;
+    getWarningPriority(type) {
+        return ({ network_server_error: 8, network_client_error: 6, console_warning: 5, request_failed: 5, resource_warning: 4, dialog: 3 })[type] || 3;
     }
+
+    // ─── 工具方法 ─────────────────────────────────────────────────────────────
 
     getSummary() {
         return {
-            totalLogs: this.consoleLogs.length + this.networkLogs.length,
-            consoleLogs: this.consoleLogs.length,
-            networkLogs: this.networkLogs.length,
-            errors: this.errors.length,
-            warnings: this.warnings.length,
-            criticalIssues: this.errors.filter(e => e.severity === 'critical').length
+            totalLogs:      this.consoleLogs.length + this.networkLogs.length,
+            consoleLogs:    this.consoleLogs.length,
+            networkLogs:    this.networkLogs.length,
+            errors:         this.errors.length,
+            warnings:       this.warnings.length,
+            criticalIssues: this.errors.filter(e => e.severity === 'critical').length,
+            failedRequests: this._failedUrls.size
         };
     }
 
+    /** 清空所有收集数据（多轮测试复用时调用） */
     clear() {
-        this.consoleLogs = [];
-        this.networkLogs = [];
-        this.errors = [];
-        this.warnings = [];
+        this.consoleLogs  = [];
+        this.networkLogs  = [];
+        this.errors       = [];
+        this.warnings     = [];
+        this._failedUrls.clear();
+        this._collecting  = false;
     }
 }
 

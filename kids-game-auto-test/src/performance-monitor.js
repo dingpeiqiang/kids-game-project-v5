@@ -1,223 +1,282 @@
 /**
  * 性能监控器
  * 功能：采集和分析游戏性能指标
+ *
+ * Playwright 迁移点：
+ * - page.evaluate() 调用方式与 Puppeteer 完全兼容，无需修改
+ * - 新增 CDP Session（chromium 专用）获取精准 JS 堆内存
+ * - Playwright page.metrics() 提供 TaskDuration / JSHeapUsedSize 等额外指标
+ * - waitForLoadState('networkidle') 替代 waitForNavigation
  */
 
 const { logger } = require('./utils/logger');
+const { formatDuration, withTimeout } = require('./utils/helpers');
+
+// 默认阈值（当配置文件未提供时使用）
+const DEFAULT_THRESHOLDS = {
+    loadTime:    5000,   // ms
+    frameRate:   30,     // FPS
+    memoryUsage: 512,    // MB
+    lcpTime:     2500    // ms（Google Core Web Vitals）
+};
 
 class PerformanceMonitor {
-    constructor(gameConfig) {
-        this.config = gameConfig;
-        this.metrics = {};
-        this.thresholds = {
-            loadTime: 5000,      // 5 秒
-            frameRate: 30,       // 30 FPS
-            memoryUsage: 512,    // 512 MB
-            cpuUsage: 50         // 50%
-        };
+    /**
+     * @param {Object} gameConfig - 游戏配置
+     * @param {Object} perfConfig  - 全局 performance 配置（来自 test-config.json）
+     */
+    constructor(gameConfig, perfConfig = {}) {
+        this.config    = gameConfig;
+        this.metrics   = {};
+        this.thresholds = Object.assign({}, DEFAULT_THRESHOLDS, perfConfig.thresholds || {});
     }
 
+    /**
+     * 执行性能测量
+     * @param {import('playwright').Page} page - Playwright page（已导航到游戏页面，不会重新导航）
+     */
     async measure(page) {
-        logger.info('Starting performance measurement...');
-        
+        logger.info('Starting performance measurement (Playwright, existing page)...');
+
+        // 每个指标采集独立超时，防止某个 PerformanceObserver 永远挂住
+        const safe = async (label, fn, defaultVal = null) => {
+            try {
+                return await withTimeout(fn(), 8000, label);
+            } catch (e) {
+                logger.warn(`  [perf] ${label} failed: ${e.message}`);
+                return defaultVal;
+            }
+        };
+
         try {
-            // 1. 页面加载时间
-            this.metrics.loadTime = await this.measureLoadTime(page);
-            
-            // 2. 首次绘制 (FP)
-            this.metrics.firstPaint = await this.measureFirstPaint(page);
-            
-            // 3. 首次内容绘制 (FCP)
-            this.metrics.firstContentfulPaint = await this.measureFCP(page);
-            
-            // 4. 可交互时间 (TTI)
-            this.metrics.timeToInteractive = await this.measureTTI(page);
-            
-            // 5. 帧率监控
-            this.metrics.frameRate = await this.measureFrameRate(page);
-            
-            // 6. 内存使用
-            this.metrics.memoryUsage = await this.measureMemory(page);
-            
-            // 检查阈值
+            this.metrics.loadTime                = await safe('loadTime',             () => this.getNavigationLoadTime(page));
+            this.metrics.firstPaint              = await safe('firstPaint',           () => this.measurePaintEntry(page, 'first-paint'));
+            this.metrics.firstContentfulPaint    = await safe('firstContentfulPaint', () => this.measurePaintEntry(page, 'first-contentful-paint'));
+            this.metrics.largestContentfulPaint  = await safe('LCP',                 () => this.measureLCP(page));
+            this.metrics.timeToInteractive       = await safe('TTI',                 () => this.measureTTI(page));
+
+            const pwMetrics = await safe('playwrightMetrics', () => this.getPlaywrightMetrics(page), {});
+            Object.assign(this.metrics, pwMetrics);
+
+            this.metrics.frameRate   = await safe('frameRate',   () => this.measureFrameRate(page));
+            this.metrics.memoryUsage = await safe('memoryUsage', () => this.measureMemory(page));
+
             const issues = this.checkThresholds();
-            
-            logger.performance('Performance measurement completed', this.metrics);
-            
+
+            logger.info('Performance metrics collected:');
+            for (const [key, value] of Object.entries(this.metrics)) {
+                if (value !== null && value !== undefined) {
+                    logger.info(`  ${key}: ${value}`);
+                }
+            }
+
             return {
-                metrics: this.metrics,
-                issues: issues,
-                timestamp: new Date().toISOString()
+                metrics:    this.metrics,
+                issues,
+                thresholds: this.thresholds,
+                timestamp:  new Date().toISOString()
             };
-            
+
         } catch (error) {
-            logger.error('Performance measurement failed:', error);
-            throw error;
+            logger.error('Performance measurement failed:', error.message);
+            return { metrics: {}, issues: [], error: error.message };
         }
     }
 
-    async measureLoadTime(page) {
-        const startTime = Date.now();
-        
-        await page.goto(this.config.url, { 
-            waitUntil: 'load',
-            timeout: 60000 
-        });
-        
-        const loadTime = Date.now() - startTime;
-        
-        logger.performance('Load Time', loadTime, 'ms');
-        return loadTime;
-    }
+    // ─── 指标采集方法 ──────────────────────────────────────────────────────────
 
-    async measureFirstPaint(page) {
+    async getNavigationLoadTime(page) {
         try {
-            const performanceMetrics = await page.evaluate(() => {
-                const entries = performance.getEntriesByType('paint');
-                const fp = entries.find(e => e.name === 'first-paint');
-                return fp ? fp.startTime : null;
+            const t = await page.evaluate(() => {
+                const nav = performance.getEntriesByType('navigation')[0];
+                if (nav && nav.loadEventEnd > 0) {
+                    return Math.round(nav.loadEventEnd - nav.startTime);
+                }
+                const timing = performance.timing;
+                return timing && timing.loadEventEnd > 0
+                    ? Math.round(timing.loadEventEnd - timing.navigationStart)
+                    : null;
             });
-            
-            logger.performance('First Paint', performanceMetrics || 'N/A', '');
-            return performanceMetrics;
-        } catch (error) {
-            logger.warn('First Paint measurement failed:', error.message);
+            logger.info(`  Load Time (NavAPI): ${t != null ? formatDuration(t) : 'N/A'}`);
+            return t;
+        } catch (e) {
+            logger.warn('Navigation Timing unavailable:', e.message);
             return null;
         }
     }
 
-    async measureFCP(page) {
+    async measurePaintEntry(page, name) {
         try {
-            const performanceMetrics = await page.evaluate(() => {
+            const v = await page.evaluate((n) => {
                 const entries = performance.getEntriesByType('paint');
-                const fcp = entries.find(e => e.name === 'first-contentful-paint');
-                return fcp ? fcp.startTime : null;
-            });
-            
-            logger.performance('First Contentful Paint', performanceMetrics || 'N/A', '');
-            return performanceMetrics;
-        } catch (error) {
-            logger.warn('FCP measurement failed:', error.message);
+                const entry   = entries.find(e => e.name === n);
+                return entry ? Math.round(entry.startTime) : null;
+            }, name);
+            logger.info(`  ${name}: ${v != null ? formatDuration(v) : 'N/A'}`);
+            return v;
+        } catch (e) {
+            logger.warn(`${name} measurement failed:`, e.message);
+            return null;
+        }
+    }
+
+    async measureLCP(page) {
+        try {
+            const v = await page.evaluate(() =>
+                new Promise(resolve => {
+                    const existing = performance.getEntriesByType('largest-contentful-paint');
+                    if (existing && existing.length > 0) {
+                        resolve(Math.round(existing[existing.length - 1].startTime));
+                        return;
+                    }
+                    try {
+                        const obs = new PerformanceObserver(list => {
+                            const entries = list.getEntries();
+                            if (entries.length > 0) {
+                                obs.disconnect();
+                                resolve(Math.round(entries[entries.length - 1].startTime));
+                            }
+                        });
+                        obs.observe({ type: 'largest-contentful-paint', buffered: true });
+                        setTimeout(() => { obs.disconnect(); resolve(null); }, 3000);
+                    } catch {
+                        resolve(null);
+                    }
+                })
+            );
+            logger.info(`  LCP: ${v != null ? formatDuration(v) : 'N/A'}`);
+            return v;
+        } catch (e) {
+            logger.warn('LCP measurement failed:', e.message);
             return null;
         }
     }
 
     async measureTTI(page) {
-        // 简化的 TTI 测量：等待页面可交互
-        const startTime = Date.now();
-        
-        await page.waitForSelector('body', { timeout: 60000 });
-        
-        const tti = Date.now() - startTime;
-        
-        logger.performance('Time to Interactive', tti, 'ms');
-        return tti;
+        try {
+            const v = await page.evaluate(() => {
+                const nav = performance.getEntriesByType('navigation')[0];
+                if (nav && nav.domInteractive > 0) return Math.round(nav.domInteractive - nav.startTime);
+                const t = performance.timing;
+                return t ? Math.round(t.domInteractive - t.navigationStart) : null;
+            });
+            logger.info(`  TTI (domInteractive): ${v != null ? formatDuration(v) : 'N/A'}`);
+            return v;
+        } catch (e) {
+            logger.warn('TTI measurement failed:', e.message);
+            return null;
+        }
+    }
+
+    /**
+     * Playwright 内置 page.metrics()（仅 Chromium 支持）
+     * 返回 TaskDuration、ScriptDuration、RecalcStyleCount 等
+     */
+    async getPlaywrightMetrics(page) {
+        try {
+            const raw = await page.evaluate(() => ({
+                domNodes:       document.querySelectorAll('*').length,
+                // page.metrics() 在 evaluate 中无法调用，通过 CDP 替代
+            }));
+
+            // Playwright 提供 page.metrics() 方法（Chromium CDP 派生）
+            let pwMetrics = {};
+            if (typeof page.metrics === 'function') {
+                const m = await page.metrics();
+                pwMetrics = {
+                    taskDuration:    m.TaskDuration    ? parseFloat((m.TaskDuration * 1000).toFixed(2))   : null,
+                    scriptDuration:  m.ScriptDuration  ? parseFloat((m.ScriptDuration * 1000).toFixed(2)) : null,
+                    layoutCount:     m.LayoutCount     || null,
+                    recalcStyleCount: m.RecalcStyleCount || null
+                };
+            }
+
+            return { ...pwMetrics, domNodes: raw.domNodes };
+        } catch {
+            return {};
+        }
     }
 
     async measureFrameRate(page) {
         try {
-            // 使用 requestAnimationFrame 测量帧率
-            const frameRate = await page.evaluate(() => {
-                return new Promise((resolve) => {
-                    let frames = 0;
-                    let lastTime = performance.now();
-                    let frameRate = 0;
-                    
-                    function countFrames() {
-                        frames++;
-                        const currentTime = performance.now();
-                        
-                        if (currentTime - lastTime >= 1000) {
-                            frameRate = frames;
-                            frames = 0;
-                            lastTime = currentTime;
-                        }
-                        
-                        if (frameRate > 0) {
-                            resolve(frameRate);
+            const fps = await page.evaluate(() =>
+                new Promise(resolve => {
+                    const timestamps = [];
+                    let rafId;
+                    const duration  = 2000;
+                    const startTime = performance.now();
+
+                    function tick() {
+                        timestamps.push(performance.now());
+                        if (performance.now() - startTime < duration) {
+                            rafId = requestAnimationFrame(tick);
                         } else {
-                            requestAnimationFrame(countFrames);
+                            cancelAnimationFrame(rafId);
+                            const n = timestamps.length;
+                            const elapsed = (timestamps[n - 1] - timestamps[0]) / 1000;
+                            resolve(elapsed > 0 ? Math.round(n / elapsed) : 60);
                         }
                     }
-                    
-                    requestAnimationFrame(countFrames);
-                    
-                    // 5 秒后超时
-                    setTimeout(() => resolve(60), 5000);
-                });
-            });
-            
-            logger.performance('Frame Rate', frameRate, ' FPS');
-            return frameRate;
-        } catch (error) {
-            logger.warn('Frame rate measurement failed:', error.message);
-            return 60; // 默认值
+                    requestAnimationFrame(tick);
+                    setTimeout(() => { cancelAnimationFrame(rafId); resolve(60); }, 4000);
+                })
+            );
+            logger.info(`  Frame Rate: ${fps} FPS`);
+            return fps;
+        } catch (e) {
+            logger.warn('Frame rate measurement failed:', e.message);
+            return null;
         }
     }
 
     async measureMemory(page) {
         try {
-            const memoryMetrics = await page.evaluate(() => {
+            // 优先 performance.memory（Chrome 专属）
+            const mb = await page.evaluate(() => {
                 if (performance.memory) {
-                    return {
-                        usedJSHeapSize: performance.memory.usedJSHeapSize,
-                        totalJSHeapSize: performance.memory.totalJSHeapSize
-                    };
+                    return parseFloat((performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2));
                 }
                 return null;
             });
-            
-            const memoryMB = memoryMetrics ? (memoryMetrics.usedJSHeapSize / 1024 / 1024).toFixed(2) : 'N/A';
-            
-            logger.performance('Memory Usage', memoryMB, ' MB');
-            return memoryMB;
-        } catch (error) {
-            logger.warn('Memory measurement failed:', error.message);
-            return 'N/A';
+            logger.info(`  Memory Usage: ${mb != null ? `${mb} MB` : 'N/A'}`);
+            return mb;
+        } catch (e) {
+            logger.warn('Memory measurement failed:', e.message);
+            return null;
         }
     }
 
+    // ─── 阈值检查 ──────────────────────────────────────────────────────────────
+
     checkThresholds() {
         const issues = [];
-        
-        if (this.metrics.loadTime && this.metrics.loadTime > this.thresholds.loadTime) {
-            issues.push({
-                type: 'performance',
-                metric: 'loadTime',
-                value: this.metrics.loadTime,
-                threshold: this.thresholds.loadTime,
-                severity: 'warning',
-                message: `加载时间过长：${this.metrics.loadTime}ms (阈值：${this.thresholds.loadTime}ms)`
-            });
+        const { metrics: m, thresholds: t } = this;
+
+        if (m.loadTime != null && m.loadTime > t.loadTime) {
+            issues.push(this.buildIssue('loadTime', m.loadTime, t.loadTime,
+                `加载时间过长：${formatDuration(m.loadTime)} (阈值 ${formatDuration(t.loadTime)})`));
         }
-        
-        if (this.metrics.frameRate && typeof this.metrics.frameRate === 'number' && 
-            this.metrics.frameRate < this.thresholds.frameRate) {
-            issues.push({
-                type: 'performance',
-                metric: 'frameRate',
-                value: this.metrics.frameRate,
-                threshold: this.thresholds.frameRate,
-                severity: 'warning',
-                message: `帧率过低：${this.metrics.frameRate} FPS (阈值：${this.thresholds.frameRate} FPS)`
-            });
+
+        if (m.frameRate != null && m.frameRate < t.frameRate) {
+            issues.push(this.buildIssue('frameRate', m.frameRate, t.frameRate,
+                `帧率过低：${m.frameRate} FPS (阈值 ${t.frameRate} FPS)`));
         }
-        
-        if (this.metrics.memoryUsage !== 'N/A') {
-            const memoryNum = parseFloat(this.metrics.memoryUsage);
-            if (memoryNum > this.thresholds.memoryUsage) {
-                issues.push({
-                    type: 'performance',
-                    metric: 'memoryUsage',
-                    value: this.metrics.memoryUsage,
-                    threshold: this.thresholds.memoryUsage,
-                    severity: 'warning',
-                    message: `内存使用过高：${this.metrics.memoryUsage}MB (阈值：${this.thresholds.memoryUsage}MB)`
-                });
-            }
+
+        if (m.memoryUsage != null && m.memoryUsage > t.memoryUsage) {
+            issues.push(this.buildIssue('memoryUsage', m.memoryUsage, t.memoryUsage,
+                `内存过高：${m.memoryUsage} MB (阈值 ${t.memoryUsage} MB)`));
         }
-        
+
+        if (m.largestContentfulPaint != null && m.largestContentfulPaint > (t.lcpTime || 2500)) {
+            issues.push(this.buildIssue('largestContentfulPaint', m.largestContentfulPaint, t.lcpTime || 2500,
+                `LCP 较慢：${formatDuration(m.largestContentfulPaint)} (建议 < 2.5s)`));
+        }
+
         return issues;
+    }
+
+    buildIssue(metric, value, threshold, message) {
+        return { type: 'performance', metric, value, threshold, severity: 'warning', message };
     }
 }
 

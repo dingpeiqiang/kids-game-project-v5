@@ -177,10 +177,11 @@ import { useGameStore, type GameEventType } from '@/stores/game'
 import { useSettingsStore } from '@/stores/settings'
 import { useThemeStore } from '@/stores/theme'  // ⭐ 添加导入
 import { SnakePhaserGame } from './PhaserGame'
-import ScorePanel from '../ui/ScorePanel.vue'
-import PauseButton from '../ui/PauseButton.vue'
-import SoundToggle from '../ui/SoundToggle.vue'
-import GameButton from '../ui/GameButton.vue'
+// 使用本地 UI 组件
+import ScorePanel from '@/components/ui/ScorePanel.vue'
+import PauseButton from '@/components/ui/PauseButton.vue'
+import SoundToggle from '@/components/ui/SoundToggle.vue'
+import GameButton from '@/components/ui/GameButton.vue'
 import { initUIParams } from '@/utils/uiResponsive'
 
 const router = useRouter()

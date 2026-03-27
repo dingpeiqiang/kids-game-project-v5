@@ -2,6 +2,7 @@
   "games": {
     "plane-shooter": {
       "name": "Plane Shooter (飞机大战)",
+      "scenarioKey": "plane-shooter",
       "url": "http://localhost:8081/",
       "type": "shooter",
       "testScenarios": [
@@ -15,6 +16,7 @@
     },
     "snake": {
       "name": "Snake (贪吃蛇)",
+      "scenarioKey": "snake",
       "url": "http://localhost:3005/",
       "type": "arcade",
       "testScenarios": [
@@ -28,6 +30,7 @@
     },
     "tank-battle": {
       "name": "Tank Battle (坦克大战)",
+      "scenarioKey": "tank-battle",
       "url": "http://localhost:3002/",
       "type": "action",
       "testScenarios": [
@@ -39,8 +42,9 @@
         "enemy_ai"
       ]
     },
-    "plants-vs-zombie": {
-      "name": "Plants vs Zombie (植物大战僵尸)",
+    "plants-vs-zombies": {
+      "name": "Plants vs Zombies (植物大战僵尸)",
+      "scenarioKey": "plants-vs-zombies",
       "url": "http://localhost:3004/",
       "type": "strategy",
       "testScenarios": [
@@ -95,11 +99,14 @@
     "emailNotification": false
   },
   "browser": {
+    "engine": "chromium",
     "defaultViewport": {
       "width": 1920,
       "height": 1080
     },
     "timeout": 60000,
-    "retryAttempts": 3
+    "retryAttempts": 3,
+    "slowMo": 0,
+    "recordVideo": false
   }
 }

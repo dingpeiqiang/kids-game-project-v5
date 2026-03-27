@@ -71,6 +71,7 @@ import { useGameStore } from '@/stores/game'
 import { useSettingsStore } from '@/stores/settings'
 import { DIFFICULTY_CONFIGS } from '@/types/game'
 import { useResponsiveUI } from '@/utils/uiResponsive'
+// 使用本地 UI 组件
 import GameButton from '@/components/ui/GameButton.vue'
 
 const router = useRouter()

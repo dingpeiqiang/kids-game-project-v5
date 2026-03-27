@@ -1,0 +1,488 @@
+{
+  "taskId": "task_plants-vs-zombies_1774581613850_e4ig",
+  "gameId": "plants-vs-zombies",
+  "gameName": "Plants vs Zombies (植物大战僵尸)",
+  "gameType": "strategy",
+  "url": "http://localhost:3004/",
+  "suiteId": "suite_plants-vs-zombies_1774581613839",
+  "status": "SKIPPED",
+  "priority": "HIGH",
+  "createdAt": "2026-03-27T03:20:13.850Z",
+  "queuedAt": "2026-03-27T03:20:13.852Z",
+  "startedAt": "2026-03-27T03:20:23.123Z",
+  "finishedAt": "2026-03-27T03:20:25.745Z",
+  "duration": 2622,
+  "progress": 100,
+  "testCases": [
+    {
+      "id": "BASE_LOAD",
+      "name": "页面加载验证",
+      "description": "验证游戏页面能够正常加载，无 JS 错误，无 404 资源",
+      "category": "functional",
+      "priority": "P0",
+      "steps": [
+        "打开游戏 URL",
+        "等待页面完成加载（networkidle）",
+        "验证页面标题非空",
+        "检查是否存在 JS 运行时错误",
+        "检查是否存在 404 资源请求"
+      ],
+      "assertions": [
+        {
+          "type": "url_reachable",
+          "description": "HTTP 状态码 < 400"
+        },
+        {
+          "type": "no_js_errors",
+          "description": "控制台无 error 级别日志"
+        },
+        {
+          "type": "page_has_content",
+          "description": "body 非空"
+        }
+      ],
+      "soft": false,
+      "caseId": "plants-vs-zombies_BASE_LOAD",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "base_load",
+        "functional",
+        "strategy"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "BASE_CANVAS",
+      "name": "Canvas 渲染验证",
+      "description": "验证游戏 Canvas 元素存在且有实际绘制内容",
+      "category": "functional",
+      "priority": "P0",
+      "steps": [
+        "等待 canvas 元素出现在 DOM",
+        "检查 canvas 尺寸不为 0",
+        "抽样检查 canvas 像素非全透明"
+      ],
+      "assertions": [
+        {
+          "type": "element_exists",
+          "selector": "canvas",
+          "description": "Canvas 元素存在"
+        },
+        {
+          "type": "canvas_has_content",
+          "description": "Canvas 有实际绘制（非全透明）"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_BASE_CANVAS",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "base_canvas",
+        "functional",
+        "strategy"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "BASE_START_SCREEN",
+      "name": "开始界面验证",
+      "description": "验证游戏开始界面正常显示，存在可交互的开始按钮",
+      "category": "functional",
+      "priority": "P0",
+      "steps": [
+        "等待 2s 让游戏初始化",
+        "检查开始界面相关元素（按钮/文字/菜单）",
+        "验证存在可点击的交互元素"
+      ],
+      "assertions": [
+        {
+          "type": "element_exists",
+          "selector": "button, [class*=\"start\"], [class*=\"menu\"], [class*=\"begin\"]",
+          "description": "存在开始/菜单按钮"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_BASE_START_SCREEN",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "base_start_screen",
+        "functional",
+        "strategy"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "BASE_PERFORMANCE_LOAD",
+      "name": "加载时间性能测试",
+      "description": "测量页面加载时间，确保在阈值（5s）内完成",
+      "category": "performance",
+      "priority": "P1",
+      "steps": [
+        "记录导航开始时间",
+        "等待 load 事件触发",
+        "计算总加载时间"
+      ],
+      "assertions": [
+        {
+          "type": "load_time_under",
+          "threshold": 5000,
+          "description": "加载时间 < 5000ms"
+        }
+      ],
+      "soft": false,
+      "caseId": "plants-vs-zombies_BASE_PERFORMANCE_LOAD",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "base_performance_load",
+        "performance",
+        "strategy"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "BASE_MEMORY",
+      "name": "内存使用测试",
+      "description": "测量运行时 JS 堆内存，确保在阈值（512MB）内",
+      "category": "performance",
+      "priority": "P2",
+      "steps": [
+        "等待游戏主循环启动（3s）",
+        "读取 performance.memory.usedJSHeapSize"
+      ],
+      "assertions": [
+        {
+          "type": "memory_under",
+          "threshold": 512,
+          "unit": "MB",
+          "description": "JS 堆 < 512MB"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_BASE_MEMORY",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "base_memory",
+        "performance",
+        "strategy"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "BASE_RESPONSIVE",
+      "name": "响应式布局测试",
+      "description": "在不同视口尺寸下验证游戏布局不崩溃",
+      "category": "ui",
+      "priority": "P2",
+      "steps": [
+        "切换到 1280×720 视口",
+        "验证 Canvas 可见",
+        "切换到 375×667（移动端）视口",
+        "验证 Canvas 可见"
+      ],
+      "assertions": [
+        {
+          "type": "element_visible",
+          "selector": "canvas",
+          "description": "Canvas 在不同视口下可见"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_BASE_RESPONSIVE",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "base_responsive",
+        "ui",
+        "strategy"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "TYPE_STRATEGY_PLANT",
+      "name": "植物放置测试",
+      "description": "验证可在格子上放置植物",
+      "category": "functional",
+      "priority": "P1",
+      "steps": [
+        "进入游戏",
+        "选择植物卡片",
+        "点击草坪格子",
+        "验证植物出现"
+      ],
+      "assertions": [
+        {
+          "type": "canvas_changed",
+          "description": "放置植物后画面变化"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_TYPE_STRATEGY_PLANT",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "type_strategy_plant",
+        "functional",
+        "strategy"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "BASE_START_SCREEN",
+      "name": "开始界面验证",
+      "description": "验证游戏开始界面正常显示，存在可交互的开始按钮",
+      "category": "functional",
+      "priority": "P0",
+      "steps": [
+        "等待 2s 让游戏初始化",
+        "检查开始界面相关元素（按钮/文字/菜单）",
+        "验证存在可点击的交互元素"
+      ],
+      "assertions": [
+        {
+          "type": "element_exists",
+          "selector": "button, [class*=\"start\"], [class*=\"menu\"], [class*=\"begin\"]",
+          "description": "存在开始/菜单按钮"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_BASE_START_SCREEN",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "base_start_screen",
+        "functional",
+        "strategy",
+        "start_screen"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "FEAT_LEVEL",
+      "name": "关卡/阶段进度测试",
+      "description": "验证关卡选择或波次推进功能",
+      "category": "functional",
+      "priority": "P2",
+      "steps": [
+        "在主界面寻找关卡选择入口",
+        "验证关卡信息可读取"
+      ],
+      "assertions": [
+        {
+          "type": "element_exists",
+          "selector": "[class*=\"level\"], [class*=\"stage\"], [class*=\"wave\"], [class*=\"关卡\"]",
+          "description": "关卡相关元素存在"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_FEAT_LEVEL",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "feat_level",
+        "functional",
+        "strategy",
+        "level_selection"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "TYPE_STRATEGY_PLANT",
+      "name": "植物放置测试",
+      "description": "验证可在格子上放置植物",
+      "category": "functional",
+      "priority": "P1",
+      "steps": [
+        "进入游戏",
+        "选择植物卡片",
+        "点击草坪格子",
+        "验证植物出现"
+      ],
+      "assertions": [
+        {
+          "type": "canvas_changed",
+          "description": "放置植物后画面变化"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_TYPE_STRATEGY_PLANT",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "type_strategy_plant",
+        "functional",
+        "strategy",
+        "plant_placement"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "BASE_CANVAS",
+      "name": "Canvas 渲染验证",
+      "description": "验证游戏 Canvas 元素存在且有实际绘制内容",
+      "category": "functional",
+      "priority": "P0",
+      "steps": [
+        "等待 canvas 元素出现在 DOM",
+        "检查 canvas 尺寸不为 0",
+        "抽样检查 canvas 像素非全透明"
+      ],
+      "assertions": [
+        {
+          "type": "element_exists",
+          "selector": "canvas",
+          "description": "Canvas 元素存在"
+        },
+        {
+          "type": "canvas_has_content",
+          "description": "Canvas 有实际绘制（非全透明）"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_BASE_CANVAS",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "base_canvas",
+        "functional",
+        "strategy",
+        "zombie_spawn"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "FEAT_RESOURCE",
+      "name": "资源管理系统测试",
+      "description": "验证游戏内资源（阳光/金币等）显示与变化",
+      "category": "functional",
+      "priority": "P2",
+      "steps": [
+        "进入游戏主场景",
+        "寻找资源计数显示元素",
+        "等待资源变化（通关/收集）"
+      ],
+      "assertions": [
+        {
+          "type": "element_exists",
+          "selector": "[class*=\"sun\"], [class*=\"coin\"], [class*=\"resource\"], [class*=\"阳光\"]",
+          "description": "资源显示元素存在"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_FEAT_RESOURCE",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "feat_resource",
+        "functional",
+        "strategy",
+        "resource_management"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    },
+    {
+      "id": "FEAT_LEVEL",
+      "name": "关卡/阶段进度测试",
+      "description": "验证关卡选择或波次推进功能",
+      "category": "functional",
+      "priority": "P2",
+      "steps": [
+        "在主界面寻找关卡选择入口",
+        "验证关卡信息可读取"
+      ],
+      "assertions": [
+        {
+          "type": "element_exists",
+          "selector": "[class*=\"level\"], [class*=\"stage\"], [class*=\"wave\"], [class*=\"关卡\"]",
+          "description": "关卡相关元素存在"
+        }
+      ],
+      "soft": true,
+      "caseId": "plants-vs-zombies_FEAT_LEVEL",
+      "gameId": "plants-vs-zombies",
+      "gameName": "Plants vs Zombies (植物大战僵尸)",
+      "url": "http://localhost:3004/",
+      "tags": [
+        "feat_level",
+        "functional",
+        "strategy",
+        "wave_progression"
+      ],
+      "createdAt": "2026-03-27T03:20:13.839Z",
+      "status": "PENDING",
+      "result": null,
+      "finishedAt": null
+    }
+  ],
+  "summary": {
+    "status": "SKIPPED",
+    "error": "Navigation failed: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3004/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3004/\", waiting until \"load\"\u001b[22m\n"
+  },
+  "meta": {
+    "triggeredBy": "pipeline",
+    "priority": [
+      "P0",
+      "P1",
+      "P2"
+    ],
+    "headless": true,
+    "sourceProfile": {
+      "fullPath": "",
+      "sourceFiles": 0,
+      "detectedFeatures": []
+    },
+    "generatedAt": "2026-03-27T03:20:13.839Z"
+  }
+}
