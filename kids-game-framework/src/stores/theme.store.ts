@@ -229,6 +229,31 @@ export const useThemeStore = defineStore('kids-theme', () => {
   }
 
   /**
+   * ⭐ 从后端加载并切换主题（贪吃蛇使用）
+   * 返回 Promise<boolean>，成功返回 true，失败返回 false
+   */
+  async function switchToBackendTheme(themeId: string): Promise<boolean> {
+    return await switchTheme(themeId)
+  }
+
+  /**
+   * ⭐ 从后端重新加载主题列表（贪吃蛇使用）
+   * @param forceRefresh 是否强制刷新
+   */
+  async function loadThemeListFromBackend(forceRefresh = false): Promise<void> {
+    return await loadThemeList(forceRefresh)
+  }
+
+  /**
+   * ⭐ 重置为默认主题（贪吃蛇使用）
+   */
+  async function resetTheme(): Promise<void> {
+    if (themeList.value.length > 0) {
+      await switchTheme(themeList.value[0].id)
+    }
+  }
+
+  /**
    * 初始化：加载主题列表 + 默认主题
    */
   async function init(): Promise<void> {
@@ -287,6 +312,12 @@ export const useThemeStore = defineStore('kids-theme', () => {
 
   const currentTheme = computed<ThemeConfig | null>(() => customTheme.value)
 
+  /**
+   * ⭐ 是否为自定义主题（贪吃蛇 ThemeSelector 用来控制选中样式）
+   * 当前实现中，从后端加载的主题都视为预设主题
+   */
+  const isCustomTheme = computed<boolean>(() => false)
+
   return {
     currentThemeId,
     currentGameId,
@@ -295,10 +326,14 @@ export const useThemeStore = defineStore('kids-theme', () => {
     themeList,
     isThemeListLoaded,
     currentTheme,
+    isCustomTheme,
     setGameId,
     loadThemeFromBackend,
     loadThemeList,
+    loadThemeListFromBackend,
     switchTheme,
+    switchToBackendTheme,
+    resetTheme,
     init,
     applyThemeToDocument
   }

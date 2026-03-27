@@ -38,8 +38,9 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
 import type { Difficulty } from '@/types/game'
-// 使用框架的 UI 组件
-import { DifficultySelector, GameButton } from '@kids-game/framework'
+// 使用本地 UI 组件
+import DifficultySelector from '@/components/ui/DifficultySelector.vue'
+import GameButton from '@/components/ui/GameButton.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -88,7 +89,7 @@ const difficultyConfig = {
   ]
 }
 
-// 动态样式计算（完全复刻贪吃蛇）
+// 动态样式计算
 const containerStyle = computed(() => ({
   // 🎨 上下边距各 2%,内容自动放大适配
   paddingTop: '2%',

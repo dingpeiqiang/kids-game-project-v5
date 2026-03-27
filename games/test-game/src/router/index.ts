@@ -4,7 +4,7 @@ import DifficultyView from '@/views/DifficultyView.vue'
 import GameView from '@/views/GameView.vue'
 import GameOverView from '@/views/GameOverView.vue'
 
-export const router = createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
@@ -29,3 +29,5 @@ export const router = createRouter({
     }
   ]
 })
+
+export default router

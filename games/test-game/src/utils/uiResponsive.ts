@@ -1,6 +1,6 @@
 /**
  * UI 自适应工具 - 基于屏幕尺寸独立计算最优 UI 参数
- * 与贪吃蛇保持一致的缩放系统
+ * 统一缩放系统
  * 设计基准：720×1280
  */
 
@@ -105,12 +105,15 @@ export function getButtonStyle(minWidth: number = 120, minHeight: number = 44) {
 }
 
 /**
- * 应用全局字体大小到 root 元素
+ * 应用全局字体大小到 root 元素，同时注入 --ui-scale CSS 变量
+ * --ui-scale 供框架组件（GameButton 等）使用 CSS calc() 缩放
  */
 function applyGlobalFontSize(): void {
   const root = document.documentElement
   const baseFontSize = 16
   root.style.fontSize = getFontSize(baseFontSize)
+  // 注入 CSS 变量，供框架组件使用（避免框架内直接导入 useResponsiveUI）
+  root.style.setProperty('--ui-scale', String(uiScale))
 }
 
 /**

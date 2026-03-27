@@ -858,25 +858,4 @@ const handleResize = () => {
     font-size: ui.getFontSize(24);
   }
 }
-
-/* 确保容器正确居中 */
-.w-full.h-full.flex.flex-col.items-center.justify-center {
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-/* 强制居中覆盖 */
-.fade-in.relative {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
 </style>

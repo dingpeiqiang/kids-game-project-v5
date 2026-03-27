@@ -8,7 +8,7 @@
       @touchend.passive="handleTouchEnd"
     ></div>
 
-    <!-- 游戏 UI 覆盖层 - 顶栏：左分数右控制按钮（贪吃蛇同款布局） -->
+    <!-- 游戏 UI 覆盖层 - 顶栏：左分数右控制按钮 -->
     <div class="game-ui absolute top-2 left-0 right-0 flex justify-between items-start pointer-events-none px-4">
       <!-- 左侧：分数面板 -->
       <ScorePanel

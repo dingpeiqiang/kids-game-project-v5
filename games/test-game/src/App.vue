@@ -73,10 +73,11 @@ html, body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* 确保所有视图容器正确居中 */
+/* 确保所有视图容器正确居中（必须 flex-direction: column 避免子元素横排） */
 .app-container > * {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 }

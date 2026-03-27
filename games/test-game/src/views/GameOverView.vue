@@ -79,7 +79,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { GameButton } from '@kids-game/framework'
+import GameButton from '@/components/ui/GameButton.vue'
 import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
 
 const router = useRouter()
@@ -113,7 +113,7 @@ onMounted(() => {
   localStorage.setItem('test-game-play-count', String(playCount.value))
 })
 
-// 动态样式计算（与贪吃蛇 GameOverView 完全一致）
+// 动态样式计算
 const containerStyle = computed(() => ({
   paddingTop: '2%',
   paddingBottom: '2%',

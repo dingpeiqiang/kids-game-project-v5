@@ -89,7 +89,7 @@ export function initGame(
   }
 
   // RESIZE 模式：画布尺寸实时跟随容器，配合 CSS w-full h-full 实现全屏
-  // 贪吃蛇同款方案：width/height 设为 '100%'，确保填满父容器
+  // 全屏适配：width/height 设为 '100%'，确保填满父容器
   game = new Phaser.Game({
     ...GAME_CONFIG,
     parent: container,

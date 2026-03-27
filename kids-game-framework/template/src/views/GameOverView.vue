@@ -113,7 +113,7 @@ onMounted(() => {
   localStorage.setItem('{{GAME_ID}}-play-count', String(playCount.value))
 })
 
-// 动态样式计算（与贪吃蛇 GameOverView 完全一致）
+// 动态样式计算
 const containerStyle = computed(() => ({
   paddingTop: '2%',
   paddingBottom: '2%',

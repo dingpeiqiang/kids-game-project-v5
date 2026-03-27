@@ -66,7 +66,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ScorePanel, PauseButton, SoundToggle, GameButton } from '@kids-game/framework'
+import ScorePanel from '@/components/ui/ScorePanel.vue'
+import PauseButton from '@/components/ui/PauseButton.vue'
+import SoundToggle from '@/components/ui/SoundToggle.vue'
+import GameButton from '@/components/ui/GameButton.vue'
 import { initGame, destroyGame, pauseGame, resumeGame } from '@/game'
 
 const router = useRouter()

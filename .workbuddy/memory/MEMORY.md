@@ -14,15 +14,39 @@
 
 ## 脚手架（2026-03-27 更新）
 
-将框架重构为**项目脚手架**，支持一键创建新游戏 + AI 迭代开发。
+**核心思路**：贪吃蛇全套代码即为模板，只参数化游戏特定部分（`{{GAME_*}}` 变量）。
 
 ### 使用方式
 ```bash
 cd kids-game-framework
 node bin/create-game.js my-game --output ../games
+# 或交互式输入
+node bin/create-game.js
 cd ../games/my-game
 npm install && npm run dev
 ```
+
+### 模板参数
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `{{GAME_ID}}` | 游戏 ID（localStorage key 前缀） | `test-game` |
+| `{{GAME_NAME}}` | 游戏中文名 | `接金币` |
+| `{{GAME_NAME_EN}}` | 英文标识（目录名） | `coin-collector` |
+| `{{GAME_CODE}}` | 大写游戏代码 | `COIN_COLLECTOR` |
+| `{{GAME_EMOJI}}` | 游戏 emoji | `🪙` |
+| `{{GAME_SUBTITLE}}` | 副标题 | `开始你的冒险吧！` |
+| `{{GAME_HINTS}}` | 操作提示 JSON 数组 | `["点击屏幕开始","滑动收集金币"]` |
+| `{{GAME_PHASER_CLASS}}` | PhaserGame 类名 | `CoinCollectorPhaserGame` |
+
+### 零改动直接复用的文件
+- `uiResponsive.ts` — 纯缩放工具（720×1280 设计基准）
+- `GameButton.vue` / `ThemeSelector.vue` / `ScorePanel.vue` / `PauseButton.vue` / `DifficultySelector.vue` — 通用 UI
+- `SoundToggle.vue` — inject `phaserGame`，需游戏 provide
+
+### ⚠️ 不再使用 @kids-game/framework 导入组件
+新游戏从模板生成后，UI 组件全部用 `@/components/ui/` 本地导入，不依赖框架包。
+框架包（`@kids-game/framework`）保留为可选的工具库（GameEngine、GTRSLoader 等）。
 
 ### 框架屏幕适配（2026-03-27 更新，参考贪吃蛇方案）
 
@@ -235,101 +259,5 @@ kids-game-framework/src/
 - **音频格式**：统一使用 `.mp3`（同时存在 .wav 时优先用 mp3）
 - **前后端 Schema 同步**：`kids-game-frontend/src/schemas/gtrs-schema.json` 与 `kids-game-backend/.../gtrs-schema.json` 必须同步修改
 - **vue-tsc 兼容**：使用 `npx tsc --noEmit` 而非 `vue-tsc` 进行类型检查（vue-tsc 有版本兼容问题）
-
----
-
-## Framework UI 框架（2026-03-27）
-
-### 新增 UI 组件
-
-通过**配置化 + 模板化**方式，将贪吃蛇 UI 抽象到框架中。
-
-### UI 组件 (`components/ui/`)
-
-| 组件 | 类型 | 说明 |
-|------|------|------|
-| `GameButton.vue` | 组件 | 游戏按钮，支持变体、尺寸、禁用状态 |
-| `ScorePanel.vue` | 组件 | 分数面板，显示当前分/最高分 |
-| `ThemeSelector.vue` | 组件 | 主题选择器，依赖 themeStore |
-| `PauseButton.vue` | 组件 | 暂停按钮（抽象后，emit 事件） |
-| `SoundToggle.vue` | 组件 | 音效开关（抽象后，emit 事件） |
-| `DifficultySelector.vue` | 组件 | 难度选择器（配置化，传入 difficultyConfig） |
-
-### 页面级模板 (`components/views/`)
-
-| 组件 | 类型 | 说明 |
-|------|------|------|
-| `StartView.vue` | 模板 | 开始页面，支持插槽自定义 |
-| `GameOverView.vue` | 模板 | 游戏结束页面，支持插槽自定义 |
-| `LoadingView.vue` | 模板 | 加载页面，配置化步骤 |
-| `GameContainer.vue` | 容器 | 游戏容器，整合所有 UI |
-| `LoadingOverlay.vue` | 组件 | 加载覆盖层 |
-| `ControlsHint.vue` | 组件 | 操作提示 |
-| `ItemEffectsBar.vue` | 组件 | 道具效果栏 |
-
-### UI 类型定义 (`types/ui.types.ts`)
-
-- `ButtonVariant`, `ButtonSize`, `ButtonConfig`
-- `DifficultyLevel`, `DifficultyConfig`
-- `LoadingStep`, `LoadingState`
-- `GameStatus`, `GameResult`
-- `HUDConfig`, `ControlHint`
-- `GameContainerProps`, `GameContainerEmits`
-
-### 使用示例
-
-```vue
-<!-- 游戏使用框架 StartView -->
-<StartView
-  game-name="🐍 贪吃蛇"
-  :high-score="100"
-  @start="handleStart"
->
-  <template #title>
-    <h1>🐍 快乐贪吃蛇</h1>
-  </template>
-</StartView>
-
-<!-- 游戏使用框架 GameContainer -->
-<GameContainer
-  :status="gameStatus"
-  :score="score"
-  :high-score="highScore"
-  :is-paused="isPaused"
-  :item-effects="itemEffects"
-  :loading-steps="loadingSteps"
-  @pause="handlePause"
-  @resume="handleResume"
-  @home="handleHome"
-  @input="handleInput"
->
-  <template #game>
-    <!-- Phaser 游戏画布 -->
-  </template>
-</GameContainer>
-```
-
-### 模板文件 (`templates/`)
-
-| 文件 | 说明 |
-|------|------|
-| `register-game.sql` | 游戏数据库注册 SQL 模板 |
-| `GTRS.json` | GTRS 主题资源规范模板 |
-| `README.md` | 模板使用说明文档 |
-
-### 游戏项目结构规范
-
-```
-games/
-└── my-game/
-    ├── public/themes/default/
-    │   ├── GTRS.json
-    │   ├── audio/
-    │   └── images/
-    ├── src/
-    │   ├── components/game/
-    │   ├── stores/
-    │   ├── views/
-    │   └── main.ts
-    └── register-game.sql
-```
+- **UI 组件来源**：新游戏用 `@/components/ui/` 本地导入，不从 `@kids-game/framework` 导入
+- **UI 缩放**：统一用 `useResponsiveUI()` 的 `getFontSize()`/`getPadding()`/`getGap()` 等方法（设计基准 720×1280）
