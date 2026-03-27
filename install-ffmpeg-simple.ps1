@@ -1,1 +1,0 @@
-﻿Write-Host " FFmpeg Installer\ -ForegroundColor Cyan; ffmpeg -version; if ($LASTEXITCODE -eq 0) { Write-Host \Already installed\ -ForegroundColor Green } else { Write-Host \Not installed\ -ForegroundColor Yellow }
