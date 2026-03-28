@@ -1,0 +1,29 @@
+{
+  "__GAME_ID__": {
+    "title": "__GAME_NAME__",
+    "start": "开始游戏",
+    "pause": "暂停",
+    "resume": "继续",
+    "restart": "重新开始",
+    "back": "返回",
+    "score": "得分",
+    "lives": "生命",
+    "level": "关卡",
+    "difficulty": {
+      "title": "选择难度",
+      "easy": "简单",
+      "normal": "普通",
+      "hard": "困难"
+    },
+    "gameOver": {
+      "title": "游戏结束",
+      "finalScore": "最终得分",
+      "newRecord": "新纪录！"
+    },
+    "tips": {
+      "move": "使用方向键或滑动屏幕移动",
+      "eat": "吃掉食物得分",
+      "avoid": "避免撞墙和自己的身体"
+    }
+  }
+}

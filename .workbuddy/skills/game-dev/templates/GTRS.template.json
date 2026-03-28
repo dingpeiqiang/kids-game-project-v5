@@ -1,0 +1,38 @@
+{
+  "specMeta": {
+    "gameId": "__GAME_ID__",
+    "gameName": "__GAME_NAME__",
+    "version": "1.0.0",
+    "ownerType": "GAME",
+    "ownerId": "__GAME_ID__"
+  },
+  "themeInfo": {
+    "themeName": "默认主题",
+    "themeAuthor": "__AUTHOR__"
+  },
+  "globalStyle": {
+    "primaryColor": "#4CAF50",
+    "secondaryColor": "#8BC34A",
+    "backgroundColor": "#E8F5E9",
+    "textColor": "#2E7D32",
+    "accentColor": "#FF5722",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "scene": {
+        "background": "background.png"
+      },
+      "items": {},
+      "characters": {},
+      "effects": {},
+      "ui": {}
+    },
+    "audio": {
+      "bgm": {
+        "main": "bgm.mp3"
+      },
+      "effect": {}
+    }
+  }
+}
