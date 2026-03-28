@@ -32,6 +32,37 @@ import type { ItemEffectState } from '@/types/game-base.types'
 export type GameEventType = 'eat' | 'crash' | 'gameover' | 'levelup'
 type GameEventCallback = (event: GameEventType, data?: any) => void
 
+/**
+ * 自定义游戏配置（从难度选择页面传入，覆盖 DIFFICULTY_CONFIGS 默认值）
+ * null 表示使用难度预设
+ */
+export interface CustomGameConfig {
+  /** 蛇初始长度（覆盖难度预设） */
+  initialLength?: number
+  /** 移动速度 px/s（覆盖难度预设） */
+  speed?: number
+  /** 单元格大小 px（覆盖自动计算） */
+  cellSize?: number
+  /** 普通食物分数 */
+  normalFoodScore?: number
+  /** 奖励食物分数 */
+  bonusFoodScore?: number
+  /** 特殊食物分数 */
+  specialFoodScore?: number
+  /** 是否启用动态难度 */
+  enableDynamicDifficulty?: boolean
+  /** 是否开启粒子效果 */
+  enableParticles?: boolean
+  /** 是否在失焦时自动暂停 */
+  autoPauseOnBlur?: boolean
+  /** BGM 音量 0-1 */
+  bgmVolume?: number
+  /** SFX 音量 0-1 */
+  sfxVolume?: number
+  /** 静音 */
+  muted?: boolean
+}
+
 export const useGameStore = defineStore('game', () => {
   // ─── 通用游戏状态 ───
   const isPlaying = ref(false)
@@ -41,6 +72,14 @@ export const useGameStore = defineStore('game', () => {
   const highScore = ref(0)
   const playCount = ref(0)
   const difficulty = ref<Difficulty>('medium')
+
+  // ─── 自定义游戏配置（难度选择页面设置后传入） ───
+  const customConfig = ref<CustomGameConfig | null>(null)
+
+  /** 设置自定义游戏配置 */
+  const setCustomConfig = (cfg: CustomGameConfig | null) => {
+    customConfig.value = cfg
+  }
 
   // ─── 独立部署模式相关（通用） ───
   const standaloneMode = ref(isStandaloneMode())
@@ -366,7 +405,9 @@ export const useGameStore = defineStore('game', () => {
     direction.value = { ...nextDirection.value }
     
     // 🎁 应用道具速度倍率（加速/减速道具）
-    const effectiveSpeed = currentConfig.value.speed * itemEffects.value.speedMultiplier
+    // ⭐ 优先使用 customConfig.speed，否则取难度预设
+    const baseSpeed = customConfig.value?.speed ?? currentConfig.value.speed
+    const effectiveSpeed = baseSpeed * itemEffects.value.speedMultiplier
     
     // 👉 计算新头部位置
     const newHead = { ...snake.value[0] }
@@ -521,14 +562,16 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * 生成食物（贪吃蛇特定）
-   * 其他游戏可以替换为自己的物品生成逻辑
+   * ⭐ 优化前：生成食物（贪吃蛇特定）
+   * ⭐ 优化后：生成可收集物品（通用化，支持更多游戏类型）
+   * 
+   * @param cellSize - 单元格大小
    */
   const generateFood = (cellSize: number = 50) => {
     // 👉 横屏配置：32 列 × 18 行
     const gridCols = 32
     const gridRows = 18
-    let newFood: Position
+    let newPosition: Position
     
     // 👉 关键优化：限制最大尝试次数（防止蛇很长时无限循环）
     const maxAttempts = 50
@@ -538,7 +581,7 @@ export const useGameStore = defineStore('game', () => {
       // 👉 生成网格坐标，然后转换为像素坐标（中心点）
       const gridX = Math.floor(Math.random() * gridCols)
       const gridY = Math.floor(Math.random() * gridRows)
-      newFood = {
+      newPosition = {
         x: gridX * cellSize + cellSize / 2,  // 网格格中心
         y: gridY * cellSize + cellSize / 2
       }
@@ -550,38 +593,44 @@ export const useGameStore = defineStore('game', () => {
     } while (
       snake.value.some(segment => {
         // 👉 性能优化：使用平方距离，避免 Math.sqrt()
-        const dx = segment.x - newFood!.x
-        const dy = segment.y - newFood!.y
+        const dx = segment.x - newPosition!.x
+        const dy = segment.y - newPosition!.y
         const distSq = dx * dx + dy * dy
         return distSq < (cellSize * 0.8) ** 2  // 安全距离的平方
       }) ||
       obstacles.value.some(obs => {
-        const dx = obs.x - newFood!.x
-        const dy = obs.y - newFood!.y
+        const dx = obs.x - newPosition!.x
+        const dy = obs.y - newPosition!.y
         const distSq = dx * dx + dy * dy
         return distSq < (cellSize * 0.8) ** 2
       })
     )
 
-    // 根据概率生成不同类型的食物
+    // ⭐ 根据概率生成不同类型的物品（通用化，支持更多游戏类型）
     const rand = Math.random()
     let type: 'apple' | 'banana' | 'cherry' | 'coin' = 'apple'
     if (rand < 0.05) type = 'coin'        // 5% 概率
     else if (rand < 0.15) type = 'banana'  // 10% 概率
     else if (rand < 0.30) type = 'cherry'  // 15% 概率
 
-    const foodData = {
-      apple: { score: 10, color: '#ef4444' },
-      banana: { score: 20, color: '#fbbf24' },
-      cherry: { score: 30, color: '#fbbf24' },
-      coin: { score: 50, color: '#3b82f6' }
+    // ⭐ 优先使用 customConfig 的分数配置，否则使用默认值
+    const normalScore  = customConfig.value?.normalFoodScore  ?? 10
+    const bonusScore   = customConfig.value?.bonusFoodScore   ?? 50
+    const specialScore = customConfig.value?.specialFoodScore ?? 100
+
+    const itemData = {
+      apple:  { score: normalScore,  color: '#ef4444' },
+      banana: { score: bonusScore,   color: '#fbbf24' },
+      cherry: { score: Math.round((normalScore + bonusScore) / 2), color: '#fbbf24' },
+      coin:   { score: specialScore, color: '#3b82f6' }
     }
 
+    // ⭐ 更新食物对象（保持向后兼容，但内部称为"物品"）
     food.value = {
-      position: newFood,
+      position: newPosition,
       type,
-      score: foodData[type].score,
-      color: foodData[type].color
+      score: itemData[type].score,
+      color: itemData[type].color
     }
   }
 
@@ -630,12 +679,16 @@ export const useGameStore = defineStore('game', () => {
   // 开始游戏时初始化（贪吃蛇特定）
   const startGameWithInit = (cellSize: number = 50) => {
     startGame()
-    // 初始位置：每个网格的中心点
-    snake.value = [
-      { x: 16 * cellSize + cellSize/2, y: 9 * cellSize + cellSize/2 },  // 蛇头（中间）
-      { x: 15 * cellSize + cellSize/2, y: 9 * cellSize + cellSize/2 },  // 第二节
-      { x: 14 * cellSize + cellSize/2, y: 9 * cellSize + cellSize/2 }   // 第三节
-    ]
+    
+    // 优先用自定义配置的初始长度，否则取难度预设
+    const initLen = customConfig.value?.initialLength ?? currentConfig.value.initialLength ?? 3
+    
+    // 初始位置：每个网格的中心点，按 initialLength 生成
+    const head = { x: 16 * cellSize + cellSize/2, y: 9 * cellSize + cellSize/2 }
+    snake.value = Array.from({ length: Math.max(3, initLen) }, (_, i) => ({
+      x: (16 - i) * cellSize + cellSize/2,
+      y: 9 * cellSize + cellSize/2
+    }))
     direction.value = { x: 1, y: 0 }
     nextDirection.value = { x: 1, y: 0 }
     particles.value = []
@@ -736,6 +789,9 @@ export const useGameStore = defineStore('game', () => {
     sessionToken,
     gameId,
     gameStartTime,
+    // ─── 自定义配置 ───
+    customConfig,
+    setCustomConfig,
     // ─── 贪吃蛇特定数据 ───
     snake,
     food,

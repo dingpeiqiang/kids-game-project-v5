@@ -182,9 +182,9 @@ const changeDifficulty = () => {
 
 // 播放结束音效
 onMounted(() => {
-  // ⭐ 初始化 UI 参数，确保与 StartView 计算逻辑一致
+  // 初始化 UI 参数（useResponsiveUI 已自动注册全局 resize 监听）
   initUIParams(window.innerWidth, window.innerHeight)
-  console.log('GameOverView mounted, UI scale:', ui.uiScale)
+  console.log('GameOverView mounted, UI scale:', ui.uiScale.value)
   
   audioStore.playDieSound()
   // 游戏结束时停止 BGM

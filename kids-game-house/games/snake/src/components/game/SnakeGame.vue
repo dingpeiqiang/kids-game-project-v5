@@ -276,15 +276,15 @@ async function handleRetry() {
     phaserGameRef.value.setItemEffectCallback((type: string) => {
       gameStore.applyItemEffect(type)
     })
-    gameStore.resetGame()
-    gameStore.startGame()
-    gameStore.generateFood()
 
     // 获取主题 ID
     const themeId = route.query.theme_id as string
 
     try {
       await phaserGameRef.value.start(settingsStore.difficulty, themeId)
+      const autoCellSize = phaserGameRef.value.getCellSize()
+      const cellSize = gameStore.customConfig?.cellSize ?? autoCellSize
+      gameStore.startGameWithInit(cellSize)
       startGameLoop()
     } catch (err) {
       const error = err as Error
@@ -298,23 +298,16 @@ async function handleRetry() {
 }
 
 /**
- * 窗口大小变化处理
+ * 窗口大小变化处理（Phaser 侧，不含 UI 部分——UI 已由 uiResponsive 全局统一处理）
  */
-const handleResize = () => {
-  initUIParams(window.innerWidth, window.innerHeight)
-  console.log('🔄 游戏页面 resize, UI scale:', window.innerWidth, window.innerHeight)
-}
 
 /**
  * 初始化游戏
  */
 onMounted(async () => {
-  // ⭐ 初始化 UI 参数（确保与其他页面一致）
+  // 初始化 UI 参数（useResponsiveUI 已自动注册全局 resize 监听）
   initUIParams(window.innerWidth, window.innerHeight)
   console.log('🎮 游戏页面加载，UI scale:', window.innerWidth, window.innerHeight)
-  
-  // 监听窗口大小变化
-  window.addEventListener('resize', handleResize)
   
   if (gameContainer.value) {
     // ⭐ 先执行资源检测和缓存加载
@@ -342,13 +335,13 @@ onMounted(async () => {
       console.log('[SnakeGame] ✅ 游戏资源已就绪，开始游戏循环')
       
       // 👉 获取 cellSize 并初始化游戏数据
-      const cellSize = phaserGameRef.value.getCellSize()
-      console.log('📏 获取 cellSize:', cellSize.toFixed(2))
+      // ⭐ 如果 customConfig 指定了 cellSize，优先使用（否则用 Phaser 自动计算值）
+      const autoCellSize = phaserGameRef.value.getCellSize()
+      const cellSize = gameStore.customConfig?.cellSize ?? autoCellSize
+      console.log('📏 cellSize:', cellSize.toFixed(2), gameStore.customConfig?.cellSize ? '(自定义)' : '(自动计算)')
       
-      // 使用 cellSize 初始化游戏状态
-      gameStore.resetGame(cellSize)
-      gameStore.startGame()
-      gameStore.generateFood(cellSize)
+      // ⭐ 使用 startGameWithInit 初始化：会读取 customConfig 的 initialLength
+      gameStore.startGameWithInit(cellSize)
       
       startGameLoop()
     } catch (err) {
@@ -512,9 +505,6 @@ const cleanupGame = () => {
  * 组件卸载时清理资源
  */
 onUnmounted(() => {
-  // 移除 resize 监听
-  window.removeEventListener('resize', handleResize)
-  
   // 清理游戏循环和资源
   cleanupGame()
   

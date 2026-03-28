@@ -147,7 +147,8 @@ export async function reportGameResult(request: GameReportRequest): Promise<{
       }
     )
     
-    if (response.data.code === 0) {
+    // ⭐ 支持多种成功状态码：0（传统）或 200（HTTP 标准）
+    if (response.data.code === 0 || response.data.code === 200) {
       console.log('✅ 成绩上报成功:', response.data.data)
       return {
         success: true,

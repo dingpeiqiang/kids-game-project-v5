@@ -60,6 +60,12 @@
       <p>💡 键盘方向键 / WASD 控制方向</p>
       <p>📱 手机滑动屏幕控制方向</p>
     </div>
+
+    <!-- 游戏配置弹窗 -->
+    <GameConfigModal
+      v-model="showConfigModal"
+      @apply="handleConfigApply"
+    />
   </div>
 </template>
 
@@ -74,7 +80,8 @@ import { useResponsiveUI, initUIParams } from '@/utils/uiResponsive'
 import GameButton from '@/components/ui/GameButton.vue'
 import SoundToggle from '@/components/ui/SoundToggle.vue'
 import ThemeSelector from '@/components/ui/ThemeSelector.vue'
-import { SnakePhaserGame } from '@/components/game/PhaserGame'
+import GameConfigModal from '@/components/ui/GameConfigModal.vue'
+import { ComponentGameScene } from '@/scenes/ComponentGameScene'
 
 const router = useRouter()
 const gameStore = useGameStore()
@@ -82,8 +89,8 @@ const themeStore = useThemeStore()
 const audioStore = useAudioStore()  // ⭐ 初始化 audioStore
 const ui = useResponsiveUI()
 
-// PhaserGame 实例（用于播放主菜单音乐）
-let phaserGameInstance: SnakePhaserGame | null = null
+// ComponentGameScene 实例（用于播放主菜单音乐）
+let gameSceneInstance: ComponentGameScene | null = null
 
 // ⭐ 检查中状态
 const isChecking = ref(false)
@@ -96,6 +103,9 @@ const statusText = ref('准备检测...')
 const retryCount = ref(0)
 const maxRetryCount = 3
 const lastCheckThemeId = ref<string | null>(null)
+
+// ⭐ 游戏配置弹窗
+const showConfigModal = ref(false)
 
 const highScore = computed(() => gameStore.highScore)
 const playCount = computed(() => gameStore.playCount)
@@ -384,19 +394,16 @@ const startGame = async () => {
 }
 
 onMounted(() => {
-  // ⭐ 首次加载时初始化 UI 参数
+  // 初始化 UI 参数（useResponsiveUI 已自动注册全局 resize 监听，无需手动添加）
   initUIParams(window.innerWidth, window.innerHeight)
-  console.log('StartView mounted, UI scale:', ui.uiScale)
-
-  // 监听窗口大小变化，实时更新 UI 参数
-  window.addEventListener('resize', handleResize)
+  console.log('StartView mounted, UI scale:', ui.uiScale.value)
 
   // ⭐ 初始化一个隐藏的 PhaserGame 实例用于播放主菜单背景音乐
   initMainMenuBGM()
 })
 
 /**
- * ⭐ 初始化主菜单背景音乐（创建隐藏的 PhaserGame 实例）
+ * ⭐ 初始化主菜单背景音乐（创建隐藏的 ComponentGameScene 实例）
  */
 const initMainMenuBGM = async () => {
   try {
@@ -406,26 +413,34 @@ const initMainMenuBGM = async () => {
       return
     }
 
-    // 创建一个隐藏的容器来初始化 PhaserGame
+    // 尝试加载保存的用户配置
+    let userConfig = {}
+    try {
+      const savedConfig = localStorage.getItem('snake_game_config')
+      if (savedConfig) {
+        userConfig = JSON.parse(savedConfig)
+        console.log('📥 加载用户配置:', userConfig)
+      }
+    } catch (error) {
+      console.warn('⚠️ 加载用户配置失败，使用默认配置', error)
+    }
+
+    // 创建一个隐藏的容器来初始化 ComponentGameScene
     const container = document.createElement('div')
     container.style.display = 'none'
     document.body.appendChild(container)
 
-    // 初始化 PhaserGame 实例
-    phaserGameInstance = new SnakePhaserGame(container)
+    // 初始化 ComponentGameScene 实例（使用用户配置）
+    gameSceneInstance = new ComponentGameScene(container, {
+      difficulty: 'easy',
+      enableDynamicDifficulty: false,
+      ...userConfig
+    })
     
-    // 加载主题并播放主菜单音乐
-    await phaserGameInstance.start('easy', themeId)
+    // 启动游戏（仅用于播放音乐）
+    await gameSceneInstance.start({ themeId, ...userConfig })
     
-    // 播放主菜单背景音乐
-    setTimeout(() => {
-      if (phaserGameInstance) {
-        phaserGameInstance.playBgmMain()
-        console.log('🎵 主菜单：开始播放 BGM_Main')
-      }
-    }, 500)
-
-    console.log('✅ 主菜单：BGM 初始化完成')
+    console.log('✅ 主菜单：BGM 初始化完成（使用新组件化架构 + 用户配置）')
   } catch (error) {
     console.warn('⚠️ 主菜单：BGM 初始化失败', error)
   }
@@ -435,26 +450,82 @@ const initMainMenuBGM = async () => {
  * ⭐ 清理主菜单 BGM 资源
  */
 const cleanupMainMenuBGM = () => {
-  if (phaserGameInstance) {
-    phaserGameInstance.stopAllBgm()
-    phaserGameInstance.destroy()
-    phaserGameInstance = null
-    console.log('🧹 主菜单：BGM 资源已清理')
+  if (gameSceneInstance) {
+    gameSceneInstance.stop()
+    gameSceneInstance = null
+    console.log('🧹 主菜单：BGM 资源已清理（组件化架构）')
   }
 }
 
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
+/**
+ * ⭐ 处理游戏配置应用
+ */
+const handleConfigApply = (config: any) => {
+  console.log('⚙️ 应用游戏配置:', config)
   
+  try {
+    // 验证配置数据
+    const validatedConfig = validateGameConfig(config)
+    
+    // 保存配置到 localStorage
+    localStorage.setItem('snake_game_config', JSON.stringify(validatedConfig))
+    
+    console.log('✅ 配置已保存到 localStorage')
+    
+    // 如果当前有正在运行的游戏实例，提示用户重启游戏
+    if (gameSceneInstance) {
+      alert('✅ 配置已保存！\n\n由于配置变更涉及游戏核心参数，需要重新开始游戏才能生效。\n\n点击“确定”返回主菜单。')
+    } else {
+      alert('✅ 配置已保存！下次启动游戏时生效。')
+    }
+  } catch (error) {
+    console.error('❌ 配置保存失败:', error)
+    alert('❌ 配置保存失败，请重试')
+  }
+}
+
+/**
+ * ⭐ 验证游戏配置数据
+ */
+const validateGameConfig = (config: any): any => {
+  const validated: any = {
+    difficulty: config.difficulty,
+    initialLength: clamp(config.initialLength, 3, 10),
+    speed: clamp(config.speed, 100, 500),
+    cellSize: clamp(config.cellSize, 30, 60),
+    normalFoodScore: clamp(config.normalFoodScore, 1, 100),
+    bonusFoodScore: clamp(config.bonusFoodScore, 10, 200),
+    specialFoodScore: clamp(config.specialFoodScore, 50, 500),
+    enableDynamicDifficulty: Boolean(config.enableDynamicDifficulty),
+    autoPauseOnBlur: Boolean(config.autoPauseOnBlur),
+    enableParticles: Boolean(config.enableParticles),
+    components: config.components?.map((c: any) => ({
+      id: c.id,
+      enabled: Boolean(c.enabled)
+    })) || []
+  }
+  
+  // 验证难度级别
+  const validDifficulties = ['easy', 'normal', 'hard', 'extreme']
+  if (!validDifficulties.includes(validated.difficulty)) {
+    validated.difficulty = 'normal'
+  }
+  
+  return validated
+}
+
+/**
+ * ⭐ 辅助函数：限制数值范围
+ */
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(Math.max(value, min), max)
+}
+
+onUnmounted(() => {
   // ⭐ 清理主菜单 BGM 资源
   cleanupMainMenuBGM()
 })
 
-// 窗口大小变化时更新 UI 参数
-const handleResize = () => {
-  initUIParams(window.innerWidth, window.innerHeight)
-  console.log('🔄 窗口 resize, UI scale:', ui.uiScale)
-}
 </script>
 
 <style scoped>

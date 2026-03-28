@@ -1,32 +1,45 @@
 <template>
-  <div class="flex flex-col w-full" :style="containerStyle">
+  <div class="diff-grid" :style="gridStyle">
     <div
       v-for="diff in difficulties"
       :key="diff.name"
       @click="selectDifficulty(diff.name)"
-      :class="[
-        'cursor-pointer btn-bounce transition-all border-2 select-none',
-        selected === diff.name
-          ? 'border-green-400 bg-green-400/20 scale-[1.02] shadow-lg shadow-green-400/30'
-          : 'border-gray-600 bg-gray-700/50 hover:border-gray-500 hover:bg-gray-700/70'
-      ]"
-      :style="cardStyle"
+      class="diff-card select-none cursor-pointer"
+      :class="{ 'diff-card--selected': selected === diff.name }"
+      :style="[cardBaseStyle, selected === diff.name ? getSelectedBorderStyle(diff.color) : {}]"
     >
-      <div class="flex justify-between items-start gap-3">
-        <div class="flex-1 min-w-0">
-          <h3 class="font-bold truncate" :style="{ ...nameStyle, color: diff.color }">
+      <!-- 选中光晕背景 -->
+      <div
+        v-if="selected === diff.name"
+        class="diff-card__glow"
+        :style="{ background: `radial-gradient(ellipse at top left, ${diff.color}22 0%, transparent 70%)` }"
+      />
+
+      <!-- 卡片头部：emoji + 名称 + 勾选 -->
+      <div class="diff-card__header flex items-center justify-between gap-2 mb-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <!-- 难度色标 -->
+          <span class="diff-badge flex-shrink-0" :style="{ background: diff.color, boxShadow: `0 2px 8px ${diff.color}66` }"></span>
+          <span class="font-bold truncate" :style="{ fontSize: nameStyle.fontSize, color: diff.color }">
             {{ diff.nameCN }}
-          </h3>
-          <p class="text-gray-400 mt-1 line-clamp-1" :style="descriptionStyle">{{ diff.description }}</p>
-          <div class="flex flex-wrap gap-1 md:gap-2 text-gray-300" :style="paramsStyle">
-            <span class="text-xs md:text-sm">⚡ 速度：{{ getSpeedLabel(diff.speed) }}</span>
-            <span class="text-xs md:text-sm">💰 倍率：x{{ diff.scoreMultiplier }}</span>
-            <span class="text-xs md:text-sm">🎁 奖励：{{ Math.round(diff.rareFoodChance * 100) }}%</span>
-          </div>
+          </span>
         </div>
-        <div class="ml-2 flex-shrink-0" :style="iconStyle">
+        <!-- 选中图标 -->
+        <span class="diff-check flex-shrink-0" :style="{ fontSize: checkStyle.fontSize }">
           {{ selected === diff.name ? '✅' : '⭕' }}
-        </div>
+        </span>
+      </div>
+
+      <!-- 描述 -->
+      <p class="text-gray-400 leading-tight mb-2 line-clamp-2" :style="descStyle">
+        {{ diff.description }}
+      </p>
+
+      <!-- 参数行 -->
+      <div class="diff-params flex flex-wrap gap-x-3 gap-y-1" :style="paramStyle">
+        <span class="param-tag">⚡ {{ getSpeedLabel(diff.speed) }}</span>
+        <span class="param-tag">💰 x{{ diff.scoreMultiplier }}</span>
+        <span class="param-tag">🎁 {{ Math.round(diff.rareFoodChance * 100) }}%</span>
       </div>
     </div>
   </div>
@@ -40,7 +53,7 @@ import { useAudioStore } from '@/stores/audio'
 
 const props = defineProps<{
   modelValue: Difficulty
-  uiScale?: number  // ⭐ 支持从父组件传入 uiScale（可选）
+  uiScale?: number
 }>()
 
 const emit = defineEmits<{
@@ -52,35 +65,39 @@ const ui = useResponsiveUI()
 const difficulties = Object.values(DIFFICULTY_CONFIGS)
 const selected = computed(() => props.modelValue)
 
-// 动态样式计算
-const containerStyle = computed(() => ({
-  gap: ui.getGap(21.12)  // 🎨 再放大 20% (17.6 * 1.2)
+// ===== 样式 =====
+
+const gridStyle = computed(() => ({
+  gap: ui.getGap(12 * 1.3),  // ⭐ 放大 30%
 }))
 
-const cardStyle = computed(() => ({
-  padding: ui.getPadding(21.12),  // 🎨 再放大 20% (17.6 * 1.2)
-  borderRadius: ui.getBorderRadius(15.84),  // 🎨 再放大 20% (13.2 * 1.2)
-  // ⭐ 如果传入了 uiScale，使用传入的值覆盖（用于特殊场景）
-  transform: props.uiScale ? `scale(${props.uiScale})` : undefined
+const cardBaseStyle = computed(() => ({
+  padding: ui.getPadding(18 * 1.3),  // ⭐ 放大 30%
+  borderRadius: ui.getBorderRadius(16 * 1.3),  // ⭐ 放大 30%
 }))
+
+const getSelectedBorderStyle = (color: string) => ({
+  border: `2px solid ${color}`,
+  boxShadow: `0 4px 20px ${color}33`,
+})
 
 const nameStyle = computed(() => ({
-  fontSize: ui.getFontSize(31.68)  // 🎨 再放大 20% (26.4 * 1.2)
+  fontSize: ui.getFontSize(28 * 1.3),  // ⭐ 放大 30%
 }))
 
-const descriptionStyle = computed(() => ({
-  fontSize: ui.getFontSize(22.18)  // 🎨 再放大 20% (18.48 * 1.2)
+const checkStyle = computed(() => ({
+  fontSize: ui.getFontSize(28 * 1.3),  // ⭐ 放大 30%
 }))
 
-const iconStyle = computed(() => ({
-  fontSize: ui.getFontSize(44.35)  // 🎨 再放大 20% (36.96 * 1.2)
+const descStyle = computed(() => ({
+  fontSize: ui.getFontSize(17 * 1.3),  // ⭐ 放大 30%
 }))
 
-const paramsStyle = computed(() => ({
-  marginTop: ui.getGap(12.67),  // 🎨 再放大 20% (10.56 * 1.2)
-  gap: ui.getGap(12.67),  // 🎨 再放大 20% (10.56 * 1.2)
-  fontSize: ui.getFontSize(19.01)  // 🎨 再放大 20% (15.84 * 1.2)
+const paramStyle = computed(() => ({
+  fontSize: ui.getFontSize(16 * 1.3),  // ⭐ 放大 30%
 }))
+
+// ===== 交互 =====
 
 const selectDifficulty = (diff: Difficulty) => {
   audioStore.playClickSound()
@@ -95,9 +112,77 @@ const getSpeedLabel = (speed: number) => {
 </script>
 
 <style scoped>
-.line-clamp-1 {
+/* 卡片网格：移动端单列，宽屏双列 */
+.diff-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .diff-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 基础卡片 */
+.diff-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(31, 41, 55, 0.6);
+  border: 2px solid rgba(75, 85, 99, 0.5);
+  transition: all 0.22s ease;
+}
+
+.diff-card:hover {
+  background: rgba(31, 41, 55, 0.85);
+  border-color: rgba(107, 114, 128, 0.7);
+  transform: translateY(-1px);
+}
+
+.diff-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 选中状态 */
+.diff-card--selected {
+  background: rgba(31, 41, 55, 0.9) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* 光晕背景层 */
+.diff-card__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.diff-card__header,
+.diff-card p,
+.diff-params {
+  position: relative;
+  z-index: 1;
+}
+
+/* 难度色标圆点 */
+.diff-badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 参数标签 */
+.param-tag {
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+/* 文字行数限制 */
+.line-clamp-2 {
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

@@ -1592,9 +1592,17 @@ export class SnakePhaserGame {
       const audio = new Audio(src)
       audio.loop = loop
       audio.volume = Math.max(0, Math.min(1, volume))
+      
+      // ⭐ 优雅处理播放中断（常见于场景切换时）
       audio.play().catch(err => {
-        console.warn('[GTRS] ⚠️ 音频播放失败:', err, 'src:', src)
+        // AbortError 是浏览器正常的行为，不需要警告
+        if (err.name === 'AbortError') {
+          console.debug('[GTRS] 🎵 音频播放被中断（正常）:', src)
+        } else {
+          console.warn('[GTRS] ⚠️ 音频播放失败:', err, 'src:', src)
+        }
       })
+      
       return audio
     } catch (err) {
       console.error('[GTRS] ❌ 创建音频对象失败:', err)

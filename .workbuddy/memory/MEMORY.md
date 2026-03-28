@@ -163,9 +163,22 @@ npm install && npm run dev
 ### ⚠️ 关键约束：Pinia useGameStore() 必须在 Vue 组件 setup 上下文中调用，不能在 Phaser class 内部调用（用回调注入模式替代）
 
 ### 关键文件
-- `src/stores/game.ts` - 道具效果状态中心
+- `src/stores/game.ts` - 道具效果状态中心；⭐ 新增 `customConfig` + `setCustomConfig()`（2026-03-28）
 - `src/components/game/PhaserGame.ts` - 收集回调委托给 store
 - `src/components/game/SnakeGame.vue` - 道具效果 UI 显示
+
+### 自定义配置系统（2026-03-28）
+
+**设计**：`CustomGameConfig` 存在 `gameStore.customConfig`，`DifficultyView.vue` 在进入游戏前写入，游戏核心读取时优先使用。
+
+**生效的参数**：`speed`（移动速度）、`initialLength`（初始蛇长）、`cellSize`（格子大小）、`normalFoodScore/bonusFoodScore/specialFoodScore`（分数）、`enableDynamicDifficulty/enableParticles/autoPauseOnBlur/bgmVolume/sfxVolume/muted`
+
+**优先级规则（每个参数）**：`customConfig > DIFFICULTY_CONFIGS[difficulty]`
+
+**关键设计决策**：
+- 废弃 sessionStorage 中转方案，改为 Pinia store 直接传递（实时响应式，无序列化开销）
+- `startGameWithInit(cellSize)` 替代 `resetGame + startGame + generateFood` 三步调用
+- `selectedDifficulty` 初始值从 `gameStore.difficulty` 同步（防止每次进入难度页面都重置）
 
 ### 框架 UI 对齐（2026-03-27）
 
@@ -261,3 +274,7 @@ kids-game-framework/src/
 - **vue-tsc 兼容**：使用 `npx tsc --noEmit` 而非 `vue-tsc` 进行类型检查（vue-tsc 有版本兼容问题）
 - **UI 组件来源**：新游戏用 `@/components/ui/` 本地导入，不从 `@kids-game/framework` 导入
 - **UI 缩放**：统一用 `useResponsiveUI()` 的 `getFontSize()`/`getPadding()`/`getGap()` 等方法（设计基准 720×1280）
+  - ⭐ **响应式方案（2026-03-28 更新）**：`uiScaleRef` 是 Vue `computed ref`，在组件 `computed` 内调用工具函数会自动建立响应式依赖，resize 后自动重新计算
+  - `ui.uiScale` 现在是 `ComputedRef<number>`，读取用 `ui.uiScale.value`
+  - 全局 resize 监听由 `_ensureResizeListener()` 统一注册（只注册一次），**各视图不再需要手动 addEventListener/removeEventListener**
+  - `GameButton` 的 `fontSize`/`paddingLeft` 等 props 期望**原始设计尺寸数字**（如 `:fontSize="26"`），内部自行缩放，**不要传 `ui.getFontSize()` 的返回值**

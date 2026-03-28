@@ -1,167 +1,120 @@
 /**
  * UI 自适应工具 - 基于屏幕尺寸独立计算最优 UI 参数
- * 商业级方案：UI 与游戏画面各自保持最佳显示，非简单等比缩放
+ *
+ * ✅ 响应式方案：uiScale 使用 Vue ref，所有依赖它的 computed 会在 resize 后自动更新。
+ * ✅ 全局单例：模块级 ref，所有组件共享同一份响应式状态。
+ * ✅ 统一 resize 监听：useResponsiveUI() 首次调用时注册 window.resize 监听，无需在每个视图手动处理。
  */
 
-// UI 设计基准（对应设计稿标准）
-const UI_DESIGN_WIDTH = 720    // UI 设计宽度
-const UI_DESIGN_HEIGHT = 1280  // UI 设计高度
+import { ref, computed, onUnmounted } from 'vue'
 
-// 当前屏幕参数
-let screenWidth = 0
-let screenHeight = 0
-let uiScale = 1
+// ── 设计基准 ──────────────────────────────────────────────────────────────────
+const UI_DESIGN_WIDTH  = 720   // 设计稿宽度（px）
+const UI_DESIGN_HEIGHT = 1280  // 设计稿高度（px）
 
+// ── 全局响应式状态（模块级单例，所有组件共享） ────────────────────────────────
+const _screenW = ref(typeof window !== 'undefined' ? window.innerWidth  : UI_DESIGN_WIDTH)
+const _screenH = ref(typeof window !== 'undefined' ? window.innerHeight : UI_DESIGN_HEIGHT)
+
+/** 当前 UI 缩放比（响应式），其他 computed 依赖此值即可自动更新 */
+export const uiScaleRef = computed(() => {
+  const raw = Math.min(_screenW.value / UI_DESIGN_WIDTH, _screenH.value / UI_DESIGN_HEIGHT)
+  return Math.max(0.65, Math.min(raw, 1.5))
+})
+
+// ── 全局 resize 监听（只注册一次） ───────────────────────────────────────────
+let _resizeRegistered = false
+
+function _ensureResizeListener() {
+  if (_resizeRegistered || typeof window === 'undefined') return
+  _resizeRegistered = true
+  window.addEventListener('resize', _handleResize, { passive: true })
+}
+
+function _handleResize() {
+  _screenW.value = window.innerWidth
+  _screenH.value = window.innerHeight
+  _applyGlobalFontSize()
+  console.log('🔄 屏幕 resize:', `${_screenW.value} × ${_screenH.value}`, '→ uiScale:', uiScaleRef.value.toFixed(3))
+}
+
+// ── 全局字体大小同步 ──────────────────────────────────────────────────────────
+function _applyGlobalFontSize() {
+  if (typeof document === 'undefined') return
+  document.documentElement.style.fontSize = `${16 * uiScaleRef.value}px`
+}
+
+// ── 公开初始化函数（兼容旧调用，仍可手动触发） ───────────────────────────────
 /**
- * 初始化 UI 参数（基于屏幕尺寸独立计算）
- * @param screenW - 屏幕宽度
- * @param screenH - 屏幕高度
+ * 初始化 / 手动刷新 UI 参数。
+ * 直接调用即可，内部自动更新响应式 ref，所有依赖 computed 会重新计算。
  */
-export function initUIParams(screenW: number, screenH: number): void {
-  screenWidth = screenW
-  screenHeight = screenH
-  
-  // 计算 UI 缩放比（基于屏幕尺寸，而非 cellSize）
-  // 保证 UI 在不同屏幕上都是最优显示
-  const rawScale = Math.min(
-    screenW / UI_DESIGN_WIDTH,
-    screenH / UI_DESIGN_HEIGHT
-  )
-  
-  // 增加最小/最大阈值保护
-  // 最小缩放 0.65（防止在非常小的屏幕上UI过小）
-  // 最大缩放 1.5（防止在超大屏幕上UI过大）
-  uiScale = Math.max(0.65, Math.min(rawScale, 1.5))
-  
-  // 应用全局字体大小到 root
-  applyGlobalFontSize()
-  
+export function initUIParams(screenW?: number, screenH?: number): void {
+  if (screenW !== undefined) _screenW.value = screenW
+  if (screenH !== undefined) _screenH.value = screenH
+  _applyGlobalFontSize()
+  _ensureResizeListener()
   console.log('🎨 UI 参数初始化:', {
-    screen: `${screenW} × ${screenH}`,
-    uiScale: uiScale.toFixed(3)
+    screen: `${_screenW.value} × ${_screenH.value}`,
+    uiScale: uiScaleRef.value.toFixed(3)
   })
 }
 
-/**
- * 更新 UI 参数（resize 时重新计算）
- */
+/** @deprecated 同 initUIParams，保留兼容 */
 export function updateUIParams(screenW: number, screenH: number): void {
   initUIParams(screenW, screenH)
 }
 
-/**
- * 获取动态字体大小
- * @param baseSize - 基础字体大小（px）
- * @returns 缩放后的字体大小
- */
-export function getFontSize(baseSize: number = 16): string {
-  return `${baseSize * uiScale}px`
-}
+// ── 纯函数工具（基于当前 uiScale 计算，供模板外调用） ─────────────────────────
+// 注意：在 Vue computed 内部调用这些函数时，因为它们读取了 uiScaleRef.value，
+// computed 会自动建立响应式依赖，resize 后自动重新计算。
 
-/**
- * 获取动态内边距
- * @param basePadding - 基础内边距（px）
- * @returns 缩放后的内边距
- */
-export function getPadding(basePadding: number = 16): string {
-  return `${basePadding * uiScale}px`
-}
+export function getFontSize(base = 16)      : string { return `${base * uiScaleRef.value}px` }
+export function getPadding(base = 16)       : string { return `${base * uiScaleRef.value}px` }
+export function getGap(base = 12)           : string { return `${base * uiScaleRef.value}px` }
+export function getWidth(base: number)      : string { return `${base * uiScaleRef.value}px` }
+export function getHeight(base: number)     : string { return `${base * uiScaleRef.value}px` }
+export function getBorderRadius(base = 8)   : string { return `${base * uiScaleRef.value}px` }
+export function getIconSize(base = 24)      : string { return `${base * uiScaleRef.value}px` }
 
-/**
- * 获取动态间距
- * @param baseGap - 基础间距（px）
- * @returns 缩放后的间距
- */
-export function getGap(baseGap: number = 12): string {
-  return `${baseGap * uiScale}px`
-}
-
-/**
- * 获取动态宽度
- * @param baseWidth - 基础宽度（px）
- * @returns 缩放后的宽度
- */
-export function getWidth(baseWidth: number): string {
-  return `${baseWidth * uiScale}px`
-}
-
-/**
- * 获取动态高度
- * @param baseHeight - 基础高度（px）
- * @returns 缩放后的高度
- */
-export function getHeight(baseHeight: number): string {
-  return `${baseHeight * uiScale}px`
-}
-
-/**
- * 获取动态圆角
- * @param baseRadius - 基础圆角（px）
- * @returns 缩放后的圆角
- */
-export function getBorderRadius(baseRadius: number = 8): string {
-  return `${baseRadius * uiScale}px`
-}
-
-/**
- * 获取响应式图标大小
- * @param baseIconSize - 基础图标大小（px）
- * @returns 缩放后的图标大小
- */
-export function getIconSize(baseIconSize: number = 24): string {
-  return `${baseIconSize * uiScale}px`
-}
-
-/**
- * 获取响应式按钮尺寸
- * @param minWidth - 最小宽度
- * @param minHeight - 最小高度
- * @returns 缩放后的按钮样式
- */
-export function getButtonStyle(minWidth: number = 120, minHeight: number = 44) {
+export function getButtonStyle(minW = 120, minH = 44) {
   return {
-    fontSize: getFontSize(16),
-    paddingLeft: getPadding(24),
-    paddingRight: getPadding(24),
-    paddingTop: getPadding(12),
-    paddingBottom: getPadding(12),
-    minWidth: getWidth(minWidth),
-    minHeight: getHeight(minHeight)
+    fontSize      : getFontSize(16),
+    paddingLeft   : getPadding(24),
+    paddingRight  : getPadding(24),
+    paddingTop    : getPadding(12),
+    paddingBottom : getPadding(12),
+    minWidth      : getWidth(minW),
+    minHeight     : getHeight(minH),
   }
 }
 
+// ── Vue Composable ────────────────────────────────────────────────────────────
 /**
- * 应用全局字体大小到 root 元素
- */
-function applyGlobalFontSize(): void {
-  const root = document.documentElement
-  const baseFontSize = 16 // Tailwind 默认根字体大小
-  root.style.fontSize = getFontSize(baseFontSize)
-}
-
-/**
- * Vue 组合式 API：响应式 UI 尺寸
+ * useResponsiveUI()
+ *
+ * 使用方法：
+ * ```ts
+ * const ui = useResponsiveUI()
+ *
+ * // 在 computed 内读取，resize 后自动重算：
+ * const titleStyle = computed(() => ({ fontSize: ui.getFontSize(48) }))
+ *
+ * // 直接读取当前缩放比：
+ * console.log(ui.uiScale.value)
+ * ```
  */
 export function useResponsiveUI() {
-  const getFontClass = (baseSize: number) => {
-    return { fontSize: getFontSize(baseSize) }
-  }
-  
-  const getPaddingClass = (basePadding: number) => {
-    return {
-      paddingTop: getPadding(basePadding),
-      paddingRight: getPadding(basePadding),
-      paddingBottom: getPadding(basePadding),
-      paddingLeft: getPadding(basePadding)
-    }
-  }
-  
+  // 确保全局 resize 监听已注册
+  _ensureResizeListener()
+
   return {
-    uiScale,
-    screenWidth,
-    screenHeight,
-    getFontClass,
-    getPaddingClass,
+    /** 响应式 uiScale（computed ref），可在模板/computed 中直接使用 */
+    uiScale       : uiScaleRef,
+    screenWidth   : _screenW,
+    screenHeight  : _screenH,
+
+    // 工具函数（在 computed 内调用会自动建立响应式依赖）
     getFontSize,
     getPadding,
     getGap,
@@ -169,6 +122,15 @@ export function useResponsiveUI() {
     getHeight,
     getBorderRadius,
     getIconSize,
-    getButtonStyle
+    getButtonStyle,
+
+    // 兼容旧式 class helpers
+    getFontClass    : (base: number) => ({ fontSize: getFontSize(base) }),
+    getPaddingClass : (base: number) => ({
+      paddingTop    : getPadding(base),
+      paddingRight  : getPadding(base),
+      paddingBottom : getPadding(base),
+      paddingLeft   : getPadding(base),
+    }),
   }
 }

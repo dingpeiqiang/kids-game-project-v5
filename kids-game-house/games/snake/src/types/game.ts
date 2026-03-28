@@ -15,6 +15,8 @@ export interface DifficultyConfig {
   name: string
   nameCN: string
   speed: number
+  /** 蛇初始长度 */
+  initialLength: number
   scoreMultiplier: number
   rareFoodChance: number
   color: string
@@ -62,7 +64,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   easy: {
     name: 'easy',
     nameCN: '简单',
-    speed: 150,  // 👉 像素/秒（原为毫秒/格）
+    speed: 150,       // 👉 像素/秒
+    initialLength: 3, // 简单模式蛇稍短
     scoreMultiplier: 1,
     rareFoodChance: 0.5,
     color: '#4ade80',
@@ -71,7 +74,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   medium: {
     name: 'medium',
     nameCN: '中等',
-    speed: 250,  // 👉 像素/秒
+    speed: 250,       // 👉 像素/秒
+    initialLength: 4,
     scoreMultiplier: 1.5,
     rareFoodChance: 0.3,
     color: '#fbbf24',
@@ -80,7 +84,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   hard: {
     name: 'hard',
     nameCN: '困难',
-    speed: 350,  // 👉 像素/秒
+    speed: 350,       // 👉 像素/秒
+    initialLength: 5, // 困难模式蛇更长，一开始就刺激
     scoreMultiplier: 2,
     rareFoodChance: 0.2,
     color: '#f87171',
