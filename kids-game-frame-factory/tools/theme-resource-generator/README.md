@@ -1,8 +1,23 @@
 # 🎨 主题资源生成器
 
-**版本**: v1.0  
+**版本**: v2.0  
 **用途**: 从 GDD 自动生成符合设计的主题资源  
-**特点**: 严格校验，无降级方案
+**特点**: 严格校验，无降级方案，**GTRS v1.0.0 规范合规**
+
+---
+
+## 🆕 v2.0 变更
+
+| 变更项 | v1.0（旧） | v2.0（新） |
+|--------|-----------|-----------|
+| CLI 必填参数 | `-g -o -t` | `-g -o -t -c`（新增 `--theme-code`）|
+| 输出目录 | `-o` 直接写入 | `-o` 作为根目录，写入 `<root>/themes/<code>/` |
+| 图片目录 | `output/*.png` | `output/themes/<code>/images/*.png` |
+| 音频目录 | `output/*.mp3` | `output/themes/<code>/audio/*.mp3` |
+| 配置文件 | `config.json`（非标准） | `GTRS.json`（GTRS v1.0.0 规范） |
+| 资源路径 | `images/xxx.png`（相对路径） | `/themes/<code>/images/xxx.png`（绝对路径）|
+| GTRS 结构 | 非标准 | 标准：`specMeta` / `themeInfo` / `globalStyle` / `resources` |
+| validate 命令 | 仅检查文件存在 | 还检查 GTRS.json 规范合规性 |
 
 ---
 
@@ -11,19 +26,35 @@
 ### 安装依赖
 
 ```bash
-cd kids-game-house/tools/theme-resource-generator
+cd kids-game-frame-factory/tools/theme-resource-generator
 npm install
 ```
 
 ### 基本使用
 
 ```bash
-# 从 GDD 生成资源
+# 从 GDD 生成资源（指定 theme-code 是必须的）
 npm run generate -- \
   -g ../../games/plane-shooter/GAME_DESIGN_DOCUMENT.md \
-  -o ./output/plane-shooter-theme \
-  -t plane-shooter \
+  -o ./output \
+  -t "飞机大战默认主题" \
+  -c plane_shooter_default \
+  --game-id plane-shooter \
   -s cartoon
+```
+
+生成结果：
+```
+output/
+└── themes/
+    └── plane_shooter_default/
+        ├── images/
+        │   ├── player.png
+        │   ├── enemy_small.png
+        │   └── ...
+        ├── audio/
+        │   └── bgm_main.mp3（如有模板）
+        └── GTRS.json          ← 符合 GTRS v1.0.0 规范
 ```
 
 ---
@@ -36,8 +67,10 @@ npm run generate -- \
 
 **参数**:
 - `-g, --gdd <path>`: GDD 文件路径（必需）
-- `-o, --output <path>`: 输出目录（必需）
-- `-t, --theme <name>`: 主题名称（必需）
+- `-o, --output <path>`: 输出**根目录**（必需，资源写入 `<root>/themes/<theme-code>/`）
+- `-t, --theme <name>`: 主题名称，用于 GTRS themeInfo（必需）
+- `-c, --theme-code <code>`: **主题代码**（必需，全小写+下划线，决定路径前缀 `/themes/{code}/`）
+- `--game-id <id>`: 关联游戏 ID，用于 GTRS themeInfo.gameId（可选）
 - `-s, --style <style>`: 美术风格（可选，默认 cartoon）
   - `cartoon` - 卡通风格
   - `pixel` - 像素风格
@@ -46,34 +79,38 @@ npm run generate -- \
 **示例**:
 
 ```bash
-# 生成飞机大战主题资源
+# 生成飞机大战默认主题
 npm run generate -- \
   -g ../../games/plane-shooter/GAME_DESIGN_DOCUMENT.md \
-  -o ./output/plane-shooter \
-  -t plane-shooter-theme \
-  -s cartoon
+  -o ./output \
+  -t "飞机大战默认主题" \
+  -c plane_shooter_default \
+  --game-id plane-shooter
 
-# 生成贪吃蛇主题资源
+# 生成贪吃蛇节日主题
 npm run generate -- \
   -g ../../games/snake/GAME_DESIGN_DOCUMENT.md \
-  -o ./output/snake-theme \
-  -t snake-classic
+  -o ./output \
+  -t "贪吃蛇节日主题" \
+  -c snake_festival \
+  --game-id snake \
+  -s cartoon
 ```
 
 **输出**:
-- PNG 图片资源（玩家、敌人、子弹、道具等）
-- MP3 音频占位符（需要后续替换真实音频）
-- GTRS 配置文件 (config.json)
+- PNG 图片资源（写入 `<output>/themes/<code>/images/`）
+- MP3 音频（如有模板，写入 `<output>/themes/<code>/audio/`）
+- `GTRS.json`（写入 `<output>/themes/<code>/`，符合 GTRS v1.0.0 规范）
 
 ---
 
 ### 2. validate - 验证资源
 
-**用途**: 检查现有资源是否符合 GDD 要求
+**用途**: 检查现有资源是否符合 GDD，并验证 GTRS.json 规范合规性
 
 **参数**:
 - `-g, --gdd <path>`: GDD 文件路径（必需）
-- `-r, --resources <path>`: 资源目录（必需）
+- `-r, --resources <path>`: 主题资源目录（必需，即 `themes/<code>/` 下的目录）
 
 **示例**:
 
@@ -81,17 +118,14 @@ npm run generate -- \
 # 验证生成的资源
 npm run validate -- \
   -g ../../games/plane-shooter/GAME_DESIGN_DOCUMENT.md \
-  -r ./output/plane-shooter
-
-# 验证上传到 GTRS 的资源
-npm run validate -- \
-  -g ../../games/plane-shooter/GAME_DESIGN_DOCUMENT.md \
-  -r /path/to/gtrs/downloaded/resources
+  -r ./output/themes/plane_shooter_default
 ```
 
-**输出**:
-- ✅ 所有资源存在且匹配
-- ❌ 缺失的资源列表
+**校验内容**:
+- ✅ `images/` 子目录中所有图片资源存在
+- ✅ `audio/` 子目录中所有音频资源存在
+- ✅ `GTRS.json` 存在且符合 v1.0.0 规范（`specMeta` / `themeInfo` / `globalStyle` / `resources`）
+- ✅ 所有资源 `src` 路径以 `/themes/{themeCode}/` 开头，不含 `/public/` 前缀
 
 ---
 
@@ -100,12 +134,12 @@ npm run validate -- \
 **用途**: 删除生成的资源文件
 
 **参数**:
-- `-o, --output <path>`: 输出目录（必需）
+- `-o, --output <path>`: 输出目录路径（必需）
 
 **示例**:
 
 ```bash
-npm run clean -- -o ./output/plane-shooter
+npm run clean -- -o ./output/themes/plane_shooter_default
 ```
 
 ---
@@ -147,225 +181,112 @@ npm run clean -- -o ./output/plane-shooter
 
 ---
 
-## 🎨 生成的资源样式
+## 📁 输出目录结构（v2.0）
 
-### 玩家飞机（cartoon 风格）
-- 绿色三角形飞机
-- 带半透明驾驶舱
-- 深色描边
+```
+output/                               ← -o 参数指定的根目录
+└── themes/
+    └── plane_shooter_default/        ← -c 参数指定的 theme-code
+        ├── images/                   ← 图片资源（路径：/themes/plane_shooter_default/images/）
+        │   ├── player.png
+        │   ├── enemy_small.png
+        │   ├── enemy_medium.png
+        │   ├── enemy_large.png
+        │   ├── bullet_player.png
+        │   ├── bullet_enemy.png
+        │   ├── powerup_speed.png
+        │   └── ...
+        ├── audio/                    ← 音频资源（路径：/themes/plane_shooter_default/audio/）
+        │   ├── bgm_main.mp3
+        │   └── sfx_shoot.mp3
+        └── GTRS.json                 ← GTRS v1.0.0 规范配置
+```
 
-### 敌机（按类型区分）
-- **小型**: 红色椭圆，大眼睛
-- **中型**: 橙色椭圆，中等眼睛
-- **大型**: 深红椭圆，凶恶表情
+### GTRS.json 结构示例
 
-### 子弹
-- **玩家子弹**: 蓝色细长椭圆
-- **敌机子弹**: 红色圆形
-
-### 道具
-- 彩色圆形，带首字母标识
-- 加速 (S) - 蓝色
-- 散弹 (S) - 紫色
-- 护盾 (S) - 绿色
-- 生命 (L) - 粉色
-- 炸弹 (B) - 橙色
+```json
+{
+  "specMeta": { "specName": "GTRS", "specVersion": "1.0.0", "compatibleVersion": "1.0.0" },
+  "themeInfo": {
+    "themeCode": "plane_shooter_default",
+    "themeName": "飞机大战默认主题",
+    "gameId": "plane-shooter",
+    "ownerType": "GAME",
+    "ownerId": "plane-shooter"
+  },
+  "globalStyle": { "bgColor": "#0a0a28", "..." : "..." },
+  "resources": {
+    "images": {
+      "scene":  { "player": { "alias": "玩家飞机", "src": "/themes/plane_shooter_default/images/player.png", "type": "png" } },
+      "ui":     {},
+      "icon":   {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm":    { "bgm_main": { "alias": "背景音乐", "src": "/themes/plane_shooter_default/audio/bgm_main.mp3", "type": "mp3", "volume": 0.6 } },
+      "effect": {},
+      "voice":  {}
+    },
+    "video": {}
+  }
+}
+```
 
 ---
 
 ## ⚠️ 重要提示
 
-### 1. 严格校验模式
+### 1. theme-code 命名规范
 
-工具默认启用严格校验：
+- 只允许小写字母、数字、下划线
+- 示例：`snake_default`、`plane_shooter_festival`、`tank_battle_night`
+- ❌ 不允许：`snake-theme`（连字符）、`Snake_Default`（大写）
 
-- ✅ GDD 中所有"必需"资源必须生成
-- ❌ 缺少任何必需资源会报错退出
-- ⚠️ 音频目前生成占位符，需要手动替换
+### 2. 部署说明
 
-### 2. 不允许降级方案
+生成完成后，将 `themes/` 目录复制到目标游戏的 `public/` 目录：
 
-**原则**: 没有资源就报错，不使用几何图形代替
+```bash
+cp -r output/themes/plane_shooter_default/  game/public/themes/
+```
 
-这意味着：
-- 必须先使用本工具生成资源
-- 或者手动准备所有资源文件
-- 不能在没有资源的情况下运行游戏
+Web 访问路径示例：`http://localhost:3000/themes/plane_shooter_default/images/player.png`
 
 ### 3. 音频资源
 
-当前版本生成音频占位符（空文件），因为：
-
-- 音频生成需要专业库或 API
-- 建议使用真实的音频文件替换
-
-**TODO**: 集成音频生成库（如 `tone.js` 或调用外部 API）
-
----
-
-## 📁 输出目录结构
-
-```
-output/plane-shooter-theme/
-├── images/
-│   ├── player.png              # 玩家飞机
-│   ├── enemy_small.png         # 小型敌机
-│   ├── enemy_medium.png        # 中型敌机
-│   ├── enemy_large.png         # 大型敌机
-│   ├── bullet_player.png       # 玩家子弹
-│   ├── bullet_enemy.png        # 敌机子弹
-│   ├── powerup_speed.png       # 加速道具
-│   ├── powerup_spread.png      # 散弹道具
-│   └── powerup_shield.png      # 护盾道具
-├── audio/
-│   ├── bgm_main.mp3            # 背景音乐（占位符）
-│   ├── sfx_shoot.mp3           # 射击音效（占位符）
-│   └── sfx_explosion.mp3       # 爆炸音效（占位符）
-└── config.json                 # GTRS 配置文件
-```
+当前版本只能从模板复制音频，不支持程序化生成。  
+**建议**：先将 `.mp3` 文件放入 `templates/audio/` 目录，再运行生成。
 
 ---
 
 ## 🔧 高级用法
 
-### 自定义资源样式
-
-修改 `src/core/resource-generator.js`:
-
-```javascript
-createPlayerSVG() {
-  // 自定义玩家飞机样式
-  return `
-    <svg width="256" height="256">
-      <!-- 你的设计 -->
-    </svg>
-  `;
-}
-```
-
 ### 批量生成多个主题
 
-创建脚本 `batch-generate.js`:
-
-```javascript
-import { execSync } from 'child_process';
-
-const games = ['plane-shooter', 'tank-battle', 'snake'];
-
-for (const game of games) {
-  execSync(`npm run generate -- -g ../../games/${game}/GAME_DESIGN_DOCUMENT.md -o ./output/${game}-theme -t ${game}`);
-}
+```bash
+# 同一游戏多个主题
+npm run generate -- -g ./snake/GDD.md -o ./output -t "贪吃蛇经典主题" -c snake_classic --game-id snake
+npm run generate -- -g ./snake/GDD.md -o ./output -t "贪吃蛇节日主题" -c snake_festival --game-id snake -s cartoon
 ```
-
----
-
-## 🐛 常见问题
-
-### Q1: 为什么生成的图片很丑？
-
-**A**: 这是占位图！目的是：
-- 确保资源文件存在
-- 符合 GDD 的尺寸和命名要求
-- 可以用真实美术资源替换
-
-### Q2: 音频文件是空的怎么办？
-
-**A**: 需要手动替换：
-1. 录制或使用音频编辑软件制作
-2. 替换 `audio/` 目录下的占位符文件
-3. 重新运行 `validate` 确认
-
-### Q3: 如何添加新的资源类型？
-
-**A**: 
-1. 在 GDD 中添加资源需求表格
-2. 在 `gdd-parser.js` 中添加解析逻辑
-3. 在 `resource-generator.js` 中添加生成方法
-
-### Q4: 可以跳过某些资源的生成吗？
-
-**A**: 不可以！严格模式下：
-- GDD 中标记为"必需"的资源必须生成
-- 如果不需要，应该从 GDD 中删除该需求
-
----
-
-## 📊 与其他工具集成
-
-### 与 GTRS 系统集成
-
-1. 生成资源
-2. 压缩为 ZIP
-3. 上传到 GTRS 后台
-4. 获取主题 ID
 
 ### 与游戏开发流程集成
 
 ```bash
 # 1. 编写 GDD
-vim GAME_DESIGN_DOCUMENT.md
-
 # 2. 生成资源
-npm run generate -- -g GAME_DESIGN_DOCUMENT.md -o theme -t my-game
+npm run generate -- -g GDD.md -o ./output -t "我的主题" -c my_theme --game-id my-game
 
-# 3. 验证资源
-npm run validate -- -g GAME_DESIGN_DOCUMENT.md -r theme
+# 3. 验证资源（包含 GTRS 规范校验）
+npm run validate -- -g GDD.md -r ./output/themes/my_theme
 
-# 4. 上传到 GTRS
-# (手动或使用 API)
+# 4. 复制到游戏 public 目录
+cp -r ./output/themes/ ../my-game/public/
 
-# 5. 在游戏中使用
-await game.start('medium', 'my-theme-id')
+# 5. 上传 GTRS.json 到主题系统
 ```
 
 ---
 
-## 🎯 最佳实践
-
-### 1. 先写 GDD，再生成资源
-
-```markdown
-好的流程:
-GDD 完成 → 评审通过 → 生成资源 → 替换优化
-
-坏的流程:
-边做边想 → 随意生成 → 反复修改
-```
-
-### 2. 资源命名规范
-
-- ✅ `player_ship.png` - 语义化命名
-- ❌ `image1.png` - 无意义命名
-
-### 3. 及时验证
-
-每次修改 GDD 后都运行：
-
-```bash
-npm run validate -- -g GAME_DESIGN_DOCUMENT.md -r resources
-```
-
-### 4. 版本控制
-
-将生成的资源纳入 Git 管理：
-
-```bash
-git add output/theme-name/
-git commit -m "feat: 生成飞机大战主题资源"
-```
-
----
-
-## 📞 技术支持
-
-遇到问题？
-
-1. 查看本文档
-2. 检查 GDD 格式是否正确
-3. 联系技术团队
-
----
-
-**工具版本**: v1.0  
-**最后更新**: 2026-03-27  
+**工具版本**: v2.0  
+**最后更新**: 2026-03-29  
 **维护者**: Kids Game Team

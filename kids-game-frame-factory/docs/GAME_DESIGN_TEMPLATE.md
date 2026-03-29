@@ -14,6 +14,26 @@
 > **未通过设计确认的项目，不得开始编码！**  
 > **开发过程中严禁随意修改已确认的设计！**
 
+## 📌 AI 开发者必读：资源三层一致性原则
+
+> **GDD 资源名称（第4章）→ GTRS.json 字段名 → 游戏代码中的 key，三者必须完全相同。**
+>
+> ```
+> GDD 第4章表格          GTRS.json                   MyGameScene.ts
+> ┌──────────────┐      ┌──────────────────────┐     ┌─────────────────────────┐
+> │ 资源名称(key) │ ───► │ resources.images      │ ───►│ this.add.image(x,y,key) │
+> │   bg         │      │   .scene.bg            │     │ 'bg'                    │
+> │   player     │      │   .scene.player        │     │ 'player'                │
+> │   bgm_main   │      │ resources.audio        │     │ this.sound.play(key)    │
+> │              │      │   .bgm.bgm_main        │     │ 'bgm_main'              │
+> └──────────────┘      └──────────────────────┘     └─────────────────────────┘
+>     第①层（来源）         第②层（配置）                  第③层（使用）
+> ```
+>
+> - **AI 写 GDD 时**：资源名称只用英文小写 + 下划线，不加扩展名（如 `player`、`sfx_win`）
+> - **AI 写 GTRS.json 时**：字段名必须与 GDD 第4章资源名称完全一致
+> - **AI 写代码时**：使用 `this.preloadFromGTRS()` 后框架自动保证②③对齐；只需保证①②一致
+
 ---
 
 ## 一、游戏概述
@@ -133,46 +153,117 @@ BASE_CELL_SIZE = ___   // 基础单元格 ___ px
 
 ## 四、主题资源需求
 
+> ⚠️ **重要规则：资源名称（key）在三个地方必须完全一致**
+>
+> | 层次 | 位置 | 格式 |
+> |------|------|------|
+> | ① GDD 资源清单 | 本文档第4章的「资源名称」列 | 纯英文小写+下划线，如 `bg`、`player`、`sfx_win` |
+> | ② GTRS.json | `resources.images.scene.{key}` 的字段名 | 与①完全相同 |
+> | ③ 游戏代码 | `this.add.image(x, y, '{key}')` 的字符串 | 与①完全相同 |
+>
+> **使用 `preloadFromGTRS()` 后，框架自动保证②③对齐。AI 只需确保①②一致（GDD写的名字 = GTRS.json里的字段名）。**
+
 ### 4.1 图片资源清单
 
-| 资源名称 | 用途 | 数量 | 格式建议 | 优先级 |
-|---------|------|------|---------|--------|
-| | | | PNG 透明背景 | 必需 |
-| | | | PNG | 必需 |
-| | | | PNG | 可选 |
+> **命名规则**：`资源名称` 即文件名（不含扩展名），即 GTRS.json 的 key，即代码中的 Phaser key。
+> 示例：`bg` → 文件 `bg.png` → GTRS key `"bg"` → 代码 `this.add.image(x, y, 'bg')`
+
+| 资源名称(key) | GTRS 分类 | 用途描述 | 图片规格 | 优先级 |
+|--------------|-----------|---------|---------|--------|
+| `bg`         | `images.scene` | 游戏背景 | PNG，填满屏幕，建议 1280×720 | 必需 |
+| `player`     | `images.scene` | 玩家角色 | PNG 透明背景，256×256 | 必需 |
+| （在此添加更多图片资源，每行对应一个资源） | | | | |
+
+> GTRS 图片分类说明：
+> - `images.scene`：游戏主体元素（角色、背景、物品）
+> - `images.ui`：界面元素（按钮图标等）
+> - `images.icon`：小图标
+> - `images.effect`：特效粒子
 
 ### 4.2 音频资源清单
 
-| 资源名称 | 用途 | 时长 | 格式建议 | 优先级 |
-|---------|------|------|---------|--------|
-| bgm_main | 背景音乐 | 2-3 分钟 | MP3/OGG | 必需 |
-| sfx_XXX | 音效 | 0.1-0.5 秒 | WAV/MP3 | 必需 |
+> **命名规则**：同上，`资源名称` = 文件名 = GTRS key = 代码中 `this.sound.play('{key}')` 的参数。
 
-### 4.3 GTRS 主题配置项
+| 资源名称(key) | GTRS 分类 | 用途描述 | 时长建议 | 优先级 |
+|--------------|-----------|---------|---------|--------|
+| `bgm_main`   | `audio.bgm` | 背景音乐（循环） | 2-3 分钟 | 必需 |
+| `sfx_success`| `audio.effect` | 成功音效 | 0.3-0.5 秒 | 必需 |
+| `sfx_fail`   | `audio.effect` | 失败音效 | 0.3-0.5 秒 | 必需 |
+| （在此添加更多音频资源） | | | | |
+
+> ⚠️ **若暂不使用外部音效，可留空此表，使用框架内置合成音（audio store 提供）**。
+
+### 4.3 GTRS.json 预览（根据 4.1/4.2 自动推导）
+
+> 以下 GTRS.json 结构**由上方资源清单直接推导**，AI 在写 `src/config/GTRS.json` 时须与此完全一致：
+> - 字段名 = 4.1/4.2 中「资源名称(key)」列
+> - 路径规则 = `/themes/{game_code}_default/images/{资源名称}.png`
+> - **先生成资源文件，再写 GTRS.json，顺序不可颠倒**
 
 ```json
 {
-  "themeInfo": { 
-    "themeName": "XXX 主题" 
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
   },
-  "images": {
-    "player": { "src": "assets/images/player.png" }
+  "themeInfo": {
+    "themeCode": "{game_code}_default",
+    "themeName": "默认主题",
+    "gameId": "{game_code}",
+    "ownerType": "GAME",
+    "ownerId": "{game_code}",
+    "isDefault": true,
+    "author": "官方团队",
+    "version": "1.0.0"
   },
-  "sounds": {
-    "shoot": { 
-      "src": "assets/audio/shoot.mp3", 
-      "volume": 0.4 
-    }
+  "globalStyle": {
+    "primaryColor": "#4ade80",
+    "bgColor": "#1a1a2e",
+    "textColor": "#ffffff",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "8px"
   },
-  "bgm": {
-    "main": { 
-      "src": "assets/audio/bgm.mp3", 
-      "volume": 0.6, 
-      "loop": true 
-    }
+  "resources": {
+    "images": {
+      "scene": {
+        "bg":     { "alias": "游戏背景", "src": "/themes/{game_code}_default/images/bg.png",     "type": "png" },
+        "player": { "alias": "玩家角色", "src": "/themes/{game_code}_default/images/player.png", "type": "png" }
+        // ← 按 4.1 图片资源清单逐行补充，key 与「资源名称」列一致
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {
+        "bgm_main": { "alias": "背景音乐", "src": "/themes/{game_code}_default/audio/bgm_main.mp3", "type": "mp3", "volume": 0.6 }
+      },
+      "effect": {
+        "sfx_success": { "alias": "成功音效", "src": "/themes/{game_code}_default/audio/sfx_success.mp3", "type": "mp3", "volume": 0.8 },
+        "sfx_fail":    { "alias": "失败音效", "src": "/themes/{game_code}_default/audio/sfx_fail.mp3",    "type": "mp3", "volume": 0.8 }
+        // ← 按 4.2 音频资源清单逐行补充
+      },
+      "voice": {}
+    },
+    "video": {}
   }
 }
 ```
+
+### 4.4 代码使用对照表（AI 开发时参考）
+
+> 此表由 AI 在编写 `MyGameScene.ts` 时填写，用于自查 key 是否前后一致：
+
+| GDD 资源名称(key) | GTRS.json 字段名 | 代码中的使用方式 | 状态 |
+|-----------------|----------------|----------------|------|
+| `bg`     | `resources.images.scene.bg`      | `this.add.image(0, 0, 'bg')` | ⬜ 待实现 |
+| `player` | `resources.images.scene.player`  | `this.add.image(x, y, 'player')` | ⬜ 待实现 |
+| `bgm_main`    | `resources.audio.bgm.bgm_main`   | `this.sound.play('bgm_main', {loop:true})` | ⬜ 待实现 |
+| `sfx_success` | `resources.audio.effect.sfx_success` | `this.sound.play('sfx_success')` | ⬜ 待实现 |
+| （填写本游戏所有资源）| | | |
+
+> ✅ 代码实现后将 `⬜ 待实现` 改为 `✅ 已实现`，作为完成标记。
 
 ---
 

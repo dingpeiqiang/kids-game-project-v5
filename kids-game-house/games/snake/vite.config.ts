@@ -13,8 +13,7 @@ export default defineConfig({
   assetsInclude: ['**/*.wav', '**/*.mp3', '**/*.ogg'],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-      '@shared': resolve(__dirname, '../../shared')
+      '@': resolve(__dirname, 'src')
     }
   },
   server: {

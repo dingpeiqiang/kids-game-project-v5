@@ -1,5 +1,5 @@
 /**
- * 严格校验器 - 确保所有资源符合 GDD 要求
+ * 严格校验器 - 确保所有资源符合 GDD 要求，且 GTRS.json 符合 v1.0.0 规范
  * 原则：不允许降级方案，缺失就报错
  */
 
@@ -76,35 +76,45 @@ export class StrictValidator {
   
   /**
    * 验证现有资源文件
+   * 注意：生成器现在将图片存放在 resourcesDir/images/，音频存放在 resourcesDir/audio/
    */
   static async validateExistingResources(requirements, resourcesDir) {
     const missing = [];
     const present = [];
     
-    // 检查所有图片资源
+    // 检查所有图片资源（在 images/ 子目录中）
     for (const req of requirements.images) {
       const filename = `${req.name}.png`;
-      const filepath = join(resourcesDir, filename);
+      const filepath = join(resourcesDir, 'images', filename);
       
       try {
         await fs.access(filepath);
-        present.push(filename);
+        present.push(`images/${filename}`);
       } catch {
-        missing.push(filename);
+        missing.push(`images/${filename}`);
       }
     }
     
-    // 检查所有音频资源
+    // 检查所有音频资源（在 audio/ 子目录中）
     for (const req of requirements.audio) {
       const filename = `${req.name}.mp3`;
-      const filepath = join(resourcesDir, filename);
+      const filepath = join(resourcesDir, 'audio', filename);
       
       try {
         await fs.access(filepath);
-        present.push(filename);
+        present.push(`audio/${filename}`);
       } catch {
-        missing.push(filename);
+        missing.push(`audio/${filename}`);
       }
+    }
+    
+    // 检查 GTRS.json 是否存在
+    const gtrsPath = join(resourcesDir, 'GTRS.json');
+    try {
+      await fs.access(gtrsPath);
+      present.push('GTRS.json');
+    } catch {
+      missing.push('GTRS.json');
     }
     
     return {
@@ -112,10 +122,109 @@ export class StrictValidator {
       missing,
       present,
       stats: {
-        total: requirements.images.length + requirements.audio.length,
+        total: requirements.images.length + requirements.audio.length + 1,
         presentCount: present.length,
         missingCount: missing.length
       }
+    };
+  }
+  
+  /**
+   * 验证 GTRS.json 是否符合 v1.0.0 规范
+   * - 必须有 specMeta / themeInfo / globalStyle / resources 四大顶级字段
+   * - resources 必须有 images / audio / video
+   * - images 必须有 scene / ui / icon / effect 子分类
+   * - audio 必须有 bgm / effect / voice 子分类
+   * - 所有 src 路径必须以 /themes/{themeCode}/ 开头（不含 /public/ 前缀）
+   * @param {string} gtrsPath - GTRS.json 文件路径
+   * @returns {{ passed: boolean, errors: string[], warnings: string[] }}
+   */
+  static async validateGTRSSpec(gtrsPath) {
+    const errors = [];
+    const warnings = [];
+    
+    let config;
+    try {
+      const content = await fs.readFile(gtrsPath, 'utf-8');
+      config = JSON.parse(content);
+    } catch (e) {
+      return { passed: false, errors: [`❌ 无法解析 GTRS.json：${e.message}`], warnings: [] };
+    }
+    
+    // 1. 顶级字段检查
+    const requiredTopFields = ['specMeta', 'themeInfo', 'globalStyle', 'resources'];
+    for (const field of requiredTopFields) {
+      if (!config[field]) {
+        errors.push(`❌ 缺少顶级字段：${field}`);
+      }
+    }
+    if (errors.length > 0) return { passed: false, errors, warnings };
+    
+    // 2. specMeta 检查
+    const { specMeta } = config;
+    if (specMeta.specName !== 'GTRS') errors.push('❌ specMeta.specName 应为 "GTRS"');
+    if (specMeta.specVersion !== '1.0.0') errors.push('❌ specMeta.specVersion 应为 "1.0.0"');
+    
+    // 3. themeInfo 必要字段
+    const { themeInfo } = config;
+    for (const f of ['themeCode', 'themeName', 'ownerType', 'ownerId']) {
+      if (!themeInfo[f]) warnings.push(`⚠️  themeInfo.${f} 未填写`);
+    }
+    if (themeInfo.ownerType && themeInfo.ownerType !== 'GAME') {
+      warnings.push(`⚠️  themeInfo.ownerType 应为 "GAME"，当前为 "${themeInfo.ownerType}"`);
+    }
+    
+    // 4. resources 结构检查
+    const { resources } = config;
+    if (!resources.images) errors.push('❌ resources.images 缺失');
+    if (!resources.audio)  errors.push('❌ resources.audio 缺失');
+    if (!resources.video && resources.video !== undefined) warnings.push('⚠️  resources.video 未定义，建议设为 {}');
+    
+    if (resources.images) {
+      for (const sub of ['scene', 'ui', 'icon', 'effect']) {
+        if (resources.images[sub] === undefined) {
+          warnings.push(`⚠️  resources.images.${sub} 未定义，建议设为 {}`);
+        }
+      }
+    }
+    if (resources.audio) {
+      for (const sub of ['bgm', 'effect', 'voice']) {
+        if (resources.audio[sub] === undefined) {
+          warnings.push(`⚠️  resources.audio.${sub} 未定义，建议设为 {}`);
+        }
+      }
+    }
+    
+    // 5. 路径规范检查 - 所有 src 必须以 /themes/ 开头，不能含 /public/
+    const themeCode = themeInfo.themeCode || '';
+    const pathPrefix = themeCode ? `/themes/${themeCode}/` : '/themes/';
+    
+    const checkSrcs = (obj, path = '') => {
+      if (!obj || typeof obj !== 'object') return;
+      for (const [key, val] of Object.entries(obj)) {
+        if (val && typeof val === 'object') {
+          if (typeof val.src === 'string') {
+            const src = val.src;
+            if (src.includes('/public/')) {
+              errors.push(`❌ ${path}.${key}.src 包含 "/public/" 前缀（应去掉）：${src}`);
+            }
+            if (!src.startsWith('/themes/')) {
+              errors.push(`❌ ${path}.${key}.src 不以 "/themes/" 开头：${src}`);
+            } else if (themeCode && !src.startsWith(pathPrefix)) {
+              warnings.push(`⚠️  ${path}.${key}.src 主题代码与 themeInfo.themeCode 不一致：${src}`);
+            }
+          } else {
+            checkSrcs(val, path ? `${path}.${key}` : key);
+          }
+        }
+      }
+    };
+    checkSrcs(resources, 'resources');
+    
+    return {
+      passed: errors.length === 0,
+      errors,
+      warnings
     };
   }
   
@@ -170,3 +279,4 @@ export class StrictValidator {
     };
   }
 }
+

@@ -1,5 +1,8 @@
 # 游戏开发完整指南
 
+> ⚠️ **此文档已过时。** 请使用 `templates/game-template/AI_INSTRUCTIONS.md` 作为 AI 开发的唯一入口指南。  
+> 本文档仅作历史参考，不保证与当前框架版本一致。
+
 基于 frame-factory 模板创建新游戏的完整步骤。
 
 ---

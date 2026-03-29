@@ -16,10 +16,14 @@ export class ResourceGenerator {
   constructor(options) {
     this.outputDir = options.outputDir;
     this.themeName = options.themeName;
+    // themeCode 用于生成符合规范的资源路径 /themes/{themeCode}/...
+    this.themeCode = options.themeCode || options.themeName.toLowerCase().replace(/\s+/g, '_');
+    this.gameId = options.gameId || '';
     this.style = options.style || 'cartoon';
-    // 使用 Canvas 生成器
+    // 使用 Canvas 生成器（图片输出到 outputDir/images/）
+    const imageOutputDir = join(options.outputDir, 'images');
     this.canvasGenerator = new CanvasResourceGenerator({
-      outputDir: options.outputDir,
+      outputDir: imageOutputDir,
       themeName: options.themeName,
       style: options.style
     });
@@ -36,12 +40,15 @@ export class ResourceGenerator {
       hasEmptyFiles: false
     };
     
-    // 创建输出目录
-    await fs.mkdir(this.outputDir, { recursive: true });
+    // 创建输出目录结构：outputDir/images/ 和 outputDir/audio/
+    const imageDir = join(this.outputDir, 'images');
+    const audioDir = join(this.outputDir, 'audio');
+    await fs.mkdir(imageDir, { recursive: true });
+    await fs.mkdir(audioDir, { recursive: true });
     
     // 生成图片资源 - 必须是真实 PNG
     for (const imageReq of requirements.images) {
-      await this.generateImage(imageReq);
+      await this.generateImage(imageReq, imageDir);
       result.images.generated++;
       result.totalGenerated++;
     }
@@ -56,7 +63,7 @@ export class ResourceGenerator {
       
       // 尝试生成音频（如果有外部 API）
       for (const audioReq of requirements.audio) {
-        const generated = await this.generateRealAudio(audioReq);
+        const generated = await this.generateRealAudio(audioReq, audioDir);
         if (generated) {
           result.audio.generated++;
           result.totalGenerated++;
@@ -68,7 +75,7 @@ export class ResourceGenerator {
       }
     }
     
-    // 生成 GTRS 配置文件
+    // 生成 GTRS 配置文件（符合 GTRS v1.0.0 规范）
     await this.generateGTRSConfig(requirements);
     result.totalGenerated++;
     
@@ -77,8 +84,10 @@ export class ResourceGenerator {
   
   /**
    * 生成单个图片资源（使用 Canvas）
+   * @param {object} requirement - 资源需求
+   * @param {string} imageDir - 图片输出目录
    */
-  async generateImage(requirement) {
+  async generateImage(requirement, imageDir) {
     const filename = `${requirement.name}.png`;
     
     // 根据类型使用 Canvas 生成高质量图片
@@ -96,8 +105,8 @@ export class ResourceGenerator {
     } else {
       // 通用资源，使用 SVG 降级方案
       const svg = this.createGenericSVG(requirement);
-      const filepath = join(this.outputDir, filename);
-      await fs.mkdir(this.outputDir, { recursive: true });
+      const filepath = join(imageDir, filename);
+      await fs.mkdir(imageDir, { recursive: true });
       await sharp(Buffer.from(svg))
         .resize(256, 256)
         .png()
@@ -108,11 +117,13 @@ export class ResourceGenerator {
   
   /**
    * 生成真实音频（调用外部 API 或使用现有文件）
+   * @param {object} requirement - 资源需求
+   * @param {string} audioDir - 音频输出目录
    * @returns {Promise<boolean>} 是否生成成功
    */
-  async generateRealAudio(requirement) {
+  async generateRealAudio(requirement, audioDir) {
     const filename = `${requirement.name}.mp3`;
-    const filepath = join(this.outputDir, filename);
+    const filepath = join(audioDir, filename);
     
     // 方案 1: 检查是否有预定义的音频模板
     const templatePath = join(__dirname, '../../templates/audio', filename);
@@ -133,40 +144,113 @@ export class ResourceGenerator {
   }
   
   /**
-   * 生成 GTRS 配置文件
+   * 生成 GTRS 配置文件（符合 GTRS v1.0.0 规范）
+   * 
+   * GTRS v1.0.0 结构：
+   *   specMeta       - 规范元数据
+   *   themeInfo      - 主题信息
+   *   globalStyle    - 全局样式
+   *   resources      - 资源（images / audio / video）
+   *     images.scene / images.ui / images.icon / images.effect
+   *     audio.bgm    / audio.effect / audio.voice
+   *
+   * 资源路径规范：/themes/{themeCode}/images/{name}.png
+   *               /themes/{themeCode}/audio/{name}.mp3
    */
   async generateGTRSConfig(requirements) {
-    const config = {
+    const themeCode = this.themeCode;
+    
+    // ---- 将需求按类型分类 ----
+    const sceneImages = {};
+    const uiImages    = {};
+    const iconImages  = {};
+    const effectImages = {};
+    const bgmAudio    = {};
+    const effectAudio = {};
+    
+    requirements.images.forEach(req => {
+      const src = `/themes/${themeCode}/images/${req.name}.png`;
+      const entry = {
+        alias: req.description || req.name,
+        src,
+        type: 'png'
+      };
+      // 按命名规则归类
+      if (req.name.startsWith('icon_') || req.name.includes('_icon')) {
+        iconImages[req.name] = entry;
+      } else if (req.name.startsWith('effect_') || req.name.includes('_effect')) {
+        effectImages[req.name] = entry;
+      } else if (req.name.startsWith('ui_') || req.name.includes('_ui') ||
+                 req.name.startsWith('button') || req.name.startsWith('bg_')) {
+        uiImages[req.name] = entry;
+      } else {
+        // 默认归为 scene（玩家、敌机、子弹、道具、背景等）
+        sceneImages[req.name] = entry;
+      }
+    });
+    
+    requirements.audio.forEach(req => {
+      const src = `/themes/${themeCode}/audio/${req.name}.mp3`;
+      const entry = {
+        alias: req.description || req.name,
+        src,
+        type: 'mp3',
+        volume: req.name.startsWith('bgm') ? 0.6 : 0.5
+      };
+      if (req.name.startsWith('bgm_') || req.name.startsWith('music_')) {
+        bgmAudio[req.name] = entry;
+      } else {
+        effectAudio[req.name] = entry;
+      }
+    });
+    
+    // ---- 组装完整 GTRS v1.0.0 结构 ----
+    const gtrsConfig = {
+      specMeta: {
+        specName: 'GTRS',
+        specVersion: '1.0.0',
+        compatibleVersion: '1.0.0'
+      },
       themeInfo: {
+        themeCode,
         themeName: this.themeName,
+        gameId: this.gameId,
+        ownerType: 'GAME',
+        ownerId: this.gameId,
+        isDefault: false,
+        author: '自动生成',
+        description: `${this.themeName} 主题资源（由 theme-resource-generator 自动生成）`,
         version: '1.0.0',
         style: this.style
       },
-      images: {},
-      sounds: {},
-      bgm: {}
+      globalStyle: {
+        bgColor: '#0a0a28',
+        primaryColor: '#4ade80',
+        secondaryColor: '#3b82f6',
+        textColor: '#ffffff',
+        fontFamily: 'Arial, sans-serif',
+        borderRadius: '8px'
+      },
+      resources: {
+        images: {
+          scene:  sceneImages,
+          ui:     uiImages,
+          icon:   iconImages,
+          effect: effectImages
+        },
+        audio: {
+          bgm:    bgmAudio,
+          effect: effectAudio,
+          voice:  {}
+        },
+        video: {}
+      }
     };
     
-    // 添加图片资源配置
-    requirements.images.forEach(req => {
-      config.images[req.name] = {
-        src: `images/${req.name}.png`
-      };
-    });
-    
-    // 添加音频资源配置
-    requirements.audio.forEach(req => {
-      config.sounds[req.name] = {
-        src: `audio/${req.name}.mp3`,
-        volume: 0.5
-      };
-    });
-    
-    // 写入文件
-    const configPath = join(this.outputDir, 'config.json');
-    await fs.writeFile(configPath, JSON.stringify(config, null, 2));
-    
-    console.log(`  ✅ 生成 GTRS 配置：config.json`);
+    // ---- 写入 GTRS.json ----
+    const configPath = join(this.outputDir, 'GTRS.json');
+    await fs.writeFile(configPath, JSON.stringify(gtrsConfig, null, 2));
+    console.log(`  ✅ 生成 GTRS 配置（v1.0.0 规范）：${configPath}`);
   }
   
   /**

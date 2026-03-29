@@ -20,8 +20,15 @@ const __dirname = path.dirname(__filename);
 const GAME_CODE = 'plane-shooter';
 const GAME_NAME = '飞机大战';
 
-// ⭐ 重要：资源输出到固定的 default 目录
-const PUBLIC_DIR = path.join(__dirname, '..', 'public', 'themes', 'default');
+// ⭐ 主题代码：决定资源路径前缀 /themes/{THEME_CODE}/
+//    可通过命令行参数传入：node generate-resources.mjs --theme-code my_theme
+//    也可通过环境变量 THEME_CODE 设置，默认值为 'default'
+const _themeCodeArg = process.argv.find((a, i) => process.argv[i - 1] === '--theme-code');
+const THEME_CODE = (_themeCodeArg || process.env.THEME_CODE || 'default')
+  .toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+// 输出根目录（public/themes/{THEME_CODE}/）
+const PUBLIC_DIR = path.join(__dirname, '..', 'public', 'themes', THEME_CODE);
 const ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
 const SCENE_DIR = path.join(ASSETS_DIR, 'scene');
 const SPRITE_DIR = path.join(ASSETS_DIR, 'sprite');
@@ -512,6 +519,8 @@ function drawExplosion(x, y, w, h, frame) {
 async function main() {
   console.log('='.repeat(60));
   console.log(`🎮 ${GAME_NAME} GTRS 资源生成器 (Sharp 版本)`);
+  console.log(`🔑 主题代码：${THEME_CODE}  →  资源路径前缀：/themes/${THEME_CODE}/`);
+  console.log('   （可通过 --theme-code <code> 参数或 THEME_CODE 环境变量指定）');
   console.log('='.repeat(60));
   
   // 1. 创建目录结构
@@ -576,19 +585,21 @@ async function main() {
   console.log('\n📄 生成 GTRS.json 配置...');
   
   const gtrsConfig = {
-    $comment: `GTRS v1.0.0 ${GAME_NAME} 内置默认主题`,
     specMeta: {
-      compatibleVersion: '1.0.0',
       specName: 'GTRS',
-      specVersion: '1.0.0'
+      specVersion: '1.0.0',
+      compatibleVersion: '1.0.0'
     },
     themeInfo: {
-      themeId: `${GAME_CODE.replace(/-/g, '_')}_default`,
+      themeCode: THEME_CODE,
+      themeId: `${GAME_CODE.replace(/-/g, '_')}_${THEME_CODE}`,
       gameId: GAME_CODE,
-      themeName: `${GAME_NAME} - 默认主题`,
-      isDefault: true,
+      ownerType: 'GAME',
+      ownerId: GAME_CODE,
+      themeName: `${GAME_NAME} - ${THEME_CODE === 'default' ? '默认主题' : THEME_CODE}`,
+      isDefault: THEME_CODE === 'default',
       author: '官方',
-      description: `${GAME_NAME}默认主题配置`
+      description: `${GAME_NAME}${THEME_CODE === 'default' ? '默认' : THEME_CODE}主题配置`
     },
     globalStyle: {
       bgColor: '#0a0a28',
@@ -602,9 +613,9 @@ async function main() {
       images: {
         login: {},
         scene: {
-          scene_bg_main: { alias: '太空背景', src: '/themes/default/assets/scene/background.png', type: 'png' },
-          scene_bg_stars: { alias: '星空', src: '/themes/default/assets/scene/stars.png', type: 'png' },
-          scene_grid: { alias: '网格', src: '/themes/default/assets/scene/grid.png', type: 'png' }
+          scene_bg_main: { alias: '太空背景', src: `/themes/${THEME_CODE}/assets/scene/background.png`, type: 'png' },
+          scene_bg_stars: { alias: '星空',     src: `/themes/${THEME_CODE}/assets/scene/stars.png`,      type: 'png' },
+          scene_grid:     { alias: '网格',     src: `/themes/${THEME_CODE}/assets/scene/grid.png`,       type: 'png' }
         },
         ui: {},
         icon: {},
@@ -612,17 +623,17 @@ async function main() {
       },
       audio: {
         bgm: {
-          bgm_main: { alias: '主菜单音乐', src: '/themes/default/assets/audio/bgm_main.wav', type: 'wav', volume: 0.6 },
-          bgm_gameplay: { alias: '游戏音乐', src: '/themes/default/assets/audio/bgm_gameplay.wav', type: 'wav', volume: 0.5 },
-          bgm_victory: { alias: '胜利音乐', src: '/themes/default/assets/audio/bgm_victory.wav', type: 'wav', volume: 0.7 },
-          bgm_defeat: { alias: '失败音乐', src: '/themes/default/assets/audio/bgm_defeat.wav', type: 'wav', volume: 0.5 }
+          bgm_main:      { alias: '主菜单音乐', src: `/themes/${THEME_CODE}/assets/audio/bgm_main.wav`,      type: 'wav', volume: 0.6 },
+          bgm_gameplay:  { alias: '游戏音乐',   src: `/themes/${THEME_CODE}/assets/audio/bgm_gameplay.wav`,  type: 'wav', volume: 0.5 },
+          bgm_victory:   { alias: '胜利音乐',   src: `/themes/${THEME_CODE}/assets/audio/bgm_victory.wav`,   type: 'wav', volume: 0.7 },
+          bgm_defeat:    { alias: '失败音乐',   src: `/themes/${THEME_CODE}/assets/audio/bgm_defeat.wav`,    type: 'wav', volume: 0.5 }
         },
         effect: {
-          effect_fire: { alias: '射击音效', src: '/themes/default/assets/audio/effect_fire.wav', type: 'wav', volume: 0.6 },
-          effect_explosion: { alias: '爆炸音效', src: '/themes/default/assets/audio/effect_explosion.wav', type: 'wav', volume: 0.7 },
-          effect_hit: { alias: '击中音效', src: '/themes/default/assets/audio/effect_hit.wav', type: 'wav', volume: 0.5 },
-          effect_powerup: { alias: '道具音效', src: '/themes/default/assets/audio/effect_powerup.wav', type: 'wav', volume: 0.6 },
-          effect_button_click: { alias: '按钮音效', src: '/themes/default/assets/audio/effect_button_click.wav', type: 'wav', volume: 0.5 }
+          effect_fire:         { alias: '射击音效', src: `/themes/${THEME_CODE}/assets/audio/effect_fire.wav`,         type: 'wav', volume: 0.6 },
+          effect_explosion:    { alias: '爆炸音效', src: `/themes/${THEME_CODE}/assets/audio/effect_explosion.wav`,    type: 'wav', volume: 0.7 },
+          effect_hit:          { alias: '击中音效', src: `/themes/${THEME_CODE}/assets/audio/effect_hit.wav`,          type: 'wav', volume: 0.5 },
+          effect_powerup:      { alias: '道具音效', src: `/themes/${THEME_CODE}/assets/audio/effect_powerup.wav`,      type: 'wav', volume: 0.6 },
+          effect_button_click: { alias: '按钮音效', src: `/themes/${THEME_CODE}/assets/audio/effect_button_click.wav`, type: 'wav', volume: 0.5 }
         },
         voice: {}
       },

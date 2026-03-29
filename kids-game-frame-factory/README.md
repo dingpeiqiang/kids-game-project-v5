@@ -5,7 +5,22 @@
 **核心理念**：零耦合 + 模板驱动 + 一键初始化
 
 > 从模板复制的游戏完全独立，不依赖任何框架运行时。  
-> **框架定位：给 AI 使用**——约束 AI 在框架规范下开发新游戏。
+> **框架定位：给 AI 使用**——约束 AI 在框架规范下快速开发新游戏。
+
+---
+
+## 🤖 AI 开发者入口（必读）
+
+**如果你是 AI，请按以下顺序阅读：**
+
+| 步骤 | 文档 | 说明 |
+|------|------|------|
+| 1️⃣ 本文档 | `README.md` | 了解框架全貌（你正在读）|
+| 2️⃣ 开发指南 | `templates/game-template/AI_INSTRUCTIONS.md` | ⭐ **完整开发指南，必须完整阅读** |
+| 3️⃣ 设计模板 | `docs/GAME_DESIGN_TEMPLATE.md` | GDD 编写模板 |
+
+> ⚠️ **不要从 `kids-game-house/games/snake/` 复制代码**——会留下贪吃蛇逻辑残留。  
+> ✅ **正确做法**：使用 `init-game.ps1` 初始化，只重写 `MyGameScene.ts`。
 
 ---
 
@@ -14,43 +29,39 @@
 ```
 kids-game-frame-factory/
 │
-├── scripts/                        # 🛠️  初始化脚本
+├── scripts/                        # 🛠️ 初始化脚本
 │   ├── init-game.ps1              # 一键初始化（Windows PowerShell）
 │   └── init-game.sh               # 一键初始化（macOS/Linux）
 │
 ├── templates/                      # 📋 模板文件
 │   ├── game-template/             # ⭐ 游戏项目完整模板（核心）
-│   │   ├── AI_INSTRUCTIONS.md     # AI 开发入口文档（必读）
-│   │   ├── register-game.sql      # 数据库注册脚本（对齐 t_game）
+│   │   ├── AI_INSTRUCTIONS.md     # AI 开发完整指南（必读）
+│   │   ├── register-game.sql      # 数据库注册脚本模板
 │   │   └── src/scenes/
-│   │       ├── GameScene.ts       # 框架基类（禁止修改）
+│   │       ├── GameScene.ts       # 框架抽象基类（禁止修改）
 │   │       └── MyGameScene.ts     # ⭐ AI 只需重写这一个文件
 │   │
 │   ├── GTRS.template.json         # GTRS 主题资源配置模板
 │   ├── difficulty.template.json   # 难度参数配置模板
 │   └── generate-resources.template.mjs  # 资源生成脚本模板
 │
-├── docs/                           # 📚 开发文档
-│   ├── GAME_DEV_GUIDE.md          # 游戏开发完整指南
+├── docs/                           # 📚 参考文档
+│   ├── GAME_DESIGN_TEMPLATE.md    # GDD 游戏设计文档模板
 │   ├── GTRS_GUIDE.md              # GTRS 资源配置规范
-│   ├── CHECKLIST.md               # 开发检查清单
-│   ├── SQL_SCRIPT_WRITING_GUIDE.md # 数据库注册 SQL 指南
-│   ├── GAME_DESIGN_TEMPLATE.md    # 游戏设计文档（GDD）模板
-│   ├── DESIGN_REVIEW_CHECKLIST.md # 设计评审检查清单
-│   └── README_DESIGN_FIRST.md     # 设计先行快速参考
+│   ├── CHECKLIST.md               # 开发验收检查清单
+│   └── SQL_SCRIPT_WRITING_GUIDE.md # 数据库注册 SQL 规范
 │
 └── tools/                          # 🧰 工具集
-    ├── gtrs-generator/            # GTRS 资源生成器（含示例主题资源）
+    ├── gtrs-generator/            # GTRS + Sharp 资源生成器
     ├── audio-converter/           # WAV → MP3 批量转换工具
-    ├── theme-resource-generator/  # 主题资源生成器（Canvas 绘制）
-    └── README.md
+    └── theme-resource-generator/  # ❌ 已废弃（只生成灰色占位符）
 ```
 
 ---
 
-## 🚀 快速开始
+## 🚀 快速开始（3 步）
 
-### 一键初始化（推荐）
+### 第 1 步：初始化游戏项目
 
 ```powershell
 # Windows PowerShell（在项目根目录执行）
@@ -65,22 +76,29 @@ bash kids-game-frame-factory/scripts/init-game.sh my-puzzle 拼图游戏
 2. 替换所有 `__GAME_CODE__` / `__GAME_NAME__` 占位符
 3. 执行 `npm install` 安装依赖
 
-### 手动复制
+### 第 2 步：阅读 AI_INSTRUCTIONS.md
+
+```
+kids-game-house/games/my-puzzle/AI_INSTRUCTIONS.md
+```
+
+这是完整的开发指南，包含：资源生成 → 配置文件 → 游戏逻辑 → 数据库注册。
+
+### 第 3 步：启动开发服务器
 
 ```bash
-cp -r kids-game-frame-factory/templates/game-template kids-game-house/games/my-puzzle
 cd kids-game-house/games/my-puzzle
-# 手动替换 __GAME_CODE__ → my-puzzle, __GAME_NAME__ → 拼图游戏
-npm install
+npm run dev
+# 访问 http://localhost:5173
 ```
 
 ---
 
-## 🗂️ 框架提供的功能
+## 🗂️ 框架开箱即用的功能
 
-初始化后，以下功能**开箱即用，无需任何开发**：
+初始化后，以下功能**无需任何开发**：
 
-| 功能 | 文件 |
+| 功能 | 实现文件 |
 |------|------|
 | 游戏首页（游戏名/最高分/开始）| `StartView.vue` |
 | 难度选择 + 主题皮肤切换 | `DifficultyView.vue` |
@@ -96,41 +114,73 @@ npm install
 
 ---
 
-## 🔧 开发指南
+## 🔧 AI 开发新游戏只需做这些
 
-**AI 开发新游戏只需做 4 件事：**
+| # | 文件 | 操作 |
+|---|------|------|
+| 1 | `GAME_DESIGN_DOCUMENT.md` | 编写游戏设计文档（GDD） |
+| 2 | `generate-resources.mjs` | 用 Sharp 生成图片 + Node.js WAV 生成音频 |
+| 3 | `src/config/GTRS.json` | 复制生成的 GTRS.json |
+| 4 | `src/config/difficulty.json` | 调整难度参数 |
+| 5 | `src/scenes/MyGameScene.ts` | ⭐ **重写游戏逻辑（唯一核心工作）** |
+| 6 | `src/components/game/PhaserGame.vue` | 改一行：引用你的场景类 |
+| 7 | `register-game-filled.sql` | 生成并执行 SQL 注册游戏 |
 
-| 步骤 | 文件 | 说明 |
-|------|------|------|
-| 1 | `src/config/difficulty.json` | 调整难度参数（gridCols/gridRows/speed 等）|
-| 2 | `src/config/GTRS.json` | 填写资源路径（图片/音频）|
-| 3 | `src/scenes/MyGameScene.ts` | ⭐ **重写游戏逻辑（唯一必须开发的文件）** |
-| 4 | `register-game.sql` | 替换占位符，注册到数据库 |
-
-详细说明见 `templates/game-template/AI_INSTRUCTIONS.md`。
-
-### 核心 API
+### 核心 API（MyGameScene.ts 可用）
 
 ```typescript
-// MyGameScene.ts 中可用的框架方法
-this.addScore(10)       // 加分 → 自动同步 HUD + 检测升关 + 触发动画
-this.handleGameOver()   // 游戏结束 → 跳转结束界面
-this.togglePause()      // 切换暂停状态
-this.initAdapt()        // 读取难度配置，初始化坐标系
-this.gridToPixelCenter(col, row)  // 格子坐标 → 像素坐标（中心点）
+// ─── 必须实现的三个抽象方法 ──────────────────────────────
+protected createGameObjects(): void     // 创建游戏对象
+protected gameLoop(time, delta): void   // 游戏主循环（每帧）
+protected handleGameOver(): void        // 游戏结束处理
 
-// 音效
+// ─── 框架提供的工具 ──────────────────────────────────────
+this.addScore(10)                       // 加分（自动同步 HUD + 升关）
+this.cellSize                           // 格子像素大小
+this.gridCols / this.gridRows          // 格子数（来自难度配置）
+this.offsetX / this.offsetY            // 游戏区域偏移（居中用）
+this.gridToPixelCenter(col, row)       // 格子坐标 → 像素中心坐标
+this.pauseGame() / this.resumeGame()   // 暂停/恢复
+this.isPaused / this.isGameOver        // 状态标志
+
+// ─── 游戏结束（必须手动 emit） ──────────────────────────
+this.game.events.emit('gameover', this.score)
+
+// ─── 音效（框架内置，无需外部文件） ─────────────────────
 const audio = useAudioStore()
-audio.playClickSound()  // 点击音
-audio.playWinSound()    // 胜利音
-audio.playDieSound()    // 失败音
+audio.playClickSound() / audio.playWinSound() / audio.playDieSound()
 ```
 
 ---
 
-## ⚙️ 屏幕适配
+## 📌 资源生成规范（关键）
 
-4 层配合，实现全平台全屏适配：
+| 方案 | 推荐度 | 说明 |
+|------|--------|------|
+| **Sharp + Node.js WAV** | ✅ 必须使用 | 程序化生成真实图案 PNG + WAV 音频 → MP3 |
+| AI 图像生成（image_gen）| ⭐ 可选辅助 | 需要精美插画时使用 |
+| theme-resource-generator | ❌ 严禁使用 | 只生成灰色矩形 + 文字，质量极差 |
+
+**资源路径规范**：
+- 资源放在游戏包内：`public/themes/{game_code}_default/assets/scene/*.png`
+- GTRS.json 中不含 `/public/` 前缀：`/themes/{game_code}_default/assets/scene/bg.png`
+- 默认主题命名：`{game_code}_default`（如 `puzzle_default`）
+
+---
+
+## 📡 Vue ↔ Phaser 事件协议
+
+| 方向 | 事件名 | 数据 | 触发时机 |
+|------|--------|------|---------|
+| Scene → Vue | `ready` | - | 游戏就绪（框架自动发送）|
+| Scene → Vue | `score` | `number` | `addScore()` 时自动发送 |
+| Scene → Vue | `gameover` | `number` | **你需要手动 emit** |
+| Scene → Vue | `paused` | - | `pauseGame()` 时自动发送 |
+| Scene → Vue | `resumed` | - | `resumeGame()` 时自动发送 |
+
+---
+
+## ⚙️ 屏幕适配（4 层）
 
 | 层级 | 配置 |
 |------|------|
@@ -141,42 +191,13 @@ audio.playDieSound()    // 失败音
 
 ---
 
-## 📡 Vue ↔ Phaser 事件协议
-
-| 方向 | 事件名 | 数据 | 说明 |
-|------|--------|------|------|
-| Scene → Vue | `ready` | - | 游戏就绪 |
-| Scene → Vue | `score` | `number` | 分数变化 |
-| Scene → Vue | `gameover` | `number` | 游戏结束（携带最终分数）|
-| Scene → Vue | `paused` | - | 游戏暂停 |
-| Scene → Vue | `resumed` | - | 游戏恢复 |
-| Vue → Scene | `scene.pauseGame()` | - | 暂停 |
-| Vue → Scene | `scene.resumeGame()` | - | 恢复 |
-
----
-
 ## 🗄️ 数据库注册
 
-游戏注册脚本对齐真实表结构 `t_game`（非旧版 `game` 表）。
+游戏表：**`t_game`**（不是 `game`）  
+主题表：**`t_theme_info`**（有 `t_` 前缀）  
+状态流程：`status=0`（草稿）→ 测试通过 → `UPDATE status=2`（上架）
 
-关键字段：`game_code` / `game_name` / `game_url` / `category` / `grade` / `creator_id`  
-时间戳：`UNIX_TIMESTAMP(NOW()) * 1000`（毫秒）  
-状态：`status=0`（草稿），测试通过后执行 `UPDATE status=2`（上架）
-
-详见 `docs/SQL_SCRIPT_WRITING_GUIDE.md`。
-
----
-
-## 📚 文档索引
-
-| 文档 | 说明 |
-|------|------|
-| `templates/game-template/AI_INSTRUCTIONS.md` | ⭐ **AI 开发入口，优先阅读** |
-| `docs/GAME_DEV_GUIDE.md` | 游戏开发完整指南 |
-| `docs/GTRS_GUIDE.md` | 主题资源配置规范 |
-| `docs/CHECKLIST.md` | 开发验收检查清单 |
-| `docs/SQL_SCRIPT_WRITING_GUIDE.md` | 数据库注册 SQL 规范 |
-| `docs/GAME_DESIGN_TEMPLATE.md` | 游戏设计文档（GDD）模板 |
+详见 `AI_INSTRUCTIONS.md` 第7节 和 `docs/SQL_SCRIPT_WRITING_GUIDE.md`。
 
 ---
 
@@ -184,20 +205,18 @@ audio.playDieSound()    // 失败音
 
 | 项目 | 作用 |
 |------|------|
-| `kids-game-house/games/snake/` | **最佳实践参考**——成熟完整的游戏实现 |
-| `kids-game-house/games/puzzle/` | **拼图游戏参考**——v5.0 框架验证实现 |
-| `.workbuddy/skills/game-dev/` | IDE Skill（已废弃，指向本框架）|
-
-**重要原则**：
-- ❌ 不要从 `snake/` 复制代码创建新游戏（会留下 snake 逻辑残留）
-- ✅ 用 `init-game.ps1` 初始化，参考 snake 的**思路**重新实现
+| `kids-game-house/games/snake/` | **参考实现**——成熟的游戏实现，可看思路，不能复制 |
+| `kids-game-house/games/puzzle/` | **v5.0 框架验证实现**——Sharp 生成资源的完整示例 |
 
 ---
 
-## 📝 技术规范
+## 📚 文档索引
 
-- **IDE 沙箱**：禁止 `confirm()`/`alert()`，使用 `ElMessageBox`/`ElMessage`
-- **音频格式**：统一 `.mp3`
-- **类型检查**：`npx tsc --noEmit`
-- **Phaser 导入**：`import Phaser from 'phaser'`
-- **事件通信**：`this.game.events.emit()` 从 Phaser 传递到 Vue
+| 文档 | 说明 |
+|------|------|
+| `templates/game-template/AI_INSTRUCTIONS.md` | ⭐ **AI 开发完整指南（必读）** |
+| `docs/GAME_DESIGN_TEMPLATE.md` | GDD 游戏设计文档模板 |
+| `docs/GTRS_GUIDE.md` | GTRS 主题资源配置规范详解 |
+| `docs/CHECKLIST.md` | 开发验收检查清单 |
+| `docs/SQL_SCRIPT_WRITING_GUIDE.md` | 数据库注册 SQL 规范 |
+| `docs/DESIGN_REVIEW_CHECKLIST.md` | 设计评审检查清单 |
