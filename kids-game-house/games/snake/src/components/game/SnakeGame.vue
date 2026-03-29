@@ -38,12 +38,23 @@
     
     <!-- 游戏内 UI 覆盖层 - 悬浮在左上角，不遮挡游戏区域 -->
     <div class="game-ui absolute top-2 left-0 right-0 flex justify-between items-start pointer-events-none px-4">
-      <!-- 左侧：分数面板 -->
-      <ScorePanel 
-        :score="gameStore.score" 
-        :highScore="gameStore.highScore"
-        class="pointer-events-auto max-w-[180px]"
-      />
+      <!-- 左侧：分数面板 + 关卡指示 -->
+      <div class="flex flex-col gap-1">
+        <ScorePanel 
+          :score="gameStore.score" 
+          :highScore="gameStore.highScore"
+          class="pointer-events-auto max-w-[180px]"
+        />
+        <div
+          v-if="gameStore.isPlaying && gameStore.currentLevel > 0"
+          class="level-indicator pointer-events-none"
+        >
+          <span class="level-badge">
+            🏰 {{ gameStore.currentLevel }} / 20
+          </span>
+          <span class="level-name">{{ gameStore.levelConfig.name }}</span>
+        </div>
+      </div>
       
       <!-- 右侧：控制按钮 -->
       <div class="flex gap-2 pointer-events-auto">
@@ -105,6 +116,9 @@
         </GameButton>
       </div>
     </div>
+
+    <!-- 🏰 关卡升级过渡覆盖层 -->
+    <LevelTransitionOverlay />
 
     <!-- ⭐ 主题加载错误提示覆盖层 -->
     <div
@@ -180,6 +194,7 @@ import ScorePanel from '@/components/ui/ScorePanel.vue'
 import PauseButton from '@/components/ui/PauseButton.vue'
 import SoundToggle from '@/components/ui/SoundToggle.vue'
 import GameButton from '@/components/ui/GameButton.vue'
+import LevelTransitionOverlay from '@/components/ui/LevelTransitionOverlay.vue'
 import { initUIParams } from '@/utils/uiResponsive'
 
 const router = useRouter()
@@ -370,6 +385,9 @@ onMounted(async () => {
           game.playSound('crash')
           break
         case 'levelup':
+          game.playSound('levelup')
+          break
+        case 'level_complete':
           game.playSound('levelup')
           break
       }
@@ -645,6 +663,9 @@ function startGameLoop() {
       // 👉 获取 cellSize 并传入（确保碰撞检测准确）
       const cellSize = phaserGameRef.value?.getCellSize() || 50
       
+      // 🏰 同步运行时 cellSize 到 store（关卡系统升级时需要用真实尺寸生成食物/障碍物）
+      gameStore.updateRuntimeCellSize(cellSize)
+      
       // 👉 传入 deltaTime 和 cellSize，实现精确的平滑移动和碰撞检测
       gameStore.moveSnake(deltaTime, cellSize)
       
@@ -893,6 +914,33 @@ function handleTouchEnd(event: TouchEvent) {
 /* 🎁 道具效果徽章动画 */
 .item-effects-bar {
   z-index: 15;
+}
+
+/* 🏰 关卡指示器 */
+.level-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  max-width: 180px;
+}
+
+.level-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.level-name {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .effect-badge-enter-active {

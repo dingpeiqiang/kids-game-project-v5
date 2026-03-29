@@ -9,6 +9,16 @@
     <!-- 分数展示 -->
     <div class="bg-gray-800/60 rounded-2xl backdrop-blur mb-6 md:mb-8 w-full max-w-sm" :style="scoreCardStyle">
       <div class="text-center">
+        <!-- 🏰 关卡信息 -->
+        <div
+          v-if="gameStore.currentLevel > 0"
+          class="level-info mb-4"
+        >
+          <span class="level-badge-display">
+            🏰 第 {{ gameStore.currentLevel }} 关 · {{ gameStore.levelConfig.name }}
+          </span>
+        </div>
+
         <p class="text-gray-400 mb-2" :style="labelStyle">本次得分</p>
         <p class="text-green-400 font-bold mb-4 md:mb-6" :style="scoreNumberStyle">{{ score }}</p>
         
@@ -202,5 +212,18 @@ onMounted(() => {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+.level-info {
+  padding-bottom: 0.5rem;
+}
+
+.level-badge-display {
+  font-size: 0.85rem;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(251, 191, 36, 0.2);
 }
 </style>

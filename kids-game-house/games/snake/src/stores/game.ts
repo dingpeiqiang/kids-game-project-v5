@@ -23,13 +23,20 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Difficulty, GameState, Position, Food, Particle } from '@/types/game'
 import { DIFFICULTY_CONFIGS } from '@/types/game'
+import {
+  type LevelConfig,
+  type LevelProgress,
+  type LevelTransition,
+  getLevelConfig,
+  LEVEL_TABLE,
+} from '@/types/level'
 import { getSessionToken, isStandaloneMode, reportGameResult, getGameId } from '@/utils/platformApi'
 import type { ItemEffectState } from '@/types/game-base.types'
 
 // ============================================================================
 // 🎯 第一部分：通用游戏状态（可复用到其他游戏）
 // ============================================================================
-export type GameEventType = 'eat' | 'crash' | 'gameover' | 'levelup'
+export type GameEventType = 'eat' | 'crash' | 'gameover' | 'levelup' | 'level_complete'
 type GameEventCallback = (event: GameEventType, data?: any) => void
 
 /**
@@ -76,9 +83,164 @@ export const useGameStore = defineStore('game', () => {
   // ─── 自定义游戏配置（难度选择页面设置后传入） ───
   const customConfig = ref<CustomGameConfig | null>(null)
 
+  /** 运行时 cellSize（由 SnakeGame.vue 在游戏循环中同步更新） */
+  const runtimeCellSize = ref(50)
+
   /** 设置自定义游戏配置 */
   const setCustomConfig = (cfg: CustomGameConfig | null) => {
     customConfig.value = cfg
+  }
+
+  // ─── 关卡系统状态 ───
+  const currentLevel = ref(1)
+  const levelConfig = ref<LevelConfig>(getLevelConfig(1, 'medium'))
+  const levelTransition = ref<LevelTransition>({
+    isActive: false,
+    fromLevel: 0,
+    toLevel: 0,
+    toLevelName: '',
+  })
+  const levelProgress = ref<LevelProgress>({
+    maxUnlockedLevel: 1,
+    levelHighScores: {},
+  })
+
+  /**
+   * 加载关卡进度（从 localStorage）
+   */
+  const loadLevelProgress = () => {
+    try {
+      const saved = localStorage.getItem('snake-level-progress')
+      if (saved) {
+        const data = JSON.parse(saved) as LevelProgress
+        levelProgress.value = data
+        console.log('🏰 关卡进度已加载:', data)
+      }
+    } catch (e) {
+      console.error('加载关卡进度失败:', e)
+    }
+  }
+
+  /**
+   * 保存关卡进度
+   */
+  const saveLevelProgress = () => {
+    try {
+      localStorage.setItem('snake-level-progress', JSON.stringify(levelProgress.value))
+    } catch (e) {
+      console.error('保存关卡进度失败:', e)
+    }
+  }
+
+  /**
+   * 初始化关卡（游戏开始时调用）
+   * 从第 1 关开始，读取当前难度的关卡配置
+   */
+  const initLevel = () => {
+    currentLevel.value = 1
+    levelConfig.value = getLevelConfig(1, difficulty.value)
+    console.log('🏰 关卡系统已初始化，第 1 关:', levelConfig.value.name)
+  }
+
+  /**
+   * 检查是否需要升级（在 addScore 之后调用）
+   * 条件：累计分数 >= 当前关卡 scoreToNext 且未到最后一关
+   */
+  const checkLevelUp = (): boolean => {
+    if (score.value >= levelConfig.value.scoreToNext) {
+      const nextLevel = currentLevel.value + 1
+      // 超过 20 关后不再升级
+      if (nextLevel > 20) return false
+
+      const nextConfig = getLevelConfig(nextLevel, difficulty.value)
+
+      // 更新关卡状态
+      currentLevel.value = nextLevel
+      levelConfig.value = nextConfig
+
+      // 更新解锁进度
+      if (nextLevel > levelProgress.value.maxUnlockedLevel) {
+        levelProgress.value.maxUnlockedLevel = nextLevel
+        saveLevelProgress()
+      }
+
+      // 触发过渡动画
+      levelTransition.value = {
+        isActive: true,
+        fromLevel: currentLevel.value - 1,
+        toLevel: nextLevel,
+        toLevelName: nextConfig.name,
+      }
+
+      // 触发事件
+      emitEvent('levelup', {
+        fromLevel: nextLevel - 1,
+        toLevel: nextLevel,
+        levelName: nextConfig.name,
+      })
+
+      // 2.5 秒后自动关闭过渡，同时应用新关卡参数
+      setTimeout(() => {
+        // 关闭过渡 UI
+        levelTransition.value.isActive = false
+
+        // 应用新关卡参数
+        applyLevelConfig(nextConfig)
+      }, 2500)
+
+      return true
+    }
+    return false
+  }
+
+  /**
+   * 应用关卡配置参数到当前游戏
+   * 改写 generateObstacles 使用的障碍物数量、
+   * 食物分数、蛇的移动速度
+   */
+  const applyLevelConfig = (cfg: LevelConfig) => {
+    // 速度写入 customConfig（优先级最高，moveSnake 会读取）
+    const newCustom: CustomGameConfig = {
+      ...customConfig.value,
+      speed: cfg.speed,
+      normalFoodScore: cfg.foodScore,
+      bonusFoodScore: cfg.bonusScore,
+      specialFoodScore: cfg.coinScore,
+    }
+    customConfig.value = newCustom
+
+    // 使用运行时 cellSize 重新生成障碍物和食物
+    generateObstacles(runtimeCellSize.value)
+    generateFood(runtimeCellSize.value)
+
+    console.log('🏰 已应用关卡参数:', cfg.name, {
+      speed: cfg.speed,
+      obstacles: cfg.obstacleCount,
+      foodScore: cfg.foodScore,
+      cellSize: runtimeCellSize.value,
+    })
+  }
+
+  /**
+   * 游戏结束时保存当前关卡的最高分
+   */
+  const saveLevelHighScore = () => {
+    const lvl = currentLevel.value
+    const prev = levelProgress.value.levelHighScores[lvl] || 0
+    if (score.value > prev) {
+      levelProgress.value.levelHighScores[lvl] = score.value
+      saveLevelProgress()
+    }
+  }
+
+  /**
+   * 重置关卡过渡状态（手动关闭过渡 UI 时调用）
+   */
+  const dismissLevelTransition = () => {
+    if (levelTransition.value.isActive) {
+      levelTransition.value.isActive = false
+      applyLevelConfig(levelConfig.value)
+    }
   }
 
   // ─── 独立部署模式相关（通用） ───
@@ -296,6 +458,7 @@ export const useGameStore = defineStore('game', () => {
     playCount.value++
     gameStartTime.value = Date.now()  // 记录游戏开始时间
     resetItemEffects()  // 🎁 重置道具效果状态
+    initLevel()        // 🏰 初始化关卡系统
     saveToStorage()
   }
 
@@ -305,6 +468,7 @@ export const useGameStore = defineStore('game', () => {
     isGameOver.value = true
     emitEvent('gameover')
     resetItemEffects()  // 🎁 游戏结束时清理所有道具效果
+    saveLevelHighScore() // 🏰 保存关卡最高分
     if (score.value > highScore.value) {
       highScore.value = score.value
       saveToStorage()
@@ -448,6 +612,8 @@ export const useGameStore = defineStore('game', () => {
       highScore.value = score.value
       saveToStorage()
     }
+    // 🏰 检查是否升级
+    checkLevelUp()
   }
 
   // 获取当前难度配置
@@ -772,7 +938,20 @@ export const useGameStore = defineStore('game', () => {
     direction.value = { x: 1, y: 0 }
     nextDirection.value = { x: 1, y: 0 }
     particles.value = []
-    generateObstacles(cellSize)  // 生成障碍物
+
+    // 🏰 应用第 1 关的关卡配置（速度、分数）
+    if (levelConfig.value) {
+      const newCustom: CustomGameConfig = {
+        ...customConfig.value,
+        speed: levelConfig.value.speed,
+        normalFoodScore: levelConfig.value.foodScore,
+        bonusFoodScore: levelConfig.value.bonusScore,
+        specialFoodScore: levelConfig.value.coinScore,
+      }
+      customConfig.value = newCustom
+    }
+
+    generateObstacles(cellSize)  // 生成障碍物（关卡配置数量）
     generateFood(cellSize)
     headRotation.value = 0
   }
@@ -783,8 +962,11 @@ export const useGameStore = defineStore('game', () => {
     
     const gridCols = 32
     const gridRows = 18
-    const obstacleCount = difficulty.value === 'easy' ? 0 : 
-                         difficulty.value === 'medium' ? 3 : 6
+    // 🏰 优先使用关卡配置的障碍物数量，其次使用难度预设
+    const obstacleCount = levelConfig.value?.obstacleCount ?? (
+      difficulty.value === 'easy' ? 0 : 
+      difficulty.value === 'medium' ? 3 : 6
+    )
     
     for (let i = 0; i < obstacleCount; i++) {
       let newObstacle: Position
@@ -850,6 +1032,7 @@ export const useGameStore = defineStore('game', () => {
 
   // 初始化加载
   loadFromStorage()
+  loadLevelProgress()  // 🏰 加载关卡进度
 
   // ============================================================================
   // 🎯 导出部分
@@ -872,6 +1055,9 @@ export const useGameStore = defineStore('game', () => {
     // ─── 自定义配置 ───
     customConfig,
     setCustomConfig,
+    // ─── 运行时参数 ───
+    runtimeCellSize,
+    updateRuntimeCellSize: (size: number) => { runtimeCellSize.value = size },
     // ─── 贪吃蛇特定数据 ───
     snake,
     food,
@@ -908,6 +1094,13 @@ export const useGameStore = defineStore('game', () => {
     currentHighScore,
     currentPlayCount,
     currentDifficulty,
-    currentConfig
+    currentConfig,
+    // ─── 关卡系统 ───
+    currentLevel,
+    levelConfig,
+    levelTransition,
+    levelProgress,
+    dismissLevelTransition,
+    LEVEL_TABLE
   }
 })
