@@ -47,6 +47,11 @@ export class ItemSystem {
   private spawnTimer: any = null
   private onItemCollected?: (event: ItemCollectEvent) => void
   private isInitialized: boolean = false
+
+  // 暂停支持：记录暂停时定时器已走了多少毫秒
+  private isPaused: boolean = false
+  private spawnTimerStartedAt: number = 0       // 当前周期开始的时间戳
+  private spawnTimerElapsed: number = 0         // 已经过去的毫秒数（暂停时保存）
   
   // 🎁 渲染相关
   private scene: any = null
@@ -178,11 +183,53 @@ export class ItemSystem {
       clearInterval(this.spawnTimer)
     }
 
+    this.spawnTimerStartedAt = Date.now()
+    this.spawnTimerElapsed = 0
+
     this.spawnTimer = setInterval(() => {
+      this.spawnTimerStartedAt = Date.now()  // 重置周期起点
+      this.spawnTimerElapsed = 0
       this.trySpawnItem()
     }, this.config.spawnInterval)
 
     console.log(`⏰ 道具生成定时器已启动，间隔：${this.config.spawnInterval}ms`)
+  }
+
+  /**
+   * ⭐ 暂停道具生成定时器
+   * 记录当前周期已过去的时间，停止 setInterval
+   */
+  pause(): void {
+    if (this.isPaused || !this.isInitialized || !this.spawnTimer) return
+    this.isPaused = true
+
+    // 记录本周期已过去多少毫秒
+    this.spawnTimerElapsed = Date.now() - this.spawnTimerStartedAt
+
+    clearInterval(this.spawnTimer)
+    this.spawnTimer = null
+    console.log(`⏸️ 道具生成定时器已暂停（已过 ${this.spawnTimerElapsed}ms）`)
+  }
+
+  /**
+   * ⭐ 恢复道具生成定时器
+   * 按剩余时间重建 setTimeout → 然后再启动正常 setInterval
+   */
+  resume(): void {
+    if (!this.isPaused || !this.isInitialized) return
+    this.isPaused = false
+
+    const remaining = Math.max(0, this.config.spawnInterval - this.spawnTimerElapsed)
+    console.log(`▶️ 道具生成定时器恢复，剩余 ${remaining}ms 后生成`)
+
+    // 先用 setTimeout 补齐本周期剩余时间，之后再切换到正常 setInterval
+    this.spawnTimer = setTimeout(() => {
+      this.trySpawnItem()
+      // 补齐后恢复正常周期
+      this.startSpawnTimer()
+    }, remaining)
+
+    this.spawnTimerStartedAt = Date.now() - this.spawnTimerElapsed
   }
 
   /**

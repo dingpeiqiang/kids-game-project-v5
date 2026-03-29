@@ -85,12 +85,20 @@ export class ItemManager {
     this.gridCols = gridCols
     this.gridRows = gridRows
     
-    // 初始化道具效果
+    // 初始化道具持续时间配置（供 getItemDuration() 使用）
+    // 注意：effect/cleanup 回调在此文件中不再被调用
+    // 实际效果逻辑由 gameStore.applyItemEffect() 统一处理（通过 PhaserGame.onItemEffect 回调注入）
     this.initItemEffects()
   }
 
   /**
-   * ⭐ 初始化所有道具效果 (保持原有逻辑)
+   * 初始化道具配置（仅 duration 字段有效）
+   * 
+   * ⚠️ 架构说明：
+   * - effect/cleanup 回调定义在此，但不会被本类调用
+   * - 实际道具效果执行链：checkItemCollision() → ItemSystem.handleItemCollected()
+   *   → PhaserGame.onItemEffect 回调 → gameStore.applyItemEffect()
+   * - duration 字段由 getItemDuration() 读取，用于道具生命周期管理
    */
   private initItemEffects(): void {
     // 加速道具
@@ -231,42 +239,6 @@ export class ItemManager {
   private getItemDuration(type: ItemType): number {
     const effect = this.itemEffects.get(type)
     return effect?.duration ?? 0
-  }
-
-  /**
-   * ⭐ 应用道具效果
-   * 
-   * @param item 道具对象
-   * @param snake 蛇身数组
-   * @param gameData 游戏数据对象
-   */
-  applyItemEffect(item: GameItem, snake: any[], gameData: any): void {
-    const effect = this.itemEffects.get(item.type)
-    if (!effect) {
-      console.warn(`⚠️ 未找到道具效果：${item.type}`)
-      return
-    }
-
-    // 应用效果
-    effect.effect(snake, gameData)
-
-    // 如果是一次性道具，立即移除
-    if (effect.duration === 0) {
-      item.active = false
-      this.removeInactiveItems()
-    } else {
-      // 定时效果结束后清理
-      setTimeout(() => {
-        if (effect.cleanup) {
-          effect.cleanup(snake, gameData)
-        }
-        item.active = false
-        this.removeInactiveItems()
-      }, effect.duration)
-    }
-
-    // 通知收集事件
-    this.onItemCollected?.(item)
   }
 
   /**

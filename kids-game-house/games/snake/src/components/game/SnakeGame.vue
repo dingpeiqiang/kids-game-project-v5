@@ -62,10 +62,8 @@
           {{ isFullscreen ? '⛶' : '⛶' }}
         </button>
         <SoundToggle />
-        <PauseButton 
-          :isPaused="gameStore.isPaused" 
-          @click="gameStore.togglePause()"
-        />
+        <!-- ✅ PauseButton 内部已自治（直接读 store + 自己处理 click），不需要父组件传 prop 或监听事件 -->
+        <PauseButton />
       </div>
     </div>
     
@@ -97,7 +95,7 @@
     <!-- 暂停覆盖层 -->
     <div
       v-if="gameStore.isPaused"
-      class="pause-overlay absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center"
+      class="pause-overlay absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-20"
     >
       <div class="text-center">
         <div class="text-5xl mb-4">⏸️</div>
@@ -496,8 +494,8 @@ const cleanupGame = () => {
   // 🎁 销毁 PhaserGame 实例 (会清理道具系统)
   if (phaserGameRef.value) {
     phaserGameRef.value.destroy()
-    // ⚠️ 不要立即设置为 null，让 onUnmounted 也能访问
-    // phaserGameRef.value = null  // 删除这行!
+    // 注意：phaserGameRef.value = null 统一在 onUnmounted 末尾执行
+    // 因为 onUnmounted 还需要访问 phaserGameRef 来清理道具系统
   }
 }
 
@@ -525,6 +523,9 @@ onUnmounted(() => {
   if (gameContainer.value) {
     gameContainer.value.removeEventListener('touchmove', handleTouchMove)
   }
+
+  // ✅ 释放 Phaser 实例引用，避免组件卸载后持有悬空引用
+  phaserGameRef.value = null
 })
 
 /**
@@ -538,8 +539,18 @@ watch(() => gameStore.isPaused, (paused) => {
   const game = getPhaserGame()
   if (paused) {
     game?.stopAllBgm()
+    // 暂停 Phaser scene（冻结动画/tweens/粒子）
+    game?.pauseScene()
+    // 暂停道具生成定时器（避免暂停期间出现新道具）
+    const phaserGame = phaserGameRef.value as any
+    phaserGame?.getItemSystem()?.pause()
   } else {
     game?.playBgmGameplay()
+    // 恢复 Phaser scene
+    game?.resumeScene()
+    // 恢复道具生成定时器（按剩余时间续计）
+    const phaserGame = phaserGameRef.value as any
+    phaserGame?.getItemSystem()?.resume()
   }
 })
 
@@ -547,7 +558,7 @@ watch(() => gameStore.isGameOver, (gameOver) => {
   const game = getPhaserGame()
   if (gameOver) {
     game?.stopAllBgm()
-    game?.playSound('gameover')
+    // ⚠️ 不在这里播 gameover 音效：endGame() → emitEvent('gameover') → eventCallback 已处理，避免重复播放
     // 只触发一次轻微震动
     game?.shakeScreen()
 
@@ -645,6 +656,9 @@ function startGameLoop() {
       
       // 更新粒子
       gameStore.updateParticles()
+    } else if (gameStore.isPaused) {
+      // ⭐ 暂停时持续刷新 lastTime，防止恢复后 deltaTime 暴增导致蛇瞬移/GameOver
+      lastTime = currentTime
     }
     
     gameLoop = requestAnimationFrame(loop)

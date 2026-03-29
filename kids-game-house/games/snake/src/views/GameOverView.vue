@@ -157,7 +157,9 @@ const playAgain = () => {
   console.log('🔄 再来一局，使用主题 ID:', currentThemeId)
   
   gameStore.resetGame()
-  gameStore.startGame()
+  // 注意：不在此处调用 startGame()
+  // SnakeGame.vue onMounted → startGameWithInit() → startGame() 会负责初始化
+  // 此处调用会导致 playCount 在一局内递增两次
   
   // ⭐ 跳转到游戏页面时带上 theme_id 参数
   router.push({

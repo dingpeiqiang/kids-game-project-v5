@@ -135,6 +135,8 @@ export const useGameStore = defineStore('game', () => {
 
   // 道具效果计时器管理（防止 effect 堆叠时计时器泄漏）
   const itemTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  // 暂停时保存各效果剩余时间（key 与 itemTimers 对应）
+  const pausedEffectRemaining = new Map<string, number>()
 
   /**
    * 应用道具效果（贪吃蛇特定实现）
@@ -232,6 +234,8 @@ export const useGameStore = defineStore('game', () => {
     // 清理所有计时器
     itemTimers.forEach(timer => clearTimeout(timer))
     itemTimers.clear()
+    // 清理暂停时保存的剩余时间
+    pausedEffectRemaining.clear()
     // 逐字段重置，避免整体替换导致 template 短暂访问 undefined
     itemEffects.value.speedMultiplier = 1.0
     itemEffects.value.scoreMultiplier = 1.0
@@ -354,9 +358,85 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 暂停/继续
+  // 暂停/继续（守卫：仅在游戏进行中且未结束时有效）
   const togglePause = () => {
-    isPaused.value = !isPaused.value
+    if (!isPlaying.value || isGameOver.value) return
+
+    if (!isPaused.value) {
+      // ── 进入暂停 ──
+      isPaused.value = true
+      const now = Date.now()
+
+      // 冻结所有道具效果计时器，保存剩余时间
+      pausedEffectRemaining.clear()
+      itemTimers.forEach((timer, key) => {
+        // 从 activeEffects 找到对应 endTime，计算剩余时间
+        const effect = itemEffects.value.activeEffects.find(e => {
+          // key 与 effect.type 的映射：speed/slow→'speed', shield→'shield', magnet→'magnet', score→'score'
+          const keyMap: Record<string, string> = {
+            speed: 'speed_boost', slow: 'slow_down',
+            shield: 'shield', magnet: 'magnet', score: 'double_score'
+          }
+          return e.type === keyMap[key]
+        })
+        const remaining = effect ? Math.max(0, effect.endTime - now) : 0
+        pausedEffectRemaining.set(key, remaining)
+        clearTimeout(timer)
+      })
+      itemTimers.clear()
+      console.log('⏸️ 暂停：道具效果计时器已冻结', Object.fromEntries(pausedEffectRemaining))
+
+    } else {
+      // ── 恢复游戏 ──
+      isPaused.value = false
+      const now = Date.now()
+
+      // 补偿 activeEffects 的 endTime（向后顺延已冻结的时间）
+      // 并重建各效果的 setTimeout
+      pausedEffectRemaining.forEach((remaining, key) => {
+        if (remaining <= 0) return
+
+        const newEndTime = now + remaining
+
+        // 更新 UI 进度条的 endTime
+        const keyMap: Record<string, string> = {
+          speed: 'speed_boost', slow: 'slow_down',
+          shield: 'shield', magnet: 'magnet', score: 'double_score'
+        }
+        const effectType = keyMap[key]
+        const effectEntry = itemEffects.value.activeEffects.find(e => e.type === effectType)
+        if (effectEntry) effectEntry.endTime = newEndTime
+
+        // 重建清理 setTimeout
+        const timer = setTimeout(() => {
+          itemEffects.value.activeEffects = itemEffects.value.activeEffects.filter(e => e.type !== effectType)
+          switch (key) {
+            case 'speed': case 'slow':
+              itemEffects.value.speedMultiplier = 1.0
+              console.log('⚡/🐢 速度效果结束（暂停续时）')
+              break
+            case 'shield':
+              itemEffects.value.hasShield = false
+              console.log('🛡️ 护盾效果结束（暂停续时）')
+              break
+            case 'magnet':
+              itemEffects.value.hasMagnet = false
+              console.log('🧲 磁铁效果结束（暂停续时）')
+              break
+            case 'score':
+              itemEffects.value.scoreMultiplier = 1.0
+              console.log('✨ 双倍分数效果结束（暂停续时）')
+              break
+          }
+          itemTimers.delete(key)
+        }, remaining)
+
+        itemTimers.set(key, timer)
+      })
+
+      pausedEffectRemaining.clear()
+      console.log('▶️ 恢复：道具效果计时器已重建')
+    }
   }
 
   // 增加分数（带难度 + 道具倍率）

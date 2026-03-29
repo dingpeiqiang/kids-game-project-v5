@@ -8,13 +8,15 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 import { useAudioStore } from '@/stores/audio'
 
 const gameStore = useGameStore()
 const audioStore = useAudioStore()
 
-const isPaused = gameStore.isPaused
+// ✅ 用 computed 保持响应式，不能直接解构 ref
+const isPaused = computed(() => gameStore.isPaused)
 
 const toggle = () => {
   audioStore.playPauseSound()

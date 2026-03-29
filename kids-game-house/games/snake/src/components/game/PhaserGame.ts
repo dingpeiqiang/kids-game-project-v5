@@ -193,6 +193,7 @@ export class SnakePhaserGame {
   private game: Phaser.Game | null = null
   private scene: Phaser.Scene | null = null
   private isReady: boolean = false  // ⭐ 标记资源是否加载完成
+  private _isPaused: boolean = false  // ⭐ 暂停标志，守卫 update() 执行
 
   // ============================================================================
   // 🔧【游戏特定配置】根据具体游戏修改这些值
@@ -910,8 +911,9 @@ export class SnakePhaserGame {
    * 更新游戏画面
    */
   update(time: number, delta: number): void {
-    // Phaser 的 update 循环，用于动画等
-    
+    // ⭐ 暂停时完全跳过 update，停止所有数据逻辑（道具碰撞检测等）
+    if (this._isPaused) return
+
     // 🎁 更新道具系统 (自动处理生成、碰撞)
     if (this.itemSystem.getIsInitialized()) {
       // ✅ 修复：传入真实蛇坐标数据，道具碰撞检测需要蛇头位置
@@ -1309,6 +1311,26 @@ export class SnakePhaserGame {
       ease: 'Power2',
       onComplete: () => flash.destroy()
     })
+  }
+
+  /**
+   * 暂停 Phaser scene（停止动画/物理/tweens + 停止 update 逻辑）
+   */
+  pauseScene(): void {
+    this._isPaused = true
+    if (this.scene) {
+      this.scene.scene.pause()
+    }
+  }
+
+  /**
+   * 恢复 Phaser scene
+   */
+  resumeScene(): void {
+    this._isPaused = false
+    if (this.scene) {
+      this.scene.scene.resume()
+    }
   }
 
   /**

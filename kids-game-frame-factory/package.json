@@ -15,8 +15,12 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src --ext .ts",
-    "docs": "typedoc src/index.ts --out docs/api"
+    "lint:fix": "eslint src --ext .ts --fix",
+    "docs": "typedoc src/index.ts --out docs/api",
+    "clean": "rimraf dist"
   },
   "keywords": [
     "game",
@@ -47,7 +51,8 @@
     "typescript": "^5.1.6",
     "vite": "^4.4.0",
     "vitest": "^0.33.0",
-    "vue": "^3.3.4"
+    "vue": "^3.3.4",
+    "rimraf": "^5.0.0"
   },
   "engines": {
     "node": ">=16.0.0",
