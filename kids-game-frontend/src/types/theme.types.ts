@@ -350,19 +350,6 @@ export interface ThemeInfo {
 }
 
 /**
- * 主题 - 游戏关系
- */
-export interface ThemeGameRelation {
-  relationId: number;
-  themeId: number;
-  gameId: number;
-  gameCode: string;
-  isDefault: boolean;
-  sortOrder: number;
-  createdAt: Date | string;
-}
-
-/**
  * 游戏信息 (简化版)
  */
 export interface GameInfo {

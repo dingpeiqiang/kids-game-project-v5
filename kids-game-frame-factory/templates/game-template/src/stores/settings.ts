@@ -1,84 +1,70 @@
 /**
- * 设置状态管理
+ * ⚙️ 用户设置 Store
+ *
+ * 管理可持久化的用户偏好：
+ * - 难度选择
+ * - 音效开关
+ * - 震动开关
  */
 import { defineStore } from 'pinia'
+import { ref, watch } from 'vue'
+import type { Difficulty } from '@/stores/game'
 
-export interface GameSettings {
-  soundEnabled: boolean
-  musicEnabled: boolean
-  vibrationEnabled: boolean
-  showTutorial: boolean
+const STORAGE_KEY = '__GAME_ID__-settings'
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
 }
 
-export const useSettingsStore = defineStore('settings', {
-  state: (): GameSettings => ({
-    soundEnabled: true,
-    musicEnabled: true,
-    vibrationEnabled: true,
-    showTutorial: true
-  }),
+function saveData(data: Record<string, any>) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch {}
+}
 
-  actions: {
-    // 加载设置
-    loadSettings() {
-      const saved = localStorage.getItem('gameSettings')
-      if (saved) {
-        try {
-          const settings = JSON.parse(saved)
-          Object.assign(this.$state, settings)
-        } catch (e) {
-          console.warn('加载设置失败:', e)
-        }
-      }
-    },
-    
-    // 保存设置
-    saveSettings() {
-      localStorage.setItem('gameSettings', JSON.stringify({
-        soundEnabled: this.soundEnabled,
-        musicEnabled: this.musicEnabled,
-        vibrationEnabled: this.vibrationEnabled,
-        showTutorial: this.showTutorial
-      }))
-    },
-    
-    // 切换音效
-    toggleSound() {
-      this.soundEnabled = !this.soundEnabled
-      this.saveSettings()
-    },
-    
-    // 切换音乐
-    toggleMusic() {
-      this.musicEnabled = !this.musicEnabled
-      this.saveSettings()
-    },
-    
-    // 切换振动
-    toggleVibration() {
-      this.vibrationEnabled = !this.vibrationEnabled
-      this.saveSettings()
-    },
-    
-    // 设置音效开关
-    setSound(enabled: boolean) {
-      this.soundEnabled = enabled
-      this.saveSettings()
-    },
-    
-    // 设置音乐开关
-    setMusic(enabled: boolean) {
-      this.musicEnabled = enabled
-      this.saveSettings()
-    },
-    
-    // 重置设置
-    resetSettings() {
-      this.soundEnabled = true
-      this.musicEnabled = true
-      this.vibrationEnabled = true
-      this.showTutorial = true
-      this.saveSettings()
-    }
+export const useSettingsStore = defineStore('settings', () => {
+  const data = loadData()
+
+  const difficulty = ref<Difficulty>(data.difficulty as Difficulty || 'medium')
+  const isMuted    = ref<boolean>(data.isMuted || false)
+  const vibration  = ref<boolean>(true)
+
+  // 监听变化并保存
+  watch([difficulty, isMuted, vibration], () => {
+    saveData({
+      difficulty : difficulty.value,
+      isMuted    : isMuted.value,
+    })
+  }, { deep: true })
+
+  function setDifficulty(d: Difficulty) {
+    difficulty.value = d
+  }
+
+  function toggleMute() {
+    isMuted.value = !isMuted.value
+  }
+
+  function setMuted(muted: boolean) {
+    isMuted.value = muted
+  }
+
+  function toggleVibration() {
+    vibration.value = !vibration.value
+  }
+
+  return {
+    difficulty,
+    isMuted,
+    vibration,
+    setDifficulty,
+    toggleMute,
+    setMuted,
+    toggleVibration,
   }
 })

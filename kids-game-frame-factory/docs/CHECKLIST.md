@@ -1,123 +1,139 @@
 # 游戏开发检查清单
 
-基于贪吃蛇克隆新游戏时的检查项。
+基于 frame-factory 模板创建新游戏时的检查项。
 
-## Phase 1: 项目初始化
+---
 
-- [ ] 复制参考游戏目录
-- [ ] 修改 `package.json`（name、displayName、version）
-- [ ] 修改目录名为新游戏名
+## Phase 1：项目初始化
 
-## Phase 2: 重命名和重构
+- [ ] 使用脚本初始化（`init-game.ps1` 或 `init-game.sh`），或手动复制 `game-template`
+- [ ] 确认 `package.json` 的 `name` 已更新为 `@kids-game/my-game`
+- [ ] 确认所有 `__GAME_ID__` / `__GAME_NAME__` 占位符已替换
+- [ ] `npm install` 依赖安装成功
 
-- [ ] 重命名所有 TypeScript 类
-  - [ ] `PhaserGame` → 新类名
-  - [ ] `ComponentGameScene` → 新场景类名
-- [ ] 重命名所有 Vue 组件
-  - [ ] `Snake*View.vue` → `Game*View.vue`
-- [ ] 更新路由配置 `src/router/index.ts`
-- [ ] 更新 `main.ts` 中的组件注册
+---
 
-## Phase 3: GTRS 配置
+## Phase 2：配置文件
 
-- [ ] 修改 `src/config/GTRS.json`
-  - [ ] `specMeta.gameId`
-  - [ ] `specMeta.gameName`
-  - [ ] `specMeta.ownerId`
-  - [ ] `themeInfo.themeName`
-  - [ ] 更新资源引用
-- [ ] 验证 GTRS 格式（`validateGTRS()`）
+- [ ] `src/config/GTRS.json`
+  - [ ] `specMeta.gameId` = 你的游戏 ID
+  - [ ] `specMeta.gameType` = 你的游戏 ID  
+  - [ ] `themeInfo.themeId` = `{gameId}_default`
+  - [ ] `themeInfo.themeName` 已设置
+  - [ ] `resources.images.scene` 中定义了游戏所需图片
+  - [ ] `resources.audio.bgm` / `resources.audio.effect` 已配置
 
-## Phase 4: 游戏逻辑
+- [ ] `src/config/difficulty.json`
+  - [ ] 三个难度的 `gridCols` / `gridRows` 符合游戏规则
+  - [ ] `speed` 参数合理（毫秒/步，越小越快）
+  - [ ] `scoreMultiplier` 设置合理
 
-- [ ] 修改 `src/phaser/game.ts`
-  - [ ] 更新 `GameConfig` 接口
-  - [ ] 更新 `DIFFICULTY_CONFIGS`
-  - [ ] 更新 `ItemEffects` 接口（如需要）
-- [ ] 修改 `src/scenes/ComponentGameScene.ts`
-  - [ ] 实现新游戏规则
-  - [ ] 更新碰撞检测
-  - [ ] 更新道具生成逻辑
-- [ ] 修改 `src/phaser/PhaserGame.ts`（如需要）
+- [ ] `src/config/game-config.json`
+  - [ ] `gameId` / `gameName` 已更新
 
-## Phase 5: Pinia Store
+---
 
-- [ ] 修改 `src/stores/game.ts`
-  - [ ] 更新初始状态
-  - [ ] 添加新动作（actions）
-  - [ ] 添加新获取器（getters）
-- [ ] 确保与 Phaser 游戏的回调集成正确
+## Phase 3：游戏场景实现
 
-## Phase 6: UI 界面
+- [ ] `src/scenes/GameScene.ts`
+  - [ ] `preload()` 方法：使用 `themeStore.getImageUrl()` 加载图片
+  - [ ] `preload()` 方法：使用 `themeStore.getAudioUrl()` 加载音频
+  - [ ] `create()` 方法：调用了 `super.create()`（初始化适配参数）
+  - [ ] `createGameObjects()` 方法：创建了游戏特定对象
+  - [ ] `gameLoop()` 方法：实现了游戏主逻辑
+  - [ ] `handleGameOver()` 方法：调用了 `super.handleGameOver()`
+  - [ ] 使用 `this.gridToPixelCenter()` / `this.gridToPixel()` 做坐标转换
+  - [ ] 使用 `this.addScore()` 增加分数（会自动触发 Vue 层更新）
 
-- [ ] 修改开始界面 `StartView.vue`
-  - [ ] 更新标题
-  - [ ] 更新按钮文案
-  - [ ] 更新样式
-- [ ] 修改难度选择 `DifficultyView.vue`
-  - [ ] 更新难度选项
-  - [ ] 更新描述文字
-- [ ] 修改游戏界面 `GameView.vue`
-  - [ ] 调整 HUD 布局（如需要）
-- [ ] 修改结束界面 `GameOverView.vue`
-  - [ ] 更新显示内容
-  - [ ] 更新按钮文案
+---
 
-## Phase 7: 资源准备
+## Phase 4：资源文件
 
-- [ ] 替换场景图片
-  - [ ] 背景图
-  - [ ] 地面/墙壁
-- [ ] 替换道具图片
-  - [ ] 食物
-  - [ ] 增益道具
-- [ ] 替换角色图片
-  - [ ] 玩家
-  - [ ] 敌人（如有）
-- [ ] 替换音效
-  - [ ] 背景音乐
-  - [ ] 游戏音效
+- [ ] 图片放置在 `public/images/{gameId}/`
+- [ ] 音频放置在 `public/audio/{gameId}/`
+- [ ] 音频格式为 `.mp3`
+- [ ] GTRS.json 中的 `src` 路径与实际文件路径一致（不含 `/public/` 前缀）
 
-## Phase 8: 国际化
+---
 
-- [ ] 更新 `src/locales/zh.json`
-- [ ] 更新 `src/locales/en.json`
+## Phase 5：UI 界面
 
-## Phase 9: 数据库注册
+- [ ] `StartView.vue`：标题、描述已更新
+- [ ] `DifficultyView.vue`：难度描述文字已更新（与 difficulty.json 一致）
+- [ ] `GameOverView.vue`：确认显示效果正常
+- [ ] `GameView.vue`：HUD 显示正常（分数、暂停按钮）
 
-- [ ] 修改 `register-game.sql`
-  - [ ] `@GAME_ID`
-  - [ ] `@GAME_NAME`
-  - [ ] `@GAME_CODE`
-  - [ ] `@GAME_EMOJI`
-  - [ ] `@DESCRIPTION`
-- [ ] 执行 SQL
+---
 
-## Phase 10: 测试
+## Phase 6：数据库注册
 
-- [ ] 开发服务器运行正常
-- [ ] 开始界面正常显示
-- [ ] 难度选择正常
-- [ ] 游戏开始正常
-- [ ] 游戏逻辑正确
-- [ ] 道具效果正常
-- [ ] 游戏结束正常
-- [ ] 返回主界面正常
-- [ ] TypeScript 编译无错误
-- [ ] `npx tsc --noEmit` 通过
+- [ ] `register-game.sql` 中的游戏代码和名称已确认
+- [ ] 执行 SQL 注册游戏
+- [ ] 从数据库验证游戏记录存在
 
-## Phase 11: 构建发布
+---
+
+## Phase 7：功能测试
+
+### 基本流程
+
+- [ ] 开发服务器 `npm run dev` 启动正常
+- [ ] 开始界面 → 难度选择 → 游戏 → 结束 流程完整
+- [ ] 「返回」按钮各界面均可正常返回
+
+### 游戏功能
+
+- [ ] 游戏画面正常渲染
+- [ ] 玩家控制响应正常（键盘/触摸）
+- [ ] 分数实时更新（HUD 显示）
+- [ ] 游戏结束正确触发
+- [ ] 三种难度差异正确体现
+
+### 暂停功能
+
+- [ ] 暂停按钮有效
+- [ ] ESC 键暂停/恢复有效
+- [ ] 暂停弹窗显示正确
+- [ ] 「继续游戏」恢复正常
+
+### 屏幕适配
+
+- [ ] 在不同屏幕宽高比下正常显示（测试 375×667、414×896、768×1024）
+- [ ] 游戏区域居中
+- [ ] 无横向/纵向滚动条
+
+### 音频
+
+- [ ] 背景音乐正常播放
+- [ ] 游戏音效正常播放
+- [ ] 暂停时 BGM 暂停，恢复时继续
+
+---
+
+## Phase 8：代码质量
+
+- [ ] `npx tsc --noEmit` 无类型错误
+- [ ] 无 `console.error` 输出
+- [ ] 无 `@ts-ignore` 滥用
+- [ ] 未使用 `confirm()` / `alert()`（禁止）
+
+---
+
+## Phase 9：构建发布
 
 - [ ] `npm run build` 成功
-- [ ] 生产环境测试通过
-- [ ] 推送到 Git
+- [ ] 构建产物无报错
+- [ ] 生产环境测试正常
 
-## 常见问题排查
+---
+
+## 常见问题速查
 
 | 问题 | 可能原因 | 解决方案 |
-|------|----------|----------|
-| 编译错误 | 类名未全部重命名 | 全局搜索旧名称 |
-| 游戏黑屏 | 资源未加载 | 检查 `preload` 方法 |
-| 碰撞失效 | 物理系统配置错误 | 检查 `arcade` 配置 |
-| 样式错乱 | 屏幕适配问题 | 检查 4 层适配 |
-| 声音不播放 | 音频未预加载 | 检查 `preload` 中的音频加载 |
+|------|---------|---------|
+| 游戏黑屏/空白 | 资源未正确加载 | 检查 `preload()` 中的加载路径 |
+| 分数不更新 | 事件链断裂 | 确认 `addScore()` 调用，检查 `PhaserGame.vue` 事件监听 |
+| 暂停无效 | ESC 监听缺失 | 检查 `create()` 中 `super.create()` 是否调用 |
+| 屏幕适配错误 | 4层配合缺失 | 检查 index.html meta + App.vue 样式 + Phaser Scale.RESIZE |
+| 音频不播放 | 浏览器自动播放限制 | 需要用户交互后再播放，正常现象 |
+| TypeScript 报错 | Phaser 类型缺失 | 确认 `import Phaser from 'phaser'`（不用 declare const） |

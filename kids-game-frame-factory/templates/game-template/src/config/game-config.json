@@ -1,23 +1,31 @@
 {
-  "gameType": "__GAME_TYPE__",
+  "gameId": "__GAME_ID__",
+  "gameName": "__GAME_NAME__",
+  "version": "1.0.0",
+  "description": "游戏描述",
+
   "grid": {
-    "cols": 32,
-    "rows": 18,
-    "baseCellSize": 50
+    "baseCellSize": 40,
+    "minCellSize": 20,
+    "maxCellSize": 80
   },
-  "entities": {
-    "player": {
-      "initialLives": 3,
-      "speed": 120
-    }
+
+  "gameplay": {
+    "initialLives": 3,
+    "initialSpeed": 150,
+    "maxScore": 99999
   },
-  "scoring": {
-    "baseScore": 10,
-    "comboEnabled": false
-  },
+
   "ui": {
+    "designWidth": 375,
+    "designHeight": 667,
     "showScore": true,
     "showPause": true,
-    "showLives": true
+    "showHighScore": true
+  },
+
+  "audio": {
+    "bgmVolume": 0.6,
+    "effectVolume": 0.8
   }
 }

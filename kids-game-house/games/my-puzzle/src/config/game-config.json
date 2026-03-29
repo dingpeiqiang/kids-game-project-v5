@@ -1,0 +1,31 @@
+{
+  "gameId": "my-puzzle",
+  "gameName": "拼图游戏",
+  "version": "1.0.0",
+  "description": "游戏描述",
+
+  "grid": {
+    "baseCellSize": 40,
+    "minCellSize": 20,
+    "maxCellSize": 80
+  },
+
+  "gameplay": {
+    "initialLives": 3,
+    "initialSpeed": 150,
+    "maxScore": 99999
+  },
+
+  "ui": {
+    "designWidth": 375,
+    "designHeight": 667,
+    "showScore": true,
+    "showPause": true,
+    "showHighScore": true
+  },
+
+  "audio": {
+    "bgmVolume": 0.6,
+    "effectVolume": 0.8
+  }
+}

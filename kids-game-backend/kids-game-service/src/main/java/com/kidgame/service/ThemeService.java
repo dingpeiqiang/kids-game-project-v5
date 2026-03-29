@@ -40,13 +40,6 @@ public interface ThemeService {
     Page<ThemeInfo> listGameThemes(Long gameId, String gameCode, String status, Integer page, Integer pageSize);
 
     /**
-     * 获取主题关联的游戏 ID 列表
-     * @param themeId 主题 ID
-     * @return 游戏 ID 列表
-     */
-    List<Long> getThemeGames(Long themeId);
-
-    /**
      * 获取主题所有者 ID
      * @param themeId 主题 ID
      * @return 所有者 ID(游戏 ID 或应用 ID)

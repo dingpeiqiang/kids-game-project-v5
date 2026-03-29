@@ -2,300 +2,375 @@
 
 基于 frame-factory 模板创建新游戏的完整步骤。
 
-## 环境准备
+---
 
-```bash
-# 克隆或进入项目目录
-cd kids-game-project-v5
+## 准备工作
+
+确认已安装：
+- Node.js >= 18
+- npm >= 9
+- 编辑器（推荐 VS Code）
+
+---
+
+## 第一步：初始化游戏
+
+### 推荐：使用脚本（自动完成所有准备工作）
+
+```powershell
+# Windows
+.\kids-game-frame-factory\scripts\init-game.ps1 -GameId my-puzzle -GameName 拼图游戏
+
+# macOS/Linux
+bash kids-game-frame-factory/scripts/init-game.sh my-puzzle 拼图游戏
 ```
 
-## 第一步：从模板初始化
+### 手动方式
 
 ```bash
-# 复制游戏模板
-cp -r kids-game-frame-factory/templates/game-template games/my-game
+# 复制模板
+cp -r kids-game-frame-factory/templates/game-template kids-game-house/games/my-puzzle
 
-# 进入目录
-cd games/my-game
-
-# 安装依赖
+# 进入目录并安装依赖
+cd kids-game-house/games/my-puzzle
 npm install
 ```
 
-## 第二步：全局重命名
+手动方式需要将文件中的 `__GAME_ID__` 替换为你的游戏 ID，`__GAME_NAME__` 替换为游戏名称。
 
-使用 IDE 重构工具，将以下内容重命名：
+---
 
-### 2.1 修改 package.json
+## 第二步：修改配置文件
 
-```json
-{
-  "name": "@kids-game/my-game",
-  "version": "1.0.0",
-  "displayName": "我的游戏",
-  "description": "这是一个新游戏"
-}
-```
+### 2.1 GTRS.json - 主题资源配置
 
-### 2.2 修改类名（IDE 全局重命名）
-
-- `PhaserGame` → `MyGame`
-- `GameScene` → `MyGameScene`
-
-### 2.3 修改 Vue 组件名
-
-- `SnakeStartView.vue` → `MyGameStartView.vue`
-- `SnakeGameView.vue` → `MyGameGameView.vue`
-- `SnakeDifficultyView.vue` → `MyGameDifficultyView.vue`
-- `SnakeGameOverView.vue` → `MyGameGameOverView.vue`
-
-## 第三步：修改 GTRS 配置
-
-编辑 `src/config/GTRS.json`：
+位置：`src/config/GTRS.json`
 
 ```json
 {
   "specMeta": {
-    "gameId": "my-game",
-    "gameName": "我的游戏",
-    "version": "1.0.0",
-    "ownerType": "GAME",
-    "ownerId": "my-game"
+    "schemaVersion": "1.0.0",
+    "gameId": "my-puzzle",
+    "gameType": "my-puzzle"
   },
   "themeInfo": {
-    "themeName": "默认主题",
-    "themeAuthor": "作者名"
+    "themeId": "my-puzzle_default",
+    "themeName": "拼图游戏",
+    "isDefault": true
   },
   "globalStyle": {
-    "primaryColor": "#4CAF50",
-    "backgroundColor": "#FFFFFF",
-    "textColor": "#333333"
+    "primaryColor": "#4ade80",
+    "bgColor": "#1a1a2e"
   },
   "resources": {
     "images": {
       "scene": {
-        "background": "background.png"
-      },
-      "items": {}
+        "tile": { "src": "/images/my-puzzle/tile.png" },
+        "background": { "src": "/images/my-puzzle/bg.png" }
+      }
     },
     "audio": {
-      "bgm": {},
-      "effect": {}
+      "bgm": {
+        "bgm_main": { "src": "/audio/my-puzzle/bgm.mp3" }
+      },
+      "effect": {
+        "effect_match": { "src": "/audio/my-puzzle/match.mp3" },
+        "effect_gameover": { "src": "/audio/my-puzzle/gameover.mp3" }
+      }
     }
   }
 }
 ```
 
-## 第四步：实现游戏逻辑
+### 2.2 difficulty.json - 难度配置
 
-### 4.1 修改难度配置
-
-编辑 `src/config/difficulty.json`：
+位置：`src/config/difficulty.json`
 
 ```json
 {
   "difficulties": [
-    { "id": "easy", "label": "简单", "gridCols": 15, "gridRows": 12, "speed": 300 },
-    { "id": "normal", "label": "普通", "gridCols": 20, "gridRows": 15, "speed": 200 },
-    { "id": "hard", "label": "困难", "gridCols": 25, "gridRows": 18, "speed": 150 }
+    {
+      "id": "easy",
+      "label": "简单",
+      "description": "4×4 棋盘，适合新手",
+      "gridCols": 4,
+      "gridRows": 4,
+      "speed": 300,
+      "scoreMultiplier": 1.0
+    },
+    {
+      "id": "normal",
+      "label": "普通",
+      "description": "5×5 棋盘，一般挑战",
+      "gridCols": 5,
+      "gridRows": 5,
+      "speed": 200,
+      "scoreMultiplier": 1.5
+    },
+    {
+      "id": "hard",
+      "label": "困难",
+      "description": "6×6 棋盘，高手专属",
+      "gridCols": 6,
+      "gridRows": 6,
+      "speed": 150,
+      "scoreMultiplier": 2.0
+    }
   ]
 }
 ```
 
-### 4.2 实现游戏场景
+### 2.3 game-config.json - 游戏参数
 
-编辑 `src/scenes/GameScene.ts`，重写以下方法：
+位置：`src/config/game-config.json`
 
-```typescript
-export class GameScene extends Phaser.Scene {
-  // ⚠️ 必须重写
-
-  /**
-   * 创建游戏对象
-   * 在这里创建玩家、敌人、道具等
-   */
-  protected createGameObjects(): void {
-    // TODO: 实现
-  }
-
-  /**
-   * 更新游戏逻辑
-   * 每帧调用，处理游戏逻辑
-   */
-  protected updateGame(time: number, delta: number): void {
-    // TODO: 实现
-  }
-
-  /**
-   * 检测碰撞
-   */
-  protected checkCollisions(): void {
-    // TODO: 实现
-  }
-
-  /**
-   * 处理游戏结束
-   */
-  protected handleGameOver(): void {
-    // TODO: 实现
+```json
+{
+  "gameId": "my-puzzle",
+  "gameName": "拼图游戏",
+  "version": "1.0.0",
+  "grid": {
+    "baseCellSize": 80
+  },
+  "gameplay": {
+    "initialLives": 3
   }
 }
 ```
 
-### 4.3 参考实现
+---
 
-参考 `kids-game-house/games/snake/` 的实现方式：
+## 第三步：实现游戏场景
 
-- `src/scenes/ComponentGameScene.ts` - 游戏场景实现
-- `src/components/logic/` - 游戏逻辑组件
-- `src/components/rendering/` - 游戏渲染组件
+核心工作：编辑 `src/scenes/GameScene.ts`
 
-**注意**：参考不等于复制！阅读理解后用自己的代码实现。
+### 基本框架
 
-## 第五步：修改 UI 界面
+```typescript
+import Phaser from 'phaser'
+import { useGameStore } from '@/stores/game'
+import { useThemeStore } from '@/stores/theme'
+import GameScene from './GameScene'  // 继承模板基类
 
-### 5.1 开始界面 (src/views/StartView.vue)
+export default class MyPuzzleScene extends GameScene {
+  // 游戏专有属性
+  private board: number[][] = []
+  private tileGroup!: Phaser.GameObjects.Group
+  
+  // ─── 1. 加载资源 ───────────────────────────────────────────
+  preload(): void {
+    const themeStore = useThemeStore()
+    
+    const tileImg = themeStore.getImageUrl('tile')
+    if (tileImg) this.load.image('tile', tileImg)
+    
+    const bgm = themeStore.getAudioUrl('bgm_main', 'bgm')
+    if (bgm) this.load.audio('bgm_main', bgm)
+  }
+
+  // ─── 2. 创建游戏对象 ────────────────────────────────────────
+  create(): void {
+    super.create()  // ⚠️ 必须调用
+    
+    this.tileGroup = this.add.group()
+    this.createBoard()
+    this.setupInput()
+  }
+  
+  // ─── 3. 游戏主循环 ──────────────────────────────────────────
+  protected gameLoop(time: number, delta: number): void {
+    this.updateAnimations(delta)
+    this.checkWinCondition()
+  }
+  
+  // ─── 4. 游戏结束 ────────────────────────────────────────────
+  protected handleGameOver(): void {
+    // 播放结束音效
+    const themeStore = useThemeStore()
+    const effectSrc = themeStore.getAudioUrl('effect_gameover', 'effect')
+    if (effectSrc) this.sound.play('effect_gameover')
+    
+    // 触发父类流程（延迟通知 Vue）
+    super.handleGameOver()
+  }
+  
+  // ─── 私有方法 ───────────────────────────────────────────────
+  private createBoard(): void {
+    // 使用基类提供的适配参数
+    // this.cellSize - 格子大小
+    // this.offsetX / this.offsetY - 游戏区域偏移
+    // this.gridCols / this.gridRows - 网格尺寸
+    for (let row = 0; row < this.gridRows; row++) {
+      for (let col = 0; col < this.gridCols; col++) {
+        const { x, y } = this.gridToPixelCenter(col, row)
+        const tile = this.add.image(x, y, 'tile')
+        tile.setDisplaySize(this.cellSize - 4, this.cellSize - 4)
+        this.tileGroup.add(tile)
+      }
+    }
+  }
+  
+  private setupInput(): void {
+    this.input.on('pointerdown', this.handleTap, this)
+  }
+  
+  private handleTap(pointer: Phaser.Input.Pointer): void {
+    // 点击位置转网格坐标
+    const col = Math.floor((pointer.x - this.offsetX) / this.cellSize)
+    const row = Math.floor((pointer.y - this.offsetY) / this.cellSize)
+    
+    if (col >= 0 && col < this.gridCols && row >= 0 && row < this.gridRows) {
+      this.addScore(10)  // 加分（会自动应用难度倍率）
+    }
+  }
+  
+  private checkWinCondition(): void {
+    if (this.score >= 1000) {
+      this.handleGameOver()
+    }
+  }
+  
+  private updateAnimations(_delta: number): void {
+    // 更新动画
+  }
+}
+```
+
+### 关键 API 速查
+
+```typescript
+// ─── 继承自 GameScene 基类 ───────────────────────────────────
+
+// 屏幕适配参数（initAdapt() 自动计算）
+this.screenW      // 屏幕宽度
+this.screenH      // 屏幕高度
+this.cellSize     // 格子像素大小
+this.offsetX      // 游戏区域 X 偏移
+this.offsetY      // 游戏区域 Y 偏移
+this.gridCols     // 网格列数（来自难度配置）
+this.gridRows     // 网格行数（来自难度配置）
+
+// 坐标转换
+this.gridToPixel(col, row)       // → { x, y }  左上角
+this.gridToPixelCenter(col, row) // → { x, y }  中心
+
+// 分数（自动应用难度倍率，并触发 'score' 事件）
+this.addScore(10)
+
+// 游戏结束（触发 Vue 流程）
+this.handleGameOver()
+
+// 暂停/恢复
+this.pauseGame()
+this.resumeGame()
+
+// ─── Phaser 标准 API ─────────────────────────────────────────
+this.add.image(x, y, 'key')
+this.add.rectangle(x, y, w, h, color)
+this.add.text(x, y, 'Hello', { fontSize: '16px' })
+this.physics.add.sprite(x, y, 'key')
+this.time.delayedCall(500, callback)
+this.tweens.add({ targets, ... })
+this.sound.play('key')
+```
+
+---
+
+## 第四步：修改 UI 界面
+
+### 4.1 开始界面 (StartView.vue)
 
 ```vue
 <template>
   <div class="start-view">
-    <h1>{{ t('myGame.title') || '我的游戏' }}</h1>
-    <GameButton text="开始游戏" @click="handleStart" />
+    <h1>拼图游戏 🧩</h1>
+    <GameButton text="开始游戏" size="large" @click="$emit('start')" />
   </div>
 </template>
 ```
 
-### 5.2 游戏界面 (src/views/GameView.vue)
+### 4.2 游戏结束界面 (GameOverView.vue)
 
-游戏主界面，通常不需要大幅修改，主要调整布局。
+`GameOverView.vue` 已内置分数展示，通常只需修改标题文字和样式。
 
-### 5.3 难度选择 (src/views/DifficultyView.vue)
+---
 
-```typescript
-const difficulties = [
-  { id: 'easy', label: '简单', description: '适合新手' },
-  { id: 'normal', label: '普通', description: '适中挑战' },
-  { id: 'hard', label: '困难', description: '高手专属' }
-]
+## 第五步：添加资源文件
+
+将图片放到 `public/images/my-puzzle/`，音频放到 `public/audio/my-puzzle/`：
+
+```
+public/
+├── images/
+│   └── my-puzzle/
+│       ├── tile.png
+│       └── bg.png
+└── audio/
+    └── my-puzzle/
+        ├── bgm.mp3
+        └── match.mp3
 ```
 
-## 第六步：注册游戏
+---
 
-### 6.1 修改 register-game.sql
+## 第六步：注册游戏到数据库
 
-```sql
--- 修改游戏 ID 和名称
-SET @GAME_ID = 'my-game';
-SET @GAME_NAME = '我的游戏';
-SET @GAME_CODE = 'MYGAME';
-SET @GAME_EMOJI = '🎮';
-```
-
-### 6.2 执行 SQL
+编辑 `register-game.sql`（占位符已被初始化脚本自动替换），检查内容后执行：
 
 ```bash
-# 在数据库中执行
 mysql -u root -p kids_game < register-game.sql
 ```
 
-## 第七步：生成资源
+---
 
-编辑 `generate-resources.mjs` 中的游戏配置：
-
-```javascript
-const GAME_CONFIG = {
-  gameId: 'my-game',
-  gameName: '我的游戏',
-  resources: {
-    background: { type: 'color', color: '#87CEEB' },
-    food: { type: 'emoji', emoji: '🍎' }
-  }
-}
-```
-
-然后运行：
-
-```bash
-node generate-resources.mjs
-```
-
-## 第八步：测试
+## 第七步：开发与调试
 
 ```bash
 # 启动开发服务器
 npm run dev
+# 访问 http://localhost:5173
 
-# 构建生产版本
+# 类型检查
+npx tsc --noEmit
+
+# 构建
 npm run build
 ```
 
-## 项目文件清单
-
-```
-my-game/
-├── src/
-│   ├── App.vue              # 游戏主应用
-│   ├── main.ts             # 入口文件
-│   ├── config/
-│   │   ├── GTRS.json       # 主题资源配置
-│   │   ├── difficulty.json # 难度配置
-│   │   └── game-config.json # 游戏参数
-│   ├── views/
-│   │   ├── StartView.vue      # 开始界面
-│   │   ├── DifficultyView.vue # 难度选择
-│   │   ├── GameView.vue       # 游戏界面
-│   │   └── GameOverView.vue   # 结束界面
-│   ├── components/
-│   │   ├── game/
-│   │   │   └── PhaserGame.vue # 游戏容器
-│   │   └── ui/
-│   │       ├── GameButton.vue
-│   │       ├── ScorePanel.vue
-│   │       ├── DifficultySelector.vue
-│   │       └── PauseButton.vue
-│   ├── scenes/
-│   │   └── GameScene.ts       # 游戏场景 ⚠️ 需重写
-│   └── stores/
-│       ├── game.ts            # 游戏状态
-│       ├── audio.ts          # 音频管理
-│       ├── theme.ts          # 主题管理
-│       └── settings.ts       # 设置管理
-├── register-game.sql
-├── generate-resources.mjs
-├── package.json
-└── vite.config.ts
-```
+---
 
 ## 常见问题
 
-### Q: 道具不生效？
+### Q: Phaser 场景事件不触发？
 
-检查 `GameScene.ts` 中的碰撞处理是否调用了道具效果回调。
+确认 `GameScene.ts` 中调用了 `this.game.events.emit('ready')`，且 `PhaserGame.vue` 监听了正确的事件名。
 
-### Q: 屏幕适配不生效？
+### Q: 图片不显示？
 
-确认 index.html 有 `viewport-fit=cover`，App.vue 有 `100vw/100vh`，Phaser config 用 `RESIZE` 模式。
+1. 检查图片是否在 `public/` 目录
+2. 检查 GTRS.json 的 `src` 路径（不含 `/public/` 前缀，从 `/` 开始）
+3. 确认 `preload()` 中调用了 `this.load.image()`
 
-### Q: 声音不播放？
+### Q: 分数不更新？
 
-确认音频文件在 `public/audio/` 目录，格式为 `.mp3`。
+`GameScene.addScore()` 会触发 `this.game.events.emit('score', this.score)`，`PhaserGame.vue` 会调用 `gameStore.setScore()`。确认 `GameView.vue` 使用 `gameStore.score` 而不是本地变量。
 
-## 不再从 snake 复制
+### Q: 屏幕适配不正确？
 
-**⚠️ 重要**：不再使用 `cp -r kids-game-house/games/snake` 的方式创建新游戏！
+确认：
+1. `index.html` 有 `viewport-fit=cover`
+2. `App.vue` 的 `.game-app` 是 `width: 100vw; height: 100vh; overflow: hidden`
+3. Phaser 使用 `Scale.RESIZE` 模式
+4. 在 `create()` 中调用了 `super.create()`
 
-原因：
-1. 复制 snake 会导致 snake 特定的逻辑残留
-2. 需要大量重命名工作，容易出错
-3. 新游戏会继承 snake 的"味道"，不纯净
+### Q: 暂停弹窗不出现？
 
-新方式：
-- 从 `game-template` 模板初始化
-- 游戏逻辑从零开始编写（或参考 snake）
-- 保证新游戏代码纯净
+`GameView.vue` 监听 `PhaserGame.vue` 的 `@paused` 事件，`PhaserGame.vue` 监听 `phaserGame.events.on('paused')`，`GameScene.pauseGame()` 触发 `this.game.events.emit('paused')`。确认事件链完整。
+
+---
 
 ## 下一步
 
-- 参考 [GTRS_GUIDE.md](./GTRS_GUIDE.md) 了解资源配置
-- 参考 [CHECKLIST.md](./CHECKLIST.md) 进行开发检查
-- 查看 [贪吃蛇源码](../kids-game-house/games/snake/) 获取更多实现细节
+- 查看 [GTRS_GUIDE.md](./GTRS_GUIDE.md) 了解资源配置规范
+- 查看 [CHECKLIST.md](./CHECKLIST.md) 进行发布前检查
+- 参考贪吃蛇源码：`kids-game-house/games/snake/src/scenes/ComponentGameScene.ts`

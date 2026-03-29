@@ -79,7 +79,7 @@ public class ThemeController {
 
             Page<ThemeInfo> pageInfo = themeService.listThemes(ownerType, ownerId, status, page, pageSize, authorId);
             
-            // 为每个主题添加游戏信息（从 theme_game_relation 关联获取）
+            // 为每个主题添加游戏信息
             List<Map<String, Object>> listWithGameName = new java.util.ArrayList<>();
             for (ThemeInfo theme : pageInfo.getRecords()) {
                 Map<String, Object> themeMap = new HashMap<>();

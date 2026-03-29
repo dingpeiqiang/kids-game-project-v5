@@ -11,7 +11,6 @@ import com.kidgame.dao.entity.ThemePurchase;
 import com.kidgame.dao.entity.UserThemePreference;
 import com.kidgame.dao.mapper.CreatorEarningsMapper;
 import com.kidgame.dao.mapper.GameMapper;
-import com.kidgame.dao.mapper.ThemeGameRelationMapper;
 import com.kidgame.dao.mapper.ThemeInfoMapper;
 import com.kidgame.dao.mapper.ThemePurchaseMapper;
 import com.kidgame.dao.mapper.UserThemePreferenceMapper;
@@ -48,9 +47,6 @@ public class ThemeServiceImpl implements ThemeService {
 
     @Autowired
     private GameMapper gameMapper;
-
-    @Autowired
-    private ThemeGameRelationMapper themeGameRelationMapper;
 
     @Autowired
     private GTRSSchemaService gtrsSchemaService;
@@ -112,15 +108,6 @@ public class ThemeServiceImpl implements ThemeService {
     public Page<ThemeInfo> listGameThemes(Long gameId, String gameCode, String status, Integer page, Integer pageSize) {
         // 转换为根据 owner_id 查询；如果是游戏主题；则 authorId 也传入；否则传入 null；则不考虑 authorId
         return listThemes("GAME", gameId, status, page, pageSize, null);
-    }
-
-    /**
-     * 获取主题关联的游戏ID列表
-     */
-    @Override
-    public List<Long> getThemeGames(Long themeId) {
-        log.debug("获取主题关联的游戏ID列表；themeId={}", themeId);
-        return themeGameRelationMapper.selectGameIdsByThemeId(themeId);
     }
 
     /**
@@ -1029,11 +1016,6 @@ public class ThemeServiceImpl implements ThemeService {
             LambdaQueryWrapper<CreatorEarnings> earningsWrapper = new LambdaQueryWrapper<>();
             earningsWrapper.eq(CreatorEarnings::getThemeId, themeId);
             creatorEarningsMapper.delete(earningsWrapper);
-
-            // 删除关联的游戏关系
-            LambdaQueryWrapper<com.kidgame.dao.entity.ThemeGameRelation> relationWrapper = new LambdaQueryWrapper<>();
-            relationWrapper.eq(com.kidgame.dao.entity.ThemeGameRelation::getThemeId, themeId);
-            themeGameRelationMapper.delete(relationWrapper);
 
             // 最后删除主题记录
             themeInfoMapper.deleteById(themeId);

@@ -12,13 +12,22 @@
 
 ---
 
-## 游戏开发策略（2026-03-29 v2.0）
+## 游戏开发策略（2026-03-29 v5.0）
 
 **理念**：纯净框架 + 模板驱动 + snake作为最佳实践
 
+**框架定位**：**给 AI 使用**，通过框架约束 AI 在框架下开发新游戏。
+
 **核心变化**：
 - ❌ 废弃：复制 snake 代码创建新游戏（会导致snake残留）
-- ✅ 新方式：从 frame-factory 模板初始化新游戏
+- ❌ 废弃：game-dev Skill（已标记废弃，指向 AI_INSTRUCTIONS.md）
+- ✅ 新方式：从 frame-factory 模板初始化，AI 读 AI_INSTRUCTIONS.md 开发
+
+**AI 约束机制**：
+- `GameScene.ts` 是抽象基类，3个方法是 abstract，不实现 = TypeScript 编译报错
+- AI 只能修改：`MyGameScene.ts` + 4个 config 文件（白名单）
+- 其余所有框架文件顶部有"框架文件，AI 请勿修改"注释（黑名单）
+- `AI_INSTRUCTIONS.md` 是 AI 开发的唯一入口文档
 
 **三层架构**：
 ```
@@ -29,45 +38,49 @@
 │  └── utils/                       # 工具函数               │
 ├─────────────────────────────────────────────────────────────┤
 │  【模板层】kids-game-frame-factory/templates/game-template/ │
-│  ├── src/config/                 # 配置模板                 │
-│  ├── src/views/                  # 页面模板（可复用）       │
-│  ├── src/components/ui/           # UI组件（可复用）        │
-│  ├── src/components/game/         # 游戏容器（可复用）       │
-│  ├── src/scenes/GameScene.ts     # 游戏场景 ⚠️ 需重写      │
-│  └── src/stores/                 # 状态管理（可复用）        │
+│  ⭐ v5.0 完整功能（完整复刻贪吃蛇游戏流程）                 │
+│  ├── src/router/index.ts         # Vue Router（4路由+守卫） │
+│  ├── src/utils/uiResponsive.ts   # 响应式UI（720×1280基准） │
+│  ├── src/types/level.ts          # 20关关卡系统             │
+│  ├── src/stores/game.ts          # 游戏状态+关卡+事件      │
+│  ├── src/stores/audio.ts         # WebAudio音效（无需外部文件）│
+│  ├── src/stores/theme.ts         # GTRS主题（Composition API）│
+│  ├── src/config/game.config.ts   # 游戏常量（GAME_CODE等）  │
+│  ├── src/utils/gtrs-validator.ts # GTRS校验工具（内联版）   │
+│  ├── src/views/StartView.vue     # 首页（4步检测流程）      │
+│  ├── src/views/DifficultyView.vue# 难度选择（主题+折叠设置）│
+│  ├── src/views/GameView.vue      # 游戏界面（HUD+关卡显示） │
+│  ├── src/views/GameOverView.vue  # 结束界面（3按钮）        │
+│  └── src/components/ui/          # LevelTransitionOverlay等 │
 ├─────────────────────────────────────────────────────────────┤
 │  【最佳实践】kids-game-house/games/snake/                  │
 │  └── 验证框架可行性，参考实现，不用于复制                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**创建新游戏**：
-```bash
-# 1. 从模板初始化（不是复制snake！）
-cp -r kids-game-frame-factory/templates/game-template games/my-game
-
-# 2. 全局重命名
-# - 目录名、package.json、App.vue组件名
-
-# 3. 配置
-# - config/GTRS.json
-# - config/difficulty.json
-# - config/game-config.json
-
-# 4. 实现游戏逻辑（重写 scenes/GameScene.ts）
-# - 参考 snake 实现，但不复制代码
-
-# 5. 注册游戏
-# - register-game.sql
+**创建新游戏（v5.0）**：
+```powershell
+# Windows（推荐）
+.\kids-game-frame-factory\scripts\init-game.ps1 -GameId my-puzzle -GameName 拼图游戏
 ```
 
-**与snake的关系**：
+**开发步骤**：
+1. 修改 `src/config/GTRS.json`（资源）
+2. 修改 `src/config/difficulty.json`（难度）
+3. **重写 `src/scenes/GameScene.ts`（游戏逻辑）← 唯一必须开发的文件**
+4. 将资源放入 `public/images/{gameId}/` 和 `public/audio/{gameId}/`
+5. 执行 `register-game.sql` 注册
+
+**与snake的关系（v5.0）**：
 | 操作 | snake | 模板 |
 |------|-------|------|
 | 创建新游戏 | ❌ 复制（不推荐） | ✅ 模板初始化 |
 | 参考实现 | ✅ 参考 | - |
-| UI组件 | ✅ 可复用 | ✅ 可复用 |
-| 游戏逻辑 | 参考但不复制 | 重写 |
+| 首页/设置/结束 | 参考实现 | ✅ 开箱即用（不需重写）|
+| 关卡系统 | 参考实现 | ✅ 内置20关（不需重写）|
+| 游戏逻辑 | 参考但不复制 | ⭐ 唯一需要重写的文件 |
+
+
 
 ---
 
@@ -131,9 +144,9 @@ cp -r kids-game-frame-factory/templates/game-template games/my-game
 
 ---
 
-## 游戏框架 v4.0 设计（2026-03-29 v4.1）
+## 游戏框架 v4.0 设计（2026-03-29 v4.2）
 
-**核心理念**：零耦合 + 模板复制 + 游戏完全独立 + 统一管理
+**核心理念**：零耦合 + 模板驱动 + 一键初始化 + 游戏完全独立
 
 ### 整合内容
 
@@ -141,68 +154,48 @@ cp -r kids-game-frame-factory/templates/game-template games/my-game
 
 | 资源类型 | 位置 | 说明 |
 |----------|------|------|
+| 一键初始化脚本 | `scripts/init-game.ps1` (Win) / `init-game.sh` (Unix) | 自动完成复制、替换、安装 |
 | 游戏项目模板 | `templates/game-template/` | 完整游戏项目结构 |
 | 配置模板 | `templates/*.template.json` | GTRS、难度、i18n 等配置 |
 | 开发文档 | `docs/` | 开发指南、GTRS规范、检查清单 |
-| SQL 模板 | `templates/register-game.template.sql` | 数据库注册 |
 
-### frame-factory 结构（v4.1）
-```
-kids-game-frame-factory/
-├── docs/                           # 📚 开发文档
-│   ├── GAME_DEV_GUIDE.md          # 游戏开发完整指南
-│   ├── GTRS_GUIDE.md              # GTRS 资源配置规范
-│   └── CHECKLIST.md               # 开发检查清单
-│
-├── templates/                       # 📋 配置模板
-│   ├── game-template/             # ⭐ 游戏项目模板
-│   ├── GTRS.template.json         # GTRS 配置模板
-│   ├── difficulty.template.json   # 难度配置模板
-│   ├── i18n.template.json          # 国际化模板
-│   ├── register-game.template.sql # 数据库注册模板
-│   └── generate-resources.mjs     # 资源生成脚本
-│
-└── README.md                       # 框架入口
-```
+### 游戏模板关键设计（v4.2）
 
-### 关键原则
+**GameScene.ts**：继承 `Phaser.Scene`，基类提供：
+- `initAdapt()`：根据难度配置计算 `cellSize`/`offsetX`/`offsetY`/`gridCols`/`gridRows`
+- `gridToPixel(col, row)` / `gridToPixelCenter(col, row)`：坐标转换
+- `addScore(points)`：加分（自动应用难度倍率，触发 Vue 层更新）
+- `pauseGame()` / `resumeGame()` / `togglePause()`：暂停管理
+- 事件协议：`'ready'` / `'score'` / `'gameover'` / `'paused'` / `'resumed'`
 
-❌ **禁止**：`import { ... } from '@/frame-factory'`（依赖耦合）  
-✅ **正确**：frame-factory 只提供模板文件，复制后游戏完全独立
+**PhaserGame.vue**：初始化 Phaser，监听场景事件，联动 audio store 和 game store
 
-### 创建新游戏流程
+**GameView.vue**：含完整 HUD（分数显示、暂停按钮）+ 暂停弹窗 + 加载遮罩
 
-```bash
-# 1. 复制模板
-cp -r kids-game-frame-factory/templates/game-template games/my-game
+**新增组件/工具**：
+- `components/ui/PauseButton.vue`（SVG 图标暂停/继续按钮）
+- `composables/useResponsiveUI.ts`（响应式 UI 缩放，设计基准 375×667）
+- `config/game-config.json`（游戏参数配置模板）
 
-# 2. 全局重命名（IDE 重构）
-# - 目录名、package.json、App.vue
+### 创建新游戏流程（v4.2）
 
-# 3. 配置
-# - src/config/GTRS.json
-# - src/config/difficulty.json
+```powershell
+# Windows（推荐）
+.\kids-game-frame-factory\scripts\init-game.ps1 -GameId my-puzzle -GameName 拼图游戏
 
-# 4. 实现游戏逻辑（重写 scenes/GameScene.ts）
-# - 参考 snake，不复制代码
-
-# 5. 注册
-# - register-game.sql
+# 或手动
+cp -r kids-game-frame-factory/templates/game-template kids-game-house/games/my-puzzle
 ```
 
-### 与其他游戏的关系
+**开发步骤**：
+1. 修改 `src/config/GTRS.json`（资源）
+2. 修改 `src/config/difficulty.json`（难度）
+3. 重写 `src/scenes/GameScene.ts`（游戏逻辑）
+4. 将资源放入 `public/images/{gameId}/` 和 `public/audio/{gameId}/`
+5. 执行 `register-game.sql` 注册
 
-| 目的 | 来源 | 方式 |
-|------|------|------|
-| 参考实现 | `kids-game-house/games/snake/` | 阅读参考 |
-| 创建新游戏 | `templates/game-template/` | 复制模板 |
-| Skill 指南 | `/game-dev` | IDE 中使用 |
-
-### 框架升级策略
-
-框架升级只影响新的游戏项目，已有游戏不受影响（独立副本）。
-
----
+### game-dev Skill 路径
+`d:\工作\sitech\项目\研发\git_workspace\AI\kids-game-project-v5\.workbuddy\skills\game-dev\` (ID: 29413162)
 
 ## 技术规范
 
@@ -213,3 +206,11 @@ cp -r kids-game-frame-factory/templates/game-template games/my-game
 - **UI 缩放**：用 `useResponsiveUI()` 工具函数（设计基准 720×1280）
   - `uiScaleRef` 是 Vue `computed ref`，在组件 computed 内自动响应式
   - `GameButton` props 传原始设计尺寸数字（如 `:fontSize="26"`），内部自行缩放
+
+## 数据库注册规范（2026-03-29）
+
+- **游戏表**：`t_game`（不是 `game`），时间字段为毫秒时间戳
+- **已废弃字段**：`total_play_count`/`total_play_duration`/`average_rating` 已移至 `t_game_statistics`，INSERT 时不包含
+- **主题表**：`theme_info`（不是 `t_theme_info`），`created_at`/`updated_at` 是 **DATETIME** 类型（填 `NOW()`，不是时间戳）
+- **注册流程**：status=0(草稿) → 测试通过 → UPDATE status=2 + publish_time=毫秒时间戳
+- **主题绑定**：需同时写 `theme_info` + `theme_game_relation` 两张表
