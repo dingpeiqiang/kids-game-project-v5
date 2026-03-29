@@ -23,9 +23,7 @@
 --   __CONSUME_POINTS__    每分钟消耗疲劳点（默认 1）
 -- ============================================================
 -- ⚠️ 重要说明：
---   - t_game 不包含已废弃字段：total_play_count / total_play_duration / average_rating
---     （以上字段已移至 t_game_statistics，INSERT 时不填）
---   - 主题表是 theme_info（无 t_ 前缀），时间字段为 DATETIME 类型（填 NOW()，不是毫秒）
+--   - 主题表是 t_theme_info（有 t_ 前缀），时间字段为 DATETIME 类型（填 NOW()，不是毫秒）
 --   - is_official=0 表示游戏方维护的主题（非平台级官方主题）
 -- ============================================================
 
@@ -41,6 +39,7 @@ INSERT INTO t_game (
     icon_url,
     cover_url,
     resource_url,
+    screenshot_urls,
     game_url,
     game_secret,
     game_config,
@@ -53,6 +52,9 @@ INSERT INTO t_game (
     consume_points_per_minute,
     min_fatigue_to_start,
     online_count,
+    total_play_count,
+    total_play_duration,
+    average_rating,
     create_time,
     update_time,
     deleted,
@@ -68,6 +70,7 @@ VALUES (
     NULL,                               --   icon_url          图标 URL
     NULL,                               --   cover_url         封面 URL
     NULL,                               --   resource_url      资源 CDN 地址
+    NULL,                               --   screenshot_urls   截图 URL 列表（JSON 数组或逗号分隔）
     '__GAME_URL__',                     -- * game_url          游戏访问 URL（独立部署地址）
     NULL,                               --   game_secret       游戏密钥（签名校验用，暂不启用填 NULL）
     NULL,                               --   game_config       透传给游戏的 JSON 配置（可选）
@@ -80,6 +83,9 @@ VALUES (
     1,                                  --   consume_points_per_minute 每分钟消耗疲劳点
     0,                                  --   min_fatigue_to_start      启动所需最低疲劳度
     0,                                  --   online_count      在线人数（运行时自动维护）
+    0,                                  --   total_play_count  累计游玩次数
+    0,                                  --   total_play_duration 累计游玩时长（秒）
+    0.00,                               --   average_rating    平均评分
     UNIX_TIMESTAMP(NOW()) * 1000,       --   create_time       创建时间（毫秒时间戳）
     UNIX_TIMESTAMP(NOW()) * 1000,       --   update_time       更新时间（毫秒时间戳）
     0,                                  --   deleted           逻辑删除（0=正常）
@@ -112,7 +118,8 @@ SELECT CONCAT('✅ game_id = ', IFNULL(@game_id, '❌ 未找到，请检查 game
 -- ⚠️ 替换前请确认：
 --   1. __GTRS_JSON__ 必须是压缩为单行的合法 JSON（从 src/config/GTRS.json 复制后用工具压缩）
 --   2. is_official=0 表示游戏方维护的主题（不是平台官方主题）
-INSERT INTO theme_info (
+--   3. 主题表是 t_theme_info（有 t_ 前缀）
+INSERT INTO t_theme_info (
     author_id,
     is_official,
     owner_type,
@@ -156,7 +163,7 @@ ON DUPLICATE KEY UPDATE
     updated_at    = NOW();
 
 SET @theme_id = (
-    SELECT theme_id FROM theme_info
+    SELECT theme_id FROM t_theme_info
     WHERE owner_type = 'GAME' AND owner_id = @game_id AND is_default = 1
     LIMIT 1
 );
@@ -204,5 +211,5 @@ SELECT
     status AS theme_status,
     is_default,
     created_at
-FROM theme_info
+FROM t_theme_info
 WHERE owner_type = 'GAME' AND owner_id = @game_id;

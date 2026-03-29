@@ -11,8 +11,6 @@
 -- ────────────────────────────────────────────────────────────
 -- 第 1 步：插入/更新游戏记录（幂等，重复执行安全）
 -- ────────────────────────────────────────────────────────────
--- ⚠️ 注意：t_game 已废弃字段不包含在内：
---   total_play_count / total_play_duration / average_rating → 已移至 t_game_statistics
 INSERT INTO t_game (
     game_code,
     game_name,
@@ -22,6 +20,7 @@ INSERT INTO t_game (
     icon_url,
     cover_url,
     resource_url,
+    screenshot_urls,
     game_url,
     game_secret,
     game_config,
@@ -34,6 +33,9 @@ INSERT INTO t_game (
     consume_points_per_minute,
     min_fatigue_to_start,
     online_count,
+    total_play_count,
+    total_play_duration,
+    average_rating,
     create_time,
     update_time,
     deleted,
@@ -49,6 +51,7 @@ VALUES (
     '/images/games/snake-vue3/snake-icon.png', -- icon_url
     '',                                   -- cover_url（暂时留空）
     NULL,                                 -- resource_url
+    NULL,                                 -- screenshot_urls
     '__GAME_URL__',                       -- ⚠️ 请替换（如 http://localhost:3005）
     NULL,                                 -- game_secret
     NULL,                                 -- game_config
@@ -61,7 +64,10 @@ VALUES (
     1,                                    -- consume_points_per_minute
     0,                                    -- min_fatigue_to_start
     0,                                    -- online_count（运行时维护）
-    UNIX_TIMESTAMP(NOW()) * 1000,         -- create_time（毫秒时间戳）
+    0,                                    -- total_play_count
+    0,                                    -- total_play_duration
+    0.00,                                 -- average_rating
+    1773399695000,                        -- create_time（原始创建时间，保持不变）
     UNIX_TIMESTAMP(NOW()) * 1000,         -- update_time
     0,                                    -- deleted
     NULL,                                 -- ⚠️ 可替换为 creator_id
@@ -93,11 +99,11 @@ SELECT CONCAT('✅ game_id = ', IFNULL(@game_id, '❌ 未找到，请检查 game
 -- 第 3 步：注册默认主题（幂等，重复执行安全）
 -- ────────────────────────────────────────────────────────────
 -- ⚠️ 注意：
---   1. 主题表是 theme_info（无 t_ 前缀）
+--   1. 主题表是 t_theme_info（有 t_ 前缀）
 --   2. created_at / updated_at 是 DATETIME 类型，填 NOW()（不是毫秒时间戳！）
 --   3. config_json 来自 src/config/GTRS.json（压缩为单行 JSON）
 --   4. is_official=0 表示非平台官方（游戏方维护的主题）
-INSERT INTO theme_info (
+INSERT INTO t_theme_info (
     author_id,
     is_official,
     owner_type,
@@ -131,7 +137,7 @@ VALUES (
     -- config_json: 完整 GTRS v1.0.0 JSON（来自 src/config/GTRS.json，压缩为单行）
     '{"$comment":"GTRS v1.0.0 贪吃蛇游戏内置默认主题。此文件随游戏代码一起发布，必须通过 GTRS 严格校验。禁止删除或损坏任何必填字段。","specMeta":{"specName":"GTRS","specVersion":"1.0.0","compatibleVersion":"1.0.0"},"resources":{"audio":{"bgm":{"bgm_main":{"src":"/themes/default/audio/bgm_main.mp3","type":"mp3","alias":"主菜单背景音乐","volume":0.6},"bgm_gameover":{"src":"/themes/default/audio/bgm_gameover.mp3","type":"mp3","alias":"游戏结束音乐","volume":0.5},"bgm_gameplay":{"src":"/themes/default/audio/bgm_gameplay.mp3","type":"mp3","alias":"游戏中背景音乐","volume":0.7}},"voice":{},"effect":{"effect_eat":{"src":"/themes/default/audio/eat.mp3","type":"mp3","alias":"吃到食物音效","volume":0.5},"effect_crash":{"src":"/themes/default/audio/crash.mp3","type":"mp3","alias":"碰撞音效","volume":0.6},"effect_levelup":{"src":"/themes/default/audio/levelup.mp3","type":"mp3","alias":"升级音效","volume":0.6},"effect_gameover":{"src":"/themes/default/audio/gameover.mp3","type":"mp3","alias":"游戏结束音效","volume":0.7},"effect_button_click":{"src":"/themes/default/audio/button_click.mp3","type":"mp3","alias":"按钮点击音效","volume":0.5}}},"video":{},"images":{"ui":{},"icon":{},"login":{},"scene":{"food_apple":{"src":"/themes/default/images/scene/food_apple.png","type":"png","alias":"苹果"},"snake_body":{"src":"/themes/default/images/scene/snake_body.png","type":"png","alias":"蛇身"},"snake_head":{"src":"/themes/default/images/scene/snake_head.png","type":"png","alias":"蛇头"},"snake_tail":{"src":"/themes/default/images/scene/snake_tail.png","type":"png","alias":"蛇尾"},"food_banana":{"src":"/themes/default/images/scene/food_banana.png","type":"png","alias":"香蕉"},"food_cherry":{"src":"/themes/default/images/scene/food_cherry.png","type":"png","alias":"樱桃"},"obstacle_rock":{"src":"/themes/default/images/scene/obstacle_rock.png","type":"png","alias":"石头障碍物"},"obstacle_wall":{"src":"/themes/default/images/scene/obstacle_wall.png","type":"png","alias":"墙壁障碍物"},"scene_bg_grid":{"src":"/themes/default/images/scene/grid.png","type":"png","alias":"网格背景"},"scene_bg_main":{"src":"/themes/default/images/scene/background.png","type":"png","alias":"游戏主背景"}},"effect":{}}},"globalStyle":{"bgColor":"#1a1a2e","textColor":"#ffffff","fontFamily":"Arial, sans-serif","borderRadius":"8px","primaryColor":"#4ade80","secondaryColor":"#22c55e"}}',
     1,                                    -- is_default=1 默认主题
-    NOW(),                                -- created_at（DATETIME 类型，填 NOW()）
+    '2026-03-17 17:13:18',                -- created_at（原始创建时间，保持不变）
     NOW()                                 -- updated_at
 )
 ON DUPLICATE KEY UPDATE
@@ -142,7 +148,7 @@ ON DUPLICATE KEY UPDATE
     updated_at    = NOW();
 
 SET @theme_id = (
-    SELECT theme_id FROM theme_info
+    SELECT theme_id FROM t_theme_info
     WHERE owner_type = 'GAME' AND owner_id = @game_id AND is_default = 1
     LIMIT 1
 );
@@ -191,5 +197,5 @@ SELECT
     status AS theme_status,
     is_default,
     created_at
-FROM theme_info
+FROM t_theme_info
 WHERE owner_type = 'GAME' AND owner_id = @game_id;
