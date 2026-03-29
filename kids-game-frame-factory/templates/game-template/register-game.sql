@@ -9,17 +9,24 @@
 --   *__CATEGORY__         分类：MATH / LANGUAGE / SCIENCE / ART / PUZZLE
 --   *__GRADE__            适龄阶段（如：一年级、3-6岁、小学低年级）
 --   *__DESCRIPTION__      游戏描述
+--   *__THEME_NAME__       主题名称（如：拼图游戏 - 默认主题）
+--   *__AUTHOR_NAME__      主题作者名称（如：官方团队）
+--   *__THEME_DESC__       主题描述
+--   *__GTRS_JSON__        完整的 GTRS v1.0.0 JSON（从 src/config/GTRS.json 复制后压缩为单行）
 --
 --   __TAGS__              标签（逗号分隔，可留 NULL，如：益智,休闲）
 --   __ICON_URL__          游戏图标 URL（可留 NULL 或 ''）
 --   __COVER_URL__         游戏封面 URL（可留 NULL 或 ''）
---   __RESOURCE_URL__      资源 CDN 地址（可留 NULL）
---   __MODULE_PATH__       前端模块路径（可留 NULL）
---   __GAME_SECRET__       游戏密钥（可留 NULL）
+--   __THUMB_URL__         主题缩略图 URL（可留 ''）
 --   __CREATOR_ID__        创建人用户 ID（可留 NULL）
 --   __SORT_ORDER__        排序权重（默认 0，数字越大越靠前）
 --   __CONSUME_POINTS__    每分钟消耗疲劳点（默认 1）
---   __MIN_FATIGUE__       启动所需最低疲劳度（默认 0）
+-- ============================================================
+-- ⚠️ 重要说明：
+--   - t_game 不包含已废弃字段：total_play_count / total_play_duration / average_rating
+--     （以上字段已移至 t_game_statistics，INSERT 时不填）
+--   - 主题表是 theme_info（无 t_ 前缀），时间字段为 DATETIME 类型（填 NOW()，不是毫秒）
+--   - is_official=0 表示游戏方维护的主题（非平台级官方主题）
 -- ============================================================
 
 -- ────────────────────────────────────────────────────────────
@@ -77,7 +84,7 @@ VALUES (
     UNIX_TIMESTAMP(NOW()) * 1000,       --   update_time       更新时间（毫秒时间戳）
     0,                                  --   deleted           逻辑删除（0=正常）
     NULL,                               --   creator_id        创建人 ID（无后台账号填 NULL）
-    NULL                                --   publish_time      上架时间（上架时自动填入，初始 NULL）
+    NULL                                --   publish_time      上架时填写（草稿阶段为 NULL）
 )
 ON DUPLICATE KEY UPDATE
     game_name                = VALUES(game_name),
@@ -100,55 +107,60 @@ SET @game_id = (
 SELECT CONCAT('✅ game_id = ', IFNULL(@game_id, '❌ 未找到，请检查 game_code')) AS result;
 
 -- ────────────────────────────────────────────────────────────
--- 第 3 步：注册默认主题（可选）
+-- 第 3 步：注册默认主题（幂等，重复执行安全）
 -- ────────────────────────────────────────────────────────────
--- ⚠️ 注意：主题表是 theme_info（不带 t_ 前缀），时间字段是 DATETIME 类型。
--- 操作前替换：
---   __THEME_NAME__    主题名称（如：拼图游戏 - 默认主题）
---   __AUTHOR_NAME__   作者名称（如：官方团队）
---   __THUMB_URL__     主题缩略图 URL（可留 ''）
---   __THEME_DESC__    主题描述
---   __GTRS_JSON__     完整的 GTRS v1.0.0 JSON（从 src/config/GTRS.json 复制后压缩）
---
--- INSERT INTO theme_info (
---     author_id,
---     is_official,
---     owner_type,
---     owner_id,
---     theme_name,
---     author_name,
---     price,
---     status,
---     download_count,
---     total_revenue,
---     thumbnail_url,
---     description,
---     config_json,
---     is_default,
---     created_at,
---     updated_at
--- )
--- VALUES (
---     0,                                -- author_id    官方主题填 0
---     1,                                -- is_official  1=官方主题
---     'GAME',                           -- owner_type   固定填 GAME
---     @game_id,                         -- owner_id     上一步查到的 game_id
---     '__THEME_NAME__',                 -- theme_name   主题名称
---     '__AUTHOR_NAME__',                -- author_name  作者名称
---     0,                                -- price        0=免费
---     'on_sale',                        -- status       on_sale=上架 offline=下架 pending=待审核
---     0,                                -- download_count
---     0,                                -- total_revenue
---     '__THUMB_URL__',                  -- thumbnail_url 缩略图
---     '__THEME_DESC__',                 -- description
---     '__GTRS_JSON__',                  -- config_json  完整 GTRS JSON（见 src/config/GTRS.json）
---     1,                                -- is_default   1=默认主题
---     NOW(),                            -- created_at   DATETIME 类型（不是毫秒时间戳！）
---     NOW()                             -- updated_at
--- );
---
--- SET @theme_id = LAST_INSERT_ID();
--- SELECT CONCAT('✅ theme_id = ', @theme_id) AS result;
+-- ⚠️ 替换前请确认：
+--   1. __GTRS_JSON__ 必须是压缩为单行的合法 JSON（从 src/config/GTRS.json 复制后用工具压缩）
+--   2. is_official=0 表示游戏方维护的主题（不是平台官方主题）
+INSERT INTO theme_info (
+    author_id,
+    is_official,
+    owner_type,
+    owner_id,
+    theme_name,
+    author_name,
+    price,
+    status,
+    download_count,
+    total_revenue,
+    thumbnail_url,
+    description,
+    config_json,
+    is_default,
+    created_at,
+    updated_at
+)
+VALUES (
+    0,                                  -- author_id    官方/内置主题填 0
+    0,                                  -- is_official  0=游戏方维护（非平台级官方）
+    'GAME',                             -- owner_type   固定填 GAME
+    @game_id,                           -- owner_id     上一步查到的 game_id
+    '__THEME_NAME__',                   -- theme_name   主题名称（如：拼图游戏 - 默认主题）
+    '__AUTHOR_NAME__',                  -- author_name  作者名称（如：官方团队）
+    0,                                  -- price        0=免费
+    'on_sale',                          -- status       on_sale=上架 / offline=下架 / pending=待审核
+    0,                                  -- download_count
+    0,                                  -- total_revenue
+    '',                                 -- thumbnail_url 缩略图（可留空）
+    '__THEME_DESC__',                   -- description
+    '__GTRS_JSON__',                    -- config_json  完整 GTRS v1.0.0 单行 JSON（见 src/config/GTRS.json）
+    1,                                  -- is_default   1=默认主题
+    NOW(),                              -- created_at   DATETIME 类型（不是毫秒时间戳！）
+    NOW()                               -- updated_at
+)
+ON DUPLICATE KEY UPDATE
+    theme_name    = VALUES(theme_name),
+    description   = VALUES(description),
+    thumbnail_url = VALUES(thumbnail_url),
+    config_json   = VALUES(config_json),
+    updated_at    = NOW();
+
+SET @theme_id = (
+    SELECT theme_id FROM theme_info
+    WHERE owner_type = 'GAME' AND owner_id = @game_id AND is_default = 1
+    LIMIT 1
+);
+SELECT CONCAT('✅ theme_id = ', IFNULL(@theme_id, '❌ 主题插入失败')) AS result;
 
 -- ────────────────────────────────────────────────────────────
 -- 第 4 步：上架游戏（游戏测试通过后执行）
@@ -182,3 +194,15 @@ SELECT
     FROM_UNIXTIME(create_time / 1000) AS created_at
 FROM t_game
 WHERE game_code = '__GAME_CODE__' AND deleted = 0;
+
+-- 验证主题
+SELECT
+    theme_id,
+    theme_name,
+    owner_type,
+    owner_id,
+    status AS theme_status,
+    is_default,
+    created_at
+FROM theme_info
+WHERE owner_type = 'GAME' AND owner_id = @game_id;

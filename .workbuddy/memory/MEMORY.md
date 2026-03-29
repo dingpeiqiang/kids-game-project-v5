@@ -212,5 +212,6 @@ cp -r kids-game-frame-factory/templates/game-template kids-game-house/games/my-p
 - **游戏表**：`t_game`（不是 `game`），时间字段为毫秒时间戳
 - **已废弃字段**：`total_play_count`/`total_play_duration`/`average_rating` 已移至 `t_game_statistics`，INSERT 时不包含
 - **主题表**：`theme_info`（不是 `t_theme_info`），`created_at`/`updated_at` 是 **DATETIME** 类型（填 `NOW()`，不是时间戳）
+- **主题归属**：用 `theme_info.owner_type='GAME'` + `owner_id` 直接表达，`theme_game_relation` 已废弃
 - **注册流程**：status=0(草稿) → 测试通过 → UPDATE status=2 + publish_time=毫秒时间戳
-- **主题绑定**：需同时写 `theme_info` + `theme_game_relation` 两张表
+- **已废弃**：`theme_game_relation` 表及对应的 Java 实体/Mapper/XML 均已删除（2026-03-29）
