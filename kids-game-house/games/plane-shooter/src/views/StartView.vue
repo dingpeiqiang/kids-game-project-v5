@@ -391,12 +391,7 @@ const handleConfigApply = (config: any) => {
     const validatedConfig = validateGameConfig(config)
     localStorage.setItem('game_config', JSON.stringify(validatedConfig))
     console.log('✅ 配置已保存到 localStorage')
-    
-    if (gameSceneInstance) {
-      alert('✅ 配置已保存！\n\n由于配置变更涉及游戏核心参数，需要重新开始游戏才能生效。\n\n点击"确定"返回主菜单。')
-    } else {
-      alert('✅ 配置已保存！下次启动游戏时生效。')
-    }
+    alert('✅ 配置已保存！下次启动游戏时生效。')
   } catch (error) {
     console.error('❌ 配置保存失败:', error)
     alert('❌ 配置保存失败，请重试')
@@ -462,13 +457,12 @@ const initMainMenuBGM = async () => {
     document.body.appendChild(container)
 
     gameSceneInstance = new ComponentGameScene(container, {
-      difficulty: 'easy',
-      enableDynamicDifficulty: false,
+      themeId,
       ...userConfig
     })
     
     await gameSceneInstance.start({ themeId, ...userConfig })
-    console.log('✅ 主菜单：BGM 初始化完成（使用新组件化架构 + 用户配置）')
+    console.log('✅ 主菜单：BGM 初始化完成（通用模板版 + 用户配置）')
   } catch (error) {
     console.warn('⚠️ 主菜单：BGM 初始化失败', error)
   }
@@ -481,7 +475,7 @@ const cleanupMainMenuBGM = () => {
   if (gameSceneInstance) {
     gameSceneInstance.stop()
     gameSceneInstance = null
-    console.log('🧹 主菜单：BGM 资源已清理（组件化架构）')
+    console.log('🧹 主菜单：BGM 资源已清理（通用模板版）')
   }
 }
 

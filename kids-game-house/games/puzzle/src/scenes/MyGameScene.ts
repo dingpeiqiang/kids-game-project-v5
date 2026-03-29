@@ -60,7 +60,27 @@ export default class MyGameScene extends GameScene {
     const difficultyId = gameStore.difficulty || 'easy'
     this.gridSize = difficultyId === 'easy' ? 2 : difficultyId === 'medium' ? 3 : 4
     
-    console.log(`🧩 拼图游戏启动：${this.gridSize}x${this.gridSize}, 难度：${difficultyId}`)
+    // 🎯 修正：根据实际网格大小重新计算 cellSize
+    this.cellSize = Math.floor(
+      Math.min(
+        (this.screenW * 0.9) / this.gridSize,
+        (this.screenH * 0.8) / this.gridSize,
+      )
+    )
+    
+    // 确保 cellSize 能容纳 256px 的拼图块
+    if (this.cellSize < 280) {
+      this.cellSize = 280  // 256px 图片 + 边框 + 边距
+    }
+    
+    // 重新计算偏移量
+    const gameW = this.gridSize * this.cellSize
+    const gameH = this.gridSize * this.cellSize
+    this.offsetX = Math.floor((this.screenW - gameW) / 2)
+    this.offsetY = Math.floor((this.screenH - gameH) / 2)
+    
+    console.log(`🧩 拼图游戏启动：${this.gridSize}x${this.gridSize}, 网格尺寸：${this.cellSize}px`)
+    console.log(`📐 游戏区域：${gameW}x${gameH}, 偏移：(${this.offsetX}, ${this.offsetY})`)
     this.startTime = Date.now()
   }
 
@@ -78,8 +98,22 @@ export default class MyGameScene extends GameScene {
     // 3. 创建拼图块
     this.createTiles()
     
-    // 4. 播放背景音乐
-    this.sound.play('bgm_main', { loop: true, volume: 0.6 })
+    // 4. 🎵 播放背景音乐（延迟到下一帧，避免 AudioContext 未就绪）
+    this.time.delayedCall(100, () => {
+      try {
+        const bgm = this.sound.play('bgm_main', { loop: true, volume: 0.6 })
+        if (bgm) {
+          console.log('🎵 背景音乐开始播放')
+        }
+      } catch (error: any) {
+        console.warn('⚠️ 背景音乐播放失败:', error.message)
+        // 用户交互后重试
+        this.input.once('pointerdown', () => {
+          this.sound.play('bgm_main', { loop: true, volume: 0.6 })
+          console.log('🎵 背景音乐在用户交互后开始播放')
+        })
+      }
+    })
   }
   
   /**
@@ -110,11 +144,19 @@ export default class MyGameScene extends GameScene {
    */
   private createTiles(): void {
     const animal = this.animalThemes[this.gridSize as keyof typeof this.animalThemes] || 'cat'
-    const tileSize = Math.min(256, this.cellSize - 16) // 留边距
-    const startX = this.offsetX + (this.gridCols * this.cellSize - this.gridSize * tileSize) / 2
+    
+    // 🎯 使用固定的 256px 拼图块尺寸（与生成脚本一致）
+    const tileSize = 256
+    const gap = 4  // 拼图块之间的缝隙
+    const effectiveTileSize = tileSize - gap  // 实际显示尺寸（略小以留出缝隙）
+    
+    // 计算起始位置（居中）
+    const totalWidth = this.gridSize * tileSize + (this.gridSize - 1) * gap
+    const startX = this.offsetX + (this.gridSize * this.cellSize - totalWidth) / 2
     const startY = this.offsetY + 100
     
     console.log(`🐾 使用动物主题：${animal}, 网格：${this.gridSize}x${this.gridSize}`)
+    console.log(`📏 拼图块尺寸：${tileSize}x${tileSize}, 缝隙：${gap}px, 起始位置：(${startX}, ${startY})`)
     
     // 生成打乱的拼图块位置
     const positions = this.shufflePositions(this.gridSize)
@@ -128,19 +170,19 @@ export default class MyGameScene extends GameScene {
         // 当前打乱的位置
         const currentPos = positions[tileId]
         
-        // 计算像素坐标
-        const x = startX + currentPos.col * tileSize
-        const y = startY + currentPos.row * tileSize
+        // 计算像素坐标（包含缝隙）
+        const x = startX + currentPos.col * (tileSize + gap) + tileSize / 2
+        const y = startY + currentPos.row * (tileSize + gap) + tileSize / 2
         
         // 创建拼图块精灵（使用对应动物的拼图块）
         const spriteKey = `tile_${animal}_${tileId + 1}`
         const sprite = this.add.image(x, y, spriteKey)
-          .setDisplaySize(tileSize - 8, tileSize - 8) // 留小缝隙
+          .setDisplaySize(effectiveTileSize, effectiveTileSize)  // 略小以留出缝隙
           .setInteractive({ draggable: false })
           .setDepth(10)
         
         // 添加白色边框
-        const border = this.add.rectangle(x, y, tileSize - 4, tileSize - 4, 0xffffff)
+        const border = this.add.rectangle(x, y, effectiveTileSize, effectiveTileSize, 0xffffff)
           .setStrokeStyle(2, 0x000000)
           .setDepth(9)
         
@@ -162,7 +204,7 @@ export default class MyGameScene extends GameScene {
       }
     }
     
-    console.log(`✅ 创建了 ${this.tiles.length} 个拼图块`)
+    console.log(`✅ 创建了 ${this.tiles.length} 个拼图块，每个 ${effectiveTileSize}x${effectiveTileSize}px`)
   }
   
   /**

@@ -241,30 +241,6 @@ export const useThemeStore = defineStore('theme', () => {
   // ─── 默认主题加载 ──────────────────────────────────────────────────────
 
   async function loadDefaultTheme(): Promise<void> {
-    // 🎯 开发环境 fallback: 从本地加载 GTRS.json
-    // @ts-ignore - Vite 会在运行时注入 import.meta.env
-    const isDev = import.meta.env?.DEV || import.meta.env?.MODE === 'development'
-    if (isDev) {
-      console.log('🎨 [DEV] 使用本地 GTRS.json 作为默认主题')
-      try {
-        const response = await fetch('/themes/puzzle_animal_default/GTRS.json')
-        const gtrsJson = await response.json()
-        
-        // ✅ 设置所有必要字段
-        gtrsRawJson.value = JSON.stringify(gtrsJson)
-        gtrsData.value = gtrsJson
-        currentThemeId.value = 'local_dev_theme'
-        isThemeListLoaded.value = true
-        
-        console.log('✅ 本地 GTRS 加载成功:', gtrsJson.themeInfo?.themeName)
-        return
-      } catch (err) {
-        console.error('❌ 本地 GTRS 加载失败:', err)
-        // 继续尝试后端加载
-      }
-    }
-    
-    // 🔵 生产环境或本地失败后：从后端加载
     if (!_getToken()) {
       console.warn('⚠️ 用户未登录，跳过默认主题加载')
       return

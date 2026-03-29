@@ -228,8 +228,6 @@ const handleThemeChange = (themeId: string) => {
   localStorage.setItem('current-theme-id', themeId)
 }
 
-let customConfig: any = null
-
 function startGame() {
   const themeId = route.query.theme_id as string || localStorage.getItem('current-theme-id') || ''
 

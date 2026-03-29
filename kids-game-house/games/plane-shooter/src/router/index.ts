@@ -11,7 +11,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',  // ✅ 使用不同的 name
+      name: 'loading',
       component: LoadingView,
     },
     {
@@ -56,12 +56,6 @@ router.beforeEach((to: any, from: any, next: any) => {
     const currentPath = window.location.href
     const loginUrl = `http://localhost:3000/login?redirect=${encodeURIComponent(currentPath)}`
     window.location.href = loginUrl
-    return
-  }
-
-  // ✅ 如果访问根路径，自动重定向到 loading（带查询参数时保持参数）
-  if (to.path === '/' && !to.name) {
-    next({ name: 'home', query: to.query })
     return
   }
 
