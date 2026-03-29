@@ -1,171 +1,248 @@
 # game-dev - 儿童游戏开发指南
 
-## 定位
+## 核心理念
 
-这是一个游戏开发 Skill，帮你基于现有游戏快速创建新游戏。
+**纯净框架 + 模板驱动 + snake作为最佳实践验证**
 
-**核心理念**：不要从零开始，参考真实游戏 + 修改参数 = 新游戏
+- **框架本身是纯净的**：不包含任何游戏特定逻辑
+- **模板用于初始化新游戏**：避免复制snake导致的残留问题
+- **snake作为最佳实践**：用于验证框架可行性，但不可直接复制
 
 ## 快速开始
 
-### 1. 选择参考游戏
-
-| 游戏 | 特点 | 适合做 |
-|------|------|--------|
-| `kids-game-house/games/snake/` | 完整示例，包含道具系统、难度选择、GTRS 主题 | 网格移动类游戏 |
-| `kids-game-house/games/tank-battle/` | 俯视角射击 | 射击类游戏 |
-
-### 2. 克隆步骤（以贪吃蛇为例）
+### 创建新游戏（推荐方式）
 
 ```bash
-# 1. 复制游戏目录
-cp -r kids-game-house/games/snake kids-game-house/games/my-game
+# 1. 从模板初始化
+cp -r kids-game-frame-factory/templates/game-template games/my-game
 
-# 2. 重命名（用 IDE 的全局重命名功能）
-# - 目录名
-# - package.json 中的 name
-# - TypeScript 文件中的类名
-# - Vue 文件中的组件名
+# 2. 全局重命名（用 IDE 重构功能）
+# - 目录名: my-game
+# - package.json name
+# - App.vue 中的组件名
 
-# 3. 修改游戏逻辑
-# - 编辑 src/phaser/game.ts 中的游戏规则
-# - 编辑 src/config/GTRS.json 配置资源
-# - 编辑 src/config/difficulty.json 配置难度
+# 3. 配置游戏
+# - 编辑 config/GTRS.json（资源配置）
+# - 编辑 config/difficulty.json（难度配置）
+# - 编辑 config/game-config.json（游戏参数）
 
-# 4. 注册游戏
-# - 执行 register-game.sql 插入数据库
+# 4. 实现游戏逻辑
+# - 编辑 scenes/GameScene.ts 中的 gameLoop() 方法
+# - 参考 kids-game-house/games/snake/ 的实现方式
+
+# 5. 注册游戏
+# - 编辑 register-game.sql，然后执行
 ```
 
-### 3. 详细开发规范
+### 不再复制snake
 
-参考文档：
-- **[游戏开发指南](./docs/GAME_DEV_GUIDE.md)** - 完整的开发流程
-- **[GTRS 资源配置](./docs/GTRS_GUIDE.md)** - 主题资源规范
-- **[模板文件](./templates/)** - 可复用的配置模板
+**⚠️ 重要变化**：不再使用 `cp -r kids-game-house/games/snake` 的方式创建新游戏！
+
+原因：
+1. 复制snake会导致snake特定的逻辑残留
+2. 需要大量重命名工作，容易出错
+3. 新游戏会继承snake的"味道"，不纯净
+
+新方式：
+- 从 `game-template` 模板初始化
+- 游戏逻辑从零开始编写（或参考snake）
+- 保证新游戏代码纯净
+
+## 架构设计
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  【框架层】纯净的、通用的、可直接复用                          │
+│                                                             │
+│  kids-game-frame-factory/src/                               │
+│  ├── engine/          游戏引擎基类（Phaser封装）              │
+│  ├── types/          通用类型定义                            │
+│  └── utils/          工具函数（GTRS/UI响应式/音频）          │
+├─────────────────────────────────────────────────────────────┤
+│  【模板层】用于初始化新游戏                                   │
+│                                                             │
+│  kids-game-frame-factory/templates/game-template/            │
+│  ├── src/                                                 │
+│  │   ├── config/      配置模板（GTRS/difficulty/game）       │
+│  │   ├── views/       页面模板（Start/Difficulty/GameOver）  │
+│  │   ├── components/  UI组件和游戏组件模板                    │
+│  │   ├── scenes/      游戏场景模板（需重写gameLoop）         │
+│  │   └── stores/      状态管理模板                            │
+│  └── register-game.sql                                      │
+├─────────────────────────────────────────────────────────────┤
+│  【最佳实践】验证框架可行性                                   │
+│                                                             │
+│  kids-game-house/games/snake/                               │
+│  ├── 完整实现，不用于复制                                     │
+│  └── 作用：验证框架 + 指导新游戏开发                          │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## 项目结构
 
 ```
-kids-game-house/games/snake/     # 参考游戏
-├── src/
-│   ├── components/             # Vue 组件
-│   │   ├── core/               # 核心组件（IComponent 等）
-│   │   ├── game/               # 游戏组件（PhaserGame 等）
-│   │   └── ui/                 # UI 组件（GameButton 等）
-│   ├── config/
-│   │   ├── GTRS.json           # GTRS 资源配置
-│   │   └── difficulty.json     # 难度配置
-│   ├── phaser/                 # Phaser 游戏逻辑
-│   │   ├── PhaserGame.ts       # 游戏主类
-│   │   └── game.ts             # 游戏配置
-│   ├── scenes/                 # Phaser 场景
-│   │   └── ComponentGameScene.ts
-│   ├── stores/                 # Pinia 状态
-│   └── utils/                  # 工具函数
-├── register-game.sql          # 数据库注册
-└── generate-resources.mjs      # 资源生成脚本
+game-template/src/
+├── App.vue              # 游戏主应用（需重命名）
+├── main.ts             # 入口文件
+├── config/
+│   ├── GTRS.json       # GTRS资源配置（需修改）
+│   ├── difficulty.json # 难度配置（需修改）
+│   └── game-config.json# 游戏参数（需修改）
+├── views/              # 页面视图
+│   ├── StartView.vue   # 开始界面 ✅ 可复用
+│   ├── DifficultyView.vue  # 难度选择 ✅ 可复用
+│   ├── GameView.vue    # 游戏界面 ✅ 可复用
+│   └── GameOverView.vue   # 结束界面 ✅ 可复用
+├── components/
+│   ├── game/
+│   │   └── PhaserGame.vue  # 游戏容器 ✅ 可复用
+│   └── ui/             # UI组件
+│       ├── GameButton.vue     ✅ 可复用
+│       ├── ScorePanel.vue     ✅ 可复用
+│       ├── DifficultySelector.vue  ✅ 可复用
+│       └── PauseButton.vue    ✅ 可复用
+├── scenes/
+│   └── GameScene.ts    # 游戏场景 ⚠️ 需重写逻辑
+└── stores/             # 状态管理 ✅ 可复用
+    ├── game.ts
+    ├── audio.ts
+    ├── settings.ts
+    └── theme.ts
 ```
 
-## 关键开发指南
+## 配置说明
 
-### 屏幕适配（4 层配合）
+### 1. GTRS.json - 主题资源配置
 
-1. **index.html**: `viewport-fit=cover` + `env(safe-area-inset-*)` body padding
-2. **App.vue**: `100vw × 100vh` + `overflow: hidden`
-3. **GameView.vue**: `h-screen w-full overflow-hidden` + `touch-action: none`
-4. **Phaser config**: `mode: RESIZE` + `width: '100%', height: '100%'`
+定义游戏使用的图片、音频资源。
 
-### GTRS 资源规范（v1.0.0）
-
-**4个顶级字段**：`specMeta` / `themeInfo` / `globalStyle` / `resources`
-
-**资源结构**：
 ```json
 {
+  "specMeta": {
+    "schemaVersion": "1.0.0",
+    "gameId": "my-game",
+    "gameType": "my-game"
+  },
+  "themeInfo": {
+    "themeId": "my-game_default",
+    "themeName": "我的游戏"
+  },
   "resources": {
     "images": {
-      "scene": { "background": "xxx.png" },
-      "items": { "food": "xxx.png" }
+      "scene": {
+        "player": { "src": "" }
+      }
     },
     "audio": {
-      "bgm": { "main": "xxx.mp3" },
-      "effect": { "eat": "xxx.mp3" }
+      "bgm": { "bgm_main": { "src": "" } },
+      "effect": { "effect_hit": { "src": "" } }
     }
   }
 }
 ```
 
-### UI 缩放工具
+### 2. difficulty.json - 难度配置
 
-使用 `useResponsiveUI()` 工具函数（设计基准 720×1280）：
-```typescript
-import { useResponsiveUI } from '@/utils/uiResponsive'
+定义不同难度级别的游戏参数。
 
-const { uiScaleRef } = useResponsiveUI()
-```
-
-### Pinia Store 集成
-
-游戏 store 需要同时维护 Phaser 内部状态和 UI 状态：
-- `gameStore`: 游戏核心状态（分数、生命、道具效果）
-- 通过 `onScoreChange`、`onGameOver` 等回调与 Phaser 通信
-
-### UI 组件使用
-
-```vue
-<GameButton 
-  text="开始游戏" 
-  :fontSize="26"
-  :width="200"
-  :height="60"
-  @click="handleStart"
-/>
-
-<DifficultySelector 
-  :difficulties="difficulties"
-  v-model="selectedDifficulty"
-/>
-```
-
-## 常见任务
-
-### 创建新游戏
-
-1. 参考 `snake` 游戏复制目录
-2. 修改 `package.json` 的 name 和版本
-3. 修改 `GTRS.json` 的 `specMeta.gameId` 和 `themeInfo.themeName`
-4. 编辑游戏逻辑文件
-5. 执行 `register-game.sql` 注册
-
-### 添加新难度
-
-编辑 `src/config/difficulty.json`：
 ```json
 {
   "difficulties": [
     { "id": "easy", "label": "简单", "gridCols": 20, "gridRows": 15, "speed": 200 },
-    { "id": "normal", "label": "普通", "gridCols": 25, "gridRows": 18, "speed": 150 }
+    { "id": "normal", "label": "普通", "gridCols": 25, "gridRows": 18, "speed": 150 },
+    { "id": "hard", "label": "困难", "gridCols": 32, "gridRows": 20, "speed": 100 }
   ]
 }
 ```
 
-### 添加道具效果
+### 3. game-config.json - 游戏特定配置
 
-在 `src/phaser/game.ts` 的 `ItemEffects` 接口中添加新效果，然后在 `ComponentGameScene.ts` 的碰撞处理中调用。
+定义游戏网格大小、实体参数等。
 
-### 修改 GTRS 主题
+```json
+{
+  "gameType": "my-game",
+  "grid": { "cols": 32, "rows": 18, "baseCellSize": 50 },
+  "entities": { "player": { "initialLives": 3, "speed": 120 } },
+  "ui": { "showScore": true, "showPause": true }
+}
+```
 
-编辑 `src/config/GTRS.json`，参考 `kids-game-house/shared/schemas/gtrs-schema.json` 验证格式。
+## 实现游戏逻辑
+
+### GameScene.ts 模板
+
+```typescript
+import Phaser from 'phaser'
+import { useGameStore } from '@/stores/game'
+
+export default class GameScene extends Phaser.Scene {
+  private score: number = 0
+  private isPaused: boolean = false
+  private gameOver: boolean = false
+
+  create(): void {
+    this.initGame()
+    this.game.events.emit('ready')
+  }
+
+  update(time: number, delta: number): void {
+    if (this.isPaused || this.gameOver) return
+    this.gameLoop(time, delta)
+  }
+
+  protected gameLoop(time: number, delta: number): void {
+    // ⚠️ 需要重写游戏主循环
+    // 参考: kids-game-house/games/snake/src/scenes/ComponentGameScene.ts
+  }
+
+  protected handleGameOver(): void {
+    if (this.gameOver) return
+    this.gameOver = true
+    this.game.events.emit('gameover', this.score)
+  }
+
+  protected addScore(points: number): void {
+    const gameStore = useGameStore()
+    const multiplier = gameStore.currentDifficultyConfig.scoreMultiplier || 1
+    this.score += Math.floor(points * multiplier)
+  }
+}
+```
+
+### 参考snake但不要复制
+
+snake 游戏的作用：
+1. ✅ 验证框架可行性
+2. ✅ 理解如何实现游戏逻辑
+3. ✅ 理解如何加载 GTRS 资源
+4. ✅ 理解如何处理碰撞和计分
+
+但不要：
+1. ❌ 复制snake代码到新游戏
+2. ❌ 基于snake修改后变成新游戏
+3. ❌ 继承snake的类
+
+## 与snake的关系
+
+| 操作 | snake | frame-factory 模板 |
+|------|-------|-------------------|
+| 创建新游戏 | ❌ 复制 | ✅ 从模板初始化 |
+| 实现游戏逻辑 | 参考 | 重写 |
+| UI组件 | 可复用 | 可复用 |
+| 状态管理 | 可复用 | 可复用 |
+| GTRS配置 | 参考 | 复制修改 |
 
 ## 技术规范
 
 - **IDE 沙箱**：禁止原生 `confirm()`/`alert()`，用 ElMessageBox/ElMessage
 - **音频格式**：统一 `.mp3`
-- **类型检查**：用 `npx tsc --noEmit`（非 vue-tsc）
+- **类型检查**：用 `npx tsc --noEmit`
 - **组件导入**：游戏 UI 组件用 `@/components/ui/` 本地导入
 
-## 更多信息
+## 参考文档
 
 - 游戏开发完整指南：[docs/GAME_DEV_GUIDE.md](./docs/GAME_DEV_GUIDE.md)
 - GTRS 资源规范：[docs/GTRS_GUIDE.md](./docs/GTRS_GUIDE.md)
 - 贪吃蛇游戏源码：`kids-game-house/games/snake/`
+- 框架源码：`kids-game-frame-factory/`

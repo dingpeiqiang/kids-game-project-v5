@@ -1,0 +1,23 @@
+{
+  "gameType": "__GAME_TYPE__",
+  "grid": {
+    "cols": 32,
+    "rows": 18,
+    "baseCellSize": 50
+  },
+  "entities": {
+    "player": {
+      "initialLives": 3,
+      "speed": 120
+    }
+  },
+  "scoring": {
+    "baseScore": 10,
+    "comboEnabled": false
+  },
+  "ui": {
+    "showScore": true,
+    "showPause": true,
+    "showLives": true
+  }
+}

@@ -8,46 +8,66 @@
 | `kids-game-frontend/` | 平台前端（Vue3 + Element Plus）|
 | `kids-game-backend/` | 平台后端（Spring Boot）|
 | `kids-game-auto-test/` | 自动化测试工具 |
+| `kids-game-frame-factory/` | 游戏开发框架（模板驱动）|
 
 ---
 
-## 游戏开发策略（2026-03-28 更新）
+## 游戏开发策略（2026-03-29 v2.0）
 
-**决策**：废弃 kids-game-frame-factory 的组件化架构，改用「存量游戏示例 + game-dev Skill」方案。
+**理念**：纯净框架 + 模板驱动 + snake作为最佳实践
 
-**原因**：
-1. kids-game-frame-factory 维护成本高（18项遗留问题）
-2. 框架复杂度高，上手成本大
-3. 实际项目中，直接参考已有游戏更高效
+**核心变化**：
+- ❌ 废弃：复制 snake 代码创建新游戏（会导致snake残留）
+- ✅ 新方式：从 frame-factory 模板初始化新游戏
 
-**新方案**：
-- 参考游戏：`kids-game-house/games/snake/`（成熟完整）
-- Skill 指南：`.workbuddy/skills/game-dev/`（整合 GTRS 规范、游戏克隆指南）
-- 开发清单：`.workbuddy/skills/game-dev/docs/CHECKLIST.md`
-
-### game-dev Skill 文件结构
+**三层架构**：
 ```
-.workbuddy/skills/game-dev/
-├── SKILL.md                    # 主入口
-├── docs/
-│   ├── GAME_DEV_GUIDE.md       # 完整开发指南
-│   ├── GTRS_GUIDE.md          # GTRS 资源配置规范
-│   └── CHECKLIST.md           # 开发检查清单
-└── templates/
-    ├── GTRS.template.json     # GTRS 配置模板
-    ├── difficulty.template.json # 难度配置模板
-    ├── register-game.template.sql # 数据库注册模板
-    ├── generate-resources.template.mjs # 资源生成脚本模板
-    └── i18n.template.json      # 国际化模板
+┌─────────────────────────────────────────────────────────────┐
+│  【框架层】kids-game-frame-factory/src/                    │
+│  ├── engine/BaseGameEngine.ts    # 游戏引擎基类            │
+│  ├── types/                      # 通用类型定义            │
+│  └── utils/                       # 工具函数               │
+├─────────────────────────────────────────────────────────────┤
+│  【模板层】kids-game-frame-factory/templates/game-template/ │
+│  ├── src/config/                 # 配置模板                 │
+│  ├── src/views/                  # 页面模板（可复用）       │
+│  ├── src/components/ui/           # UI组件（可复用）        │
+│  ├── src/components/game/         # 游戏容器（可复用）       │
+│  ├── src/scenes/GameScene.ts     # 游戏场景 ⚠️ 需重写      │
+│  └── src/stores/                 # 状态管理（可复用）        │
+├─────────────────────────────────────────────────────────────┤
+│  【最佳实践】kids-game-house/games/snake/                  │
+│  └── 验证框架可行性，参考实现，不用于复制                    │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 克隆新游戏步骤
-1. `cp -r kids-game-house/games/snake games/my-game`
-2. 全局重命名类名和组件名
-3. 修改 `src/config/GTRS.json`
-4. 修改 `src/phaser/game.ts` 游戏逻辑
-5. 执行 `register-game.sql` 注册数据库
-6. 参考 CHECKLIST.md 逐项检查
+**创建新游戏**：
+```bash
+# 1. 从模板初始化（不是复制snake！）
+cp -r kids-game-frame-factory/templates/game-template games/my-game
+
+# 2. 全局重命名
+# - 目录名、package.json、App.vue组件名
+
+# 3. 配置
+# - config/GTRS.json
+# - config/difficulty.json
+# - config/game-config.json
+
+# 4. 实现游戏逻辑（重写 scenes/GameScene.ts）
+# - 参考 snake 实现，但不复制代码
+
+# 5. 注册游戏
+# - register-game.sql
+```
+
+**与snake的关系**：
+| 操作 | snake | 模板 |
+|------|-------|------|
+| 创建新游戏 | ❌ 复制（不推荐） | ✅ 模板初始化 |
+| 参考实现 | ✅ 参考 | - |
+| UI组件 | ✅ 可复用 | ✅ 可复用 |
+| 游戏逻辑 | 参考但不复制 | 重写 |
 
 ---
 
@@ -111,43 +131,76 @@
 
 ---
 
-## 游戏开发策略（2026-03-28 更新）
+## 游戏框架 v4.0 设计（2026-03-29 v4.1）
 
-**决策**：废弃 kids-game-frame-factory 的组件化架构，改用「存量游戏示例 + game-dev Skill」方案。
+**核心理念**：零耦合 + 模板复制 + 游戏完全独立 + 统一管理
 
-**原因**：
-1. kids-game-frame-factory 维护成本高（18项遗留问题）
-2. 框架复杂度高，上手成本大
-3. 实际项目中，直接参考已有游戏更高效
+### 整合内容
 
-**新方案**：
-- 参考游戏：`kids-game-house/games/snake/`（成熟完整）
-- Skill 指南：`.workbuddy/skills/game-dev/`（整合 GTRS 规范、游戏克隆指南）
-- 开发清单：`.workbuddy/skills/game-dev/docs/CHECKLIST.md`
+所有游戏开发相关的资源都纳入 frame-factory 统一管理：
 
-### game-dev Skill 文件结构
+| 资源类型 | 位置 | 说明 |
+|----------|------|------|
+| 游戏项目模板 | `templates/game-template/` | 完整游戏项目结构 |
+| 配置模板 | `templates/*.template.json` | GTRS、难度、i18n 等配置 |
+| 开发文档 | `docs/` | 开发指南、GTRS规范、检查清单 |
+| SQL 模板 | `templates/register-game.template.sql` | 数据库注册 |
+
+### frame-factory 结构（v4.1）
 ```
-.workbuddy/skills/game-dev/
-├── SKILL.md                    # 主入口
-├── docs/
-│   ├── GAME_DEV_GUIDE.md       # 完整开发指南
-│   ├── GTRS_GUIDE.md          # GTRS 资源配置规范
-│   └── CHECKLIST.md           # 开发检查清单
-└── templates/
-    ├── GTRS.template.json     # GTRS 配置模板
-    ├── difficulty.template.json # 难度配置模板
-    ├── register-game.template.sql # 数据库注册模板
-    ├── generate-resources.template.mjs # 资源生成脚本模板
-    └── i18n.template.json      # 国际化模板
+kids-game-frame-factory/
+├── docs/                           # 📚 开发文档
+│   ├── GAME_DEV_GUIDE.md          # 游戏开发完整指南
+│   ├── GTRS_GUIDE.md              # GTRS 资源配置规范
+│   └── CHECKLIST.md               # 开发检查清单
+│
+├── templates/                       # 📋 配置模板
+│   ├── game-template/             # ⭐ 游戏项目模板
+│   ├── GTRS.template.json         # GTRS 配置模板
+│   ├── difficulty.template.json   # 难度配置模板
+│   ├── i18n.template.json          # 国际化模板
+│   ├── register-game.template.sql # 数据库注册模板
+│   └── generate-resources.mjs     # 资源生成脚本
+│
+└── README.md                       # 框架入口
 ```
 
-### 克隆新游戏步骤
-1. `cp -r kids-game-house/games/snake games/my-game`
-2. 全局重命名类名和组件名
-3. 修改 `src/config/GTRS.json`
-4. 修改 `src/phaser/game.ts` 游戏逻辑
-5. 执行 `register-game.sql` 注册数据库
-6. 参考 CHECKLIST.md 逐项检查
+### 关键原则
+
+❌ **禁止**：`import { ... } from '@/frame-factory'`（依赖耦合）  
+✅ **正确**：frame-factory 只提供模板文件，复制后游戏完全独立
+
+### 创建新游戏流程
+
+```bash
+# 1. 复制模板
+cp -r kids-game-frame-factory/templates/game-template games/my-game
+
+# 2. 全局重命名（IDE 重构）
+# - 目录名、package.json、App.vue
+
+# 3. 配置
+# - src/config/GTRS.json
+# - src/config/difficulty.json
+
+# 4. 实现游戏逻辑（重写 scenes/GameScene.ts）
+# - 参考 snake，不复制代码
+
+# 5. 注册
+# - register-game.sql
+```
+
+### 与其他游戏的关系
+
+| 目的 | 来源 | 方式 |
+|------|------|------|
+| 参考实现 | `kids-game-house/games/snake/` | 阅读参考 |
+| 创建新游戏 | `templates/game-template/` | 复制模板 |
+| Skill 指南 | `/game-dev` | IDE 中使用 |
+
+### 框架升级策略
+
+框架升级只影响新的游戏项目，已有游戏不受影响（独立副本）。
 
 ---
 
