@@ -227,6 +227,7 @@ function advanceLoadingStep() {
 
 // ── 生命周期 ──────────────────────────────────────────────────────────────
 onMounted(() => {
+  console.log('🎮 GameView mounted!')
   initUIParams(window.innerWidth, window.innerHeight)
   // 启动 BGM
   setTimeout(() => audioStore.startBGM(), 500)
@@ -235,6 +236,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  console.log('🧹 GameView unmounted')
   audioStore.stopBGM()
 })
 </script>

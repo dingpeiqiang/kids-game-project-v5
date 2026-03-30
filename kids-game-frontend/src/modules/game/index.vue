@@ -99,13 +99,14 @@ async function initGame() {
     const gameThemeId = localStorage.getItem(gameThemeKey) || '';
     
     const params = new URLSearchParams({
-      session_token: session.sessionToken,  // 独立部署模式需要此参数
-      session_id: session.sessionToken,     // 兼容旧版
+      session_token: session.sessionToken || '',  // 独立部署模式需要此参数
+      session_id: session.sessionToken || '',     // 兼容旧版
       user_id: String(getCurrentUserId()),
       user_name: getCurrentUserName(),
       token: token, // 传递 token，游戏需要用来验证身份
       user_info: userInfo, // 传递用户信息
       game_id: String(game.gameId), // 传递游戏 ID
+      platform_url: window.location.origin, // 传递平台 URL，用于游戏结束后返回首页
     });
     
     // 如果有游戏专用主题，添加到 URL 参数

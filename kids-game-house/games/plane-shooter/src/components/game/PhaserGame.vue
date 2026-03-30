@@ -39,8 +39,13 @@ let phaserGame: Phaser.Game | null = null
 // ─── 初始化游戏 ─────────────────────────────────────────────────────────────
 
 async function initGame(): Promise<void> {
-  if (!gameContainer.value) return
+  if (!gameContainer.value) {
+    console.error('❌ 游戏容器未初始化')
+    return
+  }
 
+  console.log('🎮 开始初始化 Phaser 游戏...')
+  
   // 初始化游戏状态
   gameStore.startGame()
 
@@ -49,21 +54,23 @@ async function initGame(): Promise<void> {
     parent: gameContainer.value,
     width: '100%',
     height: '100%',
-    transparent: true,
+    transparent: false, // 改为不透明，避免黑色背景
+    backgroundColor: '#0f172a', // 明确设置背景色
     scale: {
       mode      : Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    // 如需物理引擎，取消注释：
-    // physics: { default: 'arcade', arcade: { debug: false } },
     scene: [PlaneShooterScene],
   }
 
+  console.log('📦 游戏配置:', config)
   phaserGame = new Phaser.Game(config)
+  console.log('✅ Phaser 游戏实例已创建')
 
   // ── Phaser 场景事件 → Vue emit ──────────────────────────────────────────
 
   phaserGame.events.on('ready', () => {
+    console.log('✅ Phaser 场景已就绪')
     emit('ready')
   })
 
@@ -74,6 +81,7 @@ async function initGame(): Promise<void> {
   phaserGame.events.on('gameover', (score: number) => {
     audioStore.stopBGM()
     gameStore.endGame()
+    console.log('💥 游戏结束，得分:', score)
     emit('game-over', score)
   })
 

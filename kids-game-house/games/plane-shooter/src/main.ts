@@ -60,6 +60,9 @@ function extractAuthFromUrl() {
 // 应用初始化前先提取 URL 认证信息
 extractAuthFromUrl()
 
+console.log('🚀 开始挂载 Vue 应用...')
+console.log('📍 当前路由:', window.location.pathname, window.location.search)
+
 const app = createApp(App)
 const pinia = createPinia()
 
@@ -80,9 +83,23 @@ if (savedGameId) {
   }
 }
 
+// ⭐ 关键修复：如果有 URL 参数，强制跳转到 /loading 页面
+const params = new URLSearchParams(window.location.search)
+if (params.has('session_token') || params.has('game_id')) {
+  console.log('🔍 检测到 URL 参数，强制跳转到 /loading')
+  // 延迟跳转，确保 router 已就绪
+  setTimeout(() => {
+    router.push('/loading').catch(err => {
+      console.error('❌ 跳转失败:', err)
+    })
+  }, 100)
+}
+
 // 主题初始化完成后挂载应用
 themeStore.init().catch(error => {
   console.error('❌ 主题初始化失败（后端不可用）:', error)
 }).finally(() => {
+  console.log('✅ 准备挂载应用...')
   app.mount('#app')
+  console.log('✅ Vue 应用已挂载')
 })

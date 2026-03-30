@@ -11,8 +11,8 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'loading',
-      component: LoadingView,
+      name: 'start',
+      component: StartView,
     },
     {
       path: '/loading',

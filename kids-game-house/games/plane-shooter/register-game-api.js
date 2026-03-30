@@ -1,50 +1,50 @@
 #!/usr/bin/env node
 /**
- * ✈️ 飞机大战游戏注册脚本（Node.js API 版）
+ * ✈️ 飞机大战游戏注册脚本（Node.js 版本）
  * 
- * 功能：
- * 1. 自动读取 GTRS.json 配置
- * 2. 调用后端 API 注册游戏和主题
- * 3. 支持幂等操作（可重复执行）
- * 
- * 使用方法：
+ * 用法：
+ *   npm run register
+ *   或
  *   node register-game-api.js --url http://localhost:5173
- * 
- * 参数说明：
- *   --url      游戏访问地址（必填）
- *   --creator  创建人 ID（可选，默认 null）
  */
 
-import fs from 'fs'
-import path from 'path'
+import { readFileSync, writeFileSync } from 'fs'
+import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = dirname(__filename)
 
 // ────────────────────────────────────────────────────────────
-// 配置区
+// 配置
 // ────────────────────────────────────────────────────────────
 
 const GAME_CODE = 'plane-shooter'
 const GAME_NAME = '飞机大战'
-const GAME_DESCRIPTION = '经典飞机大战游戏，控制战斗机击落敌机，躲避子弹和撞击，收集强化道具，挑战最高分！支持多种难度等级。'
-const CATEGORY = 'ACTION' // ACTION, PUZZLE, STRATEGY, CASUAL
-const GRADE = '一年级'
-
-// 默认配置
 const DEFAULT_CONFIG = {
-  gameUrl: 'http://localhost:5173',
+  gameUrl: 'http://localhost:5173',  // 默认开发环境地址
   creatorId: null
 }
 
 // ────────────────────────────────────────────────────────────
-// 工具函数
+// 读取 GTRS.json
 // ────────────────────────────────────────────────────────────
 
-/**
- * 解析命令行参数
- */
+function readGTRSConfig() {
+  const gtrsPath = join(__dirname, 'public', 'themes', 'plane_shooter_default', 'GTRS.json')
+  try {
+    const content = readFileSync(gtrsPath, 'utf-8')
+    return JSON.parse(content)
+  } catch (error) {
+    console.error('❌ 读取 GTRS.json 失败:', error.message)
+    process.exit(1)
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 解析命令行参数
+// ────────────────────────────────────────────────────────────
+
 function parseArgs() {
   const args = process.argv.slice(2)
   const config = { ...DEFAULT_CONFIG }
@@ -56,19 +56,27 @@ function parseArgs() {
     } else if (args[i] === '--creator' && args[i + 1]) {
       config.creatorId = parseInt(args[i + 1])
       i++
-    } else if (args[i] === '--help') {
+    } else if (args[i] === '--help' || args[i] === '-h') {
       console.log(`
-📖 使用方法:
+🎮 飞机大战游戏注册工具
+
+用法:
   node register-game-api.js [选项]
 
 选项:
-  --url <url>       游戏访问地址（必填）
-  --creator <id>    创建人 ID（可选）
-  --help           显示帮助信息
+  --url <URL>        游戏部署地址（默认：http://localhost:5173）
+  --creator <ID>     创建人用户 ID（可选）
+  --help, -h         显示帮助信息
 
 示例:
-  node register-game-api.js --url http://localhost:5173
-  node register-game-api.js --url http://localhost:5173 --creator 123
+  # 使用默认配置（本地开发）
+  node register-game-api.js
+  
+  # 指定测试环境地址
+  node register-game-api.js --url http://test.example.com
+  
+  # 指定生产环境地址和创建人
+  node register-game-api.js --url https://game.example.com --creator 123
 `)
       process.exit(0)
     }
@@ -77,121 +85,71 @@ function parseArgs() {
   return config
 }
 
-/**
- * 读取 GTRS.json 配置
- */
-function readGTRSConfig() {
-  const gtrsPath = path.join(__dirname, 'public', 'themes', 'plane_shooter_default', 'GTRS.json')
+// ────────────────────────────────────────────────────────────
+// 生成 SQL 脚本
+// ────────────────────────────────────────────────────────────
+
+function generateSQL(config) {
+  const sqlTemplate = readFileSync(join(__dirname, 'register-game.sql'), 'utf-8')
   
-  if (!fs.existsSync(gtrsPath)) {
-    throw new Error(`❌ 找不到 GTRS.json: ${gtrsPath}`)
-  }
+  let sql = sqlTemplate
+    .replace(/__GAME_URL__/g, config.gameUrl)
+    .replace(/__CREATOR_ID__/g, config.creatorId || 'NULL')
   
-  const content = fs.readFileSync(gtrsPath, 'utf-8')
-  return JSON.parse(content)
+  return sql
 }
 
-/**
- * 生成毫秒时间戳
- */
-function now() {
-  return Date.now()
-}
+// ────────────────────────────────────────────────────────────
+// 模拟数据库操作（实际应调用后端 API）
+// ────────────────────────────────────────────────────────────
 
-/**
- * 模拟数据库操作（实际使用时替换为真实 API 调用）
- */
 async function mockDatabaseOperation(config) {
-  console.log('🎮 开始注册游戏...\n')
+  console.log('\n📋 准备注册数据...\n')
   
-  // 第 1 步：准备游戏数据
-  console.log('📝 步骤 1: 准备游戏数据')
   const gameData = {
     game_code: GAME_CODE,
     game_name: GAME_NAME,
-    category: CATEGORY,
-    grade: GRADE,
-    description: GAME_DESCRIPTION,
-    icon_url: '/themes/plane_shooter_default/images/player.png',
-    cover_url: '',
+    category: 'ACTION',
+    grade: '一年级',
+    status: 2,  // 已上架
     game_url: config.gameUrl,
-    status: 2, // 已上架
+    icon_url: '/themes/plane_shooter_default/images/player.png',
+    description: '经典飞机大战游戏，控制战斗机击落敌机，躲避子弹和撞击，收集强化道具，挑战最高分！支持多种难度等级。',
     sort_order: 4,
-    is_featured: 0,
-    consume_points_per_minute: 1,
-    min_fatigue_to_start: 0,
-    online_count: 0,
-    total_play_count: 0,
-    total_play_duration: 0,
-    average_rating: 0.00,
-    create_time: now(),
-    update_time: now(),
-    deleted: 0,
-    creator_id: config.creatorId,
-    publish_time: now()
+    create_time: Date.now(),
+    update_time: Date.now()
+  }
+  
+  const gtrsConfig = readGTRSConfig()
+  
+  const themeData = {
+    theme_name: '飞机大战 - 星空蓝',
+    author_name: '官方团队',
+    status: 'on_sale',
+    is_default: true,
+    config_json: JSON.stringify(gtrsConfig),
+    thumbnail_url: '/themes/plane_shooter_default/images/bg_main.png'
   }
   
   console.log('✅ 游戏数据:')
   console.log(JSON.stringify(gameData, null, 2))
-  
-  // 第 2 步：读取 GTRS 配置
-  console.log('\n📝 步骤 2: 读取 GTRS 配置')
-  const gtrsConfig = readGTRSConfig()
-  console.log('✅ GTRS 配置加载成功')
-  console.log(`   主题代码：${gtrsConfig.themeInfo?.themeCode || 'plane_shooter_default'}`)
-  console.log(`   资源数量：图片 ${Object.keys(gtrsConfig.resources?.images?.scene || {}).length} 个`)
-  
-  // 第 3 步：准备主题数据
-  console.log('\n📝 步骤 3: 准备主题数据')
-  const themeData = {
-    author_id: 0,
-    is_official: 0,
-    owner_type: 'GAME',
-    owner_id: null, // 会在插入后获取 game_id
-    theme_name: '飞机大战 - 星空蓝',
-    author_name: '官方团队',
-    price: 0,
-    status: 'on_sale',
-    download_count: 0,
-    total_revenue: 0,
-    thumbnail_url: '/themes/plane_shooter_default/images/bg_main.png',
-    description: '飞机大战官方默认主题，星空蓝风格，包含完整的飞机、敌机、子弹和道具资源',
-    config_json: JSON.stringify(gtrsConfig),
-    is_default: 1,
-    created_at: new Date(),
-    updated_at: new Date()
-  }
-  
-  console.log('✅ 主题数据:')
+  console.log('\n✅ 主题数据:')
   console.log(JSON.stringify(themeData, null, 2))
   
-  // 第 4 步：输出 SQL 语句（供参考）
-  console.log('\n📝 步骤 4: 生成 SQL 注册语句')
-  console.log('💡 提示：实际部署时，请执行 register-game.sql 文件\n')
+  console.log('\n\n⚠️  重要提示：\n')
+  console.log('由于无法直接连接数据库，请手动执行以下步骤：\n')
+  console.log('1️⃣  打开 MySQL 客户端或数据库管理工具')
+  console.log(`2️⃣  选择您的数据库：USE your_database_name;`)
+  console.log('3️⃣  执行以下 SQL 命令：\n')
   
-  console.log('='.repeat(60))
-  console.log('✅ 游戏注册准备完成！')
-  console.log('='.repeat(60))
-  console.log(`\n游戏信息:`)
-  console.log(`  游戏代码：${GAME_CODE}`)
-  console.log(`  游戏名称：${GAME_NAME}`)
-  console.log(`  访问地址：${config.gameUrl}`)
-  console.log(`  创建人 ID: ${config.creatorId || 'NULL'}`)
-  console.log(`  状态：已上架 (status=2)`)
-  console.log(`\n主题信息:`)
-  console.log(`  主题名称：${themeData.theme_name}`)
-  console.log(`  资源配置：${Object.keys(gtrsConfig.resources?.images?.scene || {}).length} 个图片`)
-  console.log(`\n下一步操作:`)
-  console.log(`  1. 在 MySQL 客户端执行：source register-game.sql`)
-  console.log(`  2. 检查输出确认 game_id 和 theme_id`)
-  console.log(`  3. 访问游戏平台验证是否显示`)
-  console.log(`\n`)
+  // 生成并显示简化的 SQL
+  const sql = generateSQL(config)
+  const simplifiedSQL = sql.split('\n').slice(0, 100).join('\n')
+  console.log(simplifiedSQL)
+  console.log('\n... (完整 SQL 请在 register-game.sql 中查看)\n')
   
-  return {
-    gameData,
-    themeData,
-    gtrsConfig
-  }
+  console.log('\n4️⃣  检查输出确认 game_id 和 theme_id')
+  console.log('5️⃣  访问游戏平台验证是否显示\n')
 }
 
 // ────────────────────────────────────────────────────────────
@@ -199,28 +157,18 @@ async function mockDatabaseOperation(config) {
 // ────────────────────────────────────────────────────────────
 
 async function main() {
-  try {
-    console.log('✈️ 飞机大战游戏注册器 (Node.js API 版)\n')
-    
-    const config = parseArgs()
-    
-    // 验证必填参数
-    if (!config.gameUrl) {
-      console.error('❌ 错误：--url 参数是必填的！')
-      console.error('💡 使用 --help 查看帮助信息')
-      process.exit(1)
-    }
-    
-    // 执行注册
-    await mockDatabaseOperation(config)
-    
-    console.log('🎉 注册流程完成！')
-    
-  } catch (error) {
-    console.error('\n❌ 注册失败:', error.message)
-    console.error(error.stack)
-    process.exit(1)
-  }
+  const config = parseArgs()
+  
+  console.log('🎮 飞机大战游戏注册工具\n')
+  console.log('='.repeat(60))
+  console.log(`📊 游戏代码：${GAME_CODE}`)
+  console.log(`📝 游戏名称：${GAME_NAME}`)
+  console.log(`🌐 部署地址：${config.gameUrl}`)
+  console.log(`👤 创建人 ID: ${config.creatorId || '无'}`)
+  console.log('='.repeat(60))
+  console.log('')
+  
+  await mockDatabaseOperation(config)
 }
 
-main()
+main().catch(console.error)

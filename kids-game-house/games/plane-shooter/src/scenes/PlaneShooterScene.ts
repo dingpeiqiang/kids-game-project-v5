@@ -212,21 +212,30 @@ export default class PlaneShooterScene extends GameScene {
    * 创建滚动背景
    */
   private createBackground(): void {
-    const bg = this.add.image(0, 0, 'bg_main').setOrigin(0)
+    // ⭐ 先创建纯色背景（兜底）- 深蓝色星空
+    const bgColor = this.add.rectangle(0, 0, this.screenW, this.screenH, 0x0f172a)
+    bgColor.setOrigin(0)
     
-    // 背景滚动效果
-    this.tweens.add({
-      targets: bg,
-      y: -1080,
-      duration: 10000,
-      ease: 'Linear',
-      repeat: -1,
-      onUpdate: () => {
-        if (bg.y <= -1080) {
-          bg.y = 0
+    // ✅ 再尝试加载背景图片
+    if (this.textures.exists('bg_main')) {
+      const bg = this.add.image(0, 0, 'bg_main').setOrigin(0)
+      
+      // 背景滚动效果
+      this.tweens.add({
+        targets: bg,
+        y: -1080,
+        duration: 10000,
+        ease: 'Linear',
+        repeat: -1,
+        onUpdate: () => {
+          if (bg.y <= -1080) {
+            bg.y = 0
+          }
         }
-      }
-    })
+      })
+    } else {
+      console.warn('⚠️ 背景图片不存在，使用纯色背景')
+    }
   }
 
   /**
@@ -235,6 +244,8 @@ export default class PlaneShooterScene extends GameScene {
   private createPlayer(): void {
     const startX = this.screenW / 2
     const startY = this.screenH - 100
+    
+    console.log('🎮 创建玩家飞机，位置:', { x: startX, y: startY })
     
     this.player = {
       sprite: this.add.image(startX, startY, 'player')
@@ -248,6 +259,8 @@ export default class PlaneShooterScene extends GameScene {
     if (this.hasShield) {
       this.add.circle(startX, startY, 40, 0x3b82f6, 0.3).setDepth(9)
     }
+    
+    console.log('✅ 玩家飞机已创建:', this.player.sprite.texture.key)
   }
 
   /**
