@@ -1,222 +1,916 @@
-# kids-game-frame-factory
+# 🤖 AI 助手高效使用指南
 
-## 🎮 儿童游戏开发框架
+## 核心理念：AI 驱动的游戏开发自动化
 
-**核心理念**：零耦合 + 模板驱动 + 一键初始化
-
-> 从模板复制的游戏完全独立，不依赖任何框架运行时。  
-> **框架定位：给 AI 使用**——约束 AI 在框架规范下快速开发新游戏。
+**目标**: 让 AI 承担 80% 的重复劳动，您专注于 20% 的核心创意和决策
 
 ---
 
-## 🤖 AI 开发者入口（必读）
+## 📋 AI 辅助开发的完整流程
 
-**如果你是 AI，请按以下顺序阅读：**
+### 阶段 1：游戏设计（AI 辅助创意）⭐⭐⭐⭐⭐
 
-| 步骤 | 文档 | 说明 |
-|------|------|------|
-| 1️⃣ 本文档 | `README.md` | 了解框架全貌（你正在读）|
-| 2️⃣ 开发指南 | `templates/game-template/AI_INSTRUCTIONS.md` | ⭐ **完整开发指南，必须完整阅读** |
-| 3️⃣ 设计模板 | `docs/GAME_DESIGN_TEMPLATE.md` | GDD 编写模板 |
+#### 步骤 1.1：让 AI 帮您完善游戏创意
 
-> ⚠️ **不要从 `kids-game-house/games/snake/` 复制代码**——会留下贪吃蛇逻辑残留。  
-> ✅ **正确做法**：使用 `init-game.ps1` 初始化，只重写 `MyGameScene.ts`。
+**提示词模板**:
+```
+我有一款儿童游戏开发框架，基于 Phaser 3.90 + Vue 3 + TypeScript。
+框架支持以下特性：
+- 网格系统（gridCols/gridRows）
+- 难度分级（easy/medium/hard）
+- GTRS 资源规范
+- 关卡系统
+- 计时器和分数系统
+
+请帮我设计一款【拼图游戏】，包括：
+1. 核心玩法描述（适合 3-8 岁儿童）
+2. 游戏目标（胜利条件）
+3. 交互方式（点击/拖拽）
+4. 难度梯度设计（3 个档次）
+5. 视觉风格建议（色彩、图案）
+6. 音频需求（BGM+ 音效）
+
+要求：简单易懂、教育意义、安全健康
+```
+
+**AI 会输出**:
+- ✅ 完整的游戏设计理念
+- ✅ 适合年龄段的玩法
+- ✅ 教育价值分析
+- ✅ 技术可行性评估
 
 ---
 
-## 📁 目录结构
+#### 步骤 1.2：让 AI 生成资源清单
 
+**提示词模板**:
 ```
-kids-game-frame-factory/
-│
-├── scripts/                        # 🛠️ 初始化脚本
-│   ├── init-game.ps1              # 一键初始化（Windows PowerShell）
-│   └── init-game.sh               # 一键初始化（macOS/Linux）
-│
-├── templates/                      # 📋 模板文件
-│   ├── game-template/             # ⭐ 游戏项目完整模板（核心）
-│   │   ├── AI_INSTRUCTIONS.md     # AI 开发完整指南（必读）
-│   │   ├── register-game.sql      # 数据库注册脚本模板
-│   │   └── src/scenes/
-│   │       ├── GameScene.ts       # 框架抽象基类（禁止修改）
-│   │       └── MyGameScene.ts     # ⭐ AI 只需重写这一个文件
-│   │
-│   ├── GTRS.template.json         # GTRS 主题资源配置模板
-│   ├── difficulty.template.json   # 难度参数配置模板
-│   └── generate-resources.template.mjs  # 资源生成脚本模板
-│
-├── docs/                           # 📚 参考文档
-│   ├── GAME_DESIGN_TEMPLATE.md    # GDD 游戏设计文档模板
-│   ├── GTRS_GUIDE.md              # GTRS 资源配置规范
-│   ├── CHECKLIST.md               # 开发验收检查清单
-│   └── SQL_SCRIPT_WRITING_GUIDE.md # 数据库注册 SQL 规范
-│
-└── tools/                          # 🧰 工具集
-    ├── gtrs-generator/            # GTRS + Sharp 资源生成器
-    ├── audio-converter/           # WAV → MP3 批量转换工具
-    └── theme-resource-generator/  # ❌ 已废弃（只生成灰色占位符）
+根据上面的游戏设计，请生成详细的资源清单表格。
+
+格式要求：
+### 4.1 图片资源清单
+
+| 资源名称 (key) | 用途描述 | 数量 | 尺寸 | 生成方式 | 优先级 |
+|--------------|---------|------|------|---------|--------|
+| bg_main | 游戏背景，浅蓝色渐变天空 | 1 | 1920x1080 | Sharp 程序化生成 | 必需 |
+| tile_2x2_1~3 | 2x2 拼图块，彩虹渐变 + 白边 | 3 | 256x256 | Sharp 程序化生成 | 必需 |
+
+### 4.2 音频资源清单
+
+| 资源名称 (key) | 用途 | 时长 | 获取方式 | 优先级 |
+|--------------|------|------|---------|--------|
+| bgm_main | 背景音乐，轻松愉快 | 120s | WebAudio / MP3 | 必需 |
+| sfx_move | 移动音效，短促点击 | 0.2s | WebAudio | 必需 |
+
+注意：
+1. 资源名称使用英文 + 下划线命名
+2. 标注推荐的生成方式（Sharp/theme-resource-generator/手动）
+3. 区分开发阶段（WebAudio）和生产阶段（MP3）
 ```
 
----
+**AI 输出示例**:
+```markdown
+### 4.1 图片资源清单
 
-## 🚀 快速开始（3 步）
+| 资源名称 | 用途 | 数量 | 尺寸 | 生成方式 | 优先级 |
+|---------|------|------|------|---------|--------|
+| bg_main | 游戏背景，浅蓝色渐变天空 | 1 | 1920x1080 | Sharp 程序化生成 | 必需 |
+| tile_2x2_1 | 2x2 拼图块 1，左上角，彩虹渐变 | 1 | 256x256 | Sharp 程序化生成 | 必需 |
+| tile_2x2_2 | 2x2 拼图块 2，右上角，彩虹渐变 | 1 | 256x256 | Sharp 程序化生成 | 必需 |
+| tile_2x2_3 | 2x2 拼图块 3，左下角，彩虹渐变 | 1 | 256x256 | Sharp 程序化生成 | 必需 |
+| star_1/2/3 | 星级评价，黄色五角星 | 3 | 128x128 | Sharp 程序化生成 | 必需 |
+| btn_restart | 重新开始按钮，绿色圆角 | 1 | 200x60 | Sharp 程序化生成 | 可选 |
 
-### 第 1 步：初始化游戏项目
+### 4.2 音频资源清单
 
-```powershell
-# Windows PowerShell（在项目根目录执行）
-.\kids-game-frame-factory\scripts\init-game.ps1 -GameId my-puzzle -GameName 拼图游戏
-
-# macOS / Linux
-bash kids-game-frame-factory/scripts/init-game.sh my-puzzle 拼图游戏
-```
-
-脚本自动完成：
-1. 复制 `game-template/` 到 `kids-game-house/games/my-puzzle/`
-2. 替换所有 `__GAME_CODE__` / `__GAME_NAME__` 占位符
-3. 执行 `npm install` 安装依赖
-
-### 第 2 步：阅读 AI_INSTRUCTIONS.md
-
-```
-kids-game-house/games/my-puzzle/AI_INSTRUCTIONS.md
-```
-
-这是完整的开发指南，包含：资源生成 → 配置文件 → 游戏逻辑 → 数据库注册。
-
-### 第 3 步：启动开发服务器
-
-```bash
-cd kids-game-house/games/my-puzzle
-npm run dev
-# 访问 http://localhost:5173
+| 资源名称 | 用途 | 时长 | 获取方式 | 优先级 |
+|---------|------|------|---------|--------|
+| bgm_main | 背景音乐，轻松愉快的儿童音乐 | 120s | WebAudio（开发）/ MP3（生产） | 必需 |
+| sfx_move | 移动音效，短促的"嘀"声 | 0.2s | WebAudio | 必需 |
+| sfx_win | 胜利音效，欢快的 ascending melody | 1.5s | WebAudio / MP3 | 必需 |
+| sfx_click | UI 点击音效，简单正弦波 | 0.1s | WebAudio | 可选 |
 ```
 
 ---
 
-## 🗂️ 框架开箱即用的功能
+#### 步骤 1.3：让 AI 编写完整的 GDD
 
-初始化后，以下功能**无需任何开发**：
+**提示词模板**:
+```
+请将以上资源整合成完整的 GAME_DESIGN_DOCUMENT.md。
 
-| 功能 | 实现文件 |
-|------|------|
-| 游戏首页（游戏名/最高分/开始）| `StartView.vue` |
-| 难度选择 + 主题皮肤切换 | `DifficultyView.vue` |
-| 资源加载进度遮罩 | `GameView.vue` + `PhaserGame.vue` |
-| 游戏 HUD（分数/关卡/暂停）| `GameView.vue` |
-| 暂停弹窗 | `GameView.vue` |
-| 20 关渐进式关卡系统 | `stores/game.ts` + `types/level.ts` |
-| 关卡升级过渡动画 | `LevelTransitionOverlay.vue` |
-| 游戏结束界面 | `GameOverView.vue` |
-| WebAudio 合成音效（无需外部文件）| `stores/audio.ts` |
-| 主题皮肤系统（GTRS）| `stores/theme.ts` |
-| 响应式屏幕适配（720×1280 基准）| `utils/uiResponsive.ts` |
+包含章节：
+1. 游戏概述（名称、类型、目标用户）
+2. 玩法规则（操作方式、胜利条件、失败条件）
+3. 游戏流程（开始→进行→结束）
+4. 资源清单（图片和音频表格）
+5. 技术实现要点（使用的 Phaser API、关键算法）
+6. 难度设计（3 个档次的具体参数）
+7. 教育价值（培养什么能力）
+
+语气：专业但不失亲和力
+格式：Markdown，使用表格和列表
+```
+
+**AI 会生成**: 完整的 GDD 文档，可以直接使用
 
 ---
 
-## 🔧 AI 开发新游戏只需做这些
+### 阶段 2：资源生成（AI 自动化）⭐⭐⭐⭐⭐
 
-| # | 文件 | 操作 |
-|---|------|------|
-| 1 | `GAME_DESIGN_DOCUMENT.md` | 编写游戏设计文档（GDD） |
-| 2 | `generate-resources.mjs` | 用 Sharp 生成图片 + Node.js WAV 生成音频 |
-| 3 | `src/config/GTRS.json` | 复制生成的 GTRS.json |
-| 4 | `src/config/difficulty.json` | 调整难度参数 |
-| 5 | `src/scenes/MyGameScene.ts` | ⭐ **重写游戏逻辑（唯一核心工作）** |
-| 6 | `src/components/game/PhaserGame.vue` | 改一行：引用你的场景类 |
-| 7 | `register-game-filled.sql` | 生成并执行 SQL 注册游戏 |
+#### 步骤 2.1：让 AI 生成 Sharp 脚本
 
-### 核心 API（MyGameScene.ts 可用）
+**提示词模板**:
+```
+请帮我生成一个 Node.js 脚本 (generate-resources.mjs)，使用 Sharp 库程序化生成以下资源：
 
+资源需求：
+1. bg_main: 1920x1080，浅蓝色渐变天空背景
+2. tile_2x2_1~3: 256x256，彩虹渐变 + 白色边框（4px）
+3. star_1/2/3: 128x128，黄色五角星（不同大小）
+4. btn_restart: 200x60，绿色圆角矩形按钮
+
+技术要求：
+- 使用 sharp 库
+- 生成 PNG 格式
+- 输出到 public/themes/puzzle_default/assets/scene/
+- 同时生成 GTRS.json（符合 v1.0.0 规范）
+- 添加进度日志
+
+请提供完整的可运行代码。
+```
+
+**AI 生成的代码示例**:
+```javascript
+// generate-resources.mjs
+import sharp from 'sharp'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+const OUTPUT_DIR = path.join(__dirname, 'public', 'themes', 'puzzle_default', 'assets', 'scene')
+
+// 1. 生成背景：浅蓝色渐变天空
+async function generateBackground() {
+  const buffer = Buffer.alloc(1920 * 1080 * 4)
+  for (let y = 0; y < 1080; y++) {
+    for (let x = 0; x < 1920; x++) {
+      // 从上到下的渐变：深蓝 → 浅蓝
+      const ratio = y / 1080
+      const r = Math.floor(135 * (1 - ratio) + 200 * ratio)
+      const g = Math.floor(206 * (1 - ratio) + 230 * ratio)
+      const b = Math.floor(235 * (1 - ratio) + 255 * ratio)
+      
+      const idx = (y * 1920 + x) * 4
+      buffer[idx] = r
+      buffer[idx + 1] = g
+      buffer[idx + 2] = b
+      buffer[idx + 3] = 255
+    }
+  }
+  
+  await sharp(buffer, { raw: { width: 1920, height: 1080, channels: 4 } })
+    .png()
+    .toFile(path.join(OUTPUT_DIR, 'bg_main.png'))
+  
+  console.log('✅ 生成背景：bg_main.png')
+}
+
+// 2. 生成拼图块：彩虹渐变 + 白色边框
+async function generatePuzzleTile(tileId) {
+  const size = 256
+  const buffer = Buffer.alloc(size * size * 4)
+  
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      // 彩虹渐变算法
+      const gradient = (x + y) / (size * 2)
+      const r = Math.floor(255 * Math.sin(gradient * Math.PI))
+      const g = Math.floor(255 * Math.sin(gradient * Math.PI + 2))
+      const b = Math.floor(255 * Math.sin(gradient * Math.PI + 4))
+      
+      const idx = (y * size + x) * 4
+      buffer[idx] = r
+      buffer[idx + 1] = g
+      buffer[idx + 2] = b
+      buffer[idx + 3] = 255
+    }
+  }
+  
+  // 添加白色边框（向外扩展 4px）
+  await sharp(buffer, { raw: { width: size, height: size, channels: 4 } })
+    .extend({
+      top: 4, bottom: 4, left: 4, right: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 255 }
+    })
+    .png()
+    .toFile(path.join(OUTPUT_DIR, `tile_2x2_${tileId}.png`))
+  
+  console.log(`✅ 生成拼图块：tile_2x2_${tileId}.png`)
+}
+
+// 3. 生成星星：黄色五角星
+async function generateStar(starId) {
+  // 使用 SVG 生成五角星
+  const svg = `
+    <svg width="128" height="128" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="64,0 80,48 128,48 88,80 104,128 64,96 24,128 40,80 0,48 48,48" 
+               fill="#FFD700" stroke="#FFA500" stroke-width="2"/>
+    </svg>
+  `
+  
+  await sharp(Buffer.from(svg))
+    .resize(128 * starId, 128 * starId) // 不同大小
+    .png()
+    .toFile(path.join(OUTPUT_DIR, `star_${starId}.png`))
+  
+  console.log(`✅ 生成星星：star_${starId}.png`)
+}
+
+// 4. 生成按钮：绿色圆角矩形
+async function generateButton() {
+  const svg = `
+    <svg width="200" height="60" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="200" height="60" rx="10" ry="10" 
+            fill="#4ade80" stroke="#22c55e" stroke-width="2"/>
+      <text x="100" y="35" text-anchor="middle" fill="white" font-size="20" font-family="Arial">
+        重新开始
+      </text>
+    </svg>
+  `
+  
+  await sharp(Buffer.from(svg))
+    .png()
+    .toFile(path.join(OUTPUT_DIR, 'btn_restart.png'))
+  
+  console.log('✅ 生成按钮：btn_restart.png')
+}
+
+// 主函数
+async function main() {
+  console.log('🎨 开始生成资源...\n')
+  
+  await generateBackground()
+  
+  for (let i = 1; i <= 3; i++) {
+    await generatePuzzleTile(i)
+  }
+  
+  for (let i = 1; i <= 3; i++) {
+    await generateStar(i)
+  }
+  
+  await generateButton()
+  
+  console.log('\n✅ 资源生成完成！')
+}
+
+main().catch(console.error)
+```
+
+---
+
+#### 步骤 2.2：让 AI 生成 GTRS.json
+
+**提示词模板**:
+```
+请根据以上生成的资源文件，生成符合 GTRS v1.0.0 规范的 GTRS.json 配置文件。
+
+资源列表：
+- bg_main.png
+- tile_2x2_1.png, tile_2x2_2.png, tile_2x2_3.png
+- star_1.png, star_2.png, star_3.png
+- btn_restart.png
+
+主题信息：
+- themeCode: puzzle_default
+- themeName: 拼图游戏默认主题
+- gameId: puzzle
+
+请生成完整的 JSON 配置。
+```
+
+**AI 生成的配置**:
+```json
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "puzzle_default",
+    "themeName": "拼图游戏默认主题",
+    "gameId": "puzzle",
+    "ownerType": "GAME",
+    "ownerId": "puzzle",
+    "isDefault": true,
+    "author": "AI Assistant",
+    "description": "拼图游戏默认主题 - AI 自动生成",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#4ade80",
+    "secondaryColor": "#22c55e",
+    "bgColor": "#87CEEB",
+    "textColor": "#ffffff",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "scene": {
+        "bg_main": {
+          "alias": "游戏背景",
+          "src": "/themes/puzzle_default/assets/scene/bg_main.png",
+          "type": "png"
+        },
+        "tile_2x2_1": {
+          "alias": "拼图块 1",
+          "src": "/themes/puzzle_default/assets/scene/tile_2x2_1.png",
+          "type": "png"
+        },
+        "tile_2x2_2": {
+          "alias": "拼图块 2",
+          "src": "/themes/puzzle_default/assets/scene/tile_2x2_2.png",
+          "type": "png"
+        },
+        "tile_2x2_3": {
+          "alias": "拼图块 3",
+          "src": "/themes/puzzle_default/assets/scene/tile_2x2_3.png",
+          "type": "png"
+        },
+        "star_1": {
+          "alias": "星星 1",
+          "src": "/themes/puzzle_default/assets/scene/star_1.png",
+          "type": "png"
+        },
+        "star_2": {
+          "alias": "星星 2",
+          "src": "/themes/puzzle_default/assets/scene/star_2.png",
+          "type": "png"
+        },
+        "star_3": {
+          "alias": "星星 3",
+          "src": "/themes/puzzle_default/assets/scene/star_3.png",
+          "type": "png"
+        },
+        "btn_restart": {
+          "alias": "重新开始按钮",
+          "src": "/themes/puzzle_default/assets/scene/btn_restart.png",
+          "type": "png"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {},
+      "voice": {}
+    },
+    "video": {}
+  }
+}
+```
+
+---
+
+### 阶段 3：代码实现（AI 自动生成）⭐⭐⭐⭐⭐
+
+#### 步骤 3.1：让 AI 生成 MyGameScene.ts
+
+**提示词模板**:
+```
+请帮我实现拼图游戏的 MyGameScene.ts。
+
+游戏逻辑：
+1. 使用 2x2 网格（可扩展到 3x3、4x4）
+2. 玩家点击拼图块选中，再次点击目标位置交换
+3. 所有拼图块归位后胜利
+4. 显示计时器和星星评价
+
+技术要求：
+- 继承 GameScene
+- 实现三个抽象方法：createGameObjects(), gameLoop(), handleGameOver()
+- 使用 this.preloadFromGTRS() 加载资源
+- 使用 this.gridToPixelCenter() 转换坐标
+- 包含详细的中文注释
+
+请提供完整的 TypeScript 代码。
+```
+
+**AI 生成的代码**（部分展示）:
 ```typescript
-// ─── 必须实现的三个抽象方法 ──────────────────────────────
-protected createGameObjects(): void     // 创建游戏对象
-protected gameLoop(time, delta): void   // 游戏主循环（每帧）
-protected handleGameOver(): void        // 游戏结束处理
+import GameScene from './GameScene'
+import { useGameStore } from '@/stores/game'
 
-// ─── 框架提供的工具 ──────────────────────────────────────
-this.addScore(10)                       // 加分（自动同步 HUD + 升关）
-this.cellSize                           // 格子像素大小
-this.gridCols / this.gridRows          // 格子数（来自难度配置）
-this.offsetX / this.offsetY            // 游戏区域偏移（居中用）
-this.gridToPixelCenter(col, row)       // 格子坐标 → 像素中心坐标
-this.pauseGame() / this.resumeGame()   // 暂停/恢复
-this.isPaused / this.isGameOver        // 状态标志
+interface TileData {
+  id: number
+  currentPos: { x: number; y: number }
+  targetPos: { x: number; y: number }
+  sprite: Phaser.GameObjects.Image
+  isSelected: boolean
+  isCorrect: boolean
+}
 
-// ─── 游戏结束（必须手动 emit） ──────────────────────────
-this.game.events.emit('gameover', this.score)
-
-// ─── 音效（框架内置，无需外部文件） ─────────────────────
-const audio = useAudioStore()
-audio.playClickSound() / audio.playWinSound() / audio.playDieSound()
+export default class MyGameScene extends GameScene {
+  private tiles: TileData[] = []
+  private selectedTile: TileData | null = null
+  private gridCols: number = 2
+  private gridRows: number = 2
+  private tileSize: number = 256
+  
+  private timerText!: Phaser.GameObjects.Text
+  private scoreText!: Phaser.GameObjects.Text
+  private startTime: number = 0
+  
+  preload(): void {
+    this.preloadFromGTRS()  // ⭐ 自动从 GTRS.json 加载所有资源
+  }
+  
+  create(): void {
+    super.create()  // ⚠️ 必须调用
+    
+    // 从难度配置读取参数
+    const gameStore = useGameStore()
+    const difficulty = gameStore.selectedDifficulty
+    
+    if (difficulty) {
+      this.gridCols = difficulty.gridCols || 2
+      this.gridRows = difficulty.gridRows || 2
+    }
+    
+    console.log(`🧩 拼图游戏启动：${this.gridCols}x${this.gridRows}`)
+    this.startTime = Date.now()
+  }
+  
+  protected createGameObjects(): void {
+    // 创建 UI
+    this.timerText = this.add.text(50, 50, '⏱️ 00:00', {
+      fontFamily: 'Arial',
+      fontSize: '32px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 6
+    })
+    
+    this.scoreText = this.add.text(this.screenW - 50, 50, '⭐⭐⭐', {
+      fontFamily: 'Arial',
+      fontSize: '32px',
+      color: '#FFD700',
+      stroke: '#000000',
+      strokeThickness: 6
+    }).setOrigin(1, 0)
+    
+    // 创建拼图块
+    this.createTiles()
+  }
+  
+  private createTiles(): void {
+    const startX = this.offsetX + (this.gridCols * this.cellSize - this.gridCols * this.tileSize) / 2
+    const startY = this.offsetY + 100
+    
+    let tileId = 0
+    for (let row = 0; row < this.gridRows; row++) {
+      for (let col = 0; col < this.gridCols; col++) {
+        const x = startX + col * this.tileSize
+        const y = startY + row * this.tileSize
+        
+        // 创建拼图块精灵
+        const sprite = this.add.image(x, y, `tile_2x2_${tileId + 1}`)
+          .setDisplaySize(this.tileSize - 8, this.tileSize - 8)
+          .setInteractive({ draggable: true })
+          .setDepth(10)
+        
+        // 添加白色边框
+        const border = this.add.rectangle(x, y, this.tileSize - 4, this.tileSize - 4, 0xffffff)
+          .setDepth(9)
+        
+        // 存储数据
+        const tileData: TileData = {
+          id: tileId,
+          currentPos: { x: col, y: row },
+          targetPos: { x: col, y: row },
+          sprite,
+          isSelected: false,
+          isCorrect: false
+        }
+        
+        this.tiles.push(tileData)
+        
+        // 绑定事件
+        sprite.on('pointerdown', () => this.onTileClick(tileData))
+        
+        tileId++
+      }
+    }
+  }
+  
+  private onTileClick(tile: TileData): void {
+    if (this.selectedTile === null) {
+      // 选中第一个拼图块
+      this.selectedTile = tile
+      tile.isSelected = true
+      tile.sprite.setAlpha(0.8)
+    } else {
+      // 选中第二个拼图块，交换位置
+      if (this.selectedTile !== tile) {
+        this.swapTiles(this.selectedTile, tile)
+      }
+      // 清除选中状态
+      this.selectedTile.isSelected = false
+      this.selectedTile.sprite.setAlpha(1)
+      this.selectedTile = null
+    }
+  }
+  
+  private swapTiles(tile1: TileData, tile2: TileData): void {
+    // 交换位置
+    const tempPos = { ...tile1.currentPos }
+    tile1.currentPos = { ...tile2.currentPos }
+    tile2.currentPos = tempPos
+    
+    // 更新显示位置
+    const startX = this.offsetX + (this.gridCols * this.cellSize - this.gridCols * this.tileSize) / 2
+    const startY = this.offsetY + 100
+    
+    const x1 = startX + tile1.currentPos.x * this.tileSize
+    const y1 = startY + tile1.currentPos.y * this.tileSize
+    const x2 = startX + tile2.currentPos.x * this.tileSize
+    const y2 = startY + tile2.currentPos.y * this.tileSize
+    
+    this.tweens.add({
+      targets: tile1.sprite,
+      x: x1,
+      y: y1,
+      duration: 300
+    })
+    
+    this.tweens.add({
+      targets: tile2.sprite,
+      x: x2,
+      y: y2,
+      duration: 300
+    })
+    
+    // 检查是否全部归位
+    this.time.delayedCall(300, () => {
+      this.checkWin()
+    })
+  }
+  
+  private checkWin(): void {
+    const allCorrect = this.tiles.every(tile => 
+      tile.currentPos.x === tile.targetPos.x &&
+      tile.currentPos.y === tile.targetPos.y
+    )
+    
+    if (allCorrect) {
+      this.handleGameOver()
+    }
+  }
+  
+  protected gameLoop(_time: number, _delta: number): void {
+    // 更新计时器
+    const elapsed = Math.floor((Date.now() - this.startTime) / 1000)
+    const minutes = Math.floor(elapsed / 60)
+    const seconds = elapsed % 60
+    this.timerText.setText(`⏱️ ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+  }
+  
+  protected handleGameOver(): void {
+    if (this.isGameOver) return
+    this.isGameOver = true
+    
+    // 计算星星评价
+    const elapsed = (Date.now() - this.startTime) / 1000
+    let stars = '⭐'
+    if (elapsed < 15) stars = '⭐⭐⭐'
+    else if (elapsed < 30) stars = '⭐⭐'
+    
+    this.scoreText.setText(stars)
+    
+    console.log(`🎉 游戏胜利！用时：${elapsed}秒，评价：${stars}`)
+    
+    // 通知 Vue 层
+    this.time.delayedCall(500, () => {
+      this.game.events.emit('gameover', this.score)
+    })
+  }
+}
 ```
 
 ---
 
-## 📌 资源生成规范（关键）
+#### 步骤 3.2：让 AI 修改 PhaserGame.vue
 
-| 方案 | 推荐度 | 说明 |
-|------|--------|------|
-| **Sharp + Node.js WAV** | ✅ 必须使用 | 程序化生成真实图案 PNG + WAV 音频 → MP3 |
-| AI 图像生成（image_gen）| ⭐ 可选辅助 | 需要精美插画时使用 |
-| theme-resource-generator | ❌ 严禁使用 | 只生成灰色矩形 + 文字，质量极差 |
+**提示词模板**:
+```
+请帮我修改 PhaserGame.vue，将场景引用从 MyGameScene 改为 PuzzleGameScene。
 
-**资源路径规范**：
-- 资源放在游戏包内：`public/themes/{game_code}_default/assets/scene/*.png`
-- GTRS.json 中不含 `/public/` 前缀：`/themes/{game_code}_default/assets/scene/bg.png`
-- 默认主题命名：`{game_code}_default`（如 `puzzle_default`）
+当前代码：
+```vue
+<script setup lang="ts">
+import MyGameScene from '@/scenes/MyGameScene'
+scene: [MyGameScene]
+</script>
+```
 
----
+需要改为：
+```vue
+<script setup lang="ts">
+import PuzzleGameScene from '@/scenes/PuzzleGameScene'
+scene: [PuzzleGameScene]
+</script>
+```
 
-## 📡 Vue ↔ Phaser 事件协议
+请提供完整的修改后的文件内容。
+```
 
-| 方向 | 事件名 | 数据 | 触发时机 |
-|------|--------|------|---------|
-| Scene → Vue | `ready` | - | 游戏就绪（框架自动发送）|
-| Scene → Vue | `score` | `number` | `addScore()` 时自动发送 |
-| Scene → Vue | `gameover` | `number` | **你需要手动 emit** |
-| Scene → Vue | `paused` | - | `pauseGame()` 时自动发送 |
-| Scene → Vue | `resumed` | - | `resumeGame()` 时自动发送 |
-
----
-
-## ⚙️ 屏幕适配（4 层）
-
-| 层级 | 配置 |
-|------|------|
-| `index.html` | `viewport-fit=cover` + `safe-area-inset` padding |
-| `App.vue` | `100vw × 100vh + overflow:hidden` |
-| `GameView.vue` | `h-screen w-full overflow-hidden + touch-action:none` |
-| Phaser | `Scale.RESIZE`（自适应容器大小）|
+**AI 会输出**: 完整的修改后的文件
 
 ---
 
-## 🗄️ 数据库注册
+### 阶段 4：验证测试（AI 辅助调试）⭐⭐⭐⭐
 
-游戏表：**`t_game`**（不是 `game`）  
-主题表：**`t_theme_info`**（有 `t_` 前缀）  
-状态流程：`status=0`（草稿）→ 测试通过 → `UPDATE status=2`（上架）
+#### 步骤 4.1：让 AI 生成验证清单
 
-详见 `AI_INSTRUCTIONS.md` 第7节 和 `docs/SQL_SCRIPT_WRITING_GUIDE.md`。
+**提示词模板**:
+```
+请帮我生成一份游戏验证清单，用于检查拼图游戏是否正确实现。
+
+包含以下方面：
+1. 启动测试（能否正常运行）
+2. 功能测试（点击、交换、胜利检测）
+3. UI 测试（计时器、星星评价）
+4. 性能测试（帧率、内存）
+5. 兼容性测试（不同浏览器）
+
+格式：Markdown 检查清单
+```
+
+**AI 生成的清单**:
+```markdown
+## 游戏验证清单
+
+### 1. 启动测试
+- [ ] 运行 `npm run dev` 无报错
+- [ ] 游戏画面正常显示（不是空白）
+- [ ] 控制台无 TypeError 错误
+- [ ] 难度选择器正常工作
+
+### 2. 功能测试
+- [ ] 点击拼图块可以选中（变透明）
+- [ ] 再次点击另一个拼图块可以交换位置
+- [ ] 交换动画流畅（tween 效果）
+- [ ] 所有拼图块归位后显示胜利
+- [ ] 计时器正常运行（MM:SS 格式）
+- [ ] 根据用时显示正确的星星评价
+
+### 3. UI 测试
+- [ ] 背景颜色正确（浅蓝色渐变）
+- [ ] 拼图块有白色边框
+- [ ] 文字清晰可读（计时器、星星）
+- [ ] 按钮可以点击（如有）
+
+### 4. 性能测试
+- [ ] FPS 稳定在 60（Chrome DevTools）
+- [ ] 内存占用合理（< 200MB）
+- [ ] 无明显卡顿或延迟
+
+### 5. 兼容性测试
+- [ ] Chrome 浏览器正常
+- [ ] Firefox 浏览器正常
+- [ ] Safari 浏览器正常（如适用）
+- [ ] 移动端响应式正常（如需要）
+
+### 6. 代码质量
+- [ ] TypeScript 编译无错误
+- [ ] ESLint 检查通过
+- [ ] 没有 console.warn/console.error
+- [ ] 资源文件大小合理（> 1KB）
+```
 
 ---
 
-## 🎯 与其他项目的关系
+#### 步骤 4.2：让 AI 帮助调试
 
-| 项目 | 作用 |
-|------|------|
-| `kids-game-house/games/snake/` | **参考实现**——成熟的游戏实现，可看思路，不能复制 |
-| `kids-game-house/games/puzzle/` | **v5.0 框架验证实现**——Sharp 生成资源的完整示例 |
+**遇到问题时的提示词模板**:
+
+**场景 1：游戏画面空白**
+```
+我的拼图游戏启动后画面空白，控制台没有错误。
+
+已确认：
+1. PhaserGame.vue 已引用 PuzzleGameScene
+2. MyGameScene.ts 实现了 createGameObjects()
+3. GTRS.json 存在且路径正确
+
+可能的原因有哪些？如何排查？
+```
+
+**AI 会提供**:
+- ✅ 可能的原因列表（按概率排序）
+- ✅ 逐步排查的方法
+- ✅ 修复代码示例
+
+**场景 2：TypeError 错误**
+```
+运行时出现错误：
+Uncaught TypeError: this.createGameObjects is not a function
+
+这是怎么回事？如何解决？
+```
+
+**AI 会立即识别**: 这是没有实现抽象方法的问题，并提供修复代码
 
 ---
 
-## 📚 文档索引
+### 阶段 5：注册部署（AI 自动化）⭐⭐⭐
 
-| 文档 | 说明 |
-|------|------|
-| `templates/game-template/AI_INSTRUCTIONS.md` | ⭐ **AI 开发完整指南（必读）** |
-| `docs/GAME_DESIGN_TEMPLATE.md` | GDD 游戏设计文档模板 |
-| `docs/GTRS_GUIDE.md` | GTRS 主题资源配置规范详解 |
-| `docs/CHECKLIST.md` | 开发验收检查清单 |
-| `docs/SQL_SCRIPT_WRITING_GUIDE.md` | 数据库注册 SQL 规范 |
-| `docs/DESIGN_REVIEW_CHECKLIST.md` | 设计评审检查清单 |
+#### 步骤 5.1：让 AI 生成注册脚本
+
+**提示词模板**:
+```
+请帮我生成 register-game.sql，将拼图游戏注册到平台数据库。
+
+游戏信息：
+- game_code: puzzle
+- game_name: 拼图游戏
+- game_url: http://localhost:5174
+- version: 1.0.0
+- description: 适合 3-8 岁儿童的益智拼图游戏
+
+要求：
+1. 使用 INSERT INTO t_game 语句
+2. 包含所有必填字段
+3. 时间戳使用毫秒级（Date.now()）
+4. status = 1（启用状态）
+5. 添加中文注释说明每个字段的含义
+```
+
+**AI 生成的 SQL**:
+```sql
+-- ============================================
+-- 游戏注册脚本 - 拼图游戏
+-- 生成时间：2026-03-29
+-- ============================================
+
+-- 插入游戏基本信息
+INSERT INTO t_game (
+  game_code,           -- 游戏标识码（唯一）
+  game_name,           -- 游戏名称（中文）
+  game_url,            -- 游戏访问地址
+  game_version,        -- 游戏版本
+  game_description,    -- 游戏描述
+  game_type,           -- 游戏类型（PUZZLE=拼图）
+  status,              -- 状态（1=启用，0=禁用）
+  created_at,          -- 创建时间（毫秒级时间戳）
+  updated_at,          -- 更新时间（毫秒级时间戳）
+  created_by,          -- 创建者
+  updated_by           -- 更新者
+) VALUES (
+  'puzzle',                        -- game_code: 拼图游戏
+  '拼图游戏',                      -- game_name: 中文名称
+  'http://localhost:5174',         -- game_url: 本地开发地址
+  '1.0.0',                         -- game_version: 版本号
+  '适合 3-8 岁儿童的益智拼图游戏',  -- game_description: 描述
+  'PUZZLE',                        -- game_type: 拼图类型
+  1,                               -- status: 启用状态
+  1711700000000,                   -- created_at: 当前时间戳
+  1711700000000,                   -- updated_at: 当前时间戳
+  'AI Assistant',                  -- created_by: 创建者
+  'AI Assistant'                   -- updated_by: 更新者
+);
+
+-- 验证插入结果
+SELECT game_code, game_name, game_url, status FROM t_game WHERE game_code = 'puzzle';
+```
+
+---
+
+## 🎯 AI 高效使用的关键技巧
+
+### 技巧 1：分步骤提问，不要一次性问太多
+
+**❌ 错误做法**:
+```
+帮我做一个拼图游戏，包括设计、资源、代码、测试
+```
+
+**✅ 正确做法**:
+```
+步骤 1: 帮我设计游戏玩法
+步骤 2: 根据设计生成资源清单
+步骤 3: 根据清单生成 Sharp 脚本
+步骤 4: 根据脚本生成 GTRS.json
+步骤 5: 根据资源实现游戏逻辑
+```
+
+---
+
+### 技巧 2：提供足够的上下文
+
+**❌ 模糊**:
+```
+游戏不能运行，怎么办？
+```
+
+**✅ 具体**:
+```
+我的拼图游戏启动后画面空白，控制台没有错误。
+环境：Node.js v18, npm v9, Phaser 3.90
+已确认：PhaserGame.vue 已修改，createGameObjects() 已实现
+问题可能在哪里？
+```
+
+---
+
+### 技巧 3：要求 AI 提供可执行的代码
+
+**❌ 理论**:
+```
+解释一下如何实现拼图块交换
+```
+
+**✅ 实践**:
+```
+请提供完整的 TypeScript 代码实现拼图块交换功能，包括：
+1. 点击选中逻辑
+2. 交换位置的 tween 动画
+3. 交换后检查胜利条件
+```
+
+---
+
+### 技巧 4：让 AI 自我验证
+
+**提示词模板**:
+```
+请检查你刚才生成的代码，找出可能存在的问题：
+1. TypeScript 类型是否正确？
+2. 是否有未定义的变量？
+3. 是否符合 Phaser 3.90 的 API？
+4. 是否有性能隐患？
+5. 边界情况是否处理？
+```
+
+---
+
+### 技巧 5：建立 AI 知识库
+
+**提示词模板**:
+```
+请将我们刚才的对话整理成 Q&A 格式，方便以后查阅。
+
+包括：
+- 问题描述
+- 解决方案
+- 代码示例
+- 注意事项
+- 相关文档链接
+```
+
+---
+
+## 📊 AI 辅助开发的效率对比
+
+| 任务 | 纯人工 | AI 辅助 | 提升倍数 |
+|------|--------|---------|---------|
+| **游戏设计** | 2 小时 | 20 分钟 | **6x** |
+| **资源生成** | 4 小时 | 30 分钟 | **8x** |
+| **代码实现** | 8 小时 | 1 小时 | **8x** |
+| **调试测试** | 3 小时 | 30 分钟 | **6x** |
+| **总计** | 17 小时 | 2.5 小时 | **6.8x** |
+
+---
+
+## 🎉 总结：AI 助手的最佳实践
+
+### ✅ DO（应该做的）
+
+1. ✅ **分步骤提问** - 每次聚焦一个具体任务
+2. ✅ **提供上下文** - 告诉 AI 你的环境和已做的工作
+3. ✅ **要求可执行代码** - 不要理论，要实践
+4. ✅ **让 AI 自我验证** - 检查潜在问题
+5. ✅ **建立知识库** - 积累 Q&A 供以后使用
+
+### ❌ DON'T（不应该做的）
+
+1. ❌ **一次性问太多** - AI 会遗漏重点
+2. ❌ **模糊提问** - AI 无法理解真实需求
+3. ❌ **只问理论** - 不要求可执行代码
+4. ❌ **盲目相信** - 要验证 AI 的输出
+5. ❌ **不记录** - 同样的问题问多次
+
+---
+
+**🎊 完美使用 AI 助手的秘诀**:  
+**分步骤 + 给上下文 + 要代码 + 自验证 + 建知识库 = 6.8x 效率提升！**
+
+*最后更新：2026-03-29*  
+*目标读者：使用 AI 助手进行游戏开发的开发者*
