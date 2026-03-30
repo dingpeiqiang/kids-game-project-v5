@@ -15,7 +15,7 @@
  * - 'resumed'   → 游戏恢复
  */
 import { ref, onMounted, onUnmounted } from 'vue'
-import Phaser from 'phaser'
+// Phaser 通过 CDN 加载，全局变量声明见 global.d.ts
 import { useGameStore } from '@/stores/game'
 import { useThemeStore } from '@/stores/theme'
 import { useAudioStore } from '@/stores/audio'

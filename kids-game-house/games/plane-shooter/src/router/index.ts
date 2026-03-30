@@ -11,7 +11,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'start',
+      name: 'home',  // ✅ 使用唯一的 name
       component: StartView,
     },
     {
@@ -21,7 +21,7 @@ const router = createRouter({
     },
     {
       path: '/start',
-      name: 'start',
+      name: 'start-page',  // ✅ 使用唯一的 name
       component: StartView,
     },
     {

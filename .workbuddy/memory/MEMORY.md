@@ -77,6 +77,18 @@ this.game.events.emit('gameover', score) // 游戏结束
 - 资源路径：`/themes/{game_code}_default/assets/scene/*.png`（不含 `/public/`）
 - 默认主题命名：`{game_code}_default`
 
+### Phaser CDN 规范（2026-03-30 更新）
+
+**所有子工程统一通过 CDN 加载 Phaser，不打包进 bundle**
+
+- **CDN 地址**：`https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js`（index.html 中引入）
+- **vite.config.ts**：`build.rollupOptions.external: ['phaser']` + `globals: { phaser: 'Phaser' }` + `optimizeDeps.exclude: ['phaser']`
+- **package.json**：不添加 `phaser` npm 依赖（CDN 提供，不需要 npm install）
+- **TypeScript 类型**：在 `src/global.d.ts` 中 `declare const Phaser: typeof import('phaser').default`
+- **代码中**：不写 `import Phaser from 'phaser'`，直接用全局变量 `Phaser`
+
+已统一的子工程：puzzle / game-template / snake / plane-shooter / kids-game-frontend / kids-game-frame-factory/src
+
 ### 框架屏幕适配（4 层）
 
 1. `index.html`: `viewport-fit=cover` + `safe-area-inset` padding

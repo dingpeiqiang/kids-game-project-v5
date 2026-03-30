@@ -15,7 +15,7 @@
 // 📖 完整开发指南: AI_INSTRUCTIONS.md
 // ============================================================================
 
-import Phaser from 'phaser'
+// Phaser 通过 CDN 加载，全局变量声明见 global.d.ts
 import { useGameStore } from '@/stores/game'
 import { useThemeStore } from '@/stores/theme'
 

@@ -10,6 +10,9 @@ import App from './App.vue'
 import router from './router'
 import './assets/styles/main.css'
 
+// Phaser 通过 CDN 引入，挂载到 window 上
+const Phaser = (window as any).Phaser
+
 /**
  * 从 URL 参数中提取认证信息，存储到 localStorage
  * 允许游戏像独立应用一样验证用户身份

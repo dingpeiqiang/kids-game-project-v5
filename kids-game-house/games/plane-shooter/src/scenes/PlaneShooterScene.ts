@@ -209,27 +209,44 @@ export default class PlaneShooterScene extends GameScene {
   }
 
   /**
-   * 创建滚动背景
+   * 创建滚动背景（无缝衔接版本）
    */
   private createBackground(): void {
     // ⭐ 先创建纯色背景（兜底）- 深蓝色星空
     const bgColor = this.add.rectangle(0, 0, this.screenW, this.screenH, 0x0f172a)
     bgColor.setOrigin(0)
     
-    // ✅ 再尝试加载背景图片
+    // ✅ 使用两张背景图实现无缝滚动
     if (this.textures.exists('bg_main')) {
-      const bg = this.add.image(0, 0, 'bg_main').setOrigin(0)
+      // 获取背景图的实际高度
+      const bgTexture = this.textures.get('bg_main')
+      const bgHeight = bgTexture.getSourceImage().height
       
-      // 背景滚动效果
+      console.log('🎨 创建双背景无缝滚动:', { 
+        screenH: this.screenH,
+        bgHeight,
+        ratio: bgHeight / this.screenH 
+      })
+      
+      // 创建两张相同的背景图
+      const bg1 = this.add.image(0, 0, 'bg_main').setOrigin(0)
+      const bg2 = this.add.image(0, -bgHeight, 'bg_main').setOrigin(0)
+      
+      // 同时向下滚动两张图
       this.tweens.add({
-        targets: bg,
-        y: -1080,
-        duration: 10000,
+        targets: [bg1, bg2],
+        y: bgHeight,
+        duration: 8000,  // 8 秒滚动一个背景高度
         ease: 'Linear',
         repeat: -1,
         onUpdate: () => {
-          if (bg.y <= -1080) {
-            bg.y = 0
+          // 当第一张图完全滚出屏幕时，瞬间移回顶部
+          if (bg1.y >= bgHeight) {
+            bg1.y = -bgHeight
+          }
+          // 当第二张图完全滚出屏幕时，瞬间移回顶部
+          if (bg2.y >= bgHeight) {
+            bg2.y = -bgHeight
           }
         }
       })

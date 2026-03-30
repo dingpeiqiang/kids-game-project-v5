@@ -180,7 +180,10 @@ function changeDifficulty() {
 
 function goHome() {
   audioStore.playClickSound()
-  router.push('/')
+  // 跳转到开始页面
+  router.push('/').catch(err => {
+    console.error('❌ 跳转失败:', err)
+  })
 }
 
 // ── 生命周期 ──────────────────────────────────────────────────────────────

@@ -1,0 +1,127 @@
+{
+  "$schema": "https://example.com/schemas/snake-level-config.json",
+  "$comment": "🐍 贪吃蛇关卡配置 - 第 3 关（冰雪世界）",
+  
+  "info": {
+    "id": "snake_level_3",
+    "name": "冰雪世界",
+    "description": "在冰天雪地中滑行，注意路面结冰会打滑哦！",
+    "difficulty": "hard",
+    "recommendedLevel": 2,
+    "prerequisites": ["snake_level_1", "snake_level_2"],
+    "thumbnailUrl": "/assets/images/levels/snake_level_3_thumb.png"
+  },
+  
+  "objectives": [
+    {
+      "id": "obj_score",
+      "type": "score",
+      "description": "达到 1200 分",
+      "targetValue": 1200,
+      "weight": 1,
+      "reward": {
+        "score": 200,
+        "currency": 100
+      }
+    },
+    {
+      "id": "obj_collect_food",
+      "type": "collect_food",
+      "description": "收集 20 个食物",
+      "targetValue": 20,
+      "weight": 1,
+      "reward": {
+        "items": ["ice_skates", "warmth_potion"]
+      }
+    },
+    {
+      "id": "obj_survive_time",
+      "type": "survive_time",
+      "description": "存活 240 秒",
+      "targetValue": 240,
+      "weight": 1,
+      "reward": {
+        "score": 300,
+        "currency": 80
+      }
+    }
+  ],
+  
+  "params": {
+    "gridSize": 20,
+    "initialLength": 5,
+    "speed": 160,
+    "obstacleCount": 8,
+    "specialFoodChance": 0.10,
+    "coinChance": 0.06,
+    "foodScore": 15,
+    "bonusScore": 30,
+    "coinScore": 50
+  },
+  
+  "victoryCondition": {
+    "type": "all_objectives",
+    "description": "完成所有目标"
+  },
+  
+  "failureConditions": [
+    {
+      "type": "no_lives",
+      "description": "蛇撞到墙壁、冰块或自己"
+    },
+    {
+      "type": "time_up",
+      "description": "超时"
+    }
+  ],
+  
+  "timeLimit": 420,
+  
+  "starCriteria": [
+    {
+      "stars": 1,
+      "scoreThreshold": 1200
+    },
+    {
+      "stars": 2,
+      "scoreThreshold": 1800
+    },
+    {
+      "stars": 3,
+      "scoreThreshold": 2400
+    }
+  ],
+  
+  "baseRewards": {
+    "score": 200,
+    "currency": 100
+  },
+  
+  "resources": {
+    "backgrounds": [
+      "bg_ice",
+      "grid_blue",
+      "snowflake_bg"
+    ],
+    "sprites": [
+      "snake_head_ice",
+      "snake_body_ice",
+      "icicle",
+      "snowflake",
+      "penguin",
+      "ice_crystal"
+    ],
+    "soundEffects": [
+      "freeze",
+      "slide_ice",
+      "break_ice",
+      "winter_wind"
+    ],
+    "musicTracks": [
+      "winter_wonderland",
+      "ice_palace"
+    ]
+  },
+  
+  "themeId": "ice"
+}
