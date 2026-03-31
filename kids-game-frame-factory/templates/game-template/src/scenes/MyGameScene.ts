@@ -9,17 +9,32 @@
 //   2. gameLoop()           — 游戏主循环（每帧调用）
 //   3. handleGameOver()     — 游戏结束处理
 //
+// 🎯 框架内置能力：
+//   - 物理引擎（Arcade）已启用 → addPhysicsSprite / addCollider / addOverlap
+//   - 对象池 → import { GameObjectPool } from '@/utils/GameObjectPool'
+//   - 输入管理 → import { InputManager } from '@/utils/InputManager'
+//   - 碰撞注册 → import { CollisionRegistry } from '@/utils/CollisionRegistry'
+//   - 道具系统 → import { PropSystem } from '@/utils/PropSystem'
+//
 // 📖 完整开发指南: AI_INSTRUCTIONS.md（项目根目录）
 // ============================================================================
 
 import GameScene from './GameScene'
+// ─── 按需引入框架内置模块 ──────────────────────────────────────
+// import { GameObjectPool } from '@/utils/GameObjectPool'
+// import { InputManager } from '@/utils/InputManager'
+// import { CollisionRegistry } from '@/utils/CollisionRegistry'
+// import { PropSystem } from '@/utils/PropSystem'
 
 export default class MyGameScene extends GameScene {
 
   // ─── 在这里声明你的游戏对象 ──────────────────────────────────
   // 示例：
-  // private player!: Phaser.GameObjects.Image
-  // private enemies: Phaser.GameObjects.Image[] = []
+  // private player!: Phaser.Physics.Arcade.Sprite
+  // private bulletPool!: GameObjectPool
+  // private inputManager!: InputManager
+  // private collisionReg!: CollisionRegistry
+  // private propSystem!: PropSystem
 
   // ─── 预加载资源（可选） ───────────────────────────────────────
   // preload(): void {
@@ -29,24 +44,7 @@ export default class MyGameScene extends GameScene {
   /**
    * ⭐ 推荐：使用 GTRS 规范加载资源
    * 
-   * 在 GTRS.json 中配置：
-   * ```json
-   * {
-   *   "resources": {
-   *     "images": {
-   *       "scene": {
-   *         "player": {
-   *           "alias": "玩家角色",
-   *           "src": "/themes/your_game/assets/scene/player.png",
-   *           "type": "png"
-   *         }
-   *       }
-   *     }
-   *   }
-   * }
-   * ```
-   * 
-   * 然后在 preload() 中使用：
+   * 在 GTRS.json 中配置资源，然后在 preload() 中使用：
    */
   preload(): void {
     this.preloadFromGTRS() // ✅ 框架自动从 GTRS.json 加载所有资源
@@ -55,100 +53,96 @@ export default class MyGameScene extends GameScene {
   // ─── 额外初始化（可选，注意必须调用 super.create()） ─────────
   // create(): void {
   //   super.create()       // ⚠️ 必须保留
-  //   // 额外初始化...
+  //   // 初始化框架模块
+  //   this.inputManager = new InputManager({ scene: this })
+  //   this.collisionReg = new CollisionRegistry(this)
+  //   this.propSystem = new PropSystem({ scene: this })
   // }
 
   /**
    * ✅ 必须实现：创建游戏对象
    * 
-   * ⚠️ 重要提示：
-   * - 这是抽象方法，由 GameScene 定义，子类必须实现！
-   * - 如果不实现，运行时会报错：TypeError: this.createGameObjects is not a function
-   * - 所有游戏对象的创建都应该在这里完成，不要在 create() 中直接创建
+   * 在这里创建所有游戏对象。此时 cellSize / gridCols / offsetX 已就绪。
    * 
-   * @example
-   * ```typescript
-   * protected createGameObjects(): void {
-   *   // 创建玩家（从 GTRS.json 加载的 'player' 资源）
-   *   const pos = this.gridToPixelCenter(Math.floor(this.gridCols / 2), Math.floor(this.gridRows / 2))
-   *   this.player = this.add.image(pos.x, pos.y, 'player').setDisplaySize(this.cellSize, this.cellSize)
-   *   
-   *   // 创建敌人
-   *   this.enemies = []
-   *   for (let i = 0; i < 3; i++) {
-   *     const enemy = this.add.image(..., 'enemy')
-   *     this.enemies.push(enemy)
-   *   }
-   * }
-   * ```
+   * 可用方法：
+   *   - this.add.image(x, y, key)          普通图片（无物理）
+   *   - this.addPhysicsSprite(x, y, key)   带物理体的 Sprite（推荐）
+   *   - this.addPhysicsGroup({immovable:true}) 静态物理组
+   *   - this.addCollider(objA, objB, cb)   注册碰撞（阻止重叠）
+   *   - this.addOverlap(objA, objB, cb)    注册重叠（不阻止）
+   *   - this.gridToPixelCenter(col, row)   格子→像素中心坐标
    */
   protected createGameObjects(): void {
     // TODO: 删除下面的 console.warn，替换为你的游戏逻辑实现
-    // ⚠️ 注意：不要只保留 console.warn，必须实现实际的创建逻辑！
-    console.warn('[MyGameScene] createGameObjects() 待实现 - 请在此处实现你的游戏对象创建逻辑')
     
-    // 示例：创建一个中心玩家（需要根据实际游戏修改）
+    // 示例：使用物理 Sprite 创建玩家
     // const pos = this.gridToPixelCenter(Math.floor(this.gridCols / 2), Math.floor(this.gridRows / 2))
-    // this.player = this.add.image(pos.x, pos.y, 'player').setDisplaySize(this.cellSize, this.cellSize)
+    // this.player = this.addPhysicsSprite(pos.x, pos.y, 'player')
+    // this.player.setCollideWorldBounds(true)
+
+    // 示例：创建对象池（子弹等高频对象）
+    // this.bulletPool = new GameObjectPool({
+    //   scene: this,
+    //   textureKey: 'bullet',
+    //   maxSize: 50,
+    // })
+
+    // 示例：创建碰撞组
+    // this.collisionReg = new CollisionRegistry(this)
+    // this.collisionReg.register({
+    //   name: 'player-walls',
+    //   objectA: this.player,
+    //   objectB: this.walls,
+    //   type: 'collider',
+    // })
+    // this.collisionReg.register({
+    //   name: 'player-items',
+    //   objectA: this.player,
+    //   objectB: this.itemGroup,
+    //   type: 'overlap',
+    //   callback: (_player, item) => {
+    //     item.destroy()
+    //     this.addScore(10)
+    //   },
+    // })
   }
 
   /**
    * ✅ 必须实现：游戏主循环（每帧调用，delta 单位毫秒）
    * 
-   * ⚠️ 重要提示：
-   * - 这是抽象方法，必须实现（即使为空函数）
-   * - 每帧都会调用此方法，_delta 是距上一帧的毫秒数
-   * - 可用于时间驱动的移动、碰撞检测等实时逻辑
-   * 
-   * @param _time 游戏运行总毫秒数
+   * @param _time  游戏运行总毫秒数
    * @param _delta 距上一帧的毫秒数（用于时间驱动移动）
-   * 
-   * @example
-   * ```typescript
-   * private moveTimer: number = 0
-   * private moveInterval: number = 500 // 每 500ms 移动一次
-   * 
-   * protected gameLoop(_time: number, _delta: number): void {
-   *   this.moveTimer += _delta
-   *   if (this.moveTimer >= this.moveInterval) {
-   *     this.moveTimer = 0
-   *     this.movePlayer()
-   *     this.checkCollisions()
-   *   }
-   * }
-   * ```
    */
   protected gameLoop(_time: number, _delta: number): void {
-    // TODO: 删除下面的空实现，替换为你的游戏主循环逻辑
-    // 如果你的游戏不需要每帧更新，可以保留空函数，但必须实现此方法
+    // TODO: 替换为你的游戏主循环逻辑
+
+    // 示例：使用 InputManager 做持续移动
+    // if (this.inputManager?.isDown('left')) {
+    //   this.player.setVelocityX(-200)
+    // } else if (this.inputManager?.isDown('right')) {
+    //   this.player.setVelocityX(200)
+    // } else {
+    //   this.player.setVelocityX(0)
+    // }
+
+    // 示例：使用 InputManager 单次触发
+    // if (this.inputManager?.isJustPressed('jump')) {
+    //   this.player.setVelocityY(-300)
+    // }
+
+    // 示例：更新道具系统（如使用）
+    // this.propSystem?.update(_delta)
+
+    // 示例：清理帧状态
+    // this.inputManager?.clearFrameState()
   }
 
   /**
    * ✅ 必须实现：游戏结束处理
    * 
-   * ⚠️ 重要提示：
-   * - 这是抽象方法，必须实现
-   * - 当游戏结束时（玩家失败/胜利），框架会自动调用此方法
-   * - 在这里添加结束动画、结算界面等
-   * 
-   * @example
-   * ```typescript
-   * protected handleGameOver(): void {
-   *   if (this.isGameOver) return
-   *   this.isGameOver = true
-   *   
-   *   // 添加爆炸效果
-   *   this.add.particles(this.player.x, this.player.y, 'explosion', {...})
-   *   
-   *   // 延迟后通知 Vue 层跳转结束页面
-   *   this.time.delayedCall(500, () => {
-   *     this.game.events.emit('gameover', this.score)
-   *   })
-   * }
-   * ```
+   * 在末尾必须 emit 'gameover' 事件，框架才能跳转结束页面。
    */
   protected handleGameOver(): void {
-    // TODO: 删除下面的默认实现，替换为你的游戏结束处理逻辑
     if (this.isGameOver) return
     this.isGameOver = true
 
@@ -158,5 +152,14 @@ export default class MyGameScene extends GameScene {
     this.time.delayedCall(500, () => {
       this.game.events.emit('gameover', this.score)
     })
+  }
+
+  // ─── 清理（场景切换时自动调用） ──────────────────────────────
+  shutdown(): void {
+    // 清理框架模块
+    // this.inputManager?.destroy()
+    // this.collisionReg?.destroy()
+    // this.propSystem?.destroy()
+    // this.bulletPool?.destroy()
   }
 }

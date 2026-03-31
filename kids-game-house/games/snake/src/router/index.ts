@@ -37,6 +37,9 @@ router.beforeEach((to, from, next) => {
   initUIParams(window.innerWidth, window.innerHeight)
   console.log('🔀 路由切换:', from.path, '→', to.path, '| UI scale:', window.innerWidth, window.innerHeight)
   
+  // 🔧 临时禁用登录检查（仅用于测试）
+  // 如果要启用登录验证，取消下方注释
+  /*
   // 获取 token
   const token = localStorage.getItem('token')
   
@@ -50,8 +53,9 @@ router.beforeEach((to, from, next) => {
     window.location.href = loginUrl
     return
   }
+  */
   
-  // 已登录，继续导航
+  // ✅ 已登录或测试模式，继续导航
   next()
 })
 

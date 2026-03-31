@@ -56,8 +56,13 @@ async function initGame(): Promise<void> {
       mode      : Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    // 如需物理引擎，取消注释：
-    // physics: { default: 'arcade', arcade: { debug: false } },
+    physics: {
+      default: 'arcade',
+      arcade: {
+        debug: false,
+        gravity: { x: 0, y: 0 }, // 默认无重力（适合俯视角/2D游戏）
+      },
+    },
     // ⚠️ 重要提示：复制模板后，需要将 MyGameScene 替换为你实际实现的游戏场景类
     scene: [MyGameScene],
   }

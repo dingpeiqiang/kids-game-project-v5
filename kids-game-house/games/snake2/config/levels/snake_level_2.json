@@ -1,0 +1,123 @@
+{
+  "$schema": "https://example.com/schemas/snake-level-config.json",
+  "$comment": "🐍 贪吃蛇关卡配置 - 第 2 关（沙漠迷宫）",
+  
+  "info": {
+    "id": "snake_level_2",
+    "name": "沙漠迷宫",
+    "description": "穿越炎热的沙漠，小心避开仙人掌障碍！",
+    "difficulty": "normal",
+    "recommendedLevel": 1,
+    "prerequisites": ["snake_level_1"],
+    "thumbnailUrl": "/assets/images/levels/snake_level_2_thumb.png"
+  },
+  
+  "objectives": [
+    {
+      "id": "obj_score",
+      "type": "score",
+      "description": "达到 800 分",
+      "targetValue": 800,
+      "weight": 1,
+      "reward": {
+        "score": 150,
+        "currency": 75
+      }
+    },
+    {
+      "id": "obj_collect_food",
+      "type": "collect_food",
+      "description": "收集 15 个食物",
+      "targetValue": 15,
+      "weight": 1,
+      "reward": {
+        "items": ["speed_boost", "shield"]
+      }
+    },
+    {
+      "id": "obj_collect_bonus",
+      "type": "collect_bonus",
+      "description": "收集 5 个奖励食物",
+      "targetValue": 5,
+      "weight": 1,
+      "reward": {
+        "score": 200,
+        "currency": 50
+      }
+    }
+  ],
+  
+  "params": {
+    "gridSize": 20,
+    "initialLength": 4,
+    "speed": 140,
+    "obstacleCount": 5,
+    "specialFoodChance": 0.08,
+    "coinChance": 0.04,
+    "foodScore": 12,
+    "bonusScore": 25,
+    "coinScore": 40
+  },
+  
+  "victoryCondition": {
+    "type": "all_objectives",
+    "description": "完成所有目标"
+  },
+  
+  "failureConditions": [
+    {
+      "type": "no_lives",
+      "description": "蛇撞到墙壁、障碍物或自己"
+    },
+    {
+      "type": "time_up",
+      "description": "超时"
+    }
+  ],
+  
+  "timeLimit": 360,
+  
+  "starCriteria": [
+    {
+      "stars": 1,
+      "scoreThreshold": 800
+    },
+    {
+      "stars": 2,
+      "scoreThreshold": 1200
+    },
+    {
+      "stars": 3,
+      "scoreThreshold": 1600
+    }
+  ],
+  
+  "baseRewards": {
+    "score": 150,
+    "currency": 75
+  },
+  
+  "resources": {
+    "backgrounds": [
+      "bg_desert",
+      "grid_yellow"
+    ],
+    "sprites": [
+      "snake_head_desert",
+      "snake_body_desert",
+      "cactus",
+      "treasure",
+      "pyramid"
+    ],
+    "soundEffects": [
+      "eat_treasure",
+      "hit_cactus",
+      "wind_blown"
+    ],
+    "musicTracks": [
+      "desert_adventure"
+    ]
+  },
+  
+  "themeId": "desert"
+}

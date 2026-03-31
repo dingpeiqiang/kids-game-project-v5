@@ -1,0 +1,180 @@
+{
+  "$comment": "🐍 贪吃蛇关卡配置 - GTRS增强版 v1.0.0",
+  "$schema": "https://example.com/schemas/snake-level-gtrs.json",
+
+  "info": {
+    "id": "snake_level_1_gtrs",
+    "name": "初出茅庐（GTRS增强版）",
+    "description": "学习基本操作，达到 500 分即可通关 - 支持GTRS资源映射",
+    "difficulty": "easy",
+    "recommendedLevel": 1,
+    "prerequisites": [],
+    "thumbnailUrl": "/assets/images/levels/snake_level_1_thumb.png"
+  },
+
+  "objectives": [
+    {
+      "id": "obj_score",
+      "type": "score",
+      "description": "达到 500 分",
+      "targetValue": 500,
+      "weight": 1,
+      "reward": {
+        "score": 100,
+        "currency": 50
+      }
+    },
+    {
+      "id": "obj_collect_food",
+      "type": "collect_food",
+      "description": "收集 10 个食物",
+      "targetValue": 10,
+      "weight": 1,
+      "reward": {
+        "items": ["speed_boost"]
+      }
+    }
+  ],
+
+  "params": {
+    "gridSize": 20,
+    "initialLength": 3,
+    "speed": 120,
+    "obstacleCount": 0,
+    "specialFoodChance": 0.05,
+    "coinChance": 0.02,
+    "foodScore": 10,
+    "bonusScore": 20,
+    "coinScore": 30
+  },
+
+  "initialState": {
+    "snakeLength": 3,
+    "score": 0,
+    "highScore": 0,
+    "lives": 3,
+    "currentSpeed": 120,
+    "specialFoodActive": false
+  },
+
+  "victoryCondition": {
+    "type": "all_objectives",
+    "description": "完成所有目标"
+  },
+
+  "failureConditions": [
+    {
+      "type": "no_lives",
+      "description": "蛇撞到墙壁或自己"
+    },
+    {
+      "type": "time_up",
+      "description": "超时"
+    }
+  ],
+
+  "timeLimit": 300,
+
+  "starCriteria": [
+    {
+      "stars": 1,
+      "scoreThreshold": 500
+    },
+    {
+      "stars": 2,
+      "scoreThreshold": 800
+    },
+    {
+      "stars": 3,
+      "scoreThreshold": 1000
+    }
+  ],
+
+  "baseRewards": {
+    "score": 100,
+    "currency": 50
+  },
+
+  "resources": {
+    "backgrounds": [
+      "bg_forest",
+      "grid_green"
+    ],
+    "sprites": [
+      "snake_head",
+      "snake_body",
+      "apple",
+      "banana"
+    ],
+    "soundEffects": [
+      "eat_apple",
+      "crash_wall"
+    ],
+    "musicTracks": [
+      "forest_bgm_relax"
+    ],
+
+    "gtrsResourceMapping": {
+      "bg_forest": "resources.images.scene.scene_bg_main",
+      "grid_green": "resources.images.scene.scene_bg_grid",
+      "snake_head": "resources.images.scene.snake_head",
+      "snake_body": "resources.images.scene.snake_body",
+      "apple": "resources.images.scene.food_apple",
+      "banana": "resources.images.scene.food_banana",
+      "eat_apple": "resources.audio.effect.effect_eat",
+      "crash_wall": "resources.audio.effect.effect_crash",
+      "forest_bgm_relax": "resources.audio.bgm.bgm_gameplay"
+    },
+
+    "loadStrategy": {
+      "preload": "immediate",
+      "priority": "high",
+      "cache": true,
+      "retry": 2
+    },
+
+    "themeDependencies": ["default"]
+  },
+
+  "themeId": "forest",
+
+  "gtrsCompatibility": {
+    "minGTRSVersion": "1.0.0",
+    "recommendedGTRSVersion": "1.0.0",
+    "gtrsCompliance": {
+      "passed": true,
+      "errors": [],
+      "warnings": []
+    }
+  },
+
+  "resourceOverview": {
+    "totalResources": 9,
+    "byType": {
+      "backgrounds": 2,
+      "sprites": 4,
+      "soundEffects": 2,
+      "musicTracks": 1
+    },
+    "estimatedSizeKB": 180,
+    "estimatedLoadTimeMS": 1500
+  },
+
+  "themeInfo": {
+    "themeId": "forest",
+    "minThemeVersion": "1.0.0",
+    "themeAuthor": "游戏开发团队",
+    "compatibilityCheck": {
+      "isValid": true,
+      "missingResources": [],
+      "resourceConflicts": []
+    }
+  },
+
+  "resourceValidation": {
+    "lastValidated": 0,
+    "status": "PENDING",
+    "message": "等待首次验证",
+    "validatorVersion": "1.0.0"
+  }
+}

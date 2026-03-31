@@ -19,6 +19,7 @@
 | [七、数据库注册](#七数据库注册) | 注册到平台 |
 | [附录 A：常用代码片段](#附录-a常用代码片段) | 复制即用 |
 | [附录 B：常见错误](#附录-b常见错误与解决) | 快速排查 |
+| [附录 C：游戏机制模块](#附录-c游戏机制模块) | 对象池 / 输入管理 / 碰撞注册 / 道具系统 |
 
 ---
 
@@ -652,6 +653,301 @@ WHERE game_code = 'my-puzzle' AND deleted = 0;
 | `owner_id` | 对应 `t_game.game_id` |
 | `config_json` | 完整 GTRS JSON（单行）|
 | `created_at`/`updated_at` | `NOW()`（DATETIME，不是毫秒时间戳）|
+
+---
+
+## 附录 C：游戏机制模块
+
+框架 v5.1 新增 4 个游戏机制模块，开箱即用，覆盖常见游戏开发需求。
+无需额外安装依赖，直接 import 使用。
+
+### C.1 物理引擎（已默认启用）
+
+`PhaserGame.vue` 已启用 Arcade 物理引擎（默认无重力）。
+可直接使用 GameScene 基类提供的物理工具方法：
+
+```typescript
+// ─── 创建带物理体的 Sprite ───────────────────────────────────
+// 适合需要碰撞检测的动态/静态实体
+protected createGameObjects(): void {
+  // 动态物体（玩家、敌人）
+  const pos = this.gridToPixelCenter(5, 5)
+  this.player = this.addPhysicsSprite(pos.x, pos.y, 'player')
+  this.player.setCollideWorldBounds(true)
+
+  // 静态物体（墙壁、障碍物）
+  const wall = this.addPhysicsSprite(100, 200, 'wall', { immovable: true })
+
+  // 创建静态物理组（批量碰撞）
+  this.walls = this.addPhysicsGroup({ immovable: true })
+}
+```
+
+```typescript
+// ─── 碰撞 vs 重叠 ───────────────────────────────────────────
+// collider: 碰到后阻止重叠（玩家↔墙壁、子弹↔墙壁）
+this.addCollider(this.player, this.walls)
+this.addCollider(this.player, this.enemies, (player, enemy) => {
+  this.handleGameOver()
+})
+
+// overlap: 重叠不阻止（玩家↔道具/食物，碰到后拾取）
+this.addOverlap(this.player, this.foods, (player, food) => {
+  food.destroy()
+  this.addScore(10)
+})
+```
+
+### C.2 GameObjectPool 对象池
+
+高频创建/销毁的对象（子弹、粒子、敌人）必须使用对象池，
+避免 GC 卡顿。
+
+```typescript
+import { GameObjectPool } from '@/utils/GameObjectPool'
+
+export default class ShooterScene extends GameScene {
+  private bulletPool!: GameObjectPool
+
+  protected createGameObjects(): void {
+    // 创建子弹池（最大 50 发，预创建 10 发）
+    this.bulletPool = new GameObjectPool({
+      scene: this,
+      textureKey: 'bullet',
+      maxSize: 50,
+      initialSize: 10,
+      displaySize: { width: 20, height: 20 },
+    })
+  }
+
+  // 发射子弹
+  private fireBullet(x: number, y: number): void {
+    const bullet = this.bulletPool.spawn(x, y)
+    if (bullet) {
+      bullet.setVelocityY(-400)  // 向上飞
+    }
+  }
+
+  // 子弹出界时回收
+  private recycleOffscreenBullets(): void {
+    for (const bullet of this.bulletPool.getActive()) {
+      if (bullet.y < -50) {
+        this.bulletPool.despawn(bullet)
+      }
+    }
+  }
+
+  // 游戏重置时回收所有
+  private resetBullets(): void {
+    this.bulletPool.despawnAll()
+  }
+}
+```
+
+### C.3 InputManager 统一输入管理器
+
+统一封装键盘（方向键+WASD）、触摸滑动输入，支持：
+- 防抖冷却
+- 方向反向检测（防止 180° 掉头）
+- 自定义按键绑定（跳跃、攻击等）
+- 持续按下检测（`isDown`）+ 单次触发检测（`isJustPressed`）
+
+```typescript
+import { InputManager } from '@/utils/InputManager'
+
+export default class MyScene extends GameScene {
+  private inputManager!: InputManager
+
+  create(): void {
+    super.create()
+
+    this.inputManager = new InputManager({
+      scene: this,
+      enableArrowKeys: true,
+      enableWASDKeys: true,
+      keyCooldown: 100,           // 100ms 冷却
+      enableTouch: true,           // 启用触摸滑动
+      touchThreshold: 30,         // 30px 滑动阈值
+    })
+
+    // 注册自定义按键
+    this.inputManager.registerAction('Space', 'jump')
+    this.inputManager.registerAction('KeyJ', 'attack')
+
+    // 监听方向变化（事件驱动，适合回合制/步进式移动）
+    this.inputManager.onDirection((dir) => {
+      console.log('方向:', dir)
+    })
+
+    // 监听自定义动作
+    this.inputManager.onAction('jump', () => {
+      this.player.setVelocityY(-300)
+    })
+  }
+
+  protected gameLoop(time: number, delta: number): void {
+    // 持续按下检测（适合实时移动，按住持续走）
+    if (this.inputManager.isDown('left')) {
+      this.player.setVelocityX(-200)
+    } else if (this.inputManager.isDown('right')) {
+      this.player.setVelocityX(200)
+    } else {
+      this.player.setVelocityX(0)
+    }
+
+    // 单次触发检测（适合跳跃，按下一次跳一次）
+    if (this.inputManager.isJustPressed('jump')) {
+      this.player.setVelocityY(-300)
+    }
+
+    this.inputManager.clearFrameState()
+  }
+
+  shutdown(): void {
+    this.inputManager?.destroy()
+  }
+}
+```
+
+### C.4 CollisionRegistry 碰撞注册器
+
+集中管理所有碰撞/重叠对，支持运行时动态启停。
+
+```typescript
+import { CollisionRegistry } from '@/utils/CollisionRegistry'
+
+export default class BattleScene extends GameScene {
+  private collisionReg!: CollisionRegistry
+
+  protected createGameObjects(): void {
+    this.collisionReg = new CollisionRegistry(this)
+
+    this.collisionReg.register({
+      name: 'player-walls',
+      objectA: this.player,
+      objectB: this.walls,
+      type: 'collider',
+    })
+
+    this.collisionReg.register({
+      name: 'player-items',
+      objectA: this.player,
+      objectB: this.itemGroup,
+      type: 'overlap',
+      callback: (player, item) => {
+        item.destroy()
+        this.addScore(10)
+      },
+    })
+
+    this.collisionReg.register({
+      name: 'bullets-enemies',
+      objectA: this.bulletPool.group,
+      objectB: this.enemyGroup,
+      type: 'overlap',
+      callback: (bullet, enemy) => {
+        bullet.destroy()
+        enemy.destroy()
+        this.addScore(50)
+      },
+    })
+  }
+
+  // 过关动画期间暂停所有碰撞
+  private playLevelUpAnimation(): void {
+    this.collisionReg.setAllEnabled(false)
+    this.time.delayedCall(2000, () => {
+      this.collisionReg.setAllEnabled(true)
+    })
+  }
+
+  shutdown(): void {
+    this.collisionReg?.destroy()
+  }
+}
+```
+
+### C.5 PropSystem 道具系统
+
+通用道具效果管理，支持效果叠加、持续时间、冷却、互斥。
+
+```typescript
+import { PropSystem } from '@/utils/PropSystem'
+import type { PropEffect } from '@/utils/PropSystem'
+
+export default class RunnerScene extends GameScene {
+  private propSystem!: PropSystem
+  private speedMultiplier: number = 1
+
+  create(): void {
+    super.create()
+    this.propSystem = new PropSystem({ scene: this })
+
+    // 定义效果
+    const effects: PropEffect[] = [
+      {
+        id: 'speed-boost',
+        name: '加速',
+        duration: 5000,
+        stackable: false,
+        cooldown: 10000,
+        onApply: (scene, stacks) => {
+          this.speedMultiplier = 1.5
+          console.log('加速激活!')
+        },
+        onRemove: (scene, stacks) => {
+          this.speedMultiplier = 1.0
+          console.log('加速结束')
+        },
+      },
+      {
+        id: 'double-score',
+        name: '双倍分数',
+        duration: 8000,
+        stackable: false,
+        mutuallyExclusive: ['half-score'],  // 与减分互斥
+        onApply: () => { this.scoreMultiplier = 2 },
+        onRemove: () => { this.scoreMultiplier = 1 },
+      },
+    ]
+
+    this.propSystem.registerEffects(effects)
+  }
+
+  protected gameLoop(time: number, delta: number): void {
+    // ⚠️ 必须每帧更新道具系统
+    this.propSystem.update(delta)
+  }
+
+  // 拾取道具时激活
+  private pickupProp(effectId: string): void {
+    const success = this.propSystem.activate(effectId)
+    if (success) {
+      this.sound.play('sfx_pickup')
+    }
+  }
+
+  // 查询效果状态
+  private isSpeedBoosted(): boolean {
+    return this.propSystem.isActive('speed-boost')
+  }
+
+  private getSpeedBoostRemaining(): number {
+    return this.propSystem.getRemaining('speed-boost')
+  }
+}
+```
+
+### 模块选择指南
+
+| 游戏类型 | 推荐模块 |
+|---------|---------|
+| 休闲益智（拼图、消消乐）| InputManager（触摸） |
+| 射击游戏 | GameObjectPool + CollisionRegistry |
+| 动作跑酷 | InputManager + CollisionRegistry + PropSystem |
+| 贪吃蛇类 | InputManager（反向检测） |
+| 坦克大战 | addPhysicsSprite + CollisionRegistry + InputManager |
+| 角色扮演 | PropSystem + CollisionRegistry + InputManager |
 
 ---
 

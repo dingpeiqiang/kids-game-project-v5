@@ -128,7 +128,40 @@ export interface IStarCriterion {
 }
 
 /**
- * ⭐ 关卡资源配置接口
+ * ⭐ GTRS资源映射接口
+ */
+export interface IGTRSResourceMapping {
+  /** GTRS资源路径映射表：关卡资源ID -> GTRS路径 */
+  [resourceId: string]: string
+}
+
+/**
+ * ⭐ 关卡主题关联信息
+ */
+export interface ILevelThemeInfo {
+  /** 主题ID */
+  themeId: string
+  
+  /** 主题版本要求 */
+  minThemeVersion?: string
+  
+  /** 主题作者 */
+  themeAuthor?: string
+  
+  /** 主题兼容性检查结果 */
+  compatibilityCheck?: {
+    isValid: boolean
+    missingResources: string[]
+    resourceConflicts?: Array<{
+      resourceId: string
+      expectedPath: string
+      actualPath: string
+    }>
+  }
+}
+
+/**
+ * ⭐ 关卡资源配置接口（增强版）
  */
 export interface ILevelResources {
   /** 背景图片资源 ID 列表 */
@@ -145,10 +178,57 @@ export interface ILevelResources {
   
   /** 其他资源 */
   others?: string[]
+  
+  /** [新增] GTRS资源映射表 */
+  gtrsResourceMapping?: IGTRSResourceMapping
+  
+  /** [新增] 资源加载策略 */
+  loadStrategy?: {
+    /** 预加载策略：immediate|on_demand|lazy */
+    preload: 'immediate' | 'on_demand' | 'lazy'
+    /** 资源优先级 */
+    priority?: 'critical' | 'high' | 'normal' | 'low'
+    /** 内存缓存策略 */
+    cache?: boolean
+    /** 加载失败重试次数 */
+    retry?: number
+  }
+  
+  /** [新增] 主题资源依赖 */
+  themeDependencies?: string[]
 }
 
 /**
- * ⭐ 通用关卡配置接口（核心接口）
+ * ⭐ GTRS版本兼容性信息
+ */
+export interface IGTRSCompatibility {
+  /** 兼容的最小GTRS版本 */
+  minGTRSVersion?: string
+  
+  /** 推荐使用的GTRS版本 */
+  recommendedGTRSVersion?: string
+  
+  /** GTRS规范合规性检查结果 */
+  gtrsCompliance?: {
+    /** 是否通过GTRS规范检查 */
+    passed: boolean
+    /** 检查错误信息 */
+    errors?: Array<{
+      resourceId: string
+      errorType: 'MISSING_PATH' | 'INVALID_PATH' | 'RESOURCE_NOT_FOUND' | 'VERSION_MISMATCH'
+      message: string
+    }>
+    /** 警告信息 */
+    warnings?: Array<{
+      resourceId: string
+      warningType: 'DEPRECATED_PATH' | 'LOW_QUALITY' | 'LARGE_SIZE'
+      message: string
+    }>
+  }
+}
+
+/**
+ * ⭐ 通用关卡配置接口（核心接口 - 增强版）
  * 
  * @typeParam T - 游戏特定参数类型
  */
@@ -185,6 +265,36 @@ export interface ILevelConfig<T = any> {
   
   /** 主题 ID（用于加载对应主题资源） */
   themeId?: string
+  
+  /** [新增] GTRS规范兼容性信息 */
+  gtrsCompatibility?: IGTRSCompatibility
+  
+  /** [新增] 关卡资源总览 */
+  resourceOverview?: {
+    /** 总资源数量 */
+    totalResources: number
+    /** 按类型统计资源数量 */
+    byType: Record<string, number>
+    /** 预计加载大小（KB） */
+    estimatedSizeKB: number
+    /** 加载时间预估（ms） */
+    estimatedLoadTimeMS: number
+  }
+  
+  /** [新增] 主题信息 */
+  themeInfo?: ILevelThemeInfo
+  
+  /** [新增] 关卡资源校验信息 */
+  resourceValidation?: {
+    /** 最后校验时间戳 */
+    lastValidated: number
+    /** 校验状态 */
+    status: 'VALID' | 'INVALID' | 'PENDING'
+    /** 校验信息 */
+    message?: string
+    /** 校验器版本 */
+    validatorVersion: string
+  }
 }
 
 /**

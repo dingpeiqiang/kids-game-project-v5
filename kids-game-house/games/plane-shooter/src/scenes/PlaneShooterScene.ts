@@ -36,6 +36,12 @@ interface Prop extends GameObject {
 // ============================================================================
 
 export default class PlaneShooterScene extends GameScene {
+  // ─── 背景滚动 ──────────────────────────────────────────────────────
+  private bg1!: Phaser.GameObjects.Image
+  private bg2!: Phaser.GameObjects.Image
+  private bgHeight: number = 0
+  private bgScrollSpeed: number = 120 // 像素/秒
+
   // ─── 玩家相关 ──────────────────────────────────────────────────────
   private player!: GameObject
   private playerHealth: number = 3
@@ -137,6 +143,9 @@ export default class PlaneShooterScene extends GameScene {
   protected gameLoop(_time: number, delta: number): void {
     if (this.isGameOver) return
     
+    // 背景滚动（逐帧驱动，保证连续）
+    this.updateBackground(delta)
+
     // 玩家移动
     if (this.canMove) {
       this.handlePlayerMovement(delta)
@@ -214,44 +223,45 @@ export default class PlaneShooterScene extends GameScene {
   private createBackground(): void {
     // ⭐ 先创建纯色背景（兜底）- 深蓝色星空
     const bgColor = this.add.rectangle(0, 0, this.screenW, this.screenH, 0x0f172a)
-    bgColor.setOrigin(0)
+    bgColor.setOrigin(0).setDepth(-1)
     
-    // ✅ 使用两张背景图实现无缝滚动
+    // ✅ 使用两张背景图实现无缝滚动（逐帧 update 驱动，避免 tween 跳帧）
     if (this.textures.exists('bg_main')) {
-      // 获取背景图的实际高度
       const bgTexture = this.textures.get('bg_main')
-      const bgHeight = bgTexture.getSourceImage().height
-      
-      console.log('🎨 创建双背景无缝滚动:', { 
+      this.bgHeight = bgTexture.getSourceImage().height
+
+      console.log('🎨 创建双背景无缝滚动:', {
         screenH: this.screenH,
-        bgHeight,
-        ratio: bgHeight / this.screenH 
+        bgHeight: this.bgHeight,
+        ratio: this.bgHeight / this.screenH
       })
-      
-      // 创建两张相同的背景图
-      const bg1 = this.add.image(0, 0, 'bg_main').setOrigin(0)
-      const bg2 = this.add.image(0, -bgHeight, 'bg_main').setOrigin(0)
-      
-      // 同时向下滚动两张图
-      this.tweens.add({
-        targets: [bg1, bg2],
-        y: bgHeight,
-        duration: 8000,  // 8 秒滚动一个背景高度
-        ease: 'Linear',
-        repeat: -1,
-        onUpdate: () => {
-          // 当第一张图完全滚出屏幕时，瞬间移回顶部
-          if (bg1.y >= bgHeight) {
-            bg1.y = -bgHeight
-          }
-          // 当第二张图完全滚出屏幕时，瞬间移回顶部
-          if (bg2.y >= bgHeight) {
-            bg2.y = -bgHeight
-          }
-        }
-      })
+
+      // bg1 从屏幕顶部开始；bg2 紧贴 bg1 上方（覆盖整个屏幕高度）
+      this.bg1 = this.add.image(0, 0, 'bg_main').setOrigin(0).setDepth(0)
+      this.bg2 = this.add.image(0, -this.bgHeight, 'bg_main').setOrigin(0).setDepth(0)
     } else {
       console.warn('⚠️ 背景图片不存在，使用纯色背景')
+    }
+  }
+
+  /**
+   * 每帧更新背景滚动位置（确保连续无跳帧）
+   * - 两张图按相同速度向下移动
+   * - 任何一张完全超出屏幕底部后，立刻跳到另一张的正上方
+   */
+  private updateBackground(delta: number): void {
+    if (!this.bg1 || !this.bg2 || this.bgHeight === 0) return
+
+    const move = this.bgScrollSpeed * (delta / 1000)
+    this.bg1.y += move
+    this.bg2.y += move
+
+    // 哪张图的底边超出屏幕，就把它移到另一张的正上方（首尾衔接）
+    if (this.bg1.y >= this.bgHeight) {
+      this.bg1.y = this.bg2.y - this.bgHeight
+    }
+    if (this.bg2.y >= this.bgHeight) {
+      this.bg2.y = this.bg1.y - this.bgHeight
     }
   }
 

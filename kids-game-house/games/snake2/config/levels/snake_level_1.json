@@ -1,0 +1,110 @@
+{
+  "$schema": "https://example.com/schemas/snake-level-config.json",
+  "$comment": "🐍 贪吃蛇关卡配置 - 符合 GCRS 规范 v1.0",
+  
+  "info": {
+    "id": "snake_level_1",
+    "name": "初出茅庐",
+    "description": "学习基本操作，达到 500 分即可通关",
+    "difficulty": "easy",
+    "recommendedLevel": 1,
+    "prerequisites": [],
+    "thumbnailUrl": "/assets/images/levels/snake_level_1_thumb.png"
+  },
+  
+  "objectives": [
+    {
+      "id": "obj_score",
+      "type": "score",
+      "description": "达到 500 分",
+      "targetValue": 500,
+      "weight": 1,
+      "reward": {
+        "score": 100,
+        "currency": 50
+      }
+    },
+    {
+      "id": "obj_collect_food",
+      "type": "collect_food",
+      "description": "收集 10 个食物",
+      "targetValue": 10,
+      "weight": 1,
+      "reward": {
+        "items": ["speed_boost"]
+      }
+    }
+  ],
+  
+  "params": {
+    "gridSize": 20,
+    "initialLength": 3,
+    "speed": 120,
+    "obstacleCount": 0,
+    "specialFoodChance": 0.05,
+    "coinChance": 0.02,
+    "foodScore": 10,
+    "bonusScore": 20,
+    "coinScore": 30
+  },
+  
+  "victoryCondition": {
+    "type": "all_objectives",
+    "description": "完成所有目标"
+  },
+  
+  "failureConditions": [
+    {
+      "type": "no_lives",
+      "description": "蛇撞到墙壁或自己"
+    },
+    {
+      "type": "time_up",
+      "description": "超时"
+    }
+  ],
+  
+  "timeLimit": 300,
+  
+  "starCriteria": [
+    {
+      "stars": 1,
+      "scoreThreshold": 500
+    },
+    {
+      "stars": 2,
+      "scoreThreshold": 800
+    },
+    {
+      "stars": 3,
+      "scoreThreshold": 1000
+    }
+  ],
+  
+  "baseRewards": {
+    "score": 100,
+    "currency": 50
+  },
+  
+  "resources": {
+    "backgrounds": [
+      "bg_forest",
+      "grid_green"
+    ],
+    "sprites": [
+      "snake_head",
+      "snake_body",
+      "apple",
+      "banana"
+    ],
+    "soundEffects": [
+      "eat_apple",
+      "crash_wall"
+    ],
+    "musicTracks": [
+      "forest_bgm_relax"
+    ]
+  },
+  
+  "themeId": "forest"
+}

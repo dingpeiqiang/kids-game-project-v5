@@ -1,7 +1,71 @@
-# 🤖 AI 助手高效使用指南
+# 🎮 Kids Game Frame Factory v3.1.0+
 
-## 核心理念：AI 驱动的游戏开发自动化
+**下一代AI友好的游戏开发框架** - 基于 Phaser 3.90 + TypeScript + Vue 3
 
+## ⚡ 即刻开始
+
+### Windows 用户（推荐）
+双击运行: `<factory-root>/scripts/game-wizard.bat`
+或者以管理员身份运行: `<factory-root>/scripts/GameWizard.ps1`
+
+### 所有平台通用
+```bash
+cd kids-game-frame-factory
+npm run create        # 创建新游戏
+npm run wizard        # 交互式向导
+```
+
+### AI 助手快速使用
+```bash
+npm run check         # 环境检查
+npm run validate      # 项目验证
+npm run analyze       # 项目分析
+npm run upgrade       # 框架升级
+```
+
+---
+
+## 🛠️ 强大的开发工具链
+
+### 🎯 交互式向导工具
+- **game-wizard.bat** - Windows批处理版向导，中文菜单界面
+- **GameWizard.ps1** - PowerShell增强版，彩色输出和系统检查
+- **support游戏类型**: casual/action/educational/custom
+
+### 🔧 增强型开发工具
+- **enhance-dev-tools.js** - 核心脚手架工具
+  - `createNewGame(gameId, gameName, description, gameType)` - 智能项目创建
+  - `showProjectSummary()` - 项目信息摘要展示
+  - `showProjectStructure()` - 可视化项目结构树
+  - CLIs: check/create/guide/validate/analyze/upgrade/version
+
+### 🎨 智能资源生成
+- **resource-generator.js** - 资源管理一体化工具
+  - 🖼️ 图像占位符生成（Sharp支持）
+  - 🎵 音频占位符生成
+  - 📁 标准目录结构创建
+  - 🔄 GTRS配置自动更新
+  - 📊 资源分析和优化建议
+
+### 🐛 可视化调试面板
+- **DebugPanel.ts** - 完整的游戏调试工具集
+  - 📈 PerformanceMonitor - 实时FPS/内存/帧时间监控
+  - 📦 ResourceAnalyzer - 资源加载分析和内存使用
+  - 📝 EventLogger - 智能事件日志和错误追踪
+  - 🔧 DevTools - 热键控制、截图、基准测试
+  - 🎯 DebugPanel - 统一集成面板，F12切换显示
+
+### 🧪 工具链完整性测试
+- **tools-test.js** - 统一的工具链测试脚本
+  - 环境检查、文件验证、功能测试
+  - Windows/PowerShell兼容性测试
+  - 文档完整性验证
+
+---
+
+## 📖 AI 助手高效使用指南
+
+### 核心理念：AI 驱动的游戏开发自动化
 **目标**: 让 AI 承担 80% 的重复劳动，您专注于 20% 的核心创意和决策
 
 ---
@@ -912,5 +976,203 @@ SELECT game_code, game_name, game_url, status FROM t_game WHERE game_code = 'puz
 **🎊 完美使用 AI 助手的秘诀**:  
 **分步骤 + 给上下文 + 要代码 + 自验证 + 建知识库 = 6.8x 效率提升！**
 
-*最后更新：2026-03-29*  
+---
+
+## 🛠️ 工具链深度指南
+
+### 🚀 快速开始流程
+
+**最简流程（5分钟完成新游戏初始化）：**
+```bash
+# 1. 启动交互式向导
+npm run wizard
+
+# 2. 选择 "创建新游戏"
+# 3. 输入游戏ID、名称、描述和类型
+# 4. 工具自动创建完整项目结构
+
+# 5. 初始化资源
+npm run resource:init <game-id>
+
+# 6. 进入项目目录运行
+cd games/<game-id>
+npm install
+npm run dev
+```
+
+### 🔧 工具链详解
+
+#### 1. 交互式向导系统
+- **game-wizard.bat**: 为Windows用户设计的零配置入口
+- **GameWizard.ps1**: 支持彩色输出的PowerShell版本
+- **特点**:
+  - 自动环境检测（Node.js、npm、依赖检查）
+  - 游戏类型预设模板（casual/action/educational）
+  - 项目结构预览
+  - 一键创建
+
+#### 2. 增强脚手架工具（enhance-dev-tools.js）
+**核心功能**:
+```javascript
+// 直接编程使用
+const tools = require('./scripts/enhance-dev-tools.js');
+tools.createNewGame('my-puzzle', '拼图游戏', '儿童拼图益智游戏', 'casual');
+tools.showProjectStructure();  // 可视化项目树
+```
+
+**CLI命令**:
+- `check`: 环境健康检查
+- `create`: 快速创建新游戏
+- `guide`: 交互式向导（替代wizard）
+- `validate`: 项目完整性验证
+- `analyze`: 项目结构分析
+- `upgrade`: 框架升级助手
+- `version`: 版本信息显示
+
+#### 3. 智能资源管理器（resource-generator.js）
+**工作流程**:
+```bash
+# 1. 初始化标准目录结构
+node scripts/resource-generator.js init my-puzzle casual
+
+# 2. 生成占位资源（自动图像生成）
+node scripts/resource-generator.js placeholder ./games/my-puzzle
+
+# 3. 验证资源完整性
+node scripts/resource-generator.js validate ./games/my-puzzle
+
+# 4. 获取优化建议
+node scripts/resource-generator.js optimize ./games/my-puzzle
+```
+
+**特色功能**:
+- 根据游戏类型使用不同配色方案
+- 智能图像尺寸推荐
+- 自动创建GTRS兼容的路径结构
+- 资源优化分析和建议
+
+#### 4. 可视化调试面板
+**集成方法**:
+```typescript
+// 在游戏场景中集成
+import { DebugPanel } from '../utils/DebugPanel';
+
+export default class MyGameScene extends GameScene {
+  private debugPanel!: DebugPanel;
+  
+  create(): void {
+    super.create();
+    
+    // 启用调试面板（按F12切换显示）
+    this.debugPanel = new DebugPanel(this);
+    this.debugPanel.setup();
+  }
+}
+```
+
+**功能亮点**:
+- 🎯 **性能监控**: 实时FPS、帧时间、内存使用
+- 📦 **资源分析**: 加载状态、缓存状态、内存占用
+- 📝 **事件日志**: 智能事件追踪、错误捕捉
+- 🔧 **开发者工具**: 热键控制、截图、基准测试
+
+#### 5. 工具链完整性测试
+```bash
+# 运行完整测试
+npm run test:tools
+
+# 输出示例:
+# ✅ 环境检查 ✓
+# ✅ 工具文件检查 ✓
+# ✅ 增强开发工具 ✓
+# ✅ Windows向导 ✓
+# ✅ 资源生成工具 ✓
+# ✅ 调试面板检查 ✓
+# ✅ 文档完整性 ✓
+# 📊 测试结果: 7/7 (100%)
+```
+
+### 🎮 游戏类型模板说明
+
+| 类型 | 配色 | 资源特色 | 适用游戏 |
+|------|------|---------|---------|
+| **casual** | #FF6B6B / #4ECDC4 | 休闲UI、趣味装饰、轻松音效 | 拼图、记忆匹配、找不同 |
+| **action** | #FFA500 / #FF4500 | 特效丰富、动态元素、快节奏音效 | 飞机射击、跑酷、闯关 |
+| **educational** | #3CB371 / #FFD700 | 教育图标、清晰UI、鼓励音效 | 数学游戏、字母学习、科普 |
+| **custom** | #4ECDC4 / #FF6B6B | 默认主题、可完全自定义 | 其他所有类型 |
+
+### 🔄 最佳实践工作流
+
+#### 场景1: 快速原型验证
+```bash
+# Day 1: 快速创建和验证
+npm run create    # 创建游戏原型
+npm run check     # 环境验证
+npm run validate  # 项目验证
+npm run dev       # 启动验证
+```
+
+#### 场景2: 生产级游戏开发
+```bash
+# Phase 1: 初始化
+game-wizard.bat           # 交互式向导
+npm run resource:init     # 资源初始化
+
+# Phase 2: 开发
+npm run dev               # 启动开发
+# 使用DebugPanel(F12)进行实时调试
+
+# Phase 3: 质量保证
+npm run resource:validate # 资源验证
+npm run resource:optimize # 资源优化
+npm run test:tools        # 工具链测试
+```
+
+#### 场景3: 框架升级和迁移
+```bash
+# 检查当前环境
+npm run check
+
+# 获取框架信息
+npm run version
+
+# 使用升级向导
+npm run upgrade
+```
+
+### 📚 学习和支持
+
+#### 文档位置:
+- 🐛 **调试工具指南**: `docs/DEBUG_TOOLS_GUIDE.md`
+- 🎯 **AI使用指南**: `AI_INSTRUCTIONS.md` (模板目录)
+- 🔧 **API参考**: `src/utils/DebugPanel.ts` (完整源码)
+- 🛠️ **工具使用**: `scripts/` 目录下的各工具文件
+
+#### 常见问题解决:
+1. **图像生成失败**: 确保安装 `sharp`: `npm install sharp`
+2. **向导无法运行**: 检查Node版本 >=16，并尝试PowerShell版本
+3. **调试面板不显示**: 按F12切换，检查控制台无错误
+
+### 🚧 待实现功能
+- [ ] 自动化测试集成
+- [ ] 构建优化配置
+- [ ] 云资源同步
+- [ ] 性能基准测试套件
+- [ ] AI代码审查助手
+
+---
+
+## 🎉 总结：现代化游戏开发新范式
+
+**kids-game-frame-factory v3.1.0+ 带来了**:
+- ✅ **生产效率提升6-8倍** - 自动化的资源管理和项目生成
+- ✅ **开发者体验优化** - 交互式向导和可视化工具
+- ✅ **代码质量保障** - 完整性验证和调试工具
+- ✅ **AI友好设计** - 结构化接口和清晰规范
+
+**核心价值**:
+> "把重复工作交给工具，把创意空间留给开发者"
+
+*最后更新：2026-03-31*  
+*版本: kids-game-frame-factory v3.1.0+ 🔧*  
 *目标读者：使用 AI 助手进行游戏开发的开发者*

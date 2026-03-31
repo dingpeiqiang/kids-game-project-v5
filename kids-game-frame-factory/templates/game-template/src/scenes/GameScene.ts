@@ -37,6 +37,10 @@ import { useThemeStore } from '@/stores/theme'
  *   - togglePause()         切换暂停
  *   - gridToPixel()         网格坐标 → 像素坐标（左上角）
  *   - gridToPixelCenter()   网格坐标 → 像素坐标（中心）
+ *   - addPhysicsSprite()    创建带物理体的 Sprite
+ *   - addPhysicsGroup()     创建静态物理组
+ *   - addCollider()         注册碰撞检测（阻止重叠）
+ *   - addOverlap()          注册重叠检测（不阻止移动）
  */
 export default abstract class GameScene extends Phaser.Scene {
   // ─── 基础状态 ───────────────────────────────────────────────
@@ -396,6 +400,142 @@ export default abstract class GameScene extends Phaser.Scene {
       x: this.offsetX + col * this.cellSize + this.cellSize / 2,
       y: this.offsetY + row * this.cellSize + this.cellSize / 2
     }
+  }
+
+  // ─── 物理/碰撞工具（框架提供，直接调用） ────────────────────
+
+  /**
+   * 创建带有 Arcade 物理体的 Sprite
+   *
+   * 相比 this.add.sprite()，额外启用物理碰撞体，适合需要碰撞检测的实体。
+   * 可通过 setImmovable(true) 设为静态障碍物。
+   *
+   * @param x           像素 x 坐标
+   * @param y           像素 y 坐标
+   * @param textureKey  资源 key（来自 GTRS 或手动加载）
+   * @param options     可选配置
+   * @returns 带物理体的 Sprite
+   *
+   * @example
+   *   // 创建玩家（动态物理体）
+   *   const pos = this.gridToPixelCenter(5, 5)
+   *   this.player = this.addPhysicsSprite(pos.x, pos.y, 'player')
+   *   this.player.setCollideWorldBounds(true)
+   *
+   *   // 创建墙壁（静态物理体）
+   *   const wall = this.addPhysicsSprite(100, 100, 'wall', { immovable: true })
+   */
+  protected addPhysicsSprite(
+    x: number,
+    y: number,
+    textureKey: string,
+    options?: {
+      /** 是否不可移动（默认 false，适合墙壁/障碍物） */
+      immovable?: boolean
+      /** 是否与世界边界碰撞（默认 false） */
+      collideWorldBounds?: boolean
+      /** 是否启用物理调试绘制（默认 false） */
+      debug?: boolean
+    },
+  ): Phaser.Physics.Arcade.Sprite {
+    const sprite = this.physics.add.sprite(x, y, textureKey)
+
+    if (options?.immovable !== undefined) {
+      sprite.setImmovable(options.immovable)
+    }
+    if (options?.collideWorldBounds) {
+      sprite.setCollideWorldBounds(true)
+    }
+    if (options?.debug) {
+      sprite.body?.setDebug(options.debug, options.debug, 0x0000ff)
+    }
+
+    return sprite
+  }
+
+  /**
+   * 创建带有 Arcade 物理体的静态图像组
+   *
+   * 适用于多个静态障碍物（墙壁、方块等），可批量碰撞检测。
+   *
+   * @param options  可选配置
+   * @returns 静态物理组
+   *
+   * @example
+   *   // 创建墙壁组
+   *   this.walls = this.addPhysicsGroup({ immovable: true })
+   *   const wall = this.addPhysicsSprite(100, 100, 'wall', { immovable: true })
+   *   this.walls.add(wall)
+   *
+   *   // 注册碰撞
+   *   this.addCollider(this.player, this.walls)
+   */
+  protected addPhysicsGroup(options?: {
+    immovable?: boolean
+    allowGravity?: boolean
+  }): Phaser.Physics.Arcade.Group {
+    const config: Phaser.Types.Physics.Arcade.PhysicsGroupConfig = {}
+    if (options?.immovable) config.immovable = true
+    if (options?.allowGravity !== undefined) config.allowGravity = options.allowGravity
+    return this.physics.add.staticGroup(config) as Phaser.Physics.Arcade.Group
+  }
+
+  /**
+   * 注册碰撞检测（两个物体碰到后阻止重叠）
+   *
+   * 适用于：玩家↔墙壁、玩家↔敌人、子弹↔墙壁等
+   * 回调在碰撞发生时触发，可在此处理伤害/反弹等逻辑。
+   *
+   * @param object1   物体/组 A
+   * @param object2   物体/组 B
+   * @param callback  碰撞回调（可选）
+   * @param context   回调 this 上下文（默认当前场景）
+   * @returns 碰撞器实例
+   *
+   * @example
+   *   this.addCollider(this.player, this.walls)
+   *   this.addCollider(this.player, this.enemies, (player, enemy) => {
+   *     this.handleGameOver()
+   *   })
+   */
+  protected addCollider(
+    object1: Phaser.Types.Physics.Arcade.ArcadeColliderType,
+    object2: Phaser.Types.Physics.Arcade.ArcadeColliderType,
+    callback?: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+    context?: any,
+  ): Phaser.Physics.Arcade.Collider {
+    return this.physics.add.collider(
+      object1, object2,
+      callback as Phaser.Types.Physics.Arcade.OverlapCallback | undefined,
+      undefined,
+      context ?? this,
+    )
+  }
+
+  /**
+   * 注册重叠检测（两个物体重叠但不阻止移动）
+   *
+   * 适用于：玩家↔道具/食物/金币（碰到后拾取但不阻挡）
+   *
+   * @param object1   物体/组 A
+   * @param object2   物体/组 B
+   * @param callback  重叠回调（可选）
+   * @param context   回调 this 上下文（默认当前场景）
+   * @returns 重叠器实例
+   *
+   * @example
+   *   this.addOverlap(this.player, this.foods, (player, food) => {
+   *     food.destroy()
+   *     this.addScore(10)
+   *   })
+   */
+  protected addOverlap(
+    object1: Phaser.Types.Physics.Arcade.ArcadeColliderType,
+    object2: Phaser.Types.Physics.Arcade.ArcadeColliderType,
+    callback?: Phaser.Types.Physics.Arcade.OverlapCallback,
+    context?: any,
+  ): Phaser.Physics.Arcade.Collider {
+    return this.physics.add.overlap(object1, object2, callback, undefined, context ?? this)
   }
 
   // ─── 生命周期清理 ────────────────────────────────────────────
