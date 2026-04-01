@@ -81,6 +81,7 @@
   },
   "resources": {
     "sprites": [
+      "bg_main",
       "player_tank_up",
       "player_tank_down",
       "player_tank_left",
@@ -89,12 +90,29 @@
       "enemy_light_down",
       "enemy_light_left",
       "enemy_light_right",
+      "enemy_medium_up",
+      "enemy_medium_down",
+      "enemy_medium_left",
+      "enemy_medium_right",
+      "enemy_heavy_up",
+      "enemy_heavy_down",
+      "enemy_heavy_left",
+      "enemy_heavy_right",
       "bullet_player",
       "bullet_enemy",
       "wall_brick",
       "wall_steel",
       "base_home",
-      "base_destroyed"
+      "base_destroyed",
+      "explosion_1",
+      "explosion_2",
+      "explosion_3",
+      "prop_star",
+      "prop_clock",
+      "prop_shield",
+      "ui_heart",
+      "ui_pause",
+      "btn_restart"
     ],
     "soundEffects": [
       "sfx_start",

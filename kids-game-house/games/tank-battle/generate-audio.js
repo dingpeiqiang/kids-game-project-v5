@@ -82,6 +82,9 @@ const sounds = [
   { name: 'sfx_start.wav', freq: 600, duration: 0.4, type: 'sine', desc: '开始音效' },
   { name: 'sfx_gameover.wav', freq: 150, duration: 0.8, type: 'sawtooth', desc: '游戏结束音效' },
   { name: 'sfx_prop.wav', freq: 1000, duration: 0.2, type: 'sine', desc: '道具音效' },
+  // 修复：添加缺失的音效文件
+  { name: 'sfx_bonus_appears.wav', freq: 880, duration: 0.3, type: 'sine', desc: '道具出现音效' },
+  { name: 'sfx_bonus_captured.wav', freq: 1200, duration: 0.25, type: 'sine', desc: '道具拾取音效' },
 ]
 
 sounds.forEach(sound => {

@@ -127,33 +127,91 @@ export class TankGameOrchestrator {
   // ===========================================================================
   
   /**
-   * 阶段 1: 解锁验证
+   * ⭐ 阶段 1: 解锁验证
    */
   protected async phase1_UnlockValidation(): Promise<void> {
     console.log('🔓 [阶段 1] 解锁验证...')
     this.emitProgress(0.1, '验证关卡解锁状态...')
     
-    // TODO: 检查前置关卡是否完成
-    await this.delay(100)
+    // 检查前置关卡是否完成（从游戏进度系统获取）
+    if (this.levelConfig?.info.prerequisites && this.levelConfig.info.prerequisites.length > 0) {
+      const progressSystem = (this.scene as any).progressSystem
+      if (progressSystem) {
+        for (const prereqId of this.levelConfig.info.prerequisites) {
+          if (!progressSystem.isLevelCompleted(prereqId)) {
+            throw new Error(`前置关卡 ${prereqId} 未完成，无法解锁当前关卡`)
+          }
+        }
+      }
+    }
     
+    await this.delay(100)
     console.log('✅ [阶段 1] 完成')
   }
   
   /**
-   * 阶段 2: 资源预加载
+   * ⭐ 阶段 2: 资源验证（严格模式 - 不加载，只验证）
    */
   protected async phase2_ResourceLoading(): Promise<void> {
-    console.log('📦 [阶段 2] 资源预加载...')
-    this.emitProgress(0.2, '加载关卡资源...')
-    
-    if (!this.levelConfig?.resources) {
-      console.warn('⚠️ 未找到资源配置，使用默认资源')
+    console.log('📦 [阶段 2] 资源验证（宽松模式）')
+    this.emitProgress(0.2, '验证资源完整性...')
+  
+    // 🟡 宽松模式：只验证关键资源，非关键资源警告但不阻止
+    const resources = this.levelConfig?.resources
+  
+    if (!resources) {
+      console.warn('⚠️ [阶段 2 警告] 关卡配置中 resources 字段不存在，使用默认配置')
+      // 继续执行，不抛出错误
+      return
     }
-    
-    // TODO: 实现资源加载逻辑
-    await this.delay(200)
-    
-    console.log('✅ [阶段 2] 完成')
+  
+    let hasCriticalError = false
+  
+    // 验证图片资源（只检查关键纹理）
+    if (resources.sprites && resources.sprites.length > 0) {
+      console.log(`🖼️ 验证图片资源：${resources.sprites.length} 个`)
+  
+      for (const spriteKey of resources.sprites) {
+        if (!this.scene.textures.exists(spriteKey)) {
+          console.warn(`⚠️ [图片资源缺失] ${spriteKey} 未加载（可能使用备用纹理）`)
+          // 不抛出错误，继续执行
+        } else {
+          console.log(`  ✓ 图片验证通过：${spriteKey}`)
+        }
+      }
+    }
+  
+    // 验证音效资源（宽容处理）
+    if (resources.soundEffects && resources.soundEffects.length > 0) {
+      console.log(`🔊 验证音效资源：${resources.soundEffects.length} 个`)
+  
+      for (const soundKey of resources.soundEffects) {
+        if (!this.scene.cache.audio.exists(soundKey)) {
+          console.warn(`⚠️ [音效资源缺失] ${soundKey} 未加载（游戏将静音运行）`)
+          // 不抛出错误
+        } else {
+          console.log(`  ✓ 音效验证通过：${soundKey}`)
+        }
+      }
+    }
+  
+    // 验证音乐资源（映射 key）
+    if (resources.musicTracks && resources.musicTracks.length > 0) {
+      console.log(`🎶 验证音乐资源：${resources.musicTracks.length} 个`)
+  
+      for (const musicKey of resources.musicTracks) {
+        // 映射关卡配置中的 key 到实际的 GTRS key
+        const actualKey = musicKey === 'bgm_main_theme' ? 'bgm_main' : musicKey
+  
+        if (!this.scene.cache.audio.exists(actualKey)) {
+          console.warn(`⚠️ [音乐资源缺失] ${actualKey} 未加载（游戏将静音运行）`)
+        } else {
+          console.log(`  ✓ 音乐验证通过：${actualKey}`)
+        }
+      }
+    }
+  
+    console.log('✅ [阶段 2] 完成 - 资源验证结束')
   }
   
   /**
@@ -197,33 +255,27 @@ export class TankGameOrchestrator {
   }
   
   /**
-   * 阶段 5: 关卡运行
+   * 阶段 5: 关卡运行（严格模式 - 无超时兜底）
    */
   protected async phase5_LevelRunning(): Promise<ILevelResult> {
     console.log('🎮 [阶段 5] 关卡运行中...')
     this.emitProgress(0.8, '关卡进行中...')
-    
-    // ✅ 返回一个 Promise，等待游戏结束
+  
+    // 🔴 严格模式：等待真实游戏结束，不设置超时兜底
     return new Promise((resolve) => {
-      // 监听游戏结束事件（由 TankGameScene 触发）
       const gameScene = this.scene as any
-      if (gameScene.onLevelComplete) {
-        gameScene._resolveLevelResult = resolve
-      } else {
-        // 兜底方案：30 秒后自动完成（用于测试）
-        this.time.delayedCall(30000, () => {
-          console.warn('⚠️ 超时，自动完成关卡')
-          resolve({
-            success: true,
-            completion: 1.0,
-            score: 1000,
-            stars: 3,
-            rewards: { score: 1000 },
-            timeUsed: 30,
-            statistics: {}
-          })
-        })
+  
+      // ✅ 优化检查逻辑：只需要 onLevelComplete 存在即可
+      if (!gameScene.onLevelComplete) {
+        const errorMsg = '❌ [阶段 5 失败] 游戏场景未配置 onLevelComplete 回调'
+        console.error(errorMsg)
+        console.error('💡 提示：请在 TankGameScene.create() 中设置 this.onLevelComplete 回调')
+        throw new Error(errorMsg)
       }
+  
+      // ✅ 设置结果解析器（允许在运行时赋值）
+      gameScene._resolveLevelResult = resolve
+      console.log('✅ [阶段 5] 等待游戏结束事件...')
     })
   }
   

@@ -44,9 +44,11 @@ export default abstract class GameScene extends Phaser.Scene {
   }
   
   /**
-   * 从 GTRS 预加载所有资源
+   * 从 GTRS 预加载所有资源（严格模式 - 无兜底）
    */
   protected preloadFromGTRS(): void {
+    console.log('📦 [GameScene] 开始预加载资源（严格模式）')
+    
     // 先同步加载 GTRS JSON（因为文件已经在 public 目录）
     const gtrsUrl = '/themes/tank_default/GTRS.json'
     
@@ -55,45 +57,92 @@ export default abstract class GameScene extends Phaser.Scene {
     xhr.open('GET', gtrsUrl, false) // 同步请求
     xhr.send()
     
+    // 🔴 严格模式：GTRS 配置加载失败直接抛出错误
     if (xhr.status !== 200) {
-      console.error('❌ 无法加载 GTRS 配置:', xhr.statusText)
-      this.load.start()
-      return
+      const errorMsg = `❌ [GTRS加载失败] 无法加载 GTRS 配置: ${xhr.statusText}`
+      console.error(errorMsg)
+      throw new Error(errorMsg)
     }
     
+    let gtrs: any
     try {
-      const gtrs = JSON.parse(xhr.responseText)
-      
-      // 加载图片资源
-      if (gtrs.resources?.images?.scene) {
-        Object.entries(gtrs.resources.images.scene).forEach(([key, data]: [string, any]) => {
-          if (data.src && !this.textures.exists(key)) {
-            console.log('📦 加载图片:', key, '->', data.src)
-            this.load.image(key, data.src)
-          }
-        })
-      }
-      
-      // 加载音频资源（带容错处理，允许失败）
-      const loadAudioWithFallback = (_category: string, audioList: any) => {
-        if (!audioList) return
-        Object.entries(audioList).forEach(([key, data]: [string, any]) => {
-          if (data.src) {
-            console.log('🔊 加载音频:', key, '->', data.src)
-            this.load.audio(key, data.src)
-          }
-        })
-      }
-      
-      loadAudioWithFallback('bgm', gtrs.resources.audio?.bgm)
-      loadAudioWithFallback('effect', gtrs.resources.audio?.effect)
-      
-      // 启动加载队列
-      this.load.start()
+      gtrs = JSON.parse(xhr.responseText)
+      console.log('✅ [GTRS加载成功] 配置文件解析成功')
     } catch (error) {
-      console.error('❌ 解析 GTRS 配置失败:', error)
-      this.load.start()
+      const errorMsg = `❌ [GTRS解析失败] 无法解析 GTRS 配置: ${error instanceof Error ? error.message : error}`
+      console.error(errorMsg)
+      throw new Error(errorMsg)
     }
+    
+    // 🔴 严格模式：验证 GTRS 结构
+    if (!gtrs.resources?.images?.scene) {
+      const errorMsg = '❌ [GTRS结构错误] resources.images.scene 不存在'
+      console.error(errorMsg)
+      throw new Error(errorMsg)
+    }
+    
+    if (!gtrs.resources?.audio) {
+      const errorMsg = '❌ [GTRS结构错误] resources.audio 不存在'
+      console.error(errorMsg)
+      throw new Error(errorMsg)
+    }
+    
+    // 加载图片资源（严格验证）
+    const imageCount = Object.keys(gtrs.resources.images.scene).length
+    console.log(`📦 [图片资源] 发现 ${imageCount} 个图片资源`)
+    
+    Object.entries(gtrs.resources.images.scene).forEach(([key, data]: [string, any]) => {
+      if (!data.src) {
+        const errorMsg = `❌ [图片资源配置错误] ${key} 缺少 src 字段`
+        console.error(errorMsg)
+        throw new Error(errorMsg)
+      }
+      
+      if (!this.textures.exists(key)) {
+        console.log(`  ✓ 注册图片：${key} -> ${data.src}`)
+        this.load.image(key, data.src)
+      }
+    })
+    
+    // 加载音频资源（严格验证）
+    const audioCategories = ['bgm', 'effect']
+    let totalAudioCount = 0
+    
+    audioCategories.forEach(category => {
+      if (gtrs.resources.audio[category]) {
+        const count = Object.keys(gtrs.resources.audio[category]).length
+        totalAudioCount += count
+        console.log(`🔊 [音频资源] ${category}: ${count} 个`)
+        
+        Object.entries(gtrs.resources.audio[category]).forEach(([key, data]: [string, any]) => {
+          if (!data.src) {
+            const errorMsg = `❌ [音频资源配置错误] ${key} 缺少 src 字段`
+            console.error(errorMsg)
+            throw new Error(errorMsg)
+          }
+          
+          console.log(`  ✓ 注册音频：${key} -> ${data.src}`)
+          this.load.audio(key, data.src)
+        })
+      }
+    })
+    
+    console.log(`✅ [资源注册完成] 图片：${imageCount} 个，音频：${totalAudioCount} 个`)
+    
+    // 设置加载完成回调
+    this.load.on('complete', () => {
+      console.log('✅ [资源加载完成] 所有资源加载成功')
+    })
+    
+    // 设置加载错误回调（严格模式：直接抛出错误）
+    this.load.on('loaderror', (fileObj: any) => {
+      const errorMsg = `❌ [资源加载失败] ${fileObj.key} - ${fileObj.type}: ${fileObj.message || '未知错误'}`
+      console.error(errorMsg)
+      throw new Error(errorMsg)
+    })
+    
+    // 启动加载队列
+    this.load.start()
   }
   
   /**

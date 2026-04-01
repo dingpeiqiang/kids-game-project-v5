@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>坦克大战诊断工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .section {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1 { color: #4ade80; }
+        h2 { color: #60a5fa; margin-top: 0; }
+        .status { 
+            padding: 10px; 
+            margin: 5px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .success { background: #166534; }
+        .warning { background: #854d0e; }
+        .error { background: #991b1b; }
+        .info { background: #1e3a8a; }
+        button {
+            background: #4ade80;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #22c55e; }
+        pre {
+            background: #000;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 坦克大战诊断工具</h1>
+    
+    <div class="section">
+        <h2>📋 快速诊断</h2>
+        <button onclick="runQuickDiagnosis()">运行快速诊断</button>
+        <button onclick="clearResults()">清空结果</button>
+        <div id="quick-results"></div>
+    </div>
+
+    <div class="section">
+        <h2>🖼️ 资源检查</h2>
+        <button onclick="checkResources()">检查资源文件</button>
+        <div id="resource-results"></div>
+    </div>
+
+    <div class="section">
+        <h2>📄 配置文件检查</h2>
+        <button onclick="checkConfigFiles()">检查配置文件</button>
+        <div id="config-results"></div>
+    </div>
+
+    <div class="section">
+        <h2>🔧 游戏启动测试</h2>
+        <button onclick="testGameLaunch()">测试游戏启动</button>
+        <div id="launch-results"></div>
+    </div>
+
+    <script>
+        function log(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            container.appendChild(div);
+        }
+
+        function clearResults() {
+            ['quick-results', 'resource-results', 'config-results', 'launch-results'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+        }
+
+        async function runQuickDiagnosis() {
+            const resultsDiv = document.getElementById('quick-results');
+            resultsDiv.innerHTML = '';
+            
+            log('quick-results', '开始快速诊断...', 'info');
+            
+            // 检查 GTRS.json
+            try {
+                const response = await fetch('/themes/tank_default/GTRS.json');
+                if (response.ok) {
+                    const gtrs = await response.json();
+                    log('quick-results', '✅ GTRS.json 加载成功', 'success');
+                    log('quick-results', `   - 图片资源：${Object.keys(gtrs.resources.images.scene).length} 个`, 'info');
+                    log('quick-results', `   - 音频资源：${Object.keys(gtrs.resources.audio.bgm).length + Object.keys(gtrs.resources.audio.effect).length} 个`, 'info');
+                } else {
+                    log('quick-results', '❌ GTRS.json 加载失败', 'error');
+                }
+            } catch (error) {
+                log('quick-results', `❌ GTRS.json 错误：${error.message}`, 'error');
+            }
+
+            // 检查关卡配置
+            try {
+                const response = await fetch('/config/levels/tank_level_1.json');
+                if (response.ok) {
+                    const config = await response.json();
+                    log('quick-results', '✅ 关卡配置加载成功', 'success');
+                    log('quick-results', `   - 关卡名称：${config.info.name}`, 'info');
+                    log('quick-results', `   - 敌人数量：${config.params.enemyCount}`, 'info');
+                } else {
+                    log('quick-results', '❌ 关卡配置加载失败', 'error');
+                }
+            } catch (error) {
+                log('quick-results', `❌ 关卡配置错误：${error.message}`, 'error');
+            }
+
+            // 检查关键图片
+            const criticalImages = [
+                'bg_main',
+                'player_tank_up',
+                'enemy_light_up',
+                'bullet_player',
+                'wall_brick'
+            ];
+
+            log('quick-results', '检查关键图片资源...', 'info');
+            for (const imgKey of criticalImages) {
+                try {
+                    const response = await fetch(`/themes/tank_default/assets/scene/${imgKey}.png`);
+                    if (response.ok) {
+                        log('quick-results', `  ✅ ${imgKey}.png 存在`, 'success');
+                    } else {
+                        log('quick-results', `  ❌ ${imgKey}.png 不存在`, 'error');
+                    }
+                } catch (error) {
+                    log('quick-results', `  ❌ ${imgKey}.png 错误：${error.message}`, 'error');
+                }
+            }
+
+            log('quick-results', '快速诊断完成！', 'success');
+        }
+
+        async function checkResources() {
+            const resultsDiv = document.getElementById('resource-results');
+            resultsDiv.innerHTML = '';
+
+            log('resource-results', '正在扫描所有资源文件...', 'info');
+
+            try {
+                const response = await fetch('/themes/tank_default/GTRS.json');
+                const gtrs = await response.json();
+
+                // 检查图片
+                log('resource-results', '=== 图片资源检查 ===', 'info');
+                const images = gtrs.resources.images.scene;
+                let imageCount = 0;
+                let missingImages = 0;
+
+                for (const [key, data] of Object.entries(images)) {
+                    try {
+                        const imgResponse = await fetch(data.src);
+                        if (imgResponse.ok) {
+                            imageCount++;
+                        } else {
+                            missingImages++;
+                            log('resource-results', `  ❌ ${key}: ${data.src}`, 'error');
+                        }
+                    } catch (error) {
+                        missingImages++;
+                        log('resource-results', `  ❌ ${key}: ${error.message}`, 'error');
+                    }
+                }
+
+                log('resource-results', `图片资源：${imageCount} 个存在，${missingImages} 个缺失`, 
+                    missingImages > 0 ? 'warning' : 'success');
+
+                // 检查音频
+                log('resource-results', '=== 音频资源检查 ===', 'info');
+                let audioCount = 0;
+                let missingAudio = 0;
+
+                const audioCategories = ['bgm', 'effect'];
+                for (const category of audioCategories) {
+                    if (gtrs.resources.audio[category]) {
+                        for (const [key, data] of Object.entries(gtrs.resources.audio[category])) {
+                            try {
+                                const audioResponse = await fetch(data.src);
+                                if (audioResponse.ok) {
+                                    audioCount++;
+                                } else {
+                                    missingAudio++;
+                                    log('resource-results', `  ❌ ${key} (${category}): ${data.src}`, 'error');
+                                }
+                            } catch (error) {
+                                missingAudio++;
+                                log('resource-results', `  ❌ ${key} (${category}): ${error.message}`, 'error');
+                            }
+                        }
+                    }
+                }
+
+                log('resource-results', `音频资源：${audioCount} 个存在，${missingAudio} 个缺失`, 
+                    missingAudio > 0 ? 'warning' : 'success');
+
+            } catch (error) {
+                log('resource-results', `检查失败：${error.message}`, 'error');
+            }
+        }
+
+        async function checkConfigFiles() {
+            const resultsDiv = document.getElementById('config-results');
+            resultsDiv.innerHTML = '';
+
+            log('config-results', '检查配置文件...', 'info');
+
+            const configFiles = [
+                '/themes/tank_default/GTRS.json',
+                '/config/levels/tank_level_1.json',
+                '/maps/tank_level_1.json'
+            ];
+
+            for (const file of configFiles) {
+                try {
+                    const response = await fetch(file);
+                    if (response.ok) {
+                        const data = await response.json();
+                        log('config-results', `✅ ${file}`, 'success');
+                        if (data.info) {
+                            log('config-results', `   名称：${data.info.name || data.info.id}`, 'info');
+                        }
+                    } else {
+                        log('config-results', `❌ ${file} - HTTP ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    log('config-results', `❌ ${file} - ${error.message}`, 'error');
+                }
+            }
+        }
+
+        async function testGameLaunch() {
+            const resultsDiv = document.getElementById('launch-results');
+            resultsDiv.innerHTML = '';
+
+            log('launch-results', '尝试启动 Phaser 游戏...', 'info');
+
+            try {
+                // 动态导入 Phaser
+                const Phaser = await import('phaser');
+                log('launch-results', '✅ Phaser 库加载成功', 'success');
+
+                // 创建测试场景
+                class TestScene extends Phaser.Scene {
+                    preload() {
+                        log('launch-results', 'TestScene: Preload 阶段开始', 'info');
+                        
+                        // 尝试加载一个简单图片
+                        this.load.image('test', '/themes/tank_default/assets/scene/bullet_player.png');
+                    }
+
+                    create() {
+                        log('launch-results', 'TestScene: Create 阶段开始', 'success');
+                        
+                        // 创建测试文本
+                        this.add.text(100, 100, 'Phaser 测试成功!', {
+                            fontSize: '24px',
+                            color: '#00ff00'
+                        });
+
+                        log('launch-results', '✅ Phaser 游戏启动成功！', 'success');
+                        log('launch-results', '💡 如果看到绿色文字，说明 Phaser 运行正常', 'info');
+                    }
+                }
+
+                // 初始化游戏
+                const config = {
+                    type: Phaser.AUTO,
+                    width: 800,
+                    height: 600,
+                    parent: 'launch-results',
+                    scene: TestScene,
+                    transparent: true
+                };
+
+                new Phaser.Game(config);
+
+            } catch (error) {
+                log('launch-results', `❌ 游戏启动失败：${error.message}`, 'error');
+                log('launch-results', `详细信息：${error.stack}`, 'error');
+            }
+        }
+
+        // 自动运行一次快速诊断
+        window.addEventListener('load', () => {
+            setTimeout(runQuickDiagnosis, 500);
+        });
+    </script>
+</body>
+</html>

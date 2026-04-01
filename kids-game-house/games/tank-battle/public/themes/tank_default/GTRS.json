@@ -56,13 +56,73 @@
           "src": "/themes/tank_default/assets/scene/enemy_tank_1.png",
           "type": "png"
         },
+        "enemy_light_up": {
+          "alias": "敌方轻型坦克 - 向上",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_1.png",
+          "type": "png"
+        },
+        "enemy_light_down": {
+          "alias": "敌方轻型坦克 - 向下",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_1.png",
+          "type": "png"
+        },
+        "enemy_light_left": {
+          "alias": "敌方轻型坦克 - 向左",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_1.png",
+          "type": "png"
+        },
+        "enemy_light_right": {
+          "alias": "敌方轻型坦克 - 向右",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_1.png",
+          "type": "png"
+        },
         "enemy_tank_2": {
           "alias": "敌方坦克 2-快速型",
           "src": "/themes/tank_default/assets/scene/enemy_tank_2.png",
           "type": "png"
         },
+        "enemy_medium_up": {
+          "alias": "敌方中型坦克 - 向上",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_2.png",
+          "type": "png"
+        },
+        "enemy_medium_down": {
+          "alias": "敌方中型坦克 - 向下",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_2.png",
+          "type": "png"
+        },
+        "enemy_medium_left": {
+          "alias": "敌方中型坦克 - 向左",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_2.png",
+          "type": "png"
+        },
+        "enemy_medium_right": {
+          "alias": "敌方中型坦克 - 向右",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_2.png",
+          "type": "png"
+        },
         "enemy_tank_3": {
           "alias": "敌方坦克 3-重型",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_3.png",
+          "type": "png"
+        },
+        "enemy_heavy_up": {
+          "alias": "敌方重型坦克 - 向上",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_3.png",
+          "type": "png"
+        },
+        "enemy_heavy_down": {
+          "alias": "敌方重型坦克 - 向下",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_3.png",
+          "type": "png"
+        },
+        "enemy_heavy_left": {
+          "alias": "敌方重型坦克 - 向左",
+          "src": "/themes/tank_default/assets/scene/enemy_tank_3.png",
+          "type": "png"
+        },
+        "enemy_heavy_right": {
+          "alias": "敌方重型坦克 - 向右",
           "src": "/themes/tank_default/assets/scene/enemy_tank_3.png",
           "type": "png"
         },
@@ -150,8 +210,8 @@
       "bgm": {
         "bgm_main": {
           "alias": "背景音乐",
-          "src": "/themes/tank_default/assets/audio/bgm_main.mp3",
-          "type": "mp3"
+          "src": "/themes/tank_default/assets/audio/bgm_main.wav",
+          "type": "wav"
         }
       },
       "effect": {
@@ -183,6 +243,16 @@
         "sfx_prop": {
           "alias": "道具拾取音效",
           "src": "/themes/tank_default/assets/audio/sfx_prop.wav",
+          "type": "wav"
+        },
+        "sfx_bonus_appears": {
+          "alias": "道具出现音效",
+          "src": "/themes/tank_default/assets/audio/sfx_bonus_appears.wav",
+          "type": "wav"
+        },
+        "sfx_bonus_captured": {
+          "alias": "道具捕获音效",
+          "src": "/themes/tank_default/assets/audio/sfx_bonus_captured.wav",
           "type": "wav"
         }
       },
