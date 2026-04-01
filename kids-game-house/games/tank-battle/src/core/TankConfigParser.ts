@@ -6,50 +6,9 @@
 //   将 ILevelConfig 解析为坦克大战特定的游戏数据
 // ============================================================================
 
-import { IConfigParser } from './LevelOrchestrator'
-import { ILevelConfig } from '../types/level-types'
+import { IConfigParser } from './TankGameOrchestrator'
+import { ILevelConfig, ITankLevelData, ITankLevelParams } from '../types/level-types'
 
-/**
- * ⭐ 坦克大战关卡参数接口
- */
-export interface ITankLevelParams {
-  enemyCount: number
-  spawnInterval: number
-  enemyTypes: ('light' | 'medium' | 'heavy')[]
-  timeLimit: number
-  playerLives: number
-  playerSpeed: number
-  bulletDamage: number
-  mapLayout: string
-  wallDensity: number
-  powerUpRate: number
-}
-
-/**
- * ⭐ 解析后的坦克大战关卡数据
- */
-export interface ITankLevelData {
-  enemies: Array<{
-    type: 'light' | 'medium' | 'heavy'
-    count: number
-    spawnPoints: { x: number, y: number }[]
-  }>
-  walls: Array<{
-    x: number
-    y: number
-    type: 'brick' | 'steel'
-  }>
-  powerUps: Array<{
-    x: number
-    y: number
-    type: 'gun' | 'shield' | 'life' | 'clock'
-  }>
-  base: {
-    x: number
-    y: number
-  }
-  config: ITankLevelParams
-}
 
 /**
  * ⭐ 坦克大战配置解析器
@@ -76,17 +35,24 @@ export class TankConfigParser implements IConfigParser {
     
     const params = config.params
     
-    // 1. 解析敌人配置
-    const enemies = this.parseEnemies(params)
+    // ✅ 获取场景的偏移量（如果有）
+    const scene = this.scene as any
+    const offsetX = scene.offsetX || 0
+    const offsetY = scene.offsetY || 0
     
-    // 2. 解析墙壁配置
-    const walls = this.parseWalls(params)
+    console.log('🗺️ 地图偏移:', { offsetX, offsetY })
     
-    // 3. 解析道具配置
-    const powerUps = this.parsePowerUps(params)
+    // 1. 解析敌人配置（使用偏移量）
+    const enemies = this.parseEnemies(params, offsetX, offsetY)
     
-    // 4. 获取基地位置
-    const base = this.parseBase(params)
+    // 2. 解析墙壁配置（使用偏移量）
+    const walls = this.parseWalls(params, offsetX, offsetY)
+    
+    // 3. 解析道具配置（使用偏移量）
+    const powerUps = this.parsePowerUps(params, offsetX, offsetY)
+    
+    // 4. 获取基地位置（使用偏移量）
+    const base = this.parseBase(params, offsetX, offsetY)
     
     const levelData: ITankLevelData = {
       enemies,
@@ -108,7 +74,7 @@ export class TankConfigParser implements IConfigParser {
   /**
    * 解析敌人配置
    */
-  protected parseEnemies(params: ITankLevelParams): ITankLevelData['enemies'] {
+  protected parseEnemies(params: ITankLevelParams, offsetX: number = 0, offsetY: number = 0): ITankLevelData['enemies'] {
     const enemies: ITankLevelData['enemies'] = []
     
     // 按类型分组
@@ -124,7 +90,10 @@ export class TankConfigParser implements IConfigParser {
       enemies.push({
         type,
         count: index === totalTypes - 1 ? params.enemyCount - (totalTypes - 1) * count : count,
-        spawnPoints: this.getEnemySpawnPoints(count)
+        spawnPoints: this.getEnemySpawnPoints(count).map(point => ({
+          x: point.x + offsetX,
+          y: point.y + offsetY
+        }))
       })
     })
     
@@ -134,7 +103,7 @@ export class TankConfigParser implements IConfigParser {
   /**
    * 解析墙壁配置
    */
-  protected parseWalls(params: ITankLevelParams): ITankLevelData['walls'] {
+  protected parseWalls(params: ITankLevelParams, offsetX: number = 0, offsetY: number = 0): ITankLevelData['walls'] {
     const walls: ITankLevelData['walls'] = []
     
     // 根据密度生成随机墙壁
@@ -152,8 +121,8 @@ export class TankConfigParser implements IConfigParser {
         if (Math.random() < params.wallDensity) {
           const wallType = Math.random() > 0.7 ? 'steel' : 'brick'
           walls.push({
-            x: col * cellSize,
-            y: row * cellSize,
+            x: col * cellSize + offsetX,
+            y: row * cellSize + offsetY,
             type: wallType
           })
         }
@@ -166,7 +135,7 @@ export class TankConfigParser implements IConfigParser {
   /**
    * 解析道具配置
    */
-  protected parsePowerUps(params: ITankLevelParams): ITankLevelData['powerUps'] {
+  protected parsePowerUps(params: ITankLevelParams, offsetX: number = 0, offsetY: number = 0): ITankLevelData['powerUps'] {
     const powerUps: ITankLevelData['powerUps'] = []
     const types: Array<'gun' | 'shield' | 'life' | 'clock'> = ['gun', 'shield', 'clock']
     
@@ -181,8 +150,8 @@ export class TankConfigParser implements IConfigParser {
       const row = Phaser.Math.Between(2, rows - 2)
       
       powerUps.push({
-        x: col * cellSize,
-        y: row * cellSize,
+        x: col * cellSize + offsetX,
+        y: row * cellSize + offsetY,
         type: types[Phaser.Math.Between(0, types.length - 1)]
       })
     }
@@ -193,14 +162,14 @@ export class TankConfigParser implements IConfigParser {
   /**
    * 解析基地位置
    */
-  protected parseBase(params: ITankLevelParams): ITankLevelData['base'] {
+  protected parseBase(params: ITankLevelParams, offsetX: number = 0, offsetY: number = 0): ITankLevelData['base'] {
     const cellSize = 64
     const cols = 13
     const rows = 12
     
     return {
-      x: cols * cellSize / 2,
-      y: (rows - 1) * cellSize
+      x: cols * cellSize / 2 + offsetX,
+      y: (rows - 1) * cellSize + offsetY
     }
   }
   

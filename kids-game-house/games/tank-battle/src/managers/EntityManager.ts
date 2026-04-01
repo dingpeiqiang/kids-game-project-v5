@@ -279,6 +279,15 @@ export class EntityManager {
     texture: string, 
     attributes: IEntityAttributes
   ): Phaser.Physics.Arcade.Sprite {
+    // 🔍 调试：检查纹理是否存在
+    const textureExists = this.scene.textures.exists(texture)
+    console.log(`🔍 敌人纹理 "${texture}" ${textureExists ? '✅ 存在' : '❌ 不存在'}`)
+    
+    if (!textureExists) {
+      console.warn(`⚠️ 纹理 ${texture} 不存在，使用占位符`)
+      // 可以尝试使用备用纹理
+    }
+    
     const enemy = this.enemyGroup.create(x, y, texture)
     enemy.setCollideWorldBounds(true)
     
@@ -326,23 +335,23 @@ export class EntityManager {
    * ⭐ 创建墙壁
    */
   protected createWall(
-    x: number, 
-    y: number, 
-    type: EntityType, 
-    texture: string, 
-    attributes: IEntityAttributes
+    x: number,
+    y: number,
+    type: EntityType,
+    texture: string,
+    attributes?: IEntityAttributes  // 改为可选参数
   ): Phaser.Physics.Arcade.Sprite {
     const wall = this.wallGroup.create(x, y, texture)
     wall.setImmovable(true)
-    
+      
     if (type === EntityType.WALL_BRICK) {
-      wall.health = attributes.health || 2
+      wall.health = attributes?.health ?? 2  // 使用可选链和空值合并
       wall.maxHealth = 2
     } else if (type === EntityType.WALL_STEEL) {
       wall.health = Infinity // 无限生命
       wall.maxHealth = Infinity
     }
-    
+      
     return wall
   }
   

@@ -2,6 +2,9 @@ import GameScene from './GameScene'
 import { useGameStore } from '@/stores/game'
 import { useConfigStore } from '@/stores/config'
 import { EntityManager, EntityType } from '@/managers/EntityManager'
+import type { ILevelResult } from '../types/level-types'
+import { TankGameOrchestrator } from '../core/TankGameOrchestrator'
+import { LevelConfigLoader } from '../utils/LevelConfigLoader'
 
 /**
  * 坦克大战游戏场景
@@ -89,6 +92,9 @@ export default class TankGameScene extends GameScene {
   // ✅ 使用 EntityManager 统一管理实体
   private entityManager!: EntityManager
   
+  // ⭐ 关卡系统编排器（新增）
+  private orchestrator!: TankGameOrchestrator
+  
   // 保留引用以便直接访问（从 EntityManager 获取）
   private bullets!: Phaser.Physics.Arcade.Group
   private enemyBullets!: Phaser.Physics.Arcade.Group
@@ -103,43 +109,45 @@ export default class TankGameScene extends GameScene {
   private fireRate: number = 500 // 射击间隔（毫秒）
   private timeLeft: number = 0
   
+  // ⭐ 关卡系统回调（新增）
+  public onLevelComplete?: (result: ILevelResult) => void
+  public _resolveLevelResult?: (result: ILevelResult) => void
+  
   preload(): void {
     // 从 GTRS 加载所有资源
     this.preloadFromGTRS()
   }
   
-  create(): void {
+  async create(): Promise<void> {
     super.create() // 必须调用
 
+    console.log('🎮 坦克大战启动（关卡系统版本）')
+    
     const configStore = useConfigStore()
     const config = configStore.getEffectiveConfig
 
-    console.log('🎮 坦克大战启动')
-    console.log('难度配置:', config)
-
-    // 🛑 重置所有状态标志（scene.restart() 时需要）
+    // 🛑 重置所有状态标志
     this.collisionsSetup = false
     this.isGameOver = false
-    this.isDying = false           // 🛡️ 必须重置！否则新游戏第一帧就 return
+    this.isDying = false
     this.isLevelTransitioning = false
     this.isInvincible = false
     this.score = 0
 
     // 初始化游戏状态
     const gameStore = useGameStore()
-    // 确保 lives 不为 0、isGameOver 为 false（scene.restart() 时 store 状态可能残留）
     gameStore.$patch({
       lives: config.playerLives || 3,
       score: 0,
       isGameOver: false
     })
-    gameStore.reset() // 同步重置 store 的 isGameOver 和 lives
+    gameStore.reset()
     
     if (config.timeLimit) {
       this.timeLeft = config.timeLimit
     }
     
-    // 添加背景（使用 tileSprite 优化性能）
+    // 添加背景
     const bg = this.add.tileSprite(
       this.screenW / 2, 
       this.screenH / 2, 
@@ -152,7 +160,7 @@ export default class TankGameScene extends GameScene {
     // ✅ 初始化 EntityManager
     this.entityManager = new EntityManager(this)
     
-    // 🔴 设置物理世界边界为地图区域（防止敌人/子弹跑出地图）
+    // 🔴 设置物理世界边界
     const worldBoundsX = this.offsetX
     const worldBoundsY = this.offsetY
     const worldBoundsWidth = this.gridCols * this.cellSize
@@ -173,25 +181,30 @@ export default class TankGameScene extends GameScene {
     this.enemies = this.entityManager.getGroup(EntityType.ENEMY_LIGHT)!
     this.walls = this.entityManager.getGroup(EntityType.WALL_BRICK) as any
     
-    // 创建地图（会初始化 walls 组）
-    this.createMap()
-    
     // 创建玩家坦克
     this.createPlayer()
     
-    // 设置碰撞检测（在 loadLevel 之前先设置一次）
+    // 设置碰撞检测
     this.setupCollisions()
     
-    // 初始化关卡
-    this.currentLevel = 1
-    this.loadLevel(this.currentLevel)
+    // ⭐ 创建关卡编排器
+    this.orchestrator = new TankGameOrchestrator(this)
     
-    // 生成敌人
-    this.startEnemySpawning(config.spawnInterval, config.enemyCount)
+    // ⭐ 设置进度回调
+    this.orchestrator.onProgress = (event) => {
+      this.updateLoadingUI(event.progress, event.message)
+    }
     
-    // 启动计时器
-    if (config.timeLimit) {
-      this.startTimer()
+    // ⭐ 加载并运行关卡
+    try {
+      const levelConfig = await LevelConfigLoader.loadLevelConfig('tank_level_1')
+      
+      // 异步运行关卡（不阻塞）
+      this.runLevelAsync(levelConfig)
+      
+    } catch (error) {
+      console.error('❌ 关卡加载失败:', error)
+      this.showError('关卡加载失败，请刷新重试')
     }
     
     console.log('✅ 游戏初始化完成')
@@ -369,37 +382,16 @@ export default class TankGameScene extends GameScene {
 
     // ═══ 敌人子弹击中玩家 ═══
     this.physics.add.overlap(this.enemyBullets, this.player, (bullet: any) => {
-      console.log('💥 检测到敌人子弹击中玩家！')
-      console.log('   [重叠开始] player.active =', this.player?.active)
-      console.log('   [重叠开始] player.visible =', this.player?.visible)
-      
-      // 🛡️ 防御：确保玩家仍然有效
-      if (!this.player || !this.player.active) {
-        console.log('⚠️ 玩家已无效，子弹直接标记销毁')
-        bullet.setData('pendingDestroy', true)
+      // 🛡️ 防御：玩家已死亡/正在死亡时直接销毁子弹，不触发受击
+      if (this.isDying || !this.player || !this.player.active) {
+        bullet.destroy()
         return
       }
-      
-      // ✅ 保存玩家状态快照
-      const snapshot = {
-        active: this.player.active,
-        visible: this.player.visible,
-        scene: this.player.scene?.constructor.name
-      }
-      console.log('📸 玩家状态快照:', snapshot)
-      
-      // ✅ 标记子弹待销毁（不立即销毁，避免副作用）
-      console.log('🔫 标记子弹待销毁...')
-      bullet.setData('pendingDestroy', true)
-      bullet.setActive(false)
-      bullet.setVisible(false)
-      console.log('✅ 子弹已标记')
-      
-      // 🔍 再次检查玩家状态
-      console.log('   [标记后] player.active =', this.player?.active)
-      console.log('   [标记后] player.visible =', this.player?.visible)
-      
-      console.log('🎯 调用 playerHit()')
+
+      // ✅ 立即销毁子弹（不能延迟！否则 overlap 会持续触发造成死循环）
+      bullet.destroy()
+
+      // 调用受击逻辑
       this.playerHit()
     })
 
@@ -997,6 +989,18 @@ export default class TankGameScene extends GameScene {
    * 玩家被击中（增强版 - 带无敌帧 + 视觉反馈）
    */
   private playerHit(): void {
+    // ✅ 关键：立即检查并设置标志，防止重复触发
+    if (this.isDying || !this.player || !this.player.active) {
+      console.log('⚠️ playerHit: 已经在死亡流程中或玩家无效，跳过')
+      console.log('   - isDying =', this.isDying)
+      console.log('   - !this.player =', !this.player)
+      console.log('   - !this.player.active =', !this.player?.active)
+      return
+    }
+    
+    // 🔒 设置死亡标志
+    this.isDying = true
+    
     console.log('🔥 playerHit() 被调用')
     console.log('   - this.player:', this.player)
     console.log('   - this.player?.active:', this.player?.active)
@@ -1101,7 +1105,7 @@ export default class TankGameScene extends GameScene {
         this.blinkTimer = null
       }
       
-      // 立即开始闪烁
+      // 立即开始闪烁（150ms 间隔）
       this.blinkTimer = this.time.addEvent({
         delay: 150,
         callback: () => {
@@ -1110,11 +1114,15 @@ export default class TankGameScene extends GameScene {
           this.player.setVisible(!isVisible)
         },
         loop: true,
+        repeat: 9, // ✅ 只闪烁 10 次（1.5 秒 / 150ms = 10 次）
       })
       
       // ✅ 1.5 秒后结束无敌帧并清除定时器
       this.time.delayedCall(1500, () => {
         this.isInvincible = false
+        
+        // ✅ 关键：重置死亡标志，允许下次受击
+        this.isDying = false
         
         // ✅ 关键：清除闪烁定时器
         if (this.blinkTimer) {
@@ -1125,23 +1133,11 @@ export default class TankGameScene extends GameScene {
         // 恢复玩家状态
         if (this.player) {
           this.player.setActive(true)
-          this.player.setVisible(true)
+          this.player.setVisible(true)  // ✅ 确保可见
           this.player.clearTint()
           this.player.setAlpha(1)
         }
-        console.log('🛡️ 无敌帧结束')
-      })
-                  
-      // 每 100ms 切换一次可见性（简单直接的方式）
-      this.blinkTimer = this.time.addEvent({
-        delay: 150,  // ✅ 加快闪烁频率
-        callback: () => {
-          if (!this.player || !this.player.active) return
-          // ✅ 交替显示/隐藏，但保持 active
-          const isVisible = this.player.visible
-          this.player.setVisible(!isVisible)
-        },
-        loop: true,
+        console.log('🛡️ 无敌帧结束 | isDying =', this.isDying)
       })
     } else {
       // 🛑 玩家生命耗尽，游戏结束
@@ -1164,8 +1160,16 @@ export default class TankGameScene extends GameScene {
    * 基地被摧毁（增强版）
    */
   private baseDestroyed(): void {
+    // ✅ 关键检查：确保 base 存在且有效
+    if (!this.base || !this.base.active) {
+      console.warn('⚠️ baseDestroyed: base 不存在或已失效')
+      return
+    }
+    
     if (this.isBaseDestroyed || this.isGameOver) return
     this.isBaseDestroyed = true
+
+    console.log('💥 基地被摧毁！')
 
     // 大爆炸效果
     this.spawnExplosion(this.base.x, this.base.y, 1.5)
@@ -1191,51 +1195,35 @@ export default class TankGameScene extends GameScene {
   update(_time: number, delta: number): void {
     if (this.isGameOver) return
     
-    // 🔍 监控玩家状态变化
-    if (this.player && !this.player.active) {
-      console.log('⚠️ [UPDATE] 检测到玩家变为 inactive!')
-      console.log('   - visible:', this.player.visible)
-      console.log('   - scene:', this.player.scene)
-      console.log('   - x:', this.player.x, 'y:', this.player.y)
-      
-      // ✅ 强制恢复！每帧检查并修复
+    // ✅ 关键：如果玩家正在死亡，不要干扰！
+    if (this.isDying) {
+      // 只处理输入，不恢复状态
+      this.handlePlayerMovement()
+      return
+    }
+    
+    // 🔍 监控玩家状态变化（仅在玩家存活时干预）
+    // 🛡️ 重要：如果正在死亡流程中（isDying=true），禁止干预！
+    //    否则会造成：playerHit设置inactive → update强制恢复 → overlap再次触发 → 死循环
+    if (this.player && !this.player.active && !this.isDying) {
+      console.log('⚠️ [UPDATE] 检测到玩家变为 inactive（非死亡流程）')
       console.log('🔧 强制恢复玩家 active...')
       this.player.setActive(true)
       console.log('✅ 玩家已恢复 active =', this.player.active)
     }
+
+    // 🛡️ 如果正在死亡流程中，直接返回，不处理输入和射击
+    if (this.isDying) {
+      return
+    }
     
-    // ✅ 清理待销毁的子弹（统一在 update 中处理，避免回调副作用）
-    this.cleanupPendingDestroyBullets()
-    
+    // 常规游戏逻辑
     this.handlePlayerMovement()
     this.handlePlayerShooting()
   }
-  
-  /**
-   * 清理标记为待销毁的子弹
-   */
-  private cleanupPendingDestroyBullets(): void {
-    // 清理敌人子弹
-    this.enemyBullets.getChildren().forEach((bullet: any) => {
-      if (bullet.getData('pendingDestroy')) {
-        bullet.destroy()
-      }
-    })
-    
-    // 清理玩家子弹
-    this.bullets.getChildren().forEach((bullet: any) => {
-      if (bullet.getData('pendingDestroy')) {
-        bullet.destroy()
-      }
-    })
-  }
-  
-  /**
-   * 处理玩家移动
-   */
   private handlePlayerMovement(): void {
-    if (!this.player?.active) {
-      console.log('⚠️ [handlePlayerMovement] player.active = false')
+    // ✅ 防御：如果玩家不存在或无效，直接跳过
+    if (!this.player || !this.player.active || this.isDying) {
       return
     }
     
@@ -1252,36 +1240,43 @@ export default class TankGameScene extends GameScene {
     const speed = 200 * this.playerSpeedMultiplier
     let moving = false
     
-    // 清除所有速度
-    this.player.setVelocityX(0)
-    this.player.setVelocityY(0)
+    // ✅ 关键：使用 try-catch 包裹所有物理操作，防止崩溃
+    try {
+      // 清除所有速度
+      this.player.setVelocityX(0)
+      this.player.setVelocityY(0)
     
-    // 方向键控制
-    if (this.cursors.up.isDown || this.keyW.isDown) {
-      this.player.setVelocityY(-speed)
-      this.player.setTexture('player_tank_up')
-      moving = true
-    } else if (this.cursors.down.isDown || this.keyS.isDown) {
-      this.player.setVelocityY(speed)
-      this.player.setTexture('player_tank_down')
-      moving = true
-    }
-    
-    if (this.cursors.left.isDown || this.keyA.isDown) {
-      this.player.setVelocityX(-speed)
-      this.player.setTexture('player_tank_left')
-      moving = true
-    } else if (this.cursors.right.isDown || this.keyD.isDown) {
-      this.player.setVelocityX(speed)
-      this.player.setTexture('player_tank_right')
-      moving = true
-    }
-    
-    // 斜向移动时调整炮管方向（可选）
-    if (moving && this.cursors.up.isDown && this.cursors.left.isDown) {
-      this.player.setTexture('player_tank_up') // 优先向上
-    } else if (moving && this.cursors.up.isDown && this.cursors.right.isDown) {
-      this.player.setTexture('player_tank_up') // 优先向上
+      // 方向键控制
+      if (this.cursors.up.isDown || this.keyW.isDown) {
+        this.player.setVelocityY(-speed)
+        this.player.setTexture('player_tank_up')
+        moving = true
+      } else if (this.cursors.down.isDown || this.keyS.isDown) {
+        this.player.setVelocityY(speed)
+        this.player.setTexture('player_tank_down')
+        moving = true
+      }
+      
+      if (this.cursors.left.isDown || this.keyA.isDown) {
+        this.player.setVelocityX(-speed)
+        this.player.setTexture('player_tank_left')
+        moving = true
+      } else if (this.cursors.right.isDown || this.keyD.isDown) {
+        this.player.setVelocityX(speed)
+        this.player.setTexture('player_tank_right')
+        moving = true
+      }
+      
+      // 斜向移动时调整炮管方向（可选）
+      if (moving && this.cursors.up.isDown && this.cursors.left.isDown) {
+        this.player.setTexture('player_tank_up') // 优先向上
+      } else if (moving && this.cursors.up.isDown && this.cursors.right.isDown) {
+        this.player.setTexture('player_tank_up') // 优先向上
+      }
+    } catch (error) {
+      // 🛡️ 静默处理：如果玩家对象无效，直接跳过
+      // console.warn('handlePlayerMovement error:', error)
+      return
     }
   }
   
@@ -1289,6 +1284,8 @@ export default class TankGameScene extends GameScene {
    * 处理玩家射击
    */
   private handlePlayerShooting(): void {
+    // ✅ 防御：玩家不存在直接跳过
+    if (!this.player) return
     if (!this.player?.active) return
 
     const now = Date.now()
@@ -1400,6 +1397,113 @@ export default class TankGameScene extends GameScene {
     this.showGameOverUI()
   }
 
+  /**
+   * ⭐ 完成关卡（调用此方法触发结算）
+   */
+  completeLevel(success: boolean): void {
+    console.log('🏁 完成关卡:', success ? '成功' : '失败')
+    
+    if (!this.onLevelComplete && !this._resolveLevelResult) {
+      console.warn('⚠️ 没有关卡完成回调')
+      return
+    }
+    
+    const gameStore = useGameStore()
+    
+    // 计算星级
+    const stars = this.calculateStars(gameStore.score)
+    
+    const result: ILevelResult = {
+      success,
+      completion: success ? 1.0 : 0.0,
+      score: gameStore.score,
+      stars,
+      rewards: {
+        score: gameStore.score,
+        currency: Math.floor(gameStore.score / 10)
+      },
+      timeUsed: this.timeLeft ? (120 - this.timeLeft) : 0,
+      statistics: {
+        shotsFired: 0, // TODO: 统计实际数据
+        accuracy: 0,
+        damageTaken: 0,
+        maxCombo: 0
+      }
+    }
+    
+    console.log('📊 关卡结果:', result)
+    
+    // 触发回调
+    if (this.onLevelComplete) {
+      this.onLevelComplete(result)
+    }
+    if (this._resolveLevelResult) {
+      this._resolveLevelResult(result)
+    }
+  }
+  
+  /**
+   * 计算星级
+   */
+  protected calculateStars(score: number): 0 | 1 | 2 | 3 {
+    if (score >= 1000) return 3
+    if (score >= 800) return 2
+    if (score >= 500) return 1
+    return 0
+  }
+  
+  /**
+   * ⭐ 更新加载 UI（进度条）
+   */
+  protected updateLoadingUI(progress: number, message: string): void {
+    // TODO: 实现进度条 UI
+    console.log(`📊 加载进度：${(progress * 100).toFixed(0)}% - ${message}`)
+    
+    // 🔍 关键阶段日志
+    if (progress >= 0.6) {
+      console.log('🏗️ [Phase 4] 实体生成阶段')
+    }
+    if (progress >= 0.8) {
+      console.log('🎮 [Phase 5] 游戏运行阶段 - 等待玩家操作')
+    }
+  }
+  
+  /**
+   * ⭐ 异步运行关卡
+   */
+  protected async runLevelAsync(config: any): Promise<void> {
+    try {
+      const result = await this.orchestrator.runLevel(config)
+      console.log('🏁 关卡完成:', result)
+      
+      // 显示结果
+      this.showLevelResult(result)
+      
+    } catch (error) {
+      console.error('❌ 关卡运行失败:', error)
+      this.showError('关卡运行失败')
+    }
+  }
+  
+  /**
+   * ⭐ 显示关卡结果
+   */
+  protected showLevelResult(result: ILevelResult): void {
+    console.log('📊 关卡结果:', result)
+    console.log(`⭐ 星级：${result.stars} | 💯 分数：${result.score}`)
+    
+    // TODO: 显示结果 UI
+    // 暂时只显示日志
+  }
+  
+  /**
+   * ⭐ 显示错误信息
+   */
+  protected showError(message: string): void {
+    console.error('❌ 错误:', message)
+    // TODO: 显示错误 UI
+  }
+  
   /**
    * 显示 Game Over UI
    */
