@@ -235,6 +235,36 @@ export class EntityManager {
   }
   
   /**
+   * ⭐ 动态生成子弹占位纹理
+   */
+  protected createPlaceholderBulletTexture(type: EntityType): string {
+    const key = type === EntityType.BULLET_PLAYER ? 'bullet_player_placeholder' : 'bullet_enemy_placeholder'
+    
+    if (this.scene.textures.exists(key)) {
+      return key
+    }
+    
+    console.log(`🎨 [EntityManager] 动态生成子弹占位纹理：${key}`)
+    
+    const graphics = this.scene.make.graphics({ x: 0, y: 0 })
+    
+    // 玩家子弹：圆形黄色
+    if (type === EntityType.BULLET_PLAYER) {
+      graphics.fillStyle(0xffff00, 1)
+      graphics.fillCircle(8, 8, 6)
+    } else {
+      // 敌人子弹：圆形红色
+      graphics.fillStyle(0xff0000, 1)
+      graphics.fillCircle(8, 8, 6)
+    }
+    
+    graphics.generateTexture(key, 16, 16)
+    graphics.destroy()
+    
+    return key
+  }
+  
+  /**
    * ⭐ 销毁实体
    */
   destroyEntity(entityId: string): boolean {
@@ -334,9 +364,9 @@ export class EntityManager {
     this.playerGroup.add(player)
 
     // 设置属性
-    if (attributes.health) player.health = attributes.health
-    if (attributes.armor) player.armor = attributes.armor
-    if (attributes.speed) player.speed = attributes.speed
+    if (attributes.health) (player as any).health = attributes.health
+    if (attributes.armor) (player as any).armor = attributes.armor
+    if (attributes.speed) (player as any).speed = attributes.speed
 
     return player
   }
@@ -397,6 +427,20 @@ export class EntityManager {
 
     // ✅ 加入敌人群
     this.enemyGroup.add(enemy)
+    
+    // 🎨 设置初始朝向（向下）和纹理
+    enemy.setAngle(90)  // 初始向下
+    
+    // 🔧 根据敌人类型使用正确的纹理名称
+    if (type === EntityType.ENEMY_LIGHT) {
+      enemy.setTexture('enemy_light_down')
+    } else if (type === EntityType.ENEMY_MEDIUM) {
+      enemy.setTexture('enemy_medium_down')
+    } else if (type === EntityType.ENEMY_HEAVY) {
+      enemy.setTexture('enemy_heavy_down')
+    } else {
+      enemy.setTexture('enemy_light_down')  // 默认使用轻型坦克
+    }
 
     // 根据类型设置不同属性
     if (type === EntityType.ENEMY_LIGHT) {
@@ -430,11 +474,40 @@ export class EntityManager {
     texture: string, 
     attributes: IEntityAttributes
   ): Phaser.Physics.Arcade.Image {
+    // ✅ 检查纹理是否存在
+    const textureExists = this.scene.textures.exists(texture)
+    let finalTexture = texture
+    
+    if (!textureExists) {
+      console.warn(`⚠️ 子弹纹理 ${texture} 不存在，使用备用纹理`)
+      const fallbackTextures = ['bullet_player', 'bullet_enemy', 'bullet']
+      
+      for (const fallback of fallbackTextures) {
+        if (this.scene.textures.exists(fallback)) {
+          finalTexture = fallback
+          console.log(`✅ 找到子弹备用纹理：${fallback}`)
+          break
+        }
+      }
+      
+      // 如果还是没有，动态生成
+      if (!this.scene.textures.exists(finalTexture)) {
+        finalTexture = this.createPlaceholderBulletTexture(type)
+      }
+    }
+    
     // ✅ 使用 RenderManager 创建
-    const bullet: any = this.renderManager.createSprite(x, y, texture, undefined, 'effects')
+    const bullet: any = this.renderManager.createSprite(x, y, finalTexture, undefined, 'effects')
     
     // ✅ 添加物理属性
     this.scene.physics.add.existing(bullet)
+    
+    // ✅ 设置子弹速度
+    if (attributes.speed) {
+      bullet.bulletSpeed = attributes.speed
+    } else {
+      bullet.bulletSpeed = type === EntityType.BULLET_PLAYER ? 400 : 300
+    }
     
     // ✅ 加入对应的子弹组
     if (type === EntityType.BULLET_PLAYER) {
@@ -444,7 +517,6 @@ export class EntityManager {
     }
     
     if (attributes.damage) bullet.damage = attributes.damage
-    if (attributes.speed) bullet.bulletSpeed = attributes.speed
     
     return bullet
   }

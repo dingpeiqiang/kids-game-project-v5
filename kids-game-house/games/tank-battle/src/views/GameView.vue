@@ -150,11 +150,13 @@ const initGame = () => {
   if (!gameContainer.value) return
 
   const Phaser = (window as any).Phaser
+  
+  // 🔧 关键修复：使用固定尺寸，让 Phaser 内部处理缩放
   const config: any = {
     type: Phaser.AUTO,
     parent: gameContainer.value,
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: 832,  // ✅ 与地图尺寸一致（26 * 32）
+    height: 832,
     backgroundColor: '#1a4d2e',
     physics: {
       default: 'arcade',
@@ -165,8 +167,8 @@ const initGame = () => {
     },
     scene: [TankGameScene],
     scale: {
-      mode: Phaser.Scale.RESIZE,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      mode: Phaser.Scale.FIT,  // ✅ 自动适配父容器，保持宽高比
+      autoCenter: Phaser.Scale.CENTER_BOTH,  // ✅ 在容器中居中
     },
   }
 

@@ -57,6 +57,22 @@ export class PlayerMovementManager {
   // ===========================================================================
   
   /**
+   * ⭐ 设置玩家对象（复活时更新引用）
+   */
+  setPlayer(player: Phaser.Physics.Arcade.Sprite): void {
+    this.player = player
+    console.log('✅ [移动管理器] 已更新 player 引用')
+  }
+  
+  /**
+   * ⭐ 重置方向为 NONE（复活时调用）
+   */
+  resetDirection(): void {
+    this.currentDirection = MoveDirection.NONE
+    console.log('✅ [移动管理器] 已重置方向为 NONE')
+  }
+  
+  /**
    * ⭐ 设置速度倍率（道具加成）
    */
   setSpeedMultiplier(multiplier: number): void {
@@ -88,6 +104,8 @@ export class PlayerMovementManager {
       
       const speed = this.config.baseSpeed * this.config.speedMultiplier
       let moving = false
+      let newDirection: MoveDirection = MoveDirection.NONE
+      let newTexture: string | null = null
       
       // 🔍 检查位置边界
       this.checkBoundaries()
@@ -98,8 +116,8 @@ export class PlayerMovementManager {
           const body = this.player.body as any
           body.setVelocityY(-speed)
         }
-        this.player.setTexture('player_tank_up')
-        this.currentDirection = MoveDirection.UP
+        newTexture = 'player_tank_up'
+        newDirection = MoveDirection.UP
         moving = true
       } 
       // ⬇️ 向下移动
@@ -108,8 +126,8 @@ export class PlayerMovementManager {
           const body = this.player.body as any
           body.setVelocityY(speed)
         }
-        this.player.setTexture('player_tank_down')
-        this.currentDirection = MoveDirection.DOWN
+        newTexture = 'player_tank_down'
+        newDirection = MoveDirection.DOWN
         moving = true
       }
       
@@ -119,8 +137,8 @@ export class PlayerMovementManager {
           const body = this.player.body as any
           body.setVelocityX(-speed)
         }
-        this.player.setTexture('player_tank_left')
-        this.currentDirection = MoveDirection.LEFT
+        newTexture = 'player_tank_left'
+        newDirection = MoveDirection.LEFT
         moving = true
       } 
       // ➡️ 向右移动
@@ -129,18 +147,17 @@ export class PlayerMovementManager {
           const body = this.player.body as any
           body.setVelocityX(speed)
         }
-        this.player.setTexture('player_tank_right')
-        this.currentDirection = MoveDirection.RIGHT
+        newTexture = 'player_tank_right'
+        newDirection = MoveDirection.RIGHT
         moving = true
       }
       
-      // 🔄 斜向移动时调整炮管方向（优先向上）
-      if (moving && cursors.up?.isDown && cursors.left?.isDown) {
-        this.player.setTexture('player_tank_up')
-        this.currentDirection = MoveDirection.UP
-      } else if (moving && cursors.up?.isDown && cursors.right?.isDown) {
-        this.player.setTexture('player_tank_up')
-        this.currentDirection = MoveDirection.UP
+      // 🔧 关键修复：只在移动且方向或纹理改变时才更新
+      if (moving && (newDirection !== this.currentDirection || (newTexture && this.player.texture?.key !== newTexture))) {
+        this.currentDirection = newDirection
+        if (newTexture) {
+          this.player.setTexture(newTexture)
+        }
       }
       
     } catch (error) {
@@ -180,28 +197,35 @@ export class PlayerMovementManager {
    * 检查并校正边界
    */
   private checkBoundaries(): void {
-    const offsetX = (this.scene as any).offsetX
-    const offsetY = (this.scene as any).offsetY
+    // 🔧 修复：使用地图实际边界（从 0 开始）
     const gridCols = (this.scene as any).gridCols
     const gridRows = (this.scene as any).gridRows
     const cellSize = (this.scene as any).cellSize
     
-    const mapRight = offsetX + gridCols * cellSize
-    const mapBottom = offsetY + gridRows * cellSize
+    const mapRight = gridCols * cellSize
+    const mapBottom = gridRows * cellSize
     
-    // 🔍 检查是否超出地图边界
-    if (this.player.x < offsetX + this.config.boundaryPadding ||
-        this.player.x > mapRight - this.config.boundaryPadding) {
-      console.log('⚠️ 玩家 X 位置异常，强制校正')
-      const centerX = offsetX + (gridCols * cellSize) / 2
-      this.player.x = centerX
+    // 🔍 检查是否超出地图边界（考虑坦克的大小）
+    const halfSize = this.player.displayWidth / 2 || 32  // 假设坦克约 64px 宽
+    
+    if (this.player.x < this.config.boundaryPadding + halfSize) {
+      console.log('⚠️ 玩家 X 位置接近左边界，强制校正')
+      this.player.x = Phaser.Math.Clamp(this.player.x, this.config.boundaryPadding + halfSize, mapRight - this.config.boundaryPadding - halfSize)
     }
     
-    if (this.player.y < offsetY + this.config.boundaryPadding ||
-        this.player.y > mapBottom - this.config.boundaryPadding) {
-      console.log('⚠️ 玩家 Y 位置异常，强制校正')
-      const centerY = offsetY + (gridRows * cellSize) / 2
-      this.player.y = centerY
+    if (this.player.x > mapRight - this.config.boundaryPadding - halfSize) {
+      console.log('⚠️ 玩家 X 位置接近右边界，强制校正')
+      this.player.x = Phaser.Math.Clamp(this.player.x, this.config.boundaryPadding + halfSize, mapRight - this.config.boundaryPadding - halfSize)
+    }
+    
+    if (this.player.y < this.config.boundaryPadding + halfSize) {
+      console.log('⚠️ 玩家 Y 位置接近上边界，强制校正')
+      this.player.y = Phaser.Math.Clamp(this.player.y, this.config.boundaryPadding + halfSize, mapBottom - this.config.boundaryPadding - halfSize)
+    }
+    
+    if (this.player.y > mapBottom - this.config.boundaryPadding - halfSize) {
+      console.log('⚠️ 玩家 Y 位置接近下边界，强制校正')
+      this.player.y = Phaser.Math.Clamp(this.player.y, this.config.boundaryPadding + halfSize, mapBottom - this.config.boundaryPadding - halfSize)
     }
   }
 }

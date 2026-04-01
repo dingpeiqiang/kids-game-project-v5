@@ -144,7 +144,88 @@ export default class TankGameScene extends GameScene {
     this.score = 0
     this.currentLevel = 1
     
-    // ✅ 初始化键盘输入（关键！否则玩家无法移动）
+    // ✅ 计算地图尺寸
+    const mapWidth = this.gridCols * this.cellSize
+    const mapHeight = this.gridRows * this.cellSize
+    
+    console.log('🎮 坦克大战启动（重构版 - 管理器架构）')
+    console.log('📐 地图尺寸:', { mapWidth, mapHeight, screenW: this.screenW, screenH: this.screenH })
+
+    // 初始化游戏商店
+    this.gameStore = useGameStore()  // ✅ 保存引用供子管理器使用
+    console.log('🏪 [调试] 初始化 gameStore 前:', { lives: this.gameStore.lives })
+    
+    this.gameStore.$patch({
+      lives: config.playerLives || 3,
+      score: 0,
+      isGameOver: false
+    })
+    console.log('🏪 [调试] $patch 后:', { lives: this.gameStore.lives })
+    
+    this.gameStore.reset()
+    console.log('🏪 [调试] reset() 后:', { lives: this.gameStore.lives })
+
+    if (config.timeLimit) {
+      this.timeLeft = config.timeLimit
+    }
+
+    // ✅ 创建背景（覆盖整个地图区域，而非屏幕）
+    // 🔧 关键修复：背景必须使用地图中心，而不是屏幕中心
+    const bg = this.renderManager.createSprite(
+      mapWidth / 2,      // ✅ 地图宽度的一半
+      mapHeight / 2,     // ✅ 地图高度的一半
+      'bg_main',
+      undefined,
+      'background'
+    )
+    bg.setOrigin(0.5, 0.5)
+    bg.setSize(mapWidth, mapHeight)  // ✅ 背景大小与地图一致
+    bg.setScrollFactor(0)  // ✅ 背景不随相机移动
+    bg.setDepth(-10)
+    
+    console.log('✅ 背景已创建:', {
+      x: bg.x,
+      y: bg.y,
+      width: bg.width,
+      height: bg.height
+    })
+    
+    // ✅ 绘制地图边界和网格（明显可见的边界线）
+    this.drawMapBoundaries(mapWidth, mapHeight)
+    
+    // ✅ 初始化 EntityManager（注入 RenderManager）
+    this.entityManager = new EntityManager(this, this.renderManager)
+    
+    // 🔴 设置物理世界边界（与地图大小一致，考虑坦克实体大小）
+    const physicsPadding = 32  // 坦克半径约 32px
+    this.physics.world.setBounds(
+      physicsPadding,                    // ✅ 从左边界内缩
+      physicsPadding,                    // ✅ 从上边界内缩
+      mapWidth - physicsPadding * 2,     // ✅ 宽度减去两边内缩
+      mapHeight - physicsPadding * 2     // ✅ 高度减去上下内缩
+    )
+    
+    // 🔧 设置相机边界和位置（固定视角，俯视整个地图）
+    this.cameras.main.setBounds(0, 0, mapWidth, mapHeight)
+    this.cameras.main.centerOn(mapWidth / 2, mapHeight / 2)
+    this.cameras.main.setZoom(1)
+    
+    console.log('🔧 物理世界边界已设置:', {
+      x: physicsPadding,
+      y: physicsPadding,
+      width: mapWidth - physicsPadding * 2,
+      height: mapHeight - physicsPadding * 2,
+      mapSize: `${mapWidth}x${mapHeight}`
+    })
+    
+    console.log('📷 相机已设置为固定视角:', {
+      scrollX: this.cameras.main.scrollX,
+      scrollY: this.cameras.main.scrollY,
+      zoom: this.cameras.main.zoom,
+      bounds: this.cameras.main.getBounds()
+    })
+    
+    // ✅ 初始化键盘输入（在相机设置之后）
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.keyW = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W)
     this.keyA = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A)
@@ -162,74 +243,12 @@ export default class TankGameScene extends GameScene {
       hasKeySpace: !!this.keySpace,
       hasKeyJ: !!this.keyJ
     })
-
-    // 初始化游戏商店
-    this.gameStore = useGameStore()  // ✅ 保存引用供子管理器使用
-    this.gameStore.$patch({
-      lives: config.playerLives || 3,
-      score: 0,
-      isGameOver: false
-    })
-    this.gameStore.reset()
-
-    if (config.timeLimit) {
-      this.timeLeft = config.timeLimit
-    }
-
-    // ✅ 使用 RenderManager 创建背景（固定视角 - 不需要居中到屏幕）
-    const mapWidth = this.gridCols * this.cellSize
-    const mapHeight = this.gridRows * this.cellSize
-    
-    console.log('🎨 创建背景:', {
-      screenW: this.screenW,
-      screenH: this.screenH,
-      texture: 'bg_main',
-      mapWidth: mapWidth,
-      mapHeight: mapHeight
-    })
-    
-    // ✅ 背景应该覆盖整个游戏区域，而不是屏幕
-    const bg = this.renderManager.createSprite(
-      mapWidth / 2,  // ✅ 使用地图中心，而不是屏幕中心
-      mapHeight / 2,
-      'bg_main',
-      undefined,
-      'background'
-    )
-    bg.setOrigin(0.5, 0.5)
-    bg.setSize(mapWidth, mapHeight)  // ✅ 使用地图尺寸，而不是屏幕尺寸
-    bg.setScrollFactor(0)  // ✅ 背景不随相机滚动
-    
-    console.log('✅ 背景已创建:', {
-      x: bg.x,
-      y: bg.y,
-      width: bg.width,
-      height: bg.height,
-      scrollFactor: bg.scrollFactorX
-    })
-    
-    // ✅ 初始化 EntityManager（注入 RenderManager）
-    this.entityManager = new EntityManager(this, this.renderManager)
-    
-    // 🔴 设置物理世界边界（固定视角 - 从 (0,0) 开始）
-    this.physics.world.setBounds(
-      0,          // ✅ 从 x=0 开始
-      0,          // ✅ 从 y=0 开始
-      mapWidth,   // 地图宽度
-      mapHeight   // 地图高度
-    )
-    
-    console.log('🔧 物理世界边界已设置:', {
-      x: 0,
-      y: 0,
-      width: mapWidth,
-      height: mapHeight
-    })
     
     // ✅ 从 EntityManager 获取实体组（使用类型断言）
     this.bullets = this.entityManager.getGroup(EntityType.BULLET_PLAYER) as Phaser.Physics.Arcade.Group
     this.enemyBullets = this.entityManager.getGroup(EntityType.BULLET_ENEMY) as Phaser.Physics.Arcade.Group
     this.powerUps = this.entityManager.getGroup(EntityType.POWERUP) as Phaser.Physics.Arcade.Group
+    // ✅ 敌人群包含所有类型（使用 ENEMY_LIGHT 作为代表，因为所有敌人都在同一个组）
     this.enemies = this.entityManager.getGroup(EntityType.ENEMY_LIGHT) as Phaser.Physics.Arcade.Group
     this.walls = this.entityManager.getGroup(EntityType.WALL_BRICK) as Phaser.Physics.Arcade.StaticGroup
     
@@ -309,6 +328,53 @@ export default class TankGameScene extends GameScene {
   // ═══════════════════════════════════════
   
   /**
+   * ⭐ 绘制地图边界和网格（明显可见的边界线）
+   */
+  private drawMapBoundaries(mapWidth: number, mapHeight: number): void {
+    const graphics = this.add.graphics()
+    
+    // 🟨 绘制外边框（粗黄色边框，非常明显）
+    graphics.lineStyle(4, 0xffd700, 1)  // 4px 金色边框
+    graphics.strokeRect(0, 0, mapWidth, mapHeight)
+    
+    // 🟫 绘制内部网格线（较细的棕色线）
+    graphics.lineStyle(1, 0x8b4513, 0.5)  // 1px 棕色半透明
+    
+    // 垂直网格线
+    for (let x = 0; x <= mapWidth; x += this.cellSize) {
+      graphics.moveTo(x, 0)
+      graphics.lineTo(x, mapHeight)
+    }
+    
+    // 水平网格线
+    for (let y = 0; y <= mapHeight; y += this.cellSize) {
+      graphics.moveTo(0, y)
+      graphics.lineTo(mapWidth, y)
+    }
+    
+    graphics.strokePath()
+    
+    // 🎯 添加四个角的标记（更清晰显示实际移动区域）
+    const physicsPadding = 32
+    graphics.lineStyle(2, 0x00ff00, 1)  // 2px 绿色
+    
+    // 左上角
+    graphics.strokeRect(physicsPadding, physicsPadding, 20, 20)
+    // 右上角
+    graphics.strokeRect(mapWidth - physicsPadding - 20, physicsPadding, 20, 20)
+    // 左下角
+    graphics.strokeRect(physicsPadding, mapHeight - physicsPadding - 20, 20, 20)
+    // 右下角
+    graphics.strokeRect(mapWidth - physicsPadding - 20, mapHeight - physicsPadding - 20, 20, 20)
+    
+    console.log('✅ 地图边界已绘制:', { 
+      mapSize: `${mapWidth}x${mapHeight}`, 
+      cellSize: this.cellSize,
+      physicsBounds: `(${physicsPadding}, ${physicsPadding}) - (${mapWidth - physicsPadding}, ${mapHeight - physicsPadding})`
+    })
+  }
+  
+  /**
    * 创建玩家坦克
    */
   private createPlayer(): void {
@@ -370,13 +436,12 @@ export default class TankGameScene extends GameScene {
       bounds: this.cameras.main.getBounds()
     })
     
-    // ✅ 进入复活无敌状态（3 秒保护）
-    this.stateManager.startRespawning(() => {
-      console.log('✨ 玩家无敌保护结束，可以正常游戏了')
-    })
-    
     console.log('🛡️ 玩家出生，获得 3 秒无敌保护')
     console.log('✅ 玩家坦克已创建', { x: startX, y: startY })
+    
+    // 🔧 关键修复：玩家初始状态应该是 ALIVE，而不是 RESPAWNING
+    // startRespawning() 会触发闪烁效果，这只应该在死亡复活时使用
+    // ✅ 玩家出生时就是 ALIVE 状态，可以正常行动
   }
   
   /**

@@ -9,6 +9,7 @@
 import type TankGameScene from '../scenes/TankGameScene'
 import { PlayerState, PlayerStateManager } from './PlayerStateManager'
 import { CameraShakeManager } from './CameraShakeManager'
+import { EntityType } from './EntityManager'
 
 /**
  * ⭐ 战斗配置
@@ -95,23 +96,39 @@ export class PlayerCombatManager {
   /**
    * ⭐ 处理玩家被击中
    */
-  onHit(): void {
-    console.log('💥 PlayerCombatManager: 玩家被击中')
+  /**
+   * ⭐ 玩家被击中（带子弹参数）
+   */
+  onHitWithBullet(bullet: any): void {
+    console.log('💥 PlayerCombatManager: 玩家被击中（带子弹）')
+    
+    // 🔍 详细调试信息
+    console.log('🔍 [调试] onHit 检查:', {
+      isValid: this.stateManager.isValid(),
+      isInvincible: this.stateManager.isInvincible(),
+      currentArmor: this.currentArmor,
+      isShieldActive: this.isShieldActive
+    })
     
     // 🔒 检查是否有效
     if (!this.stateManager.isValid()) {
       console.log('⚠️ onHit: 玩家状态无效，跳过')
+      bullet.destroy()  // 只销毁子弹
       return
     }
     
-    // 🛡️ 检查护盾
+    // 🛡️ 检查护盾（优先级最高）
     if (this.isShieldActive) {
-      this.activateShield()
+      console.log('🛡️ 检测到护盾')
+      this.consumeShield(bullet)
+      console.log('✅ 护盾抵挡了伤害，玩家安全')
       return
     }
     
     // 🛡️ 检查无敌
     if (this.stateManager.isInvincible()) {
+      console.log('🛡️ 检测到无敌状态')
+      this.consumeInvincible(bullet)
       console.log('🛡️ 玩家处于无敌状态，免疫伤害')
       return
     }
@@ -120,12 +137,23 @@ export class PlayerCombatManager {
     if (this.currentArmor > 0) {
       this.currentArmor--
       console.log(`🛡️ 护甲抵挡伤害，剩余护甲：${this.currentArmor}`)
+      bullet.destroy()
       this.playHitFeedback()
       return
     }
     
     // 🔴 进入死亡流程
+    console.log('🔴 无任何保护，进入死亡流程')
+    bullet.destroy()
     this.handleDeath()
+  }
+  
+  /**
+   * ⭐ 玩家被击中（兼容旧版本）
+   */
+  onHit(): void {
+    console.warn('⚠️ 调用了旧版本 onHit()，应该使用 onHitWithBullet()')
+    this.onHitWithBullet({ destroy: () => {} } as any)  // 兜底调用
   }
   
   /**
@@ -152,11 +180,32 @@ export class PlayerCombatManager {
   // ===========================================================================
   
   /**
-   * ⭐ 激活护盾道具
+   * ⭐ 激活护盾（道具效果）
    */
   activateShieldPowerUp(): void {
     this.isShieldActive = true
-    console.log('✨ 激活护盾道具')
+    console.log('✨ 获得护盾道具，可以抵挡一次伤害')
+  }
+  
+  /**
+   * ⭐ 消耗护盾（抵挡伤害时）
+   */
+  private consumeShield(bullet: any): void {
+    this.isShieldActive = false
+    console.log('🛡️ 护盾已消耗，抵消一次伤害')
+    bullet.destroy()  // 销毁子弹
+    this.scene.spawnSparks((this.scene as any).player.x, (this.scene as any).player.y, '#3b82f6', 8)
+    this.scene.cameraShake(80)
+    this.scene.playSound('sfx_hit', 0.4)
+  }
+  
+  /**
+   * ⭐ 消耗无敌（抵挡伤害时）
+   */
+  private consumeInvincible(bullet: any): void {
+    bullet.destroy()  // 销毁子弹
+    this.scene.spawnSparks((this.scene as any).player.x, (this.scene as any).player.y, '#ffd700', 8)
+    this.scene.playSound('sfx_hit', 0.3)
   }
   
   /**
@@ -274,42 +323,66 @@ export class PlayerCombatManager {
     
     // 💨 生成子弹
     const bulletSpeed = 400
-    const bulletOffset = 20
+    const tankHalfSize = 20  // 坦克半径
     
     let vx = 0, vy = 0
+    let bulletX = player.x
+    let bulletY = player.y
     const direction = (this.scene as any).movementManager?.getCurrentDirection()
     
     switch (direction) {
       case 'UP':
         vy = -bulletSpeed
+        bulletX = player.x
+        bulletY = player.y - tankHalfSize
         break
       case 'DOWN':
         vy = bulletSpeed
+        bulletX = player.x
+        bulletY = player.y + tankHalfSize
         break
       case 'LEFT':
         vx = -bulletSpeed
+        bulletX = player.x - tankHalfSize
+        bulletY = player.y
         break
       case 'RIGHT':
         vx = bulletSpeed
+        bulletX = player.x + tankHalfSize
+        bulletY = player.y
         break
     }
     
     // 如果没有方向，使用默认向上
     if (vx === 0 && vy === 0) {
       vy = -bulletSpeed
+      bulletX = player.x
+      bulletY = player.y - tankHalfSize
     }
     
-    const bullet = (this.scene as any).entityManager.createBullet(
-      player.x,
-      player.y - bulletOffset,
-      vx,
-      vy,
-      'bullet_player',
-      { damage: this.config.bulletDamage }
-    )
-    
-    if (bullet) {
-      console.log('🔫 玩家射击')
+    // ✅ 使用 EntityManager 创建子弹（通过 createEntity 方法）
+    const entityManager = (this.scene as any).entityManager
+    if (entityManager) {
+      const bullet = entityManager.createEntity({
+        type: EntityType.BULLET_PLAYER,
+        x: bulletX,
+        y: bulletY,
+        texture: 'bullet_player',
+        attributes: { 
+          damage: this.config.bulletDamage,
+          speed: bulletSpeed
+        },
+        metadata: { velocity: { x: vx, y: vy } }
+      })
+      
+      // ✅ 手动设置速度（因为 createEntity 不会自动设置）
+      if (bullet && bullet.body) {
+        bullet.body.setVelocity(vx, vy)
+      }
+      
+      if (bullet) {
+        console.log('🔫 玩家射击:', { x: bulletX, y: bulletY, vx, vy })
+      }
     }
   }
   
@@ -326,19 +399,30 @@ export class PlayerCombatManager {
       return
     }
     
-    const previousLives = gameStore.lives
+    const currentLives = gameStore.lives
     gameStore.loseLife()
     
-    console.log(`💥 玩家被击中，生命值：${previousLives} → ${gameStore.lives}`)
+    console.log(`💥 玩家被击中，生命值：${currentLives} → ${gameStore.lives}`)
+    console.log('🔍 [调试] handleDeath 详细状态:', {
+      currentLives,
+      newLives: gameStore.lives,
+      canRespawn: gameStore.lives > 0
+    })
+    
+    // 📢 触发事件（通知 UI）
+    const scene = this.scene as any
+    if (scene.game?.events) {
+      scene.game.events.emit('lifeLost', gameStore.lives)
+    }
     
     // 🎭 播放受击反馈
     this.playHitFeedback()
     
-    // 🔄 判断是否可以复活
-    if (previousLives > 1) {
+    // 🔄 判断是否可以复活（使用扣减后的生命值）
+    if (gameStore.lives > 0) {
       // ✅ 还有命，可以复活
       this.stateManager.onHit(() => {
-        this.startRespawn(previousLives)
+        this.startRespawn(gameStore.lives)
       })
     } else {
       // ❌ 生命耗尽，游戏结束
@@ -370,37 +454,109 @@ export class PlayerCombatManager {
     this.stateManager.startRespawning(() => {
       console.log('✨ 复活完成回调')
       
-      const player = (this.scene as any).player
-      if (!player || !player.active) {
-        console.warn('⚠️ [复活失败] player 不存在或未激活')
-        return
-      }
-      
-      console.log('📍 传送玩家到复活点:', { x: startX, y: startY })
-      
       try {
-        // 📍 传送玩家到复活点
-        player.setPosition(startX, startY)
+        // 🔧 关键修复：重新创建玩家（而不是复用旧对象）
+        const scene = this.scene as any
+        const entityManager = scene.entityManager
         
-        // 🔧 修复：检查 body 是否存在
+        if (!entityManager) {
+          console.error('❌ [复活失败] entityManager 不存在')
+          return
+        }
+        
+        // 🗑️ 销毁旧玩家（如果存在）
+        if (scene.player) {
+          console.log('🗑️ 销毁旧玩家对象')
+          if (scene.player.destroy) scene.player.destroy()
+        }
+        
+        // ✅ 重新创建玩家
+        console.log('✅ 重新创建玩家')
+        scene.player = entityManager.createEntity({
+          type: EntityType.PLAYER,
+          x: startX,
+          y: startY,
+          texture: 'player_tank_up',
+          attributes: { health: 1, speed: 200 }
+        })
+        
+        const player = scene.player
+        if (!player || !player.active) {
+          console.error('⚠️ [复活失败] 新玩家未正确创建')
+          return
+        }
+        
+        console.log('📍 新玩家已创建:', { x: player.x, y: player.y, hasBody: !!player.body })
+        
+        // 🔍 调试信息：检查玩家渲染状态
+        console.log('🔍 [渲染调试] 玩家状态:', {
+          active: player.active,
+          visible: player.visible,
+          alpha: player.alpha,
+          texture: player.texture?.key,
+          displayList: player.displayList ? '已加入' : '未加入',
+          depth: player.depth
+        })
+        
+        // 🔍 调试信息：检查相机位置
+        const camera = (this.scene as any).cameras?.main
+        if (camera) {
+          console.log('📷 [相机调试] 相机信息:', {
+            x: camera.x,
+            y: camera.y,
+            width: camera.width,
+            height: camera.height,
+            scrollX: camera.scrollX,
+            scrollY: camera.scrollY,
+            playerInView: player.x >= camera.scrollX && 
+                         player.x <= camera.scrollX + camera.width &&
+                         player.y >= camera.scrollY && 
+                         player.y <= camera.scrollY + camera.height
+          })
+        }
+        
+        // 🔧 关键修复：更新 movementManager 的 player 引用
+        const movementManager = (this.scene as any).movementManager
+        if (movementManager && typeof movementManager.setPlayer === 'function') {
+          movementManager.setPlayer(player)
+          console.log('✅ [移动管理器] 已更新 player 引用')
+        } else {
+          console.warn('⚠️ [移动管理器] movementManager 不存在或没有 setPlayer 方法')
+        }
+        
+        // 🧱 关键修复：重新绑定玩家与墙壁的碰撞
+        const collisionManager = (this.scene as any).collisionManager
+        if (collisionManager && typeof collisionManager.rebindAllPlayerCollisions === 'function') {
+          collisionManager.rebindAllPlayerCollisions()
+          console.log('✅ [碰撞管理器] 已重新绑定所有玩家碰撞')
+        }
+        
+        // 🔧 确保速度为零
         if (player.body) {
           player.setVelocity(0, 0)
         } else {
-          console.warn('⚠️ [复活警告] player.body 不存在，跳过速度清零')
+          console.warn('⚠️ [复活警告] player.body 不存在')
         }
         
+        // 🎨 设置初始状态
         player.setActive(true)
         player.setVisible(true)
         player.setTexture('player_tank_up')
         player.clearTint()
         player.setAlpha(1)
         
+        // 🔧 关键修复：重置 movementManager 的方向（与纹理一致）
+        if (movementManager && typeof movementManager.resetDirection === 'function') {
+          movementManager.resetDirection()
+          console.log('✅ [移动管理器] 已重置方向为 UP')
+        }
+        
         console.log('✅ [复活成功] 玩家已传送到复活点')
         
         // 💥 清除旧定时器
-        if ((this.scene as any).blinkTimer) {
-          ;(this.scene as any).blinkTimer.destroy()
-          ;(this.scene as any).blinkTimer = null
+        if (scene.blinkTimer) {
+          scene.blinkTimer.destroy()
+          scene.blinkTimer = null
         }
       } catch (error) {
         console.error('❌ [复活错误] 设置玩家状态失败:', error)
