@@ -55,7 +55,6 @@ export class PlayerStateManager {
   
   constructor(scene: TankGameScene) {
     this.scene = scene
-    console.log('✅ PlayerStateManager 已创建')
   }
   
   // ===========================================================================
@@ -109,17 +108,28 @@ export class PlayerStateManager {
    * ⭐ 玩家被击中（进入死亡状态）
    */
   onHit(onDeathComplete: () => void): void {
-    if (!this.isValid()) {
-      console.log('⚠️ onHit: 玩家状态无效，跳过')
-      return
-    }
-    
-    console.log('💥 PlayerStateManager: 玩家被击中')
+    if (!this.isValid()) return
     
     // 进入死亡状态
     this.enterDyingState()
     
-    // 延迟调用死亡完成回调
+    const player = (this.scene as any).player
+    if (player) {
+      // 🔧 只设置透明，不触碰 visible
+      player.setAlpha(0)
+      
+      // 播放爆炸效果
+      const scene = this.scene as any
+      if (scene.spawnExplosion) {
+        scene.spawnExplosion(player.x, player.y, '#ff6b6b', 20)
+      }
+      
+      // 相机震动
+      if (scene.cameraShake) {
+        scene.cameraShake(100)
+      }
+    }
+    
     this.scene.time.delayedCall(this.config.dyingDuration, () => {
       onDeathComplete()
     })
@@ -129,17 +139,10 @@ export class PlayerStateManager {
    * ⭐ 开始复活（进入复活无敌状态）
    */
   startRespawning(onRespawnComplete: () => void): void {
-    console.log('🔄 PlayerStateManager: 开始复活流程')
-    
     this.respawnCallback = onRespawnComplete
-    
-    // 进入复活状态
     this.enterRespawningState()
-    
-    // 启动闪烁效果
     this.startBlinkEffect()
     
-    // 设置无敌时间
     this.scene.time.delayedCall(this.config.invincibleDuration, () => {
       this.finishRespawning()
     })
@@ -149,7 +152,6 @@ export class PlayerStateManager {
    * ⭐ 标记为死亡（生命耗尽）
    */
   markAsDead(): void {
-    console.log('💀 PlayerStateManager: 玩家死亡')
     this.enterDeadState()
   }
   
@@ -157,7 +159,6 @@ export class PlayerStateManager {
    * ⭐ 重置状态（新游戏开始时）
    */
   reset(): void {
-    console.log('🔄 PlayerStateManager: 重置状态')
     this.cleanupTimers()
     this.currentState = PlayerState.ALIVE
     this.isDyingInternal = false
@@ -169,7 +170,6 @@ export class PlayerStateManager {
    * ⭐ 销毁（清理资源）
    */
   destroy(): void {
-    console.log('🗑️ PlayerStateManager: 销毁')
     this.cleanupTimers()
     this.respawnCallback = null
   }
@@ -179,12 +179,24 @@ export class PlayerStateManager {
   // ===========================================================================
   
   /**
+   * ⭐ 停止闪烁效果
+   */
+  stopBlinkEffect(): void {
+    this.cleanupTimers()
+    
+    const player = (this.scene as any).player
+    if (player) {
+      player.setVisible(true)
+      player.setAlpha(1)
+    }
+  }
+  
+  /**
    * 进入死亡状态
    */
   private enterDyingState(): void {
     this.currentState = PlayerState.DYING
     this.isDyingInternal = true
-    console.log('📊 状态变更：ALIVE → DYING')
   }
   
   /**
@@ -194,7 +206,6 @@ export class PlayerStateManager {
     this.currentState = PlayerState.RESPAWNING
     this.isInvincibleInternal = true
     this.isDyingInternal = false
-    console.log('📊 状态变更：DYING → RESPAWNING')
   }
   
   /**
@@ -202,39 +213,28 @@ export class PlayerStateManager {
    */
   private finishRespawning(): void {
     this.currentState = PlayerState.INVINCIBLE
-    this.isInvincibleInternal = true  // 🔧 关键修复：设置无敌标志
-    console.log('📊 状态变更：RESPAWNING → INVINCIBLE')
+    this.isInvincibleInternal = true
     
-    // 🔧 关键修复：清理旧的闪烁定时器和强制可见定时器
     this.cleanupTimers()
     if (this.forceVisibleTimer) {
       this.forceVisibleTimer.destroy()
       this.forceVisibleTimer = null
-      console.log('✅ [定时器] 已清理旧的强制可见定时器')
     }
     
-    // 🔧 关键修复：确保玩家可见（闪烁可能停在 invisible 状态）
     const player = (this.scene as any).player
     if (player) {
       player.setVisible(true)
       player.setAlpha(1)
-      console.log('✅ [状态管理器] 已设置玩家可见')
     }
     
     // 2 秒后退出无敌状态
     this.scene.time.delayedCall(2000, () => {
-      try {
-        if (this.currentState === PlayerState.INVINCIBLE) {
-          this.currentState = PlayerState.ALIVE
-          this.isInvincibleInternal = false
-          console.log('📊 状态变更：INVINCIBLE → ALIVE')
-        }
-      } catch (error) {
-        console.error('❌ [状态管理器] 退出无敌状态时出错:', error)
+      if (this.currentState === PlayerState.INVINCIBLE) {
+        this.currentState = PlayerState.ALIVE
+        this.isInvincibleInternal = false
       }
     })
     
-    // 通知回调
     if (this.respawnCallback) {
       this.respawnCallback()
       this.respawnCallback = null
@@ -248,76 +248,52 @@ export class PlayerStateManager {
     this.currentState = PlayerState.DEAD
     this.isDyingInternal = false
     this.isInvincibleInternal = false
-    console.log('📊 状态变更：→ DEAD')
   }
   
   /**
    * 启动闪烁效果
+   * ⚠️ 必须用 setAlpha 做闪烁，绝对不能用 setVisible(false)
+   *    原因：setVisible(false) 会把 Sprite 从 scene.sys.updateList 中移除，
+   *          导致物理体停止更新，overlap/collider 检测永久失效！
    */
   private startBlinkEffect(): void {
     this.cleanupTimers()
     
-    let visible = true
+    let blinkOn = false
     const player = (this.scene as any).player
     
-    if (!player) {
-      console.warn('⚠️ startBlinkEffect: player 不存在')
-      return
-    }
+    if (!player) return
     
-    // 🔧 关键修复：确保玩家是激活状态
+    // 确保玩家激活且可见（setVisible 保持 true，只改 alpha）
     if (!player.active) {
       player.setActive(true)
-      console.log('✅ [闪烁] 玩家已激活')
     }
+    player.setVisible(true)
+    player.setAlpha(0)
     
-    // 立即开始闪烁
+    // 用 alpha 闪烁：0 ↔ 1，不触碰 visible
     this.blinkTimer = this.scene.time.addEvent({
       delay: this.config.blinkInterval,
       callback: () => {
-        try {
-          if (!player || !player.active) {
-            console.log('⚠️ [闪烁] 玩家已不存在或未激活，停止闪烁')
-            return
-          }
-          visible = !visible
-          player.setVisible(visible)
-          console.log(`🔍 [调试] 闪烁：visible=${visible}`)
-          
-          // 🔧 关键修复：最后一次闪烁后强制设置可见
-          if (this.blinkTimer && this.blinkTimer.repeatCount === 1) {
-            console.log('✅ [闪烁] 最后一次闪烁，结束后将强制设置可见')
-          }
-        } catch (error) {
-          console.error('❌ [闪烁] 闪烁效果执行出错:', error)
-        }
+        if (!player || !player.active) return
+        blinkOn = !blinkOn
+        player.setAlpha(blinkOn ? 1 : 0)
       },
       loop: true,
-      repeat: this.config.blinkCount - 1,  // 总共闪烁 blinkCount 次
     })
     
-    // 🔧 关键修复：在闪烁结束后强制设置玩家可见（延迟执行）
+    // 闪烁总时长结束后强制恢复完全可见
     this.forceVisibleTimer = this.scene.time.addEvent({
-      delay: this.config.blinkInterval * this.config.blinkCount + 50,  // 闪烁总时长 + 缓冲
+      delay: this.config.blinkInterval * this.config.blinkCount + 50,
       callback: () => {
-        try {
-          console.log('✅ [闪烁] 闪烁效果结束，强制设置玩家可见')
-          if (player && player.active) {
-            player.setVisible(true)
-            player.setAlpha(1)
-            console.log('✅ [闪烁] 玩家已设置为可见状态')
-          } else {
-            console.warn('⚠️ [闪烁] 玩家不存在或未激活，跳过设置可见')
-          }
-          this.forceVisibleTimer = null  // 清空引用
-        } catch (error) {
-          console.error('❌ [闪烁] 强制设置可见时出错:', error)
+        if (player && player.active) {
+          player.setVisible(true)
+          player.setAlpha(1)
         }
+        this.forceVisibleTimer = null
       },
       loop: false
     })
-    
-    console.log(`✨ 启动闪烁效果：${this.config.blinkCount} 次，间隔 ${this.config.blinkInterval}ms`)
   }
   
   /**

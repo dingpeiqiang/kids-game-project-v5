@@ -47,8 +47,6 @@ export class TankGameManager implements ITankGameManager {
   constructor(scene: Phaser.Scene, player: Phaser.Physics.Arcade.Sprite) {
     this.scene = scene
     this.player = player
-    
-    console.log('✅ [TankGameManager] 已创建')
   }
   
   // ===========================================================================
@@ -59,22 +57,12 @@ export class TankGameManager implements ITankGameManager {
    * ⭐ 玩家被击中
    */
   playerHit(): void {
-    console.log('🔥 [TankGameManager] playerHit() 被调用')
-    
     // 🛡️ 防御检查
-    if (this.isDying || !this.player || !this.player.active) {
-      console.log('⚠️ 玩家已死亡或正在死亡，跳过受击逻辑')
-      return
-    }
-    
-    if (this.isInvincible) {
-      console.log('🛡️ 玩家处于无敌状态，免疫伤害')
-      return
-    }
+    if (this.isDying || !this.player || !this.player.active) return
+    if (this.isInvincible) return
     
     // 护盾保护
     if (this.isShieldActive && this.shield) {
-      console.log('🛡️ 护盾激活，抵消伤害')
       this.destroyShield()
       return
     }
@@ -84,14 +72,10 @@ export class TankGameManager implements ITankGameManager {
     const previousLives = gameStore.lives
     gameStore.loseLife()
     
-    console.log(`💥 玩家被击中，剩余生命：${gameStore.lives}`)
-    
-    // 💥 受击反馈
     this.spawnExplosion(this.player.x, this.player.y, 0.6)
     this.cameraShake(200)
     this.playSound('sfx_hit', 0.7)
     
-    // ✅ 判断是否复活
     if (previousLives > 1) {
       this.respawnPlayer()
     } else {
@@ -103,31 +87,22 @@ export class TankGameManager implements ITankGameManager {
    * ⭐ 玩家复活
    */
   respawnPlayer(): void {
-    console.log('🔄 [TankGameManager] 执行复活流程')
-    
     if (!this.player) return
     
-    // 1. 清除旧定时器
     this.clearBlinkTimer()
     
-    // 2. 计算复活位置
     const startX = (this.scene as any).offsetX + (this.scene as any).gridCols * (this.scene as any).cellSize / 2
     const startY = (this.scene as any).offsetY + (this.scene as any).gridRows * (this.scene as any).cellSize - 200
     
-    // 3. 清理周围敌人
     this.clearEnemiesAroundSpawn(startX, startY, 150)
     
-    // 4. 传送玩家并恢复状态
     this.player.setPosition(startX, startY)
     this.player.setVelocity(0, 0)
     this.player.setActive(true)
     this.player.setVisible(true)
     this.player.setTexture('player_tank_up')
     
-    // ✅ 重置死亡标志
     this.isDying = false
-    
-    // 5. 启动无敌帧（2.5 秒）
     this.startInvincibilityFrame(2500)
   }
   
@@ -135,32 +110,26 @@ export class TankGameManager implements ITankGameManager {
    * ⭐ 玩家死亡处理
    */
   protected handlePlayerDeath(): void {
-    console.log('💀 [TankGameManager] 玩家生命耗尽，游戏结束')
-    
     if (!this.player) return
     
     this.isDying = true
     this.isInvincible = true
     
-    // 大爆炸特效
     this.spawnExplosion(this.player.x, this.player.y, 2)
     this.playSound('sfx_explosion', 0.9)
     this.cameraShake(400)
     
-    this.player.setVisible(false)
-    this.player.setActive(false)
+    this.player.setAlpha(0)
     
-    // 延迟后显示游戏结束 UI
     this.scene.time.delayedCall(500, () => {
       this.handleGameOver()
     })
   }
-  
+
   /**
    * ⭐ 游戏结束
    */
   handleGameOver(): void {
-    console.log('🏁 [TankGameManager] 游戏结束')
     ;(this.scene as any).showGameOverUI?.()
   }
   
@@ -175,7 +144,6 @@ export class TankGameManager implements ITankGameManager {
     this.isInvincible = true
     const savedTexture = 'player_tank_up'
     
-    // 闪烁动画（使用 alpha 代替 setVisible）
     this.blinkTimer = this.scene.time.addEvent({
       delay: 100,
       callback: () => {
@@ -185,20 +153,15 @@ export class TankGameManager implements ITankGameManager {
       loop: true,
     })
     
-    console.log('🛡️ 无敌帧开始')
-    
-    // 结束无敌帧
     this.scene.time.delayedCall(duration, () => {
       this.clearBlinkTimer()
       this.isInvincible = false
       
-      if (this.player) {
+      if (this.player && this.player.active && this.player.visible) {
         this.player.setActive(true)
         this.player.setAlpha(1)
         this.player.setTexture(savedTexture)
       }
-      
-      console.log('🛡️ 无敌帧结束')
     })
   }
   
