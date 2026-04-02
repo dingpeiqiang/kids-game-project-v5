@@ -13,6 +13,16 @@
 import { IGameManager } from './IGameManager'
 
 /**
+ * ⭐ 对象池配置（支持动态调整）
+ */
+export interface IPoolConfig {
+  minSize: number      // 最小容量
+  maxSize: number      // 最大容量
+  initialSize: number  // 初始容量
+  resizeStep: number   // 扩容步长
+}
+
+/**
  * ⭐ 渲染层配置
  */
 export interface IRenderLayerConfig {
@@ -50,19 +60,30 @@ export class RenderManager implements IGameManager {
   
   // 对象池优化
   private pools: Map<string, Phaser.GameObjects.GameObject[]> = new Map()
+  private poolConfigs: Map<string, IPoolConfig> = new Map()  // ✅ 对象池配置
   
   // 性能统计
   private stats = {
     totalObjects: 0,
     activeObjects: 0,
     pooledObjects: 0,
-    lastFrameTime: 0
+    lastFrameTime: 0,
+    peakUsage: 0,           // ✅ 峰值使用率
+    resizeCount: 0,         // ✅ 扩容次数
+    shrinkCount: 0,         // ✅ 缩容次数
+    pooledByType: {} as Record<string, number>  // ✅ 按类型统计
+  }
+  
+  // ✅ 对象池监控数据
+  private poolMetrics = {
+    created: 0,     // 累计创建数
+    recycled: 0,    // 累计回收数
+    expanded: 0,    // 累计扩容数
+    shrunk: 0       // 累计缩容数
   }
   
   constructor(scene: Phaser.Scene) {
     this.scene = scene
-    
-    console.log('🎨 [RenderManager] 已创建')
   }
   
   // ===========================================================================
@@ -73,10 +94,7 @@ export class RenderManager implements IGameManager {
    * ⭐ 创建渲染层
    */
   createLayer(name: string, depth: number): void {
-    if (this.layers.has(name)) {
-      console.warn(`⚠️ 渲染层 ${name} 已存在`)
-      return
-    }
+    if (this.layers.has(name)) return
     
     const container = this.scene.add.container(0, 0)
     container.setDepth(depth)
@@ -84,10 +102,7 @@ export class RenderManager implements IGameManager {
     
     this.layers.set(name, container)
     this.layerConfigs.set(name, { name, depth, visible: true })
-    
     this.objectIndex.set(name, new Set())
-    
-    console.log(`🎨 [RenderManager] 创建渲染层：${name} (depth: ${depth})`)
   }
   
   /**
@@ -102,7 +117,41 @@ export class RenderManager implements IGameManager {
     this.createLayer('ui', 500)              // UI 层（分数、生命）
     this.createLayer('overlay', 1000)        // 遮罩层（暂停、结算）
     
-    console.log('✅ [RenderManager] 默认渲染层已创建')
+    // ✅ 初始化对象池配置（根据游戏规模调整）
+    this.configurePool('sprite', { minSize: 20, maxSize: 200, initialSize: 50, resizeStep: 10 })
+    this.configurePool('graphics', { minSize: 10, maxSize: 100, initialSize: 30, resizeStep: 5 })
+    this.configurePool('text', { minSize: 5, maxSize: 50, initialSize: 20, resizeStep: 5 })
+    this.configurePool('rectangle', { minSize: 5, maxSize: 50, initialSize: 15, resizeStep: 5 })
+    this.configurePool('circle', { minSize: 5, maxSize: 50, initialSize: 15, resizeStep: 5 })
+    this.configurePool('particles', { minSize: 2, maxSize: 20, initialSize: 5, resizeStep: 2 })
+    
+    // 配置默认对象池
+    this.configurePool('sprite', { minSize: 20, maxSize: 200, initialSize: 50, resizeStep: 10 })
+    this.configurePool('graphics', { minSize: 10, maxSize: 100, initialSize: 30, resizeStep: 5 })
+    this.configurePool('text', { minSize: 5, maxSize: 50, initialSize: 20, resizeStep: 5 })
+    this.configurePool('rectangle', { minSize: 5, maxSize: 50, initialSize: 15, resizeStep: 5 })
+    this.configurePool('circle', { minSize: 5, maxSize: 50, initialSize: 15, resizeStep: 5 })
+    this.configurePool('particles', { minSize: 2, maxSize: 20, initialSize: 5, resizeStep: 2 })
+  }
+
+  /**
+   * ⭐ 配置对象池
+   */
+  configurePool(type: string, config: IPoolConfig): void {
+    this.poolConfigs.set(type, config)
+    
+    const pool = this.pools.get(type)
+    if (pool) {
+      if (pool.length > config.maxSize) {
+        const toRemove = pool.splice(config.maxSize)
+        toRemove.forEach(obj => obj.destroy())
+        this.stats.shrinkCount += toRemove.length
+      }
+    } else {
+      this.pools.set(type, [])
+    }
+    
+    this.stats.pooledByType[type] = this.pools.get(type)?.length || 0
   }
   
   // ===========================================================================
@@ -110,7 +159,7 @@ export class RenderManager implements IGameManager {
   // ===========================================================================
   
   /**
-   * ⭐ 创建 Sprite（带自动管理）
+   * ⭐ 创建 Sprite
    */
   createSprite(
     x: number,
@@ -119,38 +168,23 @@ export class RenderManager implements IGameManager {
     frame?: string | number,
     layer: string = 'entities'
   ): Phaser.GameObjects.Sprite {
-    console.log(`🎨 [RenderManager] 创建 Sprite: texture=${texture}, layer=${layer}, pos=(${x}, ${y})`)
-    
     const container = this.getContainer(layer)
     
-    // 🔴 严格模式：容器必须存在
     if (!container) {
-      const errorMsg = `❌ [RenderManager] 渲染层 ${layer} 不存在，无法创建 Sprite`
-      console.error(errorMsg)
-      console.error(`   可用的渲染层：${Array.from(this.layers.keys()).join(', ')}`)
-      console.error(`   layers.size = ${this.layers.size}`)
-      throw new Error(errorMsg)
+      throw new Error(`渲染层 ${layer} 不存在`)
     }
     
-    // 尝试从对象池获取
     const pooled = this.getPooledObject('sprite') as Phaser.GameObjects.Sprite | null
     if (pooled) {
-      console.log(`🎨 [RenderManager] 从对象池获取 Sprite`)
       pooled.setPosition(x, y)
       pooled.setTexture(texture, frame)
       pooled.setVisible(true)
-      pooled.setActive(true)
-      container.add(pooled)  // 必须成功
-      
+      container.add(pooled)
       return pooled
     }
     
-    // 创建新对象
-    console.log(`🎨 [RenderManager] 创建新 Sprite`)
     const sprite = new Phaser.GameObjects.Sprite(this.scene, x, y, texture, frame)
-    container.add(sprite)  // 必须成功
-    
-    console.log(`🎨 [RenderManager] Sprite 创建成功: id=${sprite.id}`)
+    container.add(sprite)
     
     this.trackRenderObject({
       id: this.generateId('sprite'),
@@ -178,7 +212,8 @@ export class RenderManager implements IGameManager {
     if (pooled) {
       pooled.clear()
       pooled.setVisible(true)
-      pooled.setActive(true)
+      // 🔧 修复：不要调用 setActive(true)，避免干扰组件系统
+      // pooled.setActive(true)  // ❌ 移除
       container?.add(pooled)
       
       const graphics = pooled
@@ -240,7 +275,8 @@ export class RenderManager implements IGameManager {
       pooled.setText(text)
       if (style) pooled.setStyle(style)
       pooled.setVisible(true)
-      pooled.setActive(true)
+      // 🔧 修复：不要调用 setActive(true)，避免干扰组件系统
+      // pooled.setActive(true)  // ❌ 移除
       container?.add(pooled)
       
       return pooled
@@ -324,25 +360,18 @@ export class RenderManager implements IGameManager {
   // ===========================================================================
   
   /**
-   * ⭐ 销毁对象（带清理）
+   * ⭐ 销毁对象
    */
   destroyObject(id: string): void {
     const renderObj = this.renderObjects.get(id)
-    if (!renderObj) {
-      console.warn(`⚠️ 对象 ${id} 不存在`)
-      return
-    }
+    if (!renderObj) return
     
-    // 回收到对象池
     this.recycleObject(renderObj)
-    
-    // 从追踪列表移除
     this.renderObjects.delete(id)
     this.objectIndex.get(renderObj.layer)?.delete(id)
-    
     this.stats.activeObjects--
   }
-  
+
   /**
    * ⭐ 批量销毁同层对象
    */
@@ -350,11 +379,8 @@ export class RenderManager implements IGameManager {
     const ids = this.objectIndex.get(layer)
     if (!ids) return
     
-    // 转换为数组避免遍历中删除
     const idsArray = Array.from(ids)
     idsArray.forEach(id => this.destroyObject(id))
-    
-    console.log(`🗑️ [RenderManager] 清理层 ${layer}: ${idsArray.length} 个对象`)
   }
   
   /**
@@ -376,8 +402,6 @@ export class RenderManager implements IGameManager {
    * ⭐ 清空所有对象
    */
   clearAll(): void {
-    console.log('🧹 [RenderManager] 清空所有渲染对象')
-    
     this.renderObjects.forEach(obj => {
       obj.object.destroy()
     })
@@ -401,11 +425,7 @@ export class RenderManager implements IGameManager {
    * 获取渲染容器
    */
   private getContainer(name: string): Phaser.GameObjects.Container | null {
-    const container = this.layers.get(name)
-    if (!container) {
-      console.error(`❌ 渲染层 ${name} 不存在`)
-    }
-    return container
+    return this.layers.get(name) || null
   }
   
   /**
@@ -430,65 +450,145 @@ export class RenderManager implements IGameManager {
    * 回收到对象池
    */
   private recycleObject(renderObj: IRenderObject): void {
-    const pool = this.pools.get(renderObj.type) || []
+    const type = renderObj.type
+    const pool = this.pools.get(type) || []
+    const config = this.poolConfigs.get(type)
     
-    // 限制对象池大小
-    if (pool.length < 50) {
-      renderObj.object.setVisible(false)
-      renderObj.object.setActive(false)
-      
-      // 从容器移除但保留对象
-      if (renderObj.object instanceof Phaser.GameObjects.GameObject) {
-        renderObj.object.removeFromContainer()
-      }
-      
-      pool.push(renderObj.object)
-      this.pools.set(renderObj.type, pool)
-      
-      this.stats.pooledObjects++
-    } else {
-      // 对象池已满，直接销毁
+    if (pool.length >= (config?.maxSize || 50)) {
       renderObj.object.destroy()
+      return
+    }
+    
+    renderObj.object.setVisible(false)
+    if (renderObj.object instanceof Phaser.GameObjects.GameObject) {
+      renderObj.object.removeFromContainer()
+    }
+    
+    pool.push(renderObj.object)
+    this.pools.set(type, pool)
+    
+    this.stats.pooledObjects++
+    this.stats.pooledByType[type] = pool.length
+    this.poolMetrics.recycled++
+    
+    if (config && pool.length > config.minSize && this.stats.activeObjects < config.minSize / 2) {
+      this.shrinkPoolIfNeeded(type, config)
     }
   }
   
+  /**
+   * 🔧 缩容对象池
+   */
+  private shrinkPoolIfNeeded(type: string, config: IPoolConfig): void {
+    const pool = this.pools.get(type)
+    if (!pool || pool.length <= config.minSize) return
+    
+    const toRemoveCount = Math.min(pool.length - config.minSize, config.resizeStep)
+    const toRemove = pool.splice(-toRemoveCount)
+    
+    toRemove.forEach(obj => obj.destroy())
+    this.stats.shrinkCount += toRemoveCount
+    this.poolMetrics.shrunk += toRemoveCount
+  }
+
   /**
    * 从对象池获取
    */
   private getPooledObject(type: string): Phaser.GameObjects.GameObject | null {
     const pool = this.pools.get(type)
-    if (!pool || pool.length === 0) return null
+    if (!pool || pool.length === 0) {
+      this.expandPool(type)
+      return null
+    }
     
     const obj = pool.pop()!
     this.pools.set(type, pool)
     
     this.stats.pooledObjects--
+    this.stats.pooledByType[type] = pool.length
+    this.stats.activeObjects++
+    
+    const usageRate = this.calculatePoolUsage(type)
+    if (usageRate > this.stats.peakUsage) {
+      this.stats.peakUsage = usageRate
+    }
+    
     return obj
+  }
+
+  /**
+   * 🔧 扩容对象池
+   */
+  private expandPool(type: string): void {
+    const config = this.poolConfigs.get(type)
+    if (!config) return
+    
+    const pool = this.pools.get(type) || []
+    
+    if (pool.length >= config.maxSize) return
+    
+    const toAdd = Math.min(config.resizeStep, config.maxSize - pool.length)
+    this.stats.resizeCount++
+    this.poolMetrics.expanded += toAdd
+  }
+  
+  /**
+   * 🔧 计算对象池使用率
+   */
+  private calculatePoolUsage(type: string): number {
+    const config = this.poolConfigs.get(type)
+    if (!config) return 0
+    
+    const pool = this.pools.get(type) || []
+    const activeCount = config.initialSize - pool.length
+    
+    return (activeCount / config.maxSize) * 100
   }
   
   // ===========================================================================
-  // 📊 性能监控
+  // 📊 性能监控（公开 API）
   // ===========================================================================
   
   /**
-   * 获取性能统计
+   * ⭐ 获取性能统计
    */
   getStats(): {
     totalObjects: number
     activeObjects: number
     pooledObjects: number
     layers: number
+    peakUsage: number
+    resizeCount: number
+    shrinkCount: number
+    poolMetrics: { created: number; recycled: number; expanded: number; shrunk: number }
+    poolUsage: Record<string, { size: number; usage: number; config: IPoolConfig }>
   } {
+    const poolUsage: Record<string, { size: number; usage: number; config: IPoolConfig }> = {}
+    
+    this.poolConfigs.forEach((config, type) => {
+      const pool = this.pools.get(type) || []
+      poolUsage[type] = {
+        size: pool.length,
+        usage: this.calculatePoolUsage(type),
+        config
+      }
+    })
+    
     return {
       totalObjects: this.stats.totalObjects,
       activeObjects: this.stats.activeObjects,
       pooledObjects: this.stats.pooledObjects,
-      layers: this.layers.size
+      layers: this.layers.size,
+      peakUsage: this.stats.peakUsage,
+      resizeCount: this.stats.resizeCount,
+      shrinkCount: this.stats.shrinkCount,
+      poolMetrics: { ...this.poolMetrics },
+      poolUsage
     }
   }
   
   /**
-   * 打印性能报告
+   * ⭐ 打印性能报告
    */
   printStats(): void {
     const stats = this.getStats()
@@ -497,12 +597,34 @@ export class RenderManager implements IGameManager {
     console.log(`   活跃对象：${stats.activeObjects}`)
     console.log(`   对象池：${stats.pooledObjects}`)
     console.log(`   渲染层：${stats.layers}`)
+    console.log(`   峰值使用率：${stats.peakUsage.toFixed(1)}%`)
+    console.log(`   扩容次数：${stats.resizeCount}`)
+    console.log(`   缩容次数：${stats.shrinkCount}`)
+    console.log(`   创建/回收/扩容/缩容：${stats.poolMetrics.created}/${stats.poolMetrics.recycled}/${stats.poolMetrics.expanded}/${stats.poolMetrics.shrunk}`)
+  }
+  
+  /**
+   * ⭐ 获取对象池使用率（监控面板用）
+   */
+  getPoolUsageByType(): Record<string, { current: number; max: number; usage: number; status: 'low' | 'normal' | 'high' | 'critical' }> {
+    const result: Record<string, { current: number; max: number; usage: number; status: 'low' | 'normal' | 'high' | 'critical' }> = {}
     
-    this.objectIndex.forEach((ids, layer) => {
-      if (ids.size > 0) {
-        console.log(`   ${layer}: ${ids.size} 个对象`)
-      }
+    this.poolConfigs.forEach((config, type) => {
+      const pool = this.pools.get(type) || []
+      const usage = this.calculatePoolUsage(type)
+      const current = config.initialSize - pool.length
+      
+      // 状态判断
+      let status: 'low' | 'normal' | 'high' | 'critical'
+      if (usage < 30) status = 'low'
+      else if (usage < 60) status = 'normal'
+      else if (usage < 85) status = 'high'
+      else status = 'critical'
+      
+      result[type] = { current, max: config.maxSize, usage, status }
     })
+    
+    return result
   }
   
   // ===========================================================================

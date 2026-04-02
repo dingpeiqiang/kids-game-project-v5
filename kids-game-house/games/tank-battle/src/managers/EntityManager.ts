@@ -75,9 +75,9 @@ export class EntityManager {
   protected wallGroup!: Phaser.Physics.Arcade.StaticGroup
   protected powerUpGroup!: Phaser.Physics.Arcade.Group
   
-  constructor(scene: Phaser.Scene, renderManager: RenderManager) {  // ✅ 注入 RenderManager
+  constructor(scene: Phaser.Scene, renderManager: RenderManager) {
     this.scene = scene
-    this.renderManager = renderManager  // ✅ 保存引用
+    this.renderManager = renderManager
     this.initializeGroups()
   }
   
@@ -128,7 +128,6 @@ export class EntityManager {
     this.powerUpGroup = this.scene.physics.add.group()
     this.groups.set(EntityType.POWERUP, this.powerUpGroup)
 
-    console.log('✅ [EntityManager] 实体组初始化完成')
   }
   
   // ===========================================================================
@@ -147,33 +146,26 @@ export class EntityManager {
       case EntityType.PLAYER:
         entity = this.createPlayer(x, y, texture, attributes)
         break
-        
       case EntityType.ENEMY_LIGHT:
       case EntityType.ENEMY_MEDIUM:
       case EntityType.ENEMY_HEAVY:
         entity = this.createEnemy(x, y, type, texture, attributes)
         break
-        
       case EntityType.BULLET_PLAYER:
       case EntityType.BULLET_ENEMY:
         entity = this.createBullet(x, y, type, texture, attributes)
         break
-        
       case EntityType.WALL_BRICK:
       case EntityType.WALL_STEEL:
         entity = this.createWall(x, y, type, texture, attributes)
         break
-        
       case EntityType.BASE:
         entity = this.createBase(x, y, texture, attributes)
         break
-        
       case EntityType.POWERUP:
         entity = this.createPowerUp(x, y, texture, attributes)
         break
-        
       default:
-        console.error('❌ 未知实体类型:', type)
         return null
     }
     
@@ -184,7 +176,9 @@ export class EntityManager {
       entity.entityType = type
       entity.attributes = { ...attributes }
       
-      console.log(`📦 [EntityManager] 创建实体：${entityId} (${type})`)
+      if (type === EntityType.BULLET_PLAYER || type === EntityType.BULLET_ENEMY) {
+        entity.setData('hit', false)
+      }
     }
     
     return entity
@@ -205,32 +199,44 @@ export class EntityManager {
   }
   
   /**
-   * ⭐ 动态生成占位纹理（紧急兜底方案）
+   * ⭐ 动态生成占位纹理
    */
   protected createPlaceholderTexture(key: string): string {
-    // ✅ 检查是否已存在
     if (this.scene.textures.exists(key)) {
       return key
     }
     
-    console.log(`🎨 [EntityManager] 动态生成占位纹理：${key}`)
-    
-    // ✅ 使用 Graphics 绘制一个临时纹理
     const graphics = this.scene.make.graphics({ x: 0, y: 0 })
-    
-    // 绘制红色方块（敌人）
-    graphics.fillStyle(0xff0000, 1)  // 红色
+    graphics.fillStyle(0xff0000, 1)
     graphics.fillRect(0, 0, 64, 64)
-    
-    // 添加边框
     graphics.lineStyle(2, 0x000000, 1)
     graphics.strokeRect(0, 0, 64, 64)
-    
-    // ✅ 生成纹理（不添加文字，因为 Graphics 不支持）
     graphics.generateTexture(key, 64, 64)
     graphics.destroy()
     
-    console.log(`✅ [EntityManager] 占位纹理已生成：${key}`)
+    return key
+  }
+
+  /**
+   * ⭐ 动态生成子弹占位纹理
+   */
+  protected createPlaceholderBulletTexture(type: EntityType): string {
+    const key = type === EntityType.BULLET_PLAYER ? 'bullet_player_placeholder' : 'bullet_enemy_placeholder'
+    
+    if (this.scene.textures.exists(key)) {
+      return key
+    }
+    
+    const graphics = this.scene.make.graphics({ x: 0, y: 0 })
+    if (type === EntityType.BULLET_PLAYER) {
+      graphics.fillStyle(0xffff00, 1)
+    } else {
+      graphics.fillStyle(0xff0000, 1)
+    }
+    graphics.fillCircle(8, 8, 6)
+    graphics.generateTexture(key, 16, 16)
+    graphics.destroy()
+    
     return key
   }
   
@@ -261,16 +267,14 @@ export class EntityManager {
   }
   
   /**
-   * ⭐ 清空所有实体（但不包括玩家，除非显式指定）
-   * @param includePlayer - 是否也清空玩家（默认 false，保护玩家不被意外清空）
+   * ⭐ 清空所有实体
    */
   clearAllEntities(includePlayer: boolean = false): void {
-    this.entities.forEach((entity) => {  // ✅ 移除未使用的 id 参数
+    this.entities.forEach((entity) => {
       entity.destroy()
     })
     this.entities.clear()
     
-    // 清空组（可选是否包含玩家）
     if (includePlayer) {
       this.playerGroup.clear(true, true)
     }
@@ -279,8 +283,6 @@ export class EntityManager {
     this.enemyBulletGroup.clear(true, true)
     this.wallGroup.clear(true, true)
     this.powerUpGroup.clear(true, true)
-    
-    console.log('🗑️ [EntityManager] 清空所有实体' + (includePlayer ? '（包含玩家）' : '（保留玩家）'))
   }
   
   // ===========================================================================
@@ -288,55 +290,36 @@ export class EntityManager {
   // ===========================================================================
   
   /**
-   * ⭐ 创建玩家（使用物理系统 + 兜底方案）
+   * ⭐ 创建玩家
    */
   protected createPlayer(x: number, y: number, texture: string, attributes: IEntityAttributes): Phaser.Physics.Arcade.Sprite {
-    // 🔍 检查纹理是否存在
     const textureExists = this.scene.textures.exists(texture)
-      
-    // ✅ 使用备用纹理（兜底方案）
     let finalTexture = texture
+    
     if (!textureExists) {
-      console.warn(`⚠️ 玩家纹理 ${texture} 不存在，尝试使用备用纹理`)
-        
-      const fallbackTextures = [
-        'player_tank',
-        'tank_player',
-        'enemy_tank',  // 实在没有就用敌人的
-      ]
-        
+      const fallbackTextures = ['player_tank', 'tank_player', 'enemy_tank']
       for (const fallback of fallbackTextures) {
         if (this.scene.textures.exists(fallback)) {
           finalTexture = fallback
-          console.log(`✅ 找到玩家备用纹理：${fallback}`)
           break
         }
       }
-      
-      // 🔴 最终检查：如果还是找不到，使用动态生成的图形
       if (!this.scene.textures.exists(finalTexture)) {
-        console.error(`🚨 所有备用纹理都不存在：${texture}`)
-        console.error(`🛑 将使用动态生成的占位图形`)
-        
-        // ✅ 动态生成一个临时纹理
         finalTexture = this.createPlaceholderTexture('player_placeholder')
       }
     }
       
-    // ✅ 直接使用 physics.add.sprite 创建物理对象
-    // 注意：不能通过 Container（RenderManager 的层），否则 body 会丢失
     const player = this.scene.physics.add.sprite(x, y, finalTexture)
-
-    // ✅ 设置碰撞边界
     player.body.setCollideWorldBounds(true)
-
-    // ✅ 加入玩家组
     this.playerGroup.add(player)
+    
+    if (!(player as any).updateList && this.scene.sys.updateList) {
+      this.scene.sys.updateList.add(player)
+    }
 
-    // 设置属性
-    if (attributes.health) player.health = attributes.health
-    if (attributes.armor) player.armor = attributes.armor
-    if (attributes.speed) player.speed = attributes.speed
+    if (attributes.health) (player as any).health = attributes.health
+    if (attributes.armor) (player as any).armor = attributes.armor
+    if (attributes.speed) (player as any).speed = attributes.speed
 
     return player
   }
@@ -351,54 +334,50 @@ export class EntityManager {
     texture: string,
     attributes: IEntityAttributes
   ): any {
-    // 🔍 调试：检查纹理是否存在
     const textureExists = this.scene.textures.exists(texture)
-    console.log(`🔍 敌人纹理 "${texture}" ${textureExists ? '✅ 存在' : '❌ 不存在'}`)
-
-    // ✅ 使用备用纹理（兜底方案）
     let finalTexture = texture
+
     if (!textureExists) {
-      console.warn(`⚠️ 纹理 ${texture} 不存在，尝试使用备用纹理`)
-      
-      // 备用纹理列表
-      const fallbackTextures = [
-        'enemy_tank',
-        'tank_enemy',
-        'player_tank_up',  // 最后使用玩家坦克作为占位符
-      ]
-      
+      const fallbackTextures = ['enemy_tank', 'tank_enemy', 'player_tank_up']
       for (const fallback of fallbackTextures) {
         if (this.scene.textures.exists(fallback)) {
           finalTexture = fallback
-          console.log(`✅ 找到备用纹理：${fallback}`)
           break
         }
       }
-      
-      // 🔴 最终检查：如果还是找不到，使用动态生成的图形
       if (!this.scene.textures.exists(finalTexture)) {
-        console.error(`🚨 所有备用纹理都不存在：${texture}`)
-        console.error(`🛑 将使用动态生成的占位图形`)
-        
-        // ✅ 动态生成一个临时纹理
         finalTexture = this.createPlaceholderTexture('enemy_placeholder')
       }
     }
 
-    // ✅ 使用 RenderManager 创建 Sprite（使用最终纹理）
     const enemy: any = this.renderManager.createSprite(x, y, finalTexture, undefined, 'entities')
     
-    // 🔴 关键：启用物理系统
-    this.scene.physics.add.existing(enemy)  // ✅ 直接在 sprite 上添加物理 body
-    console.log(`✅ [EntityManager] 敌人物理已启用：enemy.body=${enemy.body ? '✅' : '❌'}`)
+    if (enemy.body) {
+      if (!enemy.body.update) {
+        enemy.body.destroy()
+        this.scene.physics.add.existing(enemy)
+      } else {
+        enemy.body.reset(x, y)
+        enemy.body.enable = true
+      }
+    } else {
+      this.scene.physics.add.existing(enemy)
+    }
     
-    // ✅ 设置碰撞边界
     enemy.body.setCollideWorldBounds(true)
-
-    // ✅ 加入敌人群
     this.enemyGroup.add(enemy)
+    enemy.setAngle(90)
+    
+    if (type === EntityType.ENEMY_LIGHT) {
+      enemy.setTexture('enemy_light_down')
+    } else if (type === EntityType.ENEMY_MEDIUM) {
+      enemy.setTexture('enemy_medium_down')
+    } else if (type === EntityType.ENEMY_HEAVY) {
+      enemy.setTexture('enemy_heavy_down')
+    } else {
+      enemy.setTexture('enemy_light_down')
+    }
 
-    // 根据类型设置不同属性
     if (type === EntityType.ENEMY_LIGHT) {
       enemy.health = attributes.health || 1
       enemy.speed = attributes.speed || 150
@@ -421,7 +400,7 @@ export class EntityManager {
   }
   
   /**
-   * ⭐ 创建子弹（使用 RenderManager）
+   * ⭐ 创建子弹
    */
   protected createBullet(
     x: number, 
@@ -430,13 +409,42 @@ export class EntityManager {
     texture: string, 
     attributes: IEntityAttributes
   ): Phaser.Physics.Arcade.Image {
-    // ✅ 使用 RenderManager 创建
-    const bullet: any = this.renderManager.createSprite(x, y, texture, undefined, 'effects')
+    const textureExists = this.scene.textures.exists(texture)
+    let finalTexture = texture
     
-    // ✅ 添加物理属性
-    this.scene.physics.add.existing(bullet)
+    if (!textureExists) {
+      const fallbackTextures = ['bullet_player', 'bullet_enemy', 'bullet']
+      for (const fallback of fallbackTextures) {
+        if (this.scene.textures.exists(fallback)) {
+          finalTexture = fallback
+          break
+        }
+      }
+      if (!this.scene.textures.exists(finalTexture)) {
+        finalTexture = this.createPlaceholderBulletTexture(type)
+      }
+    }
     
-    // ✅ 加入对应的子弹组
+    const bullet: any = this.renderManager.createSprite(x, y, finalTexture, undefined, 'effects')
+    
+    if (bullet.body) {
+      if (!bullet.body.update) {
+        bullet.body.destroy()
+        this.scene.physics.add.existing(bullet)
+      } else {
+        bullet.body.reset(x, y)
+        bullet.body.enable = true
+      }
+    } else {
+      this.scene.physics.add.existing(bullet)
+    }
+    
+    if (attributes.speed) {
+      bullet.bulletSpeed = attributes.speed
+    } else {
+      bullet.bulletSpeed = type === EntityType.BULLET_PLAYER ? 400 : 300
+    }
+    
     if (type === EntityType.BULLET_PLAYER) {
       this.bulletGroup.add(bullet)
     } else {
@@ -444,7 +452,6 @@ export class EntityManager {
     }
     
     if (attributes.damage) bullet.damage = attributes.damage
-    if (attributes.speed) bullet.bulletSpeed = attributes.speed
     
     return bullet
   }

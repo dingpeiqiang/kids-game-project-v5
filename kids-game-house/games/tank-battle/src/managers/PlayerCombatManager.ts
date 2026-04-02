@@ -9,6 +9,7 @@
 import type TankGameScene from '../scenes/TankGameScene'
 import { PlayerState, PlayerStateManager } from './PlayerStateManager'
 import { CameraShakeManager } from './CameraShakeManager'
+import { EntityType } from './EntityManager'
 
 /**
  * ⭐ 战斗配置
@@ -42,8 +43,6 @@ export class PlayerCombatManager {
   constructor(scene: TankGameScene, stateManager: PlayerStateManager) {
     this.scene = scene
     this.stateManager = stateManager
-    
-    console.log('✅ PlayerCombatManager 已创建')
   }
   
   // ===========================================================================
@@ -88,6 +87,13 @@ export class PlayerCombatManager {
     console.log(`💥 子弹伤害：${damage}`)
   }
   
+  /**
+   * ⭐ 检查是否有护盾
+   */
+  hasShield(): boolean {
+    return this.isShieldActive
+  }
+  
   // ===========================================================================
   // 💥 受击处理
   // ===========================================================================
@@ -95,48 +101,71 @@ export class PlayerCombatManager {
   /**
    * ⭐ 处理玩家被击中
    */
-  onHit(): void {
-    console.log('💥 PlayerCombatManager: 玩家被击中')
-    
+  onHitWithBullet(bullet: any): void {
     // 🔒 检查是否有效
     if (!this.stateManager.isValid()) {
-      console.log('⚠️ onHit: 玩家状态无效，跳过')
+      bullet.destroy()
       return
     }
     
-    // 🛡️ 检查护盾
+    // 🛡️ 检查护盾（优先级最高）
     if (this.isShieldActive) {
-      this.activateShield()
+      this.consumeShield(bullet)
       return
     }
     
     // 🛡️ 检查无敌
     if (this.stateManager.isInvincible()) {
-      console.log('🛡️ 玩家处于无敌状态，免疫伤害')
+      this.consumeInvincible(bullet)
       return
     }
     
     // 💥 扣减护甲或生命
     if (this.currentArmor > 0) {
       this.currentArmor--
-      console.log(`🛡️ 护甲抵挡伤害，剩余护甲：${this.currentArmor}`)
+      this.scene.time.delayedCall(0, () => {
+        bullet.setActive?.(false)
+        bullet.setVisible?.(false)
+        bullet.removeData?.('hit')
+      })
+      
+      const player = (this.scene as any).player
+      if (player) {
+        player.setVisible(true)
+        player.setAlpha(1)
+      }
+      
       this.playHitFeedback()
       return
     }
     
     // 🔴 进入死亡流程
+    this.scene.time.delayedCall(0, () => {
+      bullet.setActive?.(false)
+      bullet.setVisible?.(false)
+      bullet.setData?.('hit', false)
+    })
+    
     this.handleDeath()
   }
   
   /**
-   * ⭐ 激活护盾
+   * ⭐ 玩家被击中（兼容旧版本）
    */
-  activateShield(): void {
-    this.isShieldActive = false
-    console.log('🛡️ 护盾生效，抵消一次伤害')
-    this.scene.spawnSparks((this.scene as any).player.x, (this.scene as any).player.y, '#3b82f6', 8)
-    this.scene.cameraShake(80)
-    this.scene.playSound('sfx_hit', 0.4)
+  onHit(): void {
+    this.onHitWithBullet({ destroy: () => {} } as any)
+  }
+  
+  /**
+   * ⭐ 激活护盾（道具效果）
+   */
+  activateShieldPowerUp(): void {
+    this.isShieldActive = true
+    const player = (this.scene as any).player
+    if (player) {
+      this.scene.spawnSparks(player.x, player.y, '#3b82f6', 8)
+      this.scene.playSound('sfx_powerup', 0.5)
+    }
   }
   
   /**
@@ -144,19 +173,44 @@ export class PlayerCombatManager {
    */
   addArmor(amount: number = 1): void {
     this.currentArmor = Math.min(this.currentArmor + amount, this.config.maxArmor)
-    console.log(`🛡️ 获得 ${amount} 层护甲，当前护甲：${this.currentArmor}`)
   }
   
-  // ===========================================================================
-  // 🎁 道具效果
-  // ===========================================================================
+  /**
+   * ⭐ 消耗护盾（抵挡伤害时）
+   */
+  private consumeShield(bullet: any): void {
+    this.isShieldActive = false
+    bullet.destroy()
+    
+    const player = (this.scene as any).player
+    if (player) {
+      const stateManager = (this.scene as any).stateManager
+      if (stateManager?.stopBlinkEffect) {
+        stateManager.stopBlinkEffect()
+      }
+      player.setVisible(true)
+      player.setAlpha(1)
+    }
+    
+    this.scene.spawnSparks((this.scene as any).player.x, (this.scene as any).player.y, '#3b82f6', 8)
+    this.scene.cameraShake(80)
+    this.scene.playSound('sfx_hit', 0.4)
+  }
   
   /**
-   * ⭐ 激活护盾道具
+   * ⭐ 消耗无敌（抵挡伤害时）
    */
-  activateShieldPowerUp(): void {
-    this.isShieldActive = true
-    console.log('✨ 激活护盾道具')
+  private consumeInvincible(bullet: any): void {
+    bullet.destroy()
+    
+    const player = (this.scene as any).player
+    if (player) {
+      player.setVisible(true)
+      player.setAlpha(1)
+    }
+    
+    this.scene.spawnSparks((this.scene as any).player.x, (this.scene as any).player.y, '#ffd700', 8)
+    this.scene.playSound('sfx_hit', 0.3)
   }
   
   /**
@@ -164,12 +218,8 @@ export class PlayerCombatManager {
    */
   activateFreezeEffect(): void {
     this.isFrozen = true
-    console.log('❄️ 激活冻结效果')
-    
-    // 5 秒后自动解除
     this.scene.time.delayedCall(5000, () => {
       this.isFrozen = false
-      console.log('🔓 冻结效果结束')
     })
   }
   
@@ -178,38 +228,26 @@ export class PlayerCombatManager {
    */
   activateUpgrade(): void {
     this.setBulletDamage(this.config.bulletDamage + 5)
-    console.log('⬆️ 火力升级')
   }
   
   /**
    * ⭐ 激活散弹枪道具
    */
   activateShotgun(): void {
-    console.log('🔫 激活散弹枪 - 一次发射 5 颗子弹')
-    // 临时提升射速和子弹大小
-    this.setShootCooldown(150)  // 快速射击
-    this.setBulletDamage(this.config.bulletDamage * 1.5)  // 伤害提升
-    
-    // 5 秒后恢复
-    this.scene.time.delayedCall(5000, () => {
-      console.log('🔫 散弹枪效果结束')
-    })
+    this.setShootCooldown(150)
+    this.setBulletDamage(this.config.bulletDamage * 1.5)
+    this.scene.time.delayedCall(5000, () => {})
   }
   
   /**
    * ⭐ 激活追踪导弹道具
    */
   activateHomingMissile(): void {
-    console.log('🚀 激活追踪导弹 - 自动追踪敌人')
-    // 标记下次射击使用追踪导弹
     const player = (this.scene as any).player
     if (player) {
       player.setData('homing', true)
-      
-      // 10 秒后失效
       this.scene.time.delayedCall(10000, () => {
         player.setData('homing', false)
-        console.log('🚀 追踪导弹效果结束')
       })
     }
   }
@@ -218,9 +256,6 @@ export class PlayerCombatManager {
    * ⭐ 激活全屏炸弹
    */
   activateFullScreenBomb(): void {
-    console.log('💣 全屏炸弹 - 清除所有敌人')
-    
-    // 摧毁所有敌人
     const enemies = (this.scene as any).enemies?.getChildren() || []
     let destroyedCount = 0
     
@@ -232,8 +267,6 @@ export class PlayerCombatManager {
         destroyedCount++
       }
     })
-    
-    console.log(`💣 清除了 ${destroyedCount} 个敌人`)
     
     // 特效：白色闪光覆盖全屏
     const flash = this.scene.add.rectangle(
@@ -251,10 +284,9 @@ export class PlayerCombatManager {
       onComplete: () => flash.destroy()
     })
     
-    // 强烈震动
     const cameraShake = (this.scene as any).cameraShakeManager as CameraShakeManager
     if (cameraShake) {
-      cameraShake.shake(3) // EXTREME 级别
+      cameraShake.shake(3)
     }
   }
   
@@ -269,47 +301,57 @@ export class PlayerCombatManager {
     const player = (this.scene as any).player
     if (!player || !player.active) return
     
-    // 🎵 播放音效
     this.scene.playSound('sfx_shoot', 0.3)
     
-    // 💨 生成子弹
     const bulletSpeed = 400
-    const bulletOffset = 20
+    const tankHalfSize = 20
     
     let vx = 0, vy = 0
+    let bulletX = player.x
+    let bulletY = player.y
     const direction = (this.scene as any).movementManager?.getCurrentDirection()
     
     switch (direction) {
       case 'UP':
         vy = -bulletSpeed
+        bulletY = player.y - tankHalfSize
         break
       case 'DOWN':
         vy = bulletSpeed
+        bulletY = player.y + tankHalfSize
         break
       case 'LEFT':
         vx = -bulletSpeed
+        bulletX = player.x - tankHalfSize
         break
       case 'RIGHT':
         vx = bulletSpeed
+        bulletX = player.x + tankHalfSize
         break
     }
     
-    // 如果没有方向，使用默认向上
     if (vx === 0 && vy === 0) {
       vy = -bulletSpeed
+      bulletY = player.y - tankHalfSize
     }
     
-    const bullet = (this.scene as any).entityManager.createBullet(
-      player.x,
-      player.y - bulletOffset,
-      vx,
-      vy,
-      'bullet_player',
-      { damage: this.config.bulletDamage }
-    )
-    
-    if (bullet) {
-      console.log('🔫 玩家射击')
+    const entityManager = (this.scene as any).entityManager
+    if (entityManager) {
+      const bullet = entityManager.createEntity({
+        type: EntityType.BULLET_PLAYER,
+        x: bulletX,
+        y: bulletY,
+        texture: 'bullet_player',
+        attributes: { 
+          damage: this.config.bulletDamage,
+          speed: bulletSpeed
+        },
+        metadata: { velocity: { x: vx, y: vy } }
+      })
+      
+      if (bullet?.body) {
+        bullet.body.setVelocity(vx, vy)
+      }
     }
   }
   
@@ -317,31 +359,25 @@ export class PlayerCombatManager {
    * 处理死亡
    */
   private handleDeath(): void {
-    console.log('💀 PlayerCombatManager: 处理死亡')
+    const player = (this.scene as any).player
     
-    // 📊 获取游戏商店（通过 scene）
     const gameStore = (this.scene as TankGameScene).gameStore
-    if (!gameStore) {
-      console.error('❌ gameStore 不存在')
-      return
-    }
+    if (!gameStore) return
     
-    const previousLives = gameStore.lives
     gameStore.loseLife()
     
-    console.log(`💥 玩家被击中，生命值：${previousLives} → ${gameStore.lives}`)
+    const scene = this.scene as any
+    if (scene.game?.events) {
+      scene.game.events.emit('lifeLost', gameStore.lives)
+    }
     
-    // 🎭 播放受击反馈
     this.playHitFeedback()
     
-    // 🔄 判断是否可以复活
-    if (previousLives > 1) {
-      // ✅ 还有命，可以复活
+    if (gameStore.lives > 0) {
       this.stateManager.onHit(() => {
-        this.startRespawn(previousLives)
+        this.startRespawn(gameStore.lives)
       })
     } else {
-      // ❌ 生命耗尽，游戏结束
       this.stateManager.markAsDead()
       this.scene.handleGameOver()
     }
@@ -351,59 +387,75 @@ export class PlayerCombatManager {
    * 开始复活流程
    */
   private startRespawn(currentLives: number): void {
-    console.log(`🔄 PlayerCombatManager: 开始复活，剩余生命：${currentLives}`)
-    
-    // 📍 计算复活位置（使用地图坐标，不需要 offset）
     const gridCols = (this.scene as any).gridCols
-    const gridRows = (this.scene as any).gridRows  // 🔧 修复：添加 gridRows 定义
+    const gridRows = (this.scene as any).gridRows
     const cellSize = (this.scene as any).cellSize
     
-    const startX = (gridCols * cellSize) / 2  // 地图水平中心
-    const startY = (gridRows * cellSize) - 100  // 距离底部 100 像素
-    
-    console.log('📍 复活位置计算:', { gridCols, gridRows, cellSize, startX, startY })
+    const startX = (gridCols * cellSize) / 2
+    const startY = (gridRows * cellSize) - 100
     
     // 🧹 清除周围敌人
     this.clearSpawnArea(startX, startY, 150)
     
+    // 🛡️ 重置战斗状态（护盾、护甲等）
+    this.reset()
+    
     // 🚀 启动复活流程
     this.stateManager.startRespawning(() => {
-      console.log('✨ 复活完成回调')
-      
-      const player = (this.scene as any).player
-      if (!player || !player.active) {
-        console.warn('⚠️ [复活失败] player 不存在或未激活')
-        return
-      }
-      
-      console.log('📍 传送玩家到复活点:', { x: startX, y: startY })
-      
       try {
-        // 📍 传送玩家到复活点
-        player.setPosition(startX, startY)
+        const scene = this.scene as any
+        const player = scene.player
         
-        // 🔧 修复：检查 body 是否存在
+        if (!player) return
+        
+        // 1. 重置位置到复活点
+        player.x = startX
+        player.y = startY
+        
+        // 2. 激活玩家
+        player.setActive(true)
+        
+        // 3. 重置物理体状态
         if (player.body) {
-          player.setVelocity(0, 0)
-        } else {
-          console.warn('⚠️ [复活警告] player.body 不存在，跳过速度清零')
+          player.body.reset(startX, startY)
+          player.body.setVelocity(0, 0)
+          player.body.enable = true
+          player.body.checkCollision.none = false
+          player.body.setSize(40, 40)
+          player.body.setOffset(12, 12)
         }
         
-        player.setActive(true)
-        player.setVisible(true)
-        player.setTexture('player_tank_up')
-        player.clearTint()
+        // 4. 重置方向（朝上）
+        player.direction = 'UP'
+        player.setFrame(0)
+        
+        // 5. 恢复渲染状态
         player.setAlpha(1)
+        player.setVisible(true)
         
-        console.log('✅ [复活成功] 玩家已传送到复活点')
+        // 6. 恢复纹理（防止纹理丢失）
+        if (!player.texture?.key) {
+          player.setTexture('player_tank_up')
+        }
         
-        // 💥 清除旧定时器
-        if ((this.scene as any).blinkTimer) {
-          ;(this.scene as any).blinkTimer.destroy()
-          ;(this.scene as any).blinkTimer = null
+        // 7. 恢复碰撞检测
+        if (player.body) {
+          player.body.checkCollision.none = false
+        }
+        
+        // 8. 设置深度
+        player.setDepth(100)
+        
+        // 9. 清除周围敌人
+        this.clearSpawnArea(startX, startY, 150)
+        
+        // 10. 重新绑定所有与玩家相关的碰撞（事件驱动）
+        const collisionManager = (this.scene as any).collisionManager
+        if (collisionManager?.rebindPlayerCollisions) {
+          collisionManager.rebindPlayerCollisions()
         }
       } catch (error) {
-        console.error('❌ [复活错误] 设置玩家状态失败:', error)
+        console.error('❌ [复活失败]', error)
       }
     })
   }
@@ -427,8 +479,6 @@ export class PlayerCombatManager {
         this.scene.addScore(50)
       }
     })
-    
-    console.log(`🧹 清除半径 ${radius} 内的敌人`)
   }
   
   /**
@@ -446,5 +496,27 @@ export class PlayerCombatManager {
     
     // 🔊 音效
     this.scene.playSound('sfx_hit', 0.7)
+  }
+
+  // ===========================================================================
+  // 🔧 重置与销毁
+  // ===========================================================================
+
+  /**
+   * ⭐ 重置状态（新游戏开始时）
+   */
+  reset(): void {
+    this.lastShootTime = 0
+    this.currentArmor = 0
+    this.isShieldActive = false  // ✅ 关键：重置护盾状态
+    this.isFrozen = false
+    console.log('🔄 [PlayerCombatManager] 状态已重置')
+  }
+
+  /**
+   * ⭐ 销毁（清理资源）
+   */
+  destroy(): void {
+    this.reset()
   }
 }

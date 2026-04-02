@@ -7,16 +7,22 @@
 // ============================================================================
 
 import type TankGameScene from '../scenes/TankGameScene'
+import { EntityType } from './EntityManager'
+import { PlayerState } from './PlayerStateManager'
 
-/**
- * ⭐ 碰撞管理器
- */
+  /**
+   * ⭐ 碰撞管理器
+   */
 export class CollisionManager {
   private scene: TankGameScene
   
+  // 🔧 保存 collider 引用，以便复活后重新绑定
+  private playerWallCollider!: Phaser.Physics.Arcade.Collider
+  private playerEnemyCollider!: Phaser.Physics.Arcade.Collider
+  private enemyBulletPlayerCollider!: Phaser.Physics.Arcade.Collider
+  
   constructor(scene: TankGameScene) {
     this.scene = scene
-    console.log('✅ CollisionManager 已创建')
   }
   
   // ===========================================================================
@@ -27,27 +33,23 @@ export class CollisionManager {
    * ⭐ 设置所有碰撞关系
    */
   setupAllCollisions(): void {
-    console.log('🔧 CollisionManager: 设置所有碰撞关系')
-    
-    // ═══ 玩家子弹与墙壁 ═══
+    // 玩家 vs 墙壁
+    this.setupPlayerVsWall()
+    // 敌人 vs 墙壁
+    this.setupEnemyVsWall()
+    // 玩家子弹 vs 墙壁
     this.setupPlayerBulletVsWall()
-    
-    // ═══ 敌人子弹与墙壁 ═══
+    // 敌人子弹 vs 墙壁
     this.setupEnemyBulletVsWall()
-    
-    // ═══ 玩家子弹与敌人 ═══
+    // 玩家子弹 vs 敌人
     this.setupPlayerBulletVsEnemy()
-    
-    // ═══ 敌人子弹与玩家 ═══
+    // 敌人子弹 vs 玩家
     this.setupEnemyBulletVsPlayer()
-    
-    // ═══ 玩家与敌人（物理碰撞） ═══
+    // 玩家 vs 敌人
     this.setupPlayerVsEnemy()
-    
-    // ═══ 敌人子弹与基地 ═══
+    // 敌人子弹 vs 基地
     this.setupEnemyBulletVsBase()
-    
-    // ═══ 玩家与道具 ═══
+    // 玩家 vs 道具
     this.setupPlayerVsPowerUp()
   }
   
@@ -63,25 +65,19 @@ export class CollisionManager {
     const bullets = (this.scene as any).bullets
     const walls = (this.scene as any).walls
     
-    if (!physics || !bullets || !walls) {
-      console.warn('⚠️ setupPlayerBulletVsWall: 缺少必要组件')
-      return
-    }
+    if (!physics || !bullets || !walls) return
     
     physics.add.collider(bullets, walls, (bullet: any, wall: any) => {
       if (!bullet.active) return
       
       const bx = bullet.x, by = bullet.y
       const isSteel = wall.texture?.key === 'wall_steel'
-      
       bullet.destroy()
       
       if (isSteel) {
-        // 钢墙：火花 + 音效
         this.scene.spawnSparks(bx, by, '#94a3b8', 4)
         this.scene.playSound('sfx_hit', 0.2)
       } else {
-        // 砖墙：摧毁 + 碎片
         wall.destroy()
         this.scene.spawnDebris(bx, by, '#8B4513')
         this.scene.playSound('sfx_explosion', 0.4)
@@ -98,17 +94,13 @@ export class CollisionManager {
     const enemyBullets = (this.scene as any).enemyBullets
     const walls = (this.scene as any).walls
     
-    if (!physics || !enemyBullets || !walls) {
-      console.warn('⚠️ setupEnemyBulletVsWall: 缺少必要组件')
-      return
-    }
+    if (!physics || !enemyBullets || !walls) return
     
     physics.add.collider(enemyBullets, walls, (bullet: any, wall: any) => {
       if (!bullet.active) return
       
       const bx = bullet.x, by = bullet.y
       const isSteel = wall.texture?.key === 'wall_steel'
-      
       bullet.destroy()
       
       if (isSteel) {
@@ -128,18 +120,23 @@ export class CollisionManager {
   private setupPlayerBulletVsEnemy(): void {
     const physics = (this.scene as any).physics
     const bullets = (this.scene as any).bullets
-    const enemies = (this.scene as any).enemies
+    const entityManager = (this.scene as any).entityManager
     
-    if (!physics || !bullets || !enemies) {
-      console.warn('⚠️ setupPlayerBulletVsEnemy: 缺少必要组件')
-      return
-    }
+    if (!physics || !bullets || !entityManager) return
     
-    physics.add.overlap(bullets, enemies, (bullet: any, enemy: any) => {
-      if (!bullet.active) return
-      
-      bullet.destroy()
-      this.scene.destroyEnemy(enemy)
+    // 为每种敌人类型设置碰撞
+    const enemyGroups = [
+      entityManager.getGroup(EntityType.ENEMY_LIGHT),
+      entityManager.getGroup(EntityType.ENEMY_MEDIUM),
+      entityManager.getGroup(EntityType.ENEMY_HEAVY)
+    ].filter(g => g !== null)
+    
+    enemyGroups.forEach((enemyGroup) => {
+      physics.add.overlap(bullets, enemyGroup, (bullet: any, enemy: any) => {
+        if (!bullet.active) return
+        bullet.destroy()
+        this.scene.destroyEnemy(enemy)
+      })
     })
   }
   
@@ -150,31 +147,30 @@ export class CollisionManager {
     const physics = (this.scene as any).physics
     const enemyBullets = (this.scene as any).enemyBullets
     const player = (this.scene as any).player
-    const combatManager = (this.scene as any).combatManager
     
-    if (!physics || !enemyBullets || !player) {
-      console.warn('⚠️ setupEnemyBulletVsPlayer: 缺少必要组件')
-      return
-    }
+    if (!physics || !enemyBullets || !player) return
     
-    physics.add.overlap(enemyBullets, player, (bullet: any) => {
-      // 🛡️ 关键检查：如果玩家状态无效，直接销毁子弹
+    this.enemyBulletPlayerCollider = physics.add.overlap(enemyBullets, player, (bullet: any) => {
+      // 🔒 防御检查：子弹状态
+      if (!bullet?.active) return
+      
+      // 🛡️ 无敌状态检测（优先检查）
       const stateManager = (this.scene as any).stateManager
-      if (stateManager && !stateManager.isValid()) {
-        bullet.destroy()
+      if (stateManager?.isInvincible() || stateManager?.getState() === PlayerState.RESPAWNING) {
         return
       }
       
-      // ✅ 立即销毁子弹
-      bullet.destroy()
+      // 🔒 防止重复命中
+      if (bullet.getData('hit')) return
+      bullet.setData('hit', true)
       
-      // ⚔️ 调用战斗管理器处理受击
-      if (combatManager) {
-        combatManager.onHit()
-      }
+      // 💥 处理命中
+      const combatManager = (this.scene as any).combatManager
+      if (combatManager) combatManager.onHitWithBullet(bullet)
+      else bullet.destroy()
     })
   }
-  
+
   /**
    * 玩家 vs 敌人（物理碰撞触发伤害）
    */
@@ -182,18 +178,16 @@ export class CollisionManager {
     const physics = (this.scene as any).physics
     const player = (this.scene as any).player
     const enemies = (this.scene as any).enemies
-    const combatManager = (this.scene as any).combatManager
     
-    if (!physics || !player || !enemies) {
-      console.warn('⚠️ setupPlayerVsEnemy: 缺少必要组件')
-      return
-    }
+    if (!physics || !player || !enemies) return
     
     physics.add.collider(player, enemies, () => {
       if (!player.active) return
       
-      // ⚔️ 调用战斗管理器
+      const combatManager = (this.scene as any).combatManager
       if (combatManager) {
+        if (combatManager.hasShield?.()) return
+        if ((this.scene as any).stateManager?.isInvincible()) return
         combatManager.onHit()
       }
     })
@@ -207,15 +201,10 @@ export class CollisionManager {
     const enemyBullets = (this.scene as any).enemyBullets
     const base = (this.scene as any).base
     
-    if (!physics || !enemyBullets || !base) {
-      console.warn('⚠️ setupEnemyBulletVsBase: 缺少必要组件')
-      return
-    }
+    if (!physics || !enemyBullets || !base) return
     
     physics.add.overlap(enemyBullets, base, (bullet: any) => {
-      if (bullet.active) {
-        bullet.destroy()
-      }
+      if (bullet.active) bullet.destroy()
       this.scene.baseDestroyed()
     })
   }
@@ -228,13 +217,133 @@ export class CollisionManager {
     const player = (this.scene as any).player
     const powerUps = (this.scene as any).powerUps
     
-    if (!physics || !player || !powerUps) {
-      console.warn('⚠️ setupPlayerVsPowerUp: 缺少必要组件')
-      return
+    if (!physics || !player || !powerUps) return
+    
+    physics.add.overlap(player, powerUps, (playerObj: any, powerUp: any) => {
+      if (!playerObj.active || !powerUp.active) return
+      this.scene.collectPowerUp(powerUp)
+      powerUp.destroy()
+    })
+  }
+  
+  /**
+   * ⭐ 玩家与墙壁（物理碰撞）
+   */
+  private setupPlayerVsWall(): void {
+    const physics = (this.scene as any).physics
+    const player = (this.scene as any).player
+    const walls = (this.scene as any).walls
+    
+    if (!physics || !player || !walls) return
+    
+    this.playerWallCollider = physics.add.collider(player, walls)
+  }
+  
+  /**
+   * ⭐ 重新绑定玩家与墙壁的碰撞（复活后调用）
+   */
+  public rebindPlayerWallCollision(): void {
+    const physics = (this.scene as any).physics
+    const player = (this.scene as any).player
+    const walls = (this.scene as any).walls
+    
+    if (!physics || !player || !walls) return
+    
+    if (this.playerWallCollider) {
+      this.playerWallCollider.destroy()
     }
     
-    physics.add.overlap(player, powerUps, (_player: any, powerUp: any) => {
-      this.scene.collectPowerUp(powerUp)
+    this.playerWallCollider = physics.add.collider(player, walls)
+  }
+  
+  /**
+   * ⭐ 重新绑定所有与玩家相关的碰撞（复活后调用）
+   */
+  public rebindAllPlayerCollisions(): void {
+    this.rebindPlayerWallCollision()
+    this.rebindPlayerVsEnemy()
+    this.rebindEnemyBulletVsPlayer()
+  }
+  
+  /**
+   * ⭐ 重新绑定敌人子弹与玩家的碰撞
+   */
+  private rebindEnemyBulletVsPlayer(): void {
+    const physics = (this.scene as any).physics
+    const enemyBullets = (this.scene as any).enemyBullets
+    const player = (this.scene as any).player
+    
+    // 🔧 销毁旧的 collider
+    if (this.enemyBulletPlayerCollider) {
+      this.enemyBulletPlayerCollider.destroy()
+    }
+    
+    // ✅ 创建新的 overlap
+    this.enemyBulletPlayerCollider = physics.add.overlap(enemyBullets, player, (bullet: any) => {
+      // 🔒 防御检查：子弹状态
+      if (!bullet?.active) return
+      
+      // 🛡️ 无敌状态检测（优先检查）
+      const stateManager = (this.scene as any).stateManager
+      if (stateManager?.isInvincible() || stateManager?.getState() === PlayerState.RESPAWNING) {
+        return
+      }
+      
+      // 🔒 防止重复命中
+      if (bullet.getData('hit')) return
+      bullet.setData('hit', true)
+      
+      // 💥 处理命中
+      const combatManager = (this.scene as any).combatManager
+      if (combatManager) combatManager.onHitWithBullet(bullet)
+      else bullet.destroy()
+    })
+  }
+
+  /**
+   * ⭐ 重新绑定玩家与敌人的碰撞
+   */
+  private rebindPlayerVsEnemy(): void {
+    const physics = (this.scene as any).physics
+    const player = (this.scene as any).player
+    const enemies = (this.scene as any).enemies
+    
+    if (!physics || !player || !enemies) return
+    
+    if (this.playerEnemyCollider) {
+      this.playerEnemyCollider.destroy()
+    }
+    
+    this.playerEnemyCollider = physics.add.collider(player, enemies, () => {
+      if (!player.active) return
+      
+      const combatManager = (this.scene as any).combatManager
+      if (combatManager) {
+        if (combatManager.hasShield?.()) return
+        if ((this.scene as any).stateManager?.isInvincible()) return
+        combatManager.onHit()
+      }
+    })
+  }
+  
+  /**
+   * ⭐ 敌人与墙壁（物理碰撞）
+   */
+  private setupEnemyVsWall(): void {
+    const physics = (this.scene as any).physics
+    const entityManager = (this.scene as any).entityManager
+    const walls = (this.scene as any).walls
+    
+    if (!physics || !entityManager || !walls) return
+    
+    const enemyGroups = [
+      entityManager.getGroup(EntityType.ENEMY_LIGHT),
+      entityManager.getGroup(EntityType.ENEMY_MEDIUM),
+      entityManager.getGroup(EntityType.ENEMY_HEAVY)
+    ].filter(g => g !== null)
+    
+    enemyGroups.forEach(enemyGroup => {
+      physics.add.collider(enemyGroup, walls)
     })
   }
 }

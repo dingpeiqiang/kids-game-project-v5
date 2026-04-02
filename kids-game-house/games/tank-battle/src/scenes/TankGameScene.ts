@@ -17,6 +17,12 @@ import { EnemyAIManager } from '@/managers/EnemyAIManager'
 import { ExplosionPool } from '../pools/ExplosionPool'
 import { ParticleSystemUtil } from '../utils/ParticleSystemUtil'
 import { RenderManager } from '@/managers/RenderManager'
+import { PoolMonitorPanel } from '@/debug/PoolMonitorPanel'
+import { PlayerDebugPanel } from '@/debug/PlayerDebugPanel'
+import { EntityDebugPanel } from '@/debug/EntityDebugPanel'
+import { EnemyDebugManager } from '@/debug/EnemyDebugManager'
+import { TopDebugToolbarManager } from '@/ui/TopDebugToolbarManager'
+import { GameEvents, CollisionEvents } from '../events/GameEvents'
 
 /**
  * ⭐ 坦克大战游戏场景（重构版）
@@ -58,6 +64,11 @@ export default class TankGameScene extends GameScene {
   private explosionPool!: ExplosionPool
   private particleSystem!: ParticleSystemUtil
   private renderManager!: RenderManager
+  private poolMonitor!: PoolMonitorPanel  // ✅ 新增：对象池监控
+  private playerDebugPanel!: PlayerDebugPanel
+  private entityDebugPanel!: EntityDebugPanel
+  private enemyDebugManager!: EnemyDebugManager
+  private topDebugToolbar!: TopDebugToolbarManager
   
   // ═══════════════════════════════════════
   // 🎯 游戏实体引用
@@ -111,60 +122,38 @@ export default class TankGameScene extends GameScene {
   // ═══════════════════════════════════════
   
   async preload(): Promise<void> {
-    console.log('🎮 [TankGameScene] Preload 阶段开始')
-    
     // 🔴 严格模式：预加载所有资源，不允许失败
     try {
       this.preloadFromGTRS()
-      console.log('✅ [TankGameScene] Preload 阶段完成')
     } catch (error) {
-      console.error('❌ [TankGameScene] Preload 失败，游戏无法启动:', error)
-      throw error // 严格模式：直接向上抛出错误，不允许继续
+      throw error
     }
   }
 
   async create(): Promise<void> {
     super.create()
     
-    console.log('🎮 坦克大战启动（重构版 - 管理器架构）')
-    
-    // ✅ 初始化渲染管理器（优先）
+    // 初始化渲染管理器
     this.renderManager = new RenderManager(this)
     this.renderManager.initDefaultLayers()
     
-    // ✅ 初始化对象池和工具
+    // 初始化对象池和工具
     this.explosionPool = new ExplosionPool(this, this.renderManager)
     this.particleSystem = new ParticleSystemUtil(this)
     
     const configStore = useConfigStore()
     const config = configStore.getEffectiveConfig
     
-    // 🛑 重置游戏状态
+    // 重置游戏状态
     this.isGameOver = false
     this.score = 0
     this.currentLevel = 1
     
-    // ✅ 初始化键盘输入（关键！否则玩家无法移动）
-    this.cursors = this.input.keyboard!.createCursorKeys()
-    this.keyW = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W)
-    this.keyA = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A)
-    this.keyS = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S)
-    this.keyD = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D)
-    this.keySpace = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
-    this.keyJ = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.J)
-
-    console.log('✅ 键盘输入已初始化:', {
-      hasCursors: !!this.cursors,
-      hasKeyW: !!this.keyW,
-      hasKeyA: !!this.keyA,
-      hasKeyS: !!this.keyS,
-      hasKeyD: !!this.keyD,
-      hasKeySpace: !!this.keySpace,
-      hasKeyJ: !!this.keyJ
-    })
+    const mapWidth = this.gridCols * this.cellSize
+    const mapHeight = this.gridRows * this.cellSize
 
     // 初始化游戏商店
-    this.gameStore = useGameStore()  // ✅ 保存引用供子管理器使用
+    this.gameStore = useGameStore()
     this.gameStore.$patch({
       lives: config.playerLives || 3,
       score: 0,
@@ -176,116 +165,97 @@ export default class TankGameScene extends GameScene {
       this.timeLeft = config.timeLimit
     }
 
-    // ✅ 使用 RenderManager 创建背景（固定视角 - 不需要居中到屏幕）
-    const mapWidth = this.gridCols * this.cellSize
-    const mapHeight = this.gridRows * this.cellSize
-    
-    console.log('🎨 创建背景:', {
-      screenW: this.screenW,
-      screenH: this.screenH,
-      texture: 'bg_main',
-      mapWidth: mapWidth,
-      mapHeight: mapHeight
-    })
-    
-    // ✅ 背景应该覆盖整个游戏区域，而不是屏幕
+    // 创建背景
     const bg = this.renderManager.createSprite(
-      mapWidth / 2,  // ✅ 使用地图中心，而不是屏幕中心
+      mapWidth / 2,
       mapHeight / 2,
       'bg_main',
       undefined,
       'background'
     )
     bg.setOrigin(0.5, 0.5)
-    bg.setSize(mapWidth, mapHeight)  // ✅ 使用地图尺寸，而不是屏幕尺寸
-    bg.setScrollFactor(0)  // ✅ 背景不随相机滚动
+    bg.setSize(mapWidth, mapHeight)
+    bg.setScrollFactor(0)
+    bg.setDepth(-10)
     
-    console.log('✅ 背景已创建:', {
-      x: bg.x,
-      y: bg.y,
-      width: bg.width,
-      height: bg.height,
-      scrollFactor: bg.scrollFactorX
-    })
+    // 绘制地图边界和网格
+    this.drawMapBoundaries(mapWidth, mapHeight)
     
-    // ✅ 初始化 EntityManager（注入 RenderManager）
+    // 初始化 EntityManager
     this.entityManager = new EntityManager(this, this.renderManager)
     
-    // 🔴 设置物理世界边界（固定视角 - 从 (0,0) 开始）
+    // 设置物理世界边界
+    const physicsPadding = 32
     this.physics.world.setBounds(
-      0,          // ✅ 从 x=0 开始
-      0,          // ✅ 从 y=0 开始
-      mapWidth,   // 地图宽度
-      mapHeight   // 地图高度
+      physicsPadding,
+      physicsPadding,
+      mapWidth - physicsPadding * 2,
+      mapHeight - physicsPadding * 2
     )
     
-    console.log('🔧 物理世界边界已设置:', {
-      x: 0,
-      y: 0,
-      width: mapWidth,
-      height: mapHeight
-    })
+    // 设置相机边界和位置
+    this.cameras.main.setBounds(0, 0, mapWidth, mapHeight)
+    this.cameras.main.centerOn(mapWidth / 2, mapHeight / 2)
+    this.cameras.main.setZoom(1)
     
-    // ✅ 从 EntityManager 获取实体组（使用类型断言）
+    // 初始化键盘输入
+    this.cursors = this.input.keyboard!.createCursorKeys()
+    this.keyW = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W)
+    this.keyA = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A)
+    this.keyS = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S)
+    this.keyD = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D)
+    this.keySpace = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+    this.keyJ = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.J)
+    
+    // 获取实体组
     this.bullets = this.entityManager.getGroup(EntityType.BULLET_PLAYER) as Phaser.Physics.Arcade.Group
     this.enemyBullets = this.entityManager.getGroup(EntityType.BULLET_ENEMY) as Phaser.Physics.Arcade.Group
     this.powerUps = this.entityManager.getGroup(EntityType.POWERUP) as Phaser.Physics.Arcade.Group
     this.enemies = this.entityManager.getGroup(EntityType.ENEMY_LIGHT) as Phaser.Physics.Arcade.Group
     this.walls = this.entityManager.getGroup(EntityType.WALL_BRICK) as Phaser.Physics.Arcade.StaticGroup
     
-    // ✅ 初始化所有管理器（在创建玩家之前）
+    // 初始化管理器
     this.stateManager = new PlayerStateManager(this)
-    
-    // 创建玩家（stateManager 已初始化）
     this.createPlayer()
-    
-    // ✅ 继续初始化其他管理器（需要 player 引用）
     this.movementManager = new PlayerMovementManager(this, this.player)
     this.combatManager = new PlayerCombatManager(this, this.stateManager)
     this.collisionManager = new CollisionManager(this)
     this.enemyAIManager = new EnemyAIManager(this)
     
-    // 💥 设置碰撞检测（委托给 CollisionManager）
+    // 设置碰撞检测（事件驱动）
     this.collisionManager.setupAllCollisions()
+    this.registerCollisionHandlers()
     
-    // ⭐ 创建关卡编排器
+    // 初始化调试面板
+    this.playerDebugPanel = new PlayerDebugPanel(this)
+    this.entityDebugPanel = new EntityDebugPanel(this)
+    this.enemyDebugManager = new EnemyDebugManager(this, this.entityDebugPanel)
+    this.topDebugToolbar = new TopDebugToolbarManager(this)
+    
+    // 创建关卡编排器
     this.orchestrator = new TankGameOrchestrator(this)
-    
-    // ⭐ 设置进度回调
     this.orchestrator.onProgress = (event) => {
       this.updateLoadingUI(event.progress, event.message)
     }
     
-    // ✅ 设置关卡完成回调（关键！）
-    this.onLevelComplete = (result: ILevelResult) => {
-      console.log('✅ [TankGameScene] 关卡完成:', result)
-      // 可以在这里处理关卡完成后的逻辑
-    }
+    this.onLevelComplete = (result: ILevelResult) => {}
     
-    // 🎮 加载并运行关卡（验证关卡配置）
+    // 加载并运行关卡
     const levelConfig = await LevelConfigLoader.loadLevelConfig('tank_level_1')
     
-    // 🔴 严格模式：验证关卡配置中的资源列表
     if (!levelConfig?.resources) {
-      throw new Error('❌ [关卡配置错误] resources 字段不存在')
+      throw new Error('resources 字段不存在')
     }
     
-    console.log('📋 [关卡配置] 资源列表验证通过')
     this.runLevelAsync(levelConfig)
   }
   
   update(_time: number, _delta: number): void {
     if (this.isGameOver) return
     
-    // ✅ 关键：如果玩家不能行动，直接返回
-    // 🔧 修复：允许玩家在 RESPAWNING 状态下移动（只是不能射击）
     const currentState = this.stateManager.getState()
-    if (currentState === 'DEAD' || currentState === 'DYING') {
-      console.log('⚠️ 玩家无法行动，当前状态:', currentState)
-      return
-    }
+    if (currentState === 'DEAD' || currentState === 'DYING') return
     
-    // 🎯 移动控制（委托给 movementManager）- 所有状态都允许移动
     this.movementManager.update(this.cursors, {
       keyW: this.keyW,
       keyA: this.keyA,
@@ -293,15 +263,160 @@ export default class TankGameScene extends GameScene {
       keyD: this.keyD
     })
     
-    // ⚔️ 射击控制（委托给 combatManager）- 只有 ALIVE 状态可以射击
     if ((this.keySpace?.isDown || this.keyJ?.isDown) && currentState === 'ALIVE') {
       this.combatManager.tryShoot()
     }
+    
+    // 更新调试面板
+    this.playerDebugPanel.update(_time)
+    this.enemyDebugManager.update(_time)
+    this.entityDebugPanel.update(_time)
   }
   
   shutdown(): void {
-    console.log('🛑 场景关闭，清理资源')
+    this.unregisterCollisionHandlers()
     this.stateManager.destroy()
+    this.playerDebugPanel.destroy()
+    this.entityDebugPanel.destroy()
+    this.topDebugToolbar.destroy()
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎯 碰撞事件处理器（事件驱动替代回调嵌套）
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * ⭐ 注册所有碰撞事件监听
+   */
+  private registerCollisionHandlers(): void {
+    // 玩家子弹 vs 墙壁
+    GameEvents.on(this, CollisionEvents.PLAYER_BULLET_WALL, this.handlePlayerBulletWall, this)
+    // 敌人子弹 vs 墙壁
+    GameEvents.on(this, CollisionEvents.ENEMY_BULLET_WALL, this.handleEnemyBulletWall, this)
+    // 玩家子弹 vs 敌人
+    GameEvents.on(this, CollisionEvents.PLAYER_BULLET_ENEMY, this.handlePlayerBulletEnemy, this)
+    // 敌人子弹 vs 玩家
+    GameEvents.on(this, CollisionEvents.ENEMY_BULLET_PLAYER, this.handleEnemyBulletPlayer, this)
+    // 玩家 vs 敌人
+    GameEvents.on(this, CollisionEvents.PLAYER_ENEMY, this.handlePlayerEnemyCollision, this)
+    // 敌人子弹 vs 基地
+    GameEvents.on(this, CollisionEvents.ENEMY_BULLET_BASE, this.handleEnemyBulletBase, this)
+    // 玩家 vs 道具
+    GameEvents.on(this, CollisionEvents.PLAYER_POWERUP, this.handlePlayerPowerUp, this)
+  }
+
+  /**
+   * ⭐ 注销所有碰撞事件监听
+   */
+  private unregisterCollisionHandlers(): void {
+    GameEvents.off(this, CollisionEvents.PLAYER_BULLET_WALL, this.handlePlayerBulletWall, this)
+    GameEvents.off(this, CollisionEvents.ENEMY_BULLET_WALL, this.handleEnemyBulletWall, this)
+    GameEvents.off(this, CollisionEvents.PLAYER_BULLET_ENEMY, this.handlePlayerBulletEnemy, this)
+    GameEvents.off(this, CollisionEvents.ENEMY_BULLET_PLAYER, this.handleEnemyBulletPlayer, this)
+    GameEvents.off(this, CollisionEvents.PLAYER_ENEMY, this.handlePlayerEnemyCollision, this)
+    GameEvents.off(this, CollisionEvents.ENEMY_BULLET_BASE, this.handleEnemyBulletBase, this)
+    GameEvents.off(this, CollisionEvents.PLAYER_POWERUP, this.handlePlayerPowerUp, this)
+  }
+
+  // ===========================================================================
+  // 🔫 子弹碰撞处理
+  // ===========================================================================
+
+  /**
+   * 玩家子弹 vs 墙壁
+   */
+  private handlePlayerBulletWall(data: any): void {
+    const { source: bullet, target: wall } = data
+    if (!bullet.active) return
+
+    const bx = bullet.x, by = bullet.y
+    const isSteel = wall?.texture?.key === 'wall_steel'
+    bullet.destroy()
+
+    if (isSteel) {
+      this.spawnSparks(bx, by, '#94a3b8', 4)
+      this.playSound('sfx_hit', 0.2)
+    } else {
+      wall?.destroy()
+      this.spawnDebris(bx, by, '#8B4513')
+      this.playSound('sfx_explosion', 0.4)
+      this.cameraShake(100)
+    }
+  }
+
+  /**
+   * 敌人子弹 vs 墙壁
+   */
+  private handleEnemyBulletWall(data: any): void {
+    const { source: bullet, target: wall } = data
+    if (!bullet.active) return
+
+    const bx = bullet.x, by = bullet.y
+    const isSteel = wall?.texture?.key === 'wall_steel'
+    bullet.destroy()
+
+    if (isSteel) {
+      this.spawnSparks(bx, by, '#94a3b8', 4)
+      this.playSound('sfx_hit', 0.2)
+    } else {
+      wall?.destroy()
+      this.spawnDebris(bx, by, '#8B4513')
+      this.playSound('sfx_explosion', 0.3)
+    }
+  }
+
+  /**
+   * 玩家子弹 vs 敌人
+   */
+  private handlePlayerBulletEnemy(data: any): void {
+    const { source: bullet, target: enemy } = data
+    if (!bullet.active) return
+    bullet.destroy()
+    this.destroyEnemy(enemy)
+  }
+
+  /**
+   * 敌人子弹 vs 玩家
+   */
+  private handleEnemyBulletPlayer(data: any): void {
+    const { source: bullet } = data
+    const combatManager = (this as any).combatManager
+    if (combatManager) combatManager.onHitWithBullet(bullet)
+    else bullet.destroy()
+  }
+
+  /**
+   * 玩家 vs 敌人（物理碰撞）
+   */
+  private handlePlayerEnemyCollision(): void {
+    const player = (this as any).player
+    if (!player?.active) return
+
+    const combatManager = (this as any).combatManager
+    if (combatManager) {
+      if (combatManager.hasShield?.()) return
+      if ((this as any).stateManager?.isInvincible()) return
+      combatManager.onHit()
+    }
+  }
+
+  /**
+   * 敌人子弹 vs 基地
+   */
+  private handleEnemyBulletBase(data: any): void {
+    const { source: bullet } = data
+    if (bullet.active) bullet.destroy()
+    this.baseDestroyed()
+  }
+
+  /**
+   * 玩家 vs 道具
+   */
+  private handlePlayerPowerUp(data: any): void {
+    const { target: powerUp } = data
+    if (!powerUp?.active) return
+    this.collectPowerUp(powerUp)
+    powerUp.destroy()
   }
   
   // ═══════════════════════════════════════
@@ -309,24 +424,44 @@ export default class TankGameScene extends GameScene {
   // ═══════════════════════════════════════
   
   /**
+   * ⭐ 绘制地图边界和网格
+   */
+  private drawMapBoundaries(mapWidth: number, mapHeight: number): void {
+    const graphics = this.add.graphics()
+    
+    graphics.lineStyle(4, 0xffd700, 1)
+    graphics.strokeRect(0, 0, mapWidth, mapHeight)
+    
+    graphics.lineStyle(1, 0x8b4513, 0.5)
+    
+    for (let x = 0; x <= mapWidth; x += this.cellSize) {
+      graphics.moveTo(x, 0)
+      graphics.lineTo(x, mapHeight)
+    }
+    
+    for (let y = 0; y <= mapHeight; y += this.cellSize) {
+      graphics.moveTo(0, y)
+      graphics.lineTo(mapWidth, y)
+    }
+    
+    graphics.strokePath()
+    
+    const physicsPadding = 32
+    graphics.lineStyle(2, 0x00ff00, 1)
+    graphics.strokeRect(physicsPadding, physicsPadding, 20, 20)
+    graphics.strokeRect(mapWidth - physicsPadding - 20, physicsPadding, 20, 20)
+    graphics.strokeRect(physicsPadding, mapHeight - physicsPadding - 20, 20, 20)
+    graphics.strokeRect(mapWidth - physicsPadding - 20, mapHeight - physicsPadding - 20, 20, 20)
+  }
+  
+  /**
    * 创建玩家坦克
    */
   private createPlayer(): void {
-    // ✅ 玩家应该出生在地图底部中心（固定视角）
     const mapWidth = this.gridCols * this.cellSize
     const mapHeight = this.gridRows * this.cellSize
-    const startX = mapWidth / 2  // 地图水平中心
-    const startY = mapHeight - 100  // 距离底部 100 像素
-    
-    console.log('📍 计算玩家出生位置:', {
-      gridCols: this.gridCols,
-      gridRows: this.gridRows,
-      cellSize: this.cellSize,
-      mapWidth: mapWidth,
-      mapHeight: mapHeight,
-      calculatedX: startX,
-      calculatedY: startY
-    })
+    const startX = mapWidth / 2
+    const startY = mapHeight - 100
     
     this.player = this.entityManager.createEntity({
       type: EntityType.PLAYER,
@@ -336,47 +471,17 @@ export default class TankGameScene extends GameScene {
       attributes: { health: 1, speed: 200 }
     }) as Phaser.Physics.Arcade.Sprite
     
-    console.log('✅ 玩家实体已创建:', {
-      x: this.player.x,
-      y: this.player.y,
-      active: this.player.active,
-      visible: this.player.visible,
-      bodyExists: !!this.player.body
-    })
-    
-    // ❌ 移除相机跟随 - 坦克大战应该是固定视角
-    // 传统坦克大战中，玩家坦克在屏幕范围内移动，相机不跟随
-    // this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
-    // this.cameras.main.setZoom(1)
-    
-    // ✅ 设置相机位置（固定在地图上方）
     this.cameras.main.setBounds(
-      0,  // ✅ 从 (0,0) 开始，而不是 offsetX
       0,
-      this.gridCols * this.cellSize,  // ✅ 只设置游戏区域大小
+      0,
+      this.gridCols * this.cellSize,
       this.gridRows * this.cellSize
     )
     
-    // ✅ 将相机定位到地图中心
     this.cameras.main.centerOn(
       (this.gridCols * this.cellSize) / 2,
       (this.gridRows * this.cellSize) / 2
     )
-    
-    console.log('📷 相机已设置为固定视角:', {
-      scrollX: this.cameras.main.scrollX,
-      scrollY: this.cameras.main.scrollY,
-      zoom: this.cameras.main.zoom,
-      bounds: this.cameras.main.getBounds()
-    })
-    
-    // ✅ 进入复活无敌状态（3 秒保护）
-    this.stateManager.startRespawning(() => {
-      console.log('✨ 玩家无敌保护结束，可以正常游戏了')
-    })
-    
-    console.log('🛡️ 玩家出生，获得 3 秒无敌保护')
-    console.log('✅ 玩家坦克已创建', { x: startX, y: startY })
   }
   
   /**
@@ -386,25 +491,23 @@ export default class TankGameScene extends GameScene {
     try {
       await this.orchestrator.runLevel(levelConfig)
     } catch (error) {
-      console.error('❌ 关卡运行失败:', error)
       this.handleGameOver()
     }
   }
-  
+
   /**
    * 更新加载 UI
    */
   private updateLoadingUI(progress: number, message: string): void {
-    console.log(`📊 加载进度：${Math.round(progress * 100)}% - ${message}`)
+    console.log(`加载进度：${Math.round(progress * 100)}% - ${message}`)
   }
-  
+
   /**
    * 游戏结束处理
    */
   public handleGameOver(): void {
     if (this.isGameOver) return
     
-    console.log('💀 游戏结束')
     this.isGameOver = true
     
     this.gameStore.$patch({
@@ -474,16 +577,10 @@ export default class TankGameScene extends GameScene {
    * ⭐ 播放音效（宽松模式 - 允许缺失）
    */
   public playSound(key: string, volume: number = 1): void {
-    // 🟡 宽松模式：音效不存在时只记录警告，不阻止游戏
-    if (!this.cache.audio.exists(key)) {
-      console.warn(`⚠️ [音效失败] 音效 "${key}" 未加载，游戏将静音运行`)
-      return // 直接返回，不抛出错误
-    }
-
-    // 播放音效（添加轻微随机音调以增强听感）
+    if (!this.cache.audio.exists(key)) return
     this.sound.play(key, {
       volume,
-      detune: Phaser.Math.Between(-50, 50) // 较小的随机范围
+      detune: Phaser.Math.Between(-50, 50)
     })
   }
   
@@ -506,9 +603,7 @@ export default class TankGameScene extends GameScene {
     if (!powerUp || !powerUp.active) return
     
     const type = powerUp.getData('type') || powerUp.texture?.key?.replace('prop_', '')
-    console.log(`🎁 拾取道具：${type}`)
     
-    // ⚔️ 委托给 combatManager 处理
     switch (type) {
       case 'gun':
         this.combatManager.activateUpgrade()
@@ -530,25 +625,20 @@ export default class TankGameScene extends GameScene {
   }
   
   /**
-   * 基地被摧毁（宽松模式 - 允许 base 不存在）
+   * 基地被摧毁
    */
   public baseDestroyed(): void {
-    // 🟡 宽松模式：base 不存在时不阻止游戏结束
     if (!this.base || !this.base.active) {
-      console.warn('⚠️ [基地警告] base 不存在或已失效，但仍触发游戏结束')
       this.handleGameOver()
       return
     }
 
-    console.log('💥 基地被摧毁！')
     this.spawnExplosion(this.base.x, this.base.y, 2)
     this.playSound('sfx_explosion', 1.0)
     this.cameraShake(500)
 
-    // 🟡 宽松模式：纹理不存在时使用文字提示
     if (!this.textures.exists('base_destroyed')) {
-      console.warn('⚠️ [纹理警告] base_destroyed 纹理未加载，使用文字替代')
-      const baseText = this.add.text(this.base.x, this.base.y, '🏠 基地已毁', {
+      const baseText = this.add.text(this.base.x, this.base.y, '基地已毁', {
         fontSize: '24px',
         color: '#FF0000',
         backgroundColor: '#000000'

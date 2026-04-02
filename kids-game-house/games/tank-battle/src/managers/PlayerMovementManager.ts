@@ -48,13 +48,25 @@ export class PlayerMovementManager {
   constructor(scene: TankGameScene, player: Phaser.Physics.Arcade.Sprite) {
     this.scene = scene
     this.player = player
-    
-    console.log('✅ PlayerMovementManager 已创建')
   }
   
   // ===========================================================================
   // 🎯 公开 API
   // ===========================================================================
+  
+  /**
+   * ⭐ 设置玩家对象（复活时更新引用）
+   */
+  setPlayer(player: Phaser.Physics.Arcade.Sprite): void {
+    this.player = player
+  }
+  
+  /**
+   * ⭐ 重置方向为 NONE（复活时调用）
+   */
+  resetDirection(): void {
+    this.currentDirection = MoveDirection.NONE
+  }
   
   /**
    * ⭐ 设置速度倍率（道具加成）
@@ -65,21 +77,13 @@ export class PlayerMovementManager {
   }
   
   /**
-   * ⭐ 更新移动状态 - 增加完整防御检查
+   * ⭐ 更新移动状态
    */
   update(cursors: any, keys: any): void {
     try {
-      // 🔧 修复：首先检查 player 是否存在
-      if (!this.player || !this.player.active) {
-        return
-      }
+      if (!this.player || !this.player.active) return
+      if (!cursors || !keys) return
       
-      // ✅ 防御检查：确保输入有效
-      if (!cursors || !keys) {
-        return
-      }
-      
-      // ✅ 清除所有速度（通过 body）
       if (this.player.body) {
         const body = this.player.body as any
         body.setVelocityX(0)
@@ -88,64 +92,53 @@ export class PlayerMovementManager {
       
       const speed = this.config.baseSpeed * this.config.speedMultiplier
       let moving = false
+      let newDirection: MoveDirection = MoveDirection.NONE
+      let newTexture: string | null = null
       
-      // 🔍 检查位置边界
       this.checkBoundaries()
       
-      // ⬆️ 向上移动
       if (cursors.up?.isDown || keys.keyW?.isDown) {
         if (this.player.body) {
-          const body = this.player.body as any
-          body.setVelocityY(-speed)
+          (this.player.body as any).setVelocityY(-speed)
         }
-        this.player.setTexture('player_tank_up')
-        this.currentDirection = MoveDirection.UP
+        newTexture = 'player_tank_up'
+        newDirection = MoveDirection.UP
         moving = true
       } 
-      // ⬇️ 向下移动
       else if (cursors.down?.isDown || keys.keyS?.isDown) {
         if (this.player.body) {
-          const body = this.player.body as any
-          body.setVelocityY(speed)
+          (this.player.body as any).setVelocityY(speed)
         }
-        this.player.setTexture('player_tank_down')
-        this.currentDirection = MoveDirection.DOWN
+        newTexture = 'player_tank_down'
+        newDirection = MoveDirection.DOWN
         moving = true
       }
       
-      // ⬅️ 向左移动
       if (cursors.left?.isDown || keys.keyA?.isDown) {
         if (this.player.body) {
-          const body = this.player.body as any
-          body.setVelocityX(-speed)
+          (this.player.body as any).setVelocityX(-speed)
         }
-        this.player.setTexture('player_tank_left')
-        this.currentDirection = MoveDirection.LEFT
+        newTexture = 'player_tank_left'
+        newDirection = MoveDirection.LEFT
         moving = true
       } 
-      // ➡️ 向右移动
       else if (cursors.right?.isDown || keys.keyD?.isDown) {
         if (this.player.body) {
-          const body = this.player.body as any
-          body.setVelocityX(speed)
+          (this.player.body as any).setVelocityX(speed)
         }
-        this.player.setTexture('player_tank_right')
-        this.currentDirection = MoveDirection.RIGHT
+        newTexture = 'player_tank_right'
+        newDirection = MoveDirection.RIGHT
         moving = true
       }
       
-      // 🔄 斜向移动时调整炮管方向（优先向上）
-      if (moving && cursors.up?.isDown && cursors.left?.isDown) {
-        this.player.setTexture('player_tank_up')
-        this.currentDirection = MoveDirection.UP
-      } else if (moving && cursors.up?.isDown && cursors.right?.isDown) {
-        this.player.setTexture('player_tank_up')
-        this.currentDirection = MoveDirection.UP
+      if (moving && (newDirection !== this.currentDirection || (newTexture && this.player.texture?.key !== newTexture))) {
+        this.currentDirection = newDirection
+        if (newTexture) {
+          this.player.setTexture(newTexture)
+        }
       }
-      
     } catch (error) {
-      // 🛡️ 静默处理物理系统异常
-      console.warn('⚠️ PlayerMovementManager.update error:', error)
+      // 静默处理异常
     }
   }
   
@@ -180,28 +173,19 @@ export class PlayerMovementManager {
    * 检查并校正边界
    */
   private checkBoundaries(): void {
-    const offsetX = (this.scene as any).offsetX
-    const offsetY = (this.scene as any).offsetY
     const gridCols = (this.scene as any).gridCols
     const gridRows = (this.scene as any).gridRows
     const cellSize = (this.scene as any).cellSize
     
-    const mapRight = offsetX + gridCols * cellSize
-    const mapBottom = offsetY + gridRows * cellSize
+    const mapRight = gridCols * cellSize
+    const mapBottom = gridRows * cellSize
+    const halfSize = this.player.displayWidth / 2 || 32
+    const minX = this.config.boundaryPadding + halfSize
+    const maxX = mapRight - this.config.boundaryPadding - halfSize
+    const minY = this.config.boundaryPadding + halfSize
+    const maxY = mapBottom - this.config.boundaryPadding - halfSize
     
-    // 🔍 检查是否超出地图边界
-    if (this.player.x < offsetX + this.config.boundaryPadding ||
-        this.player.x > mapRight - this.config.boundaryPadding) {
-      console.log('⚠️ 玩家 X 位置异常，强制校正')
-      const centerX = offsetX + (gridCols * cellSize) / 2
-      this.player.x = centerX
-    }
-    
-    if (this.player.y < offsetY + this.config.boundaryPadding ||
-        this.player.y > mapBottom - this.config.boundaryPadding) {
-      console.log('⚠️ 玩家 Y 位置异常，强制校正')
-      const centerY = offsetY + (gridRows * cellSize) / 2
-      this.player.y = centerY
-    }
+    this.player.x = Phaser.Math.Clamp(this.player.x, minX, maxX)
+    this.player.y = Phaser.Math.Clamp(this.player.y, minY, maxY)
   }
 }
