@@ -105,19 +105,19 @@ export class TankConfigParser implements IConfigParser {
    */
   protected parseWalls(params: ITankLevelParams, offsetX: number = 0, offsetY: number = 0): ITankLevelData['walls'] {
     const walls: ITankLevelData['walls'] = []
-    
+
     // 根据密度生成随机墙壁
     const cellSize = 64
     const cols = 13
     const rows = 12
-    
+
     for (let row = 2; row < rows - 1; row++) {
       for (let col = 1; col < cols; col++) {
         // 避开中心区域（玩家复活点）
         if (row > rows / 2 - 2 && col > cols / 2 - 2 && col < cols / 2 + 2) {
           continue
         }
-        
+
         if (Math.random() < params.wallDensity) {
           const wallType = Math.random() > 0.7 ? 'steel' : 'brick'
           walls.push({
@@ -128,7 +128,38 @@ export class TankConfigParser implements IConfigParser {
         }
       }
     }
-    
+
+    // 🏠 生成基地保护墙（经典坦克大战布局）
+    const baseCenterX = cols * cellSize / 2 + offsetX
+    const baseY = (rows - 0.5) * cellSize + offsetY  // 🏠 基地下移一个格子
+
+    // 基地周围的保护墙布局（砖墙）
+    // 基地位置在中心，保护墙围绕
+    const protectionWalls: Array<{x: number, y: number, type: string}> = []
+
+    // 基地上方的墙（3块）
+    protectionWalls.push({ x: baseCenterX - cellSize, y: baseY - cellSize, type: 'brick' })
+    protectionWalls.push({ x: baseCenterX, y: baseY - cellSize, type: 'brick' })
+    protectionWalls.push({ x: baseCenterX + cellSize, y: baseY - cellSize, type: 'brick' })
+
+    // 基地左侧的墙（2块）
+    protectionWalls.push({ x: baseCenterX - cellSize, y: baseY, type: 'brick' })
+    protectionWalls.push({ x: baseCenterX - cellSize, y: baseY + cellSize, type: 'brick' })
+
+    // 基地右侧的墙（2块）
+    protectionWalls.push({ x: baseCenterX + cellSize, y: baseY, type: 'brick' })
+    protectionWalls.push({ x: baseCenterX + cellSize, y: baseY + cellSize, type: 'brick' })
+
+    // 基地下方的墙（3块）
+    protectionWalls.push({ x: baseCenterX - cellSize, y: baseY + cellSize * 2, type: 'brick' })
+    protectionWalls.push({ x: baseCenterX, y: baseY + cellSize * 2, type: 'brick' })
+    protectionWalls.push({ x: baseCenterX + cellSize, y: baseY + cellSize * 2, type: 'brick' })
+
+    // 添加到墙壁列表
+    walls.push(...protectionWalls)
+
+    console.log(`🏠 已添加 ${protectionWalls.length} 个基地保护墙`)
+
     return walls
   }
   
@@ -166,10 +197,11 @@ export class TankConfigParser implements IConfigParser {
     const cellSize = 64
     const cols = 13
     const rows = 12
-    
+
+    // 🏠 基地下移一个格子：从 (rows - 1) 改为 (rows - 0.5)
     return {
       x: cols * cellSize / 2 + offsetX,
-      y: (rows - 1) * cellSize + offsetY
+      y: (rows - 0.5) * cellSize + offsetY
     }
   }
   

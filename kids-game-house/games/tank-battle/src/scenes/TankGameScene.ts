@@ -460,8 +460,19 @@ export default class TankGameScene extends GameScene {
   private createPlayer(): void {
     const mapWidth = this.gridCols * this.cellSize
     const mapHeight = this.gridRows * this.cellSize
-    const startX = mapWidth / 2
-    const startY = mapHeight - 100
+    const cellSize = 64
+    const cols = 13
+    const rows = 12
+    
+    // 🏠 基地保护墙范围（与 TankConfigParser 保持一致）
+    const baseCenterX = cols * cellSize / 2  // 416px
+    const baseY = (rows - 0.5) * cellSize    // 736px（基地下移后的位置）
+    const protectionTop = baseY - cellSize  // 672px（保护墙上边界）
+    const protectionBottom = baseY + cellSize * 2  // 864px（保护墙下边界）
+    
+    // 🎮 玩家初始位置：在基地保护墙上方，保持水平居中
+    const startX = baseCenterX
+    const startY = protectionTop - cellSize * 1.5  // 保护墙上边界上方 1.5 个格子 = 576px
     
     this.player = this.entityManager.createEntity({
       type: EntityType.PLAYER,
@@ -542,6 +553,22 @@ export default class TankGameScene extends GameScene {
     // ✅ 相机震动
     this.cameraShake(200 * size)
   }
+
+  /**
+   * 🎆 生成道具拾取特效
+   */
+  public spawnPowerUpEffect(x: number, y: number): void {
+    // ✅ 使用粒子系统（GPU 加速）- 金色粒子
+    this.particleSystem.createExplosionDebris(x, y, 0xffd700, 12, 1.5)
+    this.particleSystem.createExplosionDebris(x, y, 0xffaa00, 8, 1.0)
+    
+    // ✅ 火花特效
+    this.spawnSparks(x, y, '#ffd700', 10)
+    this.spawnSparks(x, y, '#ffaa00', 6)
+    
+    // ✅ 轻微相机震动（比爆炸弱）
+    this.cameraShake(80, 1.5)
+  }
   
   /**
    * ⭐ 获取渲染管理器（用于外部访问）
@@ -619,9 +646,13 @@ export default class TankGameScene extends GameScene {
         break
     }
     
+    // 🎁 播放道具拾取音效（使用正确的音效名称）
+    this.playSound('sfx_bonus_captured', 0.6)
+    
+    // 🎆 播放道具拾取特效
+    this.spawnPowerUpEffect(powerUp.x, powerUp.y)
+    
     powerUp.destroy()
-    this.playSound('sfx_powerup', 0.5)
-    this.spawnSparks(powerUp.x, powerUp.y, '#ffd700', 8)
   }
   
   /**

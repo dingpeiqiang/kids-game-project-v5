@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>纹理方向验证</title>
+  <style>
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 20px;
+      margin: 0;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #4ade80;
+      margin-bottom: 30px;
+    }
+    
+    .comparison {
+      max-width: 1000px;
+      margin: 0 auto 30px;
+    }
+    
+    .comparison h2 {
+      color: #fbbf24;
+      border-bottom: 2px solid #fbbf24;
+      padding-bottom: 10px;
+    }
+    
+    .row {
+      display: flex;
+      align-items: center;
+      background: #2a2a2a;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    
+    .col {
+      flex: 1;
+      text-align: center;
+      padding: 0 20px;
+    }
+    
+    .img-container {
+      width: 64px;
+      height: 64px;
+      background: #1a1a1a;
+      border: 2px solid #4a4a4a;
+      margin: 10px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .img-container img {
+      width: 64px;
+      height: 64px;
+      image-rendering: pixelated;
+    }
+    
+    .filename {
+      font-size: 14px;
+      color: #fbbf24;
+      margin-bottom: 5px;
+    }
+    
+    .arrow {
+      font-size: 32px;
+      margin: 10px 0;
+    }
+    
+    .arrow::before {
+      content: attr(data-arrow);
+    }
+    
+    .conclusion {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      max-width: 1000px;
+      margin: 20px auto;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    
+    .warning {
+      background: #f87171;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      max-width: 1000px;
+      margin: 20px auto;
+      font-size: 16px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 坦克纹理方向对比</h1>
+  
+  <div class="comparison">
+    <h2>🎯 敌人坦克</h2>
+    
+    <div class="row">
+      <div class="col">
+        <div class="filename">enemy_light_up.png</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/enemy_light_up.png">
+        </div>
+        <div class="arrow" data-arrow="⬆️"></div>
+        <div style="font-size: 12px; color: #888;">文件名暗示向上</div>
+      </div>
+      
+      <div class="col" style="font-size: 24px; color: #888;">
+        vs
+      </div>
+      
+      <div class="col">
+        <div class="filename">图片实际朝向</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/enemy_light_up.png">
+        </div>
+        <div style="font-size: 18px; color: #fbbf24; margin: 10px 0;">
+          看图片中的炮管指向哪里？
+        </div>
+      </div>
+    </div>
+    
+    <div class="row">
+      <div class="col">
+        <div class="filename">enemy_light_down.png</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/enemy_light_down.png">
+        </div>
+        <div class="arrow" data-arrow="⬇️"></div>
+        <div style="font-size: 12px; color: #888;">文件名暗示向下</div>
+      </div>
+      
+      <div class="col" style="font-size: 24px; color: #888;">
+        vs
+      </div>
+      
+      <div class="col">
+        <div class="filename">图片实际朝向</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/enemy_light_down.png">
+        </div>
+        <div style="font-size: 18px; color: #fbbf24; margin: 10px 0;">
+          看图片中的炮管指向哪里？
+        </div>
+      </div>
+    </div>
+    
+    <div class="row">
+      <div class="col">
+        <div class="filename">enemy_light_left.png</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/enemy_light_left.png">
+        </div>
+        <div class="arrow" data-arrow="⬅️"></div>
+        <div style="font-size: 12px; color: #888;">文件名暗示向左</div>
+      </div>
+      
+      <div class="col" style="font-size: 24px; color: #888;">
+        vs
+      </div>
+      
+      <div class="col">
+        <div class="filename">图片实际朝向</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/enemy_light_left.png">
+        </div>
+        <div style="font-size: 18px; color: #fbbf24; margin: 10px 0;">
+          看图片中的炮管指向哪里？
+        </div>
+      </div>
+    </div>
+    
+    <div class="row">
+      <div class="col">
+        <div class="filename">enemy_light_right.png</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/enemy_light_right.png">
+        </div>
+        <div class="arrow" data-arrow="➡️"></div>
+        <div style="font-size: 12px; color: #888;">文件名暗示向右</div>
+      </div>
+      
+      <div class="col" style="font-size: 24px; color: #888;">
+        vs
+      </div>
+      
+      <div class="col">
+        <div class="filename">图片实际朝向</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/enemy_light_right.png">
+        </div>
+        <div style="font-size: 18px; color: #fbbf24; margin: 10px 0;">
+          看图片中的炮管指向哪里？
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="comparison">
+    <h2>🎮 玩家坦克（参考）</h2>
+    
+    <div class="row">
+      <div class="col">
+        <div class="filename">player_tank_up.png</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/player_tank_up.png">
+        </div>
+        <div class="arrow" data-arrow="⬆️"></div>
+        <div style="font-size: 12px; color: #888;">文件名暗示向上</div>
+      </div>
+      
+      <div class="col" style="font-size: 24px; color: #888;">
+        vs
+      </div>
+      
+      <div class="col">
+        <div class="filename">图片实际朝向</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/player_tank_up.png">
+        </div>
+        <div style="font-size: 18px; color: #4ade80; margin: 10px 0;">
+          看图片中的炮管指向哪里？
+        </div>
+      </div>
+    </div>
+    
+    <div class="row">
+      <div class="col">
+        <div class="filename">player_tank_down.png</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/player_tank_down.png">
+        </div>
+        <div class="arrow" data-arrow="⬇️"></div>
+        <div style="font-size: 12px; color: #888;">文件名暗示向下</div>
+      </div>
+      
+      <div class="col" style="font-size: 24px; color: #888;">
+        vs
+      </div>
+      
+      <div class="col">
+        <div class="filename">图片实际朝向</div>
+        <div class="img-container">
+          <img src="/themes/tank_default/assets/scene/player_tank_down.png">
+        </div>
+        <div style="font-size: 18px; color: #4ade80; margin: 10px 0;">
+          看图片中的炮管指向哪里？
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="conclusion" class="conclusion">
+    正在分析...
+  </div>
+  
+  <script>
+    // 等待图片加载完成
+    window.onload = function() {
+      const conclusionDiv = document.getElementById('conclusion');
+      conclusionDiv.className = 'warning';
+      conclusionDiv.innerHTML = `
+        <strong>🔍 请观察上面的图片：</strong><br>
+        1. 看每张图片中坦克的炮管（长管子）指向哪里<br>
+        2. 对比文件名暗示的方向和图片实际方向<br>
+        3. 告诉我每张图片的实际朝向
+      `;
+    };
+  </script>
+</body>
+</html>

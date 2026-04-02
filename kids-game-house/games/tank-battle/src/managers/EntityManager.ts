@@ -498,6 +498,12 @@ export class EntityManager {
     const powerUp = this.powerUpGroup.create(x, y, texture)
     if (attributes.type) (powerUp as any).type = attributes.type
     if ((attributes as any).duration) (powerUp as any).duration = (attributes as any).duration
+    
+    // 🎁 道具生成时播放音效（如果存在）
+    if (this.scene.sound && (this.scene as any).playSound) {
+      (this.scene as any).playSound('sfx_bonus_appears', 0.4)
+    }
+    
     return powerUp
   }
   

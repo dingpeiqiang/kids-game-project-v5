@@ -132,8 +132,18 @@ export class TankSpawner implements ILevelSpawner {
       return
     }
 
+    // 🔍 调试信息
+    console.log(`🔍 [setupEnemyAI] 开始设置 AI | enemy:`, {
+      x: enemy.x,
+      y: enemy.y,
+      texture: enemy.texture.key,
+      angle: enemy.angle,
+      hasBody: !!enemy.body
+    })
+
     // 设置速度属性
     enemy.speed = type === 'light' ? 150 : type === 'medium' ? 100 : 50
+    enemy.enemyType = type === 'light' ? 'ENEMY_LIGHT' : type === 'medium' ? 'ENEMY_MEDIUM' : 'ENEMY_HEAVY'
 
     // 🤖 使用 EnemyAIManager
     const aiManager = scene.enemyAIManager
@@ -150,9 +160,44 @@ export class TankSpawner implements ILevelSpawner {
 
     console.log(`✅ 开始为敌人设置 AI | speed: ${enemy.speed}, hasBody: ${!!enemy.body}`)
 
+    // 🔥 敌人初始向下移动（经典坦克大战特性）
+    // ✅ 参考玩家坦克逻辑：直接使用对应的向下纹理，不旋转
+    enemy.body.setVelocity(0, enemy.speed)
+
+    // ✅ 向下移动使用向下纹理（图片命名和实际朝向一致）
+    enemy.setAngle(0)  // 不旋转
+
+    if (enemy.enemyType === 'ENEMY_LIGHT') {
+      enemy.setTexture('enemy_light_down')
+    } else if (enemy.enemyType === 'ENEMY_MEDIUM') {
+      enemy.setTexture('enemy_medium_down')
+    } else if (enemy.enemyType === 'ENEMY_HEAVY') {
+      enemy.setTexture('enemy_heavy_down')
+    }
+
+    console.log(`🚀 [AI] 敌人初始移动：向下，速度=${enemy.speed}，纹理=${enemy.texture.key}，角度=${enemy.angle}°`)
+
+    // 🧠 根据敌人类型设置不同的 AI 参数
+    let moveInterval: number
+    let shootInterval: number
+
+    if (type === 'light') {
+      // 轻型敌人：移动快速，射击频繁
+      moveInterval = Phaser.Math.Between(800, 2000)
+      shootInterval = Phaser.Math.Between(1500, 3000)
+    } else if (type === 'medium') {
+      // 中型敌人：平衡
+      moveInterval = Phaser.Math.Between(1000, 3000)
+      shootInterval = Phaser.Math.Between(2000, 4000)
+    } else {
+      // 重型敌人：移动慢但聪明，射击频率中等
+      moveInterval = Phaser.Math.Between(1500, 3500)
+      shootInterval = Phaser.Math.Between(2500, 5000)
+    }
+
     // AI 移动定时器（立即执行一次，然后循环）
     scene.time.addEvent({
-      delay: Phaser.Math.Between(1000, 3000),
+      delay: moveInterval,
       callback: () => {
         if (enemy && enemy.active) {
           aiManager.updateEnemyAI(enemy)
@@ -164,7 +209,7 @@ export class TankSpawner implements ILevelSpawner {
 
     // 射击定时器
     scene.time.addEvent({
-      delay: Phaser.Math.Between(2000, 4000),
+      delay: shootInterval,
       callback: () => {
         if (enemy && enemy.active) {
           aiManager.enemyShoot(enemy)
@@ -174,7 +219,7 @@ export class TankSpawner implements ILevelSpawner {
       startAt: 500 // 500ms 后首次执行
     })
 
-    console.log(`✅ 敌人 AI 设置完成 | type: ${type}, speed: ${enemy.speed}`)
+    console.log(`✅ 敌人 AI 设置完成 | type: ${type}, speed: ${enemy.speed}, moveInterval: ${moveInterval}ms, shootInterval: ${shootInterval}ms`)
   }
   
   /**

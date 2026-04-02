@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>敌人纹理测试 - 坦克大战</title>
+  <style>
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 20px;
+      margin: 0;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #4ade80;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 30px;
+    }
+    
+    .test-section {
+      background: #2a2a2a;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .test-section h2 {
+      color: #fbbf24;
+      margin-top: 0;
+      border-bottom: 2px solid #fbbf24;
+      padding-bottom: 10px;
+    }
+    
+    .texture-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    
+    .texture-item {
+      background: #3a3a3a;
+      border: 2px solid #4a4a4a;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    
+    .texture-item:hover {
+      border-color: #4ade80;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(74, 222, 80, 0.3);
+    }
+    
+    .texture-item img {
+      width: 64px;
+      height: 64px;
+      image-rendering: pixelated;
+      background: #1a1a1a;
+      margin-bottom: 8px;
+    }
+    
+    .texture-item .name {
+      font-size: 12px;
+      color: #aaa;
+      word-break: break-all;
+    }
+    
+    .texture-item .status {
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    
+    .success { color: #4ade80; }
+    .error { color: #f87171; }
+    .warning { color: #fbbf24; }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 18px;
+      color: #888;
+    }
+    
+    .summary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    .summary.success {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    }
+    
+    .summary.error {
+      background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+    }
+    
+    .btn {
+      background: #4ade80;
+      color: #1a1a1a;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 5px;
+      transition: all 0.3s;
+    }
+    
+    .btn:hover {
+      background: #22c55e;
+      transform: scale(1.05);
+    }
+    
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 敌人坦克纹理测试</h1>
+  <div class="subtitle">坦克大战 - 纹理加载验证工具</div>
+  
+  <div id="summary" class="summary">
+    <div class="loading">正在加载测试...</div>
+  </div>
+  
+  <div style="text-align: center; margin-bottom: 20px;">
+    <button class="btn" onclick="runTest()">🔄 重新测试</button>
+    <button class="btn btn-secondary" onclick="location.href='/'">🏠 返回游戏</button>
+  </div>
+  
+  <div id="content"></div>
+  
+  <script>
+    const ENEMY_TEXTURES = {
+      '轻型坦克': [
+        'enemy_light_up',
+        'enemy_light_down',
+        'enemy_light_left',
+        'enemy_light_right'
+      ],
+      '中型坦克': [
+        'enemy_medium_up',
+        'enemy_medium_down',
+        'enemy_medium_left',
+        'enemy_medium_right'
+      ],
+      '重型坦克': [
+        'enemy_heavy_up',
+        'enemy_heavy_down',
+        'enemy_heavy_left',
+        'enemy_heavy_right'
+      ]
+    };
+    
+    async function runTest() {
+      const contentDiv = document.getElementById('content');
+      const summaryDiv = document.getElementById('summary');
+      
+      contentDiv.innerHTML = '<div class="loading">正在加载 GTRS 配置...</div>';
+      
+      try {
+        // 加载 GTRS 配置
+        const response = await fetch('/themes/tank_default/GTRS.json');
+        if (!response.ok) throw new Error('无法加载 GTRS.json');
+        
+        const gtrs = await response.json();
+        const sceneTextures = gtrs.resources?.images?.scene || {};
+        
+        let totalSuccess = 0;
+        let totalFail = 0;
+        const results = [];
+        
+        // 测试每个纹理
+        for (const [category, textures] of Object.entries(ENEMY_TEXTURES)) {
+          const categoryResults = [];
+          
+          for (const texName of textures) {
+            const texData = sceneTextures[texName];
+            
+            if (!texData) {
+              categoryResults.push({
+                name: texName,
+                success: false,
+                error: 'GTRS 中未配置'
+              });
+              totalFail++;
+              continue;
+            }
+            
+            // 检查文件是否存在
+            const img = new Image();
+            img.src = texData.src + '?t=' + Date.now(); // 防止缓存
+            
+            try {
+              await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                setTimeout(() => reject(new Error('加载超时')), 5000);
+              });
+              
+              categoryResults.push({
+                name: texName,
+                src: texData.src,
+                success: true,
+                width: img.naturalWidth,
+                height: img.naturalHeight
+              });
+              totalSuccess++;
+            } catch (error) {
+              categoryResults.push({
+                name: texName,
+                src: texData.src,
+                success: false,
+                error: error.message
+              });
+              totalFail++;
+            }
+          }
+          
+          results.push({ category, results: categoryResults });
+        }
+        
+        // 显示摘要
+        const totalCount = totalSuccess + totalFail;
+        if (totalFail === 0) {
+          summaryDiv.className = 'summary success';
+          summaryDiv.innerHTML = `
+            <h2 style="margin:0; font-size: 24px;">✅ 测试通过！</h2>
+            <p style="margin: 10px 0 0 0; font-size: 18px;">
+              所有 ${totalSuccess} 个纹理都加载成功
+            </p>
+          `;
+        } else {
+          summaryDiv.className = 'summary error';
+          summaryDiv.innerHTML = `
+            <h2 style="margin:0; font-size: 24px;">❌ 发现问题</h2>
+            <p style="margin: 10px 0 0 0; font-size: 18px;">
+              ${totalFail}/${totalCount} 个纹理加载失败
+            </p>
+          `;
+        }
+        
+        // 显示详细结果
+        contentDiv.innerHTML = results.map(group => `
+          <div class="test-section">
+            <h2>${group.category}</h2>
+            <div class="texture-grid">
+              ${group.results.map(r => `
+                <div class="texture-item" style="border-color: ${r.success ? '#4ade80' : '#f87171'}">
+                  ${r.success 
+                    ? `<img src="${r.src}" alt="${r.name}" title="${r.name}">`
+                    : `<div style="width:64px;height:64px;margin:0 auto 8px;background:#f87171;display:flex;align-items:center;justify-content:center;font-size:24px;">❌</div>`
+                  }
+                  <div class="name">${r.name}</div>
+                  <div class="status ${r.success ? 'success' : 'error'}">
+                    ${r.success 
+                      ? `✓ ${r.width}x${r.height}`
+                      : `✗ ${r.error}`
+                    }
+                  </div>
+                  ${r.success ? `<div style="font-size:10px;color:#666;margin-top:4px;">${r.src}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+        
+      } catch (error) {
+        summaryDiv.className = 'summary error';
+        summaryDiv.innerHTML = `
+          <h2 style="margin:0;">❌ 测试失败</h2>
+          <p style="margin:10px 0 0 0;">${error.message}</p>
+        `;
+        contentDiv.innerHTML = '';
+      }
+    }
+    
+    // 自动运行测试
+    runTest();
+  </script>
+</body>
+</html>
