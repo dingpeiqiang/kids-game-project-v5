@@ -1,21 +1,44 @@
 // ============================================================================
-// 🎁 坦克大战道具效果实现器 - 简化版
+// 🎁 坦克大战道具效果实现器（重构版）
 // ============================================================================
 // 
 // 📌 说明:
 //   为坦克应用各种道具的视觉效果和属性加成
+//   - 激活效果：拾取瞬间的强烈视觉冲击（由 TankGameScene.spawnPowerUpEffect 处理）
+//   - 持续效果：道具生效期间坦克上的持续视觉标识
 // ============================================================================
 
 import { PowerUpType } from '../types/powerup-types'
 
 /**
- * ⭐ 道具效果实现器
+ * 持续效果标识（附着在坦克上的可见图形）
+ */
+interface IActiveEffect {
+  graphics?: Phaser.GameObjects.Graphics
+  text?: Phaser.GameObjects.Text
+  tween?: Phaser.Tweens.Tween
+  timer?: Phaser.Time.TimerEvent
+}
+
+/**
+ * ⭐ 道具效果实现器（重构版）
  */
 export class PowerUpEffectApplier {
   private scene: Phaser.Scene
+  private combatManager: any = null
+  private movementManager: any = null
+  
+  // 当前激活的持续效果
+  private activeEffects: Map<PowerUpType, IActiveEffect> = new Map()
   
   constructor(scene: Phaser.Scene) {
     this.scene = scene
+    
+    const tankScene = scene as any
+    if (tankScene.combatManager) this.combatManager = tankScene.combatManager
+    if (tankScene.movementManager) this.movementManager = tankScene.movementManager
+    
+    console.log('✅ [PowerUpEffectApplier] 已创建')
   }
   
   // ===========================================================================
@@ -24,419 +47,311 @@ export class PowerUpEffectApplier {
   
   /**
    * ⭐ 应用道具效果（总入口）
+   * 注意：激活动画和拾取特效由 TankGameScene 处理
+   * 这里只负责：① 属性加成逻辑 ② 持续期间的坦克视觉标识
    */
   applyEffect(type: PowerUpType, sprite: Phaser.Physics.Arcade.Sprite, player: any): void {
     console.log(`🎁 [PowerUpEffectApplier] 应用 ${type} 效果`)
     
-    // 1. 应用视觉效果
-    this.applyVisualEffect(type, sprite)
-    
-    // 2. 应用属性加成
+    // 1. 应用属性加成（游戏逻辑）
     this.applyAttributeBuff(type, player)
     
-    // 3. 播放音效
-    this.playSoundEffect()
+    // 2. 持续视觉标识（跟随坦克的图标/光圈）
+    this.startPersistentVisual(type, player)
   }
   
   /**
-   * ⭐ 移除持续型道具的视觉效果
+   * ⭐ 移除道具的持续视觉效果
    */
   removeVisualEffects(sprite: Phaser.Physics.Arcade.Sprite): void {
     if (!sprite) return
     
-    // 清除所有附加图形
-    const graphics = sprite.getData('attachedGraphics') as Phaser.GameObjects.Graphics[]
-    if (graphics) {
-      graphics.forEach(g => g.destroy())
-      sprite.setData('attachedGraphics', [])
-    }
+    // 清除所有持续效果
+    this.activeEffects.forEach((effect, type) => {
+      this.clearEffect(effect)
+    })
+    this.activeEffects.clear()
     
-    // 清除粒子效果
-    const emitters = sprite.getData('particleEmitters') as Phaser.GameObjects.Particles.ParticleEmitter[]
-    if (emitters) {
-      emitters.forEach(e => e.destroy())
-      sprite.setData('particleEmitters', [])
-    }
-    
-    // 清除 tint 和 pipeline
-    sprite.clearTint()
-    sprite.resetPostPipeline()
+    // 清除 tint
+    if (sprite.active) sprite.clearTint()
     
     console.log('🗑️ [PowerUpEffectApplier] 已清除所有视觉效果')
   }
   
   // ===========================================================================
-  // 🔧 内部方法
+  // 🔧 持续视觉标识（附着在坦克上）
   // ===========================================================================
-  
+
   /**
-   * 应用视觉效果
+   * 开始持续视觉标识
    */
-  private applyVisualEffect(type: PowerUpType, sprite: Phaser.Physics.Arcade.Sprite): void {
+  private startPersistentVisual(type: PowerUpType, tank: Phaser.Physics.Arcade.Sprite): void {
+    // 清除同类旧效果
+    if (this.activeEffects.has(type)) {
+      this.clearEffect(this.activeEffects.get(type)!)
+    }
+    
     switch (type) {
-      case PowerUpType.STAR:
-        this.applyStarVisual(sprite)
-        break
-        
       case PowerUpType.SHIELD:
-        this.applyShieldVisual(sprite)
-        break
-        
-      case PowerUpType.CLOCK:
-        this.applyClockVisual(sprite)
-        break
-        
-      case PowerUpType.GUN:
-        this.applyGunVisual(sprite)
-        break
-        
-      case PowerUpType.HOMING:
-        this.applyHomingVisual(sprite)
-        break
-        
-      case PowerUpType.BOMB:
-        this.applyBombVisual(sprite)
-        break
-        
-      case PowerUpType.SPEED:
-        this.applySpeedVisual(sprite)
-        break
-        
-      case PowerUpType.HEALTH:
-        this.applyHealthVisual(sprite)
-        break
-        
-      case PowerUpType.ARMOR:
-        this.applyArmorVisual(sprite)
-        break
-        
-      case PowerUpType.GRENADE:
-        this.applyGrenadeVisual(sprite)
+        this.showShieldOrbit(tank, 0x00BFFF, type)
         break
         
       case PowerUpType.INVINCIBLE:
-        this.applyInvincibleVisual(sprite)
+        this.showShieldOrbit(tank, 0xFFD700, type)
+        this.pulseEffect(tank, 0xFFD700, type)
         break
         
+      case PowerUpType.STAR:
+      case PowerUpType.GUN:
+        this.pulseEffect(tank, 0xFFFF00, type)
+        break
+        
+      case PowerUpType.SPEED:
+        this.pulseEffect(tank, 0x88FF88, type)
+        break
+        
+      case PowerUpType.CLOCK:
+        this.showStatusText(tank, '⏰', 0xBF00FF, type, 8000)
+        break
+        
+      case PowerUpType.BOMB:
+      case PowerUpType.GRENADE:
+        // 爆炸类：只有激活时的瞬时特效，无持续效果
+        break
+        
+      case PowerUpType.HEALTH:
       case PowerUpType.LIFE:
-        this.applyLifeVisual(sprite)
+        // 一次性回复，无持续效果
+        break
+        
+      case PowerUpType.ARMOR:
+        this.pulseEffect(tank, 0xC0C0C0, type)
+        break
+        
+      case PowerUpType.HOMING:
+        this.pulseEffect(tank, 0x00FFFF, type)
         break
     }
   }
-  
+
   /**
-   * STAR - 火力升级（金色边框 + 闪烁）
+   * 护盾旋转光圈（真正跟随坦克）
    */
-  private applyStarVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    // 添加金色光晕
-    sprite.setPostPipeline('FXPipeline', {
-      glowColor: 0xFFFF00,
-      glowStrength: 0.3
-    })
+  private showShieldOrbit(tank: Phaser.Physics.Arcade.Sprite, color: number, type: PowerUpType): void {
+    const effect: IActiveEffect = {}
     
-    // 持续闪烁
-    this.scene.tweens.add({
-      targets: sprite,
-      alpha: 0.7,
-      duration: 500,
+    // 创建护盾图形（在坦克周围的圆圈）
+    const g = this.scene.add.graphics()
+    g.lineStyle(3, color, 0.9)
+    g.strokeCircle(0, 0, 42)
+    // 加一个小一点的内圈
+    g.lineStyle(1, color, 0.4)
+    g.strokeCircle(0, 0, 38)
+    g.setDepth(100)
+    effect.graphics = g
+
+    // 旋转 tween
+    const tween = this.scene.tweens.add({
+      targets: g,
+      angle: 360,
+      duration: 2000,
+      repeat: -1,
+      ease: 'Linear'
+    })
+    effect.tween = tween
+
+    // 每帧跟随坦克（用 timer 轮询，避免 update hook 复杂性）
+    const followTimer = this.scene.time.addEvent({
+      delay: 16,
+      repeat: -1,
+      callback: () => {
+        if (!tank.active || !g.active) {
+          followTimer.remove()
+          return
+        }
+        g.x = tank.x
+        g.y = tank.y
+      }
+    })
+    effect.timer = followTimer
+    
+    this.activeEffects.set(type, effect)
+  }
+
+  /**
+   * 坦克闪烁颜色脉冲（持续型）
+   * 注意：duration 由管理器或道具逻辑控制，这里只做视觉
+   */
+  private pulseEffect(tank: Phaser.Physics.Arcade.Sprite, color: number, type: PowerUpType): void {
+    const effect: IActiveEffect = {}
+    
+    const tween = this.scene.tweens.add({
+      targets: tank,
+      alpha: 0.6,
+      duration: 300,
       yoyo: true,
       repeat: -1,
-      ease: 'Sine.easeInOut'
-    })
-    
-    console.log('⭐ 火力升级视觉效果已应用')
-  }
-  
-  /**
-   * SHIELD - 护盾（蓝色透明圆罩）
-   */
-  private applyShieldVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    // 创建护盾图形
-    const shield = this.scene.add.graphics()
-    shield.lineStyle(2, 0x00FF00, 0.8)
-    shield.strokeCircle(sprite.x, sprite.y, 40)
-    
-    // 存储到列表
-    let attached = sprite.getData('attachedObjects') as Phaser.GameObjects.GameObject[] || []
-    attached.push(shield)
-    sprite.setData('attachedObjects', attached)
-    
-    // 旋转护盾
-    this.scene.tweens.add({
-      targets: shield,
-      angle: 360,
-      duration: 3000,
-      repeat: -1,
-      ease: 'Linear'
-    })
-    
-    console.log('🛡️ 护盾视觉效果已应用')
-  }
-  
-  /**
-   * CLOCK - 时间冻结（紫色光环）
-   */
-  private applyClockVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    sprite.setPostPipeline('FXPipeline', {
-      glowColor: 0x0000FF,
-      glowStrength: 0.5
-    })
-    
-    console.log('🕐 时间冻结视觉效果已应用')
-  }
-  
-  /**
-   * GUN - 散弹枪（橙色火焰效果）
-   */
-  private applyGunVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    const barrelGlow = this.scene.add.circle(sprite.x, sprite.y - 30, 5, 0xFFA500, 0.8)
-    
-    let attached = sprite.getData('attachedObjects') as Phaser.GameObjects.GameObject[] || []
-    attached.push(barrelGlow)
-    sprite.setData('attachedObjects', attached)
-    
-    console.log('🔫 散弹枪视觉效果已应用')
-  }
-  
-  /**
-   * HOMING - 追踪导弹（青色尾焰）
-   */
-  private applyHomingVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    const particles = this.scene.add.particles(0, 0, 'particle', {
-      speed: { min: 50, max: 100 },
-      scale: { start: 0.3, end: 0 },
-      blendMode: 'ADD',
-      tint: 0x00FFFF,
-      quantity: 2,
-      lifespan: 300,
-      followOffset: { x: 0, y: -30 }
-    })
-    
-    let emitters = sprite.getData('particleEmitters') as Phaser.GameObjects.Particles.ParticleEmitter[] || []
-    emitters.push(particles)
-    sprite.setData('particleEmitters', emitters)
-    
-    console.log('🚀 追踪导弹视觉效果已应用')
-  }
-  
-  /**
-   * BOMB - 全屏炸弹（红色闪光）
-   */
-  private applyBombVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    const flash = this.scene.add.rectangle(
-      this.scene.cameras.main.centerX,
-      this.scene.cameras.main.centerY,
-      this.scene.cameras.main.width,
-      this.scene.cameras.main.height,
-      0xFF0000,
-      0.5
-    )
-    
-    this.scene.tweens.add({
-      targets: flash,
-      alpha: 0,
-      duration: 500,
-      onComplete: () => flash.destroy()
-    })
-    
-    console.log('💣 全屏炸弹视觉效果已应用')
-  }
-  
-  /**
-   * SPEED - 速度提升（白色拖尾）
-   */
-  private applySpeedVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    const trail = this.scene.add.particles(0, 0, 'particle', {
-      speed: { min: 20, max: 50 },
-      scale: { start: 0.4, end: 0 },
-      blendMode: 'ADD',
-      tint: 0xFFFFFF,
-      quantity: 5,
-      lifespan: 400,
-      followOffset: { x: 0, y: 20 }
-    })
-    
-    let emitters = sprite.getData('particleEmitters') as Phaser.GameObjects.Particles.ParticleEmitter[] || []
-    emitters.push(trail)
-    sprite.setData('particleEmitters', emitters)
-    
-    console.log('💨 速度提升视觉效果已应用')
-  }
-  
-  /**
-   * HEALTH - 生命恢复（粉色爱心）
-   */
-  private applyHealthVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    const heartText = this.scene.add.text(
-      sprite.x,
-      sprite.y - 40,
-      '+50 HP',
-      {
-        fontSize: '24px',
-        color: '#FF69B4',
-        stroke: '#000000',
-        strokeThickness: 4
+      ease: 'Sine.easeInOut',
+      onYoyo: () => {
+        if (tank.active) tank.setTint(color)
+      },
+      onRepeat: () => {
+        if (tank.active) tank.clearTint()
       }
-    ).setOrigin(0.5)
-    
-    this.scene.tweens.add({
-      targets: heartText,
-      y: sprite.y - 60,
-      alpha: 0,
-      duration: 1500,
-      onComplete: () => heartText.destroy()
     })
+    effect.tween = tween
     
-    console.log('❤️ 生命恢复视觉效果已应用')
+    this.activeEffects.set(type, effect)
   }
-  
+
   /**
-   * ARMOR - 装甲强化（银色金属光泽）
+   * 显示状态图标文字（跟随坦克）
    */
-  private applyArmorVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    sprite.setTint(0xC0C0C0)
+  private showStatusText(
+    tank: Phaser.Physics.Arcade.Sprite,
+    icon: string,
+    color: number,
+    type: PowerUpType,
+    duration: number
+  ): void {
+    const effect: IActiveEffect = {}
     
-    console.log('🛡️ 装甲强化视觉效果已应用')
-  }
-  
-  /**
-   * GRENADE - 手榴弹（棕色烟雾）
-   */
-  private applyGrenadeVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    const smoke = this.scene.add.particles(0, 0, 'particle', {
-      speed: { min: 30, max: 60 },
-      scale: { start: 0.5, end: 0 },
-      blendMode: 'NORMAL',
-      tint: 0x8B4513,
-      quantity: 10,
-      lifespan: 800,
-      followOffset: { x: 0, y: 0 }
-    })
+    const colorHex = '#' + color.toString(16).padStart(6, '0')
+    const text = this.scene.add.text(tank.x, tank.y - 50, icon, {
+      fontSize: '28px',
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(200)
+    effect.text = text
     
-    let emitters = sprite.getData('particleEmitters') as Phaser.GameObjects.Particles.ParticleEmitter[] || []
-    emitters.push(smoke)
-    sprite.setData('particleEmitters', emitters)
-    
-    console.log('💣 手榴弹视觉效果已应用')
-  }
-  
-  /**
-   * INVINCIBLE - 无敌状态（金色旋转光环）
-   */
-  private applyInvincibleVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    sprite.setPostPipeline('FXPipeline', {
-      glowColor: 0xFFD700,
-      glowStrength: 0.8
-    })
-    
-    // 创建旋转光环
-    const halo = this.scene.add.graphics()
-    halo.lineStyle(3, 0xFFD700, 1.0)
-    halo.strokeCircle(sprite.x, sprite.y, 45)
-    
-    let attached = sprite.getData('attachedObjects') as Phaser.GameObjects.GameObject[] || []
-    attached.push(halo)
-    sprite.setData('attachedObjects', attached)
-    
-    this.scene.tweens.add({
-      targets: halo,
-      angle: 360,
-      duration: 2000,
+    // 跟随坦克
+    const followTimer = this.scene.time.addEvent({
+      delay: 16,
       repeat: -1,
-      ease: 'Linear'
+      callback: () => {
+        if (!tank.active || !text.active) {
+          followTimer.remove()
+          return
+        }
+        text.x = tank.x
+        text.y = tank.y - 50
+      }
+    })
+    effect.timer = followTimer
+    
+    // duration 后自动消失
+    this.scene.time.delayedCall(duration, () => {
+      this.clearEffect(effect)
+      this.activeEffects.delete(type)
     })
     
-    console.log('✨ 无敌状态视觉效果已应用')
+    this.activeEffects.set(type, effect)
+  }
+
+  /**
+   * 清除单个效果
+   */
+  private clearEffect(effect: IActiveEffect): void {
+    effect.tween?.stop()
+    effect.timer?.remove()
+    if (effect.graphics?.active) effect.graphics.destroy()
+    if (effect.text?.active) effect.text.destroy()
   }
   
-  /**
-   * LIFE - 额外生命（红色大爱心）
-   */
-  private applyLifeVisual(sprite: Phaser.Physics.Arcade.Sprite): void {
-    const heart = this.scene.add.text(
-      sprite.x,
-      sprite.y - 40,
-      '❤️',
-      {
-        fontSize: '48px'
-      }
-    ).setOrigin(0.5)
-    
-    this.scene.tweens.add({
-      targets: heart,
-      y: sprite.y - 80,
-      scale: 1.5,
-      alpha: 0,
-      duration: 2000,
-      onComplete: () => heart.destroy()
-    })
-    
-    console.log('🎈 额外生命视觉效果已应用')
-  }
+  // ===========================================================================
+  // 🔧 属性加成逻辑
+  // ===========================================================================
   
   /**
    * 应用属性加成
    */
   private applyAttributeBuff(type: PowerUpType, player: any): void {
+    console.log(`💪 [PowerUpEffectApplier] 应用 ${type} 属性加成`)
+    
     switch (type) {
       case PowerUpType.STAR:
-        player.upgradeWeapon?.()
+        if (this.combatManager?.activateUpgrade) {
+          this.combatManager.activateUpgrade()
+          console.log('⭐ 火力升级效果已触发')
+        }
         break
         
       case PowerUpType.SHIELD:
-        player.activateShield?.()
+        if (this.combatManager?.activateShieldPowerUp) {
+          this.combatManager.activateShieldPowerUp()
+          console.log('🛡️ 护盾效果已触发')
+        }
         break
         
       case PowerUpType.CLOCK:
         this.scene.events.emit('freezeAllEnemies', { duration: 8000 })
+        console.log('🕐 时间冻结效果已触发')
         break
         
       case PowerUpType.GUN:
-        player.activateShotgun?.()
+        if (this.combatManager?.activateShotgun) {
+          this.combatManager.activateShotgun()
+          console.log('🔫 散弹枪效果已触发')
+        } else if (this.combatManager?.activateUpgrade) {
+          this.combatManager.activateUpgrade()
+        }
         break
         
       case PowerUpType.HOMING:
-        player.activateHomingMissile?.()
+        if (this.combatManager?.activateHomingMissile) {
+          this.combatManager.activateHomingMissile()
+          console.log('🚀 追踪导弹效果已触发')
+        }
         break
         
       case PowerUpType.BOMB:
         this.scene.events.emit('explodeAllEnemies')
+        console.log('💣 全屏炸弹效果已触发')
         break
         
       case PowerUpType.SPEED:
-        player.setSpeedMultiplier?.(1.5)
+        if (this.movementManager?.setSpeedMultiplier) {
+          this.movementManager.setSpeedMultiplier(1.5)
+          console.log('💨 速度提升效果已触发')
+        }
         break
         
       case PowerUpType.HEALTH:
-        player.heal?.(50)
+        if (this.combatManager?.addArmor) {
+          this.combatManager.addArmor(50)
+          console.log('❤️ 生命恢复效果已触发（护甲 +50）')
+        }
         break
         
       case PowerUpType.ARMOR:
-        player.addArmor?.(50)
+        if (this.combatManager?.addArmor) {
+          this.combatManager.addArmor(100)
+          console.log('🛡️ 装甲强化效果已触发（护甲 +100）')
+        }
         break
         
       case PowerUpType.GRENADE:
-        player.throwGrenade?.()
+        this.scene.events.emit('explodeAllEnemies')
+        console.log('💣 手榴弹效果已触发')
         break
         
       case PowerUpType.INVINCIBLE:
-        player.setInvincible?.()
+        if (this.combatManager?.activateShieldPowerUp) {
+          this.combatManager.activateShieldPowerUp()
+          console.log('✨ 无敌状态效果已触发')
+        }
         break
         
       case PowerUpType.LIFE:
-        player.addLife?.(1)
+        const gameStore = (this.scene as any).gameStore
+        if (gameStore?.addLife) {
+          gameStore.addLife(1)
+          console.log('❤️ 额外生命效果已触发（生命 +1）')
+        }
         break
-    }
-  }
-  
-  /**
-   * 播放音效
-   */
-  private playSoundEffect(): void {
-    try {
-      this.scene.sound.play('powerup_pickup', { volume: 0.5 })
-    } catch (e) {
-      // 音效不存在时忽略
+        
+      default:
+        console.warn(`⚠️ 未知的道具类型：${type}`)
     }
   }
 }

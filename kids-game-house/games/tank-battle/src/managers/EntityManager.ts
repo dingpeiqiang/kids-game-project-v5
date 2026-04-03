@@ -492,17 +492,62 @@ export class EntityManager {
   }
   
   /**
-   * ⭐ 创建道具
+   * ⭐ 创建道具（带弹出动画 + 持续跳动效果）
    */
   protected createPowerUp(x: number, y: number, texture: string, attributes: IEntityAttributes): Phaser.Physics.Arcade.Sprite {
     const powerUp = this.powerUpGroup.create(x, y, texture)
     if (attributes.type) (powerUp as any).type = attributes.type
     if ((attributes as any).duration) (powerUp as any).duration = (attributes as any).duration
     
-    // 🎁 道具生成时播放音效（如果存在）
+    // 🎁 道具生成时播放音效
     if (this.scene.sound && (this.scene as any).playSound) {
       (this.scene as any).playSound('sfx_bonus_appears', 0.4)
     }
+    
+    // ✨ 道具弹出动画（从小到大）
+    powerUp.setScale(0)
+    this.scene.tweens.add({
+      targets: powerUp,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 200,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        if (!powerUp.active) return
+        // 恢复正常大小
+        this.scene.tweens.add({
+          targets: powerUp,
+          scaleX: 1,
+          scaleY: 1,
+          duration: 100,
+          ease: 'Linear',
+          onComplete: () => {
+            if (!powerUp.active) return
+            // ✨ 持续上下跳动动画（吸引玩家注意）
+            this.scene.tweens.add({
+              targets: powerUp,
+              y: powerUp.y - 6,
+              scaleX: 1.05,
+              scaleY: 0.95,
+              duration: 400,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut'
+            })
+          }
+        })
+      }
+    })
+    
+    // ✨ 道具轻微旋转闪烁（alpha）
+    this.scene.tweens.add({
+      targets: powerUp,
+      alpha: 0.7,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    })
     
     return powerUp
   }

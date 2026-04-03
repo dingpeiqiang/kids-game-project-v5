@@ -23,6 +23,8 @@ import { EntityDebugPanel } from '@/debug/EntityDebugPanel'
 import { EnemyDebugManager } from '@/debug/EnemyDebugManager'
 import { TopDebugToolbarManager } from '@/ui/TopDebugToolbarManager'
 import { GameEvents, CollisionEvents } from '../events/GameEvents'
+import { PowerUpEffectApplier } from '../utils/PowerUpEffectApplier'
+import { PowerUpType } from '../types/powerup-types'
 
 /**
  * ⭐ 坦克大战游戏场景（重构版）
@@ -69,6 +71,7 @@ export default class TankGameScene extends GameScene {
   private entityDebugPanel!: EntityDebugPanel
   private enemyDebugManager!: EnemyDebugManager
   private topDebugToolbar!: TopDebugToolbarManager
+  private powerUpEffectApplier!: PowerUpEffectApplier
   
   // ═══════════════════════════════════════
   // 🎯 游戏实体引用
@@ -221,6 +224,7 @@ export default class TankGameScene extends GameScene {
     this.combatManager = new PlayerCombatManager(this, this.stateManager)
     this.collisionManager = new CollisionManager(this)
     this.enemyAIManager = new EnemyAIManager(this)
+    this.powerUpEffectApplier = new PowerUpEffectApplier(this)
     
     // 设置碰撞检测（事件驱动）
     this.collisionManager.setupAllCollisions()
@@ -555,19 +559,63 @@ export default class TankGameScene extends GameScene {
   }
 
   /**
-   * 🎆 生成道具拾取特效
+   * 🎆 生成道具拾取特效（强化版）
+   * @param x 位置 X
+   * @param y 位置 Y
+   * @param label 道具名称（可选，用于弹出文字）
+   * @param color 道具主题颜色（可选）
    */
-  public spawnPowerUpEffect(x: number, y: number): void {
-    // ✅ 使用粒子系统（GPU 加速）- 金色粒子
-    this.particleSystem.createExplosionDebris(x, y, 0xffd700, 12, 1.5)
-    this.particleSystem.createExplosionDebris(x, y, 0xffaa00, 8, 1.0)
+  public spawnPowerUpEffect(x: number, y: number, label?: string, color: number = 0xffd700): void {
+    // ✅ 1. 金色爆发粒子（高数量，强视觉冲击）
+    this.particleSystem.createExplosionDebris(x, y, color, 20, 3)
+    this.particleSystem.createExplosionDebris(x, y, 0xffffff, 10, 2)
     
-    // ✅ 火花特效
-    this.spawnSparks(x, y, '#ffd700', 10)
-    this.spawnSparks(x, y, '#ffaa00', 6)
-    
-    // ✅ 轻微相机震动（比爆炸弱）
-    this.cameraShake(80, 1.5)
+    // ✅ 2. 向外扩散火花
+    this.spawnSparks(x, y, '#ffd700', 16)
+    this.spawnSparks(x, y, '#ffffff', 8)
+
+    // ✅ 3. 扩散光圈动画
+    const ring = this.add.graphics()
+    ring.lineStyle(4, color, 1)
+    ring.strokeCircle(0, 0, 5)
+    ring.x = x
+    ring.y = y
+    this.tweens.add({
+      targets: ring,
+      scaleX: 6,
+      scaleY: 6,
+      alpha: 0,
+      duration: 400,
+      ease: 'Power2',
+      onComplete: () => ring.destroy()
+    })
+
+    // ✅ 4. 道具名称弹出文字
+    if (label) {
+      const text = this.add.text(x, y - 20, label, {
+        fontSize: '22px',
+        fontStyle: 'bold',
+        color: '#ffd700',
+        stroke: '#000000',
+        strokeThickness: 5,
+        shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true }
+      }).setOrigin(0.5).setDepth(9999)
+      
+      // 先放大再飞上去消失
+      this.tweens.add({
+        targets: text,
+        y: y - 80,
+        scaleX: 1.4,
+        scaleY: 1.4,
+        alpha: 0,
+        duration: 1200,
+        ease: 'Power2',
+        onComplete: () => text.destroy()
+      })
+    }
+
+    // ✅ 5. 相机轻微震动（喜悦感，不要太强）
+    this.cameraShake(120, 2)
   }
   
   /**
@@ -624,35 +672,100 @@ export default class TankGameScene extends GameScene {
   }
   
   /**
+   * ⭐ 道具类型对应的中文名称和颜色
+   */
+  private readonly POWERUP_META: Record<string, { label: string; color: number; tankTint: number }> = {
+    star:      { label: '⭐ 火力升级！', color: 0xFFFF00, tankTint: 0xFFFF00 },
+    shield:    { label: '🛡️ 护盾激活！', color: 0x00BFFF, tankTint: 0x00BFFF },
+    clock:     { label: '⏰ 时间冻结！', color: 0xBF00FF, tankTint: 0xBF00FF },
+    gun:       { label: '🔫 散弹枪！',   color: 0xFF6600, tankTint: 0xFF6600 },
+    homing:    { label: '🚀 追踪导弹！', color: 0x00FFFF, tankTint: 0x00FFFF },
+    bomb:      { label: '💣 全屏炸弹！', color: 0xFF2200, tankTint: 0xFF4444 },
+    speed:     { label: '💨 速度提升！', color: 0xAAFFAA, tankTint: 0x88FF88 },
+    health:    { label: '❤️ 回复生命！', color: 0xFF69B4, tankTint: 0xFF69B4 },
+    armor:     { label: '🔩 装甲强化！', color: 0xC0C0C0, tankTint: 0xC0C0C0 },
+    grenade:   { label: '💥 手榴弹！',   color: 0xFF4500, tankTint: 0xFF4500 },
+    invincible:{ label: '✨ 无敌状态！', color: 0xFFD700, tankTint: 0xFFD700 },
+    life:      { label: '❤️ +1 生命！',  color: 0xFF0000, tankTint: 0xFF6666 },
+  }
+
+  /**
    * 拾取道具
    */
   public collectPowerUp(powerUp: any): void {
     if (!powerUp || !powerUp.active) return
     
-    const type = powerUp.getData('type') || powerUp.texture?.key?.replace('prop_', '')
+    const rawType = powerUp.getData('type') || powerUp.texture?.key?.replace('prop_', '') || ''
+    const type = rawType.toLowerCase()
+    const player = this.player
+    const meta = this.POWERUP_META[type] || { label: `🎁 ${type}！`, color: 0xffd700, tankTint: 0xffd700 }
     
-    switch (type) {
-      case 'gun':
-        this.combatManager.activateUpgrade()
-        break
-      case 'shield':
-        this.combatManager.activateShieldPowerUp()
-        break
-      case 'clock':
-        this.combatManager.activateFreezeEffect()
-        break
-      case 'star':
-        this.movementManager.setSpeedMultiplier(1.5)
-        break
+    console.log(`🎁 [TankGameScene] 拾取道具：${type}`)
+    
+    // ⭐ 使用 PowerUpEffectApplier 应用效果（包括视觉和属性）
+    try {
+      this.powerUpEffectApplier.applyEffect(PowerUpType[type.toUpperCase() as keyof typeof PowerUpType], powerUp, player)
+    } catch (error) {
+      console.warn(`⚠️ [PowerUpEffectApplier] 应用效果失败：${type}`, error)
+      
+      // 🔄 降级处理：直接调用逻辑效果
+      switch (type) {
+        case 'gun':
+          this.combatManager.activateUpgrade()
+          break
+        case 'shield':
+          this.combatManager.activateShieldPowerUp()
+          break
+        case 'clock':
+          this.combatManager.activateFreezeEffect()
+          break
+        case 'star':
+          this.movementManager.setSpeedMultiplier(1.5)
+          break
+      }
     }
     
-    // 🎁 播放道具拾取音效（使用正确的音效名称）
+    // 🎁 播放道具拾取音效
     this.playSound('sfx_bonus_captured', 0.6)
     
-    // 🎆 播放道具拾取特效
-    this.spawnPowerUpEffect(powerUp.x, powerUp.y)
+    // 🎆 播放道具拾取特效（带道具名称 + 颜色）
+    this.spawnPowerUpEffect(powerUp.x, powerUp.y, meta.label, meta.color)
+
+    // 🌈 坦克闪烁特效（持续时间内的颜色反馈）
+    if (player && player.active) {
+      this.flashTankColor(player, meta.tankTint, 600)
+    }
     
     powerUp.destroy()
+  }
+
+  /**
+   * 🌈 坦克颜色闪烁（道具拾取反馈）
+   * @param tank 坦克精灵
+   * @param tintColor 闪烁颜色
+   * @param duration 持续时间（毫秒）
+   */
+  private flashTankColor(tank: Phaser.Physics.Arcade.Sprite, tintColor: number, duration: number): void {
+    const flashCount = 3
+    const interval = duration / (flashCount * 2)
+    let count = 0
+    const timer = this.time.addEvent({
+      delay: interval,
+      repeat: flashCount * 2 - 1,
+      callback: () => {
+        if (!tank.active) { timer.remove(); return }
+        count++
+        if (count % 2 === 1) {
+          tank.setTint(tintColor)
+        } else {
+          tank.clearTint()
+        }
+        // 最后一次确保清除染色
+        if (count >= flashCount * 2) {
+          tank.clearTint()
+        }
+      }
+    })
   }
   
   /**

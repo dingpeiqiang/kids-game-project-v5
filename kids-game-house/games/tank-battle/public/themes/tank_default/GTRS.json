@@ -186,6 +186,51 @@
           "src": "/themes/tank_default/assets/scene/prop_shield.png",
           "type": "png"
         },
+        "prop_gun": {
+          "alias": "道具 - 散弹枪",
+          "src": "/themes/tank_default/assets/scene/prop_gun.png",
+          "type": "png"
+        },
+        "prop_homing": {
+          "alias": "道具 - 追踪导弹",
+          "src": "/themes/tank_default/assets/scene/prop_homing.png",
+          "type": "png"
+        },
+        "prop_bomb": {
+          "alias": "道具 - 全屏炸弹",
+          "src": "/themes/tank_default/assets/scene/prop_bomb.png",
+          "type": "png"
+        },
+        "prop_speed": {
+          "alias": "道具 - 速度提升",
+          "src": "/themes/tank_default/assets/scene/prop_speed.png",
+          "type": "png"
+        },
+        "prop_health": {
+          "alias": "道具 - 生命恢复",
+          "src": "/themes/tank_default/assets/scene/prop_health.png",
+          "type": "png"
+        },
+        "prop_armor": {
+          "alias": "道具 - 装甲强化",
+          "src": "/themes/tank_default/assets/scene/prop_armor.png",
+          "type": "png"
+        },
+        "prop_grenade": {
+          "alias": "道具 - 手榴弹",
+          "src": "/themes/tank_default/assets/scene/prop_grenade.png",
+          "type": "png"
+        },
+        "prop_invincible": {
+          "alias": "道具 - 无敌状态",
+          "src": "/themes/tank_default/assets/scene/prop_invincible.png",
+          "type": "png"
+        },
+        "prop_life": {
+          "alias": "道具 - 额外生命",
+          "src": "/themes/tank_default/assets/scene/prop_life.png",
+          "type": "png"
+        },
         "ui_heart": {
           "alias": "UI-生命值图标",
           "src": "/themes/tank_default/assets/scene/ui_heart.png",
