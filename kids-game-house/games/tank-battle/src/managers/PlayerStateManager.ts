@@ -154,6 +154,48 @@ export class PlayerStateManager {
   markAsDead(): void {
     this.enterDeadState()
   }
+
+  /**
+   * 🛡️ 激活临时无敌状态（护盾消耗后调用，防止连续受伤）
+   */
+  startInvincibleTemporary(duration: number = 1000): void {
+    // 只有在非死亡状态才能激活临时无敌
+    if (this.currentState === PlayerState.DEAD || this.currentState === PlayerState.DYING) return
+    
+    // 清理旧的闪烁 timer
+    this.cleanupTimers()
+    
+    this.isInvincibleInternal = true
+    // 注意：不改变 currentState，保持 ALIVE，这样玩家仍可移动射击
+    
+    const player = (this.scene as any).player
+    if (player && player.active) {
+      // 启动临时无敌闪烁效果
+      let blinkOn = false
+      this.blinkTimer = this.scene.time.addEvent({
+        delay: this.config.blinkInterval,
+        callback: () => {
+          if (!player || !player.active) return
+          blinkOn = !blinkOn
+          player.setAlpha(blinkOn ? 1 : 0.4)
+        },
+        loop: true,
+      })
+      
+      // 临时无敌结束后恢复
+      this.scene.time.delayedCall(duration, () => {
+        this.cleanupTimers()
+        this.isInvincibleInternal = false
+        if (player && player.active) {
+          player.setAlpha(1)
+          player.setVisible(true)
+        }
+        console.log('🔓 [PlayerStateManager] 临时无敌结束')
+      })
+      
+      console.log(`🛡️ [PlayerStateManager] 临时无敌激活，持续 ${duration}ms`)
+    }
+  }
   
   /**
    * ⭐ 重置状态（新游戏开始时）

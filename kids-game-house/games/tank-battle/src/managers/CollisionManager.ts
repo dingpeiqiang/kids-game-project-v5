@@ -154,9 +154,20 @@ export class CollisionManager {
       // 🔒 防御检查：子弹状态
       if (!bullet?.active) return
       
+      // 🔒 防御检查：玩家引用失效
+      const currentPlayer = (this.scene as any).player
+      if (!currentPlayer || !currentPlayer.active) return
+      
       // 🛡️ 无敌状态检测（优先检查）
       const stateManager = (this.scene as any).stateManager
       if (stateManager?.isInvincible() || stateManager?.getState() === PlayerState.RESPAWNING) {
+        return
+      }
+      
+      // 🛡️ 护盾检测（消耗护盾，子弹被销毁但不扣血）
+      const combatManager = (this.scene as any).combatManager
+      if (combatManager?.hasShield?.()) {
+        combatManager.onHitWithBullet(bullet)
         return
       }
       
@@ -164,8 +175,7 @@ export class CollisionManager {
       if (bullet.getData('hit')) return
       bullet.setData('hit', true)
       
-      // 💥 处理命中
-      const combatManager = (this.scene as any).combatManager
+      // 💥 处理命中（无护盾无无敌）
       if (combatManager) combatManager.onHitWithBullet(bullet)
       else bullet.destroy()
     })
@@ -186,7 +196,11 @@ export class CollisionManager {
       
       const combatManager = (this.scene as any).combatManager
       if (combatManager) {
-        if (combatManager.hasShield?.()) return
+        // ✅ 护盾：消耗护盾并阻挡伤害，而不是只 return
+        if (combatManager.hasShield?.()) {
+          combatManager.onHitWithBullet({ destroy: () => {} } as any)
+          return
+        }
         if ((this.scene as any).stateManager?.isInvincible()) return
         combatManager.onHit()
       }
@@ -283,9 +297,20 @@ export class CollisionManager {
       // 🔒 防御检查：子弹状态
       if (!bullet?.active) return
       
+      // 🔒 防御检查：玩家引用失效
+      const currentPlayer = (this.scene as any).player
+      if (!currentPlayer || !currentPlayer.active) return
+      
       // 🛡️ 无敌状态检测（优先检查）
       const stateManager = (this.scene as any).stateManager
       if (stateManager?.isInvincible() || stateManager?.getState() === PlayerState.RESPAWNING) {
+        return
+      }
+      
+      // 🛡️ 护盾检测（消耗护盾，子弹被销毁但不扣血）
+      const combatManager = (this.scene as any).combatManager
+      if (combatManager?.hasShield?.()) {
+        combatManager.onHitWithBullet(bullet)
         return
       }
       
@@ -293,8 +318,7 @@ export class CollisionManager {
       if (bullet.getData('hit')) return
       bullet.setData('hit', true)
       
-      // 💥 处理命中
-      const combatManager = (this.scene as any).combatManager
+      // 💥 处理命中（无护盾无无敌）
       if (combatManager) combatManager.onHitWithBullet(bullet)
       else bullet.destroy()
     })
@@ -319,7 +343,11 @@ export class CollisionManager {
       
       const combatManager = (this.scene as any).combatManager
       if (combatManager) {
-        if (combatManager.hasShield?.()) return
+        // ✅ 护盾：消耗护盾并阻挡伤害
+        if (combatManager.hasShield?.()) {
+          combatManager.onHitWithBullet({ destroy: () => {} } as any)
+          return
+        }
         if ((this.scene as any).stateManager?.isInvincible()) return
         combatManager.onHit()
       }

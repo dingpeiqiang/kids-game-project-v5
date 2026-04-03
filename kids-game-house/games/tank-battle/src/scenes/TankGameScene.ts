@@ -398,7 +398,11 @@ export default class TankGameScene extends GameScene {
 
     const combatManager = (this as any).combatManager
     if (combatManager) {
-      if (combatManager.hasShield?.()) return
+      // ✅ 护盾：消耗护盾并阻挡伤害
+      if (combatManager.hasShield?.()) {
+        combatManager.onHitWithBullet({ destroy: () => {} } as any)
+        return
+      }
       if ((this as any).stateManager?.isInvincible()) return
       combatManager.onHit()
     }

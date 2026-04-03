@@ -61,13 +61,13 @@ export class PowerUpEffectApplier {
   }
   
   /**
-   * ⭐ 移除道具的持续视觉效果
+   * ⭐ 移除道具的持续视觉效果（全部）
    */
   removeVisualEffects(sprite: Phaser.Physics.Arcade.Sprite): void {
     if (!sprite) return
     
     // 清除所有持续效果
-    this.activeEffects.forEach((effect, type) => {
+    this.activeEffects.forEach((effect) => {
       this.clearEffect(effect)
     })
     this.activeEffects.clear()
@@ -76,6 +76,20 @@ export class PowerUpEffectApplier {
     if (sprite.active) sprite.clearTint()
     
     console.log('🗑️ [PowerUpEffectApplier] 已清除所有视觉效果')
+  }
+
+  /**
+   * ⭐ 移除指定类型的持续视觉效果（护盾消耗时调用）
+   */
+  removeEffectByType(type: PowerUpType, sprite?: Phaser.Physics.Arcade.Sprite): void {
+    const effect = this.activeEffects.get(type)
+    if (effect) {
+      this.clearEffect(effect)
+      this.activeEffects.delete(type)
+    }
+    // 清除 tint（避免颜色残留）
+    if (sprite?.active) sprite.clearTint()
+    console.log(`🗑️ [PowerUpEffectApplier] 清除 ${type} 视觉效果`)
   }
   
   // ===========================================================================
@@ -179,27 +193,29 @@ export class PowerUpEffectApplier {
   }
 
   /**
-   * 坦克闪烁颜色脉冲（持续型）
-   * 注意：duration 由管理器或道具逻辑控制，这里只做视觉
+   * 坦克颜色脉冲（持续型）
+   * ⚠️ 绝对不能修改 tank.alpha！alpha 由 PlayerStateManager 状态机专属管理
+   *    改用 tint 颜色循环做脉冲感
    */
   private pulseEffect(tank: Phaser.Physics.Arcade.Sprite, color: number, type: PowerUpType): void {
     const effect: IActiveEffect = {}
     
-    const tween = this.scene.tweens.add({
-      targets: tank,
-      alpha: 0.6,
-      duration: 300,
-      yoyo: true,
+    // 用 timer 循环切换 tint（不动 alpha）
+    let tintOn = false
+    const timer = this.scene.time.addEvent({
+      delay: 300,
       repeat: -1,
-      ease: 'Sine.easeInOut',
-      onYoyo: () => {
-        if (tank.active) tank.setTint(color)
-      },
-      onRepeat: () => {
-        if (tank.active) tank.clearTint()
+      callback: () => {
+        if (!tank.active) { timer.remove(); return }
+        tintOn = !tintOn
+        if (tintOn) {
+          tank.setTint(color)
+        } else {
+          tank.clearTint()
+        }
       }
     })
-    effect.tween = tween
+    effect.timer = timer
     
     this.activeEffects.set(type, effect)
   }
@@ -256,6 +272,7 @@ export class PowerUpEffectApplier {
     effect.timer?.remove()
     if (effect.graphics?.active) effect.graphics.destroy()
     if (effect.text?.active) effect.text.destroy()
+    // ⚠️ 注意：不在这里 clearTint，由调用方决定（避免清除其他效果的 tint）
   }
   
   // ===========================================================================
