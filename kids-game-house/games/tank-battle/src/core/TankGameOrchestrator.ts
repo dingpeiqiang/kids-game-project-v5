@@ -7,9 +7,11 @@
 //   遵循 frame-factory 标准的 6 阶段流程
 // ============================================================================
 
-import { ILevelConfig, ILevelResult, ITankLevelData } from '../types/level-types'
+import { ILevelConfig, ILevelResult, ITankLevelData, ISpecialEventConfig, ITankLevelResult } from '../types/level-types'
 import { TankSpawner } from './TankSpawner'
 import { TankConfigParser } from './TankConfigParser'
+import { SpecialEventManager } from '../utils/SpecialEventManager'
+import { StarRatingSystem } from '../utils/StarRatingSystem'
 
 /**
  * ⭐ 配置解析器接口（由具体游戏实现）
@@ -63,7 +65,19 @@ export class TankGameOrchestrator {
   protected levelConfig: ILevelConfig | null = null
   protected currentPhase: LevelPhase = LevelPhase.NOT_STARTED
   private onProgressCallback: ((event: LevelFlowEvent) => void) | null = null
-  
+  private specialEventManager: SpecialEventManager | null = null
+
+  // 统计数据
+  private statistics = {
+    enemiesDestroyed: 0,
+    shotsFired: 0,
+    accuracy: 0,
+    damageTaken: 0,
+    maxCombo: 0,
+    powerUpsUsed: 0,
+    timeUsed: 0
+  }
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene
     console.log('🎮 [TankGameOrchestrator] 已创建')
@@ -246,11 +260,21 @@ export class TankGameOrchestrator {
   protected async phase4_LevelSpawning(parsedData: ITankLevelData): Promise<void> {
     console.log('🏗️ [阶段 4] 关卡生成...')
     this.emitProgress(0.6, '生成游戏实体...')
-    
+
     // ✅ 使用 TankSpawner 生成实体
     const spawner = new TankSpawner(this.scene)
     await spawner.spawn(parsedData)
-    
+
+    // ✅ 初始化特殊事件系统
+    const specialEvents = (this.levelConfig as any)?.specialEvents as ISpecialEventConfig[]
+    if (specialEvents && specialEvents.length > 0) {
+      this.specialEventManager = new SpecialEventManager(this.scene as any)
+      this.specialEventManager.init(specialEvents, (event) => {
+        this.emitProgress(0.7, `事件触发: ${event.description}`)
+      })
+      console.log(`🎯 [阶段 4] 特殊事件系统初始化: ${specialEvents.length} 个事件`)
+    }
+
     console.log('✅ [阶段 4] 完成')
   }
   
@@ -285,11 +309,56 @@ export class TankGameOrchestrator {
   protected async phase6_Settlement(result: ILevelResult): Promise<void> {
     console.log('🏆 [阶段 6] 关卡结算...')
     this.emitProgress(0.95, '结算中...')
-    
+
+    // 计算星级评价
+    if (this.levelConfig) {
+      const tankResult = result as ITankLevelResult
+      const starRating = StarRatingSystem.calculateRating(
+        this.levelConfig,
+        {
+          score: tankResult.score || 0,
+          completionRate: tankResult.completion || 0,
+          timeUsed: tankResult.timeUsed || 0,
+          baseAlive: tankResult.baseAlive ?? true,
+          playerDeaths: 0, // TODO: 从 TankGameScene 获取
+          maxCombo: this.statistics.maxCombo
+        }
+      )
+
+      console.log(`⭐ [星级评价] 获得 ${starRating} 星`)
+
+      // 更新结果
+      ;(result as any).stars = starRating
+    }
+
+    // 清理特殊事件管理器
+    if (this.specialEventManager) {
+      this.specialEventManager.destroy()
+      this.specialEventManager = null
+    }
+
     console.log('结果:', result)
     await this.delay(100)
-    
+
     console.log('✅ [阶段 6] 完成')
+  }
+
+  // ===========================================================================
+  // 📌 统计数据更新 API
+  // ===========================================================================
+
+  /**
+   * ⭐ 更新统计数据
+   */
+  updateStatistics(data: Partial<typeof TankGameOrchestrator.prototype.statistics>): void {
+    Object.assign(this.statistics, data)
+  }
+
+  /**
+   * ⭐ 获取当前统计
+   */
+  getStatistics(): Readonly<typeof TankGameOrchestrator.prototype.statistics> {
+    return { ...this.statistics }
   }
   
   // ===========================================================================

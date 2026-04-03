@@ -19,8 +19,10 @@ export enum EntityType {
   ENEMY_LIGHT = 'enemy_light',
   ENEMY_MEDIUM = 'enemy_medium',
   ENEMY_HEAVY = 'enemy_heavy',
+  ENEMY_BOSS = 'enemy_boss',  // ⭐ Boss 敌人类型
   BULLET_PLAYER = 'bullet_player',
   BULLET_ENEMY = 'bullet_enemy',
+  BULLET_BOSS = 'bullet_boss',  // ⭐ Boss 子弹类型
   WALL_BRICK = 'wall_brick',
   WALL_STEEL = 'wall_steel',
   BASE = 'base',
@@ -149,6 +151,7 @@ export class EntityManager {
       case EntityType.ENEMY_LIGHT:
       case EntityType.ENEMY_MEDIUM:
       case EntityType.ENEMY_HEAVY:
+      case EntityType.ENEMY_BOSS:  // ⭐ Boss 也走 createEnemy
         entity = this.createEnemy(x, y, type, texture, attributes)
         break
       case EntityType.BULLET_PLAYER:
@@ -393,6 +396,19 @@ export class EntityManager {
       enemy.speed = attributes.speed || 50
       enemy.damage = attributes.damage || 30
       enemy.score = 300
+    } else if (type === EntityType.ENEMY_BOSS) {
+      // ⭐ Boss 属性
+      enemy.health = attributes.health || 50
+      enemy.speed = attributes.speed || 40
+      enemy.damage = attributes.damage || 30
+      enemy.score = 1000
+      enemy.isBoss = true
+      enemy.setScale(1.5) // Boss 比普通敌人更大
+
+      // 设置 Boss 纹理
+      if (this.scene.textures.exists('enemy_boss_down')) {
+        enemy.setTexture('enemy_boss_down')
+      }
     }
 
     enemy.enemyType = type
@@ -595,12 +611,13 @@ export class EntityManager {
     const enemies = this.getAliveEntities(EntityType.ENEMY_LIGHT)
       .concat(this.getAliveEntities(EntityType.ENEMY_MEDIUM))
       .concat(this.getAliveEntities(EntityType.ENEMY_HEAVY))
-    
+      .concat(this.getAliveEntities(EntityType.ENEMY_BOSS))  // ⭐ 包含 Boss
+
     if (enemies.length === 0) return null
-    
+
     let nearest = null
     let minDistance = Infinity
-    
+
     enemies.forEach((enemy) => {
       const distance = Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y)
       if (distance < minDistance) {
@@ -608,7 +625,29 @@ export class EntityManager {
         nearest = enemy
       }
     })
-    
+
+    return nearest
+  }
+
+  /**
+   * ⭐ 查找最近的 Boss
+   */
+  findNearestBoss(x: number, y: number): any | null {
+    const bosses = this.getAliveEntities(EntityType.ENEMY_BOSS)
+
+    if (bosses.length === 0) return null
+
+    let nearest = null
+    let minDistance = Infinity
+
+    bosses.forEach((boss) => {
+      const distance = Phaser.Math.Distance.Between(x, y, boss.x, boss.y)
+      if (distance < minDistance) {
+        minDistance = distance
+        nearest = boss
+      }
+    })
+
     return nearest
   }
 }

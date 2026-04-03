@@ -1,0 +1,245 @@
+{
+  "info": {
+    "id": "tank_level_5",
+    "name": "最终决战",
+    "description": "面对强大的 Boss 坦克，守护最后的防线",
+    "difficulty": "expert",
+    "recommendedLevel": 5,
+    "prerequisites": ["tank_level_4"],
+    "thumbnailUrl": "/assets/tank/levels/level5_thumb.png",
+    "isBossLevel": true
+  },
+  "objectives": [
+    {
+      "id": "destroy_boss",
+      "type": "destroy_boss",
+      "description": "击败 Boss 坦克",
+      "targetValue": 1,
+      "weight": 1.5,
+      "reward": {
+        "score": 3000,
+        "currency": 500
+      }
+    },
+    {
+      "id": "protect_base",
+      "type": "protect_base",
+      "description": "保护基地不被摧毁",
+      "targetValue": 1,
+      "weight": 1.0,
+      "reward": {
+        "score": 1000
+      }
+    },
+    {
+      "id": "survive_boss_attacks",
+      "type": "survival",
+      "description": "在 Boss 攻击下存活",
+      "targetValue": 180,
+      "weight": 0.6,
+      "reward": {
+        "score": 600
+      }
+    },
+    {
+      "id": "perfect_defense",
+      "type": "challenge",
+      "description": "基地血量保持 100%",
+      "targetValue": 100,
+      "weight": 1.0,
+      "reward": {
+        "score": 2000
+      }
+    }
+  ],
+  "params": {
+    "enemyCount": 20,
+    "spawnInterval": 1500,
+    "enemyTypes": ["light", "medium", "heavy"],
+    "timeLimit": 360,
+    "playerLives": 5,
+    "playerSpeed": 250,
+    "bulletDamage": 25,
+    "mapLayout": "final",
+    "wallDensity": 0.6,
+    "powerUpRate": 0.3,
+    "hasBoss": true,
+    "bossSpawnTime": 180,
+    "bossHealth": 50,
+    "bossDamage": 30
+  },
+  "victoryCondition": {
+    "type": "all_objectives",
+    "description": "击败 Boss 并完成所有目标"
+  },
+  "failureConditions": [
+    {
+      "type": "no_lives",
+      "description": "生命耗尽"
+    },
+    {
+      "type": "base_destroyed",
+      "description": "基地被摧毁"
+    },
+    {
+      "type": "time_up",
+      "description": "时间耗尽"
+    }
+  ],
+  "timeLimit": 360,
+  "starCriteria": [
+    {
+      "stars": 1,
+      "scoreThreshold": 3000,
+      "completionThreshold": 0.6
+    },
+    {
+      "stars": 2,
+      "scoreThreshold": 5000,
+      "completionThreshold": 0.8
+    },
+    {
+      "stars": 3,
+      "scoreThreshold": 7000,
+      "timeBonusThreshold": 180,
+      "specialCondition": "perfect_defense"
+    }
+  ],
+  "baseRewards": {
+    "score": 500,
+    "currency": 300
+  },
+  "resources": {
+    "sprites": [
+      "bg_main",
+      "player_tank_up",
+      "player_tank_down",
+      "player_tank_left",
+      "player_tank_right",
+      "enemy_light_up",
+      "enemy_light_down",
+      "enemy_light_left",
+      "enemy_light_right",
+      "enemy_medium_up",
+      "enemy_medium_down",
+      "enemy_medium_left",
+      "enemy_medium_right",
+      "enemy_heavy_up",
+      "enemy_heavy_down",
+      "enemy_heavy_left",
+      "enemy_heavy_right",
+      "enemy_boss_up",
+      "enemy_boss_down",
+      "enemy_boss_left",
+      "enemy_boss_right",
+      "bullet_player",
+      "bullet_enemy",
+      "bullet_boss",
+      "wall_brick",
+      "wall_steel",
+      "base_home",
+      "base_destroyed",
+      "explosion_1",
+      "explosion_2",
+      "explosion_3",
+      "explosion_boss",
+      "prop_star",
+      "prop_clock",
+      "prop_shield",
+      "prop_gun",
+      "prop_bomb",
+      "prop_speed",
+      "prop_homing",
+      "prop_grenade",
+      "prop_armor",
+      "prop_invincible",
+      "prop_life",
+      "ui_heart",
+      "ui_pause",
+      "btn_restart"
+    ],
+    "soundEffects": [
+      "sfx_start",
+      "sfx_shot",
+      "sfx_hit",
+      "sfx_explosion",
+      "sfx_bonus_appears",
+      "sfx_bonus_captured",
+      "sfx_boss_appear",
+      "sfx_boss_hit",
+      "sfx_boss_destroyed"
+    ],
+    "musicTracks": [
+      "bgm_main_theme",
+      "bgm_boss"
+    ],
+    "loadStrategy": {
+      "preload": "immediate",
+      "priority": "critical",
+      "cache": true,
+      "retry": 3
+    }
+  },
+  "specialEvents": [
+    {
+      "id": "opening_assault",
+      "type": "wave_attack",
+      "triggerTime": 0,
+      "description": "开局突击",
+      "reward": {
+        "enemyType": "light",
+        "count": 5
+      }
+    },
+    {
+      "id": "mid_game_assault",
+      "type": "wave_attack",
+      "triggerTime": 90,
+      "description": "中期攻势",
+      "reward": {
+        "enemyType": "medium",
+        "count": 4
+      }
+    },
+    {
+      "id": "boss_warning",
+      "type": "boss_warning",
+      "triggerTime": 170,
+      "description": "Boss 即将出现警告",
+      "reward": {
+        "type": "freeze_all",
+        "duration": 3000
+      }
+    },
+    {
+      "id": "boss_spawn",
+      "type": "boss_spawn",
+      "triggerTime": 180,
+      "description": "Boss 出现",
+      "reward": {
+        "bossType": "heavy_boss",
+        "health": 50
+      }
+    },
+    {
+      "id": "final_airdrop",
+      "type": "airdrop",
+      "triggerTime": 200,
+      "description": "最终空投",
+      "reward": {
+        "type": "invincible",
+        "count": 1
+      }
+    },
+    {
+      "id": "boss_enraged",
+      "type": "boss_enraged",
+      "triggerTime": 300,
+      "description": "Boss 狂暴",
+      "reward": {
+        "bossSpeedMultiplier": 1.5,
+        "bossDamageMultiplier": 1.5
+      }
+    }
+  ]
+}

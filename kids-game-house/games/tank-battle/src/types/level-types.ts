@@ -219,33 +219,54 @@ export interface ILevelResult {
 export interface ITankLevelParams {
   /** 敌人总数 */
   enemyCount: number
-  
+
   /** 敌人生成间隔（毫秒） */
   spawnInterval: number
-  
+
   /** 敌人类型列表 */
-  enemyTypes: Array<'light' | 'medium' | 'heavy'>
-  
+  enemyTypes: Array<'light' | 'medium' | 'heavy' | 'boss'>
+
   /** 时间限制（秒） */
   timeLimit: number
-  
+
   /** 玩家生命数 */
   playerLives: number
-  
+
   /** 玩家速度 */
   playerSpeed: number
-  
+
   /** 子弹基础伤害 */
   bulletDamage: number
-  
+
   /** 地图布局类型 */
   mapLayout: 'training' | 'forest' | 'steel' | 'desert' | 'final'
-  
+
   /** 墙壁密度（0-1） */
   wallDensity: number
-  
+
   /** 道具生成率（0-1） */
   powerUpRate: number
+
+  /** 是否为 Boss 关卡 */
+  hasBoss?: boolean
+
+  /** Boss 出现时间（秒） */
+  bossSpawnTime?: number
+
+  /** Boss 生命值 */
+  bossHealth?: number
+
+  /** Boss 伤害值 */
+  bossDamage?: number
+
+  /** 钢铁墙壁比例（0-1） */
+  steelWallRatio?: number
+
+  /** 是否启用多出生点 */
+  multiSpawnPoints?: boolean
+
+  /** 出生点数量 */
+  spawnPointCount?: number
 }
 
 /**
@@ -330,16 +351,16 @@ export interface ITankLevelEvent {
 export interface ITankLevelResult extends ILevelResult {
   /** 击毁敌人数量 */
   enemiesDestroyed: number
-  
+
   /** 基地是否存活 */
   baseAlive: boolean
-  
+
   /** 剩余时间（秒） */
   timeRemaining: number
-  
+
   /** 使用的道具数量 */
   powerUpsUsed: number
-  
+
   /** 坦克大战特定统计 */
   statistics: {
     shotsFired: number
@@ -347,6 +368,164 @@ export interface ITankLevelResult extends ILevelResult {
     damageTaken: number
     maxCombo: number
   }
+}
+
+// ============================================================================
+// ⭐ 特殊事件系统类型
+// ============================================================================
+
+/**
+ * ⭐ 特殊事件类型枚举
+ */
+export enum SpecialEventType {
+  /** 空投道具 */
+  AIRDROP = 'airdrop',
+  /** 敌人增援 */
+  REINFORCEMENT = 'reinforcement',
+  /** 波次攻击 */
+  WAVE_ATTACK = 'wave_attack',
+  /** Boss 警告 */
+  BOSS_WARNING = 'boss_warning',
+  /** Boss 出现 */
+  BOSS_SPAWN = 'boss_spawn',
+  /** Boss 狂暴 */
+  BOSS_ENRAGED = 'boss_enraged',
+  /** 冰冻所有敌人 */
+  FREEZE_ALL = 'freeze_all',
+  /** 全屏炸弹 */
+  SCREEN_BOMB = 'screen_bomb'
+}
+
+/**
+ * ⭐ 特殊事件配置
+ */
+export interface ISpecialEventConfig {
+  /** 事件唯一 ID */
+  id: string
+  /** 事件类型 */
+  type: SpecialEventType
+  /** 触发时间（秒） */
+  triggerTime: number
+  /** 事件描述 */
+  description: string
+  /** 事件奖励/效果 */
+  reward: ISpecialEventReward
+  /** 是否已触发 */
+  triggered?: boolean
+}
+
+/**
+ * ⭐ 特殊事件奖励/效果
+ */
+export interface ISpecialEventReward {
+  /** 奖励类型 */
+  type?: string
+  /** 敌人类型 */
+  enemyType?: 'light' | 'medium' | 'heavy' | 'boss'
+  /** 敌人数量 */
+  count?: number
+  /** Boss 类型 */
+  bossType?: string
+  /** Boss 生命值 */
+  health?: number
+  /** 持续时间（毫秒） */
+  duration?: number
+  /** 速度倍率 */
+  speedMultiplier?: number
+  /** 伤害倍率 */
+  damageMultiplier?: number
+}
+
+// ============================================================================
+// ⭐ Boss 系统类型
+// ============================================================================
+
+/**
+ * ⭐ Boss 类型
+ */
+export interface IBossConfig {
+  /** Boss 类型 ID */
+  type: string
+  /** 生命值 */
+  health: number
+  /** 伤害值 */
+  damage: number
+  /** 移动速度 */
+  speed: number
+  /** 射击间隔 */
+  shootInterval: number
+  /** 纹理名称 */
+  textures: {
+    up: string
+    down: string
+    left: string
+    right: string
+  }
+  /** 特殊技能列表 */
+  specialSkills?: IBossSkill[]
+}
+
+/**
+ * ⭐ Boss 技能
+ */
+export interface IBossSkill {
+  /** 技能名称 */
+  name: string
+  /** 技能描述 */
+  description: string
+  /** 触发血量阈值（百分比） */
+  triggerAtHealthPercent: number
+  /** 冷却时间（秒） */
+  cooldown: number
+  /** 效果类型 */
+  effectType: 'spread_shot' | 'dash' | 'summon' | 'shield' | 'enrage'
+  /** 效果参数 */
+  effectParams?: Record<string, any>
+}
+
+// ============================================================================
+// ⭐ 星级评价系统类型
+// ============================================================================
+
+/**
+ * ⭐ 星级评价结果
+ */
+export interface IStarRatingResult {
+  /** 获得星级（0-3） */
+  stars: 0 | 1 | 2 | 3
+  /** 是否达成特殊条件 */
+  specialConditionMet: boolean
+  /** 评价详情 */
+  details: {
+    scoreAchieved: number
+    scoreThreshold: number
+    completionRate: number
+    timeBonus: number
+  }
+}
+
+// ============================================================================
+// ⭐ 关卡进度系统类型
+// ============================================================================
+
+/**
+ * ⭐ 关卡进度记录
+ */
+export interface ILevelProgress {
+  /** 关卡 ID */
+  levelId: string
+  /** 是否已解锁 */
+  unlocked: boolean
+  /** 是否已完成 */
+  completed: boolean
+  /** 最高星级 */
+  bestStars: 0 | 1 | 2 | 3
+  /** 最高分数 */
+  bestScore: number
+  /** 最快通关时间（秒） */
+  bestTime: number
+  /** 完成次数 */
+  completedCount: number
 }
 
 
