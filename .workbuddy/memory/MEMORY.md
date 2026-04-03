@@ -1,60 +1,6 @@
 # 项目长期记忆
 
-## 坦克大战资源加载系统重构（2026-04-01）
 
-**核心原则**：移除所有兜底方案，建立严格的资源加载保障机制。
-
-**主要改动**：
-
-1. **GameScene.preloadFromGTRS() 严格化**：
-   - GTRS 加载失败直接 `throw Error`
-   - GTRS 结构缺失直接 `throw Error`
-   - 资源配置缺失 src 直接 `throw Error`
-   - 加载错误直接 `throw Error`
-
-2. **TankGameScene 新增 preload() 方法**：
-   - 调用 `preloadFromGTRS()`
-   - 失败时直接向上抛出，阻断游戏启动
-
-3. **TankGameOrchestrator 阶段2重构**：
-   - 从"资源加载"改为"资源验证"
-   - 移除 ResourceManager 依赖
-   - 仅验证 `textures.exists()` 和 `cache.audio.exists()`
-   - 任何缺失直接 `throw Error`
-
-4. **TankGameOrchestrator 阶段5移除超时兜底**：
-   - 移除30秒自动完成机制
-   - 检查 `onLevelComplete` 回调是否存在
-   - 不存在直接 `throw Error`
-
-5. **playSound() 严格化**：
-   - 音效不存在直接 `throw Error`
-   - 移除 try-catch 兜底
-
-6. **baseDestroyed() 严格化**：
-   - base 不存在直接 `throw Error`
-   - `base_destroyed` 纹理不存在直接 `throw Error`
-
-**修复记录**（20:47）：
-- 修复 GTRS.json 缺失的 `sfx_bonus_appears` 和 `sfx_bonus_captured` 音效定义
-- 音效文件已存在，仅缺少 GTRS 映射
-
-**技术细节**：
-- 资源加载统一在 preload 阶段完成（符合 Phaser 生命周期）
-- 使用 XMLHttpRequest 同步加载 GTRS.json
-- 严格验证三层资源映射：GTRS.json → tank_level_1.json → 代码 key
-
-**特殊映射**：
-- `bgm_main_theme`（关卡配置）→ `bgm_main`（GTRS）→ `bgm_main.wav`（文件）
-
-**验证清单**：
-- ✅ 图片资源：23 个 PNG 文件全部存在
-- ✅ 音频资源：10 个 WAV 文件全部存在
-- ✅ GTRS 结构：`resources.images.scene` + `resources.audio` 完整
-
-**文档**：`kids-game-house/games/tank-battle/RESOURCE_LOADING_REFACTOR.md`
-
----
 
 ## 框架工具链全面升级（2026-03-31）
 

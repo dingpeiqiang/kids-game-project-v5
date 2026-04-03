@@ -179,8 +179,13 @@ export class PowerUpEffectApplier {
       delay: 16,
       repeat: -1,
       callback: () => {
+        // ✅ 修复：tank.active=false 时，同时销毁光圈 Graphics，防止残留
         if (!tank.active || !g.active) {
           followTimer.remove()
+          if (g.active) {
+            tween.stop()
+            g.destroy()
+          }
           return
         }
         g.x = tank.x

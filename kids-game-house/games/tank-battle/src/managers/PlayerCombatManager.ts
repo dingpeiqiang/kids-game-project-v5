@@ -153,18 +153,39 @@ export class PlayerCombatManager {
   }
   
   /**
-   * ⭐ 玩家被击中（兼容旧版本，用于物理碰撞）
+   * ⭐ 玩家被击中（物理碰撞专用，不接受 bullet 参数）
+   * 
+   * 注意：此方法仅用于「玩家 vs 敌人」物理碰撞路径。
+   * 护盾 / 无敌判断在 TankGameScene.handlePlayerEnemyCollision 已做过，
+   * 这里直接走扣甲 / 死亡流程，不再重复检查，避免双重调用。
    */
   onHit(): void {
     if (!this.stateManager.isValid()) return
-    // 🛡️ 护盾检查：物理碰撞也要消耗护盾
+    // 🔒 双重保险：护盾 / 无敌仍然阻止伤害（防止调用方漏检）
     if (this.isShieldActive) {
-      console.log('🛡️ [onHit] 护盾生效，消耗护盾')
+      console.log('🛡️ [onHit] 护盾兜底生效，消耗护盾')
       this.consumeShield({ destroy: () => {} } as any)
       return
     }
-    if (this.stateManager.isInvincible()) return
-    this.onHitWithBullet({ destroy: () => {} } as any)
+    if (this.stateManager.isInvincible()) {
+      console.log('✨ [onHit] 无敌状态，忽略伤害')
+      return
+    }
+
+    // 💥 扣减护甲或生命（直接处理，不再调用 onHitWithBullet 避免死亡路径重复）
+    if (this.currentArmor > 0) {
+      this.currentArmor--
+      const player = (this.scene as any).player
+      if (player) {
+        player.setVisible(true)
+        player.setAlpha(1)
+      }
+      this.playHitFeedback()
+      return
+    }
+
+    // 🔴 进入死亡流程
+    this.handleDeath()
   }
   
   /**
@@ -196,41 +217,54 @@ export class PlayerCombatManager {
       return
     }
     
+    // ✅ 先关闭护盾标志，防止后续逻辑重入
     this.isShieldActive = false
-    bullet.destroy()
+
+    // ✅ 销毁子弹（安全销毁，避免影响 player.active 判断）
+    try {
+      if (bullet && typeof bullet.destroy === 'function') {
+        bullet.destroy()
+      }
+    } catch (e) {
+      // 子弹可能已被销毁，忽略
+    }
     
     const player = (this.scene as any).player
+    const stateManager = (this.scene as any).stateManager as import('./PlayerStateManager').PlayerStateManager | undefined
+    const powerUpEffectApplier = (this.scene as any).powerUpEffectApplier
+
+    // ✅ 无论 player 是否 active，必须先清除护盾视觉光圈（防止光圈残留）
+    if (powerUpEffectApplier?.removeEffectByType) {
+      powerUpEffectApplier.removeEffectByType('shield', player ?? undefined)
+      powerUpEffectApplier.removeEffectByType('invincible', player ?? undefined)
+    }
+
+    // ✅ 停止旧的闪烁效果
+    if (stateManager?.stopBlinkEffect) {
+      stateManager.stopBlinkEffect()
+    }
+
+    // ✅ 恢复玩家可见性（不管 active 状态，强制设置）
     if (player) {
-      const stateManager = (this.scene as any).stateManager
-      if (stateManager?.stopBlinkEffect) {
-        stateManager.stopBlinkEffect()
-      }
+      player.setActive(true)      // 确保激活，防止后续 isValid() 判断失败
       player.setVisible(true)
       player.setAlpha(1)
-      player.clearTint()  // ✅ 清除 tint 残留
+      player.clearTint()
     }
-    
-    // ✅ 清除护盾视觉效果（光圈 + 颜色脉冲 timer）
-    const powerUpEffectApplier = (this.scene as any).powerUpEffectApplier
-    if (powerUpEffectApplier?.removeEffectByType) {
-      // PowerUpType.SHIELD = 'shield', PowerUpType.INVINCIBLE = 'invincible'
-      powerUpEffectApplier.removeEffectByType('shield', player)
-      powerUpEffectApplier.removeEffectByType('invincible', player)
-    }
-    
+      
+    // 🎆 播放护盾破碎特效
     if (player) {
       this.scene.spawnSparks(player.x, player.y, '#3b82f6', 8)
     }
     this.scene.cameraShake(80)
     this.scene.playSound('sfx_hit', 0.4)
-    
-    // 🛡️🔥 护盾消耗后：激活短暂无敌状态（1秒），防止护盾消失后立即被击中死亡
-    const stateManager = (this.scene as any).stateManager
+      
+    // 🛡️🔥 护盾消耗后：立即激活短暂无敌（1 秒），防止护盾消失后立即被击中死亡
     if (stateManager) {
       stateManager.startInvincibleTemporary(1000)
     }
-    
-    console.log('✅ [consumeShield] 护盾已消耗，玩家进入1秒临时无敌')
+      
+    console.log('✅ [consumeShield] 护盾已消耗，玩家进入 1 秒临时无敌')
   }
   
   /**

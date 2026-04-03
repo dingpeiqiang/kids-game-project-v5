@@ -100,7 +100,7 @@ export class PlayerDebugPanel {
     this.setText('canShoot', `🔫 可射击：${canShoot ? '✅' : '❌'}`)
     
     // 🎨 渲染状态（添加详细调试）
-    const isVisible = player.visible && player.alpha > 0
+    const isVisible = player.visible && player.alpha > 0.1  // 🔧 提高阈值到 0.1，避免误判
     this.setText('visible', `👁️ 可见：${isVisible ? '✅' : '❌'} ${!player.visible ? '(visible=false)' : player.alpha < 1 ? `(alpha=${player.alpha.toFixed(2)})` : ''}`)
     this.setText('alpha', `🌟 透明度：${player.alpha.toFixed(2)}`)
     this.setText('active', `✅ 激活：${player.active ? '✅' : '❌'}`)

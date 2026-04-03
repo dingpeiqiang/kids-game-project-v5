@@ -107,8 +107,21 @@ export class EntityDebugPanel {
       if (index > this.maxDisplayCount) break
       
       const entity = data.entity
-      if (!entity || !entity.active) {
+      
+      // 🔍 详细调试：检查实体状态
+      if (!entity) {
+        console.warn(`⚠️ [EntityDebugPanel] 实体 ${id} 不存在`)
         continue
+      }
+      if (!entity.active) {
+        console.warn(`⚠️ [EntityDebugPanel] 实体 ${id} 未激活`)
+        continue
+      }
+      if (!entity.visible) {
+        console.log(`👁️ [EntityDebugPanel] 实体 ${id} 不可见 (visible=false)`)
+      }
+      if (entity.alpha < 1) {
+        console.log(`🌟 [EntityDebugPanel] 实体 ${id} 透明度：${entity.alpha.toFixed(2)}`)
       }
 
       // 分隔线
@@ -134,12 +147,19 @@ export class EntityDebugPanel {
         
         this.setText(`${id}_armor`, `🛡️ 护甲：${combatManager?.currentArmor || 0}`, '#4169e1')
         this.setText(`${id}_shield`, `✨ 护盾：${combatManager?.hasShield() ? '✅' : '❌'}`, '#00ced1')
-        this.setText(`${id}_state`, `📊 ${stateManager?.getCurrentState() || 'UNKNOWN'}`, '#9370db')
+        this.setText(`${id}_state`, `📊 ${stateManager?.getState() || 'UNKNOWN'}`, '#9370db')
       }
       
-      // 渲染状态
-      this.setText(`${id}_visible`, `👁️ ${entity.visible ? '可见' : '不可见'}`, entity.visible ? '#32cd32' : '#ff4500')
+      // 渲染状态（详细调试）
+      const actualVisible = entity.visible && entity.alpha > 0.1  // 🔧 提高阈值到 0.1，避免误判
+      const visibleStatus = actualVisible ? '可见' : '不可见'
+      const visibleColor = actualVisible ? '#32cd32' : '#ff4500'
+      const activeStatus = entity.active ? '激活' : '未激活'
+      const activeColor = entity.active ? '#32cd32' : '#ff4500'
+      
+      this.setText(`${id}_visible`, `👁️ ${visibleStatus}`, visibleColor)
       this.setText(`${id}_alpha`, `🌟 ${(entity.alpha || 1).toFixed(2)}`, '#da70d6')
+      this.setText(`${id}_active`, `✅ ${activeStatus}`, activeColor)
 
       index++
     }

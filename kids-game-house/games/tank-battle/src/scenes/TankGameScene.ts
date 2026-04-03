@@ -231,10 +231,20 @@ export default class TankGameScene extends GameScene {
     this.registerCollisionHandlers()
     
     // 初始化调试面板
+    this.poolMonitor = new PoolMonitorPanel(this, this.renderManager)
+    this.poolMonitor.init()  // ✅ 初始化对象池监控
+    
     this.playerDebugPanel = new PlayerDebugPanel(this)
     this.entityDebugPanel = new EntityDebugPanel(this)
     this.enemyDebugManager = new EnemyDebugManager(this, this.entityDebugPanel)
     this.topDebugToolbar = new TopDebugToolbarManager(this)
+    
+    // 🎯 添加玩家到实体监控面板
+    this.entityDebugPanel.addEntity('player', {
+      name: '🎮 玩家坦克',
+      type: 'player',
+      entity: this.player
+    })
     
     // 创建关卡编排器
     this.orchestrator = new TankGameOrchestrator(this)
@@ -275,6 +285,7 @@ export default class TankGameScene extends GameScene {
     this.playerDebugPanel.update(_time)
     this.enemyDebugManager.update(_time)
     this.entityDebugPanel.update(_time)
+    this.poolMonitor.update(_time)  // ✅ 更新对象池监控
   }
   
   shutdown(): void {
@@ -283,6 +294,7 @@ export default class TankGameScene extends GameScene {
     this.playerDebugPanel.destroy()
     this.entityDebugPanel.destroy()
     this.topDebugToolbar.destroy()
+    this.poolMonitor.destroy()  // ✅ 销毁对象池监控
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -396,16 +408,12 @@ export default class TankGameScene extends GameScene {
     const player = (this as any).player
     if (!player?.active) return
 
-    const combatManager = (this as any).combatManager
-    if (combatManager) {
-      // ✅ 护盾：消耗护盾并阻挡伤害
-      if (combatManager.hasShield?.()) {
-        combatManager.onHitWithBullet({ destroy: () => {} } as any)
-        return
-      }
-      if ((this as any).stateManager?.isInvincible()) return
-      combatManager.onHit()
-    }
+    const combatManager = (this as any).combatManager as PlayerCombatManager | undefined
+    if (!combatManager) return
+
+    // ✅ 统一走 onHit()，让 combatManager 内部处理护盾 / 无敌 / 护甲 / 死亡全部逻辑
+    // 避免在 Scene 层与 combatManager 层做双重判断导致状态不同步
+    combatManager.onHit()
   }
 
   /**
