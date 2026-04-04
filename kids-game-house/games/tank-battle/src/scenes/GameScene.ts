@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { useConfigStore } from '@/stores/config'
+import { Logger } from '../utils/Logger'
 
 /**
  * 游戏场景基类
@@ -39,15 +40,15 @@ export default abstract class GameScene extends Phaser.Scene {
     this.offsetX = (this.screenW - gameWidth) / 2 + this.cellSize / 2
     this.offsetY = (this.screenH - gameHeight) / 2 + this.cellSize / 2
     
-    console.log(`📐 游戏区域：${gameWidth}x${gameHeight}, 偏移：(${this.offsetX}, ${this.offsetY})`)
-    console.log(`🎯 实际可玩区域：左上角 (${this.offsetX}, ${this.offsetY}) 到 右下角 (${this.offsetX + gameWidth}, ${this.offsetY + gameHeight})`)
+    Logger.debug(`📐 游戏区域：${gameWidth}x${gameHeight}, 偏移：(${this.offsetX}, ${this.offsetY})`)
+    Logger.debug(`🎯 实际可玩区域：左上角 (${this.offsetX}, ${this.offsetY}) 到 右下角 (${this.offsetX + gameWidth}, ${this.offsetY + gameHeight})`)
   }
   
   /**
    * 从 GTRS 预加载所有资源（严格模式 - 无兜底）
    */
   protected preloadFromGTRS(): void {
-    console.log('📦 [GameScene] 开始预加载资源（严格模式）')
+    Logger.debug('📦 [GameScene] 开始预加载资源（严格模式）')
     
     // 先同步加载 GTRS JSON（因为文件已经在 public 目录）
     const gtrsUrl = '/themes/tank_default/GTRS.json'
@@ -67,7 +68,7 @@ export default abstract class GameScene extends Phaser.Scene {
     let gtrs: any
     try {
       gtrs = JSON.parse(xhr.responseText)
-      console.log('✅ [GTRS加载成功] 配置文件解析成功')
+      Logger.debug('✅ [GTRS加载成功] 配置文件解析成功')
     } catch (error) {
       const errorMsg = `❌ [GTRS解析失败] 无法解析 GTRS 配置: ${error instanceof Error ? error.message : error}`
       console.error(errorMsg)
@@ -89,7 +90,7 @@ export default abstract class GameScene extends Phaser.Scene {
     
     // 加载图片资源（严格验证）
     const imageCount = Object.keys(gtrs.resources.images.scene).length
-    console.log(`📦 [图片资源] 发现 ${imageCount} 个图片资源`)
+    Logger.debug(`📦 [图片资源] 发现 ${imageCount} 个图片资源`)
     
     Object.entries(gtrs.resources.images.scene).forEach(([key, data]: [string, any]) => {
       if (!data.src) {
@@ -99,7 +100,7 @@ export default abstract class GameScene extends Phaser.Scene {
       }
       
       if (!this.textures.exists(key)) {
-        console.log(`  ✓ 注册图片：${key} -> ${data.src}`)
+        Logger.debug(`  ✓ 注册图片：${key} -> ${data.src}`)
         this.load.image(key, data.src)
       }
     })
@@ -112,7 +113,7 @@ export default abstract class GameScene extends Phaser.Scene {
       if (gtrs.resources.audio[category]) {
         const count = Object.keys(gtrs.resources.audio[category]).length
         totalAudioCount += count
-        console.log(`🔊 [音频资源] ${category}: ${count} 个`)
+        Logger.debug(`🔊 [音频资源] ${category}: ${count} 个`)
         
         Object.entries(gtrs.resources.audio[category]).forEach(([key, data]: [string, any]) => {
           if (!data.src) {
@@ -121,17 +122,17 @@ export default abstract class GameScene extends Phaser.Scene {
             throw new Error(errorMsg)
           }
           
-          console.log(`  ✓ 注册音频：${key} -> ${data.src}`)
+          Logger.debug(`  ✓ 注册音频：${key} -> ${data.src}`)
           this.load.audio(key, data.src)
         })
       }
     })
     
-    console.log(`✅ [资源注册完成] 图片：${imageCount} 个，音频：${totalAudioCount} 个`)
+    Logger.debug(`✅ [资源注册完成] 图片：${imageCount} 个，音频：${totalAudioCount} 个`)
     
     // 设置加载完成回调
     this.load.on('complete', () => {
-      console.log('✅ [资源加载完成] 所有资源加载成功')
+      Logger.debug('✅ [资源加载完成] 所有资源加载成功')
     })
     
     // 设置加载错误回调（严格模式：直接抛出错误）

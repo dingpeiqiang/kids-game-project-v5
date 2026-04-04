@@ -9,6 +9,7 @@
 
 import { PowerUpData, PowerUpConfigService, PowerUpDomainService } from '../entities/PowerUpEntity'
 import { PowerUpType, IPowerUpSpawnConfig } from '../types/powerup-types'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 道具管理器类
@@ -54,8 +55,8 @@ export class PowerUpManager {
   
   constructor(config?: Partial<IPowerUpSpawnConfig>) {
     this.config = { ...this.defaultConfig, ...config }
-    console.log('✅ [PowerUpManager] 已创建')
-    console.log(`📊 [PowerUpManager] 配置：最大 ${this.config.maxCount} 个，每 ${this.config.spawnInterval / 1000}s 生成`)
+    Logger.info('✅ [PowerUpManager] 已创建')
+    Logger.debug(`📊 [PowerUpManager] 配置：最大 ${this.config.maxCount} 个，每 ${this.config.spawnInterval / 1000}s 生成`)
   }
   
   // ─── 公开方法 ──────────────────────────────────────────
@@ -67,7 +68,7 @@ export class PowerUpManager {
     if (this.isSpawning) return
     
     this.isSpawning = true
-    console.log(`⏰ [PowerUpManager] 开始自动生成为了每 ${this.config.spawnInterval / 1000}s`)
+    Logger.debug(`⏰ [PowerUpManager] 开始自动生成为了每 ${this.config.spawnInterval / 1000}s`)
     
     this.spawnTimerId = setInterval(() => {
       this.spawnRandomPowerUp()
@@ -85,7 +86,7 @@ export class PowerUpManager {
     if (this.spawnTimerId) {
       clearInterval(this.spawnTimerId)
       this.spawnTimerId = null
-      console.log('⏹️ [PowerUpManager] 停止自动生成')
+      Logger.debug('⏹️ [PowerUpManager] 停止自动生成')
     }
   }
   
@@ -100,7 +101,7 @@ export class PowerUpManager {
     // 检查是否超过最大数量
     const currentCount = this.powerUps.size
     if (currentCount >= this.config.maxCount) {
-      console.warn(`⚠️ [PowerUpManager] 场上道具已达上限 (${currentCount}/${this.config.maxCount})`)
+      Logger.warn(`⚠️ [PowerUpManager] 场上道具已达上限 (${currentCount}/${this.config.maxCount})`)
       return null as any
     }
     
@@ -117,7 +118,7 @@ export class PowerUpManager {
     const id = `powerup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     this.powerUps.set(id, powerUp)
     
-    console.log(`🎁 [PowerUpManager] 生成道具：${powerUpType} at (${x}, ${y})`)
+    Logger.debug(`🎁 [PowerUpManager] 生成道具：${powerUpType} at (${x}, ${y})`)
     
     return powerUp
   }
@@ -131,7 +132,7 @@ export class PowerUpManager {
   handleCollect(powerUp: PowerUpData, callback?: (type: PowerUpType) => void): void {
     if (!powerUp || powerUp.isCollected) return
     
-    console.log(`🎁 [PowerUpManager] 处理道具拾取：${powerUp.type}`)
+    Logger.debug(`🎁 [PowerUpManager] 处理道具拾取：${powerUp.type}`)
     
     // 使用领域服务标记为已拾取
     PowerUpDomainService.collect(powerUp)
@@ -151,12 +152,12 @@ export class PowerUpManager {
   clearAll(): void {
     this.powerUps.forEach((powerUp, id) => {
       if (!powerUp.isCollected) {
-        console.log(`🗑️ [PowerUpManager] 清除未拾取道具：${powerUp.type}`)
+        Logger.debug(`🗑️ [PowerUpManager] 清除未拾取道具：${powerUp.type}`)
       }
     })
     
     this.powerUps.clear()
-    console.log('🗑️ [PowerUpManager] 已清除所有道具')
+    Logger.debug('🗑️ [PowerUpManager] 已清除所有道具')
   }
   
   /**
@@ -170,7 +171,7 @@ export class PowerUpManager {
       // 使用领域服务检查是否应该消失
       if (PowerUpDomainService.shouldDespawn(powerUp)) {
         if (!powerUp.isCollected) {
-          console.log(`⏰ [PowerUpManager] 道具超时消失：${powerUp.type}`)
+          Logger.debug(`⏰ [PowerUpManager] 道具超时消失：${powerUp.type}`)
         }
         
         // 从列表中移除
@@ -194,7 +195,7 @@ export class PowerUpManager {
    */
   setSpawnRate(type: PowerUpType, rate: number): void {
     this.config.spawnRates[type] = Math.max(0, Math.min(1, rate))
-    console.log(`📊 [PowerUpManager] 调整 ${type} 生成概率：${rate * 100}%`)
+    Logger.debug(`📊 [PowerUpManager] 调整 ${type} 生成概率：${rate * 100}%`)
   }
   
   // ─── 私有方法 ──────────────────────────────────────────
@@ -207,7 +208,7 @@ export class PowerUpManager {
     const spawnPoints = this.getAvailableSpawnPoints()
     
     if (spawnPoints.length === 0) {
-      console.warn('⚠️ [PowerUpManager] 没有可用的生成点')
+      Logger.warn('⚠️ [PowerUpManager] 没有可用的生成点')
       return
     }
     
@@ -273,6 +274,6 @@ export class PowerUpManager {
   destroy(): void {
     this.stopAutoSpawn()
     this.clearAll()
-    console.log('🗑️ [PowerUpManager] 已销毁')
+    Logger.debug('🗑️ [PowerUpManager] 已销毁')
   }
 }

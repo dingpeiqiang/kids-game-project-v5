@@ -12,6 +12,7 @@ import { TankSpawner } from './TankSpawner'
 import { TankConfigParser } from './TankConfigParser'
 import { SpecialEventManager } from '../utils/SpecialEventManager'
 import { StarRatingSystem } from '../utils/StarRatingSystem'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 配置解析器接口（由具体游戏实现）
@@ -80,7 +81,7 @@ export class TankGameOrchestrator {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
-    console.log('🎮 [TankGameOrchestrator] 已创建')
+    Logger.info('🎮 [TankGameOrchestrator] 已创建')
   }
   
   // ===========================================================================
@@ -91,7 +92,7 @@ export class TankGameOrchestrator {
    * ⭐ 运行关卡 - 主入口
    */
   async runLevel(levelConfig: ILevelConfig): Promise<ILevelResult> {
-    console.log('🎮 [TankGameOrchestrator] 开始运行关卡:', levelConfig.info.name)
+    Logger.debug('🎮 [TankGameOrchestrator] 开始运行关卡:', levelConfig.info.name)
     
     try {
       this.levelConfig = levelConfig
@@ -144,7 +145,7 @@ export class TankGameOrchestrator {
    * ⭐ 阶段 1: 解锁验证
    */
   protected async phase1_UnlockValidation(): Promise<void> {
-    console.log('🔓 [阶段 1] 解锁验证...')
+    Logger.debug('🔓 [阶段 1] 解锁验证...')
     this.emitProgress(0.1, '验证关卡解锁状态...')
     
     // 检查前置关卡是否完成（从游戏进度系统获取）
@@ -160,21 +161,21 @@ export class TankGameOrchestrator {
     }
     
     await this.delay(100)
-    console.log('✅ [阶段 1] 完成')
+    Logger.debug('✅ [阶段 1] 完成')
   }
   
   /**
    * ⭐ 阶段 2: 资源验证（严格模式 - 不加载，只验证）
    */
   protected async phase2_ResourceLoading(): Promise<void> {
-    console.log('📦 [阶段 2] 资源验证（宽松模式）')
+    Logger.debug('📦 [阶段 2] 资源验证（宽松模式）')
     this.emitProgress(0.2, '验证资源完整性...')
   
     // 🟡 宽松模式：只验证关键资源，非关键资源警告但不阻止
     const resources = this.levelConfig?.resources
   
     if (!resources) {
-      console.warn('⚠️ [阶段 2 警告] 关卡配置中 resources 字段不存在，使用默认配置')
+      Logger.warn('⚠️ [阶段 2 警告] 关卡配置中 resources 字段不存在，使用默认配置')
       // 继续执行，不抛出错误
       return
     }
@@ -183,82 +184,82 @@ export class TankGameOrchestrator {
   
     // 验证图片资源（只检查关键纹理）
     if (resources.sprites && resources.sprites.length > 0) {
-      console.log(`🖼️ 验证图片资源：${resources.sprites.length} 个`)
+      Logger.debug(`🖼️ 验证图片资源：${resources.sprites.length} 个`)
   
       for (const spriteKey of resources.sprites) {
         if (!this.scene.textures.exists(spriteKey)) {
-          console.warn(`⚠️ [图片资源缺失] ${spriteKey} 未加载（可能使用备用纹理）`)
+          Logger.warn(`⚠️ [图片资源缺失] ${spriteKey} 未加载（可能使用备用纹理）`)
           // 不抛出错误，继续执行
         } else {
-          console.log(`  ✓ 图片验证通过：${spriteKey}`)
+          Logger.debug(`  ✓ 图片验证通过：${spriteKey}`)
         }
       }
     }
   
     // 验证音效资源（宽容处理）
     if (resources.soundEffects && resources.soundEffects.length > 0) {
-      console.log(`🔊 验证音效资源：${resources.soundEffects.length} 个`)
+      Logger.debug(`🔊 验证音效资源：${resources.soundEffects.length} 个`)
   
       for (const soundKey of resources.soundEffects) {
         if (!this.scene.cache.audio.exists(soundKey)) {
-          console.warn(`⚠️ [音效资源缺失] ${soundKey} 未加载（游戏将静音运行）`)
+          Logger.warn(`⚠️ [音效资源缺失] ${soundKey} 未加载（游戏将静音运行）`)
           // 不抛出错误
         } else {
-          console.log(`  ✓ 音效验证通过：${soundKey}`)
+          Logger.debug(`  ✓ 音效验证通过：${soundKey}`)
         }
       }
     }
   
     // 验证音乐资源（映射 key）
     if (resources.musicTracks && resources.musicTracks.length > 0) {
-      console.log(`🎶 验证音乐资源：${resources.musicTracks.length} 个`)
+      Logger.debug(`🎶 验证音乐资源：${resources.musicTracks.length} 个`)
   
       for (const musicKey of resources.musicTracks) {
         // 映射关卡配置中的 key 到实际的 GTRS key
         const actualKey = musicKey === 'bgm_main_theme' ? 'bgm_main' : musicKey
   
         if (!this.scene.cache.audio.exists(actualKey)) {
-          console.warn(`⚠️ [音乐资源缺失] ${actualKey} 未加载（游戏将静音运行）`)
+          Logger.warn(`⚠️ [音乐资源缺失] ${actualKey} 未加载（游戏将静音运行）`)
         } else {
-          console.log(`  ✓ 音乐验证通过：${actualKey}`)
+          Logger.debug(`  ✓ 音乐验证通过：${actualKey}`)
         }
       }
     }
-  
-    console.log('✅ [阶段 2] 完成 - 资源验证结束')
+
+    Logger.debug('✅ [阶段 2] 完成 - 资源验证结束')
   }
-  
+
   /**
    * 阶段 3: 配置解析
    */
   protected async phase3_ConfigParsing(): Promise<ITankLevelData> {
-    console.log('📋 [阶段 3] 配置解析...')
+    Logger.debug('📋 [阶段 3] 配置解析...')
     this.emitProgress(0.4, '解析关卡配置...')
-    
+
     // ✅ 使用 TankConfigParser 解析配置
     const parser = new TankConfigParser(this.scene)
     if (!this.levelConfig) {
       throw new Error('关卡配置为空')
     }
     const data = await parser.parse(this.levelConfig as any)
-    
-    console.log('📊 解析结果:', {
+
+    Logger.debug('📊 解析结果:', {
       walls: data.walls.length,
       enemies: data.enemies.reduce((sum, e) => sum + e.count, 0),
       powerUps: data.powerUps.length
     })
-    
+
     await this.delay(100)
-    
-    console.log('✅ [阶段 3] 完成')
+
+    Logger.debug('✅ [阶段 3] 完成')
     return data
   }
-  
+
   /**
    * 阶段 4: 关卡动态生成
    */
   protected async phase4_LevelSpawning(parsedData: ITankLevelData): Promise<void> {
-    console.log('🏗️ [阶段 4] 关卡生成...')
+    Logger.debug('🏗️ [阶段 4] 关卡生成...')
     this.emitProgress(0.6, '生成游戏实体...')
 
     // ✅ 使用 TankSpawner 生成实体
@@ -272,17 +273,17 @@ export class TankGameOrchestrator {
       this.specialEventManager.init(specialEvents, (event) => {
         this.emitProgress(0.7, `事件触发: ${event.description}`)
       })
-      console.log(`🎯 [阶段 4] 特殊事件系统初始化: ${specialEvents.length} 个事件`)
+      Logger.debug(`🎯 [阶段 4] 特殊事件系统初始化: ${specialEvents.length} 个事件`)
     }
 
-    console.log('✅ [阶段 4] 完成')
+    Logger.debug('✅ [阶段 4] 完成')
   }
-  
+
   /**
    * 阶段 5: 关卡运行（严格模式 - 无超时兜底）
    */
   protected async phase5_LevelRunning(): Promise<ILevelResult> {
-    console.log('🎮 [阶段 5] 关卡运行中...')
+    Logger.debug('🎮 [阶段 5] 关卡运行中...')
     this.emitProgress(0.8, '关卡进行中...')
   
     // 🔴 严格模式：等待真实游戏结束，不设置超时兜底
@@ -299,15 +300,15 @@ export class TankGameOrchestrator {
   
       // ✅ 设置结果解析器（允许在运行时赋值）
       gameScene._resolveLevelResult = resolve
-      console.log('✅ [阶段 5] 等待游戏结束事件...')
+      Logger.debug('✅ [阶段 5] 等待游戏结束事件...')
     })
   }
-  
+
   /**
    * 阶段 6: 关卡结算
    */
   protected async phase6_Settlement(result: ILevelResult): Promise<void> {
-    console.log('🏆 [阶段 6] 关卡结算...')
+    Logger.debug('🏆 [阶段 6] 关卡结算...')
     this.emitProgress(0.95, '结算中...')
 
     // 计算星级评价
@@ -325,7 +326,7 @@ export class TankGameOrchestrator {
         }
       )
 
-      console.log(`⭐ [星级评价] 获得 ${starRating} 星`)
+      Logger.debug(`⭐ [星级评价] 获得 ${starRating} 星`)
 
       // 更新结果
       ;(result as any).stars = starRating
@@ -337,10 +338,10 @@ export class TankGameOrchestrator {
       this.specialEventManager = null
     }
 
-    console.log('结果:', result)
+    Logger.debug('结果:', result)
     await this.delay(100)
 
-    console.log('✅ [阶段 6] 完成')
+    Logger.debug('✅ [阶段 6] 完成')
   }
 
   // ===========================================================================

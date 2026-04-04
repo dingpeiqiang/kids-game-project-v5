@@ -3,6 +3,8 @@
  * 提供悬浮按钮式的调试工具控制
  */
 
+import { Logger } from '../utils/Logger'
+
 export class GameToolbarManager {
   private scene: Phaser.Scene
   private toolbarContainer: Phaser.GameObjects.Container
@@ -102,7 +104,7 @@ export class GameToolbarManager {
       })
     })
     
-    console.log('✅ [工具栏] 调试按钮已创建')
+    Logger.debug('✅ [工具栏] 调试按钮已创建')
   }
 
   /**
@@ -113,7 +115,7 @@ export class GameToolbarManager {
     const playerPanel = (this.scene as any).playerDebugPanel
     
     if (!entityPanel || !playerPanel) {
-      console.warn('⚠️ [工具栏] 调试面板未初始化')
+      Logger.warn('⚠️ [工具栏] 调试面板未初始化')
       return
     }
     
@@ -125,14 +127,14 @@ export class GameToolbarManager {
       playerPanel.show()
       this.debugButton.setText('❌ 关闭调试')
       this.debugButton.setColor('#ff6b6b')
-      console.log('✅ [工具栏] 调试面板已显示')
+      Logger.debug('✅ [工具栏] 调试面板已显示')
     } else {
       // 隐藏面板
       entityPanel.hide()
       playerPanel.hide()
       this.debugButton.setText('🐛 调试监控')
       this.debugButton.setColor(this.CONFIG.textColor)
-      console.log('❌ [工具栏] 调试面板已隐藏')
+      Logger.debug('❌ [工具栏] 调试面板已隐藏')
     }
   }
 

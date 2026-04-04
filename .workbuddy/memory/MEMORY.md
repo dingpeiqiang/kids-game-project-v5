@@ -87,6 +87,36 @@
 - 游戏运行时性能提升30-50%，首次加载时间减少50%
 - 资源管理标准化，自动兼容性检查减少人工验证工作量
 
+## tank-battle 架构（2026-04-04）
+
+**核心架构：单一入口原则（PlayerController）**
+
+```
+外部触发源（碰撞/道具/场景事件）
+         ↓
+  PlayerController ← 唯一入口（~830行）
+    ├── PlayerData（只读快照）
+    ├── takeDamage() / applyPowerUp() / respawn() 等命令方法
+    ├── 内部变更日志（审计追溯）
+    └── 委派：gameStore / stateManager / PowerUpEffectApplier
+         ↓
+  子模块（纯职责）：
+    ├── PlayerStateManager（纯状态机，128行）
+    ├── PlayerCombatManager（纯射击，180行）
+    ├── PlayerMovementManager（移动输入）
+    ├── PowerUpEffectApplier（纯视觉，226行）
+    └── CollisionManager（碰撞 → PlayerController.takeDamage）
+```
+
+**禁止操作**：
+- ❌ 直接 `player.setAlpha/setVisible/setActive`（只允许在 PlayerController 内部）
+- ❌ 直接 `gameStore.loseLife/addLife/$patch`（只允许在 PlayerController 内部）
+- ❌ 直接修改 Manager 内部状态字段
+
+**已删除**：`TankGameManager.ts`（僵尸代码，0处引用）
+
+---
+
 ## snake2 架构迁移（2026-03-30）
 
 `kids-game-house/games/snake2` 正在进行新架构迁移（方向 A）：

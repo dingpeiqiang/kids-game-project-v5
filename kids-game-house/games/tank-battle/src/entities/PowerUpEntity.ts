@@ -10,6 +10,7 @@
 // ============================================================================
 
 import { PowerUpType } from '../types/powerup-types'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 道具配置数据接口
@@ -292,7 +293,7 @@ export class PowerUpDomainService {
     if (data.isCollected) return false
     
     data.isCollected = true
-    console.log(`🎁 [PowerUpDomainService] 拾取 ${data.type} - ${data.description}`)
+    Logger.debug(`🎁 [PowerUpDomainService] 拾取 ${data.type} - ${data.description}`)
     return true
   }
 }

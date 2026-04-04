@@ -8,6 +8,7 @@
 
 import type TankGameScene from '../scenes/TankGameScene'
 import { EntityType } from '../managers/EntityManager'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ Boss 技能配置
@@ -51,7 +52,7 @@ export class BossManager {
     const x = config.x ?? this.scene.gridCols * this.cellSize / 2
     const y = config.y ?? 100
 
-    console.log(`🔥 [BossManager] 生成 Boss: ${type}, 位置: (${x}, ${y}), 生命: ${health}`)
+    Logger.debug(`🔥 [BossManager] 生成 Boss: ${type}, 位置: (${x}, ${y}), 生命: ${health}`)
 
     // 通知 TankGameScene 通过 EntityManager 创建 Boss
     this.scene.events.emit('create_boss', {
@@ -134,7 +135,7 @@ export class BossManager {
     this.speedMultiplier = 1.5
     this.damageMultiplier = 1.5
 
-    console.log(`💀 [BossManager] Boss 进入狂暴状态！`)
+    Logger.warn(`💀 [BossManager] Boss 进入狂暴状态！`)
 
     // 播放狂暴特效
     if (this.boss) {
@@ -172,7 +173,7 @@ export class BossManager {
   private executeSpreadShot(): void {
     if (!this.boss || !this.boss.active) return
 
-    console.log(`🔥 [Boss技能] 扩散射击`)
+    Logger.debug(`🔥 [Boss技能] 扩散射击`)
 
     // 通知场景执行扩散射击
     this.scene.events.emit('boss_skill', { skill: 'spread_shot' })
@@ -184,7 +185,7 @@ export class BossManager {
   private executeDash(): void {
     if (!this.boss || !this.boss.active) return
 
-    console.log(`🔥 [Boss技能] 冲刺攻击`)
+    Logger.debug(`🔥 [Boss技能] 冲刺攻击`)
 
     // 通知场景执行冲刺
     this.scene.events.emit('boss_skill', { skill: 'dash' })
@@ -196,7 +197,7 @@ export class BossManager {
   private executeSummon(): void {
     if (!this.boss || !this.boss.active) return
 
-    console.log(`🔥 [Boss技能] 召唤小兵`)
+    Logger.debug(`🔥 [Boss技能] 召唤小兵`)
 
     // 通知场景召唤小兵
     this.scene.events.emit('boss_skill', { skill: 'summon' })

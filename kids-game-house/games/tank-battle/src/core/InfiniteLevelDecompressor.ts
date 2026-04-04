@@ -9,6 +9,7 @@
 
 import { ILevelConfig, ITankLevelParams } from '../types/level-types'
 import { InfiniteLevelGenerator } from './InfiniteLevelGenerator'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 无限关卡解压数据
@@ -39,7 +40,7 @@ export class InfiniteLevelDecompressor {
    * ⭐ 生成可解压的无限关卡
    */
   generateDecompressibleLevel(levelNumber: number): IInfiniteLevelDecompressData {
-    console.log(`♾️ [InfiniteLevelDecompressor] 生成第 ${levelNumber} 关的可解压数据`)
+    Logger.debug(`♾️ [InfiniteLevelDecompressor] 生成第 ${levelNumber} 关的可解压数据`)
     
     // 1. 设置种子（基于关卡编号）
     const seed = this.calculateSeed(levelNumber)
@@ -68,12 +69,12 @@ export class InfiniteLevelDecompressor {
    * ⭐ 从种子解压关卡
    */
   decompressFromSeed(seed: number): ILevelConfig | null {
-    console.log(`📦 [InfiniteLevelDecompressor] 从种子 ${seed} 解压关卡`)
+    Logger.debug(`📦 [InfiniteLevelDecompressor] 从种子 ${seed} 解压关卡`)
     
     // 1. 尝试从缓存加载
     const cached = this.seedDatabase.get(seed)
     if (cached) {
-      console.log('✅ 从缓存命中')
+      Logger.debug('✅ 从缓存命中')
       return cached.config
     }
     
@@ -119,7 +120,7 @@ export class InfiniteLevelDecompressor {
       // 缓存到数据库
       this.seedDatabase.set(data.seed, data)
       
-      console.log('✅ 导入成功')
+      Logger.debug('✅ 导入成功')
       return data
     } catch (error) {
       console.error('❌ 解析 JSON 失败:', error)

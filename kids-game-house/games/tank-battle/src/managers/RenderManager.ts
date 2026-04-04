@@ -11,6 +11,7 @@
 // ============================================================================
 
 import { IGameManager } from './IGameManager'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 对象池配置（支持动态调整）
@@ -592,15 +593,15 @@ export class RenderManager implements IGameManager {
    */
   printStats(): void {
     const stats = this.getStats()
-    console.log('📊 [RenderManager] 性能统计:')
-    console.log(`   总对象数：${stats.totalObjects}`)
-    console.log(`   活跃对象：${stats.activeObjects}`)
-    console.log(`   对象池：${stats.pooledObjects}`)
-    console.log(`   渲染层：${stats.layers}`)
-    console.log(`   峰值使用率：${stats.peakUsage.toFixed(1)}%`)
-    console.log(`   扩容次数：${stats.resizeCount}`)
-    console.log(`   缩容次数：${stats.shrinkCount}`)
-    console.log(`   创建/回收/扩容/缩容：${stats.poolMetrics.created}/${stats.poolMetrics.recycled}/${stats.poolMetrics.expanded}/${stats.poolMetrics.shrunk}`)
+    Logger.debug('📊 [RenderManager] 性能统计:')
+    Logger.debug(`   总对象数：${stats.totalObjects}`)
+    Logger.debug(`   活跃对象：${stats.activeObjects}`)
+    Logger.debug(`   对象池：${stats.pooledObjects}`)
+    Logger.debug(`   渲染层：${stats.layers}`)
+    Logger.debug(`   峰值使用率：${stats.peakUsage.toFixed(1)}%`)
+    Logger.debug(`   扩容次数：${stats.resizeCount}`)
+    Logger.debug(`   缩容次数：${stats.shrinkCount}`)
+    Logger.debug(`   创建/回收/扩容/缩容：${stats.poolMetrics.created}/${stats.poolMetrics.recycled}/${stats.poolMetrics.expanded}/${stats.poolMetrics.shrunk}`)
   }
   
   /**

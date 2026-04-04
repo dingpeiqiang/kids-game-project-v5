@@ -8,6 +8,7 @@
 
 import { IConfigParser } from './TankGameOrchestrator'
 import { ILevelConfig, ITankLevelData, ITankLevelParams } from '../types/level-types'
+import { Logger } from '../utils/Logger'
 
 
 /**
@@ -24,14 +25,14 @@ export class TankConfigParser implements IConfigParser {
   
   constructor(scene: Phaser.Scene) {
     this.scene = scene
-    console.log('✅ [TankConfigParser] 已创建')
+    Logger.info('✅ [TankConfigParser] 已创建')
   }
   
   /**
    * ⭐ 解析关卡配置
    */
   async parse(config: ILevelConfig<ITankLevelParams>): Promise<ITankLevelData> {
-    console.log('📋 [TankConfigParser] 开始解析关卡:', config.info.name)
+    Logger.debug('📋 [TankConfigParser] 开始解析关卡:', config.info.name)
     
     const params = config.params
     
@@ -40,7 +41,7 @@ export class TankConfigParser implements IConfigParser {
     const offsetX = scene.offsetX || 0
     const offsetY = scene.offsetY || 0
     
-    console.log('🗺️ 地图偏移:', { offsetX, offsetY })
+    Logger.debug('🗺️ 地图偏移:', { offsetX, offsetY })
     
     // 1. 解析敌人配置（使用偏移量）
     const enemies = this.parseEnemies(params, offsetX, offsetY)
@@ -62,7 +63,7 @@ export class TankConfigParser implements IConfigParser {
       config: params
     }
     
-    console.log('✅ [TankConfigParser] 解析完成:', {
+    Logger.debug('✅ [TankConfigParser] 解析完成:', {
       enemyCount: enemies.reduce((sum, e) => sum + e.count, 0),
       wallCount: walls.length,
       powerUpCount: powerUps.length
@@ -158,7 +159,7 @@ export class TankConfigParser implements IConfigParser {
     // 添加到墙壁列表
     walls.push(...protectionWalls)
 
-    console.log(`🏠 已添加 ${protectionWalls.length} 个基地保护墙`)
+    Logger.debug(`🏠 已添加 ${protectionWalls.length} 个基地保护墙`)
 
     return walls
   }

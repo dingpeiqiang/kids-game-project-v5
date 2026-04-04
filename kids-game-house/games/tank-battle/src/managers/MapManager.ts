@@ -56,9 +56,6 @@ export interface IMapTemplate {
   layout: string[]           // 字符串数组表示的地图
 }
 
-/**
- * ⭐ 地图管理器
- */
 export class MapManager {
   private scene: Phaser.Scene
   
@@ -81,7 +78,7 @@ export class MapManager {
   
   constructor(scene: Phaser.Scene) {
     this.scene = scene
-    console.log('🗺️ [MapManager] 已创建')
+    Logger.info('🗺️ [MapManager] 已创建')
     
     this.initTemplates()
   }
@@ -110,7 +107,7 @@ export class MapManager {
       throw new Error(`地图模板 ${templateId} 不存在`)
     }
     
-    console.log(`🗺️ [MapManager] 加载地图模板：${template.name}`)
+    Logger.debug(`🗺️ [MapManager] 加载地图模板：${template.name}`)
     
     const config = this.parseTemplate(template)
     this.currentMap = config
@@ -129,26 +126,26 @@ export class MapManager {
   ): IMapConfig {
     // ✅ 参数验证
     if (width < 5 || width > 100) {
-      console.warn('[MapManager] generateMap: 宽度超出合理范围，已调整为默认值')
+      Logger.warn('[MapManager] generateMap: 宽度超出合理范围，已调整为默认值')
       width = 20
     }
     
     if (height < 5 || height > 100) {
-      console.warn('[MapManager] generateMap: 高度超出合理范围，已调整为默认值')
+      Logger.warn('[MapManager] generateMap: 高度超出合理范围，已调整为默认值')
       height = 15
     }
     
     if (tileSize < 16 || tileSize > 128) {
-      console.warn('[MapManager] generateMap: 格子大小超出合理范围，已调整为默认值')
+      Logger.warn('[MapManager] generateMap: 格子大小超出合理范围，已调整为默认值')
       tileSize = 40
     }
     
     if (density < 0 || density > 1) {
-      console.warn('[MapManager] generateMap: 密度必须在 0-1 之间，已调整为默认值')
+      Logger.warn('[MapManager] generateMap: 密度必须在 0-1 之间，已调整为默认值')
       density = 0.3
     }
     
-    console.log(`🗺️ [MapManager] 程序化生成地图 ${width}x${height}`)
+    Logger.debug(`🗺️ [MapManager] 程序化生成地图 ${width}x${height}`)
     
     const tiles: ITileData[][] = []
     
@@ -184,7 +181,7 @@ export class MapManager {
       }
       
       this.currentMap = data as IMapConfig
-      console.log(`🗺️ [MapManager] 从 JSON 加载地图成功`)
+      Logger.debug(`🗺️ [MapManager] 从 JSON 加载地图成功`)
       return this.currentMap
       
     } catch (error) {
@@ -244,7 +241,7 @@ export class MapManager {
       throw new Error('地图数据不完整')
     }
     
-    console.log('🎨 [MapManager] 渲染地图...')
+    Logger.debug('🎨 [MapManager] 渲染地图...')
     
     const { width, height, tileSize, tiles } = this.currentMap
     
@@ -255,7 +252,7 @@ export class MapManager {
           
           // ✅ 安全检查每个瓷砖
           if (!tile) {
-            console.warn(`[MapManager] tiles[${y}][${x}] 为空，跳过`)
+            Logger.warn(`[MapManager] tiles[${y}][${x}] 为空，跳过`)
             continue
           }
           
@@ -270,7 +267,7 @@ export class MapManager {
       }
       
       this.stats.renderedTiles = this.tileObjects.size
-      console.log(`✅ [MapManager] 渲染完成：${this.stats.renderedTiles} 个地块`)
+      Logger.debug(`✅ [MapManager] 渲染完成：${this.stats.renderedTiles} 个地块`)
       
     } catch (error) {
       console.error('[MapManager] render 失败:', error)
@@ -282,7 +279,7 @@ export class MapManager {
    * ⭐ 清除地图
    */
   clear(): void {
-    console.log('🧹 [MapManager] 清除地图...')
+    Logger.debug('🧹 [MapManager] 清除地图...')
     
     this.tileObjects.forEach(obj => obj.destroy())
     this.tileObjects.clear()
@@ -293,7 +290,7 @@ export class MapManager {
     this.stats.renderedTiles = 0
     this.stats.cachedTiles = 0
     
-    console.log('✅ [MapManager] 地图已清除')
+    Logger.debug('✅ [MapManager] 地图已清除')
   }
   
   // ===========================================================================
@@ -317,7 +314,7 @@ export class MapManager {
     
     // ✅ 地图存在性检查
     if (!this.currentMap) {
-      console.warn('[MapManager] getTile: 当前没有活动的地图')
+      Logger.warn('[MapManager] getTile: 当前没有活动的地图')
       return null
     }
     
@@ -339,7 +336,7 @@ export class MapManager {
     }
     
     if (!this.currentMap.tiles[gridY][gridX]) {
-      console.warn(`[MapManager] tiles[${gridY}][${gridX}] 为空`)
+      Logger.warn(`[MapManager] tiles[${gridY}][${gridX}] 为空`)
       return null
     }
     
@@ -368,7 +365,7 @@ export class MapManager {
     
     // ✅ 边界检查
     if (gridX < 0 || gridX >= width || gridY < 0 || gridY >= height) {
-      console.warn(`[MapManager] setTile: 坐标超出范围 (${gridX}, ${gridY})`)
+      Logger.warn(`[MapManager] setTile: 坐标超出范围 (${gridX}, ${gridY})`)
       return false
     }
     
@@ -404,7 +401,7 @@ export class MapManager {
   isWalkable(x: number, y: number): boolean {
     // ✅ 参数检查
     if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
-      console.warn('[MapManager] isWalkable: 坐标参数无效')
+      Logger.warn('[MapManager] isWalkable: 坐标参数无效')
       return false
     }
     
@@ -413,7 +410,7 @@ export class MapManager {
     
     // ✅ 安全检查 tile.type
     if (!tile.type) {
-      console.warn('[MapManager] isWalkable: 地图块类型为空')
+      Logger.warn('[MapManager] isWalkable: 地图块类型为空')
       return false
     }
     
@@ -434,7 +431,7 @@ export class MapManager {
     
     // ✅ 地图存在性检查
     if (!this.currentMap) {
-      console.warn('[MapManager] getSpawnPoints: 当前没有活动的地图')
+      Logger.warn('[MapManager] getSpawnPoints: 当前没有活动的地图')
       return []
     }
     
@@ -452,7 +449,7 @@ export class MapManager {
     for (let y = 0; y < height; y++) {
       // ✅ 检查每一行是否存在
       if (!tiles[y]) {
-        console.warn(`[MapManager] tiles[${y}] 不存在，跳过`)
+        Logger.warn(`[MapManager] tiles[${y}] 不存在，跳过`)
         continue
       }
       
@@ -552,7 +549,7 @@ export class MapManager {
       ]
     })
     
-    console.log(`✅ [MapManager] 初始化 ${this.templates.size} 个地图模板`)
+    Logger.debug(`✅ [MapManager] 初始化 ${this.templates.size} 个地图模板`)
   }
   
   /**
@@ -778,10 +775,10 @@ export class MapManager {
    */
   printStats(): void {
     const stats = this.getStats()
-    console.log('📊 [MapManager] 性能统计:')
-    console.log(`   地图尺寸：${stats.mapWidth} x ${stats.mapHeight}`)
-    console.log(`   总地块数：${stats.totalTiles}`)
-    console.log(`   渲染地块：${stats.renderedTiles}`)
-    console.log(`   缓存纹理：${stats.cachedTiles}`)
+    Logger.debug('📊 [MapManager] 性能统计:')
+    Logger.debug(`   地图尺寸：${stats.mapWidth} x ${stats.mapHeight}`)
+    Logger.debug(`   总地块数：${stats.totalTiles}`)
+    Logger.debug(`   渲染地块：${stats.renderedTiles}`)
+    Logger.debug(`   缓存纹理：${stats.cachedTiles}`)
   }
 }

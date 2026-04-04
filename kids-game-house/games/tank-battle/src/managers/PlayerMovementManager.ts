@@ -7,6 +7,7 @@
 // ============================================================================
 
 import type TankGameScene from '../scenes/TankGameScene'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 移动方向
@@ -73,7 +74,7 @@ export class PlayerMovementManager {
    */
   setSpeedMultiplier(multiplier: number): void {
     this.config.speedMultiplier = multiplier
-    console.log(`🚀 速度倍率：${multiplier}`)
+    Logger.debug(`🚀 速度倍率：${multiplier}`)
   }
   
   /**

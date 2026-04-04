@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { ILevelConfig, ILevelInfo, ITankLevelParams } from '../types/level-types'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 无限关卡配置
@@ -47,7 +48,7 @@ export class InfiniteLevelGenerator {
   generateNextLevel(): ILevelConfig<ITankLevelParams> {
     const levelNumber = this.currentLevelNumber++
     
-    console.log(`♾️ [InfiniteLevelGenerator] 生成第 ${levelNumber} 关`)
+    Logger.debug(`♾️ [InfiniteLevelGenerator] 生成第 ${levelNumber} 关`)
     
     return this.generateLevel(levelNumber)
   }
@@ -57,7 +58,7 @@ export class InfiniteLevelGenerator {
    */
   reset(): void {
     this.currentLevelNumber = this.baseConfig.startLevel
-    console.log('🔄 [InfiniteLevelGenerator] 已重置进度')
+    Logger.debug('🔄 [InfiniteLevelGenerator] 已重置进度')
   }
   
   /**

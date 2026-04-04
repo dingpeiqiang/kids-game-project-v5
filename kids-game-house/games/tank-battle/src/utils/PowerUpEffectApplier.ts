@@ -1,14 +1,18 @@
 // ============================================================================
-// 🎁 坦克大战道具效果实现器（重构版）
+// 🎁 坦克大战道具视觉效果实现器（纯视觉）
 // ============================================================================
-// 
+//
 // 📌 说明:
-//   为坦克应用各种道具的视觉效果和属性加成
-//   - 激活效果：拾取瞬间的强烈视觉冲击（由 TankGameScene.spawnPowerUpEffect 处理）
-//   - 持续效果：道具生效期间坦克上的持续视觉标识
+//   重构后的效果实现器只做一件事：持续视觉标识。
+//   ❌ 不再包含属性加成逻辑（已迁移到 PlayerController.applyPowerUp）
+//   ❌ 不再操作 gameStore / combatManager / movementManager
+//
+//   属性加成由 TankGameScene.collectPowerUp → PlayerController.applyPowerUp 处理。
+//   此类仅负责道具生效期间的持续视觉效果（光圈、脉冲、图标文字）。
 // ============================================================================
 
 import { PowerUpType } from '../types/powerup-types'
+import { Logger } from './Logger'
 
 /**
  * 持续效果标识（附着在坦克上的可见图形）
@@ -21,61 +25,94 @@ interface IActiveEffect {
 }
 
 /**
- * ⭐ 道具效果实现器（重构版）
+ * ⭐ 道具视觉效果实现器（纯视觉）
  */
 export class PowerUpEffectApplier {
   private scene: Phaser.Scene
-  private combatManager: any = null
-  private movementManager: any = null
-  
+
   // 当前激活的持续效果
   private activeEffects: Map<PowerUpType, IActiveEffect> = new Map()
-  
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene
-    
-    const tankScene = scene as any
-    if (tankScene.combatManager) this.combatManager = tankScene.combatManager
-    if (tankScene.movementManager) this.movementManager = tankScene.movementManager
-    
-    console.log('✅ [PowerUpEffectApplier] 已创建')
+    Logger.info('✅ [PowerUpEffectApplier] 已创建 —— 纯视觉')
   }
-  
+
   // ===========================================================================
   // 📌 公开 API
   // ===========================================================================
-  
+
   /**
-   * ⭐ 应用道具效果（总入口）
-   * 注意：激活动画和拾取特效由 TankGameScene 处理
-   * 这里只负责：① 属性加成逻辑 ② 持续期间的坦克视觉标识
+   * ⭐ 开始持续视觉标识
+   *
+   * 注意：属性加成由 PlayerController.applyPowerUp() 处理，
+   *       这里只负责道具生效期间的坦克视觉标识。
    */
-  applyEffect(type: PowerUpType, sprite: Phaser.Physics.Arcade.Sprite, player: any): void {
-    console.log(`🎁 [PowerUpEffectApplier] 应用 ${type} 效果`)
-    
-    // 1. 应用属性加成（游戏逻辑）
-    this.applyAttributeBuff(type, player)
-    
-    // 2. 持续视觉标识（跟随坦克的图标/光圈）
-    this.startPersistentVisual(type, player)
+  startVisual(type: PowerUpType, tank: Phaser.Physics.Arcade.Sprite): void {
+    Logger.debug(`🎨 [PowerUpEffectApplier] 启动 ${type} 持续视觉`)
+
+    // 清除同类旧效果
+    if (this.activeEffects.has(type)) {
+      this.clearEffect(this.activeEffects.get(type)!)
+    }
+
+    switch (type) {
+      case PowerUpType.SHIELD:
+        this.showShieldOrbit(tank, 0x00BFFF, type)
+        break
+
+      case PowerUpType.INVINCIBLE:
+        this.showShieldOrbit(tank, 0xFFD700, type)
+        this.pulseEffect(tank, 0xFFD700, type)
+        break
+
+      case PowerUpType.STAR:
+      case PowerUpType.GUN:
+        this.pulseEffect(tank, 0xFFFF00, type)
+        break
+
+      case PowerUpType.SPEED:
+        this.pulseEffect(tank, 0x88FF88, type)
+        break
+
+      case PowerUpType.CLOCK:
+        this.showStatusText(tank, '⏰', 0xBF00FF, type, 8000)
+        break
+
+      case PowerUpType.ARMOR:
+        this.pulseEffect(tank, 0xC0C0C0, type)
+        break
+
+      case PowerUpType.HOMING:
+        this.pulseEffect(tank, 0x00FFFF, type)
+        break
+
+      case PowerUpType.BOMB:
+      case PowerUpType.GRENADE:
+      case PowerUpType.HEALTH:
+      case PowerUpType.LIFE:
+        // 瞬时效果，无持续视觉
+        break
+
+      default:
+        Logger.warn(`⚠️ 未知的道具类型：${type}`)
+    }
   }
-  
+
   /**
    * ⭐ 移除道具的持续视觉效果（全部）
    */
   removeVisualEffects(sprite: Phaser.Physics.Arcade.Sprite): void {
     if (!sprite) return
-    
-    // 清除所有持续效果
+
     this.activeEffects.forEach((effect) => {
       this.clearEffect(effect)
     })
     this.activeEffects.clear()
-    
-    // 清除 tint
+
     if (sprite.active) sprite.clearTint()
-    
-    console.log('🗑️ [PowerUpEffectApplier] 已清除所有视觉效果')
+
+    Logger.debug('🗑️ [PowerUpEffectApplier] 已清除所有视觉效果')
   }
 
   /**
@@ -87,84 +124,28 @@ export class PowerUpEffectApplier {
       this.clearEffect(effect)
       this.activeEffects.delete(type)
     }
-    // 清除 tint（避免颜色残留）
     if (sprite?.active) sprite.clearTint()
-    console.log(`🗑️ [PowerUpEffectApplier] 清除 ${type} 视觉效果`)
+    Logger.debug(`🗑️ [PowerUpEffectApplier] 清除 ${type} 视觉效果`)
   }
-  
+
   // ===========================================================================
   // 🔧 持续视觉标识（附着在坦克上）
   // ===========================================================================
-
-  /**
-   * 开始持续视觉标识
-   */
-  private startPersistentVisual(type: PowerUpType, tank: Phaser.Physics.Arcade.Sprite): void {
-    // 清除同类旧效果
-    if (this.activeEffects.has(type)) {
-      this.clearEffect(this.activeEffects.get(type)!)
-    }
-    
-    switch (type) {
-      case PowerUpType.SHIELD:
-        this.showShieldOrbit(tank, 0x00BFFF, type)
-        break
-        
-      case PowerUpType.INVINCIBLE:
-        this.showShieldOrbit(tank, 0xFFD700, type)
-        this.pulseEffect(tank, 0xFFD700, type)
-        break
-        
-      case PowerUpType.STAR:
-      case PowerUpType.GUN:
-        this.pulseEffect(tank, 0xFFFF00, type)
-        break
-        
-      case PowerUpType.SPEED:
-        this.pulseEffect(tank, 0x88FF88, type)
-        break
-        
-      case PowerUpType.CLOCK:
-        this.showStatusText(tank, '⏰', 0xBF00FF, type, 8000)
-        break
-        
-      case PowerUpType.BOMB:
-      case PowerUpType.GRENADE:
-        // 爆炸类：只有激活时的瞬时特效，无持续效果
-        break
-        
-      case PowerUpType.HEALTH:
-      case PowerUpType.LIFE:
-        // 一次性回复，无持续效果
-        break
-        
-      case PowerUpType.ARMOR:
-        this.pulseEffect(tank, 0xC0C0C0, type)
-        break
-        
-      case PowerUpType.HOMING:
-        this.pulseEffect(tank, 0x00FFFF, type)
-        break
-    }
-  }
 
   /**
    * 护盾旋转光圈（真正跟随坦克）
    */
   private showShieldOrbit(tank: Phaser.Physics.Arcade.Sprite, color: number, type: PowerUpType): void {
     const effect: IActiveEffect = {}
-    
-    // 创建护盾图形（在坦克周围的圆圈）
+
     const g = this.scene.add.graphics()
     g.lineStyle(3, color, 0.9)
     g.strokeCircle(0, 0, 42)
-    // 加一个小一点的内圈
     g.lineStyle(1, color, 0.4)
     g.strokeCircle(0, 0, 38)
     g.setDepth(100)
     effect.graphics = g
 
-    // 旋转 tween
     const tween = this.scene.tweens.add({
       targets: g,
       angle: 360,
@@ -174,12 +155,10 @@ export class PowerUpEffectApplier {
     })
     effect.tween = tween
 
-    // 每帧跟随坦克（用 timer 轮询，避免 update hook 复杂性）
     const followTimer = this.scene.time.addEvent({
       delay: 16,
       repeat: -1,
       callback: () => {
-        // ✅ 修复：tank.active=false 时，同时销毁光圈 Graphics，防止残留
         if (!tank.active || !g.active) {
           followTimer.remove()
           if (g.active) {
@@ -193,19 +172,18 @@ export class PowerUpEffectApplier {
       }
     })
     effect.timer = followTimer
-    
+
     this.activeEffects.set(type, effect)
   }
 
   /**
    * 坦克颜色脉冲（持续型）
-   * ⚠️ 绝对不能修改 tank.alpha！alpha 由 PlayerStateManager 状态机专属管理
+   * ⚠️ 绝对不能修改 tank.alpha！alpha 由 PlayerController 状态管理专属
    *    改用 tint 颜色循环做脉冲感
    */
   private pulseEffect(tank: Phaser.Physics.Arcade.Sprite, color: number, type: PowerUpType): void {
     const effect: IActiveEffect = {}
-    
-    // 用 timer 循环切换 tint（不动 alpha）
+
     let tintOn = false
     const timer = this.scene.time.addEvent({
       delay: 300,
@@ -221,7 +199,7 @@ export class PowerUpEffectApplier {
       }
     })
     effect.timer = timer
-    
+
     this.activeEffects.set(type, effect)
   }
 
@@ -236,7 +214,7 @@ export class PowerUpEffectApplier {
     duration: number
   ): void {
     const effect: IActiveEffect = {}
-    
+
     const colorHex = '#' + color.toString(16).padStart(6, '0')
     const text = this.scene.add.text(tank.x, tank.y - 50, icon, {
       fontSize: '28px',
@@ -244,8 +222,7 @@ export class PowerUpEffectApplier {
       strokeThickness: 3
     }).setOrigin(0.5).setDepth(200)
     effect.text = text
-    
-    // 跟随坦克
+
     const followTimer = this.scene.time.addEvent({
       delay: 16,
       repeat: -1,
@@ -259,13 +236,12 @@ export class PowerUpEffectApplier {
       }
     })
     effect.timer = followTimer
-    
-    // duration 后自动消失
+
     this.scene.time.delayedCall(duration, () => {
       this.clearEffect(effect)
       this.activeEffects.delete(type)
     })
-    
+
     this.activeEffects.set(type, effect)
   }
 
@@ -277,103 +253,5 @@ export class PowerUpEffectApplier {
     effect.timer?.remove()
     if (effect.graphics?.active) effect.graphics.destroy()
     if (effect.text?.active) effect.text.destroy()
-    // ⚠️ 注意：不在这里 clearTint，由调用方决定（避免清除其他效果的 tint）
-  }
-  
-  // ===========================================================================
-  // 🔧 属性加成逻辑
-  // ===========================================================================
-  
-  /**
-   * 应用属性加成
-   */
-  private applyAttributeBuff(type: PowerUpType, player: any): void {
-    console.log(`💪 [PowerUpEffectApplier] 应用 ${type} 属性加成`)
-    
-    switch (type) {
-      case PowerUpType.STAR:
-        if (this.combatManager?.activateUpgrade) {
-          this.combatManager.activateUpgrade()
-          console.log('⭐ 火力升级效果已触发')
-        }
-        break
-        
-      case PowerUpType.SHIELD:
-        if (this.combatManager?.activateShieldPowerUp) {
-          this.combatManager.activateShieldPowerUp()
-          console.log('🛡️ 护盾效果已触发')
-        }
-        break
-        
-      case PowerUpType.CLOCK:
-        this.scene.events.emit('freezeAllEnemies', { duration: 8000 })
-        console.log('🕐 时间冻结效果已触发')
-        break
-        
-      case PowerUpType.GUN:
-        if (this.combatManager?.activateShotgun) {
-          this.combatManager.activateShotgun()
-          console.log('🔫 散弹枪效果已触发')
-        } else if (this.combatManager?.activateUpgrade) {
-          this.combatManager.activateUpgrade()
-        }
-        break
-        
-      case PowerUpType.HOMING:
-        if (this.combatManager?.activateHomingMissile) {
-          this.combatManager.activateHomingMissile()
-          console.log('🚀 追踪导弹效果已触发')
-        }
-        break
-        
-      case PowerUpType.BOMB:
-        this.scene.events.emit('explodeAllEnemies')
-        console.log('💣 全屏炸弹效果已触发')
-        break
-        
-      case PowerUpType.SPEED:
-        if (this.movementManager?.setSpeedMultiplier) {
-          this.movementManager.setSpeedMultiplier(1.5)
-          console.log('💨 速度提升效果已触发')
-        }
-        break
-        
-      case PowerUpType.HEALTH:
-        if (this.combatManager?.addArmor) {
-          this.combatManager.addArmor(50)
-          console.log('❤️ 生命恢复效果已触发（护甲 +50）')
-        }
-        break
-        
-      case PowerUpType.ARMOR:
-        if (this.combatManager?.addArmor) {
-          this.combatManager.addArmor(100)
-          console.log('🛡️ 装甲强化效果已触发（护甲 +100）')
-        }
-        break
-        
-      case PowerUpType.GRENADE:
-        this.scene.events.emit('explodeAllEnemies')
-        console.log('💣 手榴弹效果已触发')
-        break
-        
-      case PowerUpType.INVINCIBLE:
-        if (this.combatManager?.activateShieldPowerUp) {
-          this.combatManager.activateShieldPowerUp()
-          console.log('✨ 无敌状态效果已触发')
-        }
-        break
-        
-      case PowerUpType.LIFE:
-        const gameStore = (this.scene as any).gameStore
-        if (gameStore?.addLife) {
-          gameStore.addLife(1)
-          console.log('❤️ 额外生命效果已触发（生命 +1）')
-        }
-        break
-        
-      default:
-        console.warn(`⚠️ 未知的道具类型：${type}`)
-    }
   }
 }

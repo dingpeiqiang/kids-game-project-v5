@@ -8,6 +8,7 @@
 
 import { ISpecialEventConfig, SpecialEventType, ITankLevelParams } from '../types/level-types'
 import type TankGameScene from '../scenes/TankGameScene'
+import { Logger } from './Logger'
 
 /**
  * ⭐ 特殊事件管理器
@@ -64,7 +65,7 @@ export class SpecialEventManager {
     this.triggeredEvents.add(event.id)
     event.triggered = true
 
-    console.log(`🎯 [SpecialEventManager] 触发事件: ${event.description} (${event.type})`)
+    Logger.debug(`🎯 [SpecialEventManager] 触发事件: ${event.description} (${event.type})`)
 
     // 根据事件类型执行相应逻辑
     this.executeEvent(event)
@@ -125,7 +126,7 @@ export class SpecialEventManager {
 
     // 根据类型生成对应道具
     // 实际道具生成逻辑由 TankGameScene 处理
-    console.log(`📦 [空投] 生成 ${type} 道具 at (${x}, ${y})`)
+    Logger.debug(`📦 [空投] 生成 ${type} 道具 at (${x}, ${y})`)
   }
 
   /**
@@ -134,7 +135,7 @@ export class SpecialEventManager {
   private spawnReinforcement(event: ISpecialEventConfig): void {
     const { enemyType, count } = event.reward
 
-    console.log(`👾 [增援] 生成 ${count} 个 ${enemyType} 敌人`)
+    Logger.debug(`👾 [增援] 生成 ${count} 个 ${enemyType} 敌人`)
 
     // 增援敌人由 TankGameScene 通过事件系统处理
     this.scene.events.emit('reinforcement', {
@@ -193,7 +194,7 @@ export class SpecialEventManager {
   private spawnBoss(event: ISpecialEventConfig): void {
     const { bossType, health } = event.reward
 
-    console.log(`🔥 [Boss] 生成 Boss: ${bossType}, 生命值: ${health}`)
+    Logger.debug(`🔥 [Boss] 生成 Boss: ${bossType}, 生命值: ${health}`)
 
     // 通知 TankGameScene 生成 Boss
     this.scene.events.emit('boss_spawn', {
@@ -209,7 +210,7 @@ export class SpecialEventManager {
   private activateBossEnrage(event: ISpecialEventConfig): void {
     const { speedMultiplier, damageMultiplier } = event.reward
 
-    console.log(`💀 [Boss狂暴] 速度 x${speedMultiplier}, 伤害 x${damageMultiplier}`)
+    Logger.warn(`💀 [Boss狂暴] 速度 x${speedMultiplier}, 伤害 x${damageMultiplier}`)
 
     // 通知 TankGameScene Boss 进入狂暴状态
     this.scene.events.emit('boss_enraged', {
@@ -247,7 +248,7 @@ export class SpecialEventManager {
   private freezeAllEnemies(event: ISpecialEventConfig): void {
     const { duration } = event.reward
 
-    console.log(`❄️ [冰冻] 冰冻所有敌人 ${duration}ms`)
+    Logger.debug(`❄️ [冰冻] 冰冻所有敌人 ${duration}ms`)
 
     // 通知 TankGameScene 冰冻所有敌人
     this.scene.events.emit('freeze_all', { duration })
@@ -257,7 +258,7 @@ export class SpecialEventManager {
    * ⭐ 全屏炸弹
    */
   private triggerScreenBomb(event: ISpecialEventConfig): void {
-    console.log(`💣 [全屏炸弹] 触发全屏爆炸`)
+    Logger.debug(`💣 [全屏炸弹] 触发全屏爆炸`)
 
     // 通知 TankGameScene 触发全屏炸弹效果
     this.scene.events.emit('screen_bomb')

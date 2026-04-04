@@ -7,6 +7,7 @@
 // ============================================================================
 
 import type TankGameScene from '../scenes/TankGameScene'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 震动等级
@@ -53,7 +54,7 @@ export class CameraShakeManager {
   
   constructor(scene: TankGameScene) {
     this.scene = scene
-    console.log('✅ CameraShakeManager 已创建')
+    Logger.info('✅ CameraShakeManager 已创建')
   }
   
   // ===========================================================================
@@ -69,7 +70,7 @@ export class CameraShakeManager {
     const config = this.config[level]
     this.executeShake(config, level)
     
-    console.log(`📳 屏幕震动：Lv.${level} (${config.duration}ms, ${config.intensity}px)`)
+    Logger.debug(`📳 屏幕震动：Lv.${level} (${config.duration}ms, ${config.intensity}px)`)
   }
   
   /**
@@ -86,7 +87,7 @@ export class CameraShakeManager {
     
     this.executeShake(config, ShakeLevel.NONE)
     
-    console.log(`📳 自定义震动：${duration}ms, ${intensity}px`)
+    Logger.debug(`📳 自定义震动：${duration}ms, ${intensity}px`)
   }
   
   /**
@@ -95,7 +96,7 @@ export class CameraShakeManager {
   stop(): void {
     if (!this.isShaking) return
     
-    console.log('⏹️ 强制停止震动')
+    Logger.debug('⏹️ 强制停止震动')
     
     // 恢复相机（Phaser 3.90 没有 stopShake，震动会自动结束）
     this.scene.cameras.main.setZoom(1)
@@ -129,7 +130,7 @@ export class CameraShakeManager {
   private executeShake(config: IShakeConfig, level: ShakeLevel): void {
     // 如果已经在震动，且新震动等级更高，则打断当前震动
     if (this.isShaking && level <= this.currentLevel) {
-      console.log('⚠️ 忽略低级震动')
+      Logger.debug('⚠️ 忽略低级震动')
       return
     }
     
@@ -191,7 +192,7 @@ export class CameraShakeManager {
       onComplete: () => flash.destroy()
     })
     
-    console.log('✨ 屏幕闪光')
+    Logger.debug('✨ 屏幕闪光')
   }
   
   /**
@@ -208,12 +209,12 @@ export class CameraShakeManager {
     // 设置时间缩放
     this.scene.time.timeScale = slowMoFactor
     
-    console.log(`⏱️ 慢动作：x${slowMoFactor}`)
-    
+    Logger.debug(`⏱️ 慢动作：x${slowMoFactor}`)
+
     // 恢复时间流速
     this.scene.time.delayedCall(duration, () => {
       this.scene.time.timeScale = 1
-      console.log('⏱️ 恢复正常时间')
+      Logger.debug('⏱️ 恢复正常时间')
     })
   }
   
@@ -242,9 +243,9 @@ export class CameraShakeManager {
           }
         })
         
-        console.log('🌈 色差效果')
+        Logger.debug('🌈 色差效果')
       } catch (error) {
-        console.warn('⚠️ 色差效果不支持:', error)
+        Logger.warn('⚠️ 色差效果不支持:', error)
       }
     } else {
       // 降级方案：用颜色叠加模拟
@@ -297,6 +298,6 @@ export class CameraShakeManager {
       onComplete: () => blueLayer.destroy()
     })
     
-    console.log('🌈 模拟色差效果')
+    Logger.debug('🌈 模拟色差效果')
   }
 }

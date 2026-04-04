@@ -3,6 +3,8 @@
  * 统一管理玩家和实体调试面板的显示/隐藏
  */
 
+import { Logger } from '../utils/Logger'
+
 export class TopDebugToolbarManager {
   private scene: Phaser.Scene
   private toolbarContainer: Phaser.GameObjects.Container
@@ -43,7 +45,7 @@ export class TopDebugToolbarManager {
       if (entityPanel && playerPanel) {
         entityPanel.show()
         playerPanel.show()
-        console.log('✅ [顶部工具栏] 调试面板已默认开启')
+        Logger.debug('✅ [顶部工具栏] 调试面板已默认开启')
       }
     }
   }
@@ -117,7 +119,7 @@ export class TopDebugToolbarManager {
       })
     })
     
-    console.log('✅ [顶部工具栏] 调试按钮已创建（默认开启）')
+    Logger.debug('✅ [顶部工具栏] 调试按钮已创建（默认开启）')
   }
 
   /**
@@ -128,7 +130,7 @@ export class TopDebugToolbarManager {
     const playerPanel = (this.scene as any).playerDebugPanel
     
     if (!entityPanel || !playerPanel) {
-      console.warn('⚠️ [工具栏] 调试面板未初始化')
+      Logger.warn('⚠️ [工具栏] 调试面板未初始化')
       return
     }
     
@@ -147,7 +149,7 @@ export class TopDebugToolbarManager {
         bg.setFillStyle(this.CONFIG.activeColor)
       }
       
-      console.log('✅ [顶部工具栏] 调试面板已显示')
+      Logger.debug('✅ [顶部工具栏] 调试面板已显示')
     } else {
       // 隐藏面板
       entityPanel.hide()
@@ -161,7 +163,7 @@ export class TopDebugToolbarManager {
         bg.setFillStyle(this.CONFIG.bgColor)
       }
       
-      console.log('❌ [顶部工具栏] 调试面板已隐藏')
+      Logger.debug('❌ [顶部工具栏] 调试面板已隐藏')
     }
   }
 

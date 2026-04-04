@@ -8,6 +8,7 @@
 
 import type TankGameScene from '../scenes/TankGameScene'
 import { EntityType } from './EntityManager'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 敌人 AI 管理器
@@ -17,7 +18,7 @@ export class EnemyAIManager {
   
   constructor(scene: TankGameScene) {
     this.scene = scene
-    console.log('✅ EnemyAIManager 已创建')
+    Logger.info('✅ EnemyAIManager 已创建')
   }
   
   // ===========================================================================
@@ -32,7 +33,7 @@ export class EnemyAIManager {
 
     // 🔧 修复：首先确保敌人有物理 body
     if (!enemy.body) {
-      console.warn('⚠️ [EnemyAI] 敌人没有物理 body，跳过 AI 更新:', enemy)
+      Logger.warn('⚠️ [EnemyAI] 敌人没有物理 body，跳过 AI 更新:', enemy)
       return
     }
 
@@ -56,7 +57,7 @@ export class EnemyAIManager {
 
     // 🧱 持续碰撞检测：每帧检测前方是否有障碍物（避障优先）
     if (this.isObstacleAhead(enemy)) {
-      console.log(`🧱 [EnemyAI] 检测到前方障碍物，立即避障`)
+      Logger.debug(`🧱 [EnemyAI] 检测到前方障碍物，立即避障`)
       this.changeDirectionSmart(enemy, 'obstacle')
       return
     }
@@ -140,7 +141,7 @@ export class EnemyAIManager {
 
           // 🔧 碰撞半径：增大到 40px，确保提前避障
           if (distance < 40) {
-            console.log(`🧱 [isObstacleAhead] 检测到障碍物 | 距离: ${distance.toFixed(0)}px | 检测点: (${checkX.toFixed(0)}, ${checkY.toFixed(0)})`)
+            Logger.debug(`🧱 [isObstacleAhead] 检测到障碍物 | 距离: ${distance.toFixed(0)}px | 检测点: (${checkX.toFixed(0)}, ${checkY.toFixed(0)})`)
             return true
           }
         }
@@ -158,7 +159,7 @@ export class EnemyAIManager {
     const speed = enemy.speed || 100
 
     // 🔍 调试信息
-    console.log(`🔄 [changeDirectionSmart] 改变方向 | 原因: ${reason}, 当前速度: (${enemy.body?.velocity.x}, ${enemy.body?.velocity.y})`)
+    Logger.debug(`🔄 [changeDirectionSmart] 改变方向 | 原因: ${reason}, 当前速度: (${enemy.body?.velocity.x}, ${enemy.body?.velocity.y})`)
 
     // 🎯 获取基地位置（主要目标）
     const base = (this.scene as any).base
@@ -243,7 +244,7 @@ export class EnemyAIManager {
       }
     })
 
-    console.log(`🔍 可用方向: ${availableDirections.length} 个 | 基地位置: (${baseX}, ${baseY})`)
+    Logger.debug(`🔍 可用方向: ${availableDirections.length} 个 | 基地位置: (${baseX}, ${baseY})`)
 
     if (availableDirections.length > 0) {
       // 🧠 选择得分最高的方向（智能决策，优先向基地移动）
@@ -254,14 +255,14 @@ export class EnemyAIManager {
       if (availableDirections.length > 1 && Math.random() < 0.3) {
         // 30% 概率选择次优方向
         const secondBest = availableDirections[1]
-        console.log(`🎲 随机选择次优方向: ${secondBest.name} (得分: ${secondBest.score})`)
+        Logger.debug(`🎲 随机选择次优方向: ${secondBest.name} (得分: ${secondBest.score})`)
 
         if (enemy.body) {
           enemy.body.setVelocity(secondBest.x, secondBest.y)
           this.updateEnemyDirection(enemy, secondBest.x, secondBest.y)
         }
       } else {
-        console.log(`✅ 选择最优方向: ${bestDir.name} (得分: ${bestDir.score}), 速度: (${bestDir.x}, ${bestDir.y})`)
+        Logger.debug(`✅ 选择最优方向: ${bestDir.name} (得分: ${bestDir.score}), 速度: (${bestDir.x}, ${bestDir.y})`)
 
         if (enemy.body) {
           enemy.body.setVelocity(bestDir.x, bestDir.y)
@@ -270,7 +271,7 @@ export class EnemyAIManager {
       }
     } else {
       // 🔧 紧急修复：如果所有方向都被判定为危险（误判），强制选择一个方向
-      console.warn(`⚠️ 所有方向都危险，强制选择反向移动`)
+      Logger.warn(`⚠️ 所有方向都危险，强制选择反向移动`)
 
       // 获取当前速度的反方向
       const currentVx = enemy.body.velocity.x
@@ -305,7 +306,7 @@ export class EnemyAIManager {
       if (enemy.body) {
         enemy.body.setVelocity(newDir.x, newDir.y)
         this.updateEnemyDirection(enemy, newDir.x, newDir.y)
-        console.log(`🚀 强制移动: ${newDir.name}, 速度: (${newDir.x}, ${newDir.y})`)
+        Logger.debug(`🚀 强制移动: ${newDir.name}, 速度: (${newDir.x}, ${newDir.y})`)
       }
     }
   }
@@ -339,7 +340,7 @@ export class EnemyAIManager {
 
     // 如果位置被修正，打印调试信息
     if (enemy.x !== originalX || enemy.y !== originalY) {
-      console.log(`🔒 [clampToBoundary] 敌人位置已修正 | 原始: (${originalX.toFixed(0)}, ${originalY.toFixed(0)}) → 新: (${enemy.x.toFixed(0)}, ${enemy.y.toFixed(0)})`)
+      Logger.debug(`🔒 [clampToBoundary] 敌人位置已修正 | 原始: (${originalX.toFixed(0)}, ${originalY.toFixed(0)}) → 新: (${enemy.x.toFixed(0)}, ${enemy.y.toFixed(0)})`)
     }
   }
 
@@ -382,7 +383,7 @@ export class EnemyAIManager {
     }
 
     // 🔍 调试信息
-    console.log(`🔄 [updateEnemyDirection] 更新方向 | 方向: ${directionName}, 角度: ${enemy.angle}°, 纹理: ${enemy.texture.key}`)
+    Logger.debug(`🔄 [updateEnemyDirection] 更新方向 | 方向: ${directionName}, 角度: ${enemy.angle}°, 纹理: ${enemy.texture.key}`)
   }
   
   /**
@@ -445,7 +446,7 @@ export class EnemyAIManager {
     // 🏠 获取基地位置（主要目标）
     const base = (this.scene as any).base
     if (!base || !base.active) {
-      console.warn('⚠️ [EnemyShoot] 基地不存在，跳过射击')
+      Logger.warn('⚠️ [EnemyShoot] 基地不存在，跳过射击')
       return
     }
 
@@ -465,7 +466,7 @@ export class EnemyAIManager {
     // 🧠 智能决策：判断前方是否有基地或玩家
     const body = enemy.body as any
     if (!body) {
-      console.warn('⚠️ [EnemyShoot] 敌人没有物理 body')
+      Logger.warn('⚠️ [EnemyShoot] 敌人没有物理 body')
       return
     }
 
@@ -488,27 +489,27 @@ export class EnemyAIManager {
     if (baseAhead) {
       // ✅ 基地在前方，射击基地（最高优先级）
       shouldShoot = true
-      console.log(`🎯 [EnemyShoot] 基地在前方，优先攻击基地！`)
+      Logger.debug(`🎯 [EnemyShoot] 基地在前方，优先攻击基地！`)
     } else if (playerAhead) {
       // ✅ 玩家在前方，射击玩家
       shouldShoot = true
-      console.log(`🎯 [EnemyShoot] 玩家在前方，射击玩家`)
+      Logger.debug(`🎯 [EnemyShoot] 玩家在前方，射击玩家`)
     } else {
       // 🧠 基地和玩家都不在前方，考虑转向射击（重型敌人智能）
       if (enemy.enemyType === 'ENEMY_HEAVY') {
         // 重型敌人：转向朝向基地
         this.turnTowardsBase(enemy, base)
         shouldShoot = true
-        console.log(`🧠 [EnemyShoot] ${enemy.enemyType} 转向朝向基地`)
+        Logger.debug(`🧠 [EnemyShoot] ${enemy.enemyType} 转向朝向基地`)
       } else if (enemy.enemyType === 'ENEMY_MEDIUM' && Math.random() < 0.5) {
         // 中型敌人：50% 概率转向朝向基地
         this.turnTowardsBase(enemy, base)
         shouldShoot = true
-        console.log(`🧠 [EnemyShoot] ${enemy.enemyType} 转向朝向基地`)
+        Logger.debug(`🧠 [EnemyShoot] ${enemy.enemyType} 转向朝向基地`)
       } else {
         // 轻型和中型敌人（概率未触发）：不射击，等待转向
         shouldShoot = false
-        console.log(`🧠 [EnemyShoot] 目标不在前方，${enemy.enemyType} 等待转向`)
+        Logger.debug(`🧠 [EnemyShoot] 目标不在前方，${enemy.enemyType} 等待转向`)
       }
     }
 
@@ -548,7 +549,7 @@ export class EnemyAIManager {
           bullet.body.setVelocity(vx, vy)
         }
 
-        console.log(`🔫 [EnemyShoot] 发射子弹 | 方向: (${vx}, ${vy}) | 速度: ${bulletSpeed} | 距离基地: ${distanceToBase.toFixed(0)}px`)
+        Logger.debug(`🔫 [EnemyShoot] 发射子弹 | 方向: (${vx}, ${vy}) | 速度: ${bulletSpeed} | 距离基地: ${distanceToBase.toFixed(0)}px`)
       }
     }
   }
@@ -612,7 +613,7 @@ export class EnemyAIManager {
       this.updateEnemyDirection(enemy, vx, vy)
     }
 
-    console.log(`🧠 [EnemyAI] ${enemy.enemyType} 转向朝向目标 | 新方向: (${vx}, ${vy})`)
+    Logger.debug(`🧠 [EnemyAI] ${enemy.enemyType} 转向朝向目标 | 新方向: (${vx}, ${vy})`)
   }
 
   /**
@@ -650,7 +651,7 @@ export class EnemyAIManager {
     if (enemy.body) {
       enemy.body.setVelocity(newDir.x, newDir.y)
     } else {
-      console.warn(`⚠️ [EnemyAI] 敌人没有物理 body，无法改变方向:`, enemy)
+      Logger.warn(`⚠️ [EnemyAI] 敌人没有物理 body，无法改变方向:`, enemy)
     }
   }
 }

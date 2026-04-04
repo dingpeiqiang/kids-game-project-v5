@@ -7,6 +7,8 @@
 //   防止未处理的异常导致游戏崩溃
 // ============================================================================
 
+import { Logger } from './Logger'
+
 /**
  * ⭐ 错误记录接口
  */
@@ -28,7 +30,7 @@ export class ErrorHandler {
   private readonly MAX_QUEUE_SIZE = 50
   
   private constructor() {}
-  
+
   /**
    * ⭐ 获取单例实例
    */
@@ -89,7 +91,6 @@ export class ErrorHandler {
       this.handleError(error, context, 1)
       
       if (fallback) {
-        console.warn(`⚠️ [${context}] 失败，使用备用方案`)
         return fallback()
       }
       
@@ -169,7 +170,7 @@ export class ErrorHandler {
    */
   clearHistory(): void {
     this.errorQueue = []
-    console.log('🧹 [ErrorHandler] 错误历史已清除')
+    Logger.debug('🧹 [ErrorHandler] 错误历史已清除')
   }
   
   /**
@@ -178,7 +179,7 @@ export class ErrorHandler {
   printReport(): void {
     const stats = this.getErrorStats()
     
-    console.log(`
+    Logger.debug(`
 ╔════════════════════════════════════════════════════╗
 ║  📊 错误统计报告                                    ║
 ╠────────────────────────────────────────────────────╣

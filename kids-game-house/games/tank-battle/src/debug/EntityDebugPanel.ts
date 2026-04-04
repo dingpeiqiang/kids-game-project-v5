@@ -142,12 +142,11 @@ export class EntityDebugPanel {
         this.setText(`${id}_damage`, `⚔️ 伤害：${entity.damage || 10}`, '#ff8c00')
         this.setText(`${id}_speed`, `💨 速度：${entity.speed || 100}`, '#90ee90')
       } else if (data.type === 'player') {
-        const combatManager = (this.scene as any).combatManager
-        const stateManager = (this.scene as any).stateManager
-        
-        this.setText(`${id}_armor`, `🛡️ 护甲：${combatManager?.currentArmor || 0}`, '#4169e1')
-        this.setText(`${id}_shield`, `✨ 护盾：${combatManager?.hasShield() ? '✅' : '❌'}`, '#00ced1')
-        this.setText(`${id}_state`, `📊 ${stateManager?.getState() || 'UNKNOWN'}`, '#9370db')
+        const playerController = (this.scene as any).playerController
+
+        this.setText(`${id}_armor`, `🛡️ 护甲：${playerController?.data?.armor || 0}`, '#4169e1')
+        this.setText(`${id}_shield`, `✨ 护盾：${playerController?.data?.isShieldActive ? '✅' : '❌'}`, '#00ced1')
+        this.setText(`${id}_state`, `📊 ${playerController?.data?.state || 'UNKNOWN'}`, '#9370db')
       }
       
       // 渲染状态（详细调试）

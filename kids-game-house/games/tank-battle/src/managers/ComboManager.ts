@@ -7,6 +7,7 @@
 // ============================================================================
 
 import type TankGameScene from '../scenes/TankGameScene'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 连击等级配置
@@ -56,7 +57,7 @@ export class ComboManager {
   
   constructor(scene: TankGameScene) {
     this.scene = scene
-    console.log('✅ ComboManager 已创建')
+    Logger.info('✅ ComboManager 已创建')
   }
   
   // ===========================================================================
@@ -73,7 +74,7 @@ export class ComboManager {
       this.maxCombo = this.currentCombo
     }
     
-    console.log(`⚡ 连击 +1: ${this.currentCombo}`)
+    Logger.debug(`⚡ 连击 +1: ${this.currentCombo}`)
     
     // 🔁 重置连击计时器
     this.resetComboTimer()
@@ -93,7 +94,7 @@ export class ComboManager {
    */
   reset(): void {
     if (this.currentCombo > 0) {
-      console.log(`💔 连击中断！最终连击：${this.currentCombo}`)
+      Logger.debug(`💔 连击中断！最终连击：${this.currentCombo}`)
     }
     
     this.currentCombo = 0
@@ -337,7 +338,7 @@ export class ComboManager {
   // ===========================================================================
   
   private spawnGoldenBurst(x: number, y: number): void {
-    console.log('✨ 金色爆发特效', x, y)
+    Logger.debug('✨ 金色爆发特效', x, y)
     
     // 创建金色粒子爆发
     const particles = this.scene.add.particles(x, y, 'particle', {
@@ -355,7 +356,7 @@ export class ComboManager {
   }
   
   private spawnBlueFlame(x: number, y: number): void {
-    console.log('🔥 蓝色火焰特效', x, y)
+    Logger.debug('🔥 蓝色火焰特效', x, y)
     
     // 创建蓝色火焰粒子
     const particles = this.scene.add.particles(x, y, 'particle', {
@@ -372,7 +373,7 @@ export class ComboManager {
   }
   
   private spawnLightningStrike(x: number, y: number): void {
-    console.log('⚡ 雷电特效', x, y)
+    Logger.debug('⚡ 雷电特效', x, y)
     
     // 创建闪电效果（使用图形）
     const graphics = this.scene.add.graphics()
@@ -401,7 +402,7 @@ export class ComboManager {
   }
   
   private spawnRedShockwave(x: number, y: number): void {
-    console.log('🌊 红色冲击波特效', x, y)
+    Logger.debug('🌊 红色冲击波特效', x, y)
     
     // 创建圆形冲击波
     const shockwave = this.scene.add.circle(x, y, 10, 0xFF0000, 0.8)
@@ -417,7 +418,7 @@ export class ComboManager {
   }
   
   private spawnRainbowAura(x: number, y: number): void {
-    console.log('🌈 彩虹光环特效', x, y)
+    Logger.debug('🌈 彩虹光环特效', x, y)
     
     // 创建彩虹色光环
     const colors = [0xFF0000, 0xFFA500, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082, 0xEE82EE]

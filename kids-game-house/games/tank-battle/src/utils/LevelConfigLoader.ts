@@ -7,6 +7,7 @@
 // ============================================================================
 
 import { ILevelConfig } from '../types/level-types'
+import { Logger } from './Logger'
 
 /**
  * ⭐ 关卡配置加载器
@@ -19,7 +20,7 @@ export class LevelConfigLoader {
    * @returns Promise<ILevelConfig> 关卡配置对象
    */
   static async loadLevelConfig(levelId: string): Promise<ILevelConfig> {
-    console.log('📥 加载关卡配置:', levelId)
+    Logger.debug('📥 加载关卡配置:', levelId)
     
     // 尝试多个可能的路径
     const possiblePaths = [
@@ -30,7 +31,7 @@ export class LevelConfigLoader {
     
     for (const configPath of possiblePaths) {
       try {
-        console.log('🔍 尝试请求:', configPath)
+        Logger.debug('🔍 尝试请求:', configPath)
         
         const response = await fetch(configPath)
         
@@ -38,8 +39,8 @@ export class LevelConfigLoader {
           // 解析 JSON
           const config: ILevelConfig = await response.json()
           
-          console.log('✅ 配置加载成功:', config.info.name)
-          console.log('📊 配置详情:', {
+          Logger.debug('✅ 配置加载成功:', config.info.name)
+          Logger.debug('📊 配置详情:', {
             difficulty: config.info.difficulty,
             objectives: config.objectives.length,
             timeLimit: config.timeLimit
@@ -48,7 +49,7 @@ export class LevelConfigLoader {
           return config
         }
       } catch (error) {
-        console.warn(`⚠️ 路径 ${configPath} 失败:`, error)
+        Logger.warn(`⚠️ 路径 ${configPath} 失败:`, error)
         // 继续尝试下一个路径
       }
     }
@@ -111,7 +112,7 @@ export class LevelConfigLoader {
       }
     }
     
-    console.log('🛡️ 已创建默认配置')
+    Logger.warn('🛡️ 已创建默认配置')
     return defaultConfig
   }
 }

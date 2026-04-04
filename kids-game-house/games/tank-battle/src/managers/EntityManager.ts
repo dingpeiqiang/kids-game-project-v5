@@ -10,6 +10,7 @@
 
 import Phaser from 'phaser'
 import { RenderManager } from './RenderManager'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 实体类型定义
@@ -249,7 +250,7 @@ export class EntityManager {
   destroyEntity(entityId: string): boolean {
     const entity = this.entities.get(entityId)
     if (!entity) {
-      console.warn('⚠️ [EntityManager] 实体不存在:', entityId)
+      Logger.warn('⚠️ [EntityManager] 实体不存在:', entityId)
       return false
     }
     
@@ -264,7 +265,7 @@ export class EntityManager {
     }
     
     this.entities.delete(entityId)
-    console.log(`🗑️ [EntityManager] 销毁实体：${entityId}`)
+    Logger.debug(`🗑️ [EntityManager] 销毁实体：${entityId}`)
     
     return true
   }

@@ -7,6 +7,7 @@
 // ============================================================================
 
 import type TankGameScene from '../scenes/TankGameScene'
+import { Logger } from '../utils/Logger'
 
 /**
  * ⭐ 伤害数字类型
@@ -57,7 +58,7 @@ export class DamagePopupManager {
   
   constructor(scene: TankGameScene) {
     this.scene = scene
-    console.log('✅ DamagePopupManager 已创建')
+    Logger.info('✅ DamagePopupManager 已创建')
   }
   
   // ===========================================================================

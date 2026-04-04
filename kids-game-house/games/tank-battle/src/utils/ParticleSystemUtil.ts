@@ -9,6 +9,8 @@
 //   - 无法独立运动（共享 Graphics）
 // ============================================================================
 
+import { Logger } from './Logger'
+
 /**
  * ⭐ 粒子配置
  */
@@ -158,7 +160,7 @@ export class ParticleSystemUtil {
     // 🔧 修复：验证 size 参数，防止为 0 或负数
     const validSize = Math.max(1, Math.floor(size))
     
-    console.log('🎨 [ParticleSystemUtil] 创建颜色纹理:', { key, color, size: validSize })
+    Logger.debug('🎨 [ParticleSystemUtil] 创建颜色纹理:', { key, color, size: validSize })
     
     try {
       const graphics = this.scene.make.graphics({ x: 0, y: 0 })
@@ -166,7 +168,7 @@ export class ParticleSystemUtil {
       graphics.fillRect(0, 0, validSize, validSize)
       graphics.generateTexture(key, validSize, validSize)
       graphics.destroy()
-      console.log('✅ [ParticleSystemUtil] 纹理创建成功:', key)
+      Logger.debug('✅ [ParticleSystemUtil] 纹理创建成功:', key)
     } catch (error) {
       console.error('❌ [ParticleSystemUtil] 纹理创建失败:', { key, color, size: validSize, error })
       // 不抛出错误，避免影响游戏运行
@@ -190,6 +192,6 @@ export class ParticleSystemUtil {
       emitter.destroy()
     })
     
-    console.log(`🗑️ [ParticleSystem] 已销毁 ${emitters.length} 个粒子发射器`)
+    Logger.debug(`🗑️ [ParticleSystem] 已销毁 ${emitters.length} 个粒子发射器`)
   }
 }
