@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Space Invaders - Offline Mode</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Offline space invaders game" />
+    <link rel="icon" href="/invader.svg" type="image/svg" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+    />
+    <link rel="stylesheet" href="/style.css" />
+
+    <!-- Phaser 游戏引擎 (使用本地缓存) -->
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.23.0/dist/phaser.min.js"></script>
+    <!-- 完全离线版游戏脚本 -->
+    <script src="/script-offline.js" defer></script>
+  </head>
+
+  <body class="index-body">
+    <div class="container">
+      <div class="info-bar row row-cols-1 row-cols-sm-2 row-cols-md-4">
+        <div id="score" class="col">🎮 Offline Mode</div>
+        <div id="controls" class="col">🎯 Arrow Keys + SPACE</div>
+      </div>
+      
+      <div class="card game-card">
+        <div id="game-container"></div>
+      </div>
+      
+      <div class="start-btn-div">
+        <p style="color: #0ff; font-size: 18px;">
+          🚀 Use Arrow Keys to Move | SPACE to Shoot | R to Restart
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
