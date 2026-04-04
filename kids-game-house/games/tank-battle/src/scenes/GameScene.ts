@@ -24,13 +24,32 @@ export default abstract class GameScene extends Phaser.Scene {
     this.screenW = this.scale.width
     this.screenH = this.scale.height
     
+    // ⭐ 添加调试日志
+    console.log('🔍 [GameScene] 屏幕尺寸:', {
+      'Phaser.Canvas.Width': this.scale.width,
+      'Phaser.Canvas.Height': this.scale.height,
+      'screenW': this.screenW,
+      'screenH': this.screenH,
+      '浏览器窗口宽度': window.innerWidth,
+      '浏览器窗口高度': window.innerHeight,
+      '父容器宽度': this.scale.parentSize?.width || 'N/A',
+      '父容器高度': this.scale.parentSize?.height || 'N/A'
+    })
+    
+    console.log('📐 [GameScene] 缩放配置:', {
+      '缩放模式': this.scale.scaleMode,
+      '是否自动居中': this.scale.autoCenter,
+      '显示宽度': this.scale.displaySize?.width || 'N/A',
+      '显示高度': this.scale.displaySize?.height || 'N/A'
+    })
+    
     // 从配置读取网格参数（预留配置扩展）
     // const configStore = useConfigStore()
     
     // 默认网格配置（可被子类覆盖）
-    this.gridCols = 13
-    this.gridRows = 13
-    this.cellSize = 64
+    this.gridCols = 13    // 恢复默认值
+    this.gridRows = 13    // 恢复默认值
+    this.cellSize = 64    // ⭐ 固定 64px，不随屏幕变化
     
     // 计算偏移量（居中显示）
     const gameWidth = this.gridCols * this.cellSize

@@ -134,10 +134,43 @@ export default class TankGameScene extends GameScene {
 
   async preload(): Promise<void> {
     try {
+      // ⭐ 注册真实加载进度事件（用于 Loading UI）
+      this.setupLoadingProgressEvents()
+
       this.preloadFromGTRS()
     } catch (error) {
       throw error
     }
+  }
+
+  /**
+   * ⭐ 设置 Phaser 真实加载进度事件监听
+   */
+  private setupLoadingProgressEvents(): void {
+    // 总进度事件（0-1）
+    this.load.on('progress', (value: number) => {
+      this.events.emit('loadingProgress', value)
+    })
+
+    // 单文件进度事件
+    this.load.on('fileprogress', (file: Phaser.Loader.File) => {
+      this.events.emit('loadingFile', file.key)
+    })
+
+    // 文件加载完成事件
+    this.load.on('filecomplete', (file: Phaser.Loader.File) => {
+      this.events.emit('loadingFileComplete', file.key)
+    })
+
+    // 加载开始事件
+    this.load.on('start', () => {
+      this.events.emit('loadingStart')
+    })
+
+    // 加载完成事件
+    this.load.on('complete', () => {
+      this.events.emit('loadingComplete')
+    })
   }
 
   async create(): Promise<void> {

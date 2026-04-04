@@ -25,7 +25,7 @@ const DIFFICULTY_PRESETS: Record<string, DifficultyConfig> = {
   easy: {
     key: 'easy',
     name: '简单',
-    enemyCount: 5,
+    enemyCount: 8,         // ⭐ 你修改的：从 5 改为 8
     spawnInterval: 3000,
     enemySpeed: 150,
     playerLives: 5,

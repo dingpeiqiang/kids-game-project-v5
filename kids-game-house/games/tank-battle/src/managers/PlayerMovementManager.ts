@@ -82,7 +82,29 @@ export class PlayerMovementManager {
    */
   update(cursors: any, keys: any): void {
     try {
-      if (!this.player || !this.player.active) return
+      // ⭐ 修复：更严格的检查，确保 player 和 body 都可用
+      if (!this.player) {
+        console.warn('⚠️ [PlayerMovementManager] player 不存在')
+        return
+      }
+      
+      if (!this.player.active) {
+        console.warn('⚠️ [PlayerMovementManager] player 未激活')
+        return
+      }
+      
+      // ⭐ 关键修复：body 可能存在但 enable 属性为 undefined（刚创建时）
+      if (!this.player.body) {
+        console.warn('⚠️ [PlayerMovementManager] player body 不存在')
+        return
+      }
+      
+      // ⭐ 如果 body.enable 是 undefined，说明 body 还未完全初始化，需要启用它
+      if (this.player.body.enable === undefined || this.player.body.enable === false) {
+        console.warn('⚠️ [PlayerMovementManager] player body 未启用，尝试启用...')
+        this.player.body.enable = true
+      }
+      
       if (!cursors || !keys) return
       
       if (this.player.body) {

@@ -1,5 +1,37 @@
 <template>
   <div class="relative w-full h-screen overflow-hidden" style="background:#0f1a12;">
+    <!-- ═══ 加载界面 ═══ -->
+    <Transition name="loading-fade">
+      <div v-if="isLoading" class="loading-screen">
+        <div class="loading-content">
+          <!-- Logo -->
+          <div class="loading-logo">
+            <span class="logo-icon">🎖️</span>
+            <span class="logo-text">坦克大战</span>
+          </div>
+
+          <!-- 进度条 -->
+          <div class="progress-wrap">
+            <div class="progress-track">
+              <div
+                class="progress-fill"
+                :style="{ width: `${loadingProgress}%` }"
+              ></div>
+            </div>
+            <span class="progress-pct">{{ loadingProgress }}%</span>
+          </div>
+
+          <!-- 状态文字 -->
+          <p class="status-text">{{ loadingStatus }}</p>
+
+          <!-- 加载文件 -->
+          <div v-if="currentLoadingFile" class="loading-file">
+            📄 {{ currentLoadingFile }}
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 游戏画布容器 -->
     <div ref="gameContainer" :style="gameContainerStyle" class="absolute inset-0" style="z-index:0;"></div>
 
@@ -116,6 +148,12 @@ const isPaused = ref(false)
 const showEditor = ref(false)
 const showQuitConfirm = ref(false)
 
+// ⭐ 加载状态
+const isLoading = ref(true)
+const loadingProgress = ref(0)
+const loadingStatus = ref('正在初始化...')
+const currentLoadingFile = ref('')
+
 const score = ref(0)
 const lives = ref(3)
 const level = ref(1)
@@ -150,13 +188,23 @@ const initGame = () => {
   if (!gameContainer.value) return
 
   const Phaser = (window as any).Phaser
+
+  // 🔥 方案 1：固定分辨率 + 自动缩放（推荐）
+  // 游戏逻辑尺寸永远固定，保证资源和碰撞检测准确
+  const LOGICAL_WIDTH = 832   // 13 格 × 64px
+  const LOGICAL_HEIGHT = 832
   
-  // 🔧 关键修复：使用固定尺寸，让 Phaser 内部处理缩放
+  console.log('🔧 [固定分辨率]', {
+    '逻辑尺寸': `${LOGICAL_WIDTH}×${LOGICAL_HEIGHT}`,
+    '容器尺寸': `${gameContainer.value.clientWidth}×${gameContainer.value.clientHeight}`,
+    '每格大小': '64px (固定)'
+  })
+  
   const config: any = {
     type: Phaser.AUTO,
     parent: gameContainer.value,
-    width: 832,  // ✅ 与地图尺寸一致（26 * 32）
-    height: 832,
+    width: LOGICAL_WIDTH,    // ⭐ 固定 832px
+    height: LOGICAL_HEIGHT,  // ⭐ 固定 832px
     backgroundColor: '#1a4d2e',
     physics: {
       default: 'arcade',
@@ -167,12 +215,70 @@ const initGame = () => {
     },
     scene: [TankGameScene],
     scale: {
-      mode: Phaser.Scale.FIT,  // ✅ 自动适配父容器，保持宽高比
-      autoCenter: Phaser.Scale.CENTER_BOTH,  // ✅ 在容器中居中
+      mode: Phaser.Scale.FIT,        // ⭐ 自动适配容器，保持宽高比
+      autoCenter: Phaser.Scale.CENTER_BOTH,
     },
   }
 
   game = new Phaser.Game(config)
+
+  // ⭐ 轮询等待 Scene 就绪后设置事件监听
+  let sceneReady = false
+  const checkSceneReady = () => {
+    if (sceneReady || isUnmounted) return
+
+    const tankScene = game?.scene?.getScene('GameScene')
+    if (tankScene && tankScene.events) {
+      sceneReady = true
+
+      // 加载开始
+      tankScene.events.on('loadingStart', () => {
+        loadingStatus.value = '开始加载资源...'
+      })
+
+      // 总进度更新
+      tankScene.events.on('loadingProgress', (value: number) => {
+        loadingProgress.value = Math.round(value * 100)
+        if (value < 0.3) {
+          loadingStatus.value = '加载图片资源...'
+        } else if (value < 0.7) {
+          loadingStatus.value = '加载音频资源...'
+        } else if (value < 0.95) {
+          loadingStatus.value = '初始化游戏场景...'
+        } else {
+          loadingStatus.value = '准备就绪...'
+        }
+      })
+
+      // 当前加载文件
+      tankScene.events.on('loadingFile', (fileKey: string) => {
+        currentLoadingFile.value = fileKey
+      })
+
+      // 单个文件加载完成
+      tankScene.events.on('loadingFileComplete', (_fileKey: string) => {
+        currentLoadingFile.value = ''
+      })
+
+      // 加载完成
+      tankScene.events.once('loadingComplete', () => {
+        loadingStatus.value = '加载完成！'
+        loadingProgress.value = 100
+
+        // 延迟隐藏加载界面，让用户看到 100%
+        setTimeout(() => {
+          isLoading.value = false
+          isPlaying.value = true
+        }, 300)
+      })
+    } else {
+      // 继续轮询
+      setTimeout(checkSceneReady, 16)
+    }
+  }
+
+  // 开始轮询
+  checkSceneReady()
 
   // 监听游戏事件
   game.events.on('scoreUpdate', (newScore: number) => {
@@ -192,8 +298,6 @@ const initGame = () => {
       router.push('/gameover')
     }, 1000)
   })
-
-  isPlaying.value = true
 }
 
 /** 安全获取场景（防止 getScene 返回 null 或场景未就绪） */
@@ -446,4 +550,89 @@ const closeEditor = () => {
 .overlay-fade-leave-active { transition: opacity 0.18s ease; }
 .overlay-fade-enter-from   { opacity: 0; }
 .overlay-fade-leave-to     { opacity: 0; }
+
+/* ── 加载界面样式 ─────────────────────────── */
+.loading-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  min-height: 100vh;
+  width: 100%;
+  background: linear-gradient(160deg, #0f1a12 0%, #1a2e1f 40%, #0d1f15 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-content {
+  text-align: center;
+  max-width: 360px;
+  width: 100%;
+  padding: 2rem;
+}
+
+.loading-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 2.5rem;
+}
+.logo-icon { font-size: 2rem; }
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 0.1em;
+}
+
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+.progress-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+  border-radius: 999px;
+  transition: width 0.15s ease-out;
+  box-shadow: 0 0 12px rgba(74,222,128,0.3);
+}
+.progress-pct {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #4ade80;
+  min-width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-text {
+  font-size: 0.9rem;
+  color: #d1d5db;
+  margin-bottom: 1rem;
+}
+
+.loading-file {
+  font-size: 0.75rem;
+  color: #6b7280;
+  max-width: 280px;
+  margin: 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loading-fade-enter-active { transition: opacity 0.4s ease-out; }
+.loading-fade-leave-active { transition: opacity 0.3s ease-in; }
+.loading-fade-enter-from   { opacity: 0; }
+.loading-fade-leave-to     { opacity: 0; }
 </style>

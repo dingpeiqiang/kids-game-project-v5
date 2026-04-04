@@ -57,16 +57,21 @@ export class PlayerDebugPanel {
     const pd = controller.data
     const player = (this.scene as any).player
 
-    if (!player || !player.active) {
-      this.setText('status', '❌ 玩家不存在')
-      this.setText('visible', `👁️ 可见：❌`)
-      this.setText('active', `✅ 激活：❌`)
-      return
-    }
-
     // 📊 基础属性（全部来自 PlayerController.data）
-    this.setText('position', `📍 位置：(${player.x.toFixed(0)}, ${player.y.toFixed(0)})`)
-    this.setText('velocity', `➡️ 速度：(${player.body?.velocity.x.toFixed(0) || 0}, ${player.body?.velocity.y.toFixed(0) || 0})`)
+    this.setText('position', `📍 位置：${player ? `(${player.x.toFixed(0)}, ${player.y.toFixed(0)})` : 'N/A'}`)
+    
+    // ➡️ 速度（安全访问，处理复活期间 body 可能未初始化的情况）
+    let velocityText = 'N/A'
+    if (player && player.body) {
+      const body = player.body as any
+      if (body.velocity && typeof body.velocity.x === 'number' && typeof body.velocity.y === 'number') {
+        velocityText = `(${body.velocity.x.toFixed(0)}, ${body.velocity.y.toFixed(0)})`
+      } else if (body.getVelocityX && typeof body.getVelocityX === 'function') {
+        // 使用 Phaser 的安全 API
+        velocityText = `(${body.getVelocityX() || 0}, ${body.getVelocityY() || 0})`
+      }
+    }
+    this.setText('velocity', `➡️ 速度：${velocityText}`)
 
     // 🎯 生命与护甲
     this.setText('lives', `💚 生命：${pd.lives}`)
@@ -92,12 +97,28 @@ export class PlayerDebugPanel {
     this.setText('moving', `🏃 移动中：${direction !== 'NONE' ? '✅' : '❌'}`)
     this.setText('speed', `⚡ 速度倍率：${pd.speedMultiplier}x`)
 
-    // 🎨 渲染状态
-    const isVisible = player.visible && player.alpha > 0.1
-    this.setText('visible', `👁️ 可见：${isVisible ? '✅' : '❌'} ${!player.visible ? '(visible=false)' : player.alpha < 1 ? `(alpha=${player.alpha.toFixed(2)})` : ''}`)
-    this.setText('alpha', `🌟 透明度：${player.alpha.toFixed(2)}`)
-    this.setText('active', `✅ 激活：${player.active ? '✅' : '❌'}`)
-    this.setText('texture', `🖼️ 纹理：${player.texture?.key || 'none'}`)
+    // 🎨 渲染状态（重点监控）
+    if (!player) {
+      this.setText('status', '❌ 玩家对象不存在')
+      this.setText('visible', `👁️ 可见：❌ (player=null)`)
+      this.setText('active', `✅ 激活：❌ (player=null)`)
+      this.setText('alpha', `🌟 透明度：N/A`)
+      this.setText('texture', `🖼️ 纹理：N/A`)
+    } else if (!player.active) {
+      this.setText('status', '⚠️ 玩家已禁用 (active=false)')
+      this.setText('visible', `👁️ 可见：❌ (active=false)`)
+      this.setText('active', `✅ 激活：❌ (active=false)`)
+      this.setText('alpha', `🌟 透明度：${player.alpha.toFixed(2)}`)
+      this.setText('texture', `🖼️ 纹理：${player.texture?.key || 'none'}`)
+    } else {
+      // 玩家存在且激活，详细显示渲染状态
+      this.setText('status', '✅ 玩家正常')
+      const isVisible = player.visible && player.alpha > 0.1
+      this.setText('visible', `👁️ 可见：${isVisible ? '✅' : '❌'} ${!player.visible ? '(visible=false)' : player.alpha < 1 ? `(alpha=${player.alpha.toFixed(2)})` : ''}`)
+      this.setText('alpha', `🌟 透明度：${player.alpha.toFixed(2)}`)
+      this.setText('active', `✅ 激活：${player.active ? '✅' : '❌'}`)
+      this.setText('texture', `🖼️ 纹理：${player.texture?.key || 'none'}`)
+    }
   }
 
   private setText(key: string, content: string): void {

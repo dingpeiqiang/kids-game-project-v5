@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoadingView from '@/views/LoadingView.vue'
 import StartView from '@/views/StartView.vue'
 import DifficultyView from '@/views/DifficultyView.vue'
 import GameView from '@/views/GameView.vue'
@@ -8,15 +7,14 @@ import GameOverView from '@/views/GameOverView.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    // ⭐ 根路径直接跳转到游戏页（GameView 内部显示加载 UI）
     {
       path: '/',
-      name: 'loading',
-      component: LoadingView,
+      redirect: '/game',
     },
     {
       path: '/loading',
-      name: 'loading-view',
-      component: LoadingView,
+      redirect: '/game',
     },
     {
       path: '/start',
@@ -28,6 +26,7 @@ const router = createRouter({
       name: 'difficulty',
       component: DifficultyView,
     },
+    // ⭐ 游戏页面（包含真实的 Phaser 加载进度 UI）
     {
       path: '/game',
       name: 'game',

@@ -13,6 +13,7 @@
 import type TankGameScene from '../scenes/TankGameScene'
 import { PlayerState, type IPlayerStateConfig } from './PlayerStateManager'
 import { PowerUpType } from '../types/powerup-types'
+import { EntityType } from './EntityManager'
 import { Logger } from '../utils/Logger'
 
 // ============================================================================
@@ -83,7 +84,10 @@ export class PlayerController {
   private scene: TankGameScene
 
   // ─── 内部可变数据（对外只通过 data 暴露为只读） ───────────────────
-  private _lives: number = 3
+  // ⭐ 核心设计原则：数据层与显示层完全分离
+  private _currentLife: number = 1    // 当前命（0 或 1，默认基础状态）
+  private _spareLives: number = 2     // 备用命（可以有很多条）
+  
   private _score: number = 0
   private _level: number = 1
   private _armor: number = 0
@@ -103,8 +107,8 @@ export class PlayerController {
   private readonly stateConfig: IPlayerStateConfig = {
     invincibleDuration: 1500,
     dyingDuration: 500,
-    blinkInterval: 150,
-    blinkCount: 10,
+    blinkInterval: 100,      // ⭐ 加快闪烁间隔（从150ms改为100ms）
+    blinkCount: 6,           // ⭐ 减少闪烁次数（从10次改为6次，总共600ms）
   }
 
   // ─── 变更日志 ─────────────────────────────────────────────────────
@@ -114,6 +118,10 @@ export class PlayerController {
   private blinkTimer: Phaser.Time.TimerEvent | null = null
   private invincibleTimer: Phaser.Time.TimerEvent | null = null
   private frozenTimer: Phaser.Time.TimerEvent | null = null
+  
+  // ─── 复活位置 ─────────────────────────────────────────────────────
+  private _respawnX: number = 0
+  private _respawnY: number = 0
 
   constructor(scene: TankGameScene) {
     this.scene = scene
@@ -126,7 +134,8 @@ export class PlayerController {
 
   get data(): ReadonlyPlayerData {
     return {
-      lives: this._lives,
+      // ⭐ 显示层：从数据层计算得出
+      lives: this._currentLife + this._spareLives,  // 总命数 = 当前命 + 备用命
       score: this._score,
       level: this._level,
       armor: this._armor,
@@ -154,7 +163,17 @@ export class PlayerController {
   /**
    * ⭐ 玩家受伤（唯一伤害入口）
    *
-   * 内部流程：护盾检查 → 无敌检查 → 护甲扣减 → 扣命 → 死亡/复活
+   * 内部流程：
+   *   1. 护盾检查 → 有护盾则消耗，直接返回
+   *   2. 无敌检查 → 无敌则忽略，直接返回
+   *   3. 护甲扣减 → 有护甲则扣护甲，返回
+   *   4. 无护甲 → 进入 loseLife 流程：
+   *      a. 如果 lives <= 0：直接返回（防止负数）
+   *      b. 执行 lives--（统一扣命）
+   *      c. 播放死亡动画、音效等（统一处理）
+   *      d. 根据剩余 lives 决定后续：
+   *         - lives > 0：进入死亡动画 → 复活
+   *         - lives = 0：游戏结束
    *
    * @param source 伤害来源类型
    * @param bullet 子弹对象（可选，用于子弹伤害路径的清理）
@@ -239,15 +258,25 @@ export class PlayerController {
 
   /**
    * ⭐ 消耗无敌（抵挡伤害时）
+   * ⭐ 修复：如果在闪烁期间，不覆盖 alpha，让闪烁效果继续
    */
   private consumeInvincible(bullet?: any): void {
     this.safeDestroyBullet(bullet)
 
     const player = this.getPlayer()
-    if (player) {
-      this.setPlayerVisible(true)
-      this.scene.spawnSparks(player.x, player.y, '#ffd700', 8)
-      this.scene.playSound('sfx_hit', 0.3)
+    if (player && player.active) {
+      // ⭐ 只有不在闪烁期间才强制设置可见性
+      if (!this.blinkTimer) {
+        this.setPlayerVisible(true)
+      }
+      // ⭐ 优化：闪烁期间不播放受击特效，防止视觉干扰
+      if (this._state !== PlayerState.RESPAWNING) {
+        this.scene.spawnSparks(player.x, player.y, '#ffd700', 8)
+        this.scene.playSound('sfx_hit', 0.3)
+      } else {
+        // ⭐ 复活闪烁期间，只播放轻微火花，不影响闪烁效果
+        this.scene.spawnSparks(player.x, player.y, '#ffffff', 3)
+      }
     }
   }
 
@@ -256,63 +285,97 @@ export class PlayerController {
   // ===========================================================================
 
   /**
-   * ⭐ 增加生命
+   * ⭐ 增加生命（原子化方法：加备用命）
    */
   addLife(amount: number, reason: string = '道具加生命'): void {
-    const oldLives = this._lives
-    this._lives += amount
-    this.logChange('lives', oldLives, this._lives, reason)
+    const oldSpareLives = this._spareLives
+    this._spareLives += amount
+    this.logChange('spareLives', oldSpareLives, this._spareLives, reason)
     this.syncGameStore()
   }
-
+  
   /**
-   * ⭐ 失去生命（内部方法，由 takeDamage 调用）
+   * ⭐ 失去生命（核心逻辑：消耗当前命 → 判断是否可复活 → 消耗备用命）
    */
   private loseLife(source: string): void {
-    if (this._lives <= 0) return
-
-    const oldLives = this._lives
-    this._lives--
-    this.logChange('lives', oldLives, this._lives, `${source}伤害 - 扣命`)
-
-    // 同步 gameStore
+    // ────────────────────────────────────────
+    // 第 1 步：当前命死亡（从 1 → 0）
+    // ────────────────────────────────────────
+    if (this._currentLife <= 0) {
+      // 已经没有当前命了，直接返回（防止负数）
+      return
+    }
+    
+    this._currentLife = 0  // 当前命死亡
+    
+    // ────────────────────────────────────────
+    // 第 2 步：播放死亡动画、同步 UI（统一处理）
+    // ────────────────────────────────────────
+    this.logChange('currentLife', 1, 0, `${source}伤害 - 当前命死亡`)
+    
+    // 同步 gameStore（显示层更新）
     const gameStore = (this.scene as any).gameStore
     if (gameStore) {
-      gameStore.loseLife()
+      gameStore.loseLife()  // UI 会重新计算 totalLives
     }
-
+    
     // 发出事件
     if ((this.scene as any).game?.events) {
-      (this.scene as any).game.events.emit('lifeLost', this._lives)
+      (this.scene as any).game.events.emit('lifeLost', this._currentLife + this._spareLives)
     }
-
+    
     // 清除道具视觉效果
     const applier = (this.scene as any).powerUpEffectApplier
     const player = this.getPlayer()
     if (applier?.removeVisualEffects && player) {
       applier.removeVisualEffects(player)
     }
-
-    // 受击反馈
-    this.scene.playHitFeedback?.()
+    
+    // 播放死亡动画和音效
     if (player) {
+      // ⭐ 经典坦克大战实现：死亡时彻底销毁玩家（不是隐藏）
+      console.log('💀 [PlayerController] 销毁玩家坦克...')
+      
+      // 记录玩家位置用于复活
+      const gridCols = (this.scene as any).gridCols
+      const gridRows = (this.scene as any).gridRows
+      const cellSize = (this.scene as any).cellSize
+      this._respawnX = (gridCols * cellSize) / 2
+      this._respawnY = (gridRows * cellSize) - 100
+      
+      // 销毁玩家（从物理世界和显示列表移除）
+      player.destroy()  // ← 关键：彻底销毁
+      
+      // 播放爆炸特效（在玩家原位置）
       this.scene.spawnExplosion(player.x, player.y, 0.6)
       this.scene.cameraShake(200)
       this.scene.playSound('sfx_hit', 0.7)
     }
-
-    if (this._lives > 0) {
-      // 进入死亡动画 → 复活
+    
+    // ────────────────────────────────────────
+    // 第 3 步：判断是否有备用命可以复活
+    // ────────────────────────────────────────
+    if (this.canRespawn()) {
+      // ✅ 有备用命 → 复活
       this.enterDyingState()
     } else {
-      // 生命耗尽 → 游戏结束
+      // ❌ 没有备用命 → 游戏结束
       this.enterDeadState()
     }
+  }
+  
+  /**
+   * ⭐ 判断是否可以复活（原子化方法）
+   */
+  private canRespawn(): boolean {
+    return this._spareLives > 0  // 只要有备用命就可以复活
   }
 
   /**
    * ⭐ 复活（从死亡/濒死状态恢复）
    * 内部方法，由死亡动画完成后回调触发
+   * 
+   * ⭐ 经典坦克大战实现：重新创建玩家坦克（不是复用）
    */
   respawn(): void {
     this.cleanupTimers()
@@ -321,41 +384,60 @@ export class PlayerController {
     this._isShieldActive = false
     this._isFrozen = false
     this._armor = 0
+    
+    // ⭐ 关键修复：消耗备用命，设置当前命
+    if (this._spareLives > 0) {
+      this._spareLives--  // 消耗 1 条备用命
+    }
+    this._currentLife = 1  // ⭐ 设置当前命为 1（复活）
+    
     this.logChange('state', this._state, PlayerState.RESPAWNING, '复活')
 
-    const player = this.getPlayer()
-    if (!player) return
-
-    // 复活点
-    const gridCols = (this.scene as any).gridCols
-    const gridRows = (this.scene as any).gridRows
-    const cellSize = (this.scene as any).cellSize
-    const startX = (gridCols * cellSize) / 2
-    const startY = (gridRows * cellSize) - 100
-
-    // 清除复活点周围的敌人
-    this.clearSpawnArea(startX, startY, 150)
-
-    // 重置玩家物理状态
-    player.x = startX
-    player.y = startY
-    player.setActive(true)
-    if (player.body) {
-      player.body.reset(startX, startY)
-      player.body.setVelocity(0, 0)
-      player.body.enable = true
-      player.body.checkCollision.none = false
-      player.body.setSize(40, 40)
-      player.body.setOffset(12, 12)
+    // ⭐ 经典坦克大战实现：重新创建玩家坦克（不是复用旧对象）
+    console.log('🔄 [PlayerController] 开始复活玩家...')
+    
+    // 使用 EntityManager 重新创建玩家
+    const entityManager = (this.scene as any).entityManager
+    if (!entityManager) {
+      console.error('❌ [PlayerController] entityManager 不存在！')
+      return
     }
-    player.direction = 'UP'
+    
+    // 重新创建玩家坦克
+    const player = entityManager.createEntity({
+      type: EntityType.PLAYER,
+      x: this._respawnX,
+      y: this._respawnY,
+      texture: 'player_tank_up',
+      attributes: { health: 1, speed: 200 }
+    }) as Phaser.Physics.Arcade.Sprite
+    
+    if (!player) {
+      console.error('❌ [PlayerController] 重新创建玩家失败！')
+      return
+    }
+    
+    console.log('✅ [PlayerController] 玩家坦克已重新创建:', {
+      x: player.x,
+      y: player.y,
+      alpha: player.alpha,
+      visible: player.visible,
+      active: player.active
+    })
+    
+    // ⭐ 设置其他属性（坐标已经在创建时设置了）
     player.setFrame(0)
-    player.setDepth(100)
 
     // 重置方向
     const movementManager = (this.scene as any).movementManager
     if (movementManager?.resetDirection) {
       movementManager.resetDirection()
+    }
+    
+    // ⭐ 同步 player 引用到 MovementManager（防止引用丢失）
+    if (movementManager?.setPlayer) {
+      movementManager.setPlayer(player)
+      console.log('✅ [PlayerController] MovementManager player 引用已同步')
     }
 
     // 清除道具视觉效果
@@ -368,13 +450,22 @@ export class PlayerController {
     const collisionManager = (this.scene as any).collisionManager
     if (collisionManager?.rebindPlayerCollisions) {
       collisionManager.rebindPlayerCollisions()
+      console.log('✅ [PlayerController] 碰撞已重新绑定')
     }
+
+    // ⭐ 关键优化：复活后暂时禁用子弹碰撞，防止闪烁期间被击中
+    // 碰撞已经在 rebindPlayerCollisions 中建立，但我们需要在无敌期间忽略碰撞
+    // 这通过 takeDamage 中的 _isInvincible 检查来实现
+    console.log('🛡️ [PlayerController] 复活后无敌保护已启用，免疫子弹伤害')
 
     // 进入复活无敌状态（闪烁 + 保护）
     this._state = PlayerState.RESPAWNING
     this._isInvincible = true
     this._isDying = false
+    
+    // ⭐ 先设置位置和可见性，再开始闪烁
     this.startBlinkEffect()
+    console.log('✨ [PlayerController] 闪烁效果已启动')
 
     // 闪烁结束后 → INVINCIBLE（额外 2s 保护期）
     this.scene.time.delayedCall(this.stateConfig.invincibleDuration, () => {
@@ -599,10 +690,13 @@ export class PlayerController {
   /**
    * ⭐ 新游戏重置
    */
-  reset(initialLives: number = 3): void {
+  reset(initialSpareLives: number = 2): void {
     this.cleanupTimers()
 
-    this._lives = initialLives
+    // ⭐ 重置为默认状态：1 条当前命 + N 条备用命
+    this._currentLife = 1
+    this._spareLives = initialSpareLives
+    
     this._score = 0
     this._level = 1
     this._armor = 0
@@ -656,9 +750,9 @@ export class PlayerController {
       this.scene.cameraShake(100)
     }
 
-    // 死亡动画持续后 → 复活
+    // 死亡动画持续后 → 判断是否可复活
     this.scene.time.delayedCall(this.stateConfig.dyingDuration, () => {
-      if (this._lives > 0) {
+      if (this.canRespawn()) {
         this.respawn()
       } else {
         this.enterDeadState()
@@ -684,15 +778,34 @@ export class PlayerController {
 
   /**
    * 完成复活（闪烁结束 → 短暂无敌）
+   * ⭐ 修复：确保停止闪烁并正确设置可见性
    */
   private finishRespawning(): void {
-    this.cleanupTimers()
+    console.log('🎉 [PlayerController] 完成复活...')
+    
+    // ⭐ 立即停止闪烁定时器，防止继续干扰 alpha
+    if (this.blinkTimer) {
+      console.log(`⏹️ [PlayerController] 准备停止闪烁定时器，当前 blinkTimer=${this.blinkTimer}`)
+      this.blinkTimer.remove(false)
+      this.blinkTimer = null
+      console.log('✅ [PlayerController] 闪烁定时器已停止')
+    }
 
     this._state = PlayerState.INVINCIBLE
     this._isInvincible = true
     this.logChange('state', PlayerState.RESPAWNING, PlayerState.INVINCIBLE, '复活完成 - 进入无敌')
 
-    this.setPlayerVisible(true)
+    // ⭐ 确保玩家完全可见
+    const player = this.getPlayer()
+    if (player && player.active) {
+      console.log(`👁️ [PlayerController] 设置可见性前：alpha=${player.alpha}, visible=${player.visible}`)
+      player.setVisible(true)
+      player.setAlpha(1)
+      player.clearTint()
+      console.log(`✅ [PlayerController] 玩家已设为完全可见，alpha=${player.alpha}`)
+    } else {
+      console.warn('⚠️ [PlayerController] 玩家未激活，无法设置可见性')
+    }
 
     // 2 秒后退出无敌
     this.invincibleTimer = this.scene.time.delayedCall(2000, () => {
@@ -700,12 +813,23 @@ export class PlayerController {
         this._state = PlayerState.ALIVE
         this._isInvincible = false
         this.logChange('state', PlayerState.INVINCIBLE, PlayerState.ALIVE, '无敌期结束')
+        
+        console.log('✨ [PlayerController] 无敌期结束，恢复到 ALIVE 状态')
+        
+        // ⭐ 无敌期结束后再次确保可见
+        const p = this.getPlayer()
+        if (p && p.active) {
+          p.setVisible(true)
+          p.setAlpha(1)
+          console.log('✅ [PlayerController] 玩家最终确认可见')
+        }
       }
     })
   }
 
   /**
    * 激活临时无敌（护盾消耗后等场景）
+   * ⭐ 修复：如果在闪烁期间，不启动新的闪烁定时器
    */
   private activateTemporaryInvincible(duration: number): void {
     if (this._state === PlayerState.DEAD || this._state === PlayerState.DYING) return
@@ -714,51 +838,94 @@ export class PlayerController {
     this._isInvincible = true
     this.logChange('isInvincible', false, true, `临时无敌 ${duration}ms`)
 
-    this.setPlayerVisible(true)
+    // ⭐ 只有不在闪烁期间才设置可见性
+    if (!this.blinkTimer) {
+      this.setPlayerVisible(true)
+    }
 
-    // 闪烁效果（alpha 在 1 和 0.5 之间，不完全消失）
-    let blinkOn = true
-    this.blinkTimer = this.scene.time.addEvent({
-      delay: this.stateConfig.blinkInterval,
-      callback: () => {
-        const p = this.getPlayer()
-        if (!p || !p.active) return
-        blinkOn = !blinkOn
-        p.setAlpha(blinkOn ? 1 : 0.5)
-      },
-      loop: true,
-    })
+    // ⭐ 闪烁效果（alpha 在 1 和 0.5 之间，不完全消失）
+    // 但如果在 RESPAWNING 闪烁期间，不启动新的闪烁定时器
+    if (this.blinkTimer) {
+      // 闪烁期间不启动新闪烁，保持 RESPAWNING 闪烁效果
+    } else {
+      let blinkOn = true
+      this.blinkTimer = this.scene.time.addEvent({
+        delay: this.stateConfig.blinkInterval,
+        callback: () => {
+          const p = this.getPlayer()
+          if (!p || !p.active) return
+          blinkOn = !blinkOn
+          p.setAlpha(blinkOn ? 1 : 0.5)
+        },
+        loop: true,
+      })
+    }
 
     // 到期恢复
     this.scene.time.delayedCall(duration, () => {
-      this.cleanupTimers()
+      // ✅ 先停止闪烁定时器，防止最后一轮回调覆盖 alpha 值
+      if (this.blinkTimer) {
+        this.blinkTimer.remove(false)
+        this.blinkTimer = null
+      }
+      
       this._isInvincible = false
       this.logChange('isInvincible', true, false, '临时无敌结束')
-      this.setPlayerVisible(true)
+      
+      // ⭐ 确保玩家完全可见
+      const p = this.getPlayer()
+      if (p && p.active) {
+        p.setVisible(true)
+        p.setAlpha(1)
+        p.clearTint()
+      }
     })
   }
 
   /**
-   * 启动复活闪烁效果（alpha 在 0 和 1 之间）
-   * ⚠️ 只用 setAlpha 做闪烁，不用 setVisible(false)（会移出 updateList）
+   * 启动复活闪烁效果（闪烁期间大部分时间可见）
+   * ⭐ 修复：使用标志位确保停止后不再设置 alpha
    */
   private startBlinkEffect(): void {
     this.cleanupTimers()
-
+  
     const player = this.getPlayer()
     if (!player) return
-
+  
     if (!player.active) player.setActive(true)
     player.setVisible(true)
-    player.setAlpha(0)
-
-    let blinkOn = false
+    player.setAlpha(1)  // ⭐ 初始设为完全可见
+  
+    let blinkOn = true  // ⭐ 初始为 true（可见）
+    let blinkCount = 0
+    const maxBlinks = this.stateConfig.blinkCount * 2  // 总闪烁次数
+    let isStopping = false  // ⭐ 标志位：是否正在停止
+  
     this.blinkTimer = this.scene.time.addEvent({
       delay: this.stateConfig.blinkInterval,
       callback: () => {
         if (!player || !player.active) return
+          
+        // ⭐ 如果已经在停止过程中，直接返回
+        if (isStopping) return
+          
+        blinkCount++
+          
+        // ⭐ 先判断是否达到最大次数
+        if (blinkCount >= maxBlinks) {
+          isStopping = true  // ⭐ 设置标志位
+            
+          // ⭐ 强制设为完全可见（不受 blinkOn 影响）
+          player.setAlpha(1)
+            
+          this.blinkTimer?.remove(false)
+          this.blinkTimer = null
+          return
+        }
+          
+        // ⭐ 只有未达到最大次数时才切换 alpha
         blinkOn = !blinkOn
-        player.setAlpha(blinkOn ? 1 : 0)
+        player.setAlpha(blinkOn ? 1 : 0.3)  // ⭐ 不可见时设为 0.3（半透明），不是 0
       },
       loop: true,
     })
@@ -766,14 +933,16 @@ export class PlayerController {
 
   /**
    * 设置玩家可见性
+   * ⭐ 修复：只使用 setVisible，不用 alpha 控制可见性（防止覆盖闪烁效果）
    */
   private setPlayerVisible(visible: boolean): void {
     const player = this.getPlayer()
     if (!player) return
+    
+    // ⭐ 只设置 visible，不修改 alpha
+    // alpha 由闪烁效果单独控制
+    player.setVisible(visible)
     player.setActive(visible || true)  // active 始终保持 true（除非死亡）
-    player.setVisible(true)
-    player.setAlpha(visible ? 1 : 0)
-    player.clearTint()
   }
 
   // ===========================================================================
@@ -814,7 +983,8 @@ export class PlayerController {
     if (gameStore) {
       gameStore.$patch({
         score: this._score,
-        lives: this._lives,
+        // ⭐ 显示层：从数据层计算总命数
+        lives: this._currentLife + this._spareLives,
       })
     }
   }

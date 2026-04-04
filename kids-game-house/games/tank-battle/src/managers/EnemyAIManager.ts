@@ -141,7 +141,9 @@ export class EnemyAIManager {
 
           // 🔧 碰撞半径：增大到 40px，确保提前避障
           if (distance < 40) {
-            Logger.debug(`🧱 [isObstacleAhead] 检测到障碍物 | 距离: ${distance.toFixed(0)}px | 检测点: (${checkX.toFixed(0)}, ${checkY.toFixed(0)})`)
+            if (process.env.NODE_ENV === 'development') {
+              Logger.debug(`🧱 [isObstacleAhead] 检测到障碍物`)
+            }
             return true
           }
         }
@@ -158,8 +160,10 @@ export class EnemyAIManager {
     const availableDirections: { x: number, y: number, name: string, score: number }[] = []
     const speed = enemy.speed || 100
 
-    // 🔍 调试信息
-    Logger.debug(`🔄 [changeDirectionSmart] 改变方向 | 原因: ${reason}, 当前速度: (${enemy.body?.velocity.x}, ${enemy.body?.velocity.y})`)
+    // 🔍 调试信息（仅生产环境关闭）
+    if (process.env.NODE_ENV === 'development') {
+      Logger.debug(`🔄 [changeDirectionSmart] 改变方向 | 原因：${reason}`)
+    }
 
     // 🎯 获取基地位置（主要目标）
     const base = (this.scene as any).base
@@ -244,7 +248,9 @@ export class EnemyAIManager {
       }
     })
 
-    Logger.debug(`🔍 可用方向: ${availableDirections.length} 个 | 基地位置: (${baseX}, ${baseY})`)
+    if (process.env.NODE_ENV === 'development') {
+      Logger.debug(`🔍 可用方向：${availableDirections.length} 个`)
+    }
 
     if (availableDirections.length > 0) {
       // 🧠 选择得分最高的方向（智能决策，优先向基地移动）
@@ -255,14 +261,14 @@ export class EnemyAIManager {
       if (availableDirections.length > 1 && Math.random() < 0.3) {
         // 30% 概率选择次优方向
         const secondBest = availableDirections[1]
-        Logger.debug(`🎲 随机选择次优方向: ${secondBest.name} (得分: ${secondBest.score})`)
+        Logger.debug(`🎲 随机选择次优方向：${secondBest.name}`)
 
         if (enemy.body) {
           enemy.body.setVelocity(secondBest.x, secondBest.y)
           this.updateEnemyDirection(enemy, secondBest.x, secondBest.y)
         }
       } else {
-        Logger.debug(`✅ 选择最优方向: ${bestDir.name} (得分: ${bestDir.score}), 速度: (${bestDir.x}, ${bestDir.y})`)
+        Logger.debug(`✅ 选择最优方向：${bestDir.name}`)
 
         if (enemy.body) {
           enemy.body.setVelocity(bestDir.x, bestDir.y)
@@ -338,9 +344,12 @@ export class EnemyAIManager {
     enemy.x = Phaser.Math.Clamp(enemy.x, minX, maxX)
     enemy.y = Phaser.Math.Clamp(enemy.y, minY, maxY)
 
-    // 如果位置被修正，打印调试信息
-    if (enemy.x !== originalX || enemy.y !== originalY) {
-      Logger.debug(`🔒 [clampToBoundary] 敌人位置已修正 | 原始: (${originalX.toFixed(0)}, ${originalY.toFixed(0)}) → 新: (${enemy.x.toFixed(0)}, ${enemy.y.toFixed(0)})`)
+    // 如果位置被修正且偏差较大，打印调试信息（仅开发环境）
+    if ((enemy.x !== originalX || enemy.y !== originalY) && process.env.NODE_ENV === 'development') {
+      const correction = Math.sqrt(Math.pow(enemy.x - originalX, 2) + Math.pow(enemy.y - originalY, 2))
+      if (correction > 5) {  // 只有修正超过 5px 才打印
+        Logger.debug(`🔒 [clampToBoundary] 敌人位置修正 > 5px`)
+      }
     }
   }
 
@@ -382,8 +391,10 @@ export class EnemyAIManager {
       else enemy.setTexture('enemy_light_right')
     }
 
-    // 🔍 调试信息
-    Logger.debug(`🔄 [updateEnemyDirection] 更新方向 | 方向: ${directionName}, 角度: ${enemy.angle}°, 纹理: ${enemy.texture.key}`)
+    // 🔍 调试信息（仅开发环境）
+    if (process.env.NODE_ENV === 'development') {
+      Logger.debug(`🔄 [updateEnemyDirection] 方向：${directionName}`)
+    }
   }
   
   /**
@@ -489,27 +500,28 @@ export class EnemyAIManager {
     if (baseAhead) {
       // ✅ 基地在前方，射击基地（最高优先级）
       shouldShoot = true
-      Logger.debug(`🎯 [EnemyShoot] 基地在前方，优先攻击基地！`)
+      if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {  // 10% 概率打印，避免刷屏
+        Logger.debug(`🎯 [EnemyShoot] 基地在前方，优先攻击基地！`)
+      }
     } else if (playerAhead) {
       // ✅ 玩家在前方，射击玩家
       shouldShoot = true
-      Logger.debug(`🎯 [EnemyShoot] 玩家在前方，射击玩家`)
+      if (process.env.NODE_ENV === 'development' && Math.random() < 0.2) {  // 20% 概率打印
+        Logger.debug(`🎯 [EnemyShoot] 玩家在前方，射击玩家`)
+      }
     } else {
       // 🧠 基地和玩家都不在前方，考虑转向射击（重型敌人智能）
       if (enemy.enemyType === 'ENEMY_HEAVY') {
         // 重型敌人：转向朝向基地
         this.turnTowardsBase(enemy, base)
         shouldShoot = true
-        Logger.debug(`🧠 [EnemyShoot] ${enemy.enemyType} 转向朝向基地`)
       } else if (enemy.enemyType === 'ENEMY_MEDIUM' && Math.random() < 0.5) {
         // 中型敌人：50% 概率转向朝向基地
         this.turnTowardsBase(enemy, base)
         shouldShoot = true
-        Logger.debug(`🧠 [EnemyShoot] ${enemy.enemyType} 转向朝向基地`)
       } else {
         // 轻型和中型敌人（概率未触发）：不射击，等待转向
         shouldShoot = false
-        Logger.debug(`🧠 [EnemyShoot] 目标不在前方，${enemy.enemyType} 等待转向`)
       }
     }
 
@@ -532,7 +544,7 @@ export class EnemyAIManager {
         vx = 0
         vy = bulletSpeed
       }
-
+    
       const entityManager = (this.scene as any).entityManager
       if (entityManager) {
         const bullet = entityManager.createEntity({
@@ -543,13 +555,15 @@ export class EnemyAIManager {
           attributes: { damage: 10, speed: bulletSpeed },
           metadata: { velocity: { x: vx, y: vy } }
         })
-
+    
         // ✅ 手动设置速度
         if (bullet && bullet.body) {
           bullet.body.setVelocity(vx, vy)
         }
-
-        Logger.debug(`🔫 [EnemyShoot] 发射子弹 | 方向: (${vx}, ${vy}) | 速度: ${bulletSpeed} | 距离基地: ${distanceToBase.toFixed(0)}px`)
+    
+        if (process.env.NODE_ENV === 'development') {
+          Logger.debug(`🔫 [EnemyShoot] 发射子弹 | 距离基地：${distanceToBase.toFixed(0)}px`)
+        }
       }
     }
   }
