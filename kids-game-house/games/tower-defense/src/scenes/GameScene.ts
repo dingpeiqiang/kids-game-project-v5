@@ -90,6 +90,10 @@ export default class GameScene extends Phaser.Scene {
       this.roundStarted = true
     })
 
+    // 设置相机边界为游戏画布大小
+    this.cameras.main.setBounds(0, 0, 800, 600)
+    this.cameras.main.setZoom(1)
+
     // 创建地图
     this.createMap()
 
@@ -242,6 +246,10 @@ export default class GameScene extends Phaser.Scene {
     // 从 JSON 文件加载瓦片地图
     const bgMap = this.make.tilemap({ key: 'level1' })
 
+    console.log(`Map dimensions: ${bgMap.width}x${bgMap.height} tiles`)
+    console.log(`Tile size: ${bgMap.tileWidth}x${bgMap.tileHeight}px`)
+    console.log(`Total map size: ${bgMap.width * bgMap.tileWidth}x${bgMap.height * bgMap.tileHeight}px`)
+
     // 添加瓦片图集
     const tiles = bgMap.addTilesetImage('terrainTiles_default', 'terrainTiles_default')
 
@@ -255,6 +263,12 @@ export default class GameScene extends Phaser.Scene {
     
     if (backgroundLayer) {
       backgroundLayer.setDepth(0)
+      backgroundLayer.setOrigin(0, 0)
+      
+      console.log(`Layer rendered at: ${backgroundLayer.x},${backgroundLayer.y}`)
+      console.log(`Layer display width: ${backgroundLayer.displayWidth}, height: ${backgroundLayer.displayHeight}`)
+    } else {
+      console.error('Failed to create background layer')
     }
 
     // 添加基地
