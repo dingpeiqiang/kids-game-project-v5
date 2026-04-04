@@ -25,6 +25,7 @@ import GameScene from '@/scenes/GameScene'
 // import MyGameScene from '@/scenes/MyGameScene'
 // import TopDownGameScene from '@/scenes/TopDownGameScene'
 import ForestGuardianScene from '@/scenes/ForestGuardianScene'
+import VillageScene from '@/scenes/VillageScene' // 🏘️ 引入村庄场景
 
 const emit = defineEmits<{
   ready:         []
@@ -65,7 +66,7 @@ async function initGame(): Promise<void> {
         gravity: { x: 0, y: 0 },
       },
     },
-    scene: [ForestGuardianScene],
+    scene: [ForestGuardianScene, VillageScene], // 注册所有场景
     pixelArt: false, // 禁用 pixelArt 允许平滑缩放
   }
 

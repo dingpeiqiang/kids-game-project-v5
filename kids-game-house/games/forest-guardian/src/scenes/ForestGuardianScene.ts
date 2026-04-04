@@ -81,7 +81,11 @@ export default class ForestGuardianScene extends TopDownGameScene {
     // 4. 🗡️ 强制生成一把宝剑（确保游戏可玩性）
     this.createItem(heroPos.x * 16 - 50, heroPos.y * 16, 'sword')
     
-    console.log('🌲 测试对象已添加：史莱姆 x5, 金币 x8, 血瓶 x1, 宝剑 x1')
+    // 5. 🌀 创建通往村庄的传送门（紫色方块）
+    // 放在主角正下方 64 像素处，确保开局就能看到
+    ;(this as any).createTeleporter(heroPos.x * 16, heroPos.y * 16 + 64, 'VillageScene', 10, 10)
+    
+    console.log('🌲 测试对象已添加：史莱姆 x5, 金币 x8, 血瓶 x1, 宝剑 x1, 传送门 x1')
   }
 
   protected handleGameOver(): void {

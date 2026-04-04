@@ -31,6 +31,10 @@ export default class TopDownGameScene extends GameScene {
   private isTeleporting: boolean = false
   private isAttacking: boolean = false
   private isGameObjectsCreated: boolean = false
+
+  constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
+    super({ key: 'TopDownGameScene', ...config } as any)
+  }
   
   // 输入相关
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
@@ -41,6 +45,7 @@ export default class TopDownGameScene extends GameScene {
   preload(): void {
     this.preloadFromGTRS()
     // 加载地图资源（使用统一的 Key，方便子类覆盖）
+    // 注意：如果子类需要跳过这些加载，可以在 preload 中先判断
     this.load.tilemapTiledJSON('map', '/themes/top_down/assets/scene/sprites/maps/cities/home_page_city.json')
     this.load.image('tileset', '/themes/top_down/assets/scene/sprites/maps/tilesets/tileset.png')
   }
@@ -54,8 +59,47 @@ export default class TopDownGameScene extends GameScene {
     
     // 初始化 Grid Engine
     this.gridEngine = new GridEngine(this)
-    const map = this.make.tilemap({ key: 'map' })
-    map.addTilesetImage('tileset', 'tileset')
+    
+    // 🗺️ 支持动态地图：优先使用场景 data 中的 mapData 对象，否则从缓存加载
+    const mapData = (this.scene.settings.data as any)?.mapData
+    const mapKey = (this.scene.settings.data as any)?.mapKey || 'map'
+
+    let map: Phaser.Tilemaps.Tilemap
+    if (mapData) {
+      // 判断是二维数组还是对象格式
+      if (Array.isArray(mapData) && Array.isArray(mapData[0])) {
+        // 二维数组格式 - 必须指定 tileWidth 和 tileHeight
+        console.log(`🗺️ 正在加载动态地图数据（二维数组）: ${mapData[0].length}x${mapData.length}`)
+        map = this.make.tilemap({ data: mapData, tileWidth: 16, tileHeight: 16 })
+      } else if (typeof mapData === 'object' && mapData.layers) {
+        // 对象格式
+        console.log(`🗺️ 正在加载动态地图数据（对象）`)
+        map = this.make.tilemap({ data: mapData })
+      } else {
+        console.warn(`⚠️ 未知的 mapData 格式，使用默认地图`)
+        map = this.make.tilemap({ key: 'map' })
+      }
+
+      // 动态地图使用动态生成的 tileset 纹理
+      const firstTilesetName = map.tilesets[0]?.name || 'tileset'
+      const firstGid = map.tilesets[0]?.firstgid || 1
+
+      // 尝试查找对应的动态纹理（格式：village_tile_1, village_tile_2 等）
+      const dynamicTileKey = `village_tile_${firstGid}`
+      if (this.textures.exists(dynamicTileKey)) {
+        console.log(`🗺️ 使用动态瓦片纹理: ${dynamicTileKey}`)
+        map.addTilesetImage(firstTilesetName, dynamicTileKey)
+      } else if (this.textures.exists('tileset')) {
+        console.log(`🗺️ 使用默认瓦片纹理: tileset`)
+        map.addTilesetImage(firstTilesetName, 'tileset')
+      } else {
+        console.warn(`⚠️ 未找到可用的瓦片纹理！`)
+      }
+    } else {
+      console.log(`🗺️ 正在从缓存加载地图: ${mapKey}`)
+      map = this.make.tilemap({ key: mapKey })
+      map.addTilesetImage('tileset', 'tileset')
+    }
     
     // 创建地图层（GridEngine 会处理碰撞，这里只负责渲染）
     for (let i = 0; i < map.layers.length; i++) {
@@ -65,8 +109,12 @@ export default class TopDownGameScene extends GameScene {
       }
     }
 
+    // 恢复游戏状态（从上一个场景传参）
+    const data = (this.scene.settings.data as any) || {}
+    this.score = data.score || 0
+    
     // 创建英雄
-    this.createHero(map)
+    this.createHero(map, data)
 
     // 配置 Grid Engine
     this.gridEngine.create(map, {
@@ -74,7 +122,10 @@ export default class TopDownGameScene extends GameScene {
         {
           id: 'hero',
           sprite: this.heroSprite,
-          startPosition: { x: 15, y: 15 }, // 恢复到地图较中心的位置
+          startPosition: {
+            x: (this.scene.settings.data as any)?.startX || 12,
+            y: (this.scene.settings.data as any)?.startY || 11
+          },
           speed: 8, // 🚀 提升移动速度（原为 4）
           offsetY: 4,
         },
@@ -242,10 +293,10 @@ export default class TopDownGameScene extends GameScene {
     this.game.events.emit('gameover', this.score)
   }
 
-  private createHero(map: Phaser.Tilemaps.Tilemap): void {
-    // 恢复初始位置为 (15, 15)
-    const startX = 15 * 16
-    const startY = 15 * 16
+  private createHero(map: Phaser.Tilemaps.Tilemap, data?: any): void {
+    // 恢复初始位置为 (15, 15) 或使用传参
+    const startX = (data?.startX || 15) * 16
+    const startY = (data?.startY || 15) * 16
     
     // 检查 hero 图集是否存在，如果不存在使用占位符
     const heroTexture = this.textures.exists('hero') ? 'hero' : '__DEFAULT'
@@ -255,9 +306,9 @@ export default class TopDownGameScene extends GameScene {
     
     this.heroSprite = sprite
     this.heroSprite.setDepth(100) // 确保主角在所有图层之上
-    this.heroSprite.health = 100
-    this.heroSprite.maxHealth = 100
-    this.heroSprite.haveSword = false
+    this.heroSprite.health = data?.heroHealth || 100
+    this.heroSprite.maxHealth = data?.heroMaxHealth || 100
+    this.heroSprite.haveSword = data?.haveSword || false
     ;(this.heroSprite as any).isInvincible = false
     
     // 设置碰撞体大小
@@ -294,59 +345,71 @@ export default class TopDownGameScene extends GameScene {
     // 尝试加载 hero 动画，如果图集不存在则创建占位符
     if (this.textures.exists('hero')) {
       directions.forEach(dir => {
-        // 步行动画（使用 2 帧）
-        this.anims.create({
-          key: `hero_walking_${dir}`,
-          frames: this.anims.generateFrameNames('hero', {
-            prefix: `hero_walking_${dir}_`,
-            start: 1,
-            end: 2,
-            suffix: '',
-            zeroPad: 2,
-          }),
-          frameRate: 8,
-          repeat: -1,
-          yoyo: true,
-        })
+        // 步行动画（使用 2 帧）- 检查是否已存在避免重复注册
+        const walkKey = `hero_walking_${dir}`
+        if (!this.anims.exists(walkKey)) {
+          this.anims.create({
+            key: walkKey,
+            frames: this.anims.generateFrameNames('hero', {
+              prefix: `hero_walking_${dir}_`,
+              start: 1,
+              end: 2,
+              suffix: '',
+              zeroPad: 2,
+            }),
+            frameRate: 8,
+            repeat: -1,
+            yoyo: true,
+          })
+        }
         
         // 攻击动画（使用 2 帧简化版）
-        this.anims.create({
-          key: `hero_attack_${dir}`,
-          frames: this.anims.generateFrameNames('hero', {
-            prefix: `hero_attack_${dir}_`,
-            start: 1,
-            end: 2,
-            suffix: '',
-            zeroPad: 2,
-          }),
-          frameRate: 10,
-          repeat: 0,
-        })
+        const attackKey = `hero_attack_${dir}`
+        if (!this.anims.exists(attackKey)) {
+          this.anims.create({
+            key: attackKey,
+            frames: this.anims.generateFrameNames('hero', {
+              prefix: `hero_attack_${dir}_`,
+              start: 1,
+              end: 2,
+              suffix: '',
+              zeroPad: 2,
+            }),
+            frameRate: 10,
+            repeat: 0,
+          })
+        }
         
         // 待机动画
-        this.anims.create({
-          key: `hero_idle_${dir}`,
-          frames: this.anims.generateFrameNames('hero', {
-            prefix: `hero_idle_${dir}_`,
-            start: 1,
-            end: 1,
-            suffix: '',
-            zeroPad: 2,
-          }),
-          frameRate: 1,
-          repeat: -1,
-        })
+        const idleKey = `hero_idle_${dir}`
+        if (!this.anims.exists(idleKey)) {
+          this.anims.create({
+            key: idleKey,
+            frames: this.anims.generateFrameNames('hero', {
+              prefix: `hero_idle_${dir}_`,
+              start: 1,
+              end: 1,
+              suffix: '',
+              zeroPad: 2,
+            }),
+            frameRate: 1,
+            repeat: -1,
+          })
+        }
       })
     } else {
       console.warn('⚠️ hero 图集未加载，跳过动画创建')
       // 创建简单的占位动画
       directions.forEach(dir => {
-        this.anims.create({
-          key: `hero_walking_${dir}`,
-          frames: [{ key: '__DEFAULT', frame: '0' }],
-          frameRate: 12, // 🚀 提高动画帧率，减少视觉卡顿感
-          repeat: -1,
-        })
+        const walkKey = `hero_walking_${dir}`
+        if (!this.anims.exists(walkKey)) {
+          this.anims.create({
+            key: walkKey,
+            frames: [{ key: '__DEFAULT', frame: '0' }],
+            frameRate: 12, // 🚀 提高动画帧率，减少视觉卡顿感
+            repeat: -1,
+          })
+        }
       })
     }
 
@@ -597,7 +660,7 @@ export default class TopDownGameScene extends GameScene {
     })
   }
 
-  private createTeleporter(x: number, y: number, map: string, tx: number, ty: number): void {
+  private createTeleporter(x: number, y: number, targetScene: string, tx: number, ty: number): void {
     const teleporter = this.add.rectangle(x, y, 16, 16, 0xff00ff, 0.3)
     this.physics.world.enable(teleporter)
     ;(teleporter.body as any).setAllowGravity(false)
@@ -605,13 +668,23 @@ export default class TopDownGameScene extends GameScene {
     this.physics.add.overlap(this.heroSprite, teleporter, () => {
       if (this.isTeleporting) return
       this.isTeleporting = true
-      this.cameras.main.fadeOut(500)
+      console.log(`🌀 触发传送门，目标: ${targetScene}`)
       
-      this.time.delayedCall(500, () => {
-        // 简化处理：仅重启当前场景并传参，实际应切换 Scene
-        console.log(`Teleporting to ${map} at ${tx},${ty}`)
-        this.isTeleporting = false
-        this.cameras.main.fadeIn(500)
+      // 播放淡出动画
+      this.cameras.main.fadeOut(500, 0, 0, 0)
+      
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        console.log(`🚀 正在切换场景至: ${targetScene}`)
+        // 切换场景并传递出生点坐标，同时保留当前游戏状态
+        this.scene.start(targetScene, { 
+          mapKey: targetScene === 'VillageScene' ? 'village-map' : 'map',
+          startX: tx, 
+          startY: ty,
+          score: this.score,
+          heroHealth: this.heroSprite.health,
+          heroMaxHealth: this.heroSprite.maxHealth,
+          haveSword: this.heroSprite.haveSword
+        })
       })
     })
   }

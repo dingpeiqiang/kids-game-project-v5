@@ -61,8 +61,8 @@ export default abstract class GameScene extends Phaser.Scene {
   private _gtrsImageKeys: Set<string> = new Set()
   private _gtrsAudioKeys: Set<string> = new Set()
 
-  constructor() {
-    super({ key: 'GameScene' })
+  constructor(config?: Phaser.Types.Scenes.SettingsConfig) {
+    super({ key: 'GameScene', ...config })
   }
 
   // ─── Phaser 生命周期 ─────────────────────────────────────────
