@@ -1,0 +1,130 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "top_down",
+    "themeName": "Top-Down RPG Theme",
+    "gameId": "top-down-rpg",
+    "ownerType": "GAME",
+    "ownerId": "top-down-rpg",
+    "isDefault": true,
+    "author": "AI Assistant",
+    "description": "Assets for the Top-Down React Phaser Game replica",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#4ade80",
+    "secondaryColor": "#22c55e",
+    "bgColor": "#000000",
+    "textColor": "#ffffff",
+    "fontFamily": "'Press Start 2P', monospace",
+    "borderRadius": "0px"
+  },
+  "resources": {
+    "images": {
+      "scene": {
+        "coin": {
+          "alias": "Coin",
+          "src": "/themes/top_down/assets/scene/images/coin.png",
+          "type": "png"
+        },
+        "dialog_borderbox": {
+          "alias": "Dialog Border Box",
+          "src": "/themes/top_down/assets/scene/images/dialog_borderbox.png",
+          "type": "png"
+        },
+        "health": {
+          "alias": "Health Icon",
+          "src": "/themes/top_down/assets/scene/images/health.png",
+          "type": "png"
+        },
+        "heart_container": {
+          "alias": "Heart Container",
+          "src": "/themes/top_down/assets/scene/images/heart_container.png",
+          "type": "png"
+        },
+        "push": {
+          "alias": "Push Ability",
+          "src": "/themes/top_down/assets/scene/images/push.png",
+          "type": "png"
+        },
+        "sword": {
+          "alias": "Sword Item",
+          "src": "/themes/top_down/assets/scene/images/sword.png",
+          "type": "png"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {},
+      "voice": {}
+    },
+    "video": {},
+    "atlases": {
+      "scene": {
+        "hero": {
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/hero.json",
+          "image": "/themes/top_down/assets/scene/sprites/atlas/hero.png"
+        },
+        "slime": {
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/slime.json",
+          "image": "/themes/top_down/assets/scene/sprites/atlas/slime.png"
+        },
+        "npc_01": {
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/npc_01.json",
+          "image": "/themes/top_down/assets/scene/sprites/atlas/npc_01.png"
+        },
+        "npc_02": {
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/npc_02.json",
+          "image": "/themes/top_down/assets/scene/sprites/atlas/npc_02.png"
+        },
+        "npc_03": {
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/npc_03.json",
+          "image": "/themes/top_down/assets/scene/sprites/atlas/npc_03.png"
+        },
+        "npc_04": {
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/npc_04.json",
+          "image": "/themes/top_down/assets/scene/sprites/atlas/npc_04.png"
+        },
+        "coin_atlas": {
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/coin.json",
+          "image": "/themes/top_down/assets/scene/sprites/atlas/coin.png"
+        },
+        "health_atlas": {
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/health.json",
+          "image": "/themes/top_down/assets/scene/sprites/atlas/health.png"
+        },
+        "heart_atlas": {
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/heart.json",
+          "image": "/themes/top_down/assets/scene/sprites/atlas/heart.png"
+        }
+      }
+    },
+    "tilemaps": {
+      "scene": {
+        "map_city": {
+          "key": "map_city",
+          "data": "/themes/top_down/assets/scene/sprites/maps/cities/city.json",
+          "format": "TILED_JSON"
+        },
+        "map_house_01": {
+          "key": "map_house_01",
+          "data": "/themes/top_down/assets/scene/sprites/maps/houses/house_01.json",
+          "format": "TILED_JSON"
+        },
+        "tileset": {
+          "key": "tileset",
+          "data": "/themes/top_down/assets/scene/sprites/maps/tilesets/tileset.png",
+          "format": "IMAGE"
+        }
+      }
+    }
+  }
+}

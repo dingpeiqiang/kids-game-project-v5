@@ -1,0 +1,31 @@
+{
+  "difficulties": [
+    {
+      "id": "easy",
+      "label": "简单",
+      "description": "适合新手",
+      "gridCols": 20,
+      "gridRows": 15,
+      "speed": 200,
+      "scoreMultiplier": 1.0
+    },
+    {
+      "id": "normal",
+      "label": "普通",
+      "description": "具有一定挑战",
+      "gridCols": 25,
+      "gridRows": 18,
+      "speed": 150,
+      "scoreMultiplier": 1.5
+    },
+    {
+      "id": "hard",
+      "label": "困难",
+      "description": "高手挑战",
+      "gridCols": 32,
+      "gridRows": 20,
+      "speed": 100,
+      "scoreMultiplier": 2.0
+    }
+  ]
+}
