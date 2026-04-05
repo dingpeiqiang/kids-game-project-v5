@@ -23,7 +23,7 @@
   --pixel-red: #ef4444;
   --pixel-text: #e8e2d8;
   --pixel-muted: #a09888;
-  --pixel-font: var(--font-pixel), "ArkPixel", monospace;
+  --pixel-font: "Press Start 2P", "ArkPixel", monospace;
   --pixel-font-chat: "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", Menlo, monospace;
   --pixel-radius: 8px;
   --pixel-radius-sm: 6px;

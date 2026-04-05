@@ -47,11 +47,17 @@ export default function SeatManagerModal({
   const fetchAgents = useCallback(async () => {
     setAgentsLoading(true);
     try {
-      const res = await fetch("/api/agents/discover");
-      if (res.ok) {
-        const data = await res.json();
-        setDiscoveredAgents(Array.isArray(data.agents) ? data.agents : []);
-      }
+      // In a Vite-based app, we would need a proper backend API for this
+      // For now, return empty array or mock data
+      // TODO: Implement a proper backend API endpoint
+      setDiscoveredAgents([]);
+      
+      // If you have a backend API running on a different port, you can use:
+      // const res = await fetch("http://localhost:3001/api/agents/discover");
+      // if (res.ok) {
+      //   const data = await res.json();
+      //   setDiscoveredAgents(Array.isArray(data.agents) ? data.agents : []);
+      // }
     } catch (err) {
       log.error("failed to fetch agents:", err);
     } finally {

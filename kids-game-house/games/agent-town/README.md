@@ -10,7 +10,7 @@ Your agents deserve more than a terminal. Give them an office, a town, and event
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-green)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-5-646cff)](https://vitejs.dev/)
 [![Phaser](https://img.shields.io/badge/Phaser-3-8B44AC)](https://phaser.io/)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/9nTtN3ShP8)
 
@@ -77,7 +77,7 @@ You approach a worker -> Press E -> Assign a task
 
 | Layer         | Choice                                                                    |
 | ------------- | ------------------------------------------------------------------------- |
-| App           | Next.js 16, React 19, TypeScript                                          |
+| App           | Vite 5, React 19, TypeScript                                              |
 | Game          | Phaser 3, Tiled maps, pixel sprite sheets                                 |
 | Agent runtime | [OpenClaw](https://github.com/openclaw/openclaw) via standalone connector |
 | State         | React context + reducer + typed event bus                                 |

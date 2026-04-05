@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+
 
 export type HudPanelId = "connection" | "chat" | "tasks" | "workers" | "music";
 
@@ -47,13 +47,12 @@ export default function HudDock({ items, openPanel, onToggle, iconOverrides }: H
                 transform: active ? "scale(1.05)" : undefined,
               }}
             >
-              <Image
+              <img
                 src={src}
                 alt={item.label}
                 width={32}
                 height={32}
                 style={{ imageRendering: "pixelated", display: "block" }}
-                unoptimized
               />
             </button>
           );

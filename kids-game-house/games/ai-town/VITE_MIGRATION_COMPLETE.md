@@ -8,12 +8,10 @@
 ### 1. 配置文件
 - ✅ 创建 `vite.config.js` - Vite 主配置文件
 - ✅ 创建根目录 `index.html` - Vite 入口文件
-- ❌ 删除 `config/webpack.config.js`
-- ❌ 删除 `config/webpackDevServer.config.js`
-- ❌ 删除 `scripts/start.js`
-- ❌ 删除 `scripts/build.js`
-- ❌ 删除 `scripts/test.js`
-- ❌ 删除 `public/index.html`（已移至根目录）
+- ✅ 删除所有 webpack/CRA 相关配置文件：
+  - ❌ 删除 `config/` 目录及其所有内容
+  - ❌ 删除 `scripts/` 目录及其所有内容
+  - ❌ 删除 `public/index.html`（已移至根目录）
 
 ### 2. 文件扩展名更新
 Vite 要求包含 JSX 语法的文件必须使用 `.jsx` 或 `.tsx` 扩展名：
@@ -157,6 +155,7 @@ npm run preview
 ✅ 依赖优化完成  
 ✅ 热更新正常工作  
 ✅ 所有 React 组件正确加载  
+✅ 所有 webpack/CRA 相关配置文件已清理  
 
 ## 下一步建议
 

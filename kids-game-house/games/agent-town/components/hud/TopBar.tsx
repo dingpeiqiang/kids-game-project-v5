@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type { SeatState } from "@/types/game";
 import type { HudPanelId, HudDockItem } from "./HudDock";
 import CharacterPortrait from "./CharacterPortrait";
@@ -79,13 +78,12 @@ export default function TopBar({
               title={item.label}
               className={`topbar-tool-btn ${active ? "topbar-tool-btn--active" : ""}`}
             >
-              <Image
+              <img
                 src={src}
                 alt={item.label}
                 width={24}
                 height={24}
                 style={{ imageRendering: "pixelated", display: "block" }}
-                unoptimized
               />
             </button>
           );
