@@ -107,10 +107,12 @@ export default class CatchTheCatGame extends Phaser.Game {
         scene.totalMoves = 0;
         
         // 获取 parent 元素
-        let parentElement: HTMLElement | string = config.parent || '';
-        if (typeof parentElement === 'string') {
-            parentElement = document.getElementById(parentElement) || '';
+        let parentElement: HTMLElement | string | null = config.parent || null;
+        if (typeof parentElement === 'string' && parentElement) {
+            parentElement = document.getElementById(parentElement);
         }
+        
+        console.log('[CatchTheCatGame] Parent element:', parentElement);
         
         const gameConfig: Phaser.Types.Core.GameConfig = {
             width: canvasWidth,
