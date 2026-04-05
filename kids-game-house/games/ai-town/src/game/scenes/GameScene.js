@@ -5,7 +5,7 @@ import {
     SCENE_FADE_TIME,
 } from '../constants';
 import { callGpt, getPrompt, addHistory, getPrevAnser, getChatHistory, addChatHistory } from '../ChatUtils';
-import ModelDialog from '../components/ModelDialog';
+import ModelDialog from '../components/ModelDialog.jsx';
 
 var topic = "天气";
 

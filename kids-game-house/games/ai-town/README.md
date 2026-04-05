@@ -15,9 +15,15 @@
 
 ## 运行
 
+```bash
+npm run dev
+# 或
 npm start
+```
 
-访问：http://localhost:3000/ai-town/
+访问：http://localhost:3000/
+
+> **注意**: 项目已迁移到 Vite，启动速度更快！详见 [VITE_MIGRATION_COMPLETE.md](VITE_MIGRATION_COMPLETE.md)
 
 ## 编译
 
