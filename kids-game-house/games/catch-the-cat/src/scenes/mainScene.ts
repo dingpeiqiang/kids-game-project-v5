@@ -155,61 +155,103 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload(): void {
-        console.log('[MainScene] preload() called');
-        // 不在这里加载纹理，改为在 create 中同步加载
-    }
-    
-    private loadTexturesSync(): void {
-        console.log('[MainScene] loadTexturesSync() called');
+        console.log('[MainScene] preload() started');
         let textureScale = this.r / data.catStepLength;
-        console.log('[MainScene] Texture scale:', textureScale);
-        console.log('[MainScene] Loading', Object.keys(data.textures).length, 'textures');
+        
+        // 为每个 SVG 创建临时文件并加载
+        let loadedCount = 0;
+        const totalCount = Object.keys(data.textures).length;
         
         for (let key in data.textures) {
-            try {
-                const svgString = data.textures[key];
+            const svgString = data.textures[key];
+            
+            // 解析 SVG 获取尺寸
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(svgString, 'image/svg+xml');
+            const svgElement = doc.documentElement as unknown as SVGElement;
+            
+            let svgWidth = 32;
+            let svgHeight = 32;
+            
+            if (svgElement && svgElement.getAttribute) {
+                const w = svgElement.getAttribute('width');
+                const h = svgElement.getAttribute('height');
+                if (w) svgWidth = parseFloat(w);
+                if (h) svgHeight = parseFloat(h);
+            }
+            
+            // 应用缩放
+            const scaledWidth = Math.round(svgWidth * textureScale);
+            const scaledHeight = Math.round(svgHeight * textureScale);
+            
+            // 创建 Canvas 并绘制 SVG
+            const canvas = document.createElement('canvas');
+            canvas.width = scaledWidth;
+            canvas.height = scaledHeight;
+            const ctx = canvas.getContext('2d');
+            
+            if (ctx) {
+                // 创建 Blob 和 URL
+                const blob = new Blob([svgString], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
                 
-                // 解析 SVG 获取尺寸
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(svgString, 'image/svg+xml');
-                const svgElement = doc.documentElement as unknown as SVGElement;
-                
-                let svgWidth = 32;
-                let svgHeight = 32;
-                
-                if (svgElement && svgElement.getAttribute) {
-                    const w = svgElement.getAttribute('width');
-                    const h = svgElement.getAttribute('height');
-                    if (w) svgWidth = parseFloat(w);
-                    if (h) svgHeight = parseFloat(h);
-                }
-                
-                // 应用 scale
-                svgWidth *= textureScale;
-                svgHeight *= textureScale;
-                
-                // 将 SVG 转换为 base64
-                const base64SVG = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
-                
-                // 使用 Phaser 的 addBase64 方法
-                if (this.textures.exists(key)) {
-                    this.textures.remove(key);
-                }
-                this.textures.addBase64(key, base64SVG);
-                console.log('[MainScene] Texture added:', key);
-            } catch (e) {
-                console.error('[MainScene] Error processing texture:', key, e);
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+                    URL.revokeObjectURL(url);
+                    
+                    // 添加为纹理
+                    if (this.textures.exists(key)) {
+                        this.textures.remove(key);
+                    }
+                    this.textures.addCanvas(key, canvas);
+                    
+                    loadedCount++;
+                    console.log(`[MainScene] Texture ${loadedCount}/${totalCount}: ${key}`);
+                    
+                    if (loadedCount === totalCount) {
+                        console.log('[MainScene] All textures loaded!');
+                    }
+                };
+                img.onerror = () => {
+                    console.error('[MainScene] Failed to load texture:', key);
+                    URL.revokeObjectURL(url);
+                };
+                img.src = url;
             }
         }
+        
+        console.log('[MainScene] preload() finished, textures will load asynchronously');
     }
 
     create(): void {
         console.log('[MainScene] create() called');
         
-        // 首先加载纹理
-        this.loadTexturesSync();
+        // 延迟初始化，等待纹理加载
+        // 检查是否所有纹理都已加载
+        const checkAndInit = () => {
+            const textureCount = Object.keys(data.textures).length;
+            const loadedTextureCount = Object.keys(this.textures.list).filter(key => 
+                key !== '__DEFAULT' && key !== '__MISSING'
+            ).length;
+            
+            console.log(`[MainScene] Textures: ${loadedTextureCount}/${textureCount} loaded`);
+            
+            if (loadedTextureCount >= textureCount) {
+                console.log('[MainScene] All textures ready, initializing scene...');
+                this.initializeScene();
+            } else {
+                console.log('[MainScene] Waiting for textures...');
+                setTimeout(checkAndInit, 50);
+            }
+        };
         
-        console.log('[MainScene] Loading textures, count:', Object.keys(data.textures).length);
+        // 开始检查
+        setTimeout(checkAndInit, 100);
+    }
+    
+    private initializeScene(): void {
+        console.log('[MainScene] initializeScene() called');
         
         this.createAnimations();
         this.createBlocks();
@@ -226,10 +268,8 @@ export default class MainScene extends Phaser.Scene {
             this.cat.solver = this.game.solver;
         }
         
-        console.log('[MainScene] Scene created successfully');
-        console.log('[MainScene] Cat position:', this.cat?.i, this.cat?.j);
-        console.log('[MainScene] Blocks count:', this.blocks?.length, 'x', this.blocks?.[0]?.length);
-        console.log('[MainScene] Available textures:', Object.keys((this.game as any).textures?.list || {}));
+        console.log('[MainScene] Scene initialized successfully');
+        console.log('[MainScene] Cat at:', this.cat?.i, this.cat?.j);
     }
 
     getPosition(i: number, j: number): NeighbourData {
