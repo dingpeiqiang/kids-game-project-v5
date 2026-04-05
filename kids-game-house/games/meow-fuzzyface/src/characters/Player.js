@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+// Phaser 从 CDN 全局加载
 import HpBar from "../ui/HpBar";
 import Beam from "../effects/Beam";
 import Explosion from "../effects/Explosion";

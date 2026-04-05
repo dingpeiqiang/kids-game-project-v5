@@ -1,11 +1,9 @@
-import Phaser from "phaser";
+// Phaser 从 CDN 全局加载，无需 import
 import bgImg from "../assets/images/background.png";
 import explosionImg from "../assets/spritesheets/explosion.png";
 import expUpImg from "../assets/spritesheets/power-up.png";
 import catImg from "../assets/images/cat-rainbow.png";
 import beamImg from "../assets/spritesheets/beam.png";
-import fontPng from "../assets/font/font.png";
-import fontXml from "../assets/font/font.xml";
 import fireOgg from "../assets/sounds/fire.ogg";
 import popOgg from "../assets/sounds/pop.ogg";
 import pickOgg from "../assets/sounds/pickPowerUp.ogg";
@@ -22,7 +20,6 @@ import eyeballImg from "../assets/spritesheets/eyeball.png";
 export default class LoadingScene extends Phaser.Scene {
   constructor() {
     super("bootGame");
-    // bootGame : 이 scene의 identifier
   }
 
   preload() {
@@ -55,7 +52,6 @@ export default class LoadingScene extends Phaser.Scene {
       frameHeight: 75,
     });
 
-    this.load.bitmapFont("pixelFont", fontPng, fontXml);
     this.load.audio("audio_beam", fireOgg);
     this.load.audio("audio_explosion", popOgg);
     this.load.audio("audio_pickup", pickOgg);
@@ -68,9 +64,9 @@ export default class LoadingScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.text(20, 20, "Loading game...");
-    this.scene.start("mainScene");
+    this.add.text(20, 20, "Loading game...", { fontSize: '24px', color: '#fff' });
 
+    // 创建所有动画
     this.anims.create({
       key: "bat_anim",
       frames: this.anims.generateFrameNumbers("bat"),
@@ -115,6 +111,11 @@ export default class LoadingScene extends Phaser.Scene {
       }),
       frameRate: 20,
       repeat: -1,
+    });
+
+    // 直接启动游戏（跳过字体加载）
+    this.time.delayedCall(500, () => {
+      this.scene.start("mainScene");
     });
   }
 }

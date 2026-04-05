@@ -66,4 +66,11 @@ export default class Speedometer {
     this.speedText?.setPosition(x, y)
     this.gearText?.setPosition(x, y + 35)
   }
+
+  destroy() {
+    this.speedText?.destroy()
+    this.gearText?.destroy()
+    this.speedText = null
+    this.gearText = null
+  }
 }

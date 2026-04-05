@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+// Phaser 从 CDN 全局加载
 
 export default class Button extends Phaser.GameObjects.Text {
   constructor(x, y, label, scene, callback) {

@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+// Phaser 从 CDN 全局加载
 
 export default class ExpUp extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, mob) {

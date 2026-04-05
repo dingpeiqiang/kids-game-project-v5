@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+// Phaser 从 CDN 全局加载
 
 export default class Beam extends Phaser.Physics.Arcade.Sprite {
   static SPEED = 100;

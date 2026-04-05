@@ -180,6 +180,26 @@ export default class MainScene extends Phaser.Scene {
    * 清理当前关卡对象
    */
   private cleanupLevel() {
+    // 清理关卡完成UI
+    if (this.levelCompleteUI) {
+      try { this.levelCompleteUI.destroy() } catch (e) { /* ignore */ }
+    }
+
+    // 清理粒子效果
+    if (this.particleEffects) {
+      try { this.particleEffects.destroy() } catch (e) { /* ignore */ }
+    }
+
+    // 清理速度表
+    if (this.speedometer) {
+      try { this.speedometer.destroy() } catch (e) { /* ignore */ }
+    }
+
+    // 清理操控提示
+    if (this.controlsHint) {
+      try { this.controlsHint.destroy() } catch (e) { /* ignore */ }
+    }
+
     // 清理装饰
     if (this.mapDecorator) {
       this.mapDecorator.destroy()

@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+// Phaser 从 CDN 全局加载
 // import Config from "../Config";
 import { clamp } from "../utils/math";
 

@@ -32,16 +32,31 @@ meow-meow-fuzzyface는 게임 뱀파이어 서바이벌(Vampire Survivors)에 �
 | Command | Description |
 |---------|-------------|
 | `npm install` | Install project dependencies |
-| `npm start` | Build project and open web server running project |
-| `npm run build` | Builds code bundle with production settings (minification, uglification, etc..) |
+| `npm run dev` | Start development server with Vite (fast HMR) |
+| `npm run build` | Build production bundle with Vite |
+| `npm run preview` | Preview production build locally |
 
-## development
+## Development
+
+### Debug Mode
+
+To enable debug mode, create or modify the `.env.development` file:
 
 ```sh
-$ echo "DEBUG=true" > .env
-$ cat .env
-DEBUG=true
+echo "VITE_DEBUG=true" > .env.development
 ```
 
-Make `.env` file like above to make game in debug mode.
+Or edit `.env.development` directly:
+
+```env
+VITE_DEBUG=true
+```
+
+The game will automatically restart and show physics debug visuals when debug mode is enabled.
+
+### Notes
+
+- The project has been migrated from Webpack to **Vite** for faster development experience
+- Hot Module Replacement (HMR) is enabled for instant updates during development
+- XML files are automatically handled by a custom Vite plugin for Phaser bitmap fonts
 

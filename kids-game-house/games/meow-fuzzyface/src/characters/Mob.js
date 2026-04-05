@@ -1,3 +1,4 @@
+// Phaser 从 CDN 全局加载
 import Explosion from "../effects/Explosion";
 import ExpUp from "../items/ExpUp";
 

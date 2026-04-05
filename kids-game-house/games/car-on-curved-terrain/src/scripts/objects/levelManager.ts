@@ -162,7 +162,7 @@ export default class LevelManager {
       terrain1Path: dualPaths.terrain1Path,
       terrain2Path: dualPaths.terrain2Path,
       terrain1Offset: { x: -200, y: 350 },
-      terrain2Offset: { x: dualPaths.terrain1Width - 400, y: 350 },
+      terrain2Offset: { x: dualPaths.terrain1Width - 200, y: 350 },  // 修复：-200而不是-400
       carStartPosition: { x: 200, y: 450 },
       bridgePositions,
       targetDistance: baseConfig.targetDistance,

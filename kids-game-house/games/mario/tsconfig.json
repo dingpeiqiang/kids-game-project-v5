@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "ES2015",
+    "module": "ESNext",
+    "strict": true,
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "allowUnreachableCode": false,
+    "sourceMap": true,
+    "strictPropertyInitialization": false,
+    "lib": ["dom", "ES2015", "ESNext"],
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+  },
+  "include": [
+    "src",
+    "src/types/*.d.ts"
+  ]
+}

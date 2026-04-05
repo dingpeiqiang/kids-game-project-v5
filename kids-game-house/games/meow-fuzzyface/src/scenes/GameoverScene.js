@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+// Phaser 从 CDN 全局加载
 import Config from "../Config";
 import Button from "../ui/Button";
 
@@ -18,24 +18,21 @@ export default class GameoverScene extends Phaser.Scene {
     bg.fillRect(0, 0, Config.width, Config.height);
     bg.setScrollFactor(0);
 
+    // 使用普通文本替代 bitmapText
     this.add
-      .bitmapText(
-        Config.width / 2,
-        Config.height / 2 - 100,
-        "pixelFont",
-        "Game Over",
-        40
-      )
+      .text(Config.width / 2, Config.height / 2 - 100, "Game Over", {
+        fontSize: '48px',
+        color: '#ff0000',
+        fontFamily: 'Arial, sans-serif'
+      })
       .setOrigin(0.5);
 
     this.add
-      .bitmapText(
-        Config.width / 2,
-        Config.height / 2,
-        "pixelFont",
-        `Mobs Killed : ${this.m_mobKilled}, Level : ${this.m_level}`,
-        30
-      )
+      .text(Config.width / 2, Config.height / 2, `Mobs Killed: ${this.m_mobKilled}, Level: ${this.m_level}`, {
+        fontSize: '24px',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif'
+      })
       .setOrigin(0.5);
 
     new Button(

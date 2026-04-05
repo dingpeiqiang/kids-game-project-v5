@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+// Phaser 从 CDN 全局加载
 import Config from "../Config";
 import Button from "../ui/Button";
 
@@ -13,8 +13,13 @@ export default class MainScene extends Phaser.Scene {
     bg.fillRect(0, 0, Config.width, Config.height);
     bg.setScrollFactor(0);
 
+    // 使用普通文本替代 bitmapText（字体加载有问题）
     this.add
-      .bitmapText(Config.width / 2, 150, "pixelFont", "Meow Meow Fuzzyface", 40)
+      .text(Config.width / 2, 150, "Meow Meow Fuzzyface", { 
+        fontSize: '40px', 
+        color: '#333',
+        fontFamily: 'Arial, sans-serif'
+      })
       .setOrigin(0.5);
 
     this.add.image(Config.width / 2, Config.height / 2, "cat");

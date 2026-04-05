@@ -8,22 +8,25 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html')
-      }
+      },
+      // CDN 模式下，外部化 phaser
+      external: ['phaser']
     }
   },
   server: {
-    port: 8080,
-    open: true
+    port: 5173,
+    open: false
   },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
     }
   },
+  // CDN 模式下不需要预编译 phaser
   optimizeDeps: {
-    include: ['phaser']
+    exclude: ['phaser']
   },
-  assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg', '**/*.mp3', '**/*.ogg'],
+  assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg', '**/*.mp3', '**/*.ogg', '**/*.xml'],
   plugins: [
     {
       name: 'xml-loader',
@@ -34,7 +37,22 @@ export default defineConfig({
             map: null
           };
         }
+      },
+      handleHotUpdate({ file, server }) {
+        if (file.endsWith('.xml')) {
+          server.ws.send({
+            type: 'full-reload',
+            path: '*'
+          });
+          return [];
+        }
       }
     }
-  ]
+  ],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+    'process.platform': JSON.stringify('browser'),
+    'process.version': JSON.stringify(''),
+    'process.versions': JSON.stringify({})
+  }
 });
