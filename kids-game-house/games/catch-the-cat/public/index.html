@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>捉住小猫 - Catch The Cat</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 90vw;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #catch-the-cat {
+            width: 100%;
+            margin: 20px auto;
+            text-align: center;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .instructions {
+            text-align: center;
+            color: #666;
+            margin-top: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .instructions strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🐱 捉住小猫</h1>
+        <script src="phaser.min.js"></script>
+        <script src="catch-the-cat.js"></script>
+        <div id="catch-the-cat"></div>
+        <div class="instructions">
+            <p><strong>游戏玩法：</strong>点击小圆点放置墙壁，围住小猫</p>
+            <p>你点击一次，小猫走一次。别让小猫逃到边界！</p>
+        </div>
+    </div>
+    <script>
+      window.game = new CatchTheCatGame({
+        w: 11,
+        h: 11,
+        r: 20,
+        initialWallCount: 8,
+        backgroundColor: 0xf5f5f5,
+        parent: 'catch-the-cat',
+        statusBarAlign: 'center',
+        credit: 'github.com/ganlvtech'
+      });
+    </script>
+</body>
+</html>

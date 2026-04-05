@@ -1,0 +1,20 @@
+{
+  "name": "phaser-catch-the-cat",
+  "version": "1.0.0",
+  "description": "捉住小猫 - 经典围堵游戏 (Vite 模式)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "author": "Ganlv",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^5.4.0"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
+  }
+}
