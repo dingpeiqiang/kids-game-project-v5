@@ -126,6 +126,29 @@ export const GameModeTemplates: Record<string, GameModeMapping> = {
       },
     },
   },
+
+  // Flappy Bird 游戏配置
+  'flappy-bird': {
+    gameId: 'flappy-bird',
+    supportedModes: [
+      GameModeType.SINGLE_PLAYER,
+    ],
+    modeConfigs: {
+      [GameModeType.SINGLE_PLAYER]: {
+        maxPlayers: 1,
+        supportAI: false,
+        timeLimit: 0,
+        customConfig: {
+          difficulty: 'medium',
+          pipeGap: 150,
+          pipeSpeed: 200,
+          gravity: 400,
+          jumpVelocity: -300,
+          scoreMultiplier: 1.0,
+        },
+      },
+    },
+  },
 };
 
 /**
