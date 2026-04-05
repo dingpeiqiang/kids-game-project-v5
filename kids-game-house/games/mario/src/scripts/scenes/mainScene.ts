@@ -121,7 +121,7 @@ export default class MainScene extends Phaser.Scene {
       .add(Move, () => new Move(this.mario))
       .add(Jump, () => new Jump(this.mario))
       .add(EnterPipe, () => new EnterPipe(this.cursors, this.dests, this.rooms))
-      .add(HitBrick, () => new HitBrick(this.mario, ['up']))
+      .add(HitBrick, () => new HitBrick(this.mario, ['up'], brick))
 
     const camera = this.cameras.main
     const room = this.rooms.room1

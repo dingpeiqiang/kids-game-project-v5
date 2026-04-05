@@ -1,18 +1,18 @@
 type direction = 'up' | 'left' | 'right'
 
 import 'reflect-metadata'
-import { autoInjectable, inject } from 'tsyringe'
 import Brick from '../objects/brick'
 import { Power, TargetObject, Large } from './index'
 
-@autoInjectable()
 export class HitBrick implements Power {
   private target: TargetObject
   private directions: direction[] = []
+  private brick: Brick | undefined
 
-  constructor(target: TargetObject, directions: direction[], @inject(Brick) private brick?: Brick) {
+  constructor(target: TargetObject, directions: direction[], brick?: Brick) {
     this.target = target
     this.directions = directions
+    this.brick = brick
   }
 
   public colliderWorld(target: TargetObject, tile: Phaser.Tilemaps.Tile) {

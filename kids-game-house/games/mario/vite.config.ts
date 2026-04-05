@@ -4,6 +4,7 @@ import { resolve } from 'path'
 export default defineConfig({
   root: './src',
   build: {
+    target: 'es2015', // 确保与 tsconfig 一致，支持 ES6 class
     outDir: '../dist',
     emptyOutDir: true,
     rollupOptions: {
