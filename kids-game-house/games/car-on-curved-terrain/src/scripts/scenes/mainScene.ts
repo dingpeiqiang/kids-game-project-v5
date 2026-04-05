@@ -57,19 +57,26 @@ export default class MainScene extends Phaser.Scene {
   loadLevel(levelId: number) {
     const level = this.levelManager.getLevel(levelId)
     if (!level) {
-      console.error(`Level ${levelId} not found`)
+      console.error(`❌ Level ${levelId} not found`)
       return
     }
+
+    console.log(`=== Loading Level ${levelId}: ${level.name} ===`)
+    console.log(`   Target Distance: ${level.targetDistance}m`)
+    console.log(`   Difficulty: ${level.difficulty}`)
+    console.log(`   Terrain Style: ${level.terrainStyle}`)
 
     // 清理旧对象（仅当已有关卡时）
     if (this.car) {
       this.cleanupLevel()
     }
 
-    // 设置当前关卡
+    // ⚠️ 关键：重置所有状态
     this.currentLevelId = levelId
-    this.levelCompleted = false
+    this.levelCompleted = false  // ✅ 重置完成标志
     this.carStartX = level.carStartPosition.x
+    
+    console.log(`   State reset: currentLevelId=${this.currentLevelId}, levelCompleted=${this.levelCompleted}`)
 
     // 创建桥梁
     level.bridgePositions.forEach(pos => {
@@ -80,6 +87,9 @@ export default class MainScene extends Phaser.Scene {
     const terrain1 = new Terrain(this, level.terrain1Path, level.terrain1Offset.x, level.terrain1Offset.y, 1)
     const terrain2 = new Terrain(this, level.terrain2Path, level.terrain2Offset.x, level.terrain2Offset.y, 2)
     this.terrains = [terrain1, terrain2]
+
+    // 🔍 调试：标记地形连接点
+    this.debugTerrainJunction(level)
 
     // 创建车辆
     this.car = new Car(this, level.carStartPosition.x, level.carStartPosition.y)
@@ -207,6 +217,67 @@ export default class MainScene extends Phaser.Scene {
   }
 
   /**
+   * 🔍 调试：标记地形连接点
+   */
+  private debugTerrainJunction(level: any) {
+    const gen = new TerrainGenerator(level.seed)
+    
+    let x1 = 0, y1 = 0, x2 = 0, y2 = 0
+    
+    // 解析terrain1终点
+    const points1 = gen.extractPoints(level.terrain1Path)
+    if (points1.length > 0) {
+      const lastPt = points1[points1.length - 1]
+      x1 = lastPt[0] + level.terrain1Offset.x
+      y1 = lastPt[1] + level.terrain1Offset.y
+      
+      // 红色圆点标记terrain1终点
+      const point1 = this.add.circle(x1, y1, 20, 0xff0000, 0.6)
+      point1.setDepth(100)
+      
+      const label1 = this.add.text(x1, y1 - 30, 'T1 End', {
+        fontSize: '14px',
+        color: '#ff0000',
+        fontStyle: 'bold'
+      })
+      label1.setOrigin(0.5, 0.5)
+      label1.setDepth(100)
+      
+      console.log(`🔴 Terrain1 End: (${x1.toFixed(0)}, ${y1.toFixed(0)})`)
+    }
+    
+    // 解析terrain2起点
+    const points2 = gen.extractPoints(level.terrain2Path)
+    if (points2.length > 0) {
+      const firstPt = points2[0]
+      x2 = firstPt[0] + level.terrain2Offset.x
+      y2 = firstPt[1] + level.terrain2Offset.y
+      
+      // 绿色圆点标记terrain2起点
+      const point2 = this.add.circle(x2, y2, 20, 0x00ff00, 0.6)
+      point2.setDepth(100)
+      
+      const label2 = this.add.text(x2, y2 - 30, 'T2 Start', {
+        fontSize: '14px',
+        color: '#00ff00',
+        fontStyle: 'bold'
+      })
+      label2.setOrigin(0.5, 0.5)
+      label2.setDepth(100)
+      
+      console.log(`🟢 Terrain2 Start: (${x2.toFixed(0)}, ${y2.toFixed(0)})`)
+      
+      // 计算距离
+      const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
+      console.log(`📏 Junction gap: ${distance.toFixed(2)}px`)
+      
+      if (distance > 5) {
+        console.warn(`⚠️ WARNING: Large gap detected at terrain junction!`)
+      }
+    }
+  }
+
+  /**
    * 重试当前关卡
    */
   retryLevel() {
@@ -218,11 +289,60 @@ export default class MainScene extends Phaser.Scene {
    */
   nextLevel() {
     const nextLevelId = this.currentLevelId + 1
-    if (this.levelManager.isLevelUnlocked(nextLevelId)) {
+    const nextLevel = this.levelManager.getLevel(nextLevelId)
+    
+    console.log(`🔍 Checking next level: ${nextLevelId}`)
+    console.log(`   Level exists: ${!!nextLevel}`)
+    console.log(`   Is unlocked: ${this.levelManager.isLevelUnlocked(nextLevelId)}`)
+    
+    if (nextLevel && this.levelManager.isLevelUnlocked(nextLevelId)) {
+      console.log(`✅ Loading next level: ${nextLevelId} - ${nextLevel.name}`)
       this.loadLevel(nextLevelId)
+    } else if (!nextLevel) {
+      console.log('🎊 No more levels - showing congratulations')
+      this.showCongratulations()
     } else {
-      console.log('No more levels unlocked')
+      console.log('⚠️ Next level exists but not unlocked')
     }
+  }
+
+  /**
+   * 显示通关祝贺
+   */
+  private showCongratulations() {
+    const width = this.cameras.main.width
+    const height = this.cameras.main.height
+    
+    const congratsText = this.add.text(width / 2, height / 2, 
+      '🎊 恭喜通关所有关卡！\n\n你是真正的驾驶大师！', {
+      fontSize: '32px',
+      color: '#ffdd00',
+      fontStyle: 'bold',
+      align: 'center'
+    })
+    congratsText.setOrigin(0.5, 0.5)
+    congratsText.setDepth(500)
+    
+    // 添加闪烁动画
+    this.tweens.add({
+      targets: congratsText,
+      alpha: 0.5,
+      duration: 500,
+      yoyo: true,
+      repeat: 3
+    })
+    
+    // 5秒后消失
+    this.time.delayedCall(5000, () => {
+      this.tweens.add({
+        targets: congratsText,
+        alpha: 0,
+        duration: 1000,
+        onComplete: () => {
+          congratsText.destroy()
+        }
+      })
+    }, [], this)
   }
 
   /**
@@ -279,20 +399,32 @@ export default class MainScene extends Phaser.Scene {
       if (currentLevel) {
         const distance = this.scoreManager.getScore()
         if (distance >= currentLevel.targetDistance) {
+          console.log('🎉 Level completed!')
+          console.log(`   Distance: ${distance}m / ${currentLevel.targetDistance}m`)
+          
           this.levelCompleted = true
           const stars = this.levelManager.calculateStars(distance, currentLevel)
           this.levelManager.saveLevelStars(currentLevel.id, stars)
-
+          
+          console.log(`   Stars earned: ${stars}/3`)
+          
           // 解锁下一关
           const nextLevelId = this.levelManager.unlockNextLevel()
-
+          console.log(`   Next level unlocked: ${nextLevelId || 'None (last level)'}`)
+          
           // 显示完成界面
           this.levelCompleteUI.show(
             distance,
             stars,
             currentLevel.name,
-            () => this.nextLevel(),
-            () => this.retryLevel(),
+            () => {
+              console.log('➡️ Next level button clicked')
+              this.nextLevel()
+            },
+            () => {
+              console.log('🔄 Retry button clicked')
+              this.retryLevel()
+            },
             nextLevelId ? 3 : 0
           )
         }

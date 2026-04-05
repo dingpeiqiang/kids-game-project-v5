@@ -250,11 +250,20 @@ export default class LevelCompleteUI {
         remaining--
         this.autoNextTimer = this.scene.time.delayedCall(1000, updateCountdown, [], this.scene)
       } else {
-        // 时间到，自动跳转
+        // 时间到，先显示提示
         this.countdownText!.setText('正在跳转...')
-        this.scene.time.delayedCall(500, () => {
+        
+        // 给玩家视觉反馈
+        this.scene.time.delayedCall(800, () => {
+          console.log('⏱️ Auto-jump triggered, hiding UI...')
+          // 先隐藏UI
           this.hide()
-          onTimeout()
+          
+          // 等待UI隐藏动画完成后再跳转
+          this.scene.time.delayedCall(400, () => {
+            console.log('🚀 Executing level jump...')
+            onTimeout()
+          }, [], this.scene)
         }, [], this.scene)
       }
     }
