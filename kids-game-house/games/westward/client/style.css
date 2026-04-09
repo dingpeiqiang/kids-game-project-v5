@@ -1,0 +1,47 @@
+@font-face {
+    font-family: 'belwe';
+    src: url('/assets/fonts/belwe.otf');
+}
+@font-face {
+    font-family: 'treamd';
+    src: url('/assets/fonts/Treamd.ttf');
+}
+.fontPreload {
+    font-family: 'belwe';
+    position: absolute;
+    left: -100px;
+}
+.fontPreloadTreamd {
+    font-family: 'treamd';
+    position: absolute;
+    left: -100px;
+}
+* {
+    font-family: belwe;
+}
+#game {
+    width: 1024px;
+    margin: auto;
+}
+.game_input {
+    position: absolute;
+    padding-left: 3px;
+    width: 10px;
+    background: transparent;
+    border: none;
+    display: inline;
+    color: white;
+    left: -100px;
+    top: -100px;
+}
+
+.game_input:focus {
+    border: 1px dotted black;
+    background-color: rgba(0,0,0,0.5);
+    outline: none;
+}
+
+.danger {
+    color: red;
+    font-weight: bold;
+}

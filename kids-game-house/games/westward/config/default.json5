@@ -1,0 +1,106 @@
+/**
+Main config file of the game, see https://github.com/Jerenaux/westward/wiki/Config-files for more info.
+*/
+{
+   battle: { // Parameters related to battles
+        enabled: true, // Enable or disable battles altogether
+        aggroRange: 12, // Range, in tiles, within which an NPC can detect and attack a player
+        battleRange: 3, // Distance that can be travelled in one turn in battle; TODO: make variable
+        freezeNPC: false, // Freeze NPC in battle so that they don't take actions (for testing and debugging only)
+        maxDamage: 10000, // Max amount of damage that can be inflicted by one action
+        minDamage: 1, // Min amount of damage that can be inflicted by one action
+        rangePenalty: 0.1, // Accuracy penalty per tile when using ranged weapons
+        turnDuration: 5, // Duration of a turn, in seconds
+        tickRate: 100, // Granularity of battle updates, in milliseconds,
+        throwableSpeed: 15, // Travelling speed (in tiles/sec) of throwable projectiles
+        arrowSpeed: 30, // Travelling speed (in tiles/sec) of arrows
+        bulletSpeed: 50, // Travelling speed (in tiles/sec) of bullets
+        bombSpeed: 10, // Travelling speed (in tiles/sec) of bombs
+        throwableDelay: 300, // Duration of the throw animation
+        arrowDelay: 500, // Duration of the fire arrow animation
+        bulletDelay: 500, // Duration of the shoot gun animation
+        bombDelay: 300, // Duration of the throw bomb animation
+        meleeAtkDelay: 500, // Duration of the melee attack animation
+   },
+   buildings: { // Parameters related to buildings
+        autobuild: true, // If enabled, buildings are built immediately without having to bring construction material (for testing and debugging only)
+        canfight: true, // Whether buildings can be active in battles or not (they should be, to be destroyable and for towers to be able to defend)
+        nobuildings: false, // If set to true, buildings won't be created when the game server starts (for testing and debugging only)
+        inventorySize: 100, // Default size of buildings inventories
+        maxGold: 99999 // Max amount of gold allowed in one building
+   },
+   classes: { // Mapping between the class names and their numerical ID's
+        soldier: 0,
+        merchant: 1,
+        craftsman: 2,
+        explorer: 3
+   },
+   character: { // Parameters related to player characters
+        variables: { // Default starting values for some stats
+            def: 7,
+            dmg: 19,
+            hpmax: 300
+        },
+        maxClassLvl: 101, // max level for any class
+        maxClassXP: 999999, // max XP amount for any class (doesn't necessarily matches max lvl)
+        maxGold: 100000, // max amount of gold owned (regardless of equipment)
+        foodConsumption: 1.5, // by how much do players "starve" over  time (see `Player.starve()`)
+        steps: 100, // number of steps to make to lose `stepLoss` points of vigor
+        stepsLoss: 2 // amount of vigor lost after walking `steps` steps
+   },
+   economyCycles: { // Parameters relative to events happening at regular intervals
+        turnDuration: 1, // Duration in seconds of a `turn`, which is the unit of time for all cycles
+        turns: { // number of turns between each occurence of specific events
+            camps: 1800, // respawn of civs in camps
+            foodConsumptionRate: 600, // rate at which food levels of players are decreased ; amount in character.foodConsumption
+            itemsRespawn: 86400, // respawn of plants and ground items (86400 turns of 1sec = 24h)
+            restRate: 1, // recovery of vigor by players when sheltered ; amount in buildings.json
+            spawnZones: 10 // spawn of animal spawn zones
+        }
+    },
+    misc: { // miscellaneous parameters
+        performInit: true, // perform debug and test actions defined in `GameServer.onInitialized()` or not
+        debugQT: false // send debug info about location and size of game entities or not to client
+    },
+    pathfinding: { // parameters relevant for the pathfinding
+        walkingSpeed: 5, // tiles/sec
+        maxPathLength: 36, // stop computing paths exceeding that length; NB: only used server-side for now, client-side limit is hard-coded
+        battleRange: 3 //
+    },
+    updateRates: { // Interval in ms between specific update events
+            client: 125, // client update
+            walk: 50, // update of walking entities positions
+            wander: 200, // wandering behavior of animals
+            aggro: 1500 // check for aggo
+    },
+    civs: { // parameters relevant for the Civs
+        aggro: false, // attack players or not
+        wander: true, // wander around when idle or not
+        raidMinimum: 3 // minimum amount of Civs needed before raiding players
+    },
+    wildlife: { // parameters relevant for the Civs
+        aggro: false, // attack players or not
+        nolife: false, // disable all wildlife, used for testing and debugging
+        wander: true, // wander around when idle or not
+        wanderRange: 5,
+        idleTime: [1, 3.5], // random bounds for interval between two random walks; in seconds
+        idleRetry: 200 // how quickly to retry wander behavior if previous one failed (in ms)
+    },
+    dev: {
+        mapsPath: '/../../maps' // relative to tools directory
+    },
+    client: { // config packet sent to the clients for client-side configuration
+        boot:{
+            autoBoot: true, // skip screen with "play" button por not
+            forceNewPlayer: false, // disallow loading existing players (for testing and debugging)
+            offerTutorial: true // allow players to select the tutorial or not
+        },
+        config: { // Will be in Engine.config
+            chatTimeout: 5000, // display duration (in ms) of speech bubbles
+            fogOfWar: true, // show fog of war on world map
+            notificationTimeout: 3000, //display duration (in ms) of notifications ; TODO: adapt based on text length?
+            hearingDistance: 30, // distance in tiles beyond which sound effects are muted
+            defaultBuildRecipes: [3,4,6,11,2] // workshop, shop, lumbercamp, shack
+        }
+    }
+}

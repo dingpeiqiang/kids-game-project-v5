@@ -1,0 +1,664 @@
+{
+  "frames":[
+    {
+      "filename": "panel-topleft",
+      "frame": {"x":16,"y":40,"w":32,"h":32}
+    },
+    {
+      "filename": "panel-top",
+      "frame": {"x":49,"y":40,"w":32,"h":32}
+    },
+    {
+      "filename": "panel-topright",
+      "frame": {"x":82,"y":40,"w":32,"h":32}
+    },
+    {
+      "filename": "panel-left",
+      "frame": {"x":478,"y":24,"w":32,"h":32}
+    },
+    {
+      "filename": "panel-center",
+      "frame": {"x":511,"y":24,"w":32,"h":32}
+    },
+    {
+      "filename": "panel-right",
+      "frame": {"x":544,"y":24,"w":32,"h":32}
+    },
+    {
+      "filename": "panel-bottomleft",
+      "frame": {"x":478,"y":80,"w":32,"h":32}
+    },
+    {
+      "filename": "panel-bottom",
+      "frame": {"x":511,"y":80,"w":32,"h":32}
+    },
+    {
+      "filename": "panel-bottomright",
+      "frame": {"x":544,"y":80,"w":32,"h":32}
+    },
+    {
+      "filename": "title-left",
+      "frame": {"x":16,"y":184,"w":32,"h":64}
+    },
+    {
+      "filename": "title-center",
+      "frame": {"x":49,"y":184,"w":32,"h":64}
+    },
+    {
+      "filename": "title-right",
+      "frame": {"x":82,"y":184,"w":32,"h":64}
+    },
+    {
+      "filename": "title-close",
+      "frame": {"x":185,"y":184,"w":69,"h":64}
+    },
+    {
+      "filename": "title-close-pressed",
+      "frame": {"x":255,"y":184,"w":69,"h":64}
+    },
+    {
+      "filename": "capsule-left",
+      "frame": {"x":634,"y":118,"w":24,"h":24}
+    },
+    {
+      "filename": "capsule-middle",
+      "frame": {"x":660,"y":118,"w":21,"h":24}
+    },
+    {
+      "filename": "capsule-right",
+      "frame": {"x":683,"y":118,"w":25,"h":24}
+    },
+    {
+      "filename": "slots-topleft",
+      "frame": {"x":442,"y":292,"w":38,"h":38}
+    },
+    {
+      "filename": "slots-top",
+      "frame": {"x":481,"y":292,"w":36,"h":38}
+    },
+    {
+      "filename": "slots-topright",
+      "frame": {"x":518,"y":292,"w":38,"h":38}
+    },
+    {
+      "filename": "slots-left",
+      "frame": {"x":442,"y":331,"w":38,"h":36}
+    },
+    {
+      "filename": "slots-middle",
+      "frame": {"x":481,"y":331,"w":36,"h":36}
+    },
+    {
+      "filename": "slots-right",
+      "frame": {"x":518,"y":331,"w":38,"h":36}
+    },
+    {
+      "filename": "slots-bottomleft",
+      "frame": {"x":442,"y":368,"w":38,"h":38}
+    },
+    {
+      "filename": "slots-bottom",
+      "frame": {"x":481,"y":368,"w":36,"h":38}
+    }  ,
+    {
+      "filename": "slots-bottomright",
+      "frame": {"x":518,"y":368,"w":38,"h":38}
+    },
+    {
+      "filename": "slots-topbottomleft",
+      "frame": {"x":574,"y":372,"w":38,"h":40}
+    },
+    {
+      "filename": "slots-topbottom",
+      "frame": {"x":613,"y":372,"w":36,"h":40}
+    },
+    {
+      "filename": "slots-topbottomright",
+      "frame": {"x":650,"y":372,"w":38,"h":40}
+    },
+    {
+      "filename": "slots-topbottomleftright",
+      "frame": {"x":120,"y":370,"w":40,"h":40}
+    },
+    {
+      "filename": "gold",
+      "frame": {"x":818,"y":122,"w":12,"h":12}
+    },
+    {
+      "filename": "ring",
+      "frame": {"x":762,"y":86,"w":24,"h":24}
+    },
+    {
+      "filename": "red",
+      "frame": {"x":48,"y":121,"w":14,"h":14}
+    },
+    {
+      "filename": "red-pressed",
+      "frame": {"x":48,"y":137,"w":14,"h":14}
+    },
+    {
+      "filename": "blue",
+      "frame": {"x":32,"y":121,"w":14,"h":14}
+    },
+    {
+      "filename": "blue-pressed",
+      "frame": {"x":32,"y":137,"w":14,"h":14}
+    },
+    {
+      "filename": "green",
+      "frame": {"x":16,"y":121,"w":14,"h":14}
+    },
+    {
+      "filename": "green-pressed",
+      "frame": {"x":16,"y":137,"w":14,"h":14}
+    },
+    {
+      "filename": "gray",
+      "frame": {"x":64,"y":121,"w":14,"h":14}
+    },
+    {
+      "filename": "gray-pressed",
+      "frame": {"x":64,"y":137,"w":14,"h":14}
+    },
+    {
+      "filename": "close",
+      "frame": {"x":100,"y":140,"w":8,"h":8}
+    },
+    {
+      "filename": "help",
+      "frame": {"x":132,"y":106,"w":8,"h":10}
+    },
+    {
+      "filename": "ok",
+      "frame": {"x":84,"y":141,"w":8,"h":8}
+    },
+    {
+      "filename": "plus",
+      "frame": {"x":84,"y":124,"w":8,"h":8}
+    },
+    {
+      "filename": "up",
+      "frame": {"x":116,"y":139,"w":8,"h":8}
+    },
+    {
+      "filename": "down",
+      "frame": {"x":132,"y":141,"w":8,"h":8}
+    },
+    {
+      "filename": "minus",
+      "frame": {"x":100,"y":124,"w":8,"h":8}
+    },
+    {
+      "filename": "longslot_1",
+      "frame": {"x":16,"y":424,"w":16,"h":40}
+    },
+    {
+      "filename": "longslot_2",
+      "frame": {"x":33,"y":424,"w":16,"h":40}
+    },
+    {
+      "filename": "longslot_3",
+      "frame": {"x":50,"y":424,"w":33,"h":40}
+    },
+    {
+      "filename": "longslot_4",
+      "frame": {"x":67,"y":424,"w":16,"h":40}
+    },
+    {
+      "filename": "longslot_5",
+      "frame": {"x":84,"y":424,"w":16,"h":40}
+    },
+    {
+      "filename": "longslot_6",
+      "frame": {"x":101,"y":424,"w":16,"h":40}
+    },
+    {
+      "filename": "longslot_7",
+      "frame": {"x":118,"y":424,"w":16,"h":40}
+    },
+    {
+      "filename": "longslot_8",
+      "frame": {"x":135,"y":424,"w":16,"h":40}
+    },
+    {
+      "filename": "longslot_9",
+      "frame": {"x":152,"y":424,"w":18,"h":40}
+    },
+    {
+      "filename": "craftring",
+      "frame": {"x":719,"y":290,"w":128,"h":128}
+    },
+    {
+      "filename": "equipment-slot",
+      "frame": {"x":75,"y":288,"w":40,"h":40}
+    },
+    {
+      "filename": "armor-shade",
+      "frame": {"x":241,"y":429,"w":29,"h":21}
+    },
+    {
+      "filename": "necklace-shade",
+      "frame": {"x":280,"y":429,"w":16,"h":23}
+    },
+    {
+      "filename": "shield-shade",
+      "frame": {"x":308,"y":429,"w":24,"h":23}
+    },
+    {
+      "filename": "gun-shade",
+      "frame": {"x":345,"y":431,"w":24,"h":19}
+    },
+    {
+      "filename": "quiver-shade",
+      "frame": {"x":342,"y":456,"w":29,"h":29}
+    },
+    {
+      "filename": "arrow-shade",
+      "frame": {"x":436,"y":457,"w":30,"h":29}
+    },
+    {
+      "filename": "bullets-shade",
+      "frame": {"x":443,"y":421,"w":27,"h":27}
+    },
+    {
+      "filename": "bomb-pouch-shade",
+      "frame": {"x":391,"y":430,"w":20,"h":23}
+    },
+    {
+      "filename": "ammo-pouch-shade",
+      "frame": {"x":388,"y":459,"w":26,"h":25}
+    },
+    {
+      "filename": "sword-shade",
+      "frame": {"x":212,"y":460,"w":24,"h":24}
+    },
+    {
+      "filename": "belt-shade",
+      "frame": {"x":245,"y":467,"w":22,"h":10}
+    },
+    {
+      "filename": "boots-shade",
+      "frame": {"x":274,"y":463,"w":28,"h":17}
+    },
+    {
+      "filename": "ring-shade",
+      "frame": {"x":311,"y":463,"w":18,"h":18}
+    },
+    {
+      "filename": "tooltip",
+      "frame": {"x":213,"y":512,"w":39,"h":39}
+    },
+    {
+      "filename": "tooltip_tl",
+      "frame": {"x":213,"y":512,"w":11,"h":11}
+    },
+    {
+      "filename": "tooltip_top",
+      "frame": {"x":228,"y":512,"w":9,"h":11}
+    },
+    {
+      "filename": "tooltip_tr",
+      "frame": {"x":241,"y":512,"w":11,"h":11}
+    },
+    {
+      "filename": "tooltip_left",
+      "frame": {"x":213,"y":529,"w":11,"h":5}
+    },
+    {
+      "filename": "tooltip_middle",
+      "frame": {"x":231,"y":530,"w":5,"h":4}
+    },
+    {
+      "filename": "tooltip_right",
+      "frame": {"x":242,"y":529,"w":11,"h":5}
+    },
+    {
+      "filename": "tooltip_bl",
+      "frame": {"x":213,"y":540,"w":11,"h":11}
+    },
+    {
+      "filename": "tooltip_bottom",
+      "frame": {"x":230,"y":541,"w":5,"h":11}
+    },
+    {
+      "filename": "tooltip_br",
+      "frame": {"x":241,"y":540,"w":11,"h":11}
+    },
+    {
+      "filename": "healthbar_left",
+      "frame": {"x":259,"y":40,"w":24,"h":20}
+    },
+    {
+      "filename": "healthbar_middle",
+      "frame": {"x":287,"y":40,"w":19,"h":20}
+    },
+    {
+      "filename": "healthbar_right",
+      "frame": {"x":324,"y":40,"w":9,"h":20}
+    },
+    {
+      "filename": "minibar_left",
+      "frame": {"x":282,"y":514,"w":6,"h":12}
+    },
+    {
+      "filename": "minibar_middle",
+      "frame": {"x":291,"y":514,"w":4,"h":12}
+    },
+    {
+      "filename": "minibar_right",
+      "frame": {"x":314,"y":514,"w":6,"h":12}
+    },
+    {
+      "filename": "miniprogress_gold_left",
+      "frame": {"x":284,"y":532,"w":4,"h":8}
+    },
+    {
+      "filename": "miniprogress_gold_right",
+      "frame": {"x":313,"y":532,"w":5,"h":8}
+    },
+    {
+      "filename": "miniprogress_gold_middle",
+      "frame": {"x":327,"y":516,"w":2,"h":8}
+    },
+    {
+      "filename": "miniprogress_green_left",
+      "frame": {"x":284,"y":543,"w":4,"h":8}
+    },
+    {
+      "filename": "miniprogress_green_right",
+      "frame": {"x":313,"y":543,"w":5,"h":8}
+    },
+    {
+      "filename": "miniprogress_green_middle",
+      "frame": {"x":327,"y":530,"w":2,"h":8}
+    },
+    {
+      "filename": "miniprogress_red_left",
+      "frame": {"x":320,"y":505,"w":4,"h":8}
+    },
+    {
+      "filename": "miniprogress_red_right",
+      "frame": {"x":340,"y":505,"w":5,"h":8}
+    },
+    {
+      "filename": "miniprogress_red_middle",
+      "frame": {"x":331,"y":505,"w":2,"h":8}
+    },
+    {
+      "filename": "progress_red_middle",
+      "frame": {"x":409,"y":40,"w":5,"h":14}
+    },
+    {
+      "filename": "progress_red_top",
+      "frame": {"x":416,"y":40,"w":8,"h":14}
+    },
+    {
+      "filename": "progress_gold_middle",
+      "frame": {"x":438,"y":40,"w":5,"h":14}
+    },
+    {
+      "filename": "progress_gold_top",
+      "frame": {"x":445,"y":40,"w":8,"h":14}
+    },
+    {
+      "filename": "longslot_tl",
+      "frame": {"x":16,"y":424,"w":16,"h":13}
+    },
+    {
+      "filename": "longslot_top",
+      "frame": {"x":33,"y":424,"w":16,"h":13}
+    },
+    {
+      "filename": "longslot_tr",
+      "frame": {"x":152,"y":424,"w":18,"h":13}
+    },
+    {
+      "filename": "longslot_left",
+      "frame": {"x":16,"y":440,"w":16,"h":5}
+    },
+    {
+      "filename": "longslot_middle",
+      "frame": {"x":33,"y":440,"w":16,"h":5}
+    },
+    {
+      "filename": "longslot_right",
+      "frame": {"x":152,"y":444,"w":18,"h":5}
+    },
+    {
+      "filename": "longslot_br",
+      "frame": {"x":152,"y":450,"w":18,"h":14}
+    },
+    {
+      "filename": "longslot_bl",
+      "frame": {"x":16,"y":450,"w":16,"h":14}
+    },
+    {
+      "filename": "longslot_botom",
+      "frame": {"x":33,"y":450,"w":16,"h":14}
+    },
+    {
+      "filename": "longslot_tr_junction",
+      "frame": {"x":50,"y":424,"w":16,"h":13}
+    },
+    {
+      "filename": "longslot_right_junction",
+      "frame": {"x":50,"y":438,"w":16,"h":5}
+    },
+    {
+      "filename": "longslot_br_junction",
+      "frame": {"x":152,"y":450,"w":18,"h":14}
+    },
+    {
+      "filename": "bigbutton_left",
+      "frame": {"x":633,"y":23,"w":40,"h":28}
+    },
+    {
+      "filename": "bigbutton_left_lit",
+      "frame": {"x":633,"y":53,"w":40,"h":28}
+    },
+    {
+      "filename": "bigbutton_left_pressed",
+      "frame": {"x":633,"y":83,"w":40,"h":28}
+    },
+    {
+      "filename": "bigbutton_left_gray",
+      "frame": {"x":11,"y":577,"w":40,"h":28}
+    },
+    {
+      "filename": "bigbutton_middle",
+      "frame": {"x":675,"y":23,"w":4,"h":28}
+    },
+    {
+      "filename": "bigbutton_middle_lit",
+      "frame": {"x":675,"y":53,"w":4,"h":28}
+    },
+    {
+      "filename": "bigbutton_middle_pressed",
+      "frame": {"x":675,"y":83,"w":4,"h":28}
+    },
+    {
+      "filename": "bigbutton_middle_gray",
+      "frame": {"x":53,"y":577,"w":4,"h":28}
+    },
+    {
+      "filename": "bigbutton_right",
+      "frame": {"x":716,"y":23,"w":41,"h":28}
+    },
+    {
+      "filename": "bigbutton_right_lit",
+      "frame": {"x":716,"y":53,"w":41,"h":28}
+    },
+    {
+      "filename": "bigbutton_right_pressed",
+      "frame": {"x":716,"y":83,"w":41,"h":28}
+    },
+    {
+      "filename": "bigbutton_right_gray",
+      "frame": {"x":94,"y":577,"w":41,"h":28}
+    },
+    {
+      "filename": "biggerbutton_left",
+      "frame": {"x":143,"y":566,"w":62,"h":45}
+    },
+    {
+      "filename": "biggerbutton_left_lit",
+      "frame": {"x":144,"y":615,"w":62,"h":45}
+    },
+    {
+      "filename": "biggerbutton_left_pressed",
+      "frame": {"x":392,"y":615,"w":62,"h":45}
+    },
+    {
+      "filename": "biggerbutton_middle",
+      "frame": {"x":252,"y":566,"w":6,"h":46}
+    },
+    {
+      "filename": "biggerbutton_middle_lit",
+      "frame": {"x":249,"y":615,"w":6,"h":45}
+    },
+    {
+      "filename": "biggerbutton_middle_pressed",
+      "frame": {"x":487,"y":615,"w":6,"h":45}
+    },
+    {
+      "filename": "biggerbutton_right",
+      "frame": {"x":320,"y":566,"w":62,"h":45}
+    },
+    {
+      "filename": "biggerbutton_right_lit",
+      "frame": {"x":320,"y":615,"w":62,"h":45}
+    },
+    {
+      "filename": "biggerbutton_right_pressed",
+      "frame": {"x":569,"y":615,"w":62,"h":45}
+    },
+    {
+      "filename": "scroll_up",
+      "frame": {"x":775,"y":201,"w":24,"h":27}
+    },
+    {
+      "filename": "scroll",
+      "frame": {"x":775,"y":230,"w":24,"h":3}
+    },
+    {
+      "filename": "scroll_down",
+      "frame": {"x":775,"y":235,"w":24,"h":25}
+    },
+    {
+      "filename": "scroll_pin",
+      "frame": {"x":821,"y":223,"w":12,"h":15}
+    },
+    {
+      "filename": "icon_holder",
+      "frame": {"x":802,"y":481,"w":44,"h":44}
+    },
+    {
+      "filename": "smallpack",
+      "frame": {"x":482,"y":424,"w":13,"h":14}
+    },
+    {
+      "filename": "heart",
+      "frame": {"x":506,"y":425,"w":13,"h":12}
+    },
+    {
+      "filename": "facebg",
+      "frame": {"x":351,"y":511,"w":43,"h":42}
+    },
+    {
+      "filename": "mapring",
+      "frame": {"x":550,"y":417,"w":150,"h":150}
+    },
+    {
+      "filename": "holder",
+      "frame": {"x":409,"y":519,"w":32,"h":31}
+    },
+    {
+      "filename": "holder_over",
+      "frame": {"x":442,"y":519,"w":32,"h":31}
+    },
+    {
+      "filename": "woodtitle_left",
+      "frame": {"x":666,"y":577,"w":49,"h":63}
+    },
+    {
+      "filename": "woodtitle_middle",
+      "frame": {"x":721,"y":577,"w":61,"h":63}
+    },
+    {
+      "filename": "woodtitle_right",
+      "frame": {"x":787,"y":577,"w":52,"h":63}
+    },
+    {
+      "filename": "exit_icon",
+      "frame": {"x":481,"y":516,"w":36,"h":36}
+    },
+    {
+      "filename": "exit_icon_on",
+      "frame": {"x":482,"y":565,"w":36,"h":36}
+    },
+    {
+      "filename": "hammer_icon",
+      "frame": {"x":525,"y":565,"w":36,"h":36}
+    },
+    {
+      "filename": "positionCross",
+      "frame": {"x":484,"y":448,"w":10,"h":13}
+    },
+    {
+      "filename": "arrow",
+      "frame": {"x":11,"y":615,"w":19,"h":17}
+    },
+    {
+      "filename": "arrow_lit",
+      "frame": {"x":42,"y":614,"w":19,"h":17}
+    },
+    {
+      "filename": "arrow_pressed",
+      "frame": {"x":77,"y":614,"w":19,"h":17}
+    },
+    {
+      "filename": "chest",
+      "frame": {"x":482,"y":444,"w":13,"h":11}
+    },
+    {
+      "filename": "goldenheart",
+      "frame": {"x":506,"y":442,"w":13,"h":12}
+    },
+    {
+      "filename": "bread",
+      "frame": {"x":528,"y":425,"w":9,"h":12}
+    },
+    {
+      "filename": "armor",
+      "frame": {"x":527,"y":442,"w":11,"h":12}
+    },
+    {
+      "filename": "round_shield",
+      "frame": {"x":526,"y":475,"w":12,"h":12}
+    },
+    {
+      "filename": "2swords",
+      "frame": {"x":525,"y":491,"w":13,"h":12}
+    },
+    {
+      "filename": "bullseye",
+      "frame": {"x":506,"y":458,"w":14,"h":13}
+    },
+    {
+      "filename": "steps",
+      "frame": {"x":525,"y":508,"w":12,"h":12}
+    },
+    {
+      "filename": "sword",
+      "frame": {"x":525,"y":458,"w":13,"h":12}
+    },
+    {
+      "filename": "invisible",
+      "frame": {"x":865,"y":9,"w":150,"h":150}
+    },
+    {
+    "filename": "battleholder",
+    "frame": {"x":399,"y":566,"w":45,"h":42}
+    }
+  ]
+}
