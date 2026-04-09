@@ -122,8 +122,8 @@ export class GameScene extends BaseScene {
       this.gridSystem.initializeGrid(this.levelData.background);
     }
 
-    // 设置摄像机边界，这对于正确的坐标映射至关重要
-    this.cameras.main.setBounds(0, 0, 1400, 600);
+    // 设置摄像机边界与游戏设计分辨率一致
+    this.cameras.main.setBounds(0, 0, GAME_CONFIG.DESIGN_WIDTH, GAME_CONFIG.DESIGN_HEIGHT);
 
     this.createGridVisuals();
     this.initializeFactories();
@@ -273,9 +273,15 @@ export class GameScene extends BaseScene {
     this.gameContainer.add(bgLayer);
 
     const bgKey = this.levelData?.background || 'day-grass';
-    // 背景图现在是 1400 宽，中心点在 700
-    const bgImage = this.add.image(700, 300, bgKey);
+    // 背景图调整为居中显示在游戏设计分辨率 (800x600) 内
+    const bgImage = this.add.image(GAME_CONFIG.DESIGN_WIDTH / 2, GAME_CONFIG.DESIGN_HEIGHT / 2, bgKey);
     bgLayer.add(bgImage);
+    
+    console.log(`=== Background Debug Info ===`);
+    console.log(`Background key: ${bgKey}`);
+    console.log(`Background position: (${GAME_CONFIG.DESIGN_WIDTH / 2}, ${GAME_CONFIG.DESIGN_HEIGHT / 2})`);
+    console.log(`Background size: ${bgImage.width}x${bgImage.height}`);
+    console.log(`Background range: x=[${GAME_CONFIG.DESIGN_WIDTH / 2 - bgImage.width/2}-${GAME_CONFIG.DESIGN_WIDTH / 2 + bgImage.width/2}], y=[${GAME_CONFIG.DESIGN_HEIGHT / 2 - bgImage.height/2}-${GAME_CONFIG.DESIGN_HEIGHT / 2 + bgImage.height/2}]`);
 
     // 显式设置背景深度
     bgLayer.setDepth(-10);
@@ -292,6 +298,12 @@ export class GameScene extends BaseScene {
   private createGridVisuals(): void {
     const { OFFSET_X, OFFSET_Y, ROWS, COLS, CELL_WIDTH, CELL_HEIGHT } =
       GRID_CONFIG;
+
+    console.log(`=== Grid Debug Info ===`);
+    console.log(`OFFSET_X: ${OFFSET_X}, OFFSET_Y: ${OFFSET_Y}`);
+    console.log(`Grid size: ${COLS}x${ROWS}, Cell: ${CELL_WIDTH}x${CELL_HEIGHT}`);
+    console.log(`Grid total width: ${COLS * CELL_WIDTH}, height: ${ROWS * CELL_HEIGHT}`);
+    console.log(`Grid range: x=[${OFFSET_X}-${OFFSET_X + COLS * CELL_WIDTH}], y=[${OFFSET_Y}-${OFFSET_Y + ROWS * CELL_HEIGHT}]`);
 
     // 关键修复：将网格添加到 gameContainer，使其跟随摄像机滚动
     const gridContainer = this.add.container(0, 0);
@@ -341,6 +353,13 @@ export class GameScene extends BaseScene {
         gridContainer.add(cell); // 将单元格添加到容器
         // 使用 pointerdown 事件，确保坐标正确
         cell.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+          // 调试：打印点击信息
+          if (GAME_CONFIG.DEBUG) {
+            console.log(`Cell clicked: row=${row}, col=${col}`);
+            console.log(`Pointer: screen=(${pointer.x.toFixed(0)}, ${pointer.y.toFixed(0)}), world=(${pointer.worldX.toFixed(0)}, ${pointer.worldY.toFixed(0)})`);
+            const gridPos = this.gridSystem.screenToGrid(pointer.worldX, pointer.worldY);
+            console.log(`Calculated grid: ${gridPos ? `(${gridPos.row}, ${gridPos.col})` : 'null'}`);
+          }
           // 通过点击的物体获取行列，避免坐标转换问题
           this.onGridCellClick(row, col);
         });
@@ -362,11 +381,12 @@ export class GameScene extends BaseScene {
   }
 
   private addLawnDecorations(): void {
-    const { OFFSET_Y, CELL_HEIGHT, ROWS } = GRID_CONFIG;
+    const { OFFSET_X, OFFSET_Y, CELL_HEIGHT, ROWS } = GRID_CONFIG;
     for (let row = 0; row < ROWS; row++) {
       if (this.gridSystem.getTerrainType(row, 0) === 'water') continue;
+      // 修复：割草机位置基于 OFFSET_X，放置在网格左侧
       this.createLawnMower(
-        335, // 紧贴 340 虚线
+        OFFSET_X - 45, // 在网格左侧 45 像素处
         OFFSET_Y + row * CELL_HEIGHT + CELL_HEIGHT / 2,
         row
       );
@@ -586,7 +606,7 @@ export class GameScene extends BaseScene {
       const type = zombieTypes[Math.floor(Math.random() * zombieTypes.length)];
       const z = this.zombieFactory.createZombie(type, i % 5);
       if (z) {
-        z.setX(1100 + Math.random() * 200);
+        z.setX(GAME_CONFIG.DESIGN_WIDTH + 100 + Math.random() * 200);
         z.setAlpha(0.8);
         previewZombies.push(z);
       }
@@ -595,7 +615,7 @@ export class GameScene extends BaseScene {
     this.time.delayedCall(500, () => {
       this.tweens.add({
         targets: this.cameras.main,
-        scrollX: 600, // 向右滑得更远
+        scrollX: 400, // 摄像机边界现在是 800，所以滑到中间位置
         duration: 2000,
         ease: 'Cubic.easeInOut',
         onComplete: () => {
@@ -638,6 +658,10 @@ export class GameScene extends BaseScene {
     levelConfig: LevelConfig,
     selectedPlants: any[]
   ): void {
+    // 关键修复：确保摄像机位置在植物选择后正确重置为初始位置
+    this.cameras.main.scrollX = 0;
+    this.cameras.main.scrollY = 0;
+    
     this.plantSelectorComp.updatePlants(selectedPlants);
     this.audioManager?.playBgm(BackgroundMusic.GAME_DAY);
 

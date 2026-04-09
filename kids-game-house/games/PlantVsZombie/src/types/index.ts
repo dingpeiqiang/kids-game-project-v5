@@ -26,8 +26,11 @@ export const GRID_CONFIG = {
   CELL_HEIGHT: 100,
 
   // 网格偏移（相对于游戏场景）
-  OFFSET_X: 380,
-  OFFSET_Y: 80,
+  // 背景图宽度 1400，左边缘在 0，右边缘在 1400
+  // 游戏设计宽度 800，我们需要网格在 800 可见区内合理位置
+  // 网格总宽度 720 (9x80)，居中放置的话左边距应该是 40
+  OFFSET_X: 40,
+  OFFSET_Y: 85,
 
   // 草坪颜色
   GRASS_COLORS: [0x5c9c54, 0x6bae5e],
