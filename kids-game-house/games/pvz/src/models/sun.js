@@ -9,6 +9,12 @@ export default class Sun extends Phaser.Physics.Arcade.Sprite {
     this.value = 25
     this.isCollected = false
     
+    // 阳光收集连击
+    if (!scene.sunCollectTime) {
+      scene.sunCollectTime = 0
+      scene.sunComboCount = 0
+    }
+    
     // 设置碰撞体
     this.body.setSize(30, 30)
     
@@ -105,6 +111,29 @@ export default class Sun extends Phaser.Physics.Arcade.Sprite {
       this.scene.sounds.sunCollect.play()
     }
     
+    // 显示收集特效
+    this.showCollectEffect()
+    
+    // 阳光收集连击系统
+    const currentTime = Date.now()
+    const SUN_COMBO_TIMEOUT = 3000 // 3秒内收集算连击
+    
+    let finalValue = this.value
+    
+    if (currentTime - this.scene.sunCollectTime < SUN_COMBO_TIMEOUT) {
+      this.scene.sunComboCount++
+      
+      // 连击加成
+      if (this.scene.sunComboCount >= 3) {
+        finalValue = this.value + this.scene.sunComboCount * 5
+        this.showSunComboEffect(this.scene.sunComboCount)
+      }
+    } else {
+      this.scene.sunComboCount = 1
+    }
+    
+    this.scene.sunCollectTime = currentTime
+    
     // 飞向阳光计数器（左上角）
     this.scene.tweens.add({
       targets: this,
@@ -116,9 +145,45 @@ export default class Sun extends Phaser.Physics.Arcade.Sprite {
       ease: 'Power2',
       onComplete: () => {
         // 增加阳光
-        this.scene.addSun(this.value)
+        this.scene.addSun(finalValue)
         this.destroy()
       }
+    })
+  }
+
+  showSunComboEffect(combo) {
+    // 简化阳光连击特效 - 性能优化
+    const comboTexts = ['阳光连击!', '太阳风暴!']
+    const textIndex = Math.min(combo - 3, comboTexts.length - 1)
+    
+    const comboText = this.scene.add.text(this.x, this.y - 25, comboTexts[textIndex], {
+      fontSize: `${14 + Math.min(combo, 8)}px`,
+      fill: '#FFD700',
+      fontStyle: 'bold',
+      stroke: '#FF6B00',
+      strokeThickness: 2
+    }).setOrigin(0.5).setDepth(2002)
+    
+    this.scene.tweens.add({
+      targets: comboText,
+      y: comboText.y - 30,
+      alpha: 0,
+      duration: 800,
+      onComplete: () => comboText.destroy()
+    })
+  }
+
+  showCollectEffect() {
+    // 简化收集特效 - 性能优化
+    const flash = this.scene.add.circle(this.x, this.y, 10, 0xFFFF00, 0.8)
+      .setDepth(2001)
+    
+    this.scene.tweens.add({
+      targets: flash,
+      scale: 1.5,
+      alpha: 0,
+      duration: 250,
+      onComplete: () => flash.destroy()
     })
   }
   

@@ -98,7 +98,7 @@ var OfflineGameData = {
         };
         
         // 使用正确的装饰元素简写名称
-        var decorTypes = ['t1', 't2', 't3', 't4', 'r1', 'r2', 'r3', 'r4', 'b1', 'b2'];
+        var decorTypes = ['t1', 't2', 't3', 't4', 'r1', 'r2', 'r3', 'b1', 'b2', 'b3'];
         
         // 添加一些简单的装饰
         for (var i = 0; i < 8; i++) {

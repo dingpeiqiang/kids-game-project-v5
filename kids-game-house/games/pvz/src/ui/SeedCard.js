@@ -5,37 +5,72 @@ export default class SeedCard extends Phaser.GameObjects.Container {
     this.plantType = plantType
     this.cost = cost
     this.onCooldown = false
-    this.cooldownTime = 5000 // 5秒冷却
+    
+    // 设置不同植物的冷却时间
+    const cooldowns = {
+      'sunflower': 7500,
+      'peashooter': 7500,
+      'iceshooter': 7500,
+      'repeater': 7500,
+      'cherrybomb': 30000,  // 樱桃炸弹30秒冷却
+      'potatomine': 30000,  // 土豆雷30秒冷却
+      'wallnut': 30000      // 坚果墙30秒冷却
+    }
+    this.cooldownTime = cooldowns[plantType] || 5000
+    
     this.isSelected = false
     
-    // 卡片尺寸：高度从 75 缩小到 58，确保不超出顶部 65px 区域
-    const cardW = 55
+    // 不同植物的颜色配置
+    const plantColors = {
+      'sunflower': { bg: 0xFFD700, hover: 0xFFA500 },
+      'peashooter': { bg: 0x228B22, hover: 0x32CD32 },
+      'iceshooter': { bg: 0x00CED1, hover: 0x00FFFF },
+      'repeater': { bg: 0x9ACD32, hover: 0xADFF2F },
+      'cherrybomb': { bg: 0xDC143C, hover: 0xFF4500 },
+      'potatomine': { bg: 0x8B4513, hover: 0xA0522D },
+      'wallnut': { bg: 0xD2691E, hover: 0xCD853F }
+    }
+    
+    const colors = plantColors[plantType] || { bg: 0x8B4513, hover: 0xA0522D }
+    
+    // 卡片尺寸：更紧凑
+    const cardW = 50
     const cardH = 58
 
     // 卡片背景
-    this.bg = scene.add.rectangle(0, 0, cardW, cardH, 0x8B4513)
+    this.bg = scene.add.rectangle(0, 0, cardW, cardH, colors.bg)
       .setStrokeStyle(2, 0x654321)
     this.add(this.bg)
     
     // 植物图标（上移，适配更小的卡片高度）
     this.icon = scene.add.image(0, -10, 'sprites', iconFrame)
-      .setScale(1.3)
+      .setScale(1.2)
+    
+    // 根据植物类型设置图标颜色
+    if (plantType === 'iceshooter') {
+      this.icon.setTint(0x00FFFF) // 青色
+    } else if (plantType === 'cherrybomb') {
+      this.icon.setTint(0xFF0000) // 红色
+    } else if (plantType === 'potatomine') {
+      this.icon.setTint(0xD2B48C) // 棕色
+    }
+    
     this.add(this.icon)
     
     // 成本显示（下移到卡片底部）
-    this.costBg = scene.add.rectangle(0, 20, 40, 16, 0x000000, 0.7)
+    this.costBg = scene.add.rectangle(0, 20, 38, 14, 0x000000, 0.7)
     this.add(this.costBg)
     
     this.costText = scene.add.text(8, 20, cost.toString(), {
-      fontSize: '13px',
+      fontSize: '12px',
       fill: '#FFD700',
       fontStyle: 'bold'
     }).setOrigin(0.5)
     this.add(this.costText)
     
     // 阳光图标（成本左侧）
-    this.sunIcon = scene.add.image(-13, 20, 'sprites', 'sun1.png')
-      .setScale(0.55)
+    this.sunIcon = scene.add.image(-12, 20, 'sprites', 'sun1.png')
+      .setScale(0.5)
     this.add(this.sunIcon)
     
     // 冷却遮罩（高度与卡片一致）
@@ -50,30 +85,32 @@ export default class SeedCard extends Phaser.GameObjects.Container {
     this.selectBorder.setVisible(false)
     this.add(this.selectBorder)
     
-    // 设置为可交互 - 以 cardW×cardH 为点击区域，居中对齐 Container 原点
+    // 保存颜色供后续使用
+    this.plantColors = colors
+    this.cardW = cardW
+    this.cardH = cardH
+    
+    // 设置为可交互
     this.setInteractive(
       new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH),
       Phaser.Geom.Rectangle.Contains,
-      true   // dropZone = false, useHandCursor 通过下面的 options 传
+      true
     )
     this.input.cursor = 'pointer'
     this.on('pointerdown', (pointer, localX, localY, event) => {
-      // 阻止事件传播，防止触发场景的 pointerdown（误种植）
       event.stopPropagation()
       this.select()
     })
     this.on('pointerover', () => {
       if (!this.onCooldown && scene.sunCount >= this.cost) {
-        this.bg.setFillStyle(0xA0522D)
+        this.bg.setFillStyle(colors.hover)
       }
     })
     this.on('pointerout', () => {
-      this.bg.setFillStyle(0x8B4513)
+      this.bg.setFillStyle(colors.bg)
     })
     
     scene.add.existing(this)
-    
-    // 卡片栏深度高于草地，但阳光（depth=2000）依然在其上层
     this.setDepth(100)
   }
   
@@ -123,7 +160,7 @@ export default class SeedCard extends Phaser.GameObjects.Container {
       onComplete: () => {
         this.onCooldown = false
         this.cooldownMask.setVisible(false)
-        this.cooldownMask.height = 58
+        this.cooldownMask.height = this.cardH || 58
       }
     })
   }

@@ -81,29 +81,53 @@ Chunk.prototype.drawTile = function(x,y,tile){
         Editor.ground.create(x * World.tileWidth, y * World.tileHeight, tile);
         return;
     }*/
+    // 先检查纹理帧是否存在
+    var textureExists = false;
     try {
-        var sprite = this.scene.add.image(x*World.tileWidth,y*World.tileHeight,'tileset',tile);
-        sprite.setDisplayOrigin(0,0);
-        sprite.tileID = tile;
-        this.tiles.push(sprite);
-        if(this.getAtlasData(tile,'collides',true)) this.addCollision(x,y);
-        this.postDrawTile(x,y,tile,sprite);
-    } catch (e) {
-        // 如果找不到纹理帧，绘制一个简单的矩形作为 fallback
-        var graphics = this.scene.add.graphics();
-        if (tile && tile.startsWith('grass')) {
-            graphics.fillStyle(0x7FFF7F, 1); // 浅绿草地色
-        } else {
-            graphics.fillStyle(0xAAAAAA, 1); // 灰色作为默认颜色
+        var textureManager = this.scene.textures;
+        if (textureManager && textureManager.exists('tileset')) {
+            var frames = textureManager.get('tileset').frames;
+            if (frames && frames[tile]) {
+                textureExists = true;
+            }
         }
-        graphics.fillRect(x*World.tileWidth, y*World.tileHeight, World.tileWidth, World.tileHeight);
-        graphics.generateTexture('fallback_' + x + '_' + y, World.tileWidth, World.tileHeight);
-        graphics.destroy();
-        var fallbackSprite = this.scene.add.image(x*World.tileWidth, y*World.tileHeight, 'fallback_' + x + '_' + y);
-        fallbackSprite.setDisplayOrigin(0,0);
-        fallbackSprite.tileID = tile;
-        this.tiles.push(fallbackSprite);
+    } catch (e) {
+        // 忽略错误，继续使用 fallback
     }
+    
+    if (textureExists) {
+        try {
+            var sprite = this.scene.add.image(x*World.tileWidth,y*World.tileHeight,'tileset',tile);
+            sprite.setDisplayOrigin(0,0);
+            sprite.tileID = tile;
+            this.tiles.push(sprite);
+            if(this.getAtlasData(tile,'collides',true)) this.addCollision(x,y);
+            this.postDrawTile(x,y,tile,sprite);
+        } catch (e) {
+            // 如果出错，还是使用 fallback
+            this.drawFallbackTile(x, y, tile);
+        }
+    } else {
+        // 纹理不存在，使用 fallback
+        this.drawFallbackTile(x, y, tile);
+    }
+};
+
+Chunk.prototype.drawFallbackTile = function(x,y,tile){
+    // 如果找不到纹理帧，绘制一个简单的矩形作为 fallback
+    var graphics = this.scene.add.graphics();
+    if (tile && tile.startsWith('grass')) {
+        graphics.fillStyle(0x7FFF7F, 1); // 浅绿草地色
+    } else {
+        graphics.fillStyle(0xAAAAAA, 1); // 灰色作为默认颜色
+    }
+    graphics.fillRect(x*World.tileWidth, y*World.tileHeight, World.tileWidth, World.tileHeight);
+    graphics.generateTexture('fallback_' + x + '_' + y, World.tileWidth, World.tileHeight);
+    graphics.destroy();
+    var fallbackSprite = this.scene.add.image(x*World.tileWidth, y*World.tileHeight, 'fallback_' + x + '_' + y);
+    fallbackSprite.setDisplayOrigin(0,0);
+    fallbackSprite.tileID = tile;
+    this.tiles.push(fallbackSprite);
 };
 
 Chunk.prototype.getAtlasData = function(image,data,longname){
@@ -129,56 +153,100 @@ Chunk.prototype.getAtlasData = function(image,data,longname){
 };
 
 Chunk.prototype.drawImage = function(x,y,image,depth,crop){
-    var offset = this.getAtlasData(image,'offset');
-    if(offset){
-        x += offset.x;
-        y += offset.y;
+    try {
+        if (!this.tilesetData || !this.tilesetData.shorthands || !this.tilesetData.shorthands[image]) {
+            console.warn('找不到图像缩写:', image);
+            return null;
+        }
+        
+        var fullImageName = this.tilesetData.shorthands[image];
+        
+        // 检查纹理帧是否存在
+        var textureExists = false;
+        try {
+            var textureManager = this.scene.textures;
+            if (textureManager && textureManager.exists('tileset')) {
+                var frames = textureManager.get('tileset').frames;
+                if (frames && frames[fullImageName]) {
+                    textureExists = true;
+                }
+            }
+        } catch (e) {
+            // 忽略错误
+        }
+        
+        if (!textureExists) {
+            // 减少警告噪音，只在调试模式下显示
+            // console.warn('找不到纹理帧:', fullImageName);
+            return null;
+        }
+        
+        var offset = this.getAtlasData(image,'offset');
+        if(offset){
+            x += offset.x;
+            y += offset.y;
+        }
+        var img = this.scene.add.image(x*World.tileWidth,y*World.tileHeight,'tileset',fullImageName);
+        if(crop) img.setCrop(crop);
+        var depthOffset = this.getAtlasData(image,'depthOffset') || 0;
+        depth = depth || y;
+        img.setDepth(depth+depthOffset);
+        var anchor = this.getAtlasData(image,'anchor');
+        if (anchor) {
+            img.setOrigin(anchor.x,anchor.y);
+        }
+        this.images.push(img);
+        this.postDrawImage(x,y,image,img);
+        return img;
+    } catch (e) {
+        console.warn('绘制图像出错:', e, 'image:', image);
+        return null;
     }
-    var img = this.scene.add.image(x*World.tileWidth,y*World.tileHeight,'tileset',this.tilesetData.shorthands[image]);
-    if(crop) img.setCrop(crop);
-    var depthOffset = this.getAtlasData(image,'depthOffset') || 0;
-    depth = depth || y;
-    img.setDepth(depth+depthOffset);
-    var anchor = this.getAtlasData(image,'anchor');
-    img.setOrigin(anchor.x,anchor.y);
-    this.images.push(img);
-    this.postDrawImage(x,y,image,img);
-    return img;
 };
 
 Chunk.prototype.addImage = function(x,y,image){
-    var isTree = (image[0] == 't');
-    if(isTree){
-        var frame = this.getAtlasData(image,'frame');
-        var ycutoff = frame.h*0.4;
-        this.drawImage(x,y,image, y, new Phaser.Geom.Rectangle(0,0,frame.w,ycutoff)).setAlpha(TREE_ALPHA);
-        this.drawImage(x,y,image, y+1, new Phaser.Geom.Rectangle(0,ycutoff,frame.w,frame.h-ycutoff)).setAlpha(TREE_ALPHA);
-    }else{
-        this.drawImage(x,y,image);
-    }
-    // Manage collisions
-    var collisions = this.getAtlasData(image,'collisions');
-    if(collisions) {
-        collisions.forEach(function(coll){
-            this.addCollision(x+coll[0],y+coll[1]);
-        },this);
-    }
-    // Draw dead leaves on the ground
-    if(isTree && Utils.randomInt(1,10) > 6){ // TODO: conf
-        var nbleaves = 5; //TODO: conf
-        Utils.shuffle(this.leavesPos);
-        for(var j = 0; j < nbleaves; j++) {
-            var c = this.leavesPos[j];
-            var type = Utils.randomInt(1,3);
-            var lx = x+c[0];
-            var ly = y+c[1];
-            this.drawImage(lx,ly,'l'+type);
-            // if(this.hasWater(lx,ly)) console.warn('on water');
+    try {
+        var isTree = (image[0] == 't');
+        if(isTree){
+            var frame = this.getAtlasData(image,'frame');
+            if (!frame) {
+                console.warn('找不到图像帧数据:', image);
+                return;
+            }
+            var ycutoff = frame.h*0.4;
+            var img1 = this.drawImage(x,y,image, y, new Phaser.Geom.Rectangle(0,0,frame.w,ycutoff));
+            if (img1) img1.setAlpha(TREE_ALPHA);
+            var img2 = this.drawImage(x,y,image, y+1, new Phaser.Geom.Rectangle(0,ycutoff,frame.w,frame.h-ycutoff));
+            if (img2) img2.setAlpha(TREE_ALPHA);
+        }else{
+            this.drawImage(x,y,image);
         }
-    }
-    // Add ivy
-    if(isTree && (image[1] == 1 || image[1] == 2) && Utils.randomInt(1,10) > 6){ // TODO: conf
-        this.drawImage(x+1,y-1,'i'+Utils.randomInt(1,2),y+1);
+        // Manage collisions
+        var collisions = this.getAtlasData(image,'collisions');
+        if(collisions) {
+            collisions.forEach(function(coll){
+                this.addCollision(x+coll[0],y+coll[1]);
+            },this);
+        }
+        // Draw dead leaves on the ground
+        if(isTree && Utils.randomInt(1,10) > 6){ // TODO: conf
+            var nbleaves = 5; //TODO: conf
+            Utils.shuffle(this.leavesPos);
+            for(var j = 0; j < nbleaves; j++) {
+                var c = this.leavesPos[j];
+                var type = Utils.randomInt(1,3);
+                var lx = x+c[0];
+                var ly = y+c[1];
+                this.drawImage(lx,ly,'l'+type);
+                // if(this.hasWater(lx,ly)) console.warn('on water');
+            }
+        }
+        // Add ivy
+        if(isTree && (image[1] == 1 || image[1] == 2) && Utils.randomInt(1,10) > 6){ // TODO: conf
+            this.drawImage(x+1,y-1,'i'+Utils.randomInt(1,2),y+1);
+        }
+    } catch (e) {
+        console.warn('添加图像出错:', e, 'image:', image);
     }
 };
 

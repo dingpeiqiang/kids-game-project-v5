@@ -19,7 +19,8 @@ export default class Plant extends Phaser.Physics.Arcade.Sprite {
       row: row,
       col: col,
       lastShotAt: 0,
-      firingRate: 1000 // 1秒射击间隔
+      firingRate: 1000, // 1秒射击间隔
+      health: 5
     }
     
     // 创建动画
@@ -102,5 +103,13 @@ export default class Plant extends Phaser.Physics.Arcade.Sprite {
     pea.setVelocityX(150)
     
     console.log('Pea shot with velocity:', pea.body.velocity.x)
+  }
+  
+  takeDamage(amount) {
+    this.gameData.health -= amount
+    
+    if (this.gameData.health <= 0) {
+      this.destroy()
+    }
   }
 }

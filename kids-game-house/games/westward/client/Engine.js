@@ -2512,24 +2512,48 @@ Chunk.prototype.postDrawImage = function(x,y,image,sprite){
 
 
 Chunk.prototype.addOverlay = function(cx,cy){
-    Engine.overlay.add(cx-1, cy-2, 1);
-    Engine.overlay.add(cx, cy-2, 1);
-    Engine.overlay.add(cx+1, cy-2, 1);
-    Engine.overlay.add(cx+2, cy-2, 1);
-    Engine.overlay.add(cx, cy-3, 1);
-    Engine.overlay.add(cx+1, cy-3, 1);
+    try {
+        if (Engine.overlay && Engine.overlay.add) {
+            Engine.overlay.add(cx-1, cy-2, 1);
+            Engine.overlay.add(cx, cy-2, 1);
+            Engine.overlay.add(cx+1, cy-2, 1);
+            Engine.overlay.add(cx+2, cy-2, 1);
+            Engine.overlay.add(cx, cy-3, 1);
+            Engine.overlay.add(cx+1, cy-3, 1);
+        }
+    } catch (e) {
+        console.warn('添加覆盖层出错:', e);
+    }
 };
 
 Chunk.prototype.addCollision = function(cx,cy){
-    Engine.collisions.add(cx, cy, 1);
+    try {
+        if (Engine.collisions && Engine.collisions.add) {
+            Engine.collisions.add(cx, cy, 1);
+        }
+    } catch (e) {
+        console.warn('添加碰撞出错:', e);
+    }
 };
 
 Chunk.prototype.removeCollision = function(cx,cy){
-    Engine.collisions.delete(cx,cy);
+    try {
+        if (Engine.collisions && Engine.collisions.delete) {
+            Engine.collisions.delete(cx,cy);
+        }
+    } catch (e) {
+        console.warn('移除碰撞出错:', e);
+    }
 };
 
 Chunk.prototype.addResource = function(x,y){
-    Engine.resources.add(x,y);
+    try {
+        if (Engine.resources && Engine.resources.add) {
+            Engine.resources.add(x,y);
+        }
+    } catch (e) {
+        console.warn('添加资源出错:', e);
+    }
 };
 
 
