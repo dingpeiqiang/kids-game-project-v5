@@ -6,21 +6,56 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create() {
-    // 添加标题文本
-    const text = this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-      'Tap to Start',
-      {
-        font: '20px sans-serif',
-        fill: '#FFF'
-      }
-    )
-    text.setOrigin(0.5, 0.5)
+    const C = window.GAME_CONFIG
+    const W = C.BASE_W
+    const H = C.BASE_H
 
-    // 监听点击事件
-    this.input.on('pointerdown', () => {
-      this.scene.start('PlayScene')
+    this.cameras.main.setSize(W, H)
+
+    // 绿色渐变背景
+    this.add.rectangle(0, 0, W, H, 0x4a7c2e).setOrigin(0, 0)
+
+    // 装饰草地
+    for (let i = 0; i < W; i += 60) {
+      const shade = i % 120 === 0 ? 0x5a8c3e : 0x4a7c2e
+      this.add.rectangle(i, H - 80, 60, 80, shade).setOrigin(0, 0).setAlpha(0.5)
+    }
+
+    // 标题
+    this.add.text(W / 2, H / 2 - 80, '🌻 植物大战僵尸 🧟', {
+      font: 'bold 48px "Microsoft YaHei", sans-serif',
+      fill: '#FFD700',
+      stroke: '#5a3a0a',
+      strokeThickness: 6
+    }).setOrigin(0.5)
+
+    // 副标题
+    this.add.text(W / 2, H / 2 - 20, 'Plants vs. Zombies', {
+      font: '24px sans-serif',
+      fill: '#FFFFFF',
+      stroke: '#333',
+      strokeThickness: 2
+    }).setOrigin(0.5)
+
+    // 开始按钮
+    const startBtn = this.add.rectangle(W / 2, H / 2 + 60, 220, 55, 0x4CAF50)
+      .setStrokeStyle(3, 0x388E3C)
+      .setInteractive({ useHandCursor: true })
+    this.add.text(W / 2, H / 2 + 60, '开始游戏', {
+      font: 'bold 24px sans-serif', fill: '#FFFFFF', stroke: '#2E7D32', strokeThickness: 2
+    }).setOrigin(0.5)
+
+    startBtn.on('pointerover', () => startBtn.setFillStyle(0x66BB6A))
+    startBtn.on('pointerout', () => startBtn.setFillStyle(0x4CAF50))
+    startBtn.on('pointerdown', () => this.scene.start('PlayScene'))
+
+    // 闪烁提示
+    const tip = this.add.text(W / 2, H / 2 + 120, '点击「开始游戏」进入战斗', {
+      font: '16px sans-serif', fill: 'rgba(255,255,255,0.7)'
+    }).setOrigin(0.5)
+
+    this.tweens.add({
+      targets: tip, alpha: 0.3, duration: 1000, yoyo: true, repeat: -1
     })
   }
 }

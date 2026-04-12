@@ -20,6 +20,8 @@ export interface EnemyData {
   lastX:      number;
   lastY:      number;
   isPower:    boolean;   // carries a power-up on death
+  speed:      number;    // adjusted speed based on difficulty
+  fireRate:   number;    // adjusted fire rate based on difficulty
 }
 
 /** Thin wrapper around Phaser.Physics.Arcade.Image with typed EnemyData */
@@ -30,15 +32,19 @@ export class Enemy extends Phaser.Physics.Arcade.Image {
   private _hp:    number;
   private _maxHp: number;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, type: EnemyType, isPower: boolean) {
-    const cfg  = ENEMY_CFG[type];
+  constructor(scene: Phaser.Scene, x: number, y: number, type: EnemyType, isPower: boolean, levelIndex: number = 0) {
+    const baseCfg  = ENEMY_CFG[type];
+    // Progressive difficulty: speed increases 8% per level
+    const speedMultiplier = 1 + (levelIndex * 0.08);
+    const adjustedSpeed = baseCfg.speed * speedMultiplier;
+    
     const texKey = `${type.toLowerCase()}_2_0`;
     super(scene, x, y, texKey);
 
     this.enemyType = type;
     this.isPower   = isPower;
-    this._hp       = cfg.hp;
-    this._maxHp    = cfg.hp;
+    this._hp       = baseCfg.hp;
+    this._maxHp    = baseCfg.hp;
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -49,8 +55,8 @@ export class Enemy extends Phaser.Physics.Arcade.Image {
     // Initialise typed data bag
     const data: EnemyData = {
       type,
-      hp:      cfg.hp,
-      maxHp:   cfg.hp,
+      hp:      baseCfg.hp,
+      maxHp:   baseCfg.hp,
       dir:     Direction.DOWN,
       state:   AIState.PATROL,
       moveTmr: Phaser.Math.Between(60, 160),
@@ -60,6 +66,8 @@ export class Enemy extends Phaser.Physics.Arcade.Image {
       lastX:   x,
       lastY:   y,
       isPower,
+      speed: adjustedSpeed,
+      fireRate: baseCfg.fireRate,
     };
     this.setData(data);
   }
@@ -67,6 +75,8 @@ export class Enemy extends Phaser.Physics.Arcade.Image {
   // ── Accessors ─────────────────────────────
   get hp():    number { return this.getData('hp') as number; }
   get maxHp(): number { return this.getData('maxHp') as number; }
+  get speed(): number { return this.getData('speed') as number; }
+  get fireRate(): number { return this.getData('fireRate') as number; }
 
   /** Applies damage. Returns true if tank is destroyed. */
   takeDamage(amount = 1): boolean {

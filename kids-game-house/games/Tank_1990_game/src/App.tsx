@@ -20,6 +20,7 @@ import { GameOverScene, LevelCompleteScene } from './game/scenes/GameOverScene';
 import { MainMenu }   from './ui/MainMenu';
 import { HUD }        from './ui/HUD';
 import { PauseMenu }  from './ui/PauseMenu';
+import { PowerUpNotification } from './ui/PowerUpNotification';
 
 // ── UI State machine ──────────────────────────
 type UILayer = 'menu' | 'playing' | 'paused' | 'gameover' | 'level-complete';
@@ -151,6 +152,9 @@ export const App: React.FC = () => {
 
         {/* In-game HUD (right-panel) */}
         <HUD visible={layer === 'playing' || layer === 'paused'} />
+
+        {/* PowerUp Notification */}
+        <PowerUpNotification />
 
         {/* Pause overlay */}
         {layer === 'paused' && (

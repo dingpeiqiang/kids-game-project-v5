@@ -25,10 +25,14 @@ function Chunk(data, tilesetData, scene){
 }
 
 Chunk.prototype.draw = function(){
+    console.log('绘制地图块:', this.id, '坐标:', this.x, this.y, 'defaultTile:', this.defaultTile);
+    
     this.wood.forEach(function(w){
         this.addResource(this.x+w[0],this.y+w[1]);
     },this);
-    // Ground
+    
+    // Ground - 渲染基础地面
+    var groundRendered = false;
     for(var x_ = 0; x_ < World.chunkWidth; x_++){
         for(var y_ = 0; y_ < World.chunkHeight; y_++) {
             var tx = this.x + x_;
@@ -37,33 +41,54 @@ Chunk.prototype.draw = function(){
             if(this.defaultTile == 'grass') {
                 var gs = this.tilesetData.config.grassSize;
                 var t = (tx % gs) + (ty % gs) * gs;
-                this.drawTile(tx,ty,this.tilesetData.config.grassPrefix+'_'+t);
+                var tileName = this.tilesetData.config.grassPrefix+'_'+t;
+                this.drawTile(tx,ty,tileName);
+                groundRendered = true;
             }
         }
     }
-    // Layers
-    this.layers.forEach(function(layer){
-        layer.forEach(function(data){
-            var tile = data[2];
-            if(tile === undefined) return;
-            var x = this.x + parseInt(data[0]);
-            var y = this.y + parseInt(data[1]);
-            var name = this.tilesetData.shorthands[tile];
-            if(!(tile in this.tilesetData.shorthands)) return;
-            this.drawTile(x, y, name);
+    
+    if (!groundRendered) {
+        console.warn('地图块', this.id, '没有渲染任何地面瓦片');
+    } else {
+        console.log('地图块', this.id, '地面瓦片渲染成功');
+    }
+    
+    // Layers - 渲染额外的图层
+    if (this.layers && this.layers.length > 0) {
+        this.layers.forEach(function(layer){
+            if (!layer || layer.length === 0) return;
+            layer.forEach(function(data){
+                if (!data || data.length < 3) return;
+                var tile = data[2];
+                if(tile === undefined) return;
+                var x = this.x + parseInt(data[0]);
+                var y = this.y + parseInt(data[1]);
+                var name = this.tilesetData.shorthands[tile];
+                if(!name) {
+                    // 如果没有简写映射，直接使用 tile 作为名称
+                    name = tile;
+                }
+                this.drawTile(x, y, name);
+            },this);
         },this);
-    },this);
+    }
+    
     if(this.tiles.length > 700) console.warn(this.tiles.length); // TODO: remove eventually
 
-    // Decor
-    this.decor.forEach(function (data) {
-        var x = this.x + parseInt(data[0]);
-        var y = this.y + parseInt(data[1]);
-        this.addImage(x, y, data[2]);
-        if(data[2][0] == 't') this.addOverlay(x,y);
-    }, this);
+    // Decor - 渲染装饰物
+    if (this.decor && this.decor.length > 0) {
+        this.decor.forEach(function (data) {
+            if (!data || data.length < 3) return;
+            var x = this.x + parseInt(data[0]);
+            var y = this.y + parseInt(data[1]);
+            this.addImage(x, y, data[2]);
+            if(data[2][0] == 't') this.addOverlay(x,y);
+        }, this);
+    }
 
     this.displayed = true;
+    console.log('地图块', this.id, '渲染完成，瓦片数:', this.tiles.length, '装饰数:', this.images ? this.images.length : 0);
 };
 
 Chunk.prototype.has = function(x,y,v){
@@ -81,18 +106,41 @@ Chunk.prototype.drawTile = function(x,y,tile){
         Editor.ground.create(x * World.tileWidth, y * World.tileHeight, tile);
         return;
     }*/
+    
+    // 调试：记录前几个瓦片的渲染情况
+    if (this.tiles.length < 3) {
+        console.log('尝试绘制瓦片:', tile, '位置:', x, y);
+    }
+    
     // 先检查纹理帧是否存在
     var textureExists = false;
     try {
         var textureManager = this.scene.textures;
         if (textureManager && textureManager.exists('tileset')) {
-            var frames = textureManager.get('tileset').frames;
+            var texture = textureManager.get('tileset');
+            var frames = texture.frames;
             if (frames && frames[tile]) {
                 textureExists = true;
+                if (this.tiles.length < 3) {
+                    console.log('纹理存在:', tile);
+                }
+            } else {
+                if (this.tiles.length < 3) {
+                    console.warn('纹理帧不存在:', tile, 
+                                 '总帧数:', Object.keys(frames || {}).length,
+                                 '可用帧示例:', Object.keys(frames || {}).slice(0, 5));
+                }
+            }
+        } else {
+            // 只在第一次警告时输出详细信息
+            if (!Chunk._tilesetWarningShown) {
+                console.warn('tileset 纹理不存在');
+                console.warn('已加载的纹理:', Object.keys(textureManager.list));
+                Chunk._tilesetWarningShown = true;
             }
         }
     } catch (e) {
-        // 忽略错误，继续使用 fallback
+        console.warn('检查纹理时出错:', e);
     }
     
     if (textureExists) {
@@ -104,11 +152,15 @@ Chunk.prototype.drawTile = function(x,y,tile){
             if(this.getAtlasData(tile,'collides',true)) this.addCollision(x,y);
             this.postDrawTile(x,y,tile,sprite);
         } catch (e) {
+            console.warn('绘制瓦片失败:', tile, e);
             // 如果出错，还是使用 fallback
             this.drawFallbackTile(x, y, tile);
         }
     } else {
         // 纹理不存在，使用 fallback
+        if (this.tiles.length < 3) {
+            console.log('使用 fallback 绘制瓦片:', tile);
+        }
         this.drawFallbackTile(x, y, tile);
     }
 };
@@ -116,18 +168,31 @@ Chunk.prototype.drawTile = function(x,y,tile){
 Chunk.prototype.drawFallbackTile = function(x,y,tile){
     // 如果找不到纹理帧，绘制一个简单的矩形作为 fallback
     var graphics = this.scene.add.graphics();
+    
+    // 根据瓦片类型设置颜色
     if (tile && tile.startsWith('grass')) {
-        graphics.fillStyle(0x7FFF7F, 1); // 浅绿草地色
+        graphics.fillStyle(0x7CFC00, 1); // 草坪绿
+    } else if (tile && tile.startsWith('water')) {
+        graphics.fillStyle(0x4169E1, 1); // 皇家蓝
     } else {
-        graphics.fillStyle(0xAAAAAA, 1); // 灰色作为默认颜色
+        graphics.fillStyle(0x90EE90, 1); // 浅绿作为默认颜色
     }
+    
     graphics.fillRect(x*World.tileWidth, y*World.tileHeight, World.tileWidth, World.tileHeight);
-    graphics.generateTexture('fallback_' + x + '_' + y, World.tileWidth, World.tileHeight);
+    
+    // 生成纹理并创建精灵
+    var textureKey = 'fallback_' + tile.replace(/[^a-zA-Z0-9]/g, '_') + '_' + x + '_' + y;
+    graphics.generateTexture(textureKey, World.tileWidth, World.tileHeight);
     graphics.destroy();
-    var fallbackSprite = this.scene.add.image(x*World.tileWidth, y*World.tileHeight, 'fallback_' + x + '_' + y);
+    
+    var fallbackSprite = this.scene.add.image(x*World.tileWidth, y*World.tileHeight, textureKey);
     fallbackSprite.setDisplayOrigin(0,0);
     fallbackSprite.tileID = tile;
     this.tiles.push(fallbackSprite);
+    
+    if (this.tiles.length <= 3) {
+        console.log('Fallback 瓦片已创建:', tile, '纹理键:', textureKey);
+    }
 };
 
 Chunk.prototype.getAtlasData = function(image,data,longname){

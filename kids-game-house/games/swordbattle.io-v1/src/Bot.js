@@ -16,9 +16,11 @@ export default class Bot {
     this.coins = 0;
     this.level = 1;
     
-    // 创建精灵
-    this.sprite = scene.add.image(x, y, skin);
-    this.sprite.setScale(1);
+    // 创建精灵 - 使用小尺寸占位符
+    const colors = [0xFF5722, 0xE91E63, 0x9C27B0, 0x673AB7, 0x3F51B5];
+    const colorIndex = Math.floor(Math.random() * colors.length);
+    this.originalColor = colors[colorIndex];
+    this.sprite = scene.add.circle(x, y, 25, this.originalColor);
     this.sprite.setDepth(50);
     
     // 添加名称标签
@@ -108,9 +110,9 @@ export default class Bot {
     if (this.health < 0) this.health = 0;
     
     // 受伤闪烁效果
-    this.sprite.setTint(0xff0000);
+    this.sprite.fillColor = 0xff0000;
     this.scene.time.delayedCall(100, () => {
-      this.sprite.clearTint();
+      this.sprite.fillColor = this.originalColor;
     });
     
     return this.health <= 0;

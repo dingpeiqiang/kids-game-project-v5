@@ -9,12 +9,15 @@ import {
   PLAYER_SPAWN_COL, PLAYER_SPAWN_ROW,
   ENEMY_CFG, HS_KEY,
 } from '../config';
+import { audioManager } from '../AudioManager';
 import { TileType, EnemyType, PowerUpType, Direction, GameInitData } from '../../types';
 import { LEVELS, TOTAL_LEVELS } from '../levels/LevelLoader';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { Bullet } from '../entities/Bullet';
+import { PowerUp } from '../entities/PowerUp';
 import { EnemyAI } from '../ai/EnemyAI';
+import { PowerUpManager } from '../managers/PowerUpManager';
 import { EventBus } from '../EventBus';
 
 const PU_TYPES: PowerUpType[] = [
@@ -45,7 +48,9 @@ export class GameScene extends Phaser.Scene {
   private liveEnemies: Enemy[] = [];
   private pBullets!: Phaser.Physics.Arcade.Group;
   private eBullets!: Phaser.Physics.Arcade.Group;
-  private puGroup!: Phaser.Physics.Arcade.Group;
+  
+  // ── PowerUp System
+  private powerUpManager!: PowerUpManager;
 
   // ── AI───────────
   private ai!: EnemyAI;
@@ -88,14 +93,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Initialize audio
+    audioManager.init();
+    audioManager.resume();
+
     const ld = LEVELS[this.lvlIdx];
     this.grid = ld.grid.map(row => [...row]);
 
     // ── Background ────────────────────────
-    this.cameras.main.setBackgroundColor('#0a0a0a');
+    this.cameras.main.setBackgroundColor('#000000');
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
-    this.add.rectangle(MAP_W, 0, HUD_W, MAP_H, 0x0d0d0d).setOrigin(0);
-    this.add.rectangle(MAP_W, 0, 2, MAP_H, 0x1a1a1a).setOrigin(0);
+    this.add.rectangle(MAP_W, 0, HUD_W, MAP_H, 0x000000).setOrigin(0);
+    this.add.rectangle(MAP_W, 0, 2, MAP_H, 0x333333).setOrigin(0);
 
     // ── Tile groups ───────────────────────
     this.brickGrp = this.physics.add.staticGroup();
@@ -115,8 +124,8 @@ export class GameScene extends Phaser.Scene {
     this.pBullets = this.physics.add.group();  // no classType — Bullet self-registers its body
     this.eBullets = this.physics.add.group();
 
-    // ── Power-ups
-    this.puGroup = this.physics.add.group();
+    // ── PowerUp Manager
+    this.powerUpManager = new PowerUpManager(this);
 
     // ── Enemies──
     this.enemyGrp = this.physics.add.group({ classType: Enemy });
@@ -162,6 +171,33 @@ export class GameScene extends Phaser.Scene {
     EventBus.on('resume-game', this.doResume.bind(this));
     EventBus.on('restart-game', this.doRestart.bind(this));
     EventBus.on('menu-requested', this.goMenu.bind(this));
+    
+    // ── PowerUp System Events
+    EventBus.on('add-score', (score) => {
+      this.score += score;
+      this.emitHUD();
+    });
+    EventBus.on('add-life', () => {
+      this.lives++;
+      this.showBanner('1UP!', 900);
+      this.emitHUD();
+    });
+    EventBus.on('bomb-all-enemies', () => {
+      const alive = this.liveEnemies.filter(e => e.active);
+      alive.forEach(e => {
+        this.spawnBoom(e.x, e.y, 1.5);
+        this.score += ENEMY_CFG[e.enemyType].score;
+        e.destroy();
+        this.killed++;
+      });
+      this.liveEnemies = this.liveEnemies.filter(e => e.active);
+      this.showBanner('BOMB!', 900);
+      this.emitHUD();
+      this.checkWin();
+    });
+    EventBus.on('show-message', (msg) => {
+      this.showBanner(msg, 900);
+    });
 
     EventBus.emit('scene-ready', this);
 
@@ -321,11 +357,13 @@ export class GameScene extends Phaser.Scene {
     // Player collects power-up
     this.physics.add.overlap(
       this.player,
-      this.puGroup,
-      (_, pu) => {
-        this.collectPU(
-          pu as Phaser.Physics.Arcade.Image
+      this.powerUpManager['powerUps'], // Access the internal group
+      (player, pu) => {
+        this.powerUpManager.handleCollision(
+          player as Player,
+          pu as PowerUp
         );
+        this.emitHUD();
       }
     );
   }
@@ -364,7 +402,7 @@ export class GameScene extends Phaser.Scene {
 
     // Spawn flash, then add enemy & colliders
     this.doSpawnFlash(sx, TILE / 2, () => {
-      const enemy = new Enemy(this, sx, TILE / 2, type, isPower);
+      const enemy = new Enemy(this, sx, TILE / 2, type, isPower, this.lvlIdx);
       this.enemyGrp.add(enemy, true);
       this.liveEnemies.push(enemy);
       this.physics.add.collider(enemy, this.brickGrp);
@@ -403,12 +441,14 @@ export class GameScene extends Phaser.Scene {
   ): void {
     if (!b.active || !br.active) return;
     this.killBullet(b);
+    audioManager.playBrickHit();
     const hp = (br.getData('hp') as number) - 1;
     if (hp <= 0) {
       const r = br.getData('r') as number;
       const c = br.getData('c') as number;
       if (r !== undefined) this.grid[r][c] = TileType.EMPTY;
       this.spawnBoom(br.x, br.y, 0.7);
+      audioManager.playExplosion();
       br.destroy();
       this.brickGrp.refresh();
     } else {
@@ -425,8 +465,14 @@ export class GameScene extends Phaser.Scene {
       const pts = ENEMY_CFG[enemy.enemyType].score;
       this.score += pts;
       this.floatText(enemy.x, enemy.y, `+${pts}`);
-      if (enemy.isPower) this.spawnPowerUp(enemy.x, enemy.y);
+      
+      // Spawn power-up if this was a power enemy
+      if (enemy.isPower) {
+        this.powerUpManager.spawn(enemy.x, enemy.y);
+      }
+      
       this.spawnBoom(enemy.x, enemy.y, 1.8);
+      audioManager.playEnemyHit();
       this.liveEnemies = this.liveEnemies.filter(e => e !== enemy);
       enemy.destroy();
       this.killed++;
@@ -446,6 +492,7 @@ export class GameScene extends Phaser.Scene {
 
     this.killBullet(b);
     this.spawnBoom(this.player.x, this.player.y, 2.2);
+    audioManager.playPlayerHit();
     this.player.alive = false;
     this.player.setVisible(false);
     
@@ -492,10 +539,16 @@ export class GameScene extends Phaser.Scene {
     this.player.setPosition(spawnX, spawnY);
     this.player.setVisible(true);
 
+    // 完全重置玩家状态
     this.player.alive = true;
+    this.player.direction = 0; // 重置朝向为上
     this.player.starLevel = 0;
     this.player.shieldActive = true;
     this.player.shieldTimer = 400;
+    this.player.animFrame = 0; // 重置动画帧
+    
+    // 立即设置初始纹理
+    this.player.setTexture('player_0_0');
   }
 
   private killEagle(): void {
@@ -503,6 +556,7 @@ export class GameScene extends Phaser.Scene {
     this.eagleAlive = false;
     this.eagleImg.setTexture('eagle_dead');
     this.spawnBoom(this.eagleImg.x, this.eagleImg.y, 2.5);
+    audioManager.playExplosion();
     for (let i = 0; i < 4; i++) {
       this.time.delayedCall(200 * i + 150, () => {
         this.spawnBoom(
@@ -520,61 +574,6 @@ export class GameScene extends Phaser.Scene {
     if (remaining === 0 && !this.over) {
       this.time.delayedCall(1600, () => this.doLevelComplete());
     }
-  }
-
-  //  POWER-UPS
-  private spawnPowerUp(x: number, y: number): void {
-    const type = PU_TYPES[Phaser.Math.Between(0, PU_TYPES.length - 1)];
-    const pu = this.puGroup.create(
-      x, y,
-      `pu_${type.toLowerCase()}`,
-    ) as Phaser.Physics.Arcade.Image;
-    pu.setData('type', type).setDepth(DEPTH.POWERUP);
-    this.tweens.add({ targets: pu, alpha: 0.1, duration: 260, yoyo: true, repeat: -1 });
-  }
-
-  private collectPU(pu: Phaser.Physics.Arcade.Image): void {
-    if (!pu.active) return;
-    const type = pu.getData('type') as PowerUpType;
-    this.score += 500;
-    this.floatText(pu.x, pu.y, 'PU+500');
-    pu.destroy();
-
-    switch (type) {
-      case PowerUpType.STAR:
-        this.player.upgradeStarLevel();
-        this.showBanner('UPGRADE!', 900);
-        break;
-      case PowerUpType.SHIELD:
-        this.player.addShield(500);
-        this.showBanner('SHIELD!', 900);
-        break;
-      case PowerUpType.BOMB: {
-        const alive = this.liveEnemies.filter(e => e.active);
-        alive.forEach(e => {
-          this.spawnBoom(e.x, e.y, 1.5);
-          this.score += ENEMY_CFG[e.enemyType].score;
-          e.destroy();
-          this.killed++;
-        });
-        this.liveEnemies = this.liveEnemies.filter(e => e.active);
-        this.showBanner('BOMB!', 900);
-        this.emitHUD();
-        this.checkWin();
-        break;
-      }
-      case PowerUpType.LIFE:
-        this.lives++;
-        this.showBanner('1UP!', 900);
-        break;
-      case PowerUpType.TIMER:
-        this.frozen = true;
-        this.frozenTmr = 500;
-        this.liveEnemies.forEach(e => { if (e.active) e.setTint(0x88ccff); });
-        this.showBanner('FREEZE!', 900);
-        break;
-    }
-    this.emitHUD();
   }
 
   //  VFX
@@ -636,6 +635,7 @@ export class GameScene extends Phaser.Scene {
     if (this.over) return;
     this.over = true;
     this.saveHS();
+    audioManager.playLevelComplete();
     const next = this.lvlIdx + 1;
     EventBus.emit('level-complete', {
       level: this.lvlIdx,
@@ -652,6 +652,7 @@ export class GameScene extends Phaser.Scene {
     if (this.over) return;
     this.over = true;
     this.saveHS();
+    audioManager.playGameOver();
     EventBus.emit('game-over', { score: this.score });
     this.scene.start('GameOver', { score: this.score });
   }
@@ -667,9 +668,11 @@ export class GameScene extends Phaser.Scene {
     this.paused = !this.paused;
     if (this.paused) {
       this.physics.pause();
+      audioManager.playPause();
       EventBus.emit('game-paused');
     } else {
       this.physics.resume();
+      audioManager.playResume();
       EventBus.emit('game-resumed');
     }
   }
@@ -698,6 +701,9 @@ export class GameScene extends Phaser.Scene {
       this.player.update();
     }
 
+    // Update PowerUp Manager
+    this.powerUpManager.update();
+
     // Shield FX
     if (this.player?.shieldActive && this.player?.alive) {
       this.shieldFX
@@ -708,13 +714,15 @@ export class GameScene extends Phaser.Scene {
       this.shieldFX.setVisible(false);
     }
 
-    // Frozen countdown
-    if (this.frozen) {
-      this.frozenTmr--;
-      if (this.frozenTmr <= 0) {
-        this.frozen = false;
-        this.liveEnemies.forEach(e => { if (e.active) e.clearTint(); });
-      }
+    // Frozen countdown (handled by PowerUpManager)
+    if (this.powerUpManager.isFrozen()) {
+      this.liveEnemies.forEach(e => { 
+        if (e.active) e.setTint(0x88ccff); 
+      });
+    } else {
+      this.liveEnemies.forEach(e => { 
+        if (e.active) e.clearTint(); 
+      });
     }
 
     // Update AI context & tick each enemy
@@ -722,7 +730,7 @@ export class GameScene extends Phaser.Scene {
       levelIndex: this.lvlIdx,
       player: this.player.alive ? this.player : null,
       enemyBullets: this.eBullets,
-      frozen: this.frozen,
+      frozen: this.powerUpManager.isFrozen(),
     });
     for (let i = this.liveEnemies.length - 1; i >= 0; i--) {
       const e = this.liveEnemies[i];
@@ -730,9 +738,13 @@ export class GameScene extends Phaser.Scene {
       this.ai.update(e);
     }
 
-    // Spawn cooldown
+    // Spawn cooldown - 关卡越高，生成越快
     this.spawnTmr++;
-    if (this.spawnTmr >= LEVELS[this.lvlIdx].spawnInterval) {
+    const baseInterval = LEVELS[this.lvlIdx].spawnInterval;
+    // 每关减少 10% 生成间隔，最低 40 帧
+    const adjustedInterval = Math.max(40, Math.floor(baseInterval * (1 - this.lvlIdx * 0.1)));
+    
+    if (this.spawnTmr >= adjustedInterval) {
       this.spawnTmr = 0;
       this.spawnEnemy();
     }
@@ -761,5 +773,10 @@ export class GameScene extends Phaser.Scene {
     EventBus.off('resume-game', this.doResume.bind(this));
     EventBus.off('restart-game', this.doRestart.bind(this));
     EventBus.off('menu-requested', this.goMenu.bind(this));
+    
+    // Clean up PowerUp system
+    if (this.powerUpManager) {
+      this.powerUpManager.clearAll();
+    }
   }
 }

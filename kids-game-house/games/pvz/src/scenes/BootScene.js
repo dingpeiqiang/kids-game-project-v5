@@ -6,37 +6,72 @@ export default class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // 加载精灵图集
-    this.load.atlas('sprites', '/assets/sprites.png', '/assets/sprites.json')
-    
-    // 加载背景图片
-    this.load.image('grass', '/assets/newgrass7x12_small.png')
-    
-    // 加载音频文件
-    this.load.audio('peaShoot', ['/assets/audio/effects/pea_shoot.mp3', '/assets/audio/effects/pea_shoot.ogg'])
-    this.load.audio('splat', ['/assets/audio/effects/splat.mp3', '/assets/audio/effects/splat.ogg'])
-    this.load.audio('zombiesAreComing', ['/assets/audio/effects/zombies_are_coming.mp3', '/assets/audio/effects/zombies_are_coming.ogg'])
+    // ── 加载程序化生成的新素材（独立 PNG） ──
+    const G = 'generated'
+
+    // 植物
+    this.load.image('peashooter', `/${G}/peashooter.png`)
+    this.load.image('sunflower', `/${G}/sunflower.png`)
+    this.load.image('wallnut', `/${G}/wallnut.png`)
+    this.load.image('iceshooter', `/${G}/iceshooter.png`)
+    this.load.image('repeater', `/${G}/repeater.png`)
+    this.load.image('cherrybomb', `/${G}/cherrybomb.png`)
+    this.load.image('potatomine', `/${G}/potatomine.png`)
+
+    // 子弹
+    this.load.image('pea', `/${G}/pea.png`)
+    this.load.image('ice_pea', `/${G}/ice_pea.png`)
+
+    // 阳光
+    this.load.image('sun', `/${G}/sun.png`)
+
+    // 僵尸（4种）
+    this.load.image('zombie_normal', `/${G}/zombie_normal.png`)
+    this.load.image('zombie_conehead', `/${G}/zombie_conehead.png`)
+    this.load.image('zombie_buckethead', `/${G}/zombie_buckethead.png`)
+    this.load.image('zombie_newspaper', `/${G}/zombie_newspaper.png`)
+
+    // 割草机
+    this.load.image('lawnmower', `/${G}/lawnmower.png`)
+
+    // 草地背景
+    this.load.image('grass', '/newgrass7x12_small.png')
+
+    // 音效
+    this.load.audio('peaShoot', ['/audio/effects/pea_shoot.mp3', '/audio/effects/pea_shoot.ogg'])
+    this.load.audio('splat', ['/audio/effects/splat.mp3', '/audio/effects/splat.ogg'])
+    this.load.audio('zombiesAreComing', ['/audio/effects/zombies_are_coming.mp3', '/audio/effects/zombies_are_coming.ogg'])
+
+    // 加载进度条
+    const C = window.GAME_CONFIG
+    const barW = 300
+    const barH = 20
+    const barX = (C.BASE_W - barW) / 2
+    const barY = C.BASE_H / 2
+
+    const bgBar = this.add.rectangle(C.BASE_W / 2, barY, barW + 4, barH + 4, 0x333333).setOrigin(0.5)
+    const fgBar = this.add.rectangle(barX, barY - barH / 2, 0, barH, 0x4CAF50).setOrigin(0)
+
+    this.load.on('progress', (value) => {
+      fgBar.width = barW * value
+    })
+
+    this.load.on('complete', () => {
+      bgBar.destroy()
+      fgBar.destroy()
+    })
+
+    // 加载提示文字
+    this.add.text(C.BASE_W / 2, barY - 40, '正在加载资源...', {
+      fontSize: '20px', fill: '#FFFFFF', fontStyle: 'bold'
+    }).setOrigin(0.5)
   }
 
   create() {
-    const W = this.cameras.main.width   // 490
-    const H = this.cameras.main.height  // 290
+    // 布局常量传到 game 对象
+    const C = window.GAME_CONFIG
+    Object.keys(C).forEach(k => { this.game[k] = C[k] })
 
-    // ── 布局常量 ──────────────────────────────────────────────────
-    // 顶部卡片栏高度（y = 0 ~ UI_TOP_H，纯 UI 区域，不放置植物）
-    this.game.UI_TOP_H  = 65
-
-    // 草地游戏区域：y = UI_TOP_H ~ H
-    this.game.GAME_TOP_Y = this.game.UI_TOP_H       // 65
-    this.game.GAME_H     = H - this.game.UI_TOP_H   // 225
-
-    // 7 行 × 12 列网格（仅在草地区域内）
-    this.game.ROWS       = 7
-    this.game.COLS       = 12
-    this.game.CELL_WIDTH  = W / this.game.COLS             // ≈ 40.8
-    this.game.CELL_HEIGHT = this.game.GAME_H / this.game.ROWS  // ≈ 32.1
-
-    // 切换到标题场景
     this.scene.start('TitleScene')
   }
 }

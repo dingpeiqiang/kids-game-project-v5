@@ -62,13 +62,13 @@ export class EnemyAI {
     }
 
     // Apply velocity via body
-    const cfg = ENEMY_CFG[enemy.enemyType as EnemyType];
-    enemyBody.setVelocity(DV[dir].x * cfg.speed, DV[dir].y * cfg.speed);
+    const speed = enemy.speed;
+    enemyBody.setVelocity(DV[dir].x * speed, DV[dir].y * speed);
 
     // Fire
     if (fireTmr <= 0) {
       this.fireBullet(enemy, dir);
-      const base_rate = cfg.fireRate / 16;
+      const base_rate = enemy.fireRate / 16;
       fireTmr = Math.max(20, base_rate - this.ctx.levelIndex * 8)
         + Phaser.Math.Between(-12, 12);
     }

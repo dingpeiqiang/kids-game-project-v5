@@ -1,161 +1,62 @@
-const { execSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+import { SDWebUI } from './game-ui-tool/dist/index.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// 配置：输出目录
-const OUTPUT_DIR = path.join(__dirname, '../kids-game-house/games/pvz/assets/generated');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// 确保输出目录存在
-if (!fs.existsSync(OUTPUT_DIR)) {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-}
+// 配置 API 地址 (请确保 sd-webui-aki 已启动)
+const API_URL = 'http://localhost:7860';
+const OUTPUT_DIR = path.join(__dirname, 'kids-game-house', 'games', 'pvz', 'assets');
 
-console.log('🎨 植物大战僵尸 - 图片生成工具');
-console.log('=' .repeat(50));
-
-// 定义要生成的图片列表
-const assetsToGenerate = [
-  // 植物
-  {
-    name: 'sunflower',
-    prompt: 'pixel art sunflower, Plants vs Zombies style, retro game sprite, 16-bit, transparent background',
-    output: 'sunflower.png'
-  },
-  {
-    name: 'peashooter',
-    prompt: 'pixel art peashooter plant, Plants vs Zombies style, retro game sprite, green color, transparent background',
-    output: 'peashooter.png'
-  },
-  {
-    name: 'iceshooter',
-    prompt: 'pixel art ice shooter plant, Plants vs Zombies style, blue ice color, retro game sprite, transparent background',
-    output: 'iceshooter.png'
-  },
-  {
-    name: 'repeater',
-    prompt: 'pixel art repeater plant, double peashooter, Plants vs Zombies style, retro game sprite, transparent background',
-    output: 'repeater.png'
-  },
-  {
-    name: 'cherrybomb',
-    prompt: 'pixel art cherry bomb, two cherries, Plants vs Zombies style, red color, retro game sprite, transparent background',
-    output: 'cherrybomb.png'
-  },
-  {
-    name: 'potatomine',
-    prompt: 'pixel art potato mine, Plants vs Zombies style, brown potato, retro game sprite, transparent background',
-    output: 'potatomine.png'
-  },
-  {
-    name: 'wallnut',
-    prompt: 'pixel art walnut plant, tough defense, Plants vs Zombies style, brown color, retro game sprite, transparent background',
-    output: 'wallnut.png'
-  },
+async function generateAssets() {
+  console.log('🎨 开始生成 PVZ 卡通风格素材...');
   
-  // 僵尸
-  {
-    name: 'zombie-normal',
-    prompt: 'pixel art zombie, Plants vs Zombies style, retro game sprite, transparent background',
-    output: 'zombie-normal.png'
-  },
-  {
-    name: 'zombie-conehead',
-    prompt: 'pixel art zombie with traffic cone on head, Plants vs Zombies style, retro game sprite, transparent background',
-    output: 'zombie-conehead.png'
-  },
-  {
-    name: 'zombie-buckethead',
-    prompt: 'pixel art zombie with metal bucket on head, Plants vs Zombies style, retro game sprite, transparent background',
-    output: 'zombie-buckethead.png'
-  },
-  {
-    name: 'zombie-newspaper',
-    prompt: 'pixel art zombie reading newspaper, Plants vs Zombies style, retro game sprite, transparent background',
-    output: 'zombie-newspaper.png'
-  },
+  const sd = new SDWebUI(API_URL);
   
-  // 其他素材
-  {
-    name: 'pea',
-    prompt: 'pixel art green pea projectile, Plants vs Zombies style, retro game sprite, transparent background',
-    output: 'pea.png'
-  },
-  {
-    name: 'sun',
-    prompt: 'pixel art sun, bright yellow, Plants vs Zombies style, retro game sprite, transparent background',
-    output: 'sun.png'
+  // 检查连接
+  const isConnected = await sd.ping();
+  if (!isConnected) {
+    console.error('❌ 无法连接到 Stable Diffusion API，请确保服务已启动:', API_URL);
+    return;
   }
-];
 
-/**
- * 调用bitart-generator生成图片
- */
-function generateImage(asset) {
-  const outputPath = path.join(OUTPUT_DIR, asset.output);
-  
-  console.log(`\n📝 生成: ${asset.name}`);
-  console.log(`   提示词: ${asset.prompt.substring(0, 60)}...`);
-  console.log(`   输出: ${asset.output}`);
-  
-  try {
-    // 构建bitart命令
-    const bitartPath = path.join(__dirname, '../kids-game-frame-factory/bitart-generator/npm/bin/run.js');
-    const command = `node "${bitartPath}" -p "${asset.prompt}" -o "${outputPath}"`;
-    
-    console.log(`   执行: ${command}`);
-    
-    // 执行命令
-    const result = execSync(command, {
-      encoding: 'utf8',
-      stdio: 'inherit'
-    });
-    
-    console.log(`✅ ${asset.name} 生成成功!`);
-    return true;
-  } catch (error) {
-    console.error(`❌ ${asset.name} 生成失败:`, error.message);
-    return false;
-  }
-}
+  const assets = [
+    { name: 'pea.png', prompt: 'professional game asset, pea shooter bullet, round green projectile, vibrant cartoon style, clean edges, isolated on transparent background' },
+    { name: 'ps-idle01.png', prompt: 'professional game asset, pea shooter plant, cute green plant with big mouth, side view, idle pose, vibrant cartoon style, clean lines, isolated' },
+    { name: 'sunflower-idle.png', prompt: 'professional game asset, sunflower plant, happy face, bright yellow petals, side view, idle pose, vibrant cartoon style, clean lines, isolated' },
+    { name: 'zombie1.png', prompt: 'professional game asset, cartoon zombie character, funny green skin, tattered suit, walking frame 1, side view, clean lines, isolated' },
+    { name: 'zombie2.png', prompt: 'professional game asset, cartoon zombie character, funny green skin, tattered suit, walking frame 2, side view, clean lines, isolated' },
+    { name: 'zombie3.png', prompt: 'professional game asset, cartoon zombie character, funny green skin, tattered suit, walking frame 3, side view, clean lines, isolated' },
+    { name: 'sun1.png', prompt: 'professional game UI asset, glowing sun icon, bright yellow and orange, spinning animation frame 1, clean vector style, isolated' },
+    { name: 'sun2.png', prompt: 'professional game UI asset, glowing sun icon, bright yellow and orange, spinning animation frame 2, clean vector style, isolated' },
+    { name: 'grass_tile.png', prompt: 'seamless tileable grass lawn texture, top-down view, vibrant green, cartoon style, high quality, no borders' }
+  ];
 
-/**
- * 主函数
- */
-async function main() {
-  console.log(`\n📦 准备生成 ${assetsToGenerate.length} 个素材`);
-  console.log(`📁 输出目录: ${OUTPUT_DIR}`);
-  
-  let successCount = 0;
-  let failCount = 0;
-  
-  for (const asset of assetsToGenerate) {
-    const success = generateImage(asset);
-    if (success) {
-      successCount++;
-    } else {
-      failCount++;
-    }
-    
-    // 稍微延迟一下，避免API限流
-    if (assetsToGenerate.indexOf(asset) < assetsToGenerate.length - 1) {
-      console.log('   等待 2 秒...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
+  for (const asset of assets) {
+    try {
+      console.log(`⏳ 正在生成高质量素材: ${asset.name}...`);
+      const result = await sd.generateWithStyle(asset.prompt, 'cartoon', {
+        width: 128,
+        height: 128,
+        steps: 30,
+        cfgScale: 9,
+        negativePrompt: 'blurry, low resolution, ugly, distorted, watermark, text, signature, realistic, photorealistic, 3d render'
+      });
+      
+      if (result.images && result.images.length > 0) {
+        const buffer = SDWebUI.base64ToBuffer(result.images[0].base64);
+        const outputPath = path.join(OUTPUT_DIR, asset.name);
+        fs.writeFileSync(outputPath, buffer);
+        console.log(`✅ 已保存: ${outputPath}`);
+      }
+    } catch (error) {
+      console.error(`❌ 生成失败 ${asset.name}:`, error.message);
     }
   }
-  
-  console.log('\n' + '=' .repeat(50));
-  console.log('📊 生成完成!');
-  console.log(`✅ 成功: ${successCount}`);
-  console.log(`❌ 失败: ${failCount}`);
-  console.log(`📁 输出目录: ${OUTPUT_DIR}`);
+
+  console.log('🎉 素材生成完成！请手动更新 sprites.json 索引。');
 }
 
-// 运行主函数
-main().catch(console.error);
-
-// 导出模块供其他脚本使用
-module.exports = {
-  generateImage,
-  assetsToGenerate,
-  OUTPUT_DIR
-};
+generateAssets();

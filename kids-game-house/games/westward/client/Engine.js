@@ -96,9 +96,22 @@ var Engine = {
 Engine.preload = function() {
     Engine.useTilemaps = false;
 
-    this.load.json('tileset', 'assets/tilesets/tileset.json');
+    // 加载 tileset 配置数据（config, shorthands）
+    this.load.json('tilesetData', 'assets/tilesets/tileset.json');
+    // 加载 tileset 纹理 atlas（frames）
+    console.log('开始加载 tileset 纹理...');
     this.load.atlas('tileset', 'assets/tilesets/tileset.png', 'assets/tilesets/tileset.json');
     this.load.atlas('tileset_wh', 'assets/tilesets/tileset_wh.png', 'assets/tilesets/tileset.json');
+    
+    // 监听加载完成事件（使用箭头函数保持 this 上下文）
+    this.load.on('complete', () => {
+        console.log('所有资源加载完成');
+        console.log('tileset 纹理是否存在:', this.textures.exists('tileset'));
+        if (this.textures.exists('tileset')) {
+            var texture = this.textures.get('tileset');
+            console.log('tileset 纹理帧数:', Object.keys(texture.frames).length);
+        }
+    });
 
     this.load.atlas('remains', 'assets/sprites/remains.png','assets/sprites/remains.json');
 
@@ -272,14 +285,16 @@ Engine.create = function(){
 
     Engine.tilesetData = {};
     try {
-        var tilesetCache = Engine.scene.cache.json.get('tileset');
+        var tilesetCache = Engine.scene.cache.json.get('tilesetData');
         if (tilesetCache) {
             Engine.tilesetData.atlas = tilesetCache.frames || {};
             Engine.tilesetData.config = tilesetCache.config || { grassPrefix: 'grass', grassSize: 3 };
             Engine.tilesetData.shorthands = tilesetCache.shorthands || {};
             console.log('成功加载 tileset 数据:', Object.keys(Engine.tilesetData.atlas).length, '个帧');
+            console.log('Tileset config:', Engine.tilesetData.config);
+            console.log('Tileset shorthands:', Object.keys(Engine.tilesetData.shorthands).length, '个简写');
         } else {
-            throw new Error('tileset 缓存未找到');
+            throw new Error('tilesetData 缓存未找到');
         }
     } catch (e) {
         console.warn('无法从缓存加载 tileset，使用默认配置:', e);
@@ -330,6 +345,7 @@ Engine.create = function(){
     Engine.showHero = true;
     Engine.showGrid = false;
     Engine.qtQuads = []; // for debugging
+    Engine.lastUpdatedChunk = null; // 用于跟踪 chunk 变化
 
     Engine.camera = Engine.scene.cameras.main;
     Engine.camera.setBounds(0,0,Engine.worldWidth*Engine.tileWidth,Engine.worldHeight*Engine.tileHeight);
@@ -441,12 +457,13 @@ Engine.initWorld = function(data){
     // 纯前端模式：使用模拟数据
     if (UI.offlineMode && !data) {
         data = OfflineGameData.playerData;
-        console.log('使用纯前端模式，使用模拟数据');
+        console.log('使用纯前端模式，使用模拟数据', data);
     }
 
-    console.log(data);
+    console.log('初始化游戏世界，玩家数据:', data);
     Engine.addHero(data);
     Engine.playerIsInitialized = true;
+    console.log('玩家已初始化，Engine.player:', Engine.player);
     Engine.updateEnvironment();
 
     Engine.makeUI();
@@ -1841,13 +1858,29 @@ Engine.addHero = function(data){
     Engine.player = new Hero();
     Engine.player.setUp(data);
 
-    // Engine.camera.startFollow(Engine.player); // leave outside of constructor
-    // Engine.camera.stopFollow();
-    // Engine.camera.centerOn(Engine.player.x, Engine.player.y);
-    // Engine.focusPlayer();
+    // 确保玩家位置有效
+    if (!Engine.player.x || Engine.player.x < 0) {
+        console.warn('玩家 X 位置无效:', Engine.player.x, '设置为默认值 10');
+        Engine.player.x = 10;
+    }
+    if (!Engine.player.y || Engine.player.y < 0) {
+        console.warn('玩家 Y 位置无效:', Engine.player.y, '设置为默认值 10');
+        Engine.player.y = 10;
+    }
 
-    //Engine.camera.setDeadzone(7*32,5*32);
-    Engine.camera.setLerp(0.1);
+    // 计算玩家像素位置
+    var pixelX = Engine.player.x * Engine.tileWidth;
+    var pixelY = Engine.player.y * Engine.tileHeight;
+    console.log('设置相机初始位置，玩家位置:', Engine.player.x, Engine.player.y, '像素位置:', pixelX, pixelY);
+    
+    // 只使用 startFollow，让相机平滑地跟随玩家，避免 centerOn 造成的初始抖动
+    Engine.camera.startFollow(Engine.player);
+    console.log('相机已启动跟随，当前 scrollX:', Engine.camera.scrollX, 'scrollY:', Engine.camera.scrollY);
+    
+    // Engine.camera.setDeadzone(7*32,5*32);
+    // 设置 lerp 值越小跟随越平滑，但响应越慢
+    Engine.camera.setLerp(0.08); // 从 0.1 降低到 0.08 提高平滑度
+    
     /*var graphics = Engine.scene.add.graphics().setScrollFactor(0);
     // graphics.lineStyle(2, 0x00ff00, 1);
     var w = Engine.camera.deadzone.width;
@@ -1862,6 +1895,13 @@ Engine.updateEnvironment = function(){
     var newChunks = chunks.diff(Engine.displayedChunks);
     var oldChunks = Engine.displayedChunks.diff(chunks);
 
+    // 调试日志：显示 chunk 变化
+    if (newChunks.length > 0 || oldChunks.length > 0) {
+        console.log('Chunk 变化 - 当前:', Engine.player.chunk, 
+                    '新加载:', newChunks.length, '个', newChunks,
+                    '卸载:', oldChunks.length, '个', oldChunks);
+    }
+
     if(!Client.tutorial) {
         for (var i = 0; i < oldChunks.length; i++) {
             Engine.removeChunk(oldChunks[i]);
@@ -1871,12 +1911,13 @@ Engine.updateEnvironment = function(){
     for(var j = 0; j < newChunks.length; j++){
         Engine.displayChunk(newChunks[j]);
     }
+    
+    // 更新已显示的 chunks 列表
+    Engine.displayedChunks = chunks;
 
-    var tl = Utils.getAOIcorners(Engine.player.chunk)[0];
-    var l = (tl.x-World.chunkWidth)*32;
-    var t = (tl.y-World.chunkHeight)*32;
-    Engine.camera.setBounds(l,t,World.chunkWidth*3*32,World.chunkHeight*3*32);
-    console.log(Engine.camera.getBounds());
+    // 注意：不再重新设置相机边界，相机边界已经在 Engine.create() 中设置为整个世界
+    // 保持世界边界固定：0, 0 到 worldWidth, worldHeight
+    // 这确保玩家可以移动到世界的任何角落
 };
 
 Engine.displayChunk = function(id){
@@ -1939,7 +1980,7 @@ Engine.drawChunk = function(mapData,id){
     var chunk = new Chunk(mapData, Engine.tilesetData, Engine.scene);
     Engine.chunks[chunk.id] = chunk;
     if (!Engine.mapDataCache[chunk.id]) Engine.mapDataCache[chunk.id] = mapData;
-    Engine.displayedChunks.push(chunk.id);
+    // 注意：不再在这里 push 到 displayedChunks，由 updateEnvironment() 统一管理
     Engine.updateBehindness();
 };
 
@@ -1993,7 +2034,11 @@ Engine.handleClick = function(pointer,objects){
             if(Engine.bldRect){
                 Engine.bldUnclick();
             }else {
-                if(Engine.inMenu && !Engine.currentMenu.allowWalk) return;
+                if(Engine.inMenu && !Engine.currentMenu.allowWalk) {
+                    console.log('在菜单中且不允许行走，忽略点击');
+                    return;
+                }
+                console.log('点击地图，准备移动到:', pointer.x, pointer.y);
                 Engine.moveToClick(pointer);
             }
         }
@@ -2026,17 +2071,47 @@ Engine.handleDrag = function(pointer,object,dragX,dragY){
 };
 
 Engine.moveToClick = function(pointer){
-    if (!Engine.player) return;
+    if (!Engine.player) {
+        console.warn('Engine.player 未初始化');
+        return;
+    }
+    
+    // 清除目标动作
     if (typeof Engine.player.setDestinationAction === 'function') {
         Engine.player.setDestinationAction(0);
     }
-    if (typeof Engine.computePath === 'function' && Engine.getMouseCoordinates) {
-        Engine.computePath(Engine.getMouseCoordinates(pointer).tile,false);
+    
+    // 获取鼠标坐标
+    if (!Engine.getMouseCoordinates) {
+        console.warn('Engine.getMouseCoordinates 未定义');
+        return;
+    }
+    
+    var coords = Engine.getMouseCoordinates(pointer);
+    if (!coords || !coords.tile) {
+        console.warn('无法获取鼠标坐标');
+        return;
+    }
+    
+    // 计算路径并移动
+    if (typeof Engine.computePath === 'function') {
+        Engine.computePath(coords.tile, false);
+    } else {
+        console.warn('Engine.computePath 未定义');
     }
 };
 
 Engine.computePath = function(position,nextTo){
-    if (!Engine.player || !Engine.pathFinder) return;
+    if (!Engine.player) {
+        console.warn('Engine.player 未初始化');
+        return;
+    }
+    
+    if (!Engine.pathFinder) {
+        console.warn('Engine.pathFinder 未初始化');
+        return;
+    }
+    
     // console.log('going to ',position);
     var x = position.x;
     var y = position.y;
@@ -2044,8 +2119,27 @@ Engine.computePath = function(position,nextTo){
         console.warn('Pathfiding to undefined coordinates');
         return;
     }
+    
+    // 验证目标坐标是否有效（不能为负数）
+    if (x < 0 || y < 0) {
+        console.warn('目标坐标无效:', x, y, '（不能为负数）');
+        return;
+    }
+    
     // if(!nextTo && Engine.checkCollision(x,y)) return;
     var start = Engine.player.getPFstart();
+    
+    // 验证起始坐标
+    if (!start || start.x === undefined || start.y === undefined) {
+        console.warn('起始位置无效:', start);
+        return;
+    }
+    
+    if (start.x < 0 || start.y < 0) {
+        console.warn('起始坐标无效:', start.x, start.y, '（不能为负数）');
+        return;
+    }
+    
     if(Engine.player.moving) Engine.player.stop();
 
     try {
@@ -2055,6 +2149,7 @@ Engine.computePath = function(position,nextTo){
                 if (Engine.player.talk) Engine.player.talk('It\'s too far!');
             }
             // Engine.player.talk('I can\'t go there!');
+            console.warn('无法找到路径到', x, y, '从', start.x, start.y);
             return;
         }
 
@@ -2063,8 +2158,20 @@ Engine.computePath = function(position,nextTo){
         path = trim.path;
 
         if(Engine.player.destinationAction && Engine.player.destinationAction.type != 1) path.pop();
-        if (Client.sendPath) Client.sendPath(path,Engine.player.destinationAction);
-        if (Engine.player.queuePath) Engine.player.queuePath(path);
+        
+        // 纯前端模式：直接移动玩家，不发送网络请求
+        if (Client.offlineMode) {
+            console.log('纯前端模式：直接移动玩家', path.length, '步');
+            if (Engine.player.queuePath) {
+                Engine.player.queuePath(path);
+            } else if (Engine.player.move) {
+                Engine.player.move(path);
+            }
+        } else {
+            // 正常模式：发送路径到服务器
+            if (Client.sendPath) Client.sendPath(path,Engine.player.destinationAction);
+            if (Engine.player.queuePath) Engine.player.queuePath(path);
+        }
     } catch (e) {
         console.warn('计算路径时出错:', e);
     }
@@ -2104,6 +2211,17 @@ Engine.getMouseCoordinates = function(pointer){
     }
     var tileX = Math.floor(pxX/Engine.tileWidth);
     var tileY = Math.floor(pxY/Engine.tileHeight);
+    
+    // 确保瓦片坐标不为负数
+    if (tileX < 0) {
+        console.warn('瓦片 X 坐标为负数:', tileX, '修正为 0', 'scrollX:', Engine.camera.scrollX, 'pointer.x:', pointer.x);
+        tileX = 0;
+    }
+    if (tileY < 0) {
+        console.warn('瓦片 Y 坐标为负数:', tileY, '修正为 0', 'scrollY:', Engine.camera.scrollY, 'pointer.y:', pointer.y);
+        tileY = 0;
+    }
+    
     Engine.lastPointer = {x:pointer.x,y:pointer.y};
     return {
         tile:{x:tileX,y:tileY},
@@ -2163,25 +2281,51 @@ Engine.updateSelf = function(data){
 
 //UPDT
 Engine.update = function(){
+    // 检查玩家是否已初始化
+    if(!Engine.player || !Engine.playerIsInitialized) return;
+    
+    // 检查玩家是否移动到了新的 chunk
+    var currentChunk = Engine.player.chunk;
+    if (currentChunk !== Engine.lastUpdatedChunk) {
+        Engine.updateEnvironment();
+        Engine.lastUpdatedChunk = currentChunk;
+    }
+    
+    // 如果相机被锁定，不处理相机滚动
     if(Engine.camLock) return;
+    
+    // 如果玩家正在移动，不处理 WASD/方向键的相机滚动（让相机平滑跟随玩家）
+    // 只有鼠标在边缘时才允许相机滚动
+    if (Engine.player && Engine.player.moving) {
+        return;
+    }
+    
     var p = Engine.scene.input.activePointer.position;
     if(p.x == 0 && p.y == 0) return;
+    
     var margin = 10;
     var dx = 0;
     var dy = 0;
-    if(p.x < margin || Engine.cursors.left.isDown ||(Engine.WASD.A.isDown && !Engine.chatBar.displayed)){
+    
+    // 只有在聊天栏未显示且玩家不在移动时才响应键盘输入
+    var chatDisplayed = Engine.chatBar && Engine.chatBar.displayed;
+    
+    if(p.x < margin || (Engine.cursors.left.isDown && !chatDisplayed) || (Engine.WASD.A.isDown && !chatDisplayed)){
         dx = -1;
-    }else if(p.x > UI.getGameWidth() - margin || Engine.cursors.right.isDown || (Engine.WASD.D.isDown && !Engine.chatBar.displayed)){
+    }else if(p.x > UI.getGameWidth() - margin || (Engine.cursors.right.isDown && !chatDisplayed) || (Engine.WASD.D.isDown && !chatDisplayed)){
         dx = 1;
     }
-    if(p.y < margin || Engine.cursors.up.isDown || (Engine.WASD.W.isDown && !Engine.chatBar.displayed)){
+    if(p.y < margin || (Engine.cursors.up.isDown && !chatDisplayed) || (Engine.WASD.W.isDown && !chatDisplayed)){
         dy = -1;
-    }else if(p.y > UI.getGameHeight() - margin || Engine.cursors.down.isDown || (Engine.WASD.S.isDown && !Engine.chatBar.displayed)){
+    }else if(p.y > UI.getGameHeight() - margin || (Engine.cursors.down.isDown && !chatDisplayed) || (Engine.WASD.S.isDown && !chatDisplayed)){
         dy = 1;
     }
-    if(dx == 0 && dy == 0) return;
-    Engine.scrollCamera(dx,dy);
-    Engine.updateAllOrientationPins();
+    
+    // 只有当有输入时才滚动相机
+    if(dx != 0 || dy != 0) {
+        Engine.scrollCamera(dx,dy);
+        Engine.updateAllOrientationPins();
+    }
 };
 
 Engine.scrollCamera = function(dx,dy){

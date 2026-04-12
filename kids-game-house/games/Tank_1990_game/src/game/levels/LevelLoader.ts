@@ -73,7 +73,7 @@ const LEVEL_1: LevelConfig = {
   ],
   totalEnemies: 12,
   powerEnemyEvery: 4,
-  spawnInterval: 120,
+  spawnInterval: 160,  // 从 120 增加到 160，STAGE 1 生成更慢
   maxOnScreen: 4,
 };
 
@@ -159,11 +159,26 @@ const LEVEL_3: LevelConfig = {
 //  Export ─
 export const LEVELS: LevelConfig[] = [LEVEL_1, LEVEL_2, LEVEL_3];
 
+/**
+ * Get level config with progressive difficulty scaling
+ * - Enemy speed increases by 8% per level
+ * - Power-up frequency increases (powerEnemyEvery decreases)
+ */
 export function getLevel(index: number): LevelConfig {
   if (index < 0 || index >= LEVELS.length) {
     throw new RangeError(`Level ${index} does not exist (0-${LEVELS.length - 1})`);
   }
-  return LEVELS[index];
+  
+  const baseLevel = LEVELS[index];
+  // Progressive difficulty: speed increases 8% per level
+  const speedMultiplier = 1 + (index * 0.08);
+  
+  return {
+    ...baseLevel,
+    // Adjust spawn interval based on level (handled in GameScene)
+    // Power-ups appear more frequently in later levels
+    powerEnemyEvery: Math.max(2, baseLevel.powerEnemyEvery - Math.floor(index * 0.5)),
+  };
 }
 
 export const TOTAL_LEVELS = LEVELS.length;

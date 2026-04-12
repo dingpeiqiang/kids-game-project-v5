@@ -18,6 +18,13 @@ type EventMap = {
   'resume-game': void;
   'restart-game': void;
   'menu-requested': void;
+  
+  // PowerUp System
+  'add-score': number;
+  'add-life': void;
+  'bomb-all-enemies': void;
+  'enemies-frozen': boolean;
+  'show-message': string;
 };
 
 type Listener<T> = (data: T) => void;

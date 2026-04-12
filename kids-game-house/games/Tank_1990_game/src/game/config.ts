@@ -54,29 +54,29 @@ export const BULLET_ANGLE = [-90, 0, 90, 180] as const;
 //  Enemy stats map ─
 export const ENEMY_CFG: Record<EnemyType, EnemyConfig> = {
   [EnemyType.BASIC]: {
-    speed: 70,
+    speed: 60,
     hp: 1,
     fireRate: 2200,
     score: 100,
   },
   [EnemyType.FAST]: {
-    speed: 145,
+    speed: 100,
     hp: 1,
-    fireRate: 3000,
+    fireRate: 1800,
     score: 200,
   },
   [EnemyType.ARMORED]: {
-    speed: 65,
+    speed: 50,
     hp: 4,
-    fireRate: 2500,
+    fireRate: 2800,
     score: 400,
   },
 };
 
 //  Player stats per star level ─
-export const PLAYER_SPEED = (star: number) => 90 + star * 18;
-export const PLAYER_BULLET_SPEED = (star: number) => 180 + star * 35;
-export const PLAYER_FIRE_CD = (star: number) => star >= 3 ? 8 : 18;
+export const PLAYER_SPEED = (star: number) => 80 + star * 20;
+export const PLAYER_BULLET_SPEED = (star: number) => 200 + star * 40;
+export const PLAYER_FIRE_CD = (star: number) => star >= 3 ? 6 : 15;
 export const PLAYER_MAX_BULLETS = (star: number) => star >= 2 ? 2 : 1;
 
 //  High-score localStorage key ─

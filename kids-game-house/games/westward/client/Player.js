@@ -48,7 +48,21 @@ var Player = new Phaser.Class({
         // this.setInteractive();
 
         this.name = 'Player ' + this.id;
-        this.setPosition(data.x, data.y);
+        
+        // 确保位置有效
+        var x = data.x;
+        var y = data.y;
+        if (x === undefined || x < 0) {
+            console.warn('Player.setUp: 无效的 X 位置:', x, '使用默认值 10');
+            x = 10;
+        }
+        if (y === undefined || y < 0) {
+            console.warn('Player.setUp: 无效的 Y 位置:', y, '使用默认值 10');
+            y = 10;
+        }
+        
+        console.log('Player.setUp: 设置位置', x, y);
+        this.setPosition(x, y);
         this.updateBubblePosition();
         this.manageOrientationPin();
     },

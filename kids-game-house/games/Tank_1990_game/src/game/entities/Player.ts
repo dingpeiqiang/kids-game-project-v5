@@ -8,6 +8,7 @@ import {
   PLAYER_FIRE_CD, PLAYER_MAX_BULLETS,
 } from '../config';
 import { Bullet } from './Bullet';
+import { audioManager } from '../AudioManager';
 
 export interface PlayerOptions {
   spawnX: number;
@@ -17,18 +18,17 @@ export interface PlayerOptions {
 }
 
 export class Player extends Phaser.Physics.Arcade.Image {
-  // Public state read by GameScene / HUD
   public direction: Direction = Direction.UP;
   public starLevel: number = 0;
   public shieldActive: boolean = false;
   public shieldTimer: number = 0;
   public alive: boolean = true;
+  public animFrame: number = 0;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private fireKey!: Phaser.Input.Keyboard.Key;
   private wasd!: { up: Phaser.Input.Keyboard.Key; left: Phaser.Input.Keyboard.Key; down: Phaser.Input.Keyboard.Key; right: Phaser.Input.Keyboard.Key };
-  private bulletCooldown = 0;
-  private animFrame = 0;
+  private bulletCooldown: number = 0;
   private playerBullets: Phaser.Physics.Arcade.Group;
   private grid: TileType[][];
 
@@ -42,7 +42,6 @@ export class Player extends Phaser.Physics.Arcade.Image {
     scene.physics.add.existing(this);
     this.setCollideWorldBounds(true).setDepth(DEPTH.TANK);
 
-    // Input
     this.cursors = scene.input.keyboard!.createCursorKeys();
     this.fireKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     const kb = scene.input.keyboard!;
@@ -53,12 +52,10 @@ export class Player extends Phaser.Physics.Arcade.Image {
       right: kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
 
-    // Initial shield
     this.shieldActive = true;
     this.shieldTimer = 400;
   }
 
-  // Per-frame update 
   update(): void {
     if (!this.alive || !this.scene) return;
 
@@ -80,7 +77,7 @@ export class Player extends Phaser.Physics.Arcade.Image {
     else if (left) { vx = -speed; this.direction = Direction.LEFT; moved = true; }
     else if (right) { vx = speed; this.direction = Direction.RIGHT; moved = true; }
 
-    body.setVelocity(vx, vy);   // ← body, not this
+    body.setVelocity(vx, vy);
 
     if (moved && this.direction !== prevDir) {
       if (vx !== 0) this.y = Math.round(this.y / TILE) * TILE + TILE / 2;
@@ -110,7 +107,6 @@ export class Player extends Phaser.Physics.Arcade.Image {
     }
   }
 
-  // Internal methods
   private fireBullet(): void {
     const off = DV[this.direction];
     const spd = PLAYER_BULLET_SPEED(this.starLevel);
@@ -124,14 +120,15 @@ export class Player extends Phaser.Physics.Arcade.Image {
       spd
     );
 
-    this.playerBullets.add(bullet, true); // <-- pass true to add body to world
+    this.playerBullets.add(bullet, true);
 
-    // Re-apply velocity AFTER adding to group, since group.add() can reset it
     const body = bullet.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(
       DV[this.direction].x * spd,
       DV[this.direction].y * spd
     );
+    
+    audioManager.playShoot();
   }
 
   private isOnIce(): boolean {
@@ -143,7 +140,6 @@ export class Player extends Phaser.Physics.Arcade.Image {
     );
   }
 
-  // Public interface
   addShield(frames: number): void {
     this.shieldActive = true;
     this.shieldTimer = Math.max(this.shieldTimer, frames);

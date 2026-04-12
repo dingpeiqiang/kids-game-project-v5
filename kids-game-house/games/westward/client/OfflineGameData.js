@@ -86,16 +86,24 @@ var OfflineGameData = {
             return this.chunks[chunkId];
         }
         
-        // 创建一个简单的地图块
+        // 创建一个简单的地图块，使用正确的格式
         var chunkData = {
             id: chunkId,
             x: chunkX,
             y: chunkY,
             default: 'grass',
-            layers: [[]], // 简单的图层
+            layers: [[]], // 第一层是地面层
             decor: [],
             wood: []
         };
+        
+        // 添加一些草地瓦片到第一层
+        for (var gx = 0; gx < 32; gx++) {
+            for (var gy = 0; gy < 20; gy++) {
+                // 添加草地瓦片，使用简写名称
+                chunkData.layers[0].push([gx, gy, 'g']);
+            }
+        }
         
         // 使用正确的装饰元素简写名称
         var decorTypes = ['t1', 't2', 't3', 't4', 'r1', 'r2', 'r3', 'b1', 'b2', 'b3'];
@@ -103,7 +111,7 @@ var OfflineGameData = {
         // 添加一些简单的装饰
         for (var i = 0; i < 8; i++) {
             var dx = Math.floor(Math.random() * 30);
-            var dy = Math.floor(Math.random() * 20);
+            var dy = Math.floor(Math.random() * 18);
             var decorType = decorTypes[Math.floor(Math.random() * decorTypes.length)];
             chunkData.decor.push([dx, dy, decorType]);
         }
@@ -111,7 +119,7 @@ var OfflineGameData = {
         // 添加一些木材资源
         for (var i = 0; i < 5; i++) {
             var wx = Math.floor(Math.random() * 30);
-            var wy = Math.floor(Math.random() * 20);
+            var wy = Math.floor(Math.random() * 18);
             chunkData.wood.push([wx, wy]);
         }
         

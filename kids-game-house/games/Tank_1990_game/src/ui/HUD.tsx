@@ -1,7 +1,6 @@
 // ─────────────────────────────────────────────
 //  src/ui/HUD.tsx
-//  In-game heads-up display rendered by React
-//  on top of the Phaser canvas.
+//  经典坦克大战风格的HUD显示
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useState, CSSProperties } from 'react';
@@ -24,9 +23,16 @@ const defaultHUD: HUDState = {
 
 // ── Sub-components ────────────────────────────
 
-function Label({ children, color = '#555' }: { children: React.ReactNode; color?: string }) {
+function Label({ children, color = '#888' }: { children: React.ReactNode; color?: string }) {
   return (
-    <div style={{ fontFamily: FONT, fontSize: 7, color, marginBottom: 2, letterSpacing: 1 }}>
+    <div style={{ 
+      fontFamily: FONT, 
+      fontSize: 8, 
+      color, 
+      marginBottom: 3, 
+      letterSpacing: 2,
+      textTransform: 'uppercase' as const
+    }}>
       {children}
     </div>
   );
@@ -34,30 +40,43 @@ function Label({ children, color = '#555' }: { children: React.ReactNode; color?
 
 function Value({ children, color = '#fff' }: { children: React.ReactNode; color?: string }) {
   return (
-    <div style={{ fontFamily: FONT, fontSize: 11, color, marginBottom: 8, letterSpacing: 1 }}>
+    <div style={{ 
+      fontFamily: FONT, 
+      fontSize: 12, 
+      color, 
+      marginBottom: 10, 
+      letterSpacing: 2,
+      textAlign: 'center' as const
+    }}>
       {children}
     </div>
   );
 }
 
 function Divider() {
-  return <div style={{ width: '100%', height: 1, background: '#1e1e1e', margin: '4px 0 8px' }} />;
+  return <div style={{ 
+    width: '100%', 
+    height: 2, 
+    background: '#333', 
+    margin: '8px 0 12px',
+    borderTop: '1px solid #555'
+  }} />;
 }
 
 function Stars({ count }: { count: number }) {
   return (
-    <div style={{ display: 'flex', gap: 2, marginBottom: 8 }}>
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 10 }}>
       {[0, 1, 2, 3].map(i => (
         <span
           key={i}
           style={{
             fontFamily: FONT,
-            fontSize:   10,
-            color:      i < count ? '#ffdd00' : '#2a2a2a',
-            textShadow: i < count ? '0 0 6px #ffaa00' : 'none',
+            fontSize:   12,
+            color:      i < count ? '#ff0' : '#333',
+            textShadow: i < count ? '0 0 4px #ff0' : 'none',
           }}
         >
-          ★
+          ☆
         </span>
       ))}
     </div>
@@ -90,51 +109,53 @@ export const HUD: React.FC<HUDProps> = ({ visible }) => {
     height:          GAME_H,
     display:         'flex',
     flexDirection:   'column',
-    padding:         '8px 6px',
+    padding:         '12px 6px',
     pointerEvents:   'none',
     boxSizing:       'border-box',
     userSelect:      'none',
+    background:      '#000',
+    borderLeft:      '2px solid #333'
   };
 
   const shieldGlow: CSSProperties = hud.shieldActive
-    ? { textShadow: '0 0 8px #00eeff', color: '#00eeff' }
+    ? { textShadow: '0 0 10px #0ff', color: '#0ff' }
     : {};
 
   const frozenStyle: CSSProperties = hud.frozen
-    ? { color: '#88ccff' }
+    ? { color: '#8cf' }
     : {};
 
   return (
     <div style={panel}>
       {/* Score */}
-      <Label>SCORE</Label>
-      <Value color="#ffdd00">{String(hud.score).padStart(6, '0')}</Value>
+      <Label color="#ff0">SCORE</Label>
+      <Value color="#ff0">{String(hud.score).padStart(6, '0')}</Value>
 
-      <Label>BEST</Label>
-      <Value color="#ff6666">{String(hud.highScore).padStart(6, '0')}</Value>
+      <Label color="#f00">HI-SCORE</Label>
+      <Value color="#f00">{String(hud.highScore).padStart(6, '0')}</Value>
 
       <Divider />
 
       {/* Stage */}
-      <Label>STAGE</Label>
-      <Value color="#ffaa00">{hud.level + 1}</Value>
+      <Label color="#0f0">STAGE</Label>
+      <Value color="#0f0">{String(hud.level + 1).padStart(2, '0')}</Value>
 
       {/* Enemies left */}
-      <Label color={hud.frozen ? '#88ccff' : '#555'}>
-        {hud.frozen ? 'FROZEN' : 'ENEMY'}
+      <Label color={hud.frozen ? '#8cf' : '#f80'}>
+        {hud.frozen ? 'FREEZE' : 'ENEMY'}
       </Label>
-      <Value color={hud.frozen ? '#88ccff' : '#ff4444'} {...frozenStyle}>
+      <Value color={hud.frozen ? '#8cf' : '#f80'} {...frozenStyle}>
         {String(hud.enemiesLeft).padStart(2, '0')}
       </Value>
 
       {/* Lives */}
-      <Label>LIVES</Label>
-      <Value color="#44ff88">{String(hud.lives).padStart(2, '0')}</Value>
+      <Label color="#0ff">LIFE</Label>
+      <Value color="#0ff">{String(hud.lives).padStart(2, '0')}</Value>
 
       <Divider />
 
       {/* Star level */}
-      <Label>POWER</Label>
+      <Label color="#ff0">POWER</Label>
       <Stars count={hud.starLevel} />
 
       {/* Shield indicator */}
@@ -142,14 +163,31 @@ export const HUD: React.FC<HUDProps> = ({ visible }) => {
         <div
           style={{
             fontFamily: FONT,
-            fontSize:   7,
-            color:      '#00eeff',
-            marginBottom: 6,
-            animation: 'hudPulse 0.5s infinite alternate',
+            fontSize:   8,
+            color:      '#0ff',
+            marginBottom: 8,
+            textAlign: 'center' as const,
+            animation: 'hudPulse 0.4s infinite alternate',
             ...shieldGlow,
           }}
         >
-          ◈ SHIELD
+          ◆ SHIELD
+        </div>
+      )}
+      
+      {/* Frozen indicator */}
+      {hud.frozen && (
+        <div
+          style={{
+            fontFamily: FONT,
+            fontSize:   8,
+            color:      '#8cf',
+            marginBottom: 8,
+            textAlign: 'center' as const,
+            animation: 'hudPulse 0.6s infinite alternate',
+          }}
+        >
+          ❄ FREEZE
         </div>
       )}
 
@@ -157,13 +195,18 @@ export const HUD: React.FC<HUDProps> = ({ visible }) => {
       <div style={{ marginTop: 'auto' }}>
         <Divider />
         {[
-          ['↑↓←→', 'Move'],
-          ['SPC',  'Fire'],
-          ['ESC',  'Pause'],
+          ['↑↓←→', 'MOVE'],
+          ['SPC',  'FIRE'],
+          ['ESC',  'PAUSE'],
         ].map(([k, v]) => (
-          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span style={{ fontFamily: FONT, fontSize: 6, color: '#ffaa00' }}>{k}</span>
-            <span style={{ fontFamily: FONT, fontSize: 6, color: '#444' }}>{v}</span>
+          <div key={k} style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            marginBottom: 6,
+            padding: '2px 4px'
+          }}>
+            <span style={{ fontFamily: FONT, fontSize: 7, color: '#ff0' }}>{k}</span>
+            <span style={{ fontFamily: FONT, fontSize: 7, color: '#888' }}>{v}</span>
           </div>
         ))}
       </div>
@@ -171,8 +214,8 @@ export const HUD: React.FC<HUDProps> = ({ visible }) => {
       {/* Inline keyframes for shield pulse */}
       <style>{`
         @keyframes hudPulse {
-          from { opacity: 0.5; }
-          to   { opacity: 1.0; }
+          from { opacity: 0.4; transform: scale(0.95); }
+          to   { opacity: 1.0; transform: scale(1.05); }
         }
       `}</style>
     </div>

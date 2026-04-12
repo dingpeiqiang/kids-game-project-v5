@@ -124,6 +124,7 @@ var Moving = new Phaser.Class({
 
         this.moving = true;
         try {
+            // 尝试使用 timeline，如果不可用则逐个执行 tween
             if (Engine.scene.tweens && typeof Engine.scene.tweens.timeline === 'function') {
                 this.movement = Engine.scene.tweens.timeline({
                     tweens: tweens,
@@ -131,15 +132,48 @@ var Moving = new Phaser.Class({
                     onComplete: this.endMovement.bind(this)
                 });
             } else {
-                console.warn('Phaser tween timeline 不可用，暂时禁用移动');
-                this.moving = false;
-                this.endMovement();
+                console.log('使用逐个 tween 方式移动');
+                // 逐个执行 tween
+                this._executeTweensSequentially(tweens);
             }
         } catch (e) {
-            console.warn('创建 tween timeline 出错:', e);
-            this.moving = false;
-            this.endMovement();
+            console.warn('创建 tween 出错:', e, '使用备用方案');
+            // 备用方案：逐个执行 tween
+            this._executeTweensSequentially(tweens);
         }
+    },
+
+    // 逐个执行 tween 的备用方案
+    _executeTweensSequentially: function(tweens) {
+        if (!tweens || tweens.length === 0) {
+            this.endMovement();
+            return;
+        }
+
+        var currentIndex = 0;
+        var self = this;
+
+        function executeNext() {
+            if (currentIndex >= tweens.length) {
+                self.endMovement();
+                return;
+            }
+
+            var tweenConfig = tweens[currentIndex];
+            var originalOnComplete = tweenConfig.onComplete;
+
+            tweenConfig.onComplete = function() {
+                if (originalOnComplete) {
+                    originalOnComplete();
+                }
+                currentIndex++;
+                executeNext();
+            };
+
+            Engine.scene.tweens.add(tweenConfig);
+        }
+
+        executeNext();
     },
 
     frameByFrameUpdate: function(){
@@ -215,7 +249,10 @@ var Moving = new Phaser.Class({
         }
 
         if(this.flagForStop || (this.stopPos && this.stopPos.x == tx && this.stopPos.y == ty)){
-            this.movement.stop();
+            // 只有在 movement 存在时才调用 stop
+            if(this.movement && typeof this.movement.stop === 'function') {
+                this.movement.stop();
+            }
             this.endMovement(); // TODO: have it called automatically by stop()
         }
     },
