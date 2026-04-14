@@ -4,21 +4,20 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
-import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Redis 配置类
+ * 注意：已通过 spring.autoconfigure.exclude 禁用 Redis 自动配置
  */
 @Configuration
-@EnableCaching
+@ConditionalOnProperty(name = "spring.data.redis.host")
 public class RedisConfig {
 
     /**
@@ -50,13 +49,5 @@ public class RedisConfig {
 
         template.afterPropertiesSet();
         return template;
-    }
-
-    /**
-     * 密码加密器
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 }

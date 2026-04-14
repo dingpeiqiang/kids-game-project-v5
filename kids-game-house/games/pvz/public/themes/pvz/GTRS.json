@@ -1,0 +1,141 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "pvz",
+    "themeName": "Plants vs Zombies Cartoon Theme",
+    "gameId": "pvz",
+    "ownerType": "GAME",
+    "ownerId": "pvz",
+    "isDefault": true,
+    "author": "AI Assistant",
+    "description": "Assets for the PVZ game using AI-generated cartoon style",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#4CAF50",
+    "secondaryColor": "#8BC34A",
+    "bgColor": "#1a1a2e",
+    "textColor": "#ffffff",
+    "fontFamily": "'Arial', sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "scene": {
+        "grass": {
+          "alias": "Grass Background",
+          "src": "/themes/pvz/assets/scene/grass_tile.png",
+          "type": "png"
+        },
+        "peashooter": {
+          "alias": "Pea Shooter Plant",
+          "src": "/themes/pvz/assets/scene/peashooter.png",
+          "type": "png"
+        },
+        "sunflower": {
+          "alias": "Sunflower Plant",
+          "src": "/themes/pvz/assets/scene/sunflower.png",
+          "type": "png"
+        },
+        "wallnut": {
+          "alias": "Wall-nut Plant",
+          "src": "/themes/pvz/assets/scene/wallnut.png",
+          "type": "png"
+        },
+        "iceshooter": {
+          "alias": "Ice Shooter Plant",
+          "src": "/themes/pvz/assets/scene/iceshooter.png",
+          "type": "png"
+        },
+        "repeater": {
+          "alias": "Repeater Plant",
+          "src": "/themes/pvz/assets/scene/repeater.png",
+          "type": "png"
+        },
+        "cherrybomb": {
+          "alias": "Cherry Bomb Plant",
+          "src": "/themes/pvz/assets/scene/cherrybomb.png",
+          "type": "png"
+        },
+        "potatomine": {
+          "alias": "Potato Mine Plant",
+          "src": "/themes/pvz/assets/scene/potatomine.png",
+          "type": "png"
+        },
+        "zombie_normal": {
+          "alias": "Normal Zombie",
+          "src": "/themes/pvz/assets/scene/zombie_normal.png",
+          "type": "png"
+        },
+        "zombie_conehead": {
+          "alias": "Conehead Zombie",
+          "src": "/themes/pvz/assets/scene/zombie_conehead.png",
+          "type": "png"
+        },
+        "zombie_buckethead": {
+          "alias": "Buckethead Zombie",
+          "src": "/themes/pvz/assets/scene/zombie_buckethead.png",
+          "type": "png"
+        },
+        "zombie_newspaper": {
+          "alias": "Newspaper Zombie",
+          "src": "/themes/pvz/assets/scene/zombie_newspaper.png",
+          "type": "png"
+        },
+        "sun": {
+          "alias": "Sun Resource",
+          "src": "/themes/pvz/assets/scene/sun.png",
+          "type": "png"
+        },
+        "lawnmower": {
+          "alias": "Lawn Mower",
+          "src": "/themes/pvz/assets/scene/lawnmower.png",
+          "type": "png"
+        },
+        "shovel": {
+          "alias": "Shovel Tool",
+          "src": "/themes/pvz/assets/scene/shovel.png",
+          "type": "png"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {
+        "peaShoot": {
+          "alias": "Pea Shoot Sound",
+          "src": "/themes/pvz/assets/audio/effects/pea_shoot.mp3",
+          "type": "mp3"
+        },
+        "splat": {
+          "alias": "Splat Sound",
+          "src": "/themes/pvz/assets/audio/effects/splat.mp3",
+          "type": "mp3"
+        },
+        "zombiesAreComing": {
+          "alias": "Zombies Are Coming",
+          "src": "/themes/pvz/assets/audio/effects/zombies_are_coming.mp3",
+          "type": "mp3"
+        }
+      },
+      "voice": {}
+    },
+    "video": {},
+    "atlases": {
+      "scene": {
+        "sprites": {
+          "atlas": "/themes/pvz/assets/scene/sprites.json",
+          "image": "/themes/pvz/assets/scene/sprites.png"
+        }
+      }
+    },
+    "tilemaps": {}
+  }
+}

@@ -106,6 +106,12 @@ const routes: RouteRecordRaw[] = [
         path: 'themes',
         component: () => import('@/modules/admin/components/ThemeManagement.vue'),
       },
+      {
+        path: 'game-resources',
+        // 临时使用测试组件
+        component: () => import('@/modules/admin/components/TestResourceManager.vue'),
+        // 原组件：component: () => import('@/modules/admin/components/GameResourceManager.vue'),
+      },
     ],
   },
   // 主题演示路由（开发测试用）

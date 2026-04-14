@@ -1,0 +1,2388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PVZ 资源管理器 - AI 增强版</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a1a2e;
+      --bg2: #16213e;
+      --border: #0f3460;
+      --gold: #FFD700;
+      --green: #4CAF50;
+      --red: #e74c3c;
+      --blue: #2980b9;
+      --text: #e0e0e0;
+      --text-dim: #888;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== 顶部导航 ===== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      background: var(--bg2);
+      border-bottom: 2px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar .logo { font-size: 22px; }
+    .topbar h1 { font-size: 18px; font-weight: 700; color: var(--gold); flex: 1; }
+    .topbar .subtitle { font-size: 12px; color: var(--text-dim); }
+
+    /* SD 连接状态 */
+    .sd-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--border);
+    }
+    .sd-status .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+    .sd-status.connected { background: #1a3a1a; }
+    .sd-status.connected .dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .sd-status.error { background: #3a1a1a; }
+    .sd-status.error .dot { background: var(--red); }
+    .sd-status.checking .dot { background: #f39c12; animation: blink 0.6s infinite; }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary   { background: var(--green); color: #fff; }
+    .btn-primary:hover { background: #66BB6A; }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    .btn-secondary:hover { background: #1a4a80; }
+    .btn-danger    { background: var(--red); color: #fff; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-info      { background: var(--blue); color: #fff; }
+    .btn-info:hover { background: #3498db; }
+    .btn-ai        { background: #9b59b6; color: #fff; }
+    .btn-ai:hover  { background: #8e44ad; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ===== 布局 ===== */
+    .layout { display: flex; height: calc(100vh - 57px); }
+
+    /* ===== 侧边栏 ===== */
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 12px 0;
+    }
+    .sidebar-section { margin-bottom: 8px; }
+    .sidebar-title {
+      padding: 6px 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      font-weight: 700;
+    }
+    .sidebar-item {
+      padding: 9px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+      color: #bbb;
+    }
+    .sidebar-item:hover { background: var(--border); color: #fff; }
+    .sidebar-item.active { background: var(--border); border-left-color: var(--green); color: #fff; }
+    .sidebar-item .badge {
+      margin-left: auto;
+      background: var(--green);
+      color: #fff;
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* ===== 主内容区 ===== */
+    .main { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+    /* ===== 资源网格 ===== */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .section-header h2 { font-size: 16px; font-weight: 700; color: var(--gold); }
+    .section-header .count { font-size: 12px; color: var(--text-dim); }
+    .section-header .actions { margin-left: auto; display: flex; gap: 8px; }
+
+    .resource-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .resource-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: all 0.2s;
+      cursor: pointer;
+      position: relative;
+    }
+    .resource-card:hover {
+      border-color: var(--green);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(76,175,80,0.2);
+    }
+    .resource-card .preview {
+      width: 100%;
+      aspect-ratio: 1;
+      background: #0f1a30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .resource-card .preview img {
+      max-width: 80%;
+      max-height: 80%;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .resource-card .preview .no-preview {
+      font-size: 32px;
+      opacity: 0.3;
+    }
+    .resource-card .info {
+      padding: 8px 10px;
+    }
+    .resource-card .name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .resource-card .alias {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .resource-card .meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .tag {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .tag-png  { background: #1a4a20; color: #66BB6A; }
+    .tag-mp3  { background: #1a3050; color: #64b5f6; }
+    .tag-json { background: #3a2a00; color: var(--gold); }
+    .tag-new  { background: #9b59b6; color: #fff; }
+    .tag-ai   { background: #6a0dad; color: #e1bee7; }
+
+    /* 卡片 hover 操作按钮 */
+    .resource-card .card-actions {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      display: none;
+      gap: 4px;
+    }
+    .resource-card:hover .card-actions { display: flex; }
+    .card-action-btn {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      transition: background 0.15s;
+    }
+    .card-action-btn:hover { background: rgba(155,89,182,0.8); }
+
+    /* ===== 音频列表 ===== */
+    .audio-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; }
+    .audio-item {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all 0.2s;
+    }
+    .audio-item:hover { border-color: var(--blue); }
+    .audio-icon { font-size: 28px; flex-shrink: 0; }
+    .audio-info { flex: 1; min-width: 0; }
+    .audio-info .name { font-size: 14px; font-weight: 600; }
+    .audio-info .alias { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+    .audio-info .path { font-size: 11px; color: #555; font-family: monospace; margin-top: 4px; }
+    .audio-player { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .play-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--blue);
+      background: transparent;
+      color: #64b5f6;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .play-btn:hover { background: var(--blue); color: #fff; }
+    .play-btn.playing { border-color: var(--red); color: var(--red); }
+    .play-btn.playing:hover { background: var(--red); color: #fff; }
+
+    /* ===== 通用模态框 ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 680px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-header h3 { font-size: 16px; font-weight: 700; flex: 1; }
+    .modal-close {
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      border: none;
+      background: var(--border);
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close:hover { background: var(--red); }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+
+    /* ===== 图片编辑器布局 ===== */
+    .ie-layout { display: flex; gap: 16px; }
+    .ie-preview { flex: 1; min-width: 0; }
+    .ie-preview-main {
+      background: #0f1a30;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 320px;
+      max-height: 420px;
+      overflow: hidden;
+      position: relative;
+    }
+    .ie-preview-main img { object-fit: contain; }
+    .ie-actions {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      gap: 6px;
+    }
+    .ie-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .ie-sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+    .ie-section { background: var(--card); border-radius: 8px; padding: 12px; }
+    .ie-section-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+    .ie-info-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 12px; }
+    .ie-info-row .ie-label { color: var(--text-secondary); }
+    .ie-info-row .ie-value { color: var(--text); }
+    .ie-info-row code { font-size: 11px; background: #0f1a30; padding: 2px 6px; border-radius: 4px; }
+
+    /* ===== AI 生成模态框 ===== */
+    .gen-layout { display: flex; gap: 20px; }
+    .gen-preview {
+      flex: 0 0 45%;
+      background: #0f1a30;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      min-height: 360px;
+    }
+    .gen-preview.clickable { cursor: crosshair; }
+    .gen-preview .click-hint {
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .gen-preview img {
+      max-width: 100%;
+      max-height: 320px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      display: block !important;
+      visibility: visible !important;
+    }
+    .gen-preview .placeholder {
+      font-size: 48px;
+      opacity: 0.2;
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .gen-preview .preview-badge {
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      max-width: 90%;
+      text-align: center;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .gen-preview .preview-badge span {
+      display: block;
+    }
+    /* 预览图浮动操作栏 */
+    .gen-actions {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      max-width: 180px;
+      justify-content: flex-end;
+    }
+    .gen-actions .btn {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    /* 参数说明 Tooltip */
+    .param-tip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--border);
+      color: var(--text-dim);
+      font-size: 10px;
+      cursor: help;
+      margin-left: 4px;
+      position: relative;
+    }
+    .param-tip:hover {
+      background: var(--blue);
+      color: #fff;
+    }
+    /* Tooltip 框 */
+    #tooltip-box {
+      position: fixed;
+      background: #1a1a2e;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.6;
+      max-width: 380px;
+      min-width: 200px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      border: 1px solid var(--border);
+      z-index: 9999;
+      pointer-events: none;
+      display: none;
+    }
+    .gen-form { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+    .form-group input, .form-group textarea, .form-group select {
+      background: #0f1a30;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      border-color: var(--blue);
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-group { flex: 1; }
+    .form-hint { font-size: 11px; color: var(--text-dim); }
+
+    /* 风格选择器 */
+    .style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .style-option {
+      padding: 7px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #0f1a30;
+      color: var(--text-dim);
+      font-size: 11px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .style-option:hover { border-color: var(--blue); color: var(--text); }
+    .style-option.selected { border-color: #9b59b6; background: rgba(155,89,182,0.15); color: #fff; }
+
+    /* 生成进度条 */
+    .gen-progress {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .gen-progress.show { display: flex; }
+    .progress-bar {
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar .fill {
+      height: 100%;
+      background: linear-gradient(90deg, #9b59b6, #8e44ad);
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+    .progress-text { font-size: 12px; color: var(--text-dim); text-align: center; }
+
+    /* 完整性指示器 */
+    .completeness-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .completeness-bar .score { font-size: 12px; font-weight: 700; }
+    .completeness-bar .score.good { color: var(--green); }
+    .completeness-bar .score.warn { color: #f39c12; }
+    .completeness-bar .score.bad { color: var(--red); }
+    .completeness-issues { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+    /* ===== 详情表格 ===== */
+    .detail-preview {
+      text-align: center;
+      background: #0f1a30;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .detail-preview img {
+      max-width: 200px;
+      max-height: 200px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .detail-table { width: 100%; border-collapse: collapse; }
+    .detail-table tr { border-bottom: 1px solid var(--border); }
+    .detail-table td { padding: 8px 6px; font-size: 13px; }
+    .detail-table td:first-child { color: var(--text-dim); width: 100px; white-space: nowrap; }
+    .detail-table td code {
+      background: #0f1a30;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #64b5f6;
+      word-break: break-all;
+    }
+
+    /* ===== 替换上传区域 ===== */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 12px;
+    }
+    .upload-area:hover, .upload-area.drag-over {
+      border-color: var(--green);
+      background: rgba(76,175,80,0.05);
+    }
+    .upload-area .upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-area p { font-size: 13px; color: var(--text-dim); }
+    .upload-area strong { color: var(--green); }
+    #fileInput { display: none; }
+
+    /* ===== 统计栏 ===== */
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      min-width: 100px;
+    }
+    .stat-card .val { font-size: 24px; font-weight: 700; color: var(--gold); }
+    .stat-card .lbl { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+    /* ===== 空状态 ===== */
+    .empty { text-align: center; padding: 60px 20px; color: #555; }
+    .empty .icon { font-size: 48px; margin-bottom: 12px; }
+
+    /* ===== Toast ===== */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--green);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 9999;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.error { background: var(--red); }
+    #toast.info  { background: var(--blue); }
+
+    /* ===== 滚动条 ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ===== 图片编辑器 ===== */
+    .ie-upper {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+      margin-bottom: 12px;
+    }
+    .ie-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+    .ie-panel {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .ie-panel-title {
+      background: rgba(255,255,255,0.03);
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+    .ie-panel-body {
+      min-height: 200px;
+      max-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      overflow: hidden;
+    }
+    .ie-panel-body img {
+      max-width: 100%;
+      max-height: 280px;
+      object-fit: contain;
+    }
+    .ie-lower {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 12px;
+    }
+    .ie-info {
+      font-size: 12px;
+      color: var(--text-dim);
+      display: flex;
+      gap: 12px;
+    }
+    .ie-info .ie-label {
+      font-weight: 500;
+      color: var(--text);
+    }
+    .ie-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .ie-gen-form {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .ie-gen-form textarea {
+      flex: 1;
+      min-width: 200px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<div class="topbar">
+  <span class="logo">🌻</span>
+  <h1>PVZ 资源管理器</h1>
+  <span class="subtitle">AI 增强版 · 植物大战僵尸</span>
+
+  <div class="sd-status" id="sdStatus" onclick="manualRetry()" style="cursor:pointer">
+    <span class="dot"></span>
+    <span class="label">检测中...</span>
+  </div>
+
+  <button class="btn btn-secondary" onclick="window.close()">✕ 关闭</button>
+  <button class="btn btn-primary" onclick="location.reload()">↺ 刷新</button>
+</div>
+
+<div class="layout">
+
+  <!-- 侧边栏 -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">资源分类</div>
+      <div class="sidebar-item active" data-tab="all" onclick="switchTab('all', this)">
+        <span>📦</span> 全部资源 <span class="badge" id="badge-all">0</span>
+      </div>
+      <div class="sidebar-item" data-tab="images" onclick="switchTab('images', this)">
+        <span>🖼️</span> 图片资源 <span class="badge" id="badge-images">0</span>
+      </div>
+      <div class="sidebar-item" data-tab="audio" onclick="switchTab('audio', this)">
+        <span>🔊</span> 音频资源 <span class="badge" id="badge-audio">0</span>
+      </div>
+      <div class="sidebar-item" data-tab="json" onclick="switchTab('json', this)">
+        <span>📋</span> JSON 配置 <span class="badge" id="badge-json">0</span>
+      </div>
+    </div>
+    <div class="sidebar-section" style="margin-top:16px;">
+      <div class="sidebar-title">快捷操作</div>
+      <div class="sidebar-item" onclick="openBulkGenerate()">
+        <span>✨</span> AI 批量生成
+      </div>
+      <div class="sidebar-item" onclick="exportResourceList()">
+        <span>📥</span> 导出清单
+      </div>
+      <div class="sidebar-item" onclick="openGTRS()">
+        <span>📄</span> 查看 GTRS.json
+      </div>
+    </div>
+  </div>
+
+  <!-- 主内容 -->
+  <div class="main" id="main-content">
+    <div class="empty"><div class="icon">⏳</div><p>加载中...</p></div>
+  </div>
+
+</div>
+
+<!-- 图片编辑器 -->
+<div class="modal-overlay" id="imageEditorModal">
+  <div class="modal" style="width:900px;max-width:95vw;">
+    <div class="modal-header">
+      <h3 id="ie-title">🖼️ 图片编辑器</h3>
+      <span id="ie-subtitle" style="font-size:12px;opacity:0.6;margin-left:12px;"></span>
+      <button class="modal-close" onclick="closeImageEditor()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;">
+      <!-- 上层：左右等分预览 -->
+      <div class="ie-upper">
+        <!-- 左侧：原图 -->
+        <div class="ie-panel">
+          <div class="ie-panel-title">📷 原图</div>
+          <div class="ie-panel-body" id="ieOriginalPanel">
+            <div class="placeholder" id="ieOrigPlaceholder">加载中...</div>
+            <img id="ieOrigImage" style="display:none;" />
+          </div>
+        </div>
+        <!-- 中间：操作箭头 -->
+        <div class="ie-arrow">➜</div>
+        <!-- 右侧：新图 -->
+        <div class="ie-panel">
+          <div class="ie-panel-title">✨ 新图</div>
+          <div class="ie-panel-body" id="ieNewPanel">
+            <div class="placeholder" id="ieNewPlaceholder">等待生成...</div>
+            <img id="ieNewImage" style="display:none;" />
+          </div>
+        </div>
+      </div>
+      <!-- 下层：操作区 -->
+      <div class="ie-lower">
+        <!-- 左侧：信息 -->
+        <div class="ie-info">
+          <span class="ie-label">Key:</span> <span id="ieKey">-</span>
+          <span class="ie-label">目标:</span> <span id="ieSize">-</span>
+        </div>
+        <!-- 右侧：操作按钮 -->
+        <div class="ie-buttons">
+          <button class="btn btn-sm btn-secondary" onclick="window.open(document.getElementById('ieNewImage').src, '_blank')" id="ieBtnOpen">🔗 新标签</button>
+          <label class="btn btn-sm btn-secondary" for="ieFileInput" style="display:none;cursor:pointer;" id="ieBtnReplaceLbl">📁 替换</label>
+          <input type="file" id="ieFileInput" accept="image/*" style="display:none" onchange="handleIEReplace(event)" />
+          <button class="btn btn-sm btn-info" onclick="ImageEditor.removeBackground()" id="ieBtnRmbg" style="display:none;">🎯 去背景</button>
+          <button class="btn btn-sm btn-secondary" onclick="ImageEditor.flipHorizontal()" id="ieBtnFlip" style="display:none;">🔄 镜像</button>
+          <button class="btn btn-sm btn-danger" onclick="ImageEditor.download()" id="ieBtnDl" style="display:none;">⬇️ 下载</button>
+        </div>
+      </div>
+      <!-- AI 生成区 -->
+      <div class="ie-gen-area" id="ieGenArea">
+        <button class="btn btn-ai btn-block" id="ieBtnToggleGen" onclick="toggleIEGenForm()">✨ AI 生成</button>
+        <!-- 展开的参数表单 -->
+        <div id="ieGenForm" style="display:none;margin-top:12px;">
+          <!-- 第一行：提示词 -->
+          <div style="margin-bottom:10px;">
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">提示词</div>
+            <textarea id="iePrompt" placeholder="描述图片内容..." style="width:100%;min-height:50px;resize:vertical;box-sizing:border-box;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;"></textarea>
+          </div>
+          <!-- 第二行：负面提示词 -->
+          <div style="margin-bottom:10px;">
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">负面提示词</div>
+            <input type="text" id="ieNegPrompt" placeholder="不希望出现的内容" style="width:100%;box-sizing:border-box;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;" />
+          </div>
+          <!-- 第三行：风格 -->
+          <div style="margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">风格</span>
+            <div class="style-grid" id="ieStyleGrid" style="display:flex;gap:6px;">
+              <div class="style-option selected" data-style="cartoon" onclick="selectStyle(this)">🎨 卡通</div>
+              <div class="style-option" data-style="pixel-art" onclick="selectStyle(this)">👾 像素</div>
+              <div class="style-option" data-style="chibi" onclick="selectStyle(this)">🌸 Q版</div>
+            </div>
+          </div>
+          <!-- 第四行：采样器/步数/CFG -->
+          <div style="margin-bottom:10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">采样器</span>
+              <select id="ieSampler" style="background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;">
+                <option value="Euler a" selected>Euler a</option>
+                <option value="Euler">Euler</option>
+                <option value="DPM++ 2M Karras">DPM++ 2M Karras</option>
+                <option value="DPM++ SDE Karras">DPM++ SDE Karras</option>
+                <option value="DDIM">DDIM</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-secondary);">步数</span>
+              <input type="number" id="ieSteps" value="28" min="1" max="150" style="width:60px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;" />
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-secondary);">CFG</span>
+              <input type="number" id="ieCfg" value="7" min="1" max="30" step="0.5" style="width:50px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;" />
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-secondary);">宽度</span>
+              <input type="number" id="ieWidth" value="1024" min="64" max="1024" step="8" style="width:70px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;" />
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-secondary);">高度</span>
+              <input type="number" id="ieHeight" value="1024" min="64" max="1024" step="8" style="width:70px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;" />
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-secondary);">Clip</span>
+              <input type="number" id="ieClipSkip" value="1" min="1" max="12" style="width:50px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;" />
+            </div>
+          </div>
+          <!-- 第五行：批次/种子/生成按钮 -->
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-secondary);">批次</span>
+              <input type="number" id="ieBatchCount" value="1" min="1" max="16" style="width:50px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;" />
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-secondary);">种子</span>
+              <input type="number" id="ieSeed" placeholder="-1" style="width:90px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;" />
+              <select id="ieSeedHistory" onchange="document.getElementById('ieSeed').value=this.value" style="background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:11px;max-width:100px;">
+                <option value="">— 历史 —</option>
+              </select>
+            </div>
+            <div style="flex:1;"></div>
+            <button class="btn btn-primary" onclick="doIEGenerate()" id="ieBtnGen" style="padding:10px 28px;font-size:14px;">⚡ 生成</button>
+          </div>
+        </div>
+      </div>
+      <!-- 进度条 -->
+      <div class="gen-progress" id="ieProgress" style="display:none;">
+        <div class="progress-bar"><div class="fill" id="ieProgressFill" style="width:0%"></div></div>
+        <div class="progress-text" id="ieProgressText">正在连接 SD WebUI...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeImageEditor()">取消</button>
+      <button class="btn btn-ai" id="ieBtnApply" onclick="ImageEditor.apply()" disabled>✅ 应用到资源</button>
+    </div>
+  </div>
+</div>
+
+<!-- 隐藏的详情/AIGen 弹窗（保留用于非图片资源） -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">资源详情</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
+      <button class="btn btn-info" id="btn-open-file" onclick="openCurrentFile()">🔗 在新标签打开</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" onchange="handleFileReplace(event)" />
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Tooltip 框 -->
+<div id="tooltip-box"></div>
+
+<script>
+// ==================== 图片操作编排器 ====================
+/**
+ * 统一的图片操作管理
+ * 单一数据源，统一操作入口，清晰的状态流转
+ */
+const ImageEditor = (() => {
+  // 私有状态
+  let _currentKey = null;       // 当前资源 key
+  let _originalBase64 = null;   // 原图 base64
+  let _editedBase64 = null;     // 当前编辑结果（可能是原图、生成图、去背景图等）
+  let _source = 'none';         // 数据来源：'original' | 'generated' | 'rembg'
+  let _lastSeed = -1;
+
+  // DOM 缓存
+  const dom = {
+    get ieBtnRmbg() { return document.getElementById('ieBtnRmbg'); },
+    get ieBtnFlip() { return document.getElementById('ieBtnFlip'); },
+    get ieBtnDl() { return document.getElementById('ieBtnDl'); },
+    get ieBtnApply() { return document.getElementById('ieBtnApply'); },
+  };
+
+  // 统一更新预览 UI（更新右侧新图）
+  function updatePreviewUI(base64, badgeText, source) {
+    const newImg = document.getElementById('ieNewImage');
+    const newPlaceholder = document.getElementById('ieNewPlaceholder');
+    if (newImg) {
+      newImg.src = base64.startsWith('data:') ? base64 : 'data:image/png;base64,' + base64;
+      newImg.style.display = '';
+      newImg.style.transform = '';
+    }
+    if (newPlaceholder) {
+      newPlaceholder.style.display = 'none';
+    }
+    showBtns(true);
+  }
+
+  function showBtns(show) {
+    const display = show ? '' : 'none';
+    const disabled = !show;
+    if (dom.ieBtnRmbg) { dom.ieBtnRmbg.style.display = display; }
+    if (dom.ieBtnFlip) { dom.ieBtnFlip.style.display = display; }
+    if (dom.ieBtnDl) { dom.ieBtnDl.style.display = display; }
+    if (dom.ieBtnApply) { dom.ieBtnApply.disabled = disabled; }
+  }
+
+  // 初始化：加载原图
+  async function loadOriginal(key, externalBase64) {
+    _currentKey = key;
+    _originalBase64 = null;
+    _editedBase64 = null;
+    _source = 'none';
+    _lastSeed = -1;
+
+    try {
+      if (externalBase64) {
+        // 外部传入 base64
+        _originalBase64 = externalBase64;
+      } else {
+        // 内部加载
+        const r = RESOURCES.images.find(x => x.key === key);
+        if (!r || !r.path) throw new Error('资源不存在');
+        _originalBase64 = await loadImageAsBase64(r.path);
+      }
+      _editedBase64 = _originalBase64;
+      _source = 'original';
+      updatePreviewUI(_editedBase64, '📷 原图', 'original');
+    } catch (e) {
+      console.error('加载原图失败:', e);
+      if (dom.iePlaceholder) {
+        dom.iePlaceholder.style.display = '';
+        dom.iePlaceholder.innerHTML = '❌ 加载失败<br/><small style="font-size:11px;opacity:0.6">' + e.message + '</small>';
+      }
+      showBtns(false);
+    }
+  }
+
+  // 设置生成的图片
+  function setGenerated(base64, seed) {
+    _editedBase64 = base64;
+    _source = 'generated';
+    _lastSeed = seed;
+    updatePreviewUI(base64, `✨ AI生成 · seed: ${seed}`, 'generated');
+  }
+
+  // 设置编辑后的图片（替换、去背景等）
+  function setEdited(base64, source) {
+    _editedBase64 = base64;
+    _source = source || 'edited';
+    updatePreviewUI(base64, source === 'replaced' ? '📝 已替换' : '✏️ 已编辑', 'edited');
+  }
+
+  // 获取当前编辑结果的 base64
+  function getCurrentBase64() {
+    return _editedBase64;
+  }
+
+  // 获取带 data URL 前缀的
+  function getCurrentDataUrl() {
+    const b64 = _editedBase64;
+    return b64.startsWith('data:') ? b64 : 'data:image/png;base64,' + b64;
+  }
+
+  // 去除背景
+  async function removeBackground() {
+    if (!_editedBase64) {
+      showToast('请先加载图片', true);
+      return null;
+    }
+
+    const btn = dom.ieBtnRmbg;
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ 后处理...';
+
+    try {
+      const rawBase64 = _editedBase64.startsWith('data:') 
+        ? _editedBase64.replace(/^data:image\/\w+;base64,/, '')
+        : _editedBase64;
+
+      const resp = await fetch('/rembg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input_image: rawBase64.startsWith('data:') ? rawBase64 : 'data:image/png;base64,' + rawBase64,
+          model: 'isnet-general-use',
+          alpha_matting: true,
+          alpha_matting_foreground_threshold: 240,
+          alpha_matting_background_threshold: 10,
+          alpha_matting_erode_size: 10
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.text();
+        throw new Error('rembg 失败: ' + err.substring(0, 100));
+      }
+
+      const data = await resp.json();
+      if (!data.image) throw new Error('返回格式错误');
+
+      _editedBase64 = data.image;
+      _source = 'rembg';
+      updatePreviewUI(_editedBase64, '🎯 去背景完成', 'rembg');
+      showToast('✅ 背景已移除');
+      return _editedBase64;
+    } catch (e) {
+      showToast('⚠️ 去背景失败: ' + e.message, true);
+      return null;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = origText;
+    }
+  }
+
+  // 水平镜像（Canvas 实际处理）
+  async function flipHorizontal() {
+    if (!_editedBase64) {
+      showToast('请先加载图片', true);
+      return;
+    }
+
+    const btn = document.getElementById('ieBtnFlip');
+    if (btn) { btn.disabled = true; }
+
+    try {
+      const dataUrl = _editedBase64.startsWith('data:') ? _editedBase64 : 'data:image/png;base64,' + _editedBase64;
+      const img = new Image();
+      img.src = dataUrl;
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.translate(img.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0);
+
+      const flipped = canvas.toDataURL('image/png');
+      const base64 = flipped.replace(/^data:image\/\w+;base64,/, '');
+      _editedBase64 = base64;
+      _source = 'flipped';
+
+      const ieImg = document.getElementById('ieNewImage');
+      ieImg.src = flipped;
+      ieImg.style.transform = '';
+      document.getElementById('ieNewPlaceholder').style.display = 'none';
+      ieImg.style.display = '';
+
+      showBtns(true);
+      showToast('🔄 已水平镜像');
+    } catch (e) {
+      showToast('⚠️ 镜像失败: ' + e.message, true);
+    } finally {
+      if (btn) { btn.disabled = false; }
+    }
+  }
+
+  // 下载
+  function download() {
+    if (!_editedBase64) return;
+    const a = document.createElement('a');
+    a.href = getCurrentDataUrl();
+    a.download = `pvz_${_currentKey}_${_lastSeed}.png`;
+    a.click();
+    showToast('⬇️ 已下载');
+  }
+
+  // 应用到资源
+  async function apply() {
+    if (!_editedBase64 || !_currentKey) return;
+
+    const res = RESOURCES.images.find(r => r.key === _currentKey);
+    if (!res) {
+      showToast('未找到资源', true);
+      return;
+    }
+
+    const btn = dom.ieBtnApply || dom.genBtnApply;
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ 缩放中...';
+
+    try {
+      let rawBase64 = _editedBase64.startsWith('data:')
+        ? _editedBase64.replace(/^data:image\/\w+;base64,/, '')
+        : _editedBase64;
+
+      // 缩放到目标尺寸
+      if (res.size) {
+        rawBase64 = await resizeToFit(
+          'data:image/png;base64,' + rawBase64,
+          res.size.width,
+          res.size.height
+        );
+      }
+
+      // 保存到游戏目录
+      let applied = false;
+      try {
+        const resp = await fetch('/__apply-resource', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base64: rawBase64, resourcePath: res.path }),
+        });
+        if (resp.ok) applied = true;
+      } catch (e) {
+        console.warn('保存失败:', e);
+      }
+
+      // 备份到 generated
+      await fetch('/__save-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64: rawBase64, filename: `pvz_${_currentKey}_${_lastSeed}.png` }),
+      }).catch(() => {});
+
+      // 更新状态
+      res._aiGenerated = true;
+      res._genSeed = _lastSeed;
+      res._lastApplied = Date.now();
+
+      showToast(applied 
+        ? `✅ 已同步「${res.file}」${res.size ? `(${res.size.width}x${res.size.height})` : ''}`
+        : `⚠️ 已备份，请手动替换`, false);
+
+      renderContent(currentTab);
+      closeImageEditor();
+    } catch (e) {
+      showToast('⚠️ 应用失败: ' + e.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = origText;
+    }
+  }
+
+  // 获取种子
+  function getSeed() { return _lastSeed; }
+  function setSeed(seed) { _lastSeed = seed; }
+  function getSource() { return _source; }
+
+  // 公开 API
+  return {
+    loadOriginal,
+    setGenerated,
+    setEdited,
+    removeBackground,
+    flipHorizontal,
+    download,
+    apply,
+    getCurrentBase64,
+    getCurrentDataUrl,
+    getSeed,
+    setSeed,
+    getSource,
+    get currentKey() { return _currentKey; },
+  };
+})();
+
+// ==================== 配置 ====================
+const API_BASE = ''; // 同源（server.ts 静态服务）
+
+// Ollama 本地大模型配置
+const OLLAMA_CONFIG = {
+  enabled: true,
+  baseUrl: 'http://localhost:11434',
+  model: 'qwen2.5:14b-instruct-q4_K_M',
+  translatePrompt: (cnPrompt) => `将以下中文提示词翻译成英文，用于 Stable Diffusion 图片生成。只返回英文提示词，不要解释。
+
+中文: ${cnPrompt}
+
+英文:`,
+};
+
+// 调用 Ollama 翻译中文提示词
+async function translateWithOllama(cnPrompt) {
+  if (!OLLAMA_CONFIG.enabled) {
+    return cnPrompt; // 禁用时返回原文本
+  }
+
+  try {
+    const resp = await fetch(`${OLLAMA_CONFIG.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_CONFIG.model,
+        prompt: OLLAMA_CONFIG.translatePrompt(cnPrompt),
+        stream: false,
+        options: {
+          temperature: 0.3, // 低温度保证翻译准确性
+          num_predict: 500,
+        }
+      }),
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Ollama 响应失败: ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const translated = data.response.trim();
+    console.log('[Ollama] 翻译结果:', translated);
+    return translated;
+  } catch (e) {
+    console.warn('[Ollama] 翻译失败，使用原文:', e.message);
+    return cnPrompt; // 失败时返回原文
+  }
+}
+
+// 转化按钮：中文 → 英文 Prompt
+async function translateChineseToPrompt() {
+  const cnInput = document.getElementById('genChinesePrompt');
+  const enInput = document.getElementById('genPrompt');
+  const cnText = cnInput.value.trim();
+  
+  if (!cnText) {
+    showToast('请先输入中文提示词', true);
+    return;
+  }
+  
+  const btn = cnInput.parentElement.querySelector('button');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ 转化中...';
+  
+  try {
+    const translated = await translateWithOllama(cnText);
+    
+    // 追加当前选中的风格后缀
+    const styleSuffix = { cartoon: ', cartoon style, vibrant colors, game art',
+                          'pixel-art': ', pixel art style, 8-bit game, vibrant colors',
+                          chibi: ', chibi style, cute, kawaii, anime' }[selectedStyle] || '';
+    
+    enInput.value = translated + styleSuffix;
+    btn.textContent = '✅ 完成';
+    setTimeout(() => {
+      btn.textContent = origText;
+      btn.disabled = false;
+    }, 1500);
+  } catch (e) {
+    btn.textContent = '❌ 失败';
+    showToast('转化失败: ' + e.message, true);
+    setTimeout(() => {
+      btn.textContent = origText;
+      btn.disabled = false;
+    }, 2000);
+  }
+}
+
+// ==================== 资源数据 ====================
+const THEME_BASE = '/themes/pvz';
+
+// 资源尺寸规范（游戏显示尺寸）
+const SIZE_SPEC = {
+  // 植物精灵：格子 100px，精灵约 80px
+  plant: { width: 80, height: 80, note: '植物精灵，适合 80x80' },
+  // 僵尸：高度约 120px，宽度约 60px
+  zombie: { width: 60, height: 120, note: '僵尸站立全身，高度约 120px' },
+  // 子弹：原始 15px，代码 setScale(2) 显示 30px
+  pea: { width: 15, height: 15, note: '豌豆子弹，代码会放大 2x' },
+  // 阳光：显示 setScale(0.55)
+  sun: { width: 80, height: 80, note: '阳光，代码会缩小到 55%' },
+  // 割草机：显示 setScale(0.7)
+  mower: { width: 100, height: 60, note: '割草机，代码会缩小到 70%' },
+  // 背景：490x290
+  background: { width: 490, height: 290, note: '游戏背景' },
+};
+
+const RESOURCES = {
+  images: [
+    { key: 'grass',            alias: 'Grass Background',      file: 'grass_tile.png',       path: `${THEME_BASE}/assets/scene/grass_tile.png`,       size: SIZE_SPEC.background },
+    { key: 'peashooter',       alias: 'Pea Shooter Plant',     file: 'peashooter.png',       path: `${THEME_BASE}/assets/scene/peashooter.png`,       size: SIZE_SPEC.plant },
+    { key: 'sunflower',        alias: 'Sunflower Plant',       file: 'sunflower.png',        path: `${THEME_BASE}/assets/scene/sunflower.png`,        size: SIZE_SPEC.plant },
+    { key: 'wallnut',          alias: 'Wall-nut Plant',        file: 'wallnut.png',          path: `${THEME_BASE}/assets/scene/wallnut.png`,          size: SIZE_SPEC.plant },
+    { key: 'iceshooter',       alias: 'Ice Shooter Plant',     file: 'iceshooter.png',       path: `${THEME_BASE}/assets/scene/iceshooter.png`,       size: SIZE_SPEC.plant },
+    { key: 'repeater',         alias: 'Repeater Plant',        file: 'repeater.png',         path: `${THEME_BASE}/assets/scene/repeater.png`,         size: SIZE_SPEC.plant },
+    { key: 'cherrybomb',       alias: 'Cherry Bomb Plant',     file: 'cherrybomb.png',       path: `${THEME_BASE}/assets/scene/cherrybomb.png`,       size: SIZE_SPEC.plant },
+    { key: 'potatomine',       alias: 'Potato Mine Plant',     file: 'potatomine.png',       path: `${THEME_BASE}/assets/scene/potatomine.png`,       size: SIZE_SPEC.plant },
+    { key: 'zombie_normal',    alias: 'Normal Zombie',         file: 'zombie_normal.png',    path: `${THEME_BASE}/assets/scene/zombie_normal.png`,    size: SIZE_SPEC.zombie },
+    { key: 'zombie_conehead',  alias: 'Conehead Zombie',       file: 'zombie_conehead.png',  path: `${THEME_BASE}/assets/scene/zombie_conehead.png`,  size: SIZE_SPEC.zombie },
+    { key: 'zombie_buckethead',alias: 'Buckethead Zombie',     file: 'zombie_buckethead.png',path: `${THEME_BASE}/assets/scene/zombie_buckethead.png`,size: SIZE_SPEC.zombie },
+    { key: 'zombie_newspaper', alias: 'Newspaper Zombie',      file: 'zombie_newspaper.png', path: `${THEME_BASE}/assets/scene/zombie_newspaper.png`, size: SIZE_SPEC.zombie },
+    { key: 'sun',              alias: 'Sun Resource',          file: 'sun.png',              path: `${THEME_BASE}/assets/scene/sun.png`,              size: SIZE_SPEC.sun },
+    { key: 'lawnmower',        alias: 'Lawn Mower',            file: 'lawnmower.png',        path: `${THEME_BASE}/assets/scene/lawnmower.png`,        size: SIZE_SPEC.mower },
+    { key: 'shovel',           alias: 'Shovel Tool',           file: 'shovel.png',           path: `${THEME_BASE}/assets/scene/shovel.png`,           size: SIZE_SPEC.plant },
+    { key: 'pea',              alias: 'Pea Projectile',        file: 'pea.png',              path: `${THEME_BASE}/assets/scene/pea.png`,              size: SIZE_SPEC.pea },
+    { key: 'ice_pea',          alias: 'Ice Pea Projectile',    file: 'ice_pea.png',          path: `${THEME_BASE}/assets/scene/ice_pea.png`,          size: SIZE_SPEC.pea },
+    { key: 'sprites',          alias: 'Sprites Atlas',         file: 'sprites.png',          path: `${THEME_BASE}/assets/scene/sprites.png`,          size: null },
+  ],
+  audio: [
+    { key: 'peaShoot',         alias: 'Pea Shoot Sound',       file: 'pea_shoot.mp3',        path: `${THEME_BASE}/assets/audio/effects/pea_shoot.mp3` },
+    { key: 'splat',            alias: 'Splat Sound',           file: 'splat.mp3',            path: `${THEME_BASE}/assets/audio/effects/splat.mp3` },
+    { key: 'zombiesAreComing', alias: 'Zombies Are Coming',   file: 'zombies_are_coming.mp3',path: `${THEME_BASE}/assets/audio/effects/zombies_are_coming.mp3` },
+  ],
+  json: [
+    { key: 'sprites_atlas',  alias: 'Sprites Atlas Config',   file: 'sprites.json',        path: `${THEME_BASE}/assets/scene/sprites.json` },
+    { key: 'gtrs',           alias: 'GTRS 主题配置',           file: 'GTRS.json',           path: `${THEME_BASE}/GTRS.json` },
+  ]
+};
+
+// PVZ 专用提示词（已优化背景透明化）
+const PVZ_PROMPTS = {
+  peashooter:       'Plants vs Zombies pea shooter, green pod creature with red mouth, cute cartoon style, standing pose, bright green stem, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  sunflower:        'Plants vs Zombies sunflower, bright yellow petals, cheerful smiling face, orange center, green stem and leaves, cute cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  wallnut:          'Plants vs Zombies wall-nut, brown walnut with worried expression, thick shell texture, cute cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  iceshooter:       'Plants vs Zombies snow pea, icy blue body, light blue pods, cold frost effect, cute cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  repeater:         'Plants vs Zombies repeater, two pea pods connected, bright green, angry red mouth, cute cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  cherrybomb:       'Plants vs Zombies cherry bomb, two bright red cherries with angry face, green stem and leaves, cute cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  potatomine:       'Plants vs Zombies potato mine, brown potato with mining face, dirt particles, cute cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  zombie_normal:    'Plants vs Zombies zombie, shambling dead, torn purple shirt, gray skin, green hair, arms outstretched, cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  zombie_conehead:  'Plants vs Zombies conehead zombie, orange traffic cone on head, torn purple shirt, gray skin, arms outstretched, cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  zombie_buckethead:'Plants vs Zombies buckethead zombie, gray metal bucket on head, torn purple shirt, gray skin, arms outstretched, cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  zombie_newspaper: 'Plants vs Zombies newspaper zombie, holding newspaper, torn purple shirt, gray skin, shambling pose, cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete character, clean edges',
+  sun:              'Plants vs Zombies sun, bright yellow circle, cheerful smiling face, glowing rays, cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete object, clean edges',
+  lawnmower:        'Plants vs Zombies lawn mower, red motorized mower, cog wheels, cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete object, clean edges',
+  shovel:           'Plants vs Zombies shovel, wooden handle, metal blade, cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete object, clean edges',
+  pea:              'Plants vs Zombies pea projectile, bright green circle, cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete object, clean edges',
+  ice_pea:          'Plants vs Zombies ice pea, icy blue circle, frost effect, cartoon style, pure white background, transparent background, isolated subject, centered, no shadow, fully visible, complete object, clean edges',
+  grass:            'Plants vs Zombies grass tile, green grass texture, cartoon style, seamless, game background',
+  sprites:          'Plants vs Zombies sprite sheet, multiple plant zombie sprites, grid layout, cartoon style, game sprite atlas',
+};
+
+// ==================== 状态 ====================
+let currentTab = 'all';
+let currentResource = null;
+let currentAudio = null;
+let sdConnected = false;
+let sdChecking = false;
+let retryDelay = 0;
+let retryCountdown = 0;
+let retryTimer = null;
+let selectedStyle = 'cartoon';
+let seedHistory = []; // 种子历史记录，最多保存20条
+
+// ==================== SD 连接检测（指数退避重连）====================
+function updateRetryStatus() {
+  const el = document.getElementById('sdStatus');
+  if (!el) return;
+  if (sdConnected) {
+    el.className = 'sd-status connected';
+    el.querySelector('.label').textContent = '✅ SD WebUI 已连接';
+  } else if (retryCountdown > 0) {
+    el.className = 'sd-status error';
+    el.querySelector('.label').textContent = `❌ 未连接，${retryCountdown}秒后重试...`;
+  } else if (sdChecking) {
+    el.className = 'sd-status checking';
+    el.querySelector('.label').textContent = '⏳ 检测中...';
+  } else {
+    el.className = 'sd-status error';
+    el.querySelector('.label').textContent = '❌ API 服务器未连接';
+  }
+  el.title = '点击立即重试 | 代理: /sdapi → 127.0.0.1:7860';
+}
+
+function scheduleRetry() {
+  if (retryTimer) clearInterval(retryTimer);
+  if (sdConnected) return;
+  retryDelay = retryDelay === 0 ? 2 : Math.min(retryDelay * 2, 30);
+  retryCountdown = retryDelay;
+  updateRetryStatus();
+
+  retryTimer = setInterval(() => {
+    retryCountdown--;
+    if (retryCountdown <= 0) {
+      clearInterval(retryTimer);
+      retryTimer = null;
+      checkSD();
+    } else {
+      updateRetryStatus();
+    }
+  }, 1000);
+}
+
+function manualRetry() {
+  if (sdChecking) return;
+  if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+  retryDelay = 2;
+  checkSD();
+}
+
+async function checkSD() {
+  if (sdChecking) return;
+  const el = document.getElementById('sdStatus');
+  sdChecking = true;
+  if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+  updateRetryStatus();
+
+  try {
+    const resp = await fetch('/sdapi/v1/sd-models', { signal: AbortSignal.timeout(5000) });
+    if (resp.ok) {
+      sdConnected = true;
+      retryDelay = 0;
+      retryCountdown = 0;
+    } else {
+      throw new Error('status: ' + resp.status);
+    }
+  } catch {
+    sdConnected = false;
+    scheduleRetry();
+  }
+  sdChecking = false;
+  updateRetryStatus();
+}
+
+// ==================== 初始化 ====================
+window.onload = () => {
+  updateBadges();
+  renderContent('all');
+  checkSD();
+};
+
+function updateBadges() {
+  const total = RESOURCES.images.length + RESOURCES.audio.length + RESOURCES.json.length;
+  document.getElementById('badge-all').textContent = total;
+  document.getElementById('badge-images').textContent = RESOURCES.images.length;
+  document.getElementById('badge-audio').textContent = RESOURCES.audio.length;
+  document.getElementById('badge-json').textContent = RESOURCES.json.length;
+}
+
+// ==================== 切换 Tab ====================
+function switchTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  renderContent(tab);
+}
+
+// ==================== 渲染主内容 ====================
+function renderContent(tab) {
+  const main = document.getElementById('main-content');
+
+  const showImages = tab === 'all' || tab === 'images';
+  const showAudio  = tab === 'all' || tab === 'audio';
+  const showJson   = tab === 'all' || tab === 'json';
+
+  let html = '';
+
+  if (tab === 'all') {
+    const total = RESOURCES.images.length + RESOURCES.audio.length + RESOURCES.json.length;
+    html += `
+      <div class="stats-bar">
+        <div class="stat-card"><div class="val">${total}</div><div class="lbl">资源总计</div></div>
+        <div class="stat-card"><div class="val">${RESOURCES.images.length}</div><div class="lbl">图片资源</div></div>
+        <div class="stat-card"><div class="val">${RESOURCES.audio.length}</div><div class="lbl">音频资源</div></div>
+        <div class="stat-card"><div class="val">${RESOURCES.json.length}</div><div class="lbl">配置文件</div></div>
+      </div>`;
+  }
+
+  // 图片资源
+  if (showImages) {
+    html += `
+      <div class="section-header">
+        <h2>🖼️ 图片资源</h2>
+        <span class="count">${RESOURCES.images.length} 个文件</span>
+        <div class="actions">
+          <button class="btn btn-ai btn-sm" onclick="openBulkGenerate()">✨ AI 批量生成</button>
+        </div>
+      </div>
+      <div class="resource-grid">`;
+    for (const r of RESOURCES.images) {
+      html += `
+        <div class="resource-card" onclick="openDetail('image', '${r.key}')">
+          <div class="preview">
+            <img src="${r.path}${r.path.startsWith('data:') ? '' : '?t=' + Date.now()}" alt="${r.alias}"/>
+            <span class="no-preview" style="display:none">🖼️</span>
+          </div>
+          <div class="info">
+            <div class="name">${r.file}</div>
+            <div class="alias">${r.alias}</div>
+            <div class="meta">
+              <span class="tag tag-png">PNG</span>
+              ${r._aiGenerated ? '<span class="tag tag-ai">✨ AI</span>' : ''}
+              <span style="font-size:10px;color:#666;margin-left:auto">${r.key}</span>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="card-action-btn" title="AI 生成" onclick="event.stopPropagation();openGenerateModalForKey('${r.key}')">✨</button>
+            <button class="card-action-btn" title="查看详情" onclick="event.stopPropagation();openDetail('image','${r.key}')">🔍</button>
+          </div>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // 音频资源
+  if (showAudio) {
+    html += `
+      <div class="section-header">
+        <h2>🔊 音频资源</h2>
+        <span class="count">${RESOURCES.audio.length} 个文件</span>
+      </div>
+      <div class="audio-list">`;
+    for (const r of RESOURCES.audio) {
+      html += `
+        <div class="audio-item">
+          <span class="audio-icon">🎵</span>
+          <div class="audio-info">
+            <div class="name">${r.file}</div>
+            <div class="alias">${r.alias}</div>
+            <div class="path">${r.path}</div>
+          </div>
+          <div class="audio-player">
+            <button class="play-btn" id="play-${r.key}" onclick="toggleAudio('${r.key}','${r.path}')" title="播放/停止">▶</button>
+            <button class="btn btn-info btn-sm" onclick="openDetail('audio','${r.key}')">详情</button>
+          </div>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // JSON 配置
+  if (showJson) {
+    html += `
+      <div class="section-header">
+        <h2>📋 JSON 配置</h2>
+        <span class="count">${RESOURCES.json.length} 个文件</span>
+      </div>
+      <div class="audio-list">`;
+    for (const r of RESOURCES.json) {
+      html += `
+        <div class="audio-item">
+          <span class="audio-icon">📄</span>
+          <div class="audio-info">
+            <div class="name">${r.file}</div>
+            <div class="alias">${r.alias}</div>
+            <div class="path">${r.path}</div>
+          </div>
+          <div class="audio-player">
+            <button class="btn btn-info btn-sm" onclick="openJsonViewer('${r.key}','${r.path}')">查看内容</button>
+            <button class="btn btn-secondary btn-sm" onclick="window.open('${r.path}','_blank')">🔗 打开</button>
+          </div>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  main.innerHTML = html;
+}
+
+// ==================== 统一图片编辑器 ====================
+
+function toggleIEGenForm() {
+  const form = document.getElementById('ieGenForm');
+  const btn = document.getElementById('ieBtnToggleGen');
+  if (form.style.display === 'none') {
+    form.style.display = '';
+    btn.textContent = '📋 收起参数';
+    btn.classList.remove('btn-ai');
+    btn.classList.add('btn-secondary');
+    document.getElementById('iePrompt').focus();
+  } else {
+    form.style.display = 'none';
+    btn.textContent = '✨ AI 生成';
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-ai');
+  }
+}
+
+/**
+ * 打开图片编辑器
+ * @param {string} key - 资源 key
+ */
+async function openImageEditor(key) {
+  const r = RESOURCES.images.find(x => x.key === key);
+  if (!r) return;
+
+  // 填充资源信息
+  document.getElementById('ie-title').textContent = '🖼️ ' + r.alias;
+  document.getElementById('ie-subtitle').textContent = r.key;
+  document.getElementById('ieKey').textContent = r.key;
+  document.getElementById('ieSize').textContent = r.size ? `${r.size.width}×${r.size.height}` : '-';
+
+  // 填充默认 prompt
+  document.getElementById('iePrompt').value = PVZ_PROMPTS[key] || '';
+  document.getElementById('ieNegPrompt').value = 'worst quality, low quality, blurry, text, watermark, signature, cropped, out of frame, multiple_characters, duplicate_objects, crowd, extra_limbs, messy_background, complex_background, shadow, ambient_occlusion, reflection, gradient_background, jpeg_artifacts, deformed, bad_anatomy, bad_hands';
+  document.getElementById('ieSeed').value = '';
+  document.getElementById('ieSteps').value = '28';
+  document.getElementById('ieCfg').value = '7';
+  document.getElementById('ieWidth').value = '1024';
+  document.getElementById('ieHeight').value = '1024';
+  document.getElementById('ieClipSkip').value = '1';
+  document.getElementById('ieBatchCount').value = '1';
+  document.getElementById('ieSampler').value = 'Euler a';
+
+  // 重置状态
+  document.getElementById('ieProgress').style.display = 'none';
+  document.getElementById('ieNewPlaceholder').style.display = '';
+  document.getElementById('ieNewImage').style.display = '';
+  // 重置参数表单（折叠状态）
+  const genForm = document.getElementById('ieGenForm');
+  const toggleBtn = document.getElementById('ieBtnToggleGen');
+  genForm.style.display = 'none';
+  toggleBtn.textContent = '✨ AI 生成';
+  toggleBtn.classList.remove('btn-secondary');
+  toggleBtn.classList.add('btn-ai');
+  document.getElementById('ieBtnRmbg').style.display = 'none';
+  document.getElementById('ieBtnFlip').style.display = 'none';
+  document.getElementById('ieBtnDl').style.display = 'none';
+  document.getElementById('ieBtnApply').disabled = true;
+  document.getElementById('ieBtnReplaceLbl').style.display = '';
+
+  // 加载原图到左侧
+  const origPlaceholder = document.getElementById('ieOrigPlaceholder');
+  const origImg = document.getElementById('ieOrigImage');
+  origPlaceholder.style.display = '';
+  origImg.style.display = 'none';
+
+  try {
+    const base64 = await loadImageAsBase64(r.path);
+    ImageEditor.loadOriginal(key, base64);
+    origPlaceholder.style.display = 'none';
+    origImg.src = ImageEditor.getCurrentDataUrl();
+    origImg.style.display = '';
+    // 右侧显示原图（作为初始新图）
+    document.getElementById('ieNewPlaceholder').style.display = 'none';
+    document.getElementById('ieNewImage').src = ImageEditor.getCurrentDataUrl();
+    document.getElementById('ieNewImage').style.display = '';
+    document.getElementById('ieBtnRmbg').style.display = '';
+    document.getElementById('ieBtnFlip').style.display = '';
+    document.getElementById('ieBtnDl').style.display = '';
+    document.getElementById('ieBtnApply').disabled = false;
+  } catch (e) {
+    origPlaceholder.innerHTML = '❌ 加载失败<br/><small style="font-size:11px;opacity:0.6">' + e.message + '</small>';
+  }
+
+  document.getElementById('imageEditorModal').classList.add('show');
+}
+
+/**
+ * 关闭图片编辑器
+ */
+function closeImageEditor() {
+  document.getElementById('imageEditorModal').classList.remove('show');
+}
+
+/**
+ * 处理编辑器内的文件替换
+ */
+async function handleIEReplace(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    ImageEditor.setEdited(base64, 'replaced');
+    const img = document.getElementById('ieNewImage');
+    img.src = ImageEditor.getCurrentDataUrl();
+    img.style.display = '';
+    document.getElementById('ieNewPlaceholder').style.display = 'none';
+    showToast('文件已替换（预览）');
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+/**
+ * 图片编辑器的 AI 生成
+ */
+async function doIEGenerate() {
+  await checkSD();
+  if (!sdConnected) {
+    showToast('SD WebUI 未连接', true);
+    return;
+  }
+
+  const prompt = document.getElementById('iePrompt').value.trim();
+  if (!prompt) {
+    showToast('请输入提示词', true);
+    return;
+  }
+
+  const progressEl = document.getElementById('ieProgress');
+  const fillEl = document.getElementById('ieProgressFill');
+  const textEl = document.getElementById('ieProgressText');
+  const btnGen = document.querySelector('.ie-gen-form .btn-primary');
+
+  progressEl.style.display = '';
+  fillEl.style.width = '10%';
+  textEl.textContent = '正在连接 SD WebUI...';
+  btnGen.disabled = true;
+
+  let progInterval;
+  try {
+    // 风格后缀
+    const styleSuffix = { cartoon: ', cartoon style, vibrant colors, game art',
+                          'pixel-art': ', pixel art style, 8-bit game, vibrant colors',
+                          chibi: ', chibi style, cute, kawaii, anime' }[selectedStyle] || '';
+    const fullPrompt = prompt + styleSuffix;
+
+    // 模拟进度
+    let prog = 25;
+    progInterval = setInterval(() => {
+      prog = Math.min(prog + Math.random() * 15, 90);
+      fillEl.style.width = prog + '%';
+      textEl.textContent = `正在生成... ${Math.round(prog)}%`;
+    }, 500);
+
+    fillEl.style.width = '30%';
+    textEl.textContent = '正在调用 SD WebUI...';
+
+    const resp = await fetch('/sdapi/v1/txt2img', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: fullPrompt,
+        negative_prompt: document.getElementById('ieNegPrompt').value || '',
+        width: Math.min(parseInt(document.getElementById('ieWidth').value) || 1024, 1024),
+        height: Math.min(parseInt(document.getElementById('ieHeight').value) || 1024, 1024),
+        steps: parseInt(document.getElementById('ieSteps').value) || 28,
+        cfg_scale: parseFloat(document.getElementById('ieCfg').value) || 7.0,
+        sampler_name: document.getElementById('ieSampler').value || 'Euler a',
+        batch_size: parseInt(document.getElementById('ieBatchCount').value) || 1,
+        batch_count: parseInt(document.getElementById('ieBatchCount').value) || 1,
+        seed: parseInt(document.getElementById('ieSeed').value) || -1,
+        clip_skip: parseInt(document.getElementById('ieClipSkip').value) || 1,
+      }),
+    });
+
+    clearInterval(progInterval);
+    progInterval = null;
+
+    if (!resp.ok) {
+      let errMsg = '生成失败 (HTTP ' + resp.status + ')';
+      try { const e = await resp.json(); if (e.error) errMsg = e.error; } catch {}
+      throw new Error(errMsg);
+    }
+
+    const data = await resp.json();
+    const base64 = data.images && data.images[0];
+    if (!base64) throw new Error('SD 返回数据格式错误');
+
+    const info = data.info ? JSON.parse(data.info) : {};
+    const seed = (info && info.seed) || -1;
+
+    // 更新 ImageEditor
+    ImageEditor.setGenerated(base64, seed);
+
+    // 保存到历史
+    if (seed !== -1) {
+      const hist = document.getElementById('ieSeedHistory');
+      const opt = document.createElement('option');
+      opt.value = seed;
+      opt.textContent = seed;
+      hist.insertBefore(opt, hist.firstChild);
+    }
+
+    // 更新 UI：显示在右侧新图
+    const img = document.getElementById('ieNewImage');
+    img.src = ImageEditor.getCurrentDataUrl();
+    img.style.display = '';
+    document.getElementById('ieNewPlaceholder').style.display = 'none';
+    document.getElementById('ieBtnRmbg').style.display = '';
+    document.getElementById('ieBtnFlip').style.display = '';
+    document.getElementById('ieBtnDl').style.display = '';
+    document.getElementById('ieBtnApply').disabled = false;
+
+    fillEl.style.width = '100%';
+    textEl.textContent = '生成完成！';
+    setTimeout(() => { progressEl.style.display = 'none'; }, 1000);
+    showToast('✨ 生成成功');
+
+  } catch (e) {
+    if (progInterval) clearInterval(progInterval);
+    progressEl.style.display = 'none';
+    showToast(e.message, true);
+  } finally {
+    btnGen.disabled = false;
+  }
+}
+
+
+// ==================== 打开资源详情 ====================
+// 图片 → 统一图片编辑器；其他 → 简单详情弹窗
+function openDetail(type, key) {
+  const list = type === 'image' ? RESOURCES.images
+             : type === 'audio' ? RESOURCES.audio
+             : RESOURCES.json;
+  const r = list.find(x => x.key === key);
+  if (!r) return;
+
+  currentResource = { type, ...r };
+
+  // 图片类型 → 使用统一图片编辑器
+  if (type === 'image') {
+    openImageEditor(key);
+    return;
+  }
+
+  // 非图片类型 → 简单详情弹窗
+  document.getElementById('modal-title').textContent = r.alias;
+  document.getElementById('btn-open-file').onclick = () => window.open(r.path, '_blank');
+
+  let body = `
+    <table class="detail-table">
+      <tr><td>Key</td><td><code>${r.key}</code></td></tr>
+      <tr><td>文件名</td><td><code>${r.file}</code></td></tr>
+      <tr><td>别名</td><td>${r.alias}</td></tr>
+      <tr><td>路径</td><td><code>${r.path}</code></td></tr>
+      <tr><td>类型</td><td><span class="tag tag-${type === 'audio' ? 'mp3' : 'json'}">${type.toUpperCase()}</span></td></tr>
+    </table>`;
+
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('detailModal').classList.remove('show');
+  currentResource = null;
+}
+
+// ==================== JSON 查看器 ====================
+async function openJsonViewer(key, path) {
+  const r = RESOURCES.json.find(x => x.key === key);
+  if (!r) return;
+
+  currentResource = { type: 'json', ...r };
+  document.getElementById('modal-title').textContent = r.alias;
+  document.getElementById('btn-open-file').onclick = () => window.open(r.path, '_blank');
+  document.getElementById('btn-ai-generate').style.display = 'none';
+
+  let body = `<table class="detail-table">
+    <tr><td>文件名</td><td><code>${r.file}</code></td></tr>
+    <tr><td>路径</td><td><code>${r.path}</code></td></tr>
+  </table><br/>`;
+
+  try {
+    const resp = await fetch(r.path + '?t=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      body += `<pre style="background:#0f1a30;padding:16px;border-radius:8px;font-size:11px;overflow:auto;max-height:340px;color:#8be9fd;white-space:pre-wrap;word-break:break-all">${escapeHtml(text)}</pre>`;
+    } else {
+      body += `<div style="color:#e74c3c">加载失败 (HTTP ${resp.status})</div>`;
+    }
+  } catch (e) {
+    body += `<div style="color:#888;font-size:13px">无法直接读取（跨域限制）<br/>请点击「在新标签打开」查看</div>`;
+  }
+
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ==================== AI 生成模态框 ====================
+
+function openGenerateModalForKey(key) {
+  const r = RESOURCES.images.find(x => x.key === key);
+  if (!r) return;
+
+  // 初始化表单
+  document.getElementById('genKey').value = key;
+  document.getElementById('genPrompt').value = PVZ_PROMPTS[key] || '';
+  document.getElementById('genNegPrompt').value = 'worst quality, low quality, blurry, text, watermark, signature, cropped, out of frame, multiple characters, duplicate objects, crowd, two heads, extra limbs, messy background, complex background, cluttered background, busy background, shadow, ambient occlusion, reflection, gradient background, colored background, gradient, vignette, border, frame, edge blur, noise, grain, jpeg artifacts, deformed, bad anatomy, bad hands, extra fingers, missing fingers, mutation,ugly, disgusting, asymmetric';
+
+  // 设置默认尺寸
+  if (PVZ_PROMPTS[key]) {
+    document.getElementById('genWidth').value = 1024;
+    document.getElementById('genHeight').value = 1024;
+  }
+
+  // 重置预览状态
+  document.getElementById('genProgress').classList.remove('show');
+  document.getElementById('completenessBar').style.display = 'none';
+  document.getElementById('genPlaceholder').style.display = '';
+  document.getElementById('genImage').style.display = 'none';
+  document.getElementById('genBadge').style.display = 'none';
+
+  // 使用 ImageEditor 加载原图
+  ImageEditor.loadOriginal(key);
+
+  // 显示目标尺寸信息
+  let sizeHint = '';
+  if (r.size) {
+    sizeHint = `【目标尺寸: ${r.size.width}x${r.size.height}】`;
+  }
+  document.getElementById('gen-title').textContent = `✨ AI 生成 · ${r.alias} ${sizeHint}`;
+  document.getElementById('genModal').classList.add('show');
+}
+
+function closeGenModal() {
+  document.getElementById('genModal').classList.remove('show');
+  // ImageEditor 会自动清理内部状态
+}
+
+function openGenerateModal() {
+  if (currentResource && currentResource.type === 'image') {
+    openGenerateModalForKey(currentResource.key);
+  }
+}
+
+function selectStyle(el) {
+  document.querySelectorAll('.style-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedStyle = el.dataset.style;
+}
+
+async function doGenerate() {
+  // 每次生成前重新检测连接状态
+  await checkSD();
+  if (!sdConnected) {
+    showToast('SD WebUI 未连接，请确保服务运行中', true);
+    return;
+  }
+
+  const prompt = document.getElementById('genPrompt').value.trim();
+  if (!prompt) {
+    showToast('请输入提示词', true);
+    return;
+  }
+
+  const progressEl = document.getElementById('genProgress');
+  const fillEl = document.getElementById('genProgressFill');
+  const textEl = document.getElementById('genProgressText');
+  const btnGen = document.getElementById('btn-generate');
+
+  // 开始进度
+  progressEl.classList.add('show');
+  fillEl.style.width = '10%';
+  textEl.textContent = '正在连接 SD WebUI...';
+  btnGen.disabled = true;
+  document.getElementById('genImage').style.display = 'none';
+  document.getElementById('genPlaceholder').style.display = '';
+  document.getElementById('genBadge').style.display = 'none';
+  document.getElementById('completenessBar').style.display = 'none';
+
+  let progInterval;
+  try {
+    // 追加风格后缀
+    const styleSuffix = { cartoon: ', cartoon style, vibrant colors, game art',
+                          'pixel-art': ', pixel art style, 8-bit game, vibrant colors',
+                          chibi: ', chibi style, cute, kawaii, anime' }[selectedStyle] || '';
+    const fullPrompt = prompt + styleSuffix;
+
+    // 模拟进度动画
+    let prog = 25;
+    progInterval = setInterval(() => {
+      prog = Math.min(prog + Math.random() * 15, 90);
+      fillEl.style.width = prog + '%';
+      textEl.textContent = `正在生成... ${Math.round(prog)}%`;
+    }, 500);
+
+    fillEl.style.width = '30%';
+    textEl.textContent = '正在调用 SD WebUI...';
+
+    // 走 Vite 代理（解决 CORS）
+    const resp = await fetch('/sdapi/v1/txt2img', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: fullPrompt,
+        negative_prompt: document.getElementById('genNegPrompt').value,
+        width: Math.min(parseInt(document.getElementById('genWidth').value) || 320, 1024),
+        height: Math.min(parseInt(document.getElementById('genHeight').value) || 320, 1024),
+        steps: parseInt(document.getElementById('genSteps').value) || 28,
+        cfg_scale: parseFloat(document.getElementById('genCfg').value) || 7.0,
+        sampler_name: document.getElementById('genSampler').value || 'Euler a',
+        batch_size: 1,
+        batch_count: parseInt(document.getElementById('genBatchCount').value) || 1,
+        seed: parseInt(document.getElementById('genSeed').value) || -1,
+        clip_skip: parseInt(document.getElementById('genClipSkip').value) || 1,
+      }),
+    });
+
+    clearInterval(progInterval);
+    progInterval = null;
+
+    if (!resp.ok) {
+      let errMsg = '生成失败 (HTTP ' + resp.status + ')';
+      try { const e = await resp.json(); if (e.error) errMsg = e.error; } catch {}
+      throw new Error(errMsg);
+    }
+
+    const data = await resp.json();
+    const base64 = data.images && data.images[0];
+    if (!base64) throw new Error('SD 返回数据格式错误');
+
+    // seed 可能在内嵌 info JSON 里
+    const info = data.info ? JSON.parse(data.info) : {};
+    const seed = (info && info.seed) || -1;
+
+    // 使用 ImageEditor 更新结果
+    ImageEditor.setGenerated(base64, seed);
+
+    // 保存到本地备份
+    const filename = `pvz_${ImageEditor.currentKey}_${seed}.png`;
+    try {
+      await fetch('/__save-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, filename }),
+      });
+    } catch (e) {
+      console.warn('[txt2img] 保存失败:', e.message);
+    }
+
+    // 显示结果
+    fillEl.style.width = '100%';
+    textEl.textContent = `✅ 生成完成！Seed: ${seed}`;
+
+    // 更新种子显示
+    document.getElementById('genSeed').value = seed;
+
+    // 添加到历史记录
+    addSeedToHistory(seed);
+
+    showToast('✅ 生成完成！可继续「去除背景」或「应用到资源」');
+  } catch (e) {
+    if (progInterval) clearInterval(progInterval);
+    fillEl.style.width = '0%';
+    textEl.textContent = '❌ ' + e.message;
+    showToast('生成失败: ' + e.message, true);
+  } finally {
+    btnGen.disabled = false;
+    setTimeout(() => progressEl.classList.remove('show'), 3000);
+  }
+}
+
+// 完整性检测依赖后端，已移除；生成质量由 prompt 控制
+
+// ==================== Canvas 图片处理 ====================
+
+// Canvas 缩放到目标尺寸（保持宽高比，居中显示，保留透明）
+function resizeToFit(srcBase64, targetWidth, targetHeight) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d');
+      
+      // 清空画布（保留透明）
+      ctx.clearRect(0, 0, targetWidth, targetHeight);
+      
+      // 计算缩放比例（保持宽高比，完整显示）
+      const scale = Math.min(targetWidth / img.width, targetHeight / img.height);
+      const scaledW = img.width * scale;
+      const scaledH = img.height * scale;
+      const dx = (targetWidth - scaledW) / 2;
+      const dy = (targetHeight - scaledH) / 2;
+      
+      // 绘制缩放后的图片（保持透明）
+      ctx.drawImage(img, dx, dy, scaledW, scaledH);
+      
+      const resizedBase64 = canvas.toDataURL('image/png').replace(/^data:image\/\w+;base64,/, '');
+      resolve(resizedBase64);
+    };
+    img.onerror = () => reject(new Error('图片加载失败'));
+    // 兼容带/不带 data URL 前缀
+    img.src = srcBase64.startsWith('data:') ? srcBase64 : 'data:image/png;base64,' + srcBase64;
+  });
+}
+
+
+// 详情弹窗中的图片编辑操作
+let detailZoom = 1;
+
+function openEditorForDetail(key) {
+  const r = RESOURCES.images.find(x => x.key === key);
+  if (!r || !r.path) return;
+
+  closeModal();
+
+  // 初始化表单
+  document.getElementById('genKey').value = key;
+  document.getElementById('genPrompt').value = PVZ_PROMPTS[key] || '';
+  document.getElementById('genProgress').classList.remove('show');
+  document.getElementById('completenessBar').style.display = 'none';
+
+  // 使用 ImageEditor 加载原图
+  ImageEditor.loadOriginal(key);
+
+  document.getElementById('gen-title').textContent = `✏️ 编辑 · ${r.alias}`;
+  document.getElementById('genModal').classList.add('show');
+  showToast('已进入编辑模式，可去除背景或镜像');
+}
+
+function flipDetailImg() {
+  const img = document.getElementById('detail-img');
+  if (img) {
+    img.style.transform = img.style.transform === 'scaleX(-1)' ? 'scaleX(1)' : 'scaleX(-1)';
+  }
+}
+
+function zoomDetailImg(factor) {
+  const img = document.getElementById('detail-img');
+  if (img) {
+    detailZoom *= factor;
+    img.style.transform = `scale(${detailZoom})`;
+  }
+}
+
+// 批量生成入口
+function openBulkGenerate() {
+  // 提示用户可以逐个点击卡片右上角的 ✨ 按钮
+  showToast('💡 点击任意图片卡片的 ✨ 按钮即可 AI 生成替换', false);
+}
+
+// ==================== 文件替换 ====================
+function handleFileReplace(event) {
+  const file = event.target.files[0];
+  if (!file || !currentResource) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const url = e.target.result;
+    if (currentResource.type === 'image') {
+      const img = document.querySelector('#modal-body .detail-preview img');
+      if (img) img.src = url;
+    }
+    showToast(`✅ 已预览替换：${file.name}（请手动覆盖文件以永久生效）`);
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (!file || !currentResource) return;
+  const fakeEvent = { target: { files: [file], value: '' } };
+  handleFileReplace(fakeEvent);
+}
+
+// ==================== 音频播放 ====================
+function toggleAudio(key, path) {
+  const btn = document.getElementById('play-' + key);
+
+  if (currentAudio && !currentAudio.paused) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    document.querySelectorAll('.play-btn').forEach(b => {
+      b.classList.remove('playing');
+      b.textContent = '▶';
+    });
+    if (currentAudio._key === key) {
+      currentAudio = null;
+      return;
+    }
+  }
+
+  const audio = new Audio(path);
+  audio._key = key;
+  currentAudio = audio;
+  btn.classList.add('playing');
+  btn.textContent = '■';
+  audio.play().catch(() => showToast('音频播放失败', true));
+  audio.onended = () => {
+    btn.classList.remove('playing');
+    btn.textContent = '▶';
+    currentAudio = null;
+  };
+}
+
+// ==================== 导出 & 工具 ====================
+function exportResourceList() {
+  const all = [...RESOURCES.images, ...RESOURCES.audio, ...RESOURCES.json];
+  const lines = ['# PVZ 资源清单\n', '| Key | 别名 | 文件 | 路径 |', '|-----|------|------|------|',
+    ...all.map(r => `| ${r.key} | ${r.alias} | ${r.file} | ${r.path} |`)];
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pvz-resource-list.md';
+  a.click();
+  showToast('✅ 已导出资源清单');
+}
+
+function openGTRS() {
+  window.open(`${THEME_BASE}/GTRS.json`, '_blank');
+}
+
+function openCurrentFile() {
+  if (currentResource) window.open(currentResource.path, '_blank');
+}
+
+// ==================== 种子历史记录 ====================
+// 添加种子到历史
+function addSeedToHistory(seed) {
+  if (seed === -1 || seed === null || seed === undefined) return;
+  
+  // 去重
+  seedHistory = seedHistory.filter(s => s !== seed);
+  // 插入到最前面
+  seedHistory.unshift(seed);
+  // 最多保存20条
+  if (seedHistory.length > 20) seedHistory.pop();
+  
+  // 更新下拉框
+  updateSeedHistoryDropdown();
+}
+
+// 更新下拉框选项
+function updateSeedHistoryDropdown() {
+  const select = document.getElementById('genSeedHistory');
+  if (!select) return;
+  
+  select.innerHTML = '<option value="">— 历史 —</option>';
+  seedHistory.forEach(seed => {
+    const opt = document.createElement('option');
+    opt.value = seed;
+    opt.textContent = seed;
+    select.insertBefore(opt, select.firstChild.nextSibling);
+  });
+}
+
+// 从历史选择种子
+function selectSeedFromHistory(select) {
+  const seed = select.value;
+  if (seed) {
+    document.getElementById('genSeed').value = seed;
+  }
+  // 重置选择
+  select.value = '';
+}
+
+// ==================== Toast ====================
+// 将图片 URL 转为 base64
+function loadImageAsBase64(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png').replace(/^data:image\/\w+;base64,/, ''));
+    };
+    img.onerror = () => reject(new Error('图片加载失败'));
+    img.src = url;
+  });
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = '', 3500);
+}
+
+// ESC 关闭弹窗
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeModal();
+    closeGenModal();
+  }
+});
+
+// ==================== Tooltip 初始化 ====================
+(function initTooltips() {
+  const tooltipBox = document.getElementById('tooltip-box');
+  const tips = document.querySelectorAll('.param-tip');
+
+  tips.forEach(tip => {
+    tip.addEventListener('mouseenter', (e) => {
+      const text = tip.getAttribute('data-tip') || '';
+      tooltipBox.textContent = text;
+      tooltipBox.style.display = 'block';
+
+      const rect = tip.getBoundingClientRect();
+      const boxRect = tooltipBox.getBoundingClientRect();
+
+      // 计算位置（居中于图标上方）
+      let left = rect.left + rect.width / 2 - boxRect.width / 2;
+      let top = rect.top - boxRect.height - 12;
+
+      // 边界检测
+      if (left < 10) left = 10;
+      if (left + boxRect.width > window.innerWidth - 10) {
+        left = window.innerWidth - boxRect.width - 10;
+      }
+      if (top < 10) top = rect.bottom + 12; // 下方放不下就放上方
+
+      tooltipBox.style.left = left + 'px';
+      tooltipBox.style.top = top + 'px';
+    });
+
+    tip.addEventListener('mouseleave', () => {
+      tooltipBox.style.display = 'none';
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

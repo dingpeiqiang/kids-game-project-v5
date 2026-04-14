@@ -1,6 +1,7 @@
 package com.kidgame.common.util;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -9,9 +10,11 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Redis 工具类
+ * 注意：当 Redis 未配置时，此类不会被创建
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "spring.data.redis.host")
 public class RedisUtil {
 
     private final RedisTemplate<String, Object> redisTemplate;

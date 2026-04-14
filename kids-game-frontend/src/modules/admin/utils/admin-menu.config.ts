@@ -63,5 +63,11 @@ export const adminMenuItems: MenuItem[] = [
     name: '主题管理',
     icon: '🎨',
     path: '/admin/themes'
+  },
+  {
+    id: 'game-resources',
+    name: '游戏资源管理',
+    icon: '🖼️',
+    path: '/admin/game-resources'
   }
 ];

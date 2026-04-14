@@ -57,5 +57,45 @@ export default class TitleScene extends Phaser.Scene {
     this.tweens.add({
       targets: tip, alpha: 0.3, duration: 1000, yoyo: true, repeat: -1
     })
+
+    // 资源管理按钮（右上角）
+    const resourceBtnSize = 50
+    const resourceBtnX = W - resourceBtnSize - 20
+    const resourceBtnY = 20
+    
+    // 按钮背景（圆形）
+    const resourceBtn = this.add.circle(resourceBtnX, resourceBtnY, resourceBtnSize / 2, 0x48dbfb)
+      .setStrokeStyle(2, 0x0abde3)
+      .setInteractive({ useHandCursor: true })
+      .setScrollFactor(0) // 固定位置，不随相机滚动
+    
+    // 按钮图标
+    const resourceIcon = this.add.text(resourceBtnX, resourceBtnY, '🖼️', {
+      font: '24px sans-serif'
+    }).setOrigin(0.5).setScrollFactor(0)
+    
+    // 悬停效果
+    resourceBtn.on('pointerover', () => {
+      resourceBtn.setFillStyle(0x6be4ff)
+      resourceBtn.setScale(1.1)
+    })
+    
+    resourceBtn.on('pointerout', () => {
+      resourceBtn.setFillStyle(0x48dbfb)
+      resourceBtn.setScale(1)
+    })
+    
+    // 点击事件 - 打开资源管理页面
+    resourceBtn.on('pointerdown', () => {
+      const resourceManagerUrl = `${window.location.origin}/resource-manager.html`
+      console.log('[PVZ] 打开资源管理器:', resourceManagerUrl)
+      window.open(resourceManagerUrl, '_blank')
+    })
+    
+    // 添加提示文本
+    const resourceTip = this.add.text(resourceBtnX, resourceBtnY + resourceBtnSize / 2 + 15, '资源管理', {
+      font: '12px sans-serif',
+      fill: '#FFFFFF'
+    }).setOrigin(0.5).setScrollFactor(0)
   }
 }

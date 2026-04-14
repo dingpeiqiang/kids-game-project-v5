@@ -45,6 +45,11 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
+  // 像素艺术模式：所有图片使用 NEAREST 滤镜，放大不失真
+  render: {
+    pixelArt: true,
+    antialias: false
+  },
   backgroundColor: '#4a7c2e',
   scene: [BootScene, TitleScene, PlayScene, OverScene]
 }
@@ -57,14 +62,45 @@ window.GAME_CONFIG = {
   GRID_LEFT, GRID_RIGHT, GRID_W
 }
 
-const game = new Phaser.Game(config)
+// ══════════════════════════════════════════════════════════
+//  预加载 GTRS 资源配置
+//  在 Phaser 游戏启动前先获取资源配置，避免异步加载时序问题
+// ══════════════════════════════════════════════════════════
 
-// 同步挂载到 Phaser.Game 实例，供场景通过 this.game.XXX 访问
-Object.assign(game, {
-  BASE_W, BASE_H,
-  COLS, ROWS, CELL,
-  UI_H, GAME_Y, GAME_H,
-  GRID_LEFT, GRID_RIGHT, GRID_W
-})
+function startGame(gtrsData = null) {
+  const game = new Phaser.Game(config);
 
-window.game = game
+  // 如果有GTRS数据，存储到全局供BootScene使用
+  if (gtrsData) {
+    window.GTRS_DATA = gtrsData;
+    console.log('[main] GTRS数据已存储到全局');
+  }
+
+  // 同步挂载到 Phaser.Game 实例，供场景通过 this.game.XXX 访问
+  Object.assign(game, {
+    BASE_W, BASE_H,
+    COLS, ROWS, CELL,
+    UI_H, GAME_Y, GAME_H,
+    GRID_LEFT, GRID_RIGHT, GRID_W
+  });
+
+  window.game = game;
+}
+
+const v = `?v=${Date.now()}`;
+fetch(`/themes/pvz/GTRS.json${v}`)
+  .then(res => {
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+    return res.json();
+  })
+  .then(gtrs => {
+    console.log('[main] GTRS配置加载成功:', gtrs.themeInfo.themeName);
+    startGame(gtrs);
+  })
+  .catch(err => {
+    console.error('[main] GTRS加载失败:', err);
+    // 即使加载失败也启动游戏，避免完全卡死
+    startGame(null);
+  });

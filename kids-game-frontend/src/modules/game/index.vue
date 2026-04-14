@@ -6,7 +6,7 @@
       :src="gameUrl"
       class="game-iframe"
       @load="onGameLoaded"
-      sandbox="allow-scripts allow-same-origin allow-forms"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
     ></iframe>
 
     <!-- 加载提示（仅在加载时显示） -->
@@ -14,6 +14,15 @@
       <div class="loading-spinner"></div>
       <p class="loading-text">加载游戏中...</p>
     </div>
+
+    <!-- 资源管理悬浮按钮 -->
+    <button 
+      @click="openResourceManager" 
+      class="resource-manager-float-btn"
+      title="打开资源管理"
+    >
+      🖼️
+    </button>
   </div>
 </template>
 
@@ -250,6 +259,15 @@ function onMessage(event: MessageEvent) {
       // 可选：可以发送到平台存储用于统计分析
       break;
 
+    case 'OPEN_RESOURCE_MANAGER':
+      // 打开资源管理页面
+      console.log('[GamePage] 收到打开资源管理页面请求:', data);
+      if (data && data.url) {
+        console.log('[GamePage] 打开 URL:', data.url);
+        window.open(data.url, '_blank');
+      }
+      break;
+
     case 'GAME_OVER':
     case 'gameOver':
       // 游戏结束 - 提交结果到后端
@@ -307,6 +325,36 @@ function onBeforeUnload(e: BeforeUnloadEvent) {
   // 标准的浏览器关闭确认提示
   e.preventDefault();
   e.returnValue = '确定要退出游戏吗？';
+}
+
+/**
+ * 打开资源管理页面
+ */
+function openResourceManager() {
+  console.log('[Resource Manager] 点击资源管理按钮');
+  console.log('[Resource Manager] 当前游戏代码:', gameCode.value);
+  
+  if (!gameCode.value) {
+    console.error('[Resource Manager] 游戏代码不存在');
+    alert('游戏信息不存在');
+    return;
+  }
+  
+  // 获取当前选择的主题
+  const gameThemeKey = `game-theme-${gameCode.value}`;
+  const themeId = localStorage.getItem(gameThemeKey) || 'default';
+  
+  console.log('[Resource Manager] 主题ID:', themeId);
+  
+  // 跳转到资源管理页面（不限制权限）
+  console.log('[Resource Manager] 跳转到资源管理页面');
+  router.push({
+    path: '/admin/game-resources',
+    query: {
+      gameId: gameCode.value,
+      themeId: themeId
+    }
+  });
 }
 
 /**
@@ -411,6 +459,36 @@ onUnmounted(() => {
   color: #fff;
   font-size: 18px;
   font-weight: 500;
+}
+
+/* 资源管理悬浮按钮 */
+.resource-manager-float-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #48dbfb 0%, #0abde3 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  box-shadow: 0 4px 15px rgba(72, 219, 251, 0.4);
+  transition: all 0.3s ease;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resource-manager-float-btn:hover {
+  transform: scale(1.1) rotate(10deg);
+  box-shadow: 0 6px 20px rgba(72, 219, 251, 0.6);
+}
+
+.resource-manager-float-btn:active {
+  transform: scale(0.95);
 }
 
 /* 创作者中心入口 */

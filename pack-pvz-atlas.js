@@ -6,20 +6,29 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 配置路径
-const ASSETS_DIR = path.join(__dirname, 'kids-game-house', 'games', 'pvz', 'assets');
+const ASSETS_DIR = path.join(__dirname, 'kids-game-house', 'games', 'pvz', 'public', 'themes', 'pvz', 'assets', 'scene');
 const OUTPUT_SPRITES = path.join(ASSETS_DIR, 'sprites.png');
 const OUTPUT_JSON = path.join(ASSETS_DIR, 'sprites.json');
 
 // 需要打包的图片列表（按名称排序以确保一致性）
 const IMAGE_NAMES = [
+  'peashooter.png',
+  'sunflower.png',
+  'wallnut.png',
+  'iceshooter.png',
+  'repeater.png',
+  'cherrybomb.png',
+  'potatomine.png',
+  'zombie_normal.png',
+  'zombie_conehead.png',
+  'zombie_buckethead.png',
+  'zombie_newspaper.png',
   'pea.png',
-  'ps-idle01.png', // 保持原有命名以便代码兼容，如果生成了新名字请在此映射
-  'sun1.png',
-  'sun2.png',
-  'sunflower-idle.png',
-  'zombie1.png',
-  'zombie2.png',
-  'zombie3.png'
+  'ice_pea.png',
+  'sun.png',
+  'lawnmower.png',
+  'shovel.png',
+  'grass_tile.png'
 ];
 
 /**

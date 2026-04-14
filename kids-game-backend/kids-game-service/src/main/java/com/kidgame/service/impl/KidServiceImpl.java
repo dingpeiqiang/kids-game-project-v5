@@ -40,7 +40,7 @@ public class KidServiceImpl extends ServiceImpl<KidMapper, Kid> implements KidSe
     @Autowired
     private UserProfileMapper userProfileMapper;
 
-    @Autowired
+    @Autowired(required = false)
     private RedisUtil redisUtil;
 
     @Autowired

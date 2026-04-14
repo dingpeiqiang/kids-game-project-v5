@@ -125,12 +125,17 @@ export default class PlayScene extends Phaser.Scene {
 
     this.gameStarted = true
 
-    this.sounds = {
-      peaShoot: this.sound.add('peaShoot'),
-      splat: this.sound.add('splat'),
-      zombiesAreComing: this.sound.add('zombiesAreComing')
+    this.sounds = {}
+    if (this.cache.audio.exists('peaShoot')) {
+      this.sounds.peaShoot = this.sound.add('peaShoot')
     }
-    this.sounds.zombiesAreComing.play()
+    if (this.cache.audio.exists('splat')) {
+      this.sounds.splat = this.sound.add('splat')
+    }
+    if (this.cache.audio.exists('zombiesAreComing')) {
+      this.sounds.zombiesAreComing = this.sound.add('zombiesAreComing')
+      this.sounds.zombiesAreComing.play()
+    }
 
     // 僵尸生成定时器
     this.zombieSpawnTimer = this.time.addEvent({
@@ -656,7 +661,7 @@ export default class PlayScene extends Phaser.Scene {
   // ── 子弹-僵尸碰撞 ──
   handleZombieHit(projectile, zombie) {
     if (!projectile.active || !zombie.active) return
-    this.sounds.splat.play()
+    if (this.sounds.splat) this.sounds.splat.play()
 
     // 冰冻效果
     if (projectile.isIcePea && !zombie.isSlowed) {
