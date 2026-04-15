@@ -22,9 +22,13 @@ export default class IceShooter extends Plant {
 
   shoot(t) {
     this.gameData.lastShotAt = t
-    if (this.scene.sounds) this.scene.sounds.peaShoot.play()
+    if (this.scene.sounds && this.scene.sounds.peaShoot) {
+      this.scene.sounds.peaShoot.play()
+    }
 
-    const pea = this.scene.projectiles.create(this.x + 40, this.y, 'ice_pea')
+    // 使用 sprites 图集的 ice_pea.png 帧
+    const pea = this.scene.projectiles.create(this.x + 40, this.y, 'sprites')
+    pea.setFrame('ice_pea.png')
     pea.setScale(1.0)
     pea.isIcePea = true
     pea.body.setSize(20, 20)

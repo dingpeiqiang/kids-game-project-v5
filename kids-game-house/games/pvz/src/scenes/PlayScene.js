@@ -71,11 +71,12 @@ export default class PlayScene extends Phaser.Scene {
 
     // ═══ 物理组 ═══
     this.plants = this.physics.add.group()
-    this.projectiles = this.physics.add.group({ defaultKey: 'pea', maxSize: 80 })
+    this.projectiles = this.physics.add.group({ maxSize: 80 })
     this.zombies = this.physics.add.group()
 
     // ═══ 事件 ═══
     this.physics.add.overlap(this.zombies, this.plants, this.handleZombiePlantCollision, null, this)
+    this.physics.add.overlap(this.zombies, this.lawnmowers, this.handleZombieMowerCollision, null, this)
     this.input.on('pointerdown', (pointer) => this.handleTap(pointer))
 
     this.startCountdown()
@@ -202,8 +203,16 @@ export default class PlayScene extends Phaser.Scene {
     for (let r = 0; r < ROWS; r++) {
       const x = GL / 2
       const y = GY + r * CELL + CELL / 2
-      const mower = this.add.image(x, y, 'lawnmower').setScale(0.7).setDepth(50)
-      this.lawnmowers.push({ sprite: mower, row: r, active: true })
+      const mowerSprite = this.add.image(x, y, 'lawnmower').setScale(0.7).setDepth(50)
+
+      // 添加物理碰撞体
+      this.physics.add.existing(mowerSprite)
+      mowerSprite.body.setSize(60, 60)
+      mowerSprite.body.setAllowGravity(false)
+      mowerSprite.body.setImmovable(true)
+      mowerSprite.body.enable = true
+
+      this.lawnmowers.push({ sprite: mowerSprite, row: r, active: true, isActive: true })
     }
   }
 
@@ -469,34 +478,63 @@ export default class PlayScene extends Phaser.Scene {
     }
   }
 
-  // ── 进度条 ──
+  // ── 波次进度显示 ──
   createProgressDisplay() {
     const W = this.game.BASE_W
-    const barY = 65
+    const barY = 60
+    const barWidth = 300
+    const barHeight = 28
 
-    this.progressBarBg = this.add.rectangle(W / 2, barY, 260, 10, 0x333333, 0.8).setDepth(100)
-    this.progressBarFill = this.add.rectangle(W / 2 - 130, barY, 0, 8, 0x00FF00)
+    // 容器背景
+    const containerBg = this.add.graphics().setDepth(100)
+    containerBg.fillStyle(0x1a1a2e, 0.95)
+    containerBg.fillRoundedRect(W / 2 - barWidth / 2 - 20, barY - barHeight / 2 - 15, barWidth + 40, barHeight + 35, 12)
+    containerBg.lineStyle(2, 0x4a4a6a, 1)
+    containerBg.strokeRoundedRect(W / 2 - barWidth / 2 - 20, barY - barHeight / 2 - 15, barWidth + 40, barHeight + 35, 12)
+
+    // 标题图标
+    this.add.text(W / 2 - barWidth / 2, barY - barHeight / 2 - 8, '🏴‍☠️', { fontSize: '18px' })
       .setOrigin(0, 0.5).setDepth(101)
-    this.waveText = this.add.text(W / 2 + 145, barY, `1/${this.totalWaves}`, {
-      fontSize: '12px', fill: '#FFFFFF', fontStyle: 'bold'
-    }).setOrigin(0, 0.5).setDepth(100)
 
-    // 旗帜
-    this.flags = []
+    // 波次标签
+    this.waveLabel = this.add.text(W / 2 - 30, barY - barHeight / 2 - 8, '第 1 波', {
+      fontSize: '16px', fill: '#FFD700', fontStyle: 'bold'
+    }).setOrigin(0, 0.5).setDepth(101)
+
+    // 僵尸数量
+    this.zombieCountText = this.add.text(W / 2 + 40, barY - barHeight / 2 - 8, '剩余: 0', {
+      fontSize: '14px', fill: '#FF6B6B'
+    }).setOrigin(0, 0.5).setDepth(101)
+
+    // 进度条背景
+    const progressBg = this.add.graphics().setDepth(100)
+    progressBg.fillStyle(0x2d2d44, 1)
+    progressBg.fillRoundedRect(W / 2 - barWidth / 2, barY - barHeight / 2 + 5, barWidth, barHeight, 8)
+
+    // 进度条渐变（用多个矩形模拟）
+    this.progressSegments = []
     for (let i = 0; i < this.totalWaves; i++) {
-      const flagX = W / 2 - 120 + i * 55
-      const flag = this.add.graphics().setDepth(100)
-      flag.fillStyle(0x888888, 1)
-      flag.fillRect(flagX, barY - 8, 3, 16)
-      flag.fillStyle(0x666666, 1)
-      flag.beginPath()
-      flag.moveTo(flagX + 3, barY - 8)
-      flag.lineTo(flagX + 15, barY - 3)
-      flag.lineTo(flagX + 3, barY + 2)
-      flag.closePath()
-      flag.fill()
-      this.flags.push(flag)
+      const segX = W / 2 - barWidth / 2 + (barWidth / this.totalWaves) * i + 2
+      const seg = this.add.graphics().setDepth(101)
+      seg.fillStyle(0x3d3d5c, 1)
+      seg.fillRoundedRect(segX, barY - barHeight / 2 + 7, barWidth / this.totalWaves - 4, barHeight - 4, 4)
+      this.progressSegments.push({ graphics: seg, filled: false, index: i })
     }
+
+    // 波次完成标记（旗帜图标）
+    this.waveFlags = []
+    for (let i = 0; i < this.totalWaves; i++) {
+      const flagX = W / 2 - barWidth / 2 + (barWidth / this.totalWaves) * (i + 0.5)
+      const flag = this.add.text(flagX, barY + 4, '⚑', {
+        fontSize: '14px', fill: '#666666'
+      }).setOrigin(0.5, 0.5).setDepth(102)
+      this.waveFlags.push(flag)
+    }
+
+    // 底部波次提示
+    this.waveHintText = this.add.text(W / 2, barY + barHeight / 2 + 8, '准备中...', {
+      fontSize: '11px', fill: '#888888'
+    }).setOrigin(0.5).setDepth(101)
   }
 
   startNextWave() {
@@ -515,24 +553,83 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   updateProgressDisplay() {
-    const progress = this.currentWave / this.totalWaves
-    this.progressBarFill.width = 260 * progress
-    this.waveText.setText(`${this.currentWave}/${this.totalWaves}`)
+    const W = this.game.BASE_W
+    const barWidth = 300
+    const barHeight = 28
+    const barY = 60
+    const totalZombies = this.zombiesPerWave[this.currentWave - 1] || 0
+    const remainingZombies = totalZombies - this.zombiesSpawnedInWave + this.zombies.countActive(true)
 
-    this.flags.forEach((flag, i) => {
-      flag.clear()
-      const flagX = this.game.BASE_W / 2 - 120 + i * 55
-      const barY = 65
-      flag.fillStyle(0x888888, 1)
-      flag.fillRect(flagX, barY - 8, 3, 16)
-      flag.fillStyle(i < this.currentWave ? 0x00FF00 : 0x666666, 1)
-      flag.beginPath()
-      flag.moveTo(flagX + 3, barY - 8)
-      flag.lineTo(flagX + 15, barY - 3)
-      flag.lineTo(flagX + 3, barY + 2)
-      flag.closePath()
-      flag.fill()
+    // 更新波次标签
+    this.waveLabel.setText(`第 ${this.currentWave} 波`)
+
+    // 更新剩余僵尸数量
+    this.zombieCountText.setText(`剩余: ${this.zombies.countActive(true)}`)
+
+    // 更新进度段颜色
+    for (let i = 0; i < this.totalWaves; i++) {
+      const seg = this.progressSegments[i]
+      seg.graphics.clear()
+
+      const segX = W / 2 - barWidth / 2 + (barWidth / this.totalWaves) * i + 2
+      const segWidth = barWidth / this.totalWaves - 4
+
+      if (i < this.currentWave - 1) {
+        // 已完成 - 绿色
+        seg.graphics.fillStyle(0x27AE60, 1)
+        seg.graphics.fillRoundedRect(segX, barY - barHeight / 2 + 7, segWidth, barHeight - 4, 4)
+      } else if (i === this.currentWave - 1) {
+        // 当前波次 - 渐变绿
+        seg.graphics.fillStyle(0x2ECC71, 1)
+        seg.graphics.fillRoundedRect(segX, barY - barHeight / 2 + 7, segWidth, barHeight - 4, 4)
+        // 添加闪烁动画
+        if (!seg.pulsing) {
+          seg.pulsing = true
+          this.tweens.add({
+            targets: seg.graphics,
+            alpha: 0.7,
+            duration: 500,
+            yoyo: true,
+            repeat: -1
+          })
+        }
+      } else {
+        // 未完成 - 灰色
+        seg.graphics.fillStyle(0x3d3d5c, 1)
+        seg.graphics.fillRoundedRect(segX, barY - barHeight / 2 + 7, segWidth, barHeight - 4, 4)
+      }
+    }
+
+    // 更新旗帜颜色
+    this.waveFlags.forEach((flag, i) => {
+      if (i < this.currentWave) {
+        flag.setStyle({ fontSize: '14px', fill: '#27AE60' })
+        flag.setText('⚑')
+      } else if (i === this.currentWave) {
+        flag.setStyle({ fontSize: '16px', fill: '#FFD700' })
+        flag.setText('⚑')
+        // 当前波次旗帜闪烁
+        this.tweens.add({
+          targets: flag,
+          scale: { from: 1, to: 1.3 },
+          duration: 600,
+          yoyo: true,
+          repeat: -1
+        })
+      } else {
+        flag.setStyle({ fontSize: '14px', fill: '#555555' })
+        flag.setText('⚑')
+      }
     })
+
+    // 更新底部提示
+    if (this.currentWave === this.totalWaves) {
+      this.waveHintText.setText('⚠️ 最终波 - 全力防守！')
+      this.waveHintText.setStyle({ fontSize: '12px', fill: '#FF6B6B', fontStyle: 'bold' })
+    } else {
+      this.waveHintText.setText(`下一波: ${this.zombiesPerWave[this.currentWave] || 0} 只僵尸`)
+      this.waveHintText.setStyle({ fontSize: '11px', fill: '#888888' })
+    }
   }
 
   // ── 僵尸生成 ──
@@ -648,14 +745,97 @@ export default class PlayScene extends Phaser.Scene {
       })
     }
 
-    // 僵尸出界
-    if (this.zombies && this.zombies.children.size > 0) {
+    // 僵尸边界检测
+    if (this.zombies && this.zombies.children.size > 0 && !this.gameOver) {
       this.zombies.children.each(zombie => {
-        if (zombie.active && zombie.x < -30) {
-          zombie.destroy()
+        if (zombie.active) {
+          // 检查是否突破防线
+          if (zombie.checkBoundary) {
+            zombie.checkBoundary(this)
+          }
+          // 僵尸出界销毁
+          if (zombie.x < -50) {
+            zombie.destroy()
+          }
         }
       })
     }
+  }
+
+  // ── 游戏结束画面 ──
+  showGameOverScreen() {
+    const W = this.game.BASE_W
+    const H = this.game.BASE_H
+
+    // 暗色背景
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.85).setDepth(3000)
+
+    // 主标题
+    const titleText = this.add.text(W / 2, H / 2 - 80, '💀 游戏结束', {
+      fontSize: '52px',
+      fill: '#FF4444',
+      fontStyle: 'bold',
+      stroke: '#000',
+      strokeThickness: 6
+    }).setOrigin(0.5).setDepth(3001)
+
+    // 副标题
+    const subText = this.add.text(W / 2, H / 2 - 20, '僵尸吃掉了你的脑子！', {
+      fontSize: '24px',
+      fill: '#FFD700',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(3001)
+
+    // 分数显示
+    const scoreText = this.add.text(W / 2, H / 2 + 40, `最终得分: ${this.score}`, {
+      fontSize: '28px',
+      fill: '#00FF00',
+      fontStyle: 'bold',
+      stroke: '#000',
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(3001)
+
+    // 波次显示
+    const waveText = this.add.text(W / 2, H / 2 + 80, `坚守了 ${this.currentWave} 波`, {
+      fontSize: '18px',
+      fill: '#AAAAAA'
+    }).setOrigin(0.5).setDepth(3001)
+
+    // 按钮容器
+    const btnY = H / 2 + 140
+    const btnSpacing = 160
+
+    // 重新开始按钮
+    const restartBtn = this.add.rectangle(W / 2 - btnSpacing, btnY, 140, 50, 0x27AE60)
+      .setInteractive({ useHandCursor: true }).setDepth(3001)
+    this.add.text(W / 2 - btnSpacing, btnY, '🔄 重试', {
+      fontSize: '20px',
+      fill: '#FFFFFF',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(3002)
+    restartBtn.on('pointerover', () => restartBtn.setFillStyle(0x2ECC71))
+    restartBtn.on('pointerout', () => restartBtn.setFillStyle(0x27AE60))
+    restartBtn.on('pointerdown', () => this.scene.restart())
+
+    // 返回标题按钮
+    const titleBtn = this.add.rectangle(W / 2 + btnSpacing, btnY, 140, 50, 0xE74C3C)
+      .setInteractive({ useHandCursor: true }).setDepth(3001)
+    this.add.text(W / 2 + btnSpacing, btnY, '🏠 标题', {
+      fontSize: '20px',
+      fill: '#FFFFFF',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(3002)
+    titleBtn.on('pointerover', () => titleBtn.setFillStyle(0xC0392B))
+    titleBtn.on('pointerout', () => titleBtn.setFillStyle(0xE74C3C))
+    titleBtn.on('pointerdown', () => this.scene.start('TitleScene'))
+
+    // 标题动画
+    this.tweens.add({
+      targets: titleText,
+      scale: { from: 0.5, to: 1 },
+      duration: 500,
+      ease: 'Back.easeOut'
+    })
   }
 
   // ── 子弹-僵尸碰撞 ──
@@ -719,6 +899,65 @@ export default class PlayScene extends Phaser.Scene {
         loop: true
       })
     }
+  }
+
+  // ── 僵尸-小车碰撞 ──
+  handleZombieMowerCollision(zombie, mower) {
+    if (!this.gameStarted || !zombie.active || !mower.active) return
+    if (!mower.isActive) return  // 小车已经被触发
+
+    // 激活小车！
+    mower.isActive = false
+    this.activateLawnmower(mower)
+  }
+
+  // ── 激活割草机 ──
+  activateLawnmower(mower) {
+    const mowerSprite = mower.sprite
+    const row = mower.row
+    const targetX = this.game.BASE_W + 200  // 向右移动到屏幕外
+
+    // 小车加速动画
+    this.tweens.add({
+      targets: mowerSprite,
+      x: targetX,
+      duration: 2000,
+      ease: 'Linear',
+      onComplete: () => {
+        mowerSprite.setVisible(false)
+      }
+    })
+
+    // 消灭该行所有僵尸
+    this.zombies.children.each(zombie => {
+      if (zombie.active && zombie.gameData && zombie.gameData.row === row) {
+        // 僵尸被消灭
+        this.addScore(zombie.gameData.score || 10)
+        zombie.takeDamage(999)  // 立即消灭
+      }
+    })
+
+    // 显示提示
+    const hintText = this.add.text(
+      this.game.GRID_LEFT / 2,
+      mowerSprite.y,
+      '🚜 割草机启动！',
+      {
+        fontSize: '18px',
+        fill: '#FFD700',
+        fontStyle: 'bold',
+        stroke: '#000',
+        strokeThickness: 3
+      }
+    ).setOrigin(0.5).setDepth(1000)
+
+    this.tweens.add({
+      targets: hintText,
+      alpha: 0,
+      y: hintText.y - 50,
+      duration: 1500,
+      onComplete: () => hintText.destroy()
+    })
   }
 
   // ── 点击放置 ──

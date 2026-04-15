@@ -26,6 +26,160 @@
       min-height: 100vh;
     }
 
+    /* ===== 帧序列图制作器 ===== */
+    .ss-section {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+    .ss-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ss-drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      transition: all 0.2s;
+      min-height: 100px;
+    }
+    .ss-drop-zone.dragover {
+      border-color: var(--green);
+      background: rgba(76,175,80,0.1);
+    }
+    .ss-drop-hint {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-dim);
+    }
+    .ss-drop-hint a { color: var(--blue); cursor: pointer; }
+    .ss-drop-hint small { font-size: 11px; opacity: 0.7; }
+    .ss-frame-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+    .ss-frame-item {
+      width: 64px;
+      height: 64px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+      cursor: move;
+      transition: all 0.15s;
+    }
+    .ss-frame-item:hover {
+      border-color: var(--green);
+      transform: scale(1.05);
+    }
+    .ss-frame-item.dragging {
+      opacity: 0.5;
+      border-color: var(--gold);
+    }
+    .ss-frame-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #0f1a30;
+    }
+    .ss-frame-item .ss-frame-num {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .ss-frame-item .ss-frame-del {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 18px;
+      height: 18px;
+      background: rgba(231,76,60,0.9);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1;
+      display: none;
+    }
+    .ss-frame-item:hover .ss-frame-del { display: flex; align-items: center; justify-content: center; }
+    .ss-preview-container {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .ss-preview-container canvas {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: repeating-conic-gradient(#333 0% 25%, #222 0% 50%) 50% / 16px 16px;
+      image-rendering: pixelated;
+    }
+    .ss-preview-info {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .ss-info-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ss-info-item label { font-size: 12px; color: var(--text-dim); min-width: 80px; }
+    .ss-info-item input[type="range"] { flex: 1; min-width: 100px; }
+    .ss-info-item span { font-size: 12px; color: var(--gold); min-width: 24px; }
+    .ss-settings-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .ss-setting-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ss-setting-item label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+    .ss-setting-item input, .ss-setting-item select {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px;
+    }
+    .ss-sheet-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    .ss-sheet-preview canvas {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: repeating-conic-gradient(#333 0% 25%, #222 0% 50%) 50% / 16px 16px;
+      image-rendering: pixelated;
+      max-width: 100%;
+    }
+    .ss-sheet-info {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
     /* ===== 顶部导航 ===== */
     .topbar {
       display: flex;
@@ -62,6 +216,34 @@
     .sd-status.error { background: #3a1a1a; }
     .sd-status.error .dot { background: var(--red); }
     .sd-status.checking .dot { background: #f39c12; animation: blink 0.6s infinite; }
+    
+    /* 服务器状态容器 */
+    .server-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    /* MusicGen 状态 - 与 SD WebUI 统一风格 */
+    .mg-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--border);
+    }
+    .mg-status .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+    .mg-status.connected { background: #1a2a3a; }
+    .mg-status.connected .dot { background: #2196F3; box-shadow: 0 0 6px #2196F3; }
+    .mg-status.error { background: #3a1a1a; }
+    .mg-status.error .dot { background: var(--red); }
+    .mg-status.checking .dot { background: #f39c12; animation: blink 0.6s infinite; }
 
     .btn {
       padding: 8px 16px;
@@ -80,6 +262,8 @@
     .btn-primary:hover { background: #66BB6A; }
     .btn-secondary { background: var(--border); color: var(--text); }
     .btn-secondary:hover { background: #1a4a80; }
+    .btn-edit-audio { background: #6C5CE7; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 12px; border: none; cursor: pointer; }
+    .btn-edit-audio:hover { background: #5B4BD5; }
     .btn-danger    { background: var(--red); color: #fff; }
     .btn-danger:hover { background: #c0392b; }
     .btn-info      { background: var(--blue); color: #fff; }
@@ -87,6 +271,7 @@
     .btn-ai        { background: #9b59b6; color: #fff; }
     .btn-ai:hover  { background: #8e44ad; }
     .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-xs { padding: 3px 7px; font-size: 11px; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ===== 布局 ===== */
@@ -536,6 +721,7 @@
       gap: 8px;
       margin-top: 8px;
     }
+    .gen-progress { display: none; }
     .gen-progress.show { display: flex; }
     .progress-bar {
       height: 8px;
@@ -742,9 +928,17 @@
   <h1>PVZ 资源管理器</h1>
   <span class="subtitle">AI 增强版 · 植物大战僵尸</span>
 
-  <div class="sd-status" id="sdStatus" onclick="manualRetry()" style="cursor:pointer">
-    <span class="dot"></span>
-    <span class="label">检测中...</span>
+  <div class="server-status" id="serverStatus" style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+    <!-- SD WebUI 状态 -->
+    <div class="sd-status" id="sdStatus" onclick="openSdConfig()" style="cursor:pointer" title="点击配置 SD WebUI">
+      <span class="dot"></span>
+      <span class="label">检测中...</span>
+    </div>
+    <!-- MusicGen 状态 -->
+    <div class="mg-status" id="mgNavStatus" onclick="openMgConfigFromNav()" title="点击配置 MusicGen">
+      <span class="dot"></span>
+      <span class="label">MusicGen</span>
+    </div>
   </div>
 
   <button class="btn btn-secondary" onclick="window.close()">✕ 关闭</button>
@@ -781,6 +975,15 @@
       <div class="sidebar-item" onclick="openGTRS()">
         <span>📄</span> 查看 GTRS.json
       </div>
+      <div class="sidebar-item" onclick="openSpriteSheetMaker()">
+        <span>🎬</span> 帧序列图制作
+      </div>
+      <div class="sidebar-item" onclick="openAudioEditor()">
+        <span>🎵</span> 音频编辑器
+      </div>
+      <div class="sidebar-item" onclick="openMusicGen()">
+        <span>🎹</span> AI 音乐生成
+      </div>
     </div>
   </div>
 
@@ -815,9 +1018,10 @@
         <!-- 右侧：新图 -->
         <div class="ie-panel">
           <div class="ie-panel-title">✨ 新图</div>
-          <div class="ie-panel-body" id="ieNewPanel">
+          <div class="ie-panel-body" id="ieNewPanel" style="position:relative;">
             <div class="placeholder" id="ieNewPlaceholder">等待生成...</div>
             <img id="ieNewImage" style="display:none;" />
+            <canvas id="ieEraserCanvas" style="display:none;position:absolute;top:0;left:0;cursor:crosshair;z-index:10;"></canvas>
           </div>
         </div>
       </div>
@@ -836,6 +1040,31 @@
           <button class="btn btn-sm btn-info" onclick="ImageEditor.removeBackground()" id="ieBtnRmbg" style="display:none;">🎯 去背景</button>
           <button class="btn btn-sm btn-secondary" onclick="ImageEditor.flipHorizontal()" id="ieBtnFlip" style="display:none;">🔄 镜像</button>
           <button class="btn btn-sm btn-danger" onclick="ImageEditor.download()" id="ieBtnDl" style="display:none;">⬇️ 下载</button>
+        </div>
+      </div>
+      <!-- 图片编辑工具区 -->
+      <div class="ie-tools" id="ieTools" style="display:none;margin-top:12px;padding:12px;background:var(--bg-secondary);border-radius:8px;">
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">🛠️ 图片工具</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <!-- 旋转 -->
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.rotateImage(-90)" title="左旋90度">↶ 旋转</button>
+          <!-- 缩放 -->
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.scaleImage(0.5)" title="缩小50%">🔍 缩小</button>
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.scaleImage(2)" title="放大200%">🔍 放大</button>
+          <!-- 调整 -->
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.adjustBrightness(130)" title="增加亮度">☀️ 亮+</button>
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.adjustBrightness(70)" title="降低亮度">🌙 暗-</button>
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.adjustContrast(130)" title="增加对比度">◐ 对比+</button>
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.adjustContrast(70)" title="降低对比度">◑ 对比-</button>
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.adjustSaturation(150)" title="增加饱和度">🎨 饱和+</button>
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.adjustSaturation(50)" title="降低饱和度">🎨 饱和-</button>
+          <!-- 滤镜 -->
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.applyGrayscale()" title="灰度">⚫ 灰度</button>
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.applyInvert()" title="反色">🔄 反色</button>
+          <button class="btn btn-xs btn-secondary" onclick="ImageEditor.applyBlur(3)" title="模糊">💧 模糊</button>
+          <!-- 橡皮擦 -->
+          <button class="btn btn-xs btn-warning" onclick="ImageEditor.toggleEraser()" id="ieBtnEraser" title="橡皮擦">🧹 橡皮擦</button>
+          <input type="range" id="ieEraserSize" min="5" max="50" value="20" style="width:80px;display:none;" title="橡皮擦大小" />
         </div>
       </div>
       <!-- AI 生成区 -->
@@ -914,10 +1143,10 @@
         </div>
       </div>
       <!-- 进度条 -->
-      <div class="gen-progress" id="ieProgress" style="display:none;">
-        <div class="progress-bar"><div class="fill" id="ieProgressFill" style="width:0%"></div></div>
-        <div class="progress-text" id="ieProgressText">正在连接 SD WebUI...</div>
-      </div>
+      <div class="gen-progress" id="ieProgress">
+            <div class="progress-bar"><div class="fill" id="ieProgressFill" style="width:0%"></div></div>
+            <div class="progress-text" id="ieProgressText">正在连接 SD WebUI...</div>
+          </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeImageEditor()">取消</button>
@@ -926,7 +1155,428 @@
   </div>
 </div>
 
+<!-- 音频编辑器模态框 -->
+<div class="modal-overlay" id="audioEditorModal">
+  <div class="modal" style="width:800px;max-width:95vw;">
+    <div class="modal-header">
+      <h3>🎵 音频编辑器</h3>
+      <button class="modal-close" onclick="closeAudioEditor()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+      <!-- 导入区 -->
+      <div class="ss-section">
+        <div class="ss-section-title">📤 导入音频</div>
+        <div class="ss-drop-zone" id="aeDropZone" style="min-height:80px;">
+          <input type="file" id="aeFileInput" accept="audio/*" style="display:none" />
+          <div class="ss-drop-hint" id="aeDropHint">
+            <span style="font-size:28px;">🎵</span>
+            <p>拖拽音频文件到此处，或 <a href="javascript:void(0)" onclick="document.getElementById('aeFileInput').click()">点击选择</a></p>
+            <small>支持 MP3、WAV、OGG 格式</small>
+          </div>
+          <div id="aeFileInfo" style="display:none;padding:12px;background:var(--bg);border-radius:6px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:32px;">🎧</span>
+              <div>
+                <div id="aeFileName" style="font-weight:bold;"></div>
+                <div id="aeFileDuration" style="font-size:12px;opacity:0.7;"></div>
+              </div>
+              <button class="btn btn-sm btn-danger" onclick="AudioEditor.clearFile()" style="margin-left:auto;">🗑️ 清除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 波形显示 -->
+      <div class="ss-section" id="aeWaveformSection" style="display:none;">
+        <div class="ss-section-title">📊 波形预览</div>
+        <div style="background:#000;border-radius:6px;padding:12px;position:relative;">
+          <canvas id="aeWaveformCanvas" width="720" height="100" style="width:100%;height:100px;"></canvas>
+          <div id="aeProgressBar" style="position:absolute;top:12px;left:12px;right:12px;height:100px;pointer-events:none;display:flex;align-items:center;">
+            <div id="aePlayhead" style="width:2px;height:100px;background:var(--green);position:absolute;left:0;"></div>
+          </div>
+          <div id="aeTimeDisplay" style="position:absolute;bottom:4px;right:8px;font-size:11px;color:#888;">0:00 / 0:00</div>
+        </div>
+        <!-- 播放控制 -->
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center;justify-content:center;">
+          <button class="btn btn-sm btn-secondary" onclick="AudioEditor.skipBackward()">⏪</button>
+          <button class="btn btn-sm btn-primary" id="aePlayBtn" onclick="AudioEditor.togglePlay()">▶️ 播放</button>
+          <button class="btn btn-sm btn-secondary" onclick="AudioEditor.skipForward()">⏩</button>
+          <input type="range" id="aeSeekSlider" min="0" max="100" value="0" style="flex:1;margin:0 12px;" oninput="AudioEditor.seekTo(this.value)" />
+          <button class="btn btn-sm btn-secondary" onclick="AudioEditor.setLoop(!AudioEditor._loop)" id="aeLoopBtn">🔁</button>
+          <span id="aeVolumeLabel" style="font-size:12px;width:50px;text-align:center;">🔊 100%</span>
+          <input type="range" id="aeVolumeSlider" min="0" max="100" value="100" style="width:80px;" oninput="AudioEditor.setVolume(this.value)" />
+        </div>
+      </div>
+
+      <!-- 编辑工具 -->
+      <div class="ss-section" id="aeToolsSection" style="display:none;">
+        <div class="ss-section-title">🛠️ 音频工具</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+          <!-- 音量调整 -->
+          <div style="background:var(--bg);padding:12px;border-radius:6px;">
+            <div style="font-size:12px;margin-bottom:8px;">🔊 音量调整</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.adjustVolume(0.5)">50%</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.adjustVolume(1.0)">100%</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.adjustVolume(1.5)">150%</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.adjustVolume(2.0)">200%</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.adjustVolume(0)">静音</button>
+            </div>
+          </div>
+          <!-- 淡入淡出 -->
+          <div style="background:var(--bg);padding:12px;border-radius:6px;">
+            <div style="font-size:12px;margin-bottom:8px;">🌅 淡入淡出</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.fadeIn(1000)">淡入 1s</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.fadeIn(2000)">淡入 2s</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.fadeOut(1000)">淡出 1s</button>
+              <button class="btn-xs btn-secondary" onclick="AudioEditor.fadeOut(2000)">淡出 2s</button>
+            </div>
+          </div>
+          <!-- 速度调整 -->
+          <div style="background:var(--bg);padding:12px;border-radius:6px;">
+            <div style="font-size:12px;margin-bottom:8px;">⏱️ 播放速度</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.setPlaybackRate(0.5)">0.5x</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.setPlaybackRate(0.75)">0.75x</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.setPlaybackRate(1.0)">1.0x</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.setPlaybackRate(1.25)">1.25x</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.setPlaybackRate(1.5)">1.5x</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.setPlaybackRate(2.0)">2.0x</button>
+            </div>
+          </div>
+          <!-- 音频特效 -->
+          <div style="background:var(--bg);padding:12px;border-radius:6px;">
+            <div style="font-size:12px;margin-bottom:8px;">✨ 音效处理</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.reverse()">🔄 反转</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.normalize()">📊 标准化</button>
+              <button class="btn btn-xs btn-secondary" onclick="AudioEditor.fadeOutAll()">🔇 结尾静音</button>
+            </div>
+          </div>
+        </div>
+        <!-- 裁剪工具 -->
+        <div style="margin-top:12px;background:var(--bg);padding:12px;border-radius:6px;">
+          <div style="font-size:12px;margin-bottom:8px;">✂️ 裁剪</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label>开始: <input type="number" id="aeTrimStart" value="0" min="0" style="width:60px;" />s</label>
+            <label>结束: <input type="number" id="aeTrimEnd" value="0" min="0" style="width:60px;" />s</label>
+            <button class="btn btn-sm btn-secondary" onclick="AudioEditor.previewTrim()">👁️ 预览裁剪</button>
+            <button class="btn btn-sm btn-primary" onclick="AudioEditor.applyTrim()">✂️ 裁剪音频</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 保存按钮 -->
+      <div style="display:flex;gap:12px;justify-content:center;padding-top:8px;flex-wrap:wrap;" id="aeSaveSection" style="display:none;">
+        <button class="btn btn-primary" onclick="AudioEditor.download()">💾 导出音频</button>
+        <button class="btn btn-secondary" onclick="AudioEditor.saveToResources()">📁 保存到资源库</button>
+        <button class="btn btn-ai" onclick="AudioEditor.applyToGame()">✅ 应用到游戏</button>
+      </div>
+      <!-- 应用到游戏 - 资源选择 -->
+      <div id="aeApplyToGameSection" style="display:none;margin-top:12px;padding:12px;background:var(--bg-secondary);border-radius:8px;">
+        <div style="font-size:13px;margin-bottom:10px;">🎮 选择要替换的游戏音频：</div>
+        <select id="aeTargetAudio" style="width:100%;padding:8px;border-radius:6px;background:var(--input-bg);color:var(--text);border:1px solid var(--border);margin-bottom:10px;">
+          <option value="">-- 选择游戏音频 --</option>
+        </select>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary btn-sm" onclick="AudioEditor.confirmApplyToGame()">✅ 确认应用</button>
+          <button class="btn btn-secondary btn-sm" onclick="AudioEditor.cancelApplyToGame()">❌ 取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MusicGen AI 音乐生成器 -->
+<div class="modal-overlay" id="musicGenModal">
+  <div class="modal" style="width:700px;max-width:95vw;">
+    <div class="modal-header">
+      <h3>🎹 AI 音乐生成器</h3>
+      <div style="flex:1;"></div>
+      <span id="mgStatus" style="font-size:12px;opacity:0.7;margin-right:12px;">⚫ 就绪</span>
+      <button class="modal-close" onclick="closeMusicGen()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+      <!-- 标题 -->
+      <div style="text-align:center;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        <h3 style="margin:0 0 4px 0;">🎵 MusicGen AI 音乐生成器</h3>
+        <small style="opacity:0.6;">基于 Meta MusicGen 模型，输入文字描述即可生成音乐</small>
+      </div>
+
+      <!-- 生成模式 -->
+      <div class="ss-section">
+        <div class="ss-section-title">🎵 生成模式</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-primary mg-mode active" data-mode="text" onclick="setMusicGenMode('text')">📝 文字生成</button>
+          <button class="btn btn-sm btn-secondary mg-mode" data-mode="melody" onclick="setMusicGenMode('melody')">🎵 旋律生成</button>
+          <button class="btn btn-sm btn-secondary mg-mode" data-mode="continuation" onclick="setMusicGenMode('continuation')">🎶 音乐续写</button>
+        </div>
+      </div>
+
+      <!-- 文字生成模式 -->
+      <div class="ss-section" id="mgTextSection">
+        <div class="ss-section-title">📝 音乐描述</div>
+        <textarea id="mgPrompt" rows="3" style="width:100%;resize:vertical;font-family:inherit;" placeholder="描述你想要生成的音乐，例如：欢快的8-bit游戏背景音乐，节奏明快，适合冒险场景"></textarea>
+        <div style="margin-top:8px;">
+          <div style="font-size:12px;opacity:0.7;margin-bottom:6px;">快速模板</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('欢快的8-bit游戏音乐，明快节奏')">🎮 游戏音乐</button>
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('紧张的战斗背景音乐，鼓点强烈')">⚔️ 战斗音乐</button>
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('神秘的地下城氛围，阴暗低沉')">🏰 神秘氛围</button>
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('胜利的凯旋音乐，号角和鼓声')">🏆 胜利音乐</button>
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('轻松休闲的背景音乐，轻柔钢琴')">☕ 休闲音乐</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 旋律生成模式 -->
+      <div class="ss-section" id="mgMelodySection" style="display:none;">
+        <div class="ss-section-title">🎵 参考旋律</div>
+        <div class="ss-drop-zone" id="mgMelodyDropZone" style="min-height:100px;">
+          <input type="file" id="mgMelodyInput" accept="audio/*" style="display:none" />
+          <div id="mgMelodyHint">
+            <span style="font-size:28px;">🎹</span>
+            <p><a href="javascript:void(0)" onclick="document.getElementById('mgMelodyInput').click()">上传参考音频</a> 或 <a href="javascript:void(0)" onclick="openMicRecord()">🎤 录音</a></p>
+            <small>上传一段旋律，MusicGen 将生成相似风格的音乐</small>
+          </div>
+          <div id="mgMelodyFile" style="display:none;padding:8px;background:var(--bg);border-radius:6px;">
+            <span id="mgMelodyFileName"></span>
+            <button class="btn btn-xs btn-danger" onclick="clearMgMelody()">✕</button>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <textarea id="mgMelodyPrompt" rows="2" style="width:100%;resize:vertical;font-family:inherit;" placeholder="可选：添加对生成音乐的描述"></textarea>
+        </div>
+      </div>
+
+      <!-- 续写模式 -->
+      <div class="ss-section" id="mgContinuationSection" style="display:none;">
+        <div class="ss-section-title">🎶 续写音频</div>
+        <div class="ss-drop-zone" id="mgContinuationDropZone" style="min-height:100px;">
+          <input type="file" id="mgContinuationInput" accept="audio/*" style="display:none" />
+          <div id="mgContinuationHint">
+            <span style="font-size:28px;">🎶</span>
+            <p><a href="javascript:void(0)" onclick="document.getElementById('mgContinuationInput').click()">上传音频文件</a></p>
+            <small>上传一段音乐，MusicGen 将续写生成后续内容</small>
+          </div>
+          <div id="mgContinuationFile" style="display:none;padding:8px;background:var(--bg);border-radius:6px;">
+            <span id="mgContinuationFileName"></span>
+            <button class="btn btn-xs btn-danger" onclick="clearMgContinuation()">✕</button>
+          </div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:12px;">
+          <label style="flex:1;">
+            <span style="font-size:12px;opacity:0.7;">续写时长（秒）</span>
+            <input type="number" id="mgContinuationDuration" value="10" min="5" max="30" style="width:100%;margin-top:4px;" />
+          </label>
+        </div>
+      </div>
+
+      <!-- 生成参数 -->
+      <div class="ss-section">
+        <div class="ss-section-title">⚡ 生成参数</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;">
+          <div>
+            <label style="font-size:12px;opacity:0.7;">🤖 模型</label>
+            <select id="mgModel" style="width:100%;margin-top:4px;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);">
+              <option value="small">🎵 Small (快速)</option>
+              <option value="medium">🎶 Medium (平衡)</option>
+              <option value="large">🎼 Large (高质量)</option>
+              <option value="melody">🎤 Melody (旋律)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;opacity:0.7;">📏 时长（秒）</label>
+            <input type="number" id="mgDuration" value="10" min="5" max="300" style="width:100%;margin-top:4px;" />
+          </div>
+          <div>
+            <label style="font-size:12px;opacity:0.7;">🧱 块时长（秒）</label>
+            <input type="number" id="mgChunkDuration" value="30" min="10" max="60" style="width:100%;margin-top:4px;" />
+          </div>
+          <div>
+            <label style="font-size:12px;opacity:0.7;">🔄 滑动窗口（秒）</label>
+            <input type="number" id="mgSlidingWindow" value="10" min="5" max="30" style="width:100%;margin-top:4px;" />
+          </div>
+          <div>
+            <label style="font-size:12px;opacity:0.7;">🔢 Top-K</label>
+            <input type="number" id="mgTopk" value="250" min="1" max="500" style="width:100%;margin-top:4px;" />
+          </div>
+          <div>
+            <label style="font-size:12px;opacity:0.7;">📊 Top-P</label>
+            <input type="number" id="mgTopp" value="0.0" min="0" max="1" step="0.1" style="width:100%;margin-top:4px;" />
+          </div>
+          <div>
+            <label style="font-size:12px;opacity:0.7;">🌡️ Temperature</label>
+            <input type="number" id="mgTemperature" value="1.0" min="0.1" max="2.0" step="0.1" style="width:100%;margin-top:4px;" />
+          </div>
+          <div>
+            <label style="font-size:12px;opacity:0.7;">🎯 CFG Scale</label>
+            <input type="number" id="mgCfg" value="3.0" min="1" max="10" step="0.5" style="width:100%;margin-top:4px;" />
+          </div>
+          <div>
+            <label style="font-size:12px;opacity:0.7;">🎲 Seed (-1=随机)</label>
+            <input type="number" id="mgSeed" value="-1" min="-1" max="9999999999" style="width:100%;margin-top:4px;" />
+          </div>
+        </div>
+        <!-- 长音频提示 -->
+        <div id="mgLongAudioTip" style="display:none;margin-top:8px;padding:10px;background:rgba(100,180,255,0.15);border:1px solid rgba(100,180,255,0.3);border-radius:6px;font-size:12px;">
+          <b>🔔 长音频模式</b>：时长 > 30 秒时自动启用分块生成
+          <ul style="margin:6px 0 0 16px;padding:0;opacity:0.85;">
+            <li>基础块时长：建议 30 秒</li>
+            <li>滑动窗口：建议 10-15 秒（重叠区域）</li>
+          </ul>
+        </div>
+        <!-- 参数使用说明 -->
+        <div style="margin-top:12px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;font-size:12px;">
+          <div style="font-weight:600;margin-bottom:8px;opacity:0.9;">💡 参数使用建议</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;opacity:0.85;">
+            <div><b>🤖 模型：</b>Small 最快，Large 质量最高</div>
+            <div><b>📏 时长：</b>游戏 BGM 建议 10-15 秒</div>
+            <div><b>🧱 块时长：</b>长音频建议 30 秒</div>
+            <div><b>🔄 滑动窗口：</b>建议 10-15 秒</div>
+            <div><b>🔢 Top-K：</b>值越小越保守，建议 150-300</div>
+            <div><b>📊 Top-P：</b>值越小越保守，建议 0.0-0.8</div>
+            <div><b>🌡️ Temp：</b>值越大越随机，建议 0.8-1.2</div>
+            <div><b>🎯 CFG：</b>越高越遵循提示词，建议 2-5</div>
+            <div><b>🎲 Seed：</b>-1 随机，填数值可复现</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 进度显示 -->
+      <div id="mgProgress" style="display:none;">
+        <div style="background:var(--bg);padding:16px;border-radius:8px;text-align:center;">
+          <div id="mgProgressText" style="margin-bottom:12px;">🎵 正在生成音乐...</div>
+          <div style="background:#333;height:8px;border-radius:4px;overflow:hidden;">
+            <div id="mgProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg,var(--green),var(--gold));transition:width 0.3s;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 预览和保存 -->
+      <div id="mgResult" style="display:none;">
+        <div class="ss-section">
+          <div class="ss-section-title">🎧 生成结果</div>
+          <audio id="mgAudioPreview" controls style="width:100%;margin-bottom:12px;"></audio>
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button class="btn btn-primary" onclick="downloadMgResult()">💾 下载音乐</button>
+            <button class="btn btn-secondary" onclick="saveMgToResources()">📁 保存到资源库</button>
+            <button class="btn btn-secondary" onclick="regenerateMg()">🔄 重新生成</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 生成按钮 -->
+      <div style="display:flex;gap:12px;justify-content:center;padding-top:8px;" id="mgGenerateSection">
+        <button class="btn btn-primary" style="padding:12px 48px;font-size:16px;" onclick="generateMusic()">
+          🎵 开始生成
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 隐藏的详情/AIGen 弹窗（保留用于非图片资源） -->
+<!-- 帧序列图制作模态框 -->
+<div class="modal-overlay" id="spriteSheetModal">
+  <div class="modal" style="width:1000px;max-width:95vw;max-height:90vh;">
+    <div class="modal-header">
+      <h3>🎬 帧序列图制作器</h3>
+      <button class="modal-close" onclick="closeSpriteSheetModal()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;overflow-y:auto;max-height:70vh;">
+      <!-- 导入区 -->
+      <div class="ss-section">
+        <div class="ss-section-title">📤 导入帧图片</div>
+        <div class="ss-drop-zone" id="ssDropZone">
+          <input type="file" id="ssFileInput" accept="image/*" multiple style="display:none" />
+          <div class="ss-drop-hint" id="ssDropHint">
+            <span style="font-size:36px;">🖼️</span>
+            <p>拖拽图片到此处，或 <a href="javascript:void(0)" onclick="document.getElementById('ssFileInput').click()">点击选择文件</a></p>
+            <small>支持 PNG/JPG，建议透明背景</small>
+          </div>
+          <div id="ssFrameList" class="ss-frame-list" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- 预览区 -->
+      <div class="ss-section">
+        <div class="ss-section-title">👁️ 动画预览</div>
+        <div class="ss-preview-container">
+          <canvas id="ssPreviewCanvas" width="256" height="256"></canvas>
+          <div class="ss-preview-info">
+            <div class="ss-info-item">
+              <label>帧率 (FPS):</label>
+              <input type="range" id="ssFps" min="1" max="30" value="8" />
+              <span id="ssFpsValue">8</span>
+            </div>
+            <div class="ss-info-item">
+              <button class="btn btn-sm btn-secondary" id="ssBtnPlay" onclick="ssTogglePlay()">▶ 播放</button>
+              <button class="btn btn-sm btn-secondary" id="ssBtnStop" onclick="ssStopPlay()" disabled>⏹ 停止</button>
+            </div>
+            <div class="ss-info-item">
+              <span id="ssFrameInfo">0 / 0 帧</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 输出设置 -->
+      <div class="ss-section">
+        <div class="ss-section-title">⚙️ 输出设置</div>
+        <div class="ss-settings-grid">
+          <div class="ss-setting-item">
+            <label>布局方式:</label>
+            <select id="ssLayout">
+              <option value="horizontal">水平排列（横排）</option>
+              <option value="grid">网格排列（多行）</option>
+            </select>
+          </div>
+          <div class="ss-setting-item">
+            <label>每行帧数:</label>
+            <input type="number" id="ssCols" value="4" min="1" max="20" />
+          </div>
+          <div class="ss-setting-item">
+            <label>单帧宽度(px):</label>
+            <input type="number" id="ssFrameW" value="256" min="16" max="2048" />
+          </div>
+          <div class="ss-setting-item">
+            <label>单帧高度(px):</label>
+            <input type="number" id="ssFrameH" value="256" min="16" max="2048" />
+          </div>
+          <div class="ss-setting-item">
+            <label>帧间距(px):</label>
+            <input type="number" id="ssPadding" value="0" min="0" max="32" />
+          </div>
+          <div class="ss-setting-item">
+            <label>缩放预览:</label>
+            <select id="ssPreviewScale">
+              <option value="1">100%</option>
+              <option value="0.5">50%</option>
+              <option value="0.25">25%</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 输出预览 -->
+      <div class="ss-section">
+        <div class="ss-section-title">📐 雪碧图预览</div>
+        <div class="ss-sheet-preview">
+          <canvas id="ssSheetCanvas"></canvas>
+          <div id="ssSheetInfo" class="ss-sheet-info">等待生成...</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="ssClearAll()">🗑️ 清空</button>
+      <button class="btn btn-secondary" id="ssBtnUpdatePreview" onclick="ssUpdateSheetPreview()">🔄 更新预览</button>
+      <button class="btn btn-primary" id="ssBtnExport" onclick="ssExport()" disabled>💾 导出雪碧图</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="detailModal">
   <div class="modal">
     <div class="modal-header">
@@ -993,6 +1643,9 @@ const ImageEditor = (() => {
     if (dom.ieBtnFlip) { dom.ieBtnFlip.style.display = display; }
     if (dom.ieBtnDl) { dom.ieBtnDl.style.display = display; }
     if (dom.ieBtnApply) { dom.ieBtnApply.disabled = disabled; }
+    // 显示/隐藏工具区
+    const tools = document.getElementById('ieTools');
+    if (tools) { tools.style.display = display; }
   }
 
   // 初始化：加载原图
@@ -1152,6 +1805,291 @@ const ImageEditor = (() => {
     }
   }
 
+  // 旋转90度
+  async function rotateImage(degrees) {
+    if (!_editedBase64) { showToast('请先加载图片', true); return; }
+    const btn = document.getElementById('ieBtnFlip');
+    if (btn) btn.disabled = true;
+    try {
+      const dataUrl = _editedBase64.startsWith('data:') ? _editedBase64 : 'data:image/png;base64,' + _editedBase64;
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+      const canvas = document.createElement('canvas');
+      const rad = degrees * Math.PI / 180;
+      if (degrees === 90 || degrees === 270) {
+        canvas.width = img.height; canvas.height = img.width;
+      } else {
+        canvas.width = img.width; canvas.height = img.height;
+      }
+      const ctx = canvas.getContext('2d');
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rad);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      const result = canvas.toDataURL('image/png');
+      _editedBase64 = result.replace(/^data:image\/\w+;base64,/, '');
+      _source = 'rotated';
+      const ieImg = document.getElementById('ieNewImage');
+      ieImg.src = result;
+      ieImg.style.transform = '';
+      document.getElementById('ieNewPlaceholder').style.display = 'none';
+      ieImg.style.display = '';
+      showBtns(true);
+      showToast(`🔄 已旋转${degrees}度`);
+    } catch (e) { showToast('⚠️ 旋转失败: ' + e.message, true);
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  // 缩放图片
+  async function scaleImage(scale) {
+    if (!_editedBase64) { showToast('请先加载图片', true); return; }
+    const btn = document.getElementById('ieBtnFlip');
+    if (btn) btn.disabled = true;
+    try {
+      const dataUrl = _editedBase64.startsWith('data:') ? _editedBase64 : 'data:image/png;base64,' + _editedBase64;
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const result = canvas.toDataURL('image/png');
+      _editedBase64 = result.replace(/^data:image\/\w+;base64,/, '');
+      _source = 'scaled';
+      const ieImg = document.getElementById('ieNewImage');
+      ieImg.src = result;
+      ieImg.style.transform = '';
+      document.getElementById('ieNewPlaceholder').style.display = 'none';
+      ieImg.style.display = '';
+      showBtns(true);
+      showToast(`📐 已缩放至 ${Math.round(scale * 100)}%`);
+    } catch (e) { showToast('⚠️ 缩放失败: ' + e.message, true);
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  // 亮度调整
+  async function adjustBrightness(value) {
+    await applyCanvasFilter(`brightness(${value}%)`);
+    showToast(`☀️ 亮度: ${value}%`);
+  }
+
+  // 对比度调整
+  async function adjustContrast(value) {
+    await applyCanvasFilter(`contrast(${value}%)`);
+    showToast(`◐ 对比度: ${value}%`);
+  }
+
+  // 饱和度调整
+  async function adjustSaturation(value) {
+    await applyCanvasFilter(`saturate(${value}%)`);
+    showToast(`🎨 饱和度: ${value}%`);
+  }
+
+  // 灰度
+  async function applyGrayscale() {
+    await applyCanvasFilter('grayscale(100%)');
+    showToast('⚫ 已转为灰度');
+  }
+
+  // 反色
+  async function applyInvert() {
+    await applyCanvasFilter('invert(100%)');
+    showToast('🔄 已反转颜色');
+  }
+
+  // 模糊
+  async function applyBlur(value) {
+    await applyCanvasFilter(`blur(${value}px)`);
+    showToast(`💧 模糊: ${value}px`);
+  }
+
+  // ========== 橡皮擦 ==========
+  let _eraserCtx = null;
+  let _eraserActive = false;
+  let _eraserDrawing = false;
+  let _eraserLastX = 0;
+  let _eraserLastY = 0;
+
+  function toggleEraser() {
+    if (_eraserActive) {
+      finishEraser();
+    } else {
+      startEraser();
+    }
+  }
+
+  function startEraser() {
+    if (!_editedBase64) {
+      showToast('请先加载图片', true);
+      return;
+    }
+
+    const img = document.getElementById('ieNewImage');
+    const canvas = document.getElementById('ieEraserCanvas');
+    if (!img || !canvas) return;
+
+    // 设置画布大小与图片显示大小一致
+    const rect = img.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+
+    // 清除画布
+    _eraserCtx = canvas.getContext('2d');
+    _eraserCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 把图片绘制到画布上
+    _eraserCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    // 显示画布和滑块
+    canvas.style.display = 'block';
+    const sizeSlider = document.getElementById('ieEraserSize');
+    if (sizeSlider) sizeSlider.style.display = 'inline-block';
+
+    // 更新按钮
+    const btn = document.getElementById('ieBtnEraser');
+    if (btn) {
+      btn.className = 'btn btn-xs btn-danger';
+      btn.textContent = '✅ 完成';
+    }
+
+    _eraserActive = true;
+    showToast('🧹 橡皮擦模式 - 涂抹擦除');
+
+    // 绑定事件
+    canvas.onmousedown = eraserStart;
+    canvas.onmousemove = eraserDraw;
+    canvas.onmouseup = eraserEnd;
+    canvas.onmouseleave = eraserEnd;
+    canvas.ontouchstart = (e) => { e.preventDefault(); eraserStart(e.touches[0]); };
+    canvas.ontouchmove = (e) => { e.preventDefault(); eraserDraw(e.touches[0]); };
+    canvas.ontouchend = eraserEnd;
+  }
+
+  function eraserStart(e) {
+    _eraserDrawing = true;
+    const pos = getEraserPos(e);
+    _eraserLastX = pos.x;
+    _eraserLastY = pos.y;
+    eraserDraw(e);
+  }
+
+  function eraserDraw(e) {
+    if (!_eraserDrawing || !_eraserCtx) return;
+    const pos = getEraserPos(e);
+
+    _eraserCtx.globalCompositeOperation = 'destination-out';
+    _eraserCtx.strokeStyle = 'rgba(255,255,255,1)';
+    _eraserCtx.lineWidth = parseInt(document.getElementById('ieEraserSize')?.value || 20);
+    _eraserCtx.lineCap = 'round';
+    _eraserCtx.lineJoin = 'round';
+
+    _eraserCtx.beginPath();
+    _eraserCtx.moveTo(_eraserLastX, _eraserLastY);
+    _eraserCtx.lineTo(pos.x, pos.y);
+    _eraserCtx.stroke();
+
+    _eraserLastX = pos.x;
+    _eraserLastY = pos.y;
+  }
+
+  function eraserEnd() {
+    _eraserDrawing = false;
+  }
+
+  function getEraserPos(e) {
+    const canvas = document.getElementById('ieEraserCanvas');
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  function finishEraser() {
+    if (!_eraserCtx) return;
+
+    const canvas = document.getElementById('ieEraserCanvas');
+    const img = document.getElementById('ieNewImage');
+
+    // 获取画布内容
+    const dataUrl = canvas.toDataURL('image/png');
+    _editedBase64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+    _source = 'erased';
+
+    // 更新图片
+    img.src = dataUrl;
+    canvas.style.display = 'none';
+
+    // 隐藏滑块
+    const sizeSlider = document.getElementById('ieEraserSize');
+    if (sizeSlider) sizeSlider.style.display = 'none';
+
+    // 恢复按钮
+    const btn = document.getElementById('ieBtnEraser');
+    if (btn) {
+      btn.className = 'btn btn-xs btn-warning';
+      btn.textContent = '🧹 橡皮擦';
+    }
+
+    _eraserActive = false;
+    canvas.onmousedown = canvas.onmousemove = canvas.onmouseup = canvas.onmouseleave = null;
+    canvas.ontouchstart = canvas.ontouchmove = canvas.ontouchend = null;
+
+    showBtns(true);
+    showToast('✅ 擦除完成');
+  }
+
+  function stopEraser() {
+    const canvas = document.getElementById('ieEraserCanvas');
+    if (canvas) {
+      canvas.style.display = 'none';
+      canvas.onmousedown = canvas.onmousemove = canvas.onmouseup = canvas.onmouseleave = null;
+    }
+    const sizeSlider = document.getElementById('ieEraserSize');
+    if (sizeSlider) sizeSlider.style.display = 'none';
+    const btn = document.getElementById('ieBtnEraser');
+    if (btn) {
+      btn.className = 'btn btn-xs btn-warning';
+      btn.textContent = '🧹 橡皮擦';
+    }
+    _eraserActive = false;
+  }
+
+  // 通用 Canvas 滤镜处理
+  async function applyCanvasFilter(filter) {
+    if (!_editedBase64) { showToast('请先加载图片', true); return; }
+    const btn = document.getElementById('ieBtnFlip');
+    if (btn) btn.disabled = true;
+    try {
+      const dataUrl = _editedBase64.startsWith('data:') ? _editedBase64 : 'data:image/png;base64,' + _editedBase64;
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.filter = filter;
+      ctx.drawImage(img, 0, 0);
+      ctx.filter = 'none';
+      const result = canvas.toDataURL('image/png');
+      _editedBase64 = result.replace(/^data:image\/\w+;base64,/, '');
+      _source = 'filtered';
+      const ieImg = document.getElementById('ieNewImage');
+      ieImg.src = result;
+      ieImg.style.transform = '';
+      document.getElementById('ieNewPlaceholder').style.display = 'none';
+      ieImg.style.display = '';
+      showBtns(true);
+    } catch (e) { showToast('⚠️ 处理失败: ' + e.message, true);
+    } finally { if (btn) btn.disabled = false; }
+  }
+
   // 下载
   function download() {
     if (!_editedBase64) return;
@@ -1242,6 +2180,18 @@ const ImageEditor = (() => {
     setEdited,
     removeBackground,
     flipHorizontal,
+    rotateImage,
+    scaleImage,
+    adjustBrightness,
+    adjustContrast,
+    adjustSaturation,
+    applyGrayscale,
+    applyInvert,
+    applyBlur,
+    toggleEraser,
+    startEraser,
+    finishEraser,
+    stopEraser,
     download,
     apply,
     getCurrentBase64,
@@ -1416,6 +2366,24 @@ const PVZ_PROMPTS = {
   sprites:          'Plants vs Zombies sprite sheet, multiple plant zombie sprites, grid layout, cartoon style, game sprite atlas',
 };
 
+// ==================== 服务器配置 ====================
+// SD WebUI 配置 - 通过 Vite 代理访问
+const SD_CONFIG = {
+  proxyPath: '/sdapi',  // Vite 代理路径
+  apiEndpoints: ['/sdapi/v1/sd-models', '/sdapi/v1/options'],
+};
+
+// MusicGen 配置 - 通过 Vite 代理访问
+const MG_CONFIG = {
+  proxyPath: '/musicgen',  // Vite 代理路径 → localhost:7880
+  apiUrl: '',  // 通过代理访问
+  connected: false,
+  checking: false,
+  retryDelay: 0,
+  retryCountdown: 0,
+  retryTimer: null,
+};
+
 // ==================== 状态 ====================
 let currentTab = 'all';
 let currentResource = null;
@@ -1443,9 +2411,120 @@ function updateRetryStatus() {
     el.querySelector('.label').textContent = '⏳ 检测中...';
   } else {
     el.className = 'sd-status error';
-    el.querySelector('.label').textContent = '❌ API 服务器未连接';
+    el.querySelector('.label').textContent = '❌ SD未启动';
   }
-  el.title = '点击立即重试 | 代理: /sdapi → 127.0.0.1:7860';
+  el.title = 'SD WebUI 未运行，请启动后刷新页面';
+}
+
+// 打开 SD WebUI 配置
+function openSdConfig() {
+  // 打开图像编辑器模态框，用户可在其中配置
+  const modal = document.getElementById('imageEditorModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+}
+
+// 打开 MusicGen 配置
+function openMgConfig() {
+  const modal = document.getElementById('musicGenModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+}
+
+// 更新 MusicGen 导航状态
+function updateMgNavStatus() {
+  const container = document.getElementById('mgNavStatus');
+  const dot = container?.querySelector('.dot');
+  const label = container?.querySelector('.label');
+  
+  if (!container) return;
+  
+  if (MG_CONFIG.connected) {
+    container.className = 'mg-status connected';
+    if (label) label.textContent = '🎹 MusicGen';
+    container.title = '🎹 MusicGen 已连接 - 点击打开配置';
+  } else if (MG_CONFIG.retryCountdown > 0) {
+    container.className = 'mg-status error';
+    if (label) label.textContent = `❌ ${MG_CONFIG.retryCountdown}秒后重试...`;
+    container.title = 'MusicGen 未运行，正在自动重连...';
+  } else if (MG_CONFIG.checking) {
+    container.className = 'mg-status checking';
+    if (label) label.textContent = '⏳ 检测中...';
+    container.title = '正在检测 MusicGen 连接...';
+  } else {
+    container.className = 'mg-status error';
+    if (label) label.textContent = '🎹 MusicGen ❌';
+    container.title = '❌ 未连接 - 点击重新检测';
+    container.onclick = () => manualCheckMusicGen();
+  }
+}
+
+// MusicGen 指数退避重连
+function scheduleMgRetry() {
+  if (MG_CONFIG.retryTimer) clearInterval(MG_CONFIG.retryTimer);
+  if (MG_CONFIG.connected) return;
+  MG_CONFIG.retryDelay = MG_CONFIG.retryDelay === 0 ? 2 : Math.min(MG_CONFIG.retryDelay * 2, 30);
+  MG_CONFIG.retryCountdown = MG_CONFIG.retryDelay;
+  updateMgNavStatus();
+
+  MG_CONFIG.retryTimer = setInterval(() => {
+    MG_CONFIG.retryCountdown--;
+    if (MG_CONFIG.retryCountdown <= 0) {
+      clearInterval(MG_CONFIG.retryTimer);
+      MG_CONFIG.retryTimer = null;
+      checkMusicGen();
+    } else {
+      updateMgNavStatus();
+    }
+  }, 1000);
+}
+
+// 手动重试
+function manualCheckMusicGen() {
+  if (MG_CONFIG.checking) return;
+  if (MG_CONFIG.retryTimer) { clearInterval(MG_CONFIG.retryTimer); MG_CONFIG.retryTimer = null; }
+  MG_CONFIG.retryDelay = 2;
+  checkMusicGen();
+}
+
+// 检测 MusicGen 连接
+async function checkMusicGen() {
+  if (MG_CONFIG.checking) return;
+  MG_CONFIG.checking = true;
+  if (MG_CONFIG.retryTimer) { clearInterval(MG_CONFIG.retryTimer); MG_CONFIG.retryTimer = null; }
+  updateMgNavStatus();
+
+  try {
+    // 使用 /health 端点检测连接
+    const resp = await fetch(MG_CONFIG.proxyPath + '/health', { 
+      method: 'GET',
+      signal: AbortSignal.timeout(3000)
+    });
+    
+    if (resp.ok || resp.status === 200) {
+      MG_CONFIG.connected = true;
+      MG_CONFIG.retryDelay = 0;
+      MG_CONFIG.retryCountdown = 0;
+    } else {
+      throw new Error('status: ' + resp.status);
+    }
+  } catch {
+    MG_CONFIG.connected = false;
+    scheduleMgRetry();
+  }
+  MG_CONFIG.checking = false;
+  updateMgNavStatus();
+}
+
+// 导航栏点击打开配置
+function openMgConfigFromNav() {
+  if (MG_CONFIG.connected) {
+    openMgConfig();
+  } else {
+    checkMusicGen();  // 未连接时先检测
+  }
 }
 
 function scheduleRetry() {
@@ -1503,6 +2582,7 @@ window.onload = () => {
   updateBadges();
   renderContent('all');
   checkSD();
+  checkMusicGen();  // 使用代理自动检测
 };
 
 function updateBadges() {
@@ -1584,6 +2664,8 @@ function renderContent(tab) {
       <div class="section-header">
         <h2>🔊 音频资源</h2>
         <span class="count">${RESOURCES.audio.length} 个文件</span>
+        <button class="btn btn-sm btn-secondary" onclick="openAudioEditor();loadGameAudioForEdit()" style="margin-left:auto;">🎵 AI编辑</button>
+        <button class="btn btn-sm btn-ai" onclick="openMusicGen()" style="margin-left:6px;">🎹 AI生成</button>
       </div>
       <div class="audio-list">`;
     for (const r of RESOURCES.audio) {
@@ -1597,7 +2679,8 @@ function renderContent(tab) {
           </div>
           <div class="audio-player">
             <button class="play-btn" id="play-${r.key}" onclick="toggleAudio('${r.key}','${r.path}')" title="播放/停止">▶</button>
-            <button class="btn btn-info btn-sm" onclick="openDetail('audio','${r.key}')">详情</button>
+            <button class="btn btn-secondary btn-sm" onclick="openDetail('audio','${r.key}')">详情</button>
+            <button class="btn btn-sm btn-edit-audio" onclick="openAudioEditor();loadAudioForEdit('${r.key}','${r.path}')" title="编辑此音频">✏️</button>
           </div>
         </div>`;
     }
@@ -1769,12 +2852,12 @@ async function doIEGenerate() {
   const progressEl = document.getElementById('ieProgress');
   const fillEl = document.getElementById('ieProgressFill');
   const textEl = document.getElementById('ieProgressText');
-  const btnGen = document.querySelector('.ie-gen-form .btn-primary');
+  const btnGen = document.getElementById('ieBtnGen');
 
-  progressEl.style.display = '';
+  progressEl.classList.add('show');
   fillEl.style.width = '10%';
   textEl.textContent = '正在连接 SD WebUI...';
-  btnGen.disabled = true;
+  if (btnGen) btnGen.disabled = true;
 
   let progInterval;
   try {
@@ -1853,15 +2936,15 @@ async function doIEGenerate() {
 
     fillEl.style.width = '100%';
     textEl.textContent = '生成完成！';
-    setTimeout(() => { progressEl.style.display = 'none'; }, 1000);
+    setTimeout(() => { progressEl.classList.remove('show'); }, 1000);
     showToast('✨ 生成成功');
 
   } catch (e) {
     if (progInterval) clearInterval(progInterval);
-    progressEl.style.display = 'none';
+    progressEl.classList.remove('show');
     showToast(e.message, true);
   } finally {
-    btnGen.disabled = false;
+    if (btnGen) btnGen.disabled = false;
   }
 }
 
@@ -2345,8 +3428,427 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeModal();
     closeGenModal();
+    closeSpriteSheetModal();
   }
 });
+
+// ==================== 帧序列图制作器 ====================
+const SpriteSheetMaker = (() => {
+  let frames = [];           // [{base64, width, height}]
+  let isPlaying = false;
+  let playTimer = null;
+  let currentFrame = 0;
+
+  const dom = {
+    get modal() { return document.getElementById('spriteSheetModal'); },
+    get dropZone() { return document.getElementById('ssDropZone'); },
+    get dropHint() { return document.getElementById('ssDropHint'); },
+    get frameList() { return document.getElementById('ssFrameList'); },
+    get fileInput() { return document.getElementById('ssFileInput'); },
+    get previewCanvas() { return document.getElementById('ssPreviewCanvas'); },
+    get sheetCanvas() { return document.getElementById('ssSheetCanvas'); },
+    get fpsSlider() { return document.getElementById('ssFps'); },
+    get fpsValue() { return document.getElementById('ssFpsValue'); },
+    get frameInfo() { return document.getElementById('ssFrameInfo'); },
+    get btnPlay() { return document.getElementById('ssBtnPlay'); },
+    get btnStop() { return document.getElementById('ssBtnStop'); },
+    get btnExport() { return document.getElementById('ssBtnExport'); },
+    get layout() { return document.getElementById('ssLayout'); },
+    get cols() { return document.getElementById('ssCols'); },
+    get frameW() { return document.getElementById('ssFrameW'); },
+    get frameH() { return document.getElementById('ssFrameH'); },
+    get padding() { return document.getElementById('ssPadding'); },
+    get previewScale() { return document.getElementById('ssPreviewScale'); },
+    get sheetInfo() { return document.getElementById('ssSheetInfo'); },
+  };
+
+  // 初始化拖拽
+  function initDropZone() {
+    const zone = dom.dropZone;
+    zone.addEventListener('dragover', e => {
+      e.preventDefault();
+      zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragleave', e => {
+      zone.classList.remove('dragover');
+    });
+    zone.addEventListener('drop', async e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      await loadFiles(files);
+    });
+    dom.fileInput.addEventListener('change', async e => {
+      const files = Array.from(e.target.files);
+      await loadFiles(files);
+      e.target.value = '';
+    });
+  }
+
+  // 加载文件
+  async function loadFiles(files) {
+    if (files.length === 0) return;
+    
+    for (const file of files) {
+      const base64 = await fileToBase64(file);
+      const img = await loadImageFromBase64(base64);
+      frames.push({
+        base64,
+        width: img.width,
+        height: img.height,
+        fileName: file.name
+      });
+    }
+    
+    updateUI();
+    ssUpdateSheetPreview();
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadImageFromBase64(base64) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = base64;
+    });
+  }
+
+  // 更新UI
+  function updateUI() {
+    if (frames.length === 0) {
+      dom.dropHint.style.display = '';
+      dom.frameList.style.display = 'none';
+      dom.btnExport.disabled = true;
+    } else {
+      dom.dropHint.style.display = 'none';
+      dom.frameList.style.display = 'flex';
+      dom.btnExport.disabled = false;
+      
+      dom.frameList.innerHTML = frames.map((f, i) => `
+        <div class="ss-frame-item" draggable="true" data-index="${i}">
+          <img src="${f.base64}" alt="帧${i+1}" />
+          <span class="ss-frame-num">${i + 1}</span>
+          <button class="ss-frame-del" onclick="SpriteSheetMaker.removeFrame(${i})">×</button>
+        </div>
+      `).join('');
+      
+      // 拖拽排序
+      initDragSort();
+    }
+    
+    dom.frameInfo.textContent = `${currentFrame + 1} / ${frames.length} 帧`;
+    drawPreview();
+  }
+
+  // 拖拽排序
+  function initDragSort() {
+    const items = dom.frameList.querySelectorAll('.ss-frame-item');
+    let draggedItem = null;
+    
+    items.forEach(item => {
+      item.addEventListener('dragstart', e => {
+        draggedItem = item;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        draggedItem = null;
+      });
+      item.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+      item.addEventListener('drop', e => {
+        e.preventDefault();
+        if (draggedItem && draggedItem !== item) {
+          const fromIndex = parseInt(draggedItem.dataset.index);
+          const toIndex = parseInt(item.dataset.index);
+          const [moved] = frames.splice(fromIndex, 1);
+          frames.splice(toIndex, 0, moved);
+          updateUI();
+        }
+      });
+    });
+  }
+
+  // 绘制动画预览
+  function drawPreview() {
+    if (frames.length === 0) return;
+    const canvas = dom.previewCanvas;
+    const ctx = canvas.getContext('2d');
+    const scale = parseFloat(dom.previewScale.value) || 1;
+    
+    const f = frames[currentFrame];
+    const maxW = 256, maxH = 256;
+    const scaleX = maxW / f.width;
+    const scaleY = maxH / f.height;
+    const s = Math.min(scaleX, scaleY, 1) * scale;
+    
+    canvas.width = f.width * s;
+    canvas.height = f.height * s;
+    
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.src = f.base64;
+    
+    dom.frameInfo.textContent = `${currentFrame + 1} / ${frames.length} 帧`;
+  }
+
+  // 播放/停止
+  function togglePlay() {
+    if (isPlaying) {
+      stopPlay();
+    } else {
+      startPlay();
+    }
+  }
+
+  function startPlay() {
+    if (frames.length < 2) return;
+    isPlaying = true;
+    dom.btnPlay.textContent = '⏸ 暂停';
+    dom.btnStop.disabled = false;
+    playNextFrame();
+  }
+
+  function playNextFrame() {
+    if (!isPlaying || frames.length === 0) return;
+    
+    const fps = parseInt(dom.fpsSlider.value) || 8;
+    const delay = 1000 / fps;
+    
+    currentFrame = (currentFrame + 1) % frames.length;
+    drawPreview();
+    
+    playTimer = setTimeout(playNextFrame, delay);
+  }
+
+  function stopPlay() {
+    isPlaying = false;
+    dom.btnPlay.textContent = '▶ 播放';
+    dom.btnStop.disabled = true;
+    clearTimeout(playTimer);
+    currentFrame = 0;
+    drawPreview();
+  }
+
+  // 更新雪碧图预览
+  function updateSheetPreview() {
+    if (frames.length === 0) {
+      dom.sheetCanvas.width = 0;
+      dom.sheetCanvas.height = 0;
+      dom.sheetInfo.textContent = '等待导入帧图片...';
+      return;
+    }
+    
+    const layout = dom.layout.value;
+    const cols = parseInt(dom.cols.value) || 4;
+    const fw = parseInt(dom.frameW.value) || 256;
+    const fh = parseInt(dom.frameH.value) || 256;
+    const pad = parseInt(dom.padding.value) || 0;
+    
+    let totalCols, totalRows;
+    if (layout === 'horizontal') {
+      totalCols = frames.length;
+      totalRows = 1;
+    } else {
+      totalCols = Math.min(cols, frames.length);
+      totalRows = Math.ceil(frames.length / totalCols);
+    }
+    
+    const sheetW = totalCols * (fw + pad) - pad;
+    const sheetH = totalRows * (fh + pad) - pad;
+    
+    dom.sheetCanvas.width = Math.min(sheetW, 800);
+    dom.sheetCanvas.height = Math.min(sheetH, 400);
+    const canvas = dom.sheetCanvas;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const displayScale = Math.min(800 / sheetW, 400 / sheetH, 1);
+    
+    // 在后台绘制完整雪碧图用于导出
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = sheetW;
+    offCanvas.height = sheetH;
+    const offCtx = offCanvas.getContext('2d');
+    
+    let promises = [];
+    for (let i = 0; i < frames.length; i++) {
+      const col = i % totalCols;
+      const row = Math.floor(i / totalCols);
+      const x = col * (fw + pad);
+      const y = row * (fh + pad);
+      
+      const img = new Image();
+      const promise = new Promise(resolve => {
+        img.onload = () => {
+          // 绘制到预览（缩放后）
+          ctx.drawImage(img, x * displayScale, y * displayScale, fw * displayScale, fh * displayScale);
+          // 绘制到导出画布
+          offCtx.drawImage(img, x, y, fw, fh);
+          resolve();
+        };
+        img.onerror = resolve;
+      });
+      promises.push(promise);
+      img.src = frames[i].base64;
+    }
+    
+    Promise.all(promises).then(() => {
+      // 保存完整雪碧图数据
+      dom.sheetCanvas._exportCanvas = offCanvas;
+      
+      // 绘制网格线
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < totalCols; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * (fw + pad) * displayScale, 0);
+        ctx.lineTo(i * (fw + pad) * displayScale, canvas.height);
+        ctx.stroke();
+      }
+      for (let i = 1; i < totalRows; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * (fh + pad) * displayScale);
+        ctx.lineTo(canvas.width, i * (fh + pad) * displayScale);
+        ctx.stroke();
+      }
+      
+      dom.sheetInfo.textContent = `输出尺寸: ${sheetW}×${sheetH}px | 帧数: ${frames.length} | 布局: ${totalCols}×${totalRows}`;
+    });
+  }
+
+  // 导出雪碧图
+  function exportSheet() {
+    if (frames.length === 0 || !dom.sheetCanvas._exportCanvas) return;
+    
+    const offCanvas = dom.sheetCanvas._exportCanvas;
+    const layout = dom.layout.value;
+    const cols = parseInt(dom.cols.value) || 4;
+    const fw = parseInt(dom.frameW.value) || 256;
+    const fh = parseInt(dom.frameH.value) || 256;
+    const pad = parseInt(dom.padding.value) || 0;
+    
+    let totalCols;
+    if (layout === 'horizontal') {
+      totalCols = frames.length;
+    } else {
+      totalCols = Math.min(cols, frames.length);
+    }
+    const totalRows = Math.ceil(frames.length / totalCols);
+    
+    // 生成文件名
+    const timestamp = Date.now();
+    const sheetName = `spritesheet_${timestamp}.png`;
+    const metaName = `spritesheet_${timestamp}_meta.json`;
+    
+    // 下载雪碧图
+    const link = document.createElement('a');
+    link.download = sheetName;
+    link.href = offCanvas.toDataURL('image/png');
+    link.click();
+    
+    // 生成 metadata
+    const meta = {
+      frameWidth: fw,
+      frameHeight: fh,
+      totalFrames: frames.length,
+      cols: totalCols,
+      rows: totalRows,
+      padding: pad,
+      layout: layout,
+      frames: frames.map((f, i) => ({
+        index: i,
+        col: i % totalCols,
+        row: Math.floor(i / totalCols),
+        x: (i % totalCols) * (fw + pad),
+        y: Math.floor(i / totalCols) * (fh + pad),
+        originalWidth: f.width,
+        originalHeight: f.height,
+        fileName: f.fileName || `frame_${i}.png`
+      }))
+    };
+    
+    // 下载 metadata
+    const metaLink = document.createElement('a');
+    metaLink.download = metaName;
+    metaLink.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(meta, null, 2));
+    metaLink.click();
+    
+    showToast(`✅ 已导出雪碧图 + metadata.json`);
+  }
+
+  // 清空
+  function clearAll() {
+    stopPlay();
+    frames = [];
+    currentFrame = 0;
+    updateUI();
+    dom.sheetCanvas._exportCanvas = null;
+    dom.sheetInfo.textContent = '等待导入帧图片...';
+  }
+
+  // 公开 API
+  return {
+    init() {
+      initDropZone();
+      dom.fpsSlider.addEventListener('input', () => {
+        dom.fpsValue.textContent = dom.fpsSlider.value;
+      });
+      dom.previewScale.addEventListener('change', drawPreview);
+      dom.layout.addEventListener('change', ssUpdateSheetPreview);
+      dom.cols.addEventListener('change', ssUpdateSheetPreview);
+      dom.frameW.addEventListener('change', ssUpdateSheetPreview);
+      dom.frameH.addEventListener('change', ssUpdateSheetPreview);
+      dom.padding.addEventListener('change', ssUpdateSheetPreview);
+    },
+    removeFrame(index) {
+      frames.splice(index, 1);
+      if (currentFrame >= frames.length) currentFrame = Math.max(0, frames.length - 1);
+      updateUI();
+      ssUpdateSheetPreview();
+    },
+    togglePlay,
+    stopPlay,
+    updateSheetPreview,
+    exportSheet,
+    clearAll
+  };
+})();
+
+// 全局函数
+function openSpriteSheetMaker() {
+  document.getElementById('spriteSheetModal').classList.add('show');
+  SpriteSheetMaker.init();
+  // 重置状态
+  SpriteSheetMaker.clearAll();
+}
+
+function closeSpriteSheetModal() {
+  SpriteSheetMaker.stopPlay();
+  document.getElementById('spriteSheetModal').classList.remove('show');
+}
+
+function ssTogglePlay() { SpriteSheetMaker.togglePlay(); }
+function ssStopPlay() { SpriteSheetMaker.stopPlay(); }
+function ssUpdateSheetPreview() { SpriteSheetMaker.updateSheetPreview(); }
+function ssExport() { SpriteSheetMaker.exportSheet(); }
+function ssClearAll() { SpriteSheetMaker.clearAll(); }
 
 // ==================== Tooltip 初始化 ====================
 (function initTooltips() {
@@ -2382,6 +3884,1019 @@ document.addEventListener('keydown', e => {
     });
   });
 })();
+
+// ==================== 音频编辑器 ====================
+const AudioEditor = (function() {
+  let audioContext = null;
+  let audioBuffer = null;
+  let sourceNode = null;
+  let gainNode = null;
+  let startTime = 0;
+  let pauseTime = 0;
+  let isPlaying = false;
+  let animationId = null;
+  let _loop = false;
+  let originalFileName = '';
+
+  function init() {
+    // 拖拽
+    const dropZone = document.getElementById('aeDropZone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+    });
+
+    document.getElementById('aeFileInput').addEventListener('change', e => {
+      if (e.target.files.length) loadFile(e.target.files[0]);
+    });
+  }
+
+  async function loadFile(file) {
+    if (!file.type.startsWith('audio/')) {
+      alert('请选择音频文件！');
+      return;
+    }
+
+    originalFileName = file.name;
+    document.getElementById('aeFileName').textContent = file.name;
+    document.getElementById('aeDropHint').style.display = 'none';
+    document.getElementById('aeFileInfo').style.display = 'block';
+
+    try {
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+      const arrayBuffer = await file.arrayBuffer();
+      audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+      document.getElementById('aeFileDuration').textContent = formatTime(audioBuffer.duration);
+      document.getElementById('aeTrimEnd').value = audioBuffer.duration.toFixed(1);
+      document.getElementById('aeWaveformSection').style.display = 'block';
+      document.getElementById('aeToolsSection').style.display = 'block';
+      document.getElementById('aeSaveSection').style.display = 'flex';
+
+      drawWaveform();
+      resetPlayback();
+    } catch (err) {
+      alert('无法解码音频文件: ' + err.message);
+    }
+  }
+
+  function drawWaveform() {
+    if (!audioBuffer) return;
+
+    const canvas = document.getElementById('aeWaveformCanvas');
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const data = audioBuffer.getChannelData(0);
+    const step = Math.ceil(data.length / width);
+
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = '#4a4a6a';
+    ctx.beginPath();
+    ctx.moveTo(0, height / 2);
+    ctx.lineTo(width, height / 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#4CAF50';
+    for (let i = 0; i < width; i++) {
+      let min = 1.0, max = -1.0;
+      for (let j = 0; j < step; j++) {
+        const idx = i * step + j;
+        if (idx < data.length) {
+          const val = data[idx];
+          if (val < min) min = val;
+          if (val > max) max = val;
+        }
+      }
+      const y1 = (1 + min) * height / 2;
+      const y2 = (1 + max) * height / 2;
+      ctx.fillRect(i, y1, 1, y2 - y1 || 1);
+    }
+  }
+
+  function resetPlayback() {
+    stop();
+    pauseTime = 0;
+    updatePlayhead(0);
+  }
+
+  function play(offset = 0) {
+    if (!audioBuffer) return;
+    stop();
+
+    sourceNode = audioContext.createBufferSource();
+    sourceNode.buffer = audioBuffer;
+    sourceNode.loop = _loop;
+
+    gainNode = audioContext.createGain();
+    sourceNode.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    sourceNode.start(0, offset);
+    startTime = audioContext.currentTime - offset;
+    isPlaying = true;
+
+    document.getElementById('aePlayBtn').textContent = '⏸️ 暂停';
+    animatePlayhead(offset);
+  }
+
+  function stop() {
+    if (sourceNode) {
+      try { sourceNode.stop(); } catch(e) {}
+      sourceNode.disconnect();
+      sourceNode = null;
+    }
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+    isPlaying = false;
+    document.getElementById('aePlayBtn').textContent = '▶️ 播放';
+  }
+
+  function animatePlayhead(startOffset) {
+    if (!isPlaying || !audioBuffer) return;
+
+    const elapsed = audioContext.currentTime - startTime;
+    const duration = audioBuffer.duration;
+
+    if (!_loop && elapsed >= duration) {
+      resetPlayback();
+      return;
+    }
+
+    updatePlayhead(elapsed % duration);
+    document.getElementById('aeSeekSlider').max = duration;
+    document.getElementById('aeSeekSlider').value = elapsed % duration;
+
+    animationId = requestAnimationFrame(() => animatePlayhead(elapsed % duration));
+  }
+
+  function updatePlayhead(time) {
+    if (!audioBuffer) return;
+    const canvas = document.getElementById('aeWaveformCanvas');
+    const ratio = time / audioBuffer.duration;
+    const left = 12 + ratio * (canvas.width - 24);
+    document.getElementById('aePlayhead').style.left = left + 'px';
+    document.getElementById('aeTimeDisplay').textContent = formatTime(time) + ' / ' + formatTime(audioBuffer.duration);
+  }
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + sec.toString().padStart(2, '0');
+  }
+
+  function togglePlay() {
+    if (isPlaying) {
+      pauseTime = audioContext.currentTime - startTime;
+      stop();
+    } else {
+      play(pauseTime);
+    }
+  }
+
+  function seekTo(val) {
+    const time = parseFloat(val);
+    pauseTime = time;
+    updatePlayhead(time);
+    if (isPlaying) {
+      stop();
+      play(time);
+    }
+  }
+
+  function skipBackward() {
+    const newTime = Math.max(0, pauseTime - 5);
+    seekTo(newTime);
+  }
+
+  function skipForward() {
+    if (!audioBuffer) return;
+    const newTime = Math.min(audioBuffer.duration, pauseTime + 5);
+    seekTo(newTime);
+  }
+
+  function setVolume(val) {
+    document.getElementById('aeVolumeLabel').textContent = '🔊 ' + val + '%';
+    if (gainNode) gainNode.gain.value = val / 100;
+  }
+
+  function setLoop(loop) {
+    _loop = loop;
+    document.getElementById('aeLoopBtn').style.background = loop ? '#27AE60' : '';
+    if (sourceNode) sourceNode.loop = loop;
+  }
+
+  function adjustVolume(factor) {
+    if (!audioBuffer) return;
+    const newBuffer = audioContext.createBuffer(
+      audioBuffer.numberOfChannels,
+      audioBuffer.length,
+      audioBuffer.sampleRate
+    );
+    for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+      const data = audioBuffer.getChannelData(c);
+      const newData = newBuffer.getChannelData(c);
+      for (let i = 0; i < data.length; i++) {
+        newData[i] = Math.max(-1, Math.min(1, data[i] * factor));
+      }
+    }
+    audioBuffer = newBuffer;
+    drawWaveform();
+    showToast('音量已调整为 ' + Math.round(factor * 100) + '%');
+  }
+
+  function fadeIn(ms) {
+    if (!audioBuffer) return;
+    const startFrame = 0;
+    const fadeFrames = Math.floor((ms / 1000) * audioBuffer.sampleRate);
+    for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+      const data = audioBuffer.getChannelData(c);
+      for (let i = 0; i < fadeFrames && i < data.length; i++) {
+        data[i] *= i / fadeFrames;
+      }
+    }
+    drawWaveform();
+    showToast('已添加淡入效果 (' + ms + 'ms)');
+  }
+
+  function fadeOut(ms) {
+    if (!audioBuffer) return;
+    const fadeFrames = Math.floor((ms / 1000) * audioBuffer.sampleRate);
+    const startFrame = audioBuffer.length - fadeFrames;
+    for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+      const data = audioBuffer.getChannelData(c);
+      for (let i = 0; i < fadeFrames; i++) {
+        const idx = startFrame + i;
+        if (idx < data.length) {
+          data[idx] *= 1 - i / fadeFrames;
+        }
+      }
+    }
+    drawWaveform();
+    showToast('已添加淡出效果 (' + ms + 'ms)');
+  }
+
+  function fadeOutAll() {
+    if (!audioBuffer) return;
+    const ms = 2000;
+    fadeOut(ms);
+  }
+
+  function setPlaybackRate(rate) {
+    if (sourceNode) sourceNode.playbackRate.value = rate;
+    showToast('播放速度已调整为 ' + rate + 'x');
+  }
+
+  async function reverse() {
+    if (!audioBuffer) return;
+    const newBuffer = audioContext.createBuffer(
+      audioBuffer.numberOfChannels,
+      audioBuffer.length,
+      audioBuffer.sampleRate
+    );
+    for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+      const data = audioBuffer.getChannelData(c);
+      const newData = newBuffer.getChannelData(c);
+      for (let i = 0; i < data.length; i++) {
+        newData[data.length - 1 - i] = data[i];
+      }
+    }
+    audioBuffer = newBuffer;
+    drawWaveform();
+    showToast('音频已反转');
+  }
+
+  async function normalize() {
+    if (!audioBuffer) return;
+    let max = 0;
+    for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+      const data = audioBuffer.getChannelData(c);
+      for (let i = 0; i < data.length; i++) {
+        max = Math.max(max, Math.abs(data[i]));
+      }
+    }
+    if (max > 0) {
+      const factor = 0.95 / max;
+      for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+        const data = audioBuffer.getChannelData(c);
+        for (let i = 0; i < data.length; i++) {
+          data[i] *= factor;
+        }
+      }
+    }
+    drawWaveform();
+    showToast('音频已标准化');
+  }
+
+  function previewTrim() {
+    const start = parseFloat(document.getElementById('aeTrimStart').value);
+    const end = parseFloat(document.getElementById('aeTrimEnd').value);
+    if (start >= end) { alert('开始时间必须小于结束时间'); return; }
+    pauseTime = start;
+    play(start);
+    setTimeout(() => { if (isPlaying && pauseTime >= end) stop(); }, (end - start) * 1000);
+  }
+
+  function applyTrim() {
+    if (!audioBuffer) return;
+    const start = parseFloat(document.getElementById('aeTrimStart').value);
+    const end = parseFloat(document.getElementById('aeTrimEnd').value);
+    if (start >= end) { alert('开始时间必须小于结束时间'); return; }
+
+    const startFrame = Math.floor(start * audioBuffer.sampleRate);
+    const endFrame = Math.floor(end * audioBuffer.sampleRate);
+    const newLength = endFrame - startFrame;
+
+    const newBuffer = audioContext.createBuffer(
+      audioBuffer.numberOfChannels, newLength, audioBuffer.sampleRate
+    );
+    for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+      const data = audioBuffer.getChannelData(c);
+      const newData = newBuffer.getChannelData(c);
+      for (let i = 0; i < newLength; i++) {
+        newData[i] = data[startFrame + i];
+      }
+    }
+    audioBuffer = newBuffer;
+    pauseTime = 0;
+    drawWaveform();
+    document.getElementById('aeFileDuration').textContent = formatTime(audioBuffer.duration);
+    document.getElementById('aeTrimEnd').value = audioBuffer.duration.toFixed(1);
+    showToast('音频已裁剪');
+  }
+
+  async function download() {
+    if (!audioBuffer) return;
+    const wav = audioBufferToWav(audioBuffer);
+    const blob = new Blob([wav], { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'edited_' + originalFileName.replace(/\.[^.]+$/, '.wav');
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('音频已导出');
+  }
+
+  function audioBufferToWav(buffer) {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
+
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numChannels * bytesPerSample;
+    const byteRate = sampleRate * blockAlign;
+    const dataSize = buffer.length * blockAlign;
+    const headerSize = 44;
+    const totalSize = headerSize + dataSize;
+
+    const array = new ArrayBuffer(totalSize);
+    const view = new DataView(array);
+
+    const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+
+    writeStr(0, 'RIFF');
+    view.setUint32(4, totalSize - 8, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, format, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    writeStr(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    let offset = 44;
+    for (let i = 0; i < buffer.length; i++) {
+      for (let c = 0; c < numChannels; c++) {
+        const sample = Math.max(-1, Math.min(1, buffer.getChannelData(c)[i]));
+        const intSample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+        view.setInt16(offset, intSample, true);
+        offset += 2;
+      }
+    }
+    return array;
+  }
+
+  // 加载游戏音频列表到选择器
+  function loadGameAudioList() {
+    const select = document.getElementById('aeTargetAudio');
+    if (!select) return;
+
+    // 清空选项
+    select.innerHTML = '<option value="">-- 选择游戏音频 --</option>';
+
+    // 从 RESOURCES.audio 中获取音频列表
+    if (typeof RESOURCES !== 'undefined' && RESOURCES.audio) {
+      RESOURCES.audio.forEach((audio, idx) => {
+        const opt = document.createElement('option');
+        opt.value = audio.key || `audio_${idx}`;
+        opt.textContent = `${audio.key || audio.file || 'audio_' + idx} ${audio.description ? ' - ' + audio.description : ''}`;
+        select.appendChild(opt);
+      });
+    }
+
+    // 添加一些常见的游戏音频 key
+    const commonAudioKeys = [
+      { key: 'bgm_game', label: '🎵 BGM - 游戏背景音乐' },
+      { key: 'bgm_menu', label: '🎵 BGM - 菜单背景音乐' },
+      { key: 'bgm_battle', label: '🎵 BGM - 战斗音乐' },
+      { key: 'sfx_shoot', label: '🔫 音效 - 射击' },
+      { key: 'sfx_explosion', label: '💥 音效 - 爆炸' },
+      { key: 'sfx_hit', label: '💫 音效 - 命中' },
+      { key: 'sfx_collect', label: '✨ 音效 - 收集' },
+      { key: 'sfx_button', label: '👆 音效 - 按钮点击' },
+      { key: 'sfx_victory', label: '🏆 音效 - 胜利' },
+      { key: 'sfx_defeat', label: '💀 音效 - 失败' },
+      { key: 'sun_collect', label: '☀️ 阳光收集音效' },
+      { key: 'plant_place', label: '🌱 植物放置音效' },
+      { key: 'zombie_groan', label: '🧟 僵尸叫声' },
+      { key: 'wave_start', label: '🏴‍☠️ 波次开始音效' }
+    ];
+
+    commonAudioKeys.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.key;
+      opt.textContent = item.label;
+      select.appendChild(opt);
+    });
+  }
+
+  function cancelApplyToGame() {
+    document.getElementById('aeApplyToGameSection').style.display = 'none';
+  }
+
+  // 显示应用到游戏选择界面
+  function showApplyToGame() {
+    loadGameAudioList();
+    document.getElementById('aeApplyToGameSection').style.display = 'block';
+  }
+
+  // 确认应用到游戏
+  async function confirmApplyToGame() {
+    const selectedKey = document.getElementById('aeTargetAudio').value;
+    if (!selectedKey) {
+      alert('请选择一个要替换的游戏音频！');
+      return;
+    }
+    if (!audioBuffer) {
+      showToast('没有可用的音频数据', true);
+      return;
+    }
+
+    const wav = audioBufferToWav(audioBuffer);
+    const blob = new Blob([wav], { type: 'audio/wav' });
+    const filename = selectedKey + '.wav';
+
+    // 尝试通过 Web API 保存
+    let applied = false;
+    try {
+      const fd = new FormData();
+      fd.append('file', blob, filename);
+      fd.append('gameCode', 'pvz');
+      fd.append('themeCode', 'pvz');
+      fd.append('category', 'audio');
+      fd.append('replaceKey', selectedKey);
+
+      const res = await fetch('/__apply-audio', {
+        method: 'POST',
+        body: fd
+      });
+      if (res.ok) applied = true;
+    } catch (e) {
+      console.warn('应用失败:', e);
+    }
+
+    // 同时备份到 generated 目录
+    try {
+      const base64 = arrayBufferToBase64(wav);
+      await fetch('/__save-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base64: base64,
+          filename: filename,
+          originalName: originalFileName
+        })
+      });
+    } catch (e) {
+      console.warn('备份失败:', e);
+    }
+
+    // 更新本地资源记录（如果存在）
+    if (typeof RESOURCES !== 'undefined' && RESOURCES.audio) {
+      const existing = RESOURCES.audio.find(a => a.key === selectedKey);
+      if (existing) {
+        existing._edited = true;
+        existing._lastApplied = Date.now();
+        existing._editedFrom = originalFileName;
+      }
+    }
+
+    document.getElementById('aeApplyToGameSection').style.display = 'none';
+
+    showToast(applied
+      ? `✅ 已应用「${selectedKey}」`
+      : `⚠️ 已备份，请手动替换`, false);
+
+    renderContent && renderContent(currentTab);
+  }
+
+  // 转换为 base64
+  function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  // 应用到游戏（公开入口）
+  function applyToGame() {
+    showApplyToGame();
+  }
+
+  async function saveToResources() {
+    if (!audioBuffer) return;
+    const wav = audioBufferToWav(audioBuffer);
+    const name = prompt('请输入保存的文件名（不含扩展名）:', 'edited_audio');
+    if (!name) return;
+    const blob = new Blob([wav], { type: 'audio/wav' });
+    const fd = new FormData();
+    fd.append('file', blob, name + '.wav');
+    fd.append('gameCode', 'pvz');
+    fd.append('themeCode', 'pvz');
+    fd.append('category', 'effect');
+
+    try {
+      const res = await fetch('http://localhost:3000/api/resources/upload', { method: 'POST', body: fd });
+      if (res.ok) {
+        showToast('已保存到资源库: ' + name);
+        loadResources();
+      } else {
+        showToast('保存失败: ' + res.statusText);
+      }
+    } catch(e) {
+      showToast('保存失败: ' + e.message);
+    }
+  }
+
+  function clearFile() {
+    stop();
+    audioBuffer = null;
+    originalFileName = '';
+    pauseTime = 0;
+    document.getElementById('aeDropHint').style.display = 'flex';
+    document.getElementById('aeFileInfo').style.display = 'none';
+    document.getElementById('aeWaveformSection').style.display = 'none';
+    document.getElementById('aeToolsSection').style.display = 'none';
+    document.getElementById('aeSaveSection').style.display = 'none';
+  }
+
+  return {
+    init,
+    loadFile,
+    togglePlay,
+    seekTo,
+    skipBackward,
+    skipForward,
+    setVolume,
+    setLoop,
+    adjustVolume,
+    fadeIn,
+    fadeOut,
+    fadeOutAll,
+    setPlaybackRate,
+    reverse,
+    normalize,
+    previewTrim,
+    applyTrim,
+    download,
+    saveToResources,
+    applyToGame,
+    confirmApplyToGame,
+    cancelApplyToGame,
+    clearFile
+  };
+})();
+
+// ==================== MusicGen AI 音乐生成器 ====================
+let mgMode = 'text';
+let mgMelodyFile = null;
+let mgContinuationFile = null;
+
+function openMusicGen() {
+  document.getElementById('musicGenModal').classList.add('show');
+}
+
+function closeMusicGen() {
+  document.getElementById('musicGenModal').classList.remove('show');
+}
+
+function setMusicGenMode(mode) {
+  mgMode = mode;
+  document.querySelectorAll('.mg-mode').forEach(btn => {
+    btn.classList.remove('btn-primary', 'active');
+    btn.classList.add('btn-secondary');
+  });
+  document.querySelector('.mg-mode[data-mode="' + mode + '"]').classList.remove('btn-secondary');
+  document.querySelector('.mg-mode[data-mode="' + mode + '"]').classList.add('btn-primary', 'active');
+  document.getElementById('mgTextSection').style.display = mode === 'text' ? 'block' : 'none';
+  document.getElementById('mgMelodySection').style.display = mode === 'melody' ? 'block' : 'none';
+  document.getElementById('mgContinuationSection').style.display = mode === 'continuation' ? 'block' : 'none';
+}
+
+function setMgPrompt(text) {
+  document.getElementById('mgPrompt').value = text;
+}
+
+function saveMusicGenConfig() {
+  // 使用代理，不需要配置 URL
+  MG_CONFIG.retryDelay = 2;
+  if (MG_CONFIG.retryTimer) { clearInterval(MG_CONFIG.retryTimer); MG_CONFIG.retryTimer = null; }
+  checkMusicGen();
+  showToast('正在检测连接...');
+}
+
+async function testMusicGenConnection() {
+  // 使用代理，不需要配置 URL
+  MG_CONFIG.retryDelay = 2;
+  if (MG_CONFIG.retryTimer) { clearInterval(MG_CONFIG.retryTimer); MG_CONFIG.retryTimer = null; }
+  checkMusicGen();
+}
+
+// 旋律文件上传
+document.getElementById('mgMelodyInput')?.addEventListener('change', e => {
+  if (e.target.files.length) {
+    mgMelodyFile = e.target.files[0];
+    document.getElementById('mgMelodyFileName').textContent = mgMelodyFile.name;
+    document.getElementById('mgMelodyHint').style.display = 'none';
+    document.getElementById('mgMelodyFile').style.display = 'flex';
+  }
+});
+
+function clearMgMelody() {
+  mgMelodyFile = null;
+  document.getElementById('mgMelodyHint').style.display = 'block';
+  document.getElementById('mgMelodyFile').style.display = 'none';
+  document.getElementById('mgMelodyInput').value = '';
+}
+
+// 续写文件上传
+document.getElementById('mgContinuationInput')?.addEventListener('change', e => {
+  if (e.target.files.length) {
+    mgContinuationFile = e.target.files[0];
+    document.getElementById('mgContinuationFileName').textContent = mgContinuationFile.name;
+    document.getElementById('mgContinuationHint').style.display = 'none';
+    document.getElementById('mgContinuationFile').style.display = 'flex';
+  }
+});
+
+function clearMgContinuation() {
+  mgContinuationFile = null;
+  document.getElementById('mgContinuationHint').style.display = 'block';
+  document.getElementById('mgContinuationFile').style.display = 'none';
+  document.getElementById('mgContinuationInput').value = '';
+}
+
+// 引导强度滑块
+document.getElementById('mgGuidance')?.addEventListener('input', e => {
+  document.getElementById('mgGuidanceValue').textContent = parseFloat(e.target.value).toFixed(1);
+});
+
+// 时长变化 - 显示/隐藏长音频提示
+document.getElementById('mgDuration')?.addEventListener('input', e => {
+  const duration = parseInt(e.target.value) || 0;
+  const longAudioTip = document.getElementById('mgLongAudioTip');
+  if (longAudioTip) {
+    longAudioTip.style.display = duration > 30 ? 'block' : 'none';
+  }
+});
+
+
+
+
+
+
+// MusicGen API 端点
+const MG_API_ENDPOINTS = [
+  { path: '/generate', method: 'POST', type: 'fastapi' },
+];
+
+async function generateMusic() {
+  const prompt = document.getElementById('mgPrompt').value.trim();
+
+  if (mgMode === 'text' && !prompt) {
+    alert('请输入音乐描述！');
+    return;
+  }
+
+  document.getElementById('mgProgress').style.display = 'block';
+  document.getElementById('mgResult').style.display = 'none';
+  document.getElementById('mgGenerateSection').style.display = 'none';
+  document.getElementById('mgStatus').textContent = '🎵 生成中...';
+
+  // 进度条
+  const progressBar = document.getElementById('mgProgressBar');
+  const progressText = document.getElementById('mgProgressText');
+
+  try {
+    const model = document.getElementById('mgModel')?.value || 'small';
+    const duration = parseInt(document.getElementById('mgDuration')?.value || '10');
+    const chunkDuration = parseInt(document.getElementById('mgChunkDuration')?.value || '30');
+    const slidingWindow = parseInt(document.getElementById('mgSlidingWindow')?.value || '10');
+    const topk = parseInt(document.getElementById('mgTopk')?.value || '250');
+    const topp = parseFloat(document.getElementById('mgTopp')?.value || '0.0');
+    const temperature = parseFloat(document.getElementById('mgTemperature')?.value || '1.0');
+    const cfg = parseFloat(document.getElementById('mgCfg')?.value || '3.0');
+    const seed = parseInt(document.getElementById('mgSeed')?.value || '-1');
+    const mgProxyPath = MG_CONFIG.proxyPath;
+
+    // 长音频提示
+    const longAudioTip = document.getElementById('mgLongAudioTip');
+    if (longAudioTip) {
+      longAudioTip.style.display = duration > 30 ? 'block' : 'none';
+    }
+
+    // 构建 FastAPI 请求
+    let payload = {};
+    if (mgMode === 'text') {
+      payload = {
+        prompt: prompt,
+        model_size: model,
+        duration: duration,
+        chunk_duration: duration > 30 ? chunkDuration : undefined,
+        sliding_window: duration > 30 ? slidingWindow : undefined,
+        top_k: topk,
+        top_p: topp,
+        temperature: temperature,
+        cfg_coef: cfg,
+        seed: seed,
+        output_format: 'wav'
+      };
+    } else if (mgMode === 'melody' && mgMelodyFile) {
+      const base64 = await fileToBase64(mgMelodyFile);
+      payload = {
+        prompt: document.getElementById('mgMelodyPrompt')?.value || prompt,
+        model_size: 'melody',
+        melody_base64: base64,
+        duration: duration,
+        chunk_duration: duration > 30 ? chunkDuration : undefined,
+        sliding_window: duration > 30 ? slidingWindow : undefined,
+        top_k: topk,
+        top_p: topp,
+        temperature: temperature,
+        cfg_coef: cfg,
+        seed: seed,
+        output_format: 'wav'
+      };
+    } else if (mgMode === 'continuation' && mgContinuationFile) {
+      const base64 = await fileToBase64(mgContinuationFile);
+      payload = {
+        continuation_base64: base64,
+        duration: duration,
+        chunk_duration: duration > 30 ? chunkDuration : undefined,
+        sliding_window: duration > 30 ? slidingWindow : undefined,
+        top_k: topk,
+        top_p: topp,
+        temperature: temperature,
+        cfg_coef: cfg,
+        seed: seed,
+        output_format: 'wav'
+      };
+    }
+
+    // 1. 提交任务
+    const res = await fetch(mgProxyPath + '/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      throw new Error('MusicGen API 请求失败: ' + res.status);
+    }
+
+    const taskData = await res.json();
+    const taskId = taskData.task_id;
+
+    // 2. 轮询结果
+    const audioResult = await pollFastAPIResult(mgProxyPath, taskId, progressBar, progressText);
+
+    if (audioResult) {
+      document.getElementById('mgAudioPreview').src = audioResult;
+      document.getElementById('mgResult').style.display = 'block';
+      progressBar.style.width = '100%';
+      progressText.textContent = '✅ 生成完成！';
+      document.getElementById('mgStatus').textContent = '🟢 完成';
+      MG_CONFIG.connected = true;
+      updateMgNavStatus();
+      showToast('音乐生成成功！');
+    } else {
+      MG_CONFIG.connected = false;
+      updateMgNavStatus();
+      throw new Error('音乐生成超时');
+    }
+  } catch(e) {
+    progressBar.style.width = '0%';
+    progressText.textContent = '❌ 生成失败: ' + e.message;
+    document.getElementById('mgStatus').textContent = '🔴 失败';
+    showToast('生成失败: ' + e.message);
+  }
+
+  document.getElementById('mgProgress').style.display = 'none';
+  document.getElementById('mgGenerateSection').style.display = 'flex';
+}
+
+// 轮询 FastAPI 结果
+async function pollFastAPIResult(baseUrl, taskId, progressBar, progressText) {
+  const maxAttempts = 120; // FastAPI 可能需要更长时间
+  const pollUrl = baseUrl + '/status/' + taskId;
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch(pollUrl);
+      if (res.ok) {
+        const data = await res.json();
+        
+        // 更新进度
+        const progress = (i / maxAttempts) * 100;
+        progressBar.style.width = Math.min(95, progress) + '%';
+        progressText.textContent = '🎵 正在生成... ' + Math.round(progress) + '%';
+        
+        if (data.status === 'completed' && data.file_url) {
+          // 下载音频文件
+          const downloadUrl = baseUrl + data.file_url;
+          const audioRes = await fetch(downloadUrl);
+          if (audioRes.ok) {
+            const blob = await audioRes.blob();
+            return URL.createObjectURL(blob);
+          }
+        }
+        
+        if (data.status === 'failed') {
+          throw new Error(data.error || '生成失败');
+        }
+      }
+      
+      await new Promise(r => setTimeout(r, 1000));
+    } catch(e) {
+      if (e.message.includes('error') || e.message.includes('failed')) throw e;
+    }
+  }
+  return null;
+}
+
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function downloadMgResult() {
+  const audio = document.getElementById('mgAudioPreview');
+  if (audio.src) {
+    const a = document.createElement('a');
+    a.href = audio.src;
+    a.download = 'musicgen_' + Date.now() + '.wav';
+    a.click();
+    showToast('下载开始');
+  }
+}
+
+async function saveMgToResources() {
+  const audio = document.getElementById('mgAudioPreview');
+  if (!audio.src || audio.src === location.href) {
+    showToast('请先生成音乐');
+    return;
+  }
+
+  try {
+    const res = await fetch(audio.src);
+    const blob = await res.blob();
+    const name = prompt('请输入保存的文件名（不含扩展名）:', 'ai_music');
+    if (!name) return;
+
+    const fd = new FormData();
+    fd.append('file', blob, name + '.wav');
+    fd.append('gameCode', 'pvz');
+    fd.append('themeCode', 'pvz');
+    fd.append('category', 'bgm');
+
+    const uploadRes = await fetch('http://localhost:3000/api/resources/upload', { method: 'POST', body: fd });
+    if (uploadRes.ok) {
+      showToast('已保存到资源库: ' + name);
+      loadResources();
+    } else {
+      showToast('保存失败');
+    }
+  } catch(e) {
+    showToast('保存失败: ' + e.message);
+  }
+}
+
+function regenerateMg() {
+  generateMusic();
+}
+
+// 全局打开/关闭函数
+function openAudioEditor() {
+  document.getElementById('audioEditorModal').classList.add('show');
+  AudioEditor.init();
+}
+
+function closeAudioEditor() {
+  AudioEditor.clearFile();
+  document.getElementById('audioEditorModal').classList.remove('show');
+}
+
+// 从游戏资源加载音频到编辑器进行编辑
+async function loadAudioForEdit(key, path) {
+  try {
+    // 打开音频编辑器
+    document.getElementById('audioEditorModal').classList.add('show');
+    AudioEditor.init();
+
+    // 获取完整URL
+    const baseUrl = window.location.origin;
+    const fullUrl = path.startsWith('http') ? path : baseUrl + path;
+
+    // 加载音频文件
+    const response = await fetch(fullUrl);
+    if (!response.ok) throw new Error('无法加载音频文件');
+
+    const blob = await response.blob();
+    const file = new File([blob], key + '.wav', { type: 'audio/wav' });
+
+    // 调用音频编辑器的加载函数
+    AudioEditor.loadFile(file);
+    AudioEditor.clearFile();
+
+    // 手动加载
+    const dropZone = document.getElementById('aeDropZone');
+    document.getElementById('aeDropHint').style.display = 'none';
+    document.getElementById('aeFileInfo').style.display = 'block';
+    document.getElementById('aeFileName').textContent = key + '.wav';
+    document.getElementById('aeWaveformSection').style.display = 'block';
+    document.getElementById('aeToolsSection').style.display = 'block';
+    document.getElementById('aeSaveSection').style.display = 'flex';
+
+    // 使用 AudioContext 加载
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    AudioEditor.audioContext = audioContext;
+
+    const arrayBuffer = await file.arrayBuffer();
+    audioContext.decodeAudioData(arrayBuffer).then(buffer => {
+      AudioEditor.audioBuffer = buffer;
+      AudioEditor.originalFileName = key + '.wav';
+      AudioEditor.resetPlayback();
+
+      document.getElementById('aeFileDuration').textContent = formatAudioTime(buffer.duration);
+      document.getElementById('aeTrimEnd').value = buffer.duration.toFixed(1);
+
+      AudioEditor.drawWaveform();
+    }).catch(err => {
+      showToast('音频解码失败: ' + err.message);
+    });
+
+    showToast('已加载: ' + key);
+  } catch (e) {
+    showToast('加载失败: ' + e.message);
+    document.getElementById('audioEditorModal').classList.remove('show');
+  }
+}
+
+// 加载游戏音频列表到编辑器（用于AI生成后保存）
+function loadGameAudioForEdit() {
+  loadGameAudioList();
+}
+
+// 格式化音频时间
+function formatAudioTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return m + ':' + sec.toString().padStart(2, '0');
+}
 </script>
 
 </body>

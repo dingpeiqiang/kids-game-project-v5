@@ -31,6 +31,11 @@ export default defineConfig({
       '/rembg': {
         target: 'http://127.0.0.1:7860',
         changeOrigin: true,
+      },
+      '/musicgen': {
+        target: 'http://127.0.0.1:7880',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/musicgen/, ''),
       }
     }
   },

@@ -33,15 +33,22 @@ export default class Zombie extends Phaser.Physics.Arcade.Sprite {
     this.gameData = { row, health: cfg.health, maxHealth: cfg.health, speed: cfg.speed, score: cfg.score }
 
     this.setVelocityX(cfg.speed)
+    this.body.setCollideWorldBounds(true)
 
-    this.on('worldbounds', () => {
-      // 僵尸突破 → 游戏结束
+    // 启用世界边界检测
+    this.body.onWorldBounds = true
+  }
+
+  // 在场景的 update 中检测是否突破防线
+  checkBoundary(scene) {
+    // 僵尸突破到左侧边界（割草机区域左侧）
+    if (this.active && this.x < scene.game.GRID_LEFT - 30) {
       if (!scene.gameOver) {
         scene.gameOver = true
-        scene.scene.start('OverScene')
+        scene.physics.world.pause()
+        scene.showGameOverScreen()
       }
-    })
-    this.body.setCollideWorldBounds(true)
+    }
   }
 
   takeDamage(amount) {
