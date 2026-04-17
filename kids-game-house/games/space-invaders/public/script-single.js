@@ -187,6 +187,10 @@ function hitEnemy(bullet, enemy) {
   
   // 创建爆炸效果
   const explosion = this.add.sprite(enemy.x, enemy.y, "explosion");
+  explosion.setOrigin(0.5);
+  explosion.on('animationcomplete', () => {
+    explosion.destroy();
+  });
   explosion.play("explode");
   
   enemy.disableBody(true, true);

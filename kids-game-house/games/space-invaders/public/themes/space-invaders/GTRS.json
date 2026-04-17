@@ -1,0 +1,192 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "space-invaders",
+    "themeName": "Space Invaders Classic Theme",
+    "gameId": "space-invaders",
+    "ownerType": "GAME",
+    "ownerId": "space-invaders",
+    "isDefault": true,
+    "author": "AI Assistant",
+    "description": "Assets for the Space Invaders game using classic retro style",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#4CAF50",
+    "secondaryColor": "#8BC34A",
+    "bgColor": "#1a1a2e",
+    "textColor": "#ffffff",
+    "fontFamily": "'Arial', sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "scene": {
+        "ship": {
+          "alias": "Player Ship",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2FShip%402x.png?v=1589228730678",
+          "type": "png",
+          "width": 60,
+          "height": 32
+        },
+        "bullet": {
+          "alias": "Bullet",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2Fbullet.png?v=1589229887570",
+          "type": "png",
+          "width": 48,
+          "height": 48
+        },
+        "explosion": {
+          "alias": "Explosion",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2Fexplosion57%20(2).png?v=1589491279459",
+          "type": "png",
+          "width": 48,
+          "height": 48
+        },
+        "invader": {
+          "alias": "Invader",
+          "src": "invader.svg",
+          "type": "svg",
+          "width": 48,
+          "height": 32
+        },
+        "space-invaders-hero": {
+          "alias": "Space Invaders Hero",
+          "src": "space-invaders-hero.svg",
+          "type": "svg",
+          "width": 200,
+          "height": 100
+        },
+        "avatarAanimated": {
+          "alias": "Avatar A",
+          "src": "https://cdn.glitch.com/c0cf9403-8071-4ec0-afd7-8a5293120d79%2FavatarAanimated.png?v=1592436546438",
+          "type": "png",
+          "width": 48,
+          "height": 32
+        },
+        "avatarBanimated": {
+          "alias": "Avatar B",
+          "src": "https://cdn.glitch.com/c0cf9403-8071-4ec0-afd7-8a5293120d79%2FavatarBanimated.png?v=1592436575703",
+          "type": "png",
+          "width": 48,
+          "height": 32
+        },
+        "avatarCanimated": {
+          "alias": "Avatar C",
+          "src": "https://cdn.glitch.com/c0cf9403-8071-4ec0-afd7-8a5293120d79%2FavatarCanimated.png?v=1592436609339",
+          "type": "png",
+          "width": 48,
+          "height": 32
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {
+        "move1": {
+          "alias": "Invader Move 1",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2Ffastinvader1.mp3?v=1589983955301",
+          "type": "mp3",
+          "duration": 1.2
+        },
+        "move2": {
+          "alias": "Invader Move 2",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2Ffastinvader2.mp3?v=1589983959381",
+          "type": "mp3",
+          "duration": 1.2
+        },
+        "move3": {
+          "alias": "Invader Move 3",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2Ffastinvader3.mp3?v=1589983969580",
+          "type": "mp3",
+          "duration": 1.2
+        },
+        "move4": {
+          "alias": "Invader Move 4",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2Ffastinvader4.mp3?v=1589983973991",
+          "type": "mp3",
+          "duration": 1.2
+        },
+        "myDeath": {
+          "alias": "Player Death",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2Fexplosion.mp3?v=1589984025058",
+          "type": "mp3",
+          "duration": 1.5
+        },
+        "opponentDeath": {
+          "alias": "Opponent Death",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2Finvaderkilled.mp3?v=1589983981160",
+          "type": "mp3",
+          "duration": 1.0
+        },
+        "shoot": {
+          "alias": "Shoot",
+          "src": "https://cdn.glitch.com/f66772e3-bbf6-4f6d-b5d5-94559e3c1c6f%2Fshoot.mp3?v=1589983990745",
+          "type": "mp3",
+          "duration": 0.5
+        }
+      },
+      "voice": {}
+    },
+    "scripts": {
+      "script.js": {
+        "alias": "Main Script",
+        "src": "script.js",
+        "type": "js",
+        "size": "25KB"
+      },
+      "script-single.js": {
+        "alias": "Single Player Script",
+        "src": "script-single.js",
+        "type": "js",
+        "size": "8KB"
+      },
+      "script-v3.js": {
+        "alias": "V3 Script",
+        "src": "script-v3.js",
+        "type": "js",
+        "size": "35KB"
+      },
+      "script-offline.js": {
+        "alias": "Offline Script",
+        "src": "script-offline.js",
+        "type": "js",
+        "size": "12KB"
+      },
+      "explosion.js": {
+        "alias": "Explosion Script",
+        "src": "explosion.js",
+        "type": "js",
+        "size": "1KB"
+      },
+      "gameover.js": {
+        "alias": "Game Over Script",
+        "src": "gameover.js",
+        "type": "js",
+        "size": "2KB"
+      },
+      "intro.js": {
+        "alias": "Intro Script",
+        "src": "intro.js",
+        "type": "js",
+        "size": "3KB"
+      },
+      "winner.js": {
+        "alias": "Winner Script",
+        "src": "winner.js",
+        "type": "js",
+        "size": "2KB"
+      }
+    },
+    "video": {},
+    "atlases": {},
+    "tilemaps": {}
+  }
+}
