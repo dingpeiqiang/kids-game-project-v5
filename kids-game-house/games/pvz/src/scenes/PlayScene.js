@@ -73,6 +73,9 @@ export default class PlayScene extends Phaser.Scene {
     this.gameStarted = false
     this.relaxMode = false
     this.countdownEnded = false  // 防止 endCountdown 重复调用
+    
+    // 植物预览
+    this.plantPreview = null
 
     this.totalWaves = 5
     this.currentWave = 0
@@ -93,6 +96,7 @@ export default class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.zombies, this.plants, this.handleZombiePlantCollision, null, this)
     this.physics.add.overlap(this.zombies, this.lawnmowerGroup, this.handleZombieMowerCollision, null, this)
     this.input.on('pointerdown', (pointer) => this.handleTap(pointer))
+    this.input.on('pointermove', (pointer) => this.handlePointerMove(pointer))
 
     this.startCountdown()
   }
@@ -328,6 +332,7 @@ export default class PlayScene extends Phaser.Scene {
 
   addScore(amount) {
     this.score += amount
+    console.log('[PlayScene] 💰 加分:', amount, '| 总分:', this.score)
     if (this.scoreText) this.scoreText.setText(this.score.toString())
     this.tweens.add({ targets: this.scoreText, scale: 1.3, duration: 150, yoyo: true })
   }
@@ -698,7 +703,7 @@ export default class PlayScene extends Phaser.Scene {
       })
     }
 
-    // 僵尸边界检测
+    // 僵尸更新
     if (this.zombies && this.zombies.children.size > 0 && !this.gameOver) {
       this.zombies.children.each(zombie => {
         if (zombie.active) {
@@ -710,9 +715,51 @@ export default class PlayScene extends Phaser.Scene {
           if (zombie.x < -50) {
             zombie.destroy()
           }
+          
+          // 检查僵尸是否应该恢复移动（如果正在攻击但附近没有植物）
+          if (zombie.attackingPlant && !this.isZombieNearPlant(zombie)) {
+            console.log('[PlayScene] 🧟 僵尸远离植物，恢复移动')
+            if (zombie.gameData) {
+              zombie.setVelocityX(zombie.isSlowed ? zombie.gameData.speed * 0.4 : zombie.gameData.speed)
+            }
+            if (zombie.attackTimer) {
+              zombie.attackTimer.remove()
+              zombie.attackTimer = null
+            }
+            zombie.attackingPlant = false
+          }
+          
+          // 确保僵尸有速度（防止卡住）
+          if (!zombie.attackingPlant && zombie.body && zombie.body.velocity.x === 0 && zombie.gameData) {
+            zombie.setVelocityX(zombie.isSlowed ? zombie.gameData.speed * 0.4 : zombie.gameData.speed)
+          }
+          
+          // 确保僵尸可见（防止隐身）
+          if (zombie.alpha < 1 && !zombie.isFlashing) {
+            console.warn('[PlayScene] 🧟 检测到僵尸透明度异常，修复中...', zombie.alpha)
+            zombie.setAlpha(1)
+          }
         }
       })
     }
+  }
+  
+  // 检查僵尸附近是否有植物
+  isZombieNearPlant(zombie) {
+    if (!this.plants || this.plants.children.size === 0) return false
+    
+    let nearPlant = false
+    this.plants.children.each(plant => {
+      if (plant.active) {
+        const dx = Math.abs(zombie.x - plant.x)
+        const dy = Math.abs(zombie.y - plant.y)
+        // 在同一行且水平距离较近（碰撞盒大小约60）
+        if (dy < 40 && dx < 50) {
+          nearPlant = true
+        }
+      }
+    })
+    return nearPlant
   }
 
   // ── 游戏结束画面 ──
@@ -817,18 +864,27 @@ export default class PlayScene extends Phaser.Scene {
       })
     }
 
+    // 记录僵尸信息（在造成伤害前）
+    const zombieScore = zombie.gameData ? zombie.gameData.score : 10
+    const wasAlive = zombie.gameData && zombie.gameData.health > 0
+
+    // 造成伤害
     if (zombie.takeDamage) zombie.takeDamage(1)
     projectile.destroy()
 
-    if (zombie.active && zombie.gameData && zombie.gameData.health <= 0) {
+    // 检查是否死亡（takeDamage 后 health <= 0）
+    if (wasAlive && zombie.gameData && zombie.gameData.health <= 0) {
+      console.log('[PlayScene] 🧟 僵尸被消灭! Type:', zombie.zombieType, '| Score:', zombieScore)
+      
       // 连击
       const now = Date.now()
       if (now - this.lastKillTime < 2000) this.comboCount++
       else this.comboCount = 1
       this.lastKillTime = now
 
-      let baseScore = zombie.gameData.score || 10
+      let baseScore = zombieScore
       if (this.comboCount > 1) baseScore += this.comboCount * 3
+      console.log('[PlayScene] 💰 击杀得分:', baseScore, '(连击 x' + this.comboCount + ')')
       this.addScore(baseScore)
     }
   }
@@ -932,8 +988,9 @@ export default class PlayScene extends Phaser.Scene {
     // 消灭该行所有僵尸
     this.zombies.children.each(zombie => {
       if (zombie.active && zombie.gameData && zombie.gameData.row === row) {
-        // 僵尸被消灭
-        this.addScore(zombie.gameData.score || 10)
+        const score = zombie.gameData.score || 10
+        console.log('[PlayScene] 🚜 割草机消灭僵尸! Type:', zombie.zombieType, '| Score:', score)
+        this.addScore(score)
         zombie.takeDamage(999)  // 立即消灭
       }
     })
@@ -964,10 +1021,21 @@ export default class PlayScene extends Phaser.Scene {
   // ── 点击放置 ──
   handleTap(pointer) {
     if (!this.gameStarted || this.isPaused || this.gameOver || this.levelComplete) return
-    if (pointer.y < this.game.GAME_Y) return
-
+    
+    // 点击空白处（非网格区域）取消选择
     const GL = this.game.GRID_LEFT
     const gridRight = GL + this.game.COLS * this.game.CELL
+    const isOutsideGrid = pointer.x < GL || pointer.x > gridRight || pointer.y < this.game.GAME_Y
+    
+    if (isOutsideGrid && !this.shovelMode) {
+      // 取消植物选择
+      this.seedCards.forEach(card => card.deselect())
+      this.selectedPlantType = null
+      this.hidePlantPreview()
+      return
+    }
+    
+    if (pointer.y < this.game.GAME_Y) return
     if (pointer.x < GL || pointer.x > gridRight) return
 
     const row = this.rowForY(pointer.y)
@@ -999,6 +1067,11 @@ export default class PlayScene extends Phaser.Scene {
       new info.Class(this, cell)
       const card = this.seedCards.find(c => c.plantType === this.selectedPlantType)
       if (card) card.startCooldown()
+      
+      // 种植后取消选择
+      this.seedCards.forEach(c => c.deselect())
+      this.selectedPlantType = null
+      this.hidePlantPreview()
     } else {
       const txt = this.add.text(this.game.BASE_W / 2, this.game.BASE_H / 2, '阳光不足!', {
         fontSize: '28px', fill: '#FF0000', fontStyle: 'bold', stroke: '#000', strokeThickness: 3
@@ -1009,6 +1082,84 @@ export default class PlayScene extends Phaser.Scene {
         onComplete: (tween, targets) => targets[0].destroy()
       })
     }
+  }
+  
+  // ── 鼠标移动处理（显示植物预览）──
+  handlePointerMove(pointer) {
+    if (!this.selectedPlantType || this.shovelMode) {
+      this.hidePlantPreview()
+      return
+    }
+    
+    const GL = this.game.GRID_LEFT
+    const gridRight = GL + this.game.COLS * this.game.CELL
+    const isInsideGrid = pointer.x >= GL && pointer.x <= gridRight && pointer.y >= this.game.GAME_Y
+    
+    if (isInsideGrid) {
+      this.showPlantPreview(pointer)
+    } else {
+      this.hidePlantPreview()
+    }
+  }
+  
+  // 显示植物预览
+  showPlantPreview(pointer) {
+    const row = this.rowForY(pointer.y)
+    const col = this.colForX(pointer.x)
+    const cell = this.getCellOrigin(col, row)
+    
+    // 如果已经有预览，更新位置
+    if (this.plantPreview) {
+      this.plantPreview.x = cell.x
+      this.plantPreview.y = cell.y
+      
+      // 检查是否可以放置（格子为空且有足够阳光）
+      const canPlace = !this.plantAt(row, col) && this.sunCount >= this.getSelectedPlantCost()
+      this.plantPreview.setAlpha(canPlace ? 0.3 : 0.15)
+      this.plantPreview.setTint(canPlace ? 0xFFFFFF : 0xFF0000)
+      return
+    }
+    
+    // 创建新的预览
+    const textureMap = {
+      sunflower: 'sunflower',
+      peashooter: 'peashooter',
+      iceshooter: 'iceshooter',
+      repeater: 'repeater',
+      cherrybomb: 'cherrybomb',
+      potatomine: 'potatomine',
+      wallnut: 'wallnut'
+    }
+    
+    const texture = textureMap[this.selectedPlantType]
+    if (!texture || !this.textures.exists(texture)) return
+    
+    this.plantPreview = this.add.image(cell.x, cell.y, texture)
+      .setScale(0.8)
+      .setAlpha(0.3)
+      .setDepth(35)  // 在植物层级之上，但在僵尸之下
+  }
+  
+  // 隐藏植物预览
+  hidePlantPreview() {
+    if (this.plantPreview) {
+      this.plantPreview.destroy()
+      this.plantPreview = null
+    }
+  }
+  
+  // 获取选中植物的阳光消耗
+  getSelectedPlantCost() {
+    const costs = {
+      sunflower: 50,
+      peashooter: 100,
+      iceshooter: 175,
+      repeater: 200,
+      cherrybomb: 150,
+      potatomine: 25,
+      wallnut: 50
+    }
+    return costs[this.selectedPlantType] || 0
   }
 
   getPlantAt(row, col) {
@@ -1067,6 +1218,9 @@ export default class PlayScene extends Phaser.Scene {
       this.bgMusic = null
       console.log('[PlayScene] BGM 已清理')
     }
+    
+    // 清理植物预览
+    this.hidePlantPreview()
     
     // 清理割草机
     if (this.lawnmowers) {

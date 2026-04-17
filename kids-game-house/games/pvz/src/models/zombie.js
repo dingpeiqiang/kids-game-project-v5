@@ -21,6 +21,7 @@ export default class Zombie extends Phaser.Physics.Arcade.Sprite {
     scene.zombies.add(this)
 
     this.setScale(1.0)
+    this.setDepth(40)  // 设置层级，确保在植物之上
 
     const configs = {
       normal:     { health: 5,  speed: -25, score: 10 },
@@ -57,9 +58,24 @@ export default class Zombie extends Phaser.Physics.Arcade.Sprite {
     // 受伤闪烁
     if (!this.isFlashing) {
       this.isFlashing = true
+      const originalAlpha = this.alpha  // 保存原始透明度
+      
       this.scene.tweens.add({
-        targets: this, alpha: 0.5, duration: 100, yoyo: true, repeat: 1,
-        onComplete: () => { this.isFlashing = false }
+        targets: this, 
+        alpha: 0.4,  // 更明显的闪烁
+        duration: 80, 
+        yoyo: true, 
+        repeat: 1,
+        onComplete: () => { 
+          this.isFlashing = false
+          this.setAlpha(originalAlpha)  // 恢复到原始透明度
+          
+          // 调试：如果透明度不是1，记录警告
+          if (this.alpha < 1) {
+            console.warn('[Zombie] 透明度异常:', this.alpha, '| Type:', this.zombieType)
+            this.setAlpha(1)  // 强制修复
+          }
+        }
       })
     }
 
