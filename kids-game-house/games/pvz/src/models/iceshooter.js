@@ -26,13 +26,10 @@ export default class IceShooter extends Plant {
       this.scene.sounds.peaShoot.play()
     }
 
-    // 使用 sprites 图集的 ice_pea.png 帧
-    const pea = this.scene.projectiles.create(this.x + 40, this.y, 'sprites')
-    pea.setFrame('ice_pea.png')
-    pea.setScale(1.0)
+    // 使用 icePea 纹理（来自图集）
+    const pea = this.scene.projectiles.create(this.x + 40, this.y, 'icePea')
     pea.isIcePea = true
-    pea.body.setSize(20, 20)
-    pea.body.setAllowGravity(false)
-    pea.setVelocityX(180)
+    pea.setTint(0x88CCFF) // 冰蓝色
+    pea.setVelocityX(500)
   }
 }

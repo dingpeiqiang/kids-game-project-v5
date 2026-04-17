@@ -37,11 +37,35 @@ export default class BootScene extends Phaser.Scene {
     }
 
     // 加载音效
-    if (resources.audio && resources.audio.effect) {
-      Object.entries(resources.audio.effect).forEach(([key, item]) => {
-        console.log(`[BootScene] 加载音效: ${key}`);
-        this.load.audio(key, [item.src]);
-      });
+    if (resources.audio) {
+      // 加载 BGM
+      if (resources.audio.bgm) {
+        Object.entries(resources.audio.bgm).forEach(([key, item]) => {
+          console.log(`[BootScene] 加载 BGM: ${key}`);
+          this.load.audio(key, [item.src]);
+        });
+      }
+      
+      // 加载音效（跳过图片类型）
+      if (resources.audio.effect) {
+        Object.entries(resources.audio.effect).forEach(([key, item]) => {
+          // 跳过非音频资源（如被错误分类的图片）
+          if (item.type && !['mp3', 'wav', 'ogg', 'webm'].includes(item.type.toLowerCase())) {
+            console.log(`[BootScene] 跳过非音频资源: ${key} (类型: ${item.type})`);
+            return;
+          }
+          console.log(`[BootScene] 加载音效: ${key}`);
+          this.load.audio(key, [item.src]);
+        });
+      }
+      
+      // 加载语音
+      if (resources.audio.voice) {
+        Object.entries(resources.audio.voice).forEach(([key, item]) => {
+          console.log(`[BootScene] 加载语音: ${key}`);
+          this.load.audio(key, [item.src]);
+        });
+      }
     }
 
     // 加载图集

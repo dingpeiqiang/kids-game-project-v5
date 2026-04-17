@@ -13,7 +13,7 @@
     "isDefault": true,
     "author": "AI Assistant",
     "description": "Assets for the PVZ game using AI-generated cartoon style",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "globalStyle": {
     "primaryColor": "#4CAF50",
@@ -28,7 +28,7 @@
       "scene": {
         "grass": {
           "alias": "Grass Background",
-          "src": "/themes/pvz/assets/scene/grass_tile.png",
+          "src": "/themes/pvz/assets/scene/grass_bg.png?v=2",
           "type": "png"
         },
         "peashooter": {
@@ -104,10 +104,27 @@
       },
       "ui": {},
       "icon": {},
-      "effect": {}
+      "effect": {
+        "pea": {
+          "alias": "Pea Projectile",
+          "src": "/themes/pvz/assets/scene/pea.png",
+          "type": "png"
+        },
+        "icePea": {
+          "alias": "Ice Pea Projectile",
+          "src": "/themes/pvz/assets/scene/ice_pea.png",
+          "type": "png"
+        }
+      }
     },
     "audio": {
-      "bgm": {},
+      "bgm": {
+        "bgMusic": {
+          "alias": "bgMusic",
+          "src": "/themes/pvz/assets/audio/bgMusic.wav",
+          "type": "wav"
+        }
+      },
       "effect": {
         "peaShoot": {
           "alias": "Pea Shoot Sound",
@@ -137,5 +154,14 @@
       }
     },
     "tilemaps": {}
+  },
+  "audio": {
+    "bgm": {
+      "bgMusic": {
+        "alias": "bgMusic",
+        "src": "/themes/pvz/assets/audio/bgMusic.mp3",
+        "type": "mp3"
+      }
+    }
   }
 }

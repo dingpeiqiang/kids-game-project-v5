@@ -16,12 +16,23 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   create() {
+    // 停止之前可能存在的 BGM（防止重复播放）
+    if (this.bgMusic) {
+      this.bgMusic.stop()
+      this.bgMusic.destroy()
+      this.bgMusic = null
+    }
+    
     const C = window.GAME_CONFIG
     const W = C.BASE_W
     const H = C.BASE_H
     const UI_H = C.UI_H
     const GAME_Y = C.GAME_Y
+    const GAME_H = C.GAME_H
     const GL = C.GRID_LEFT
+    const COLS = C.COLS
+    const CELL = C.CELL
+    const GRID_RIGHT = C.GRID_RIGHT
 
     // 传递布局常量
     Object.keys(C).forEach(k => { this.game[k] = C[k] })
@@ -29,9 +40,18 @@ export default class PlayScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, W, H)
     this.cameras.main.setSize(W, H)
 
+    // ═══ 物理组（必须在 drawLawnmowers 之前创建） ═══
+    this.plants = this.physics.add.group()
+    this.projectiles = this.physics.add.group({ maxSize: 80 })
+    this.zombies = this.physics.add.group()
+    this.lawnmowerGroup = this.physics.add.group()  // 割草机组
+
     // ═══ 草地背景 ═══
-    this.add.tileSprite(0, GAME_Y, W, H - GAME_Y, 'grass')
-      .setOrigin(0, 0).setDepth(-10)
+    // 使用1100x580全屏草地背景图，完美匹配游戏分辨率
+    const grassBg = this.add.image(W / 2, H / 2, 'grass')
+      .setDepth(-10)
+    // 图片尺寸与游戏分辨率一致，无需缩放
+    // grass_bg.png 尺寸: 1100 x 580
 
     // ═══ 网格（交替色棋盘） ═══
     this.drawGrid()
@@ -52,6 +72,7 @@ export default class PlayScene extends Phaser.Scene {
     this.levelComplete = false
     this.gameStarted = false
     this.relaxMode = false
+    this.countdownEnded = false  // 防止 endCountdown 重复调用
 
     this.totalWaves = 5
     this.currentWave = 0
@@ -66,17 +87,11 @@ export default class PlayScene extends Phaser.Scene {
     this.createScoreDisplay()
     this.createSeedBar()
     this.createShovelButton()
-    this.createSettingsButton()
     this.createProgressDisplay()
-
-    // ═══ 物理组 ═══
-    this.plants = this.physics.add.group()
-    this.projectiles = this.physics.add.group({ maxSize: 80 })
-    this.zombies = this.physics.add.group()
 
     // ═══ 事件 ═══
     this.physics.add.overlap(this.zombies, this.plants, this.handleZombiePlantCollision, null, this)
-    this.physics.add.overlap(this.zombies, this.lawnmowers, this.handleZombieMowerCollision, null, this)
+    this.physics.add.overlap(this.zombies, this.lawnmowerGroup, this.handleZombieMowerCollision, null, this)
     this.input.on('pointerdown', (pointer) => this.handleTap(pointer))
 
     this.startCountdown()
@@ -118,6 +133,13 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   endCountdown() {
+    // 防止重复调用
+    if (this.countdownEnded) {
+      console.warn('[PlayScene] endCountdown 已被调用，跳过')
+      return
+    }
+    this.countdownEnded = true
+    
     if (this.countdownOverlay) {
       this.countdownOverlay.destroy()
       this.countdownText.destroy()
@@ -125,6 +147,25 @@ export default class PlayScene extends Phaser.Scene {
     }
 
     this.gameStarted = true
+
+    // 播放背景音乐
+    if (this.cache.audio.exists('bgMusic')) {
+      // 确保先停止并销毁任何现有的 BGM 实例
+      if (this.bgMusic) {
+        console.warn('[PlayScene] 检测到已存在的 BGM 实例，正在清理...')
+        this.bgMusic.stop()
+        this.bgMusic.destroy()
+        this.bgMusic = null
+      }
+      
+      // 创建新的 BGM 实例
+      this.bgMusic = this.sound.add('bgMusic', { loop: true })
+      this.bgMusic.volume = 0.4  // 单独设置音量
+      this.bgMusic.play()
+      console.log('[PlayScene] ✅ BGM 开始播放 | 时长:', this.bgMusic.duration.toFixed(1), '秒 | 音量:', this.bgMusic.volume)
+    } else {
+      console.warn('[PlayScene] ❌ bgMusic 音频资源未找到')
+    }
 
     this.sounds = {}
     if (this.cache.audio.exists('peaShoot')) {
@@ -135,7 +176,13 @@ export default class PlayScene extends Phaser.Scene {
     }
     if (this.cache.audio.exists('zombiesAreComing')) {
       this.sounds.zombiesAreComing = this.sound.add('zombiesAreComing')
-      this.sounds.zombiesAreComing.play()
+      this.sounds.zombiesAreComing.volume = 0.5  // 单独设置音量
+      // 延迟 2 秒播放，让 BGM 先建立氛围
+      this.time.delayedCall(2000, () => {
+        if (this.sounds.zombiesAreComing && !this.gameOver && !this.levelComplete) {
+          this.sounds.zombiesAreComing.play()
+        }
+      })
     }
 
     // 僵尸生成定时器
@@ -167,15 +214,7 @@ export default class PlayScene extends Phaser.Scene {
 
     const grid = this.add.graphics().setDepth(-5)
 
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const isLight = (r + c) % 2 === 0
-        grid.fillStyle(isLight ? 0x5a9c3e : 0x4a8c2e, 0.6)
-        grid.fillRect(GL + c * CELL, GY + r * CELL, CELL, CELL)
-      }
-    }
-
-    // 细网格线
+    // 只绘制细网格线，不绘制交替色棋盘（让草地图片完整显示）
     grid.lineStyle(1, 0x3a6c1e, 0.3)
     for (let r = 0; r <= ROWS; r++) {
       grid.moveTo(GL, GY + r * CELL)
@@ -205,26 +244,42 @@ export default class PlayScene extends Phaser.Scene {
       const y = GY + r * CELL + CELL / 2
       const mowerSprite = this.add.image(x, y, 'lawnmower').setScale(0.7).setDepth(50)
 
-      // 添加物理碰撞体
+      // 添加物理碰撞体并加入组
       this.physics.add.existing(mowerSprite)
       mowerSprite.body.setSize(60, 60)
       mowerSprite.body.setAllowGravity(false)
       mowerSprite.body.setImmovable(true)
       mowerSprite.body.enable = true
+      
+      // 添加到物理组，以便碰撞检测
+      this.lawnmowerGroup.add(mowerSprite)
 
       this.lawnmowers.push({ sprite: mowerSprite, row: r, active: true, isActive: true })
     }
   }
 
-  // ── 阳光 UI ──
+  // ── 阳光 UI（左侧区域，包含积分和波次）──
   createSunDisplay() {
-    // 阳光图标
-    this.add.image(35, 25, 'sun').setScale(0.55).setDepth(101)
-    // 阳光数量
-    this.sunText = this.add.text(60, 18, this.sunCount.toString(), {
-      fontSize: '24px', fill: '#FFD700', fontStyle: 'bold',
+    const UI_H = this.game.UI_H
+    const leftX = 20
+    const centerX = 60
+
+    // 第一行：阳光图标 + 数量
+    this.add.image(leftX + 10, UI_H / 2 - 15, 'sun').setScale(0.4).setDepth(101)
+    this.sunText = this.add.text(leftX + 30, UI_H / 2 - 15, this.sunCount.toString(), {
+      fontSize: '18px', fill: '#FFD700', fontStyle: 'bold',
       stroke: '#000', strokeThickness: 2
     }).setOrigin(0, 0.5).setDepth(101)
+
+    // 第二行：积分
+    this.scoreText = this.add.text(centerX, UI_H / 2 + 8, '0', {
+      fontSize: '14px', fill: '#00FF00', fontStyle: 'bold', stroke: '#000', strokeThickness: 1
+    }).setOrigin(0.5).setDepth(101)
+
+    // 第三行：波次
+    this.waveInfoText = this.add.text(centerX, UI_H / 2 + 26, '1/5', {
+      fontSize: '12px', fill: '#FFD700', stroke: '#000', strokeThickness: 1
+    }).setOrigin(0.5).setDepth(101)
   }
 
   addSun(amount) {
@@ -266,20 +321,14 @@ export default class PlayScene extends Phaser.Scene {
     new Sun(this, x, -50, 'sky')
   }
 
-  // ── 分数 UI ──
+  // ── 分数 UI（已合并到阳光显示区域）──
   createScoreDisplay() {
-    const W = this.game.BASE_W
-    this.add.text(W - 130, 15, '分数:', {
-      fontSize: '16px', fill: '#AAA', fontStyle: 'bold'
-    }).setOrigin(0, 0.5).setDepth(100)
-    this.scoreText = this.add.text(W - 75, 15, '0', {
-      fontSize: '20px', fill: '#00FF00', fontStyle: 'bold', stroke: '#000', strokeThickness: 1
-    }).setOrigin(0, 0.5).setDepth(101)
+    // 分数显示已移至 createSunDisplay
   }
 
   addScore(amount) {
     this.score += amount
-    this.scoreText.setText(this.score.toString())
+    if (this.scoreText) this.scoreText.setText(this.score.toString())
     this.tweens.add({ targets: this.scoreText, scale: 1.3, duration: 150, yoyo: true })
   }
 
@@ -296,10 +345,12 @@ export default class PlayScene extends Phaser.Scene {
       { type: 'wallnut',    cost: 50,  icon: 'wallnut' }
     ]
 
-    const cardW = 65
-    const cardH = 70
-    const startX = 110  // 阳光显示右边开始
-    const gap = 72
+    const cardW = 60
+    const cardH = 65
+    const gap = 65
+    // 计算居中起始位置：阳光区(100px) + 卡片区(7*65=455px) + 右侧区(150px) = 705px 总宽度
+    // 居中放置：(1100 - 705) / 2 + 100 ≈ 100 (从阳光区后开始)
+    const startX = 100 + gap / 2
 
     plants.forEach((plant, index) => {
       const x = startX + index * gap
@@ -311,51 +362,63 @@ export default class PlayScene extends Phaser.Scene {
     if (this.seedCards.length > 0) this.seedCards[0].select()
   }
 
-  // ── 铲子 ──
+  // ── 铲子（卡牌样式，使用图片素材）──
   createShovelButton() {
     const W = this.game.BASE_W
     const UI_H = this.game.UI_H
 
-    const shovelBg = this.add.rectangle(W - 55, UI_H / 2, 50, 55, 0x8B4513)
-      .setStrokeStyle(2, 0x654321).setDepth(100)
-
-    // 简单铲子图标
-    const shovelGfx = this.add.graphics().setDepth(101)
-    const sx = W - 55
+    // 铲子卡牌放在波次进度左边
+    const cardW = 50
+    const cardH = 55
+    const sx = W - 110
     const sy = UI_H / 2
-    shovelGfx.fillStyle(0x888888, 1)
-    shovelGfx.fillRect(sx - 3, sy - 18, 6, 28)
-    shovelGfx.fillStyle(0x999999, 1)
-    shovelGfx.beginPath()
-    shovelGfx.moveTo(sx - 10, sy + 10)
-    shovelGfx.lineTo(sx, sy + 22)
-    shovelGfx.lineTo(sx + 10, sy + 10)
-    shovelGfx.closePath()
-    shovelGfx.fill()
 
-    shovelBg.setInteractive({ useHandCursor: true })
-    shovelBg.on('pointerdown', (pointer, localX, localY, event) => {
+    // 创建容器
+    this.shovelCard = this.add.container(sx, sy).setDepth(100)
+
+    // 卡牌背景（棕色系）
+    this.shovelBg = this.add.rectangle(0, 0, cardW, cardH, 0x8B4513)
+      .setStrokeStyle(2, 0x654321)
+    this.shovelCard.add(this.shovelBg)
+
+    // 铲子图片素材
+    const shovelIcon = this.add.image(0, -2, 'shovel')
+      .setScale(0.4)
+    this.shovelCard.add(shovelIcon)
+
+    // 选中边框（默认隐藏）
+    this.shovelSelectBorder = this.add.rectangle(0, 0, cardW + 4, cardH + 4)
+      .setStrokeStyle(3, 0xFFFF00)
+      .setFillStyle()
+      .setVisible(false)
+    this.shovelCard.add(this.shovelSelectBorder)
+
+    // 交互
+    this.shovelBg.setInteractive({ useHandCursor: true })
+    this.shovelBg.on('pointerdown', (pointer, localX, localY, event) => {
       event.stopPropagation()
       this.toggleShovelMode()
     })
-    shovelBg.on('pointerover', () => {
-      shovelBg.setFillStyle(this.shovelMode ? 0xFFD700 : 0xA0522D)
+    this.shovelBg.on('pointerover', () => {
+      if (!this.shovelMode) this.shovelBg.setFillStyle(0xA0522D)
     })
-    shovelBg.on('pointerout', () => {
-      shovelBg.setFillStyle(this.shovelMode ? 0xFFD700 : 0x8B4513)
+    this.shovelBg.on('pointerout', () => {
+      if (!this.shovelMode) this.shovelBg.setFillStyle(0x8B4513)
     })
-
-    this.shovelBg = shovelBg
   }
 
   toggleShovelMode() {
     this.shovelMode = !this.shovelMode
     if (this.shovelMode) {
+      // 选中铲子，取消植物选择
       this.shovelBg.setFillStyle(0xFFD700)
+      this.shovelSelectBorder.setVisible(true)
       this.seedCards.forEach(card => card.deselect())
       this.selectedPlantType = null
     } else {
+      // 取消铲子选择
       this.shovelBg.setFillStyle(0x8B4513)
+      this.shovelSelectBorder.setVisible(false)
     }
   }
 
@@ -366,6 +429,7 @@ export default class PlayScene extends Phaser.Scene {
     })
     this.shovelMode = false
     this.shovelBg.setFillStyle(0x8B4513)
+    this.shovelSelectBorder.setVisible(false)
   }
 
   // ── 设置按钮 ──
@@ -478,63 +542,10 @@ export default class PlayScene extends Phaser.Scene {
     }
   }
 
-  // ── 波次进度显示 ──
+  // ── 波次进度显示（右侧，僵尸数量已隐藏）──
   createProgressDisplay() {
-    const W = this.game.BASE_W
-    const barY = 60
-    const barWidth = 300
-    const barHeight = 28
-
-    // 容器背景
-    const containerBg = this.add.graphics().setDepth(100)
-    containerBg.fillStyle(0x1a1a2e, 0.95)
-    containerBg.fillRoundedRect(W / 2 - barWidth / 2 - 20, barY - barHeight / 2 - 15, barWidth + 40, barHeight + 35, 12)
-    containerBg.lineStyle(2, 0x4a4a6a, 1)
-    containerBg.strokeRoundedRect(W / 2 - barWidth / 2 - 20, barY - barHeight / 2 - 15, barWidth + 40, barHeight + 35, 12)
-
-    // 标题图标
-    this.add.text(W / 2 - barWidth / 2, barY - barHeight / 2 - 8, '🏴‍☠️', { fontSize: '18px' })
-      .setOrigin(0, 0.5).setDepth(101)
-
-    // 波次标签
-    this.waveLabel = this.add.text(W / 2 - 30, barY - barHeight / 2 - 8, '第 1 波', {
-      fontSize: '16px', fill: '#FFD700', fontStyle: 'bold'
-    }).setOrigin(0, 0.5).setDepth(101)
-
-    // 僵尸数量
-    this.zombieCountText = this.add.text(W / 2 + 40, barY - barHeight / 2 - 8, '剩余: 0', {
-      fontSize: '14px', fill: '#FF6B6B'
-    }).setOrigin(0, 0.5).setDepth(101)
-
-    // 进度条背景
-    const progressBg = this.add.graphics().setDepth(100)
-    progressBg.fillStyle(0x2d2d44, 1)
-    progressBg.fillRoundedRect(W / 2 - barWidth / 2, barY - barHeight / 2 + 5, barWidth, barHeight, 8)
-
-    // 进度条渐变（用多个矩形模拟）
-    this.progressSegments = []
-    for (let i = 0; i < this.totalWaves; i++) {
-      const segX = W / 2 - barWidth / 2 + (barWidth / this.totalWaves) * i + 2
-      const seg = this.add.graphics().setDepth(101)
-      seg.fillStyle(0x3d3d5c, 1)
-      seg.fillRoundedRect(segX, barY - barHeight / 2 + 7, barWidth / this.totalWaves - 4, barHeight - 4, 4)
-      this.progressSegments.push({ graphics: seg, filled: false, index: i })
-    }
-
-    // 波次完成标记（旗帜图标）
-    this.waveFlags = []
-    for (let i = 0; i < this.totalWaves; i++) {
-      const flagX = W / 2 - barWidth / 2 + (barWidth / this.totalWaves) * (i + 0.5)
-      const flag = this.add.text(flagX, barY + 4, '⚑', {
-        fontSize: '14px', fill: '#666666'
-      }).setOrigin(0.5, 0.5).setDepth(102)
-      this.waveFlags.push(flag)
-    }
-
-    // 底部波次提示
-    this.waveHintText = this.add.text(W / 2, barY + barHeight / 2 + 8, '准备中...', {
-      fontSize: '11px', fill: '#888888'
-    }).setOrigin(0.5).setDepth(101)
+    // 僵尸数量显示已移除，波次信息在左侧阳光区显示
+    this.zombieCountText = null
   }
 
   startNextWave() {
@@ -553,83 +564,11 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   updateProgressDisplay() {
-    const W = this.game.BASE_W
-    const barWidth = 300
-    const barHeight = 28
-    const barY = 60
-    const totalZombies = this.zombiesPerWave[this.currentWave - 1] || 0
-    const remainingZombies = totalZombies - this.zombiesSpawnedInWave + this.zombies.countActive(true)
-
-    // 更新波次标签
-    this.waveLabel.setText(`第 ${this.currentWave} 波`)
-
-    // 更新剩余僵尸数量
-    this.zombieCountText.setText(`剩余: ${this.zombies.countActive(true)}`)
-
-    // 更新进度段颜色
-    for (let i = 0; i < this.totalWaves; i++) {
-      const seg = this.progressSegments[i]
-      seg.graphics.clear()
-
-      const segX = W / 2 - barWidth / 2 + (barWidth / this.totalWaves) * i + 2
-      const segWidth = barWidth / this.totalWaves - 4
-
-      if (i < this.currentWave - 1) {
-        // 已完成 - 绿色
-        seg.graphics.fillStyle(0x27AE60, 1)
-        seg.graphics.fillRoundedRect(segX, barY - barHeight / 2 + 7, segWidth, barHeight - 4, 4)
-      } else if (i === this.currentWave - 1) {
-        // 当前波次 - 渐变绿
-        seg.graphics.fillStyle(0x2ECC71, 1)
-        seg.graphics.fillRoundedRect(segX, barY - barHeight / 2 + 7, segWidth, barHeight - 4, 4)
-        // 添加闪烁动画
-        if (!seg.pulsing) {
-          seg.pulsing = true
-          this.tweens.add({
-            targets: seg.graphics,
-            alpha: 0.7,
-            duration: 500,
-            yoyo: true,
-            repeat: -1
-          })
-        }
-      } else {
-        // 未完成 - 灰色
-        seg.graphics.fillStyle(0x3d3d5c, 1)
-        seg.graphics.fillRoundedRect(segX, barY - barHeight / 2 + 7, segWidth, barHeight - 4, 4)
-      }
+    // 更新波次信息（在左侧阳光区）
+    if (this.waveInfoText) {
+      this.waveInfoText.setText(`${this.currentWave}/${this.totalWaves}`)
     }
-
-    // 更新旗帜颜色
-    this.waveFlags.forEach((flag, i) => {
-      if (i < this.currentWave) {
-        flag.setStyle({ fontSize: '14px', fill: '#27AE60' })
-        flag.setText('⚑')
-      } else if (i === this.currentWave) {
-        flag.setStyle({ fontSize: '16px', fill: '#FFD700' })
-        flag.setText('⚑')
-        // 当前波次旗帜闪烁
-        this.tweens.add({
-          targets: flag,
-          scale: { from: 1, to: 1.3 },
-          duration: 600,
-          yoyo: true,
-          repeat: -1
-        })
-      } else {
-        flag.setStyle({ fontSize: '14px', fill: '#555555' })
-        flag.setText('⚑')
-      }
-    })
-
-    // 更新底部提示
-    if (this.currentWave === this.totalWaves) {
-      this.waveHintText.setText('⚠️ 最终波 - 全力防守！')
-      this.waveHintText.setStyle({ fontSize: '12px', fill: '#FF6B6B', fontStyle: 'bold' })
-    } else {
-      this.waveHintText.setText(`下一波: ${this.zombiesPerWave[this.currentWave] || 0} 只僵尸`)
-      this.waveHintText.setStyle({ fontSize: '11px', fill: '#888888' })
-    }
+    // 僵尸数量显示已移除
   }
 
   // ── 僵尸生成 ──
@@ -664,6 +603,12 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   showVictoryScreen() {
+    // 停止背景音乐
+    if (this.bgMusic) {
+      this.bgMusic.stop()
+      console.log('[PlayScene] BGM 已停止')
+    }
+    
     const W = this.game.BASE_W
     const H = this.game.BASE_H
     this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setDepth(3000)
@@ -685,9 +630,17 @@ export default class PlayScene extends Phaser.Scene {
     this.isPaused = !this.isPaused
     if (this.isPaused) {
       this.physics.world.pause()
+      // 暂停 BGM
+      if (this.bgMusic) {
+        this.bgMusic.pause()
+      }
       this.showPauseMenu()
     } else {
       this.physics.world.resume()
+      // 恢复 BGM
+      if (this.bgMusic) {
+        this.bgMusic.resume()
+      }
       this.hidePauseMenu()
     }
   }
@@ -764,6 +717,12 @@ export default class PlayScene extends Phaser.Scene {
 
   // ── 游戏结束画面 ──
   showGameOverScreen() {
+    // 停止背景音乐
+    if (this.bgMusic) {
+      this.bgMusic.stop()
+      console.log('[PlayScene] BGM 已停止')
+    }
+    
     const W = this.game.BASE_W
     const H = this.game.BASE_H
 
@@ -877,35 +836,66 @@ export default class PlayScene extends Phaser.Scene {
   // ── 僵尸-植物碰撞 ──
   handleZombiePlantCollision(zombie, plant) {
     if (!this.gameStarted || !zombie.active || !plant.active) return
-    if (zombie.setVelocityX) zombie.setVelocityX(0)
+    
+    // 如果已经在攻击，不要重复设置
+    if (zombie.attackingPlant) return
+    
+    // 停止移动
+    const origSpeed = zombie.gameData ? zombie.gameData.speed : -25
+    zombie.setVelocityX(0)
+    zombie.attackingPlant = true
+    
+    console.log('[PlayScene] 🧟 僵尸开始攻击植物 | Row:', zombie.gameData?.row)
 
-    if (!zombie.attackingPlant) {
-      zombie.attackingPlant = true
-      zombie.attackTimer = this.time.addEvent({
-        delay: 1000,
-        callback: () => {
-          if (plant.active && zombie.active) {
-            if (plant.takeDamage) {
-              plant.takeDamage(1)
-              this.tweens.add({ targets: plant, x: plant.x + 5, duration: 100, yoyo: true, repeat: 1 })
-            }
-          } else {
-            if (zombie.active && zombie.gameData) zombie.setVelocityX(zombie.gameData.speed)
-            if (zombie.attackTimer) zombie.attackTimer.remove()
-            zombie.attackingPlant = false
+    // 启动攻击定时器
+    zombie.attackTimer = this.time.addEvent({
+      delay: 1000,
+      callback: () => {
+        // 检查植物是否还存在
+        if (!plant.active || !plant.body) {
+          // 植物已被摧毁，恢复移动
+          console.log('[PlayScene] 🧟 植物被摧毁，僵尸恢复移动')
+          if (zombie.active && zombie.gameData) {
+            zombie.setVelocityX(zombie.gameData.speed)
           }
-        },
-        callbackScope: this,
-        loop: true
-      })
-    }
+          if (zombie.attackTimer) {
+            zombie.attackTimer.remove()
+            zombie.attackTimer = null
+          }
+          zombie.attackingPlant = false
+          return
+        }
+        
+        // 继续攻击植物
+        if (zombie.active && plant.active) {
+          if (plant.takeDamage) {
+            plant.takeDamage(1)
+            // 植物受伤动画
+            this.tweens.add({ 
+              targets: plant, 
+              x: plant.x + 5, 
+              duration: 100, 
+              yoyo: true, 
+              repeat: 1 
+            })
+          }
+        }
+      },
+      callbackScope: this,
+      loop: true
+    })
   }
 
   // ── 僵尸-小车碰撞 ──
-  handleZombieMowerCollision(zombie, mower) {
-    if (!this.gameStarted || !zombie.active || !mower.active) return
-    if (!mower.isActive) return  // 小车已经被触发
+  handleZombieMowerCollision(zombie, mowerSprite) {
+    if (!this.gameStarted || !zombie.active) return
+    
+    // 找到对应的 mower 对象
+    const mower = this.lawnmowers.find(m => m.sprite === mowerSprite)
+    if (!mower || !mower.active || !mower.isActive) return
 
+    console.log('[PlayScene] 🚜 割草机被触发! Row:', mower.row)
+    
     // 激活小车！
     mower.isActive = false
     this.activateLawnmower(mower)
@@ -924,7 +914,18 @@ export default class PlayScene extends Phaser.Scene {
       duration: 2000,
       ease: 'Linear',
       onComplete: () => {
-        mowerSprite.setVisible(false)
+        // 完全清理割草机
+        mowerSprite.destroy()
+        mower.active = false
+        mower.isActive = false
+        
+        // 从数组中移除
+        const index = this.lawnmowers.indexOf(mower)
+        if (index > -1) {
+          this.lawnmowers.splice(index, 1)
+        }
+        
+        console.log('[PlayScene] 割草机已清理 | 剩余:', this.lawnmowers.length)
       }
     })
 
@@ -1053,5 +1054,52 @@ export default class PlayScene extends Phaser.Scene {
 
   getZombieSpawnX() {
     return this.game.GRID_LEFT + this.game.COLS * this.game.CELL + Phaser.Math.Between(20, this.game.GRID_RIGHT - 20)
+  }
+
+  // 场景关闭时清理资源
+  shutdown() {
+    console.log('[PlayScene] 场景关闭，清理资源...')
+    
+    // 停止背景音乐
+    if (this.bgMusic) {
+      this.bgMusic.stop()
+      this.bgMusic.destroy()
+      this.bgMusic = null
+      console.log('[PlayScene] BGM 已清理')
+    }
+    
+    // 清理割草机
+    if (this.lawnmowers) {
+      this.lawnmowers.forEach(mower => {
+        if (mower && mower.sprite) {
+          mower.sprite.destroy()
+        }
+      })
+      this.lawnmowers = []
+      console.log('[PlayScene] 割草机已清理')
+    }
+    
+    // 清理割草机组
+    if (this.lawnmowerGroup) {
+      this.lawnmowerGroup.clear(true, true)  // clear(removeFromScene, destroyChildren)
+      console.log('[PlayScene] 割草机组已清理')
+    }
+    
+    // 清理定时器
+    if (this.zombieSpawnTimer) {
+      this.zombieSpawnTimer.remove()
+      this.zombieSpawnTimer = null
+    }
+    
+    // 清理其他音效
+    if (this.sounds) {
+      Object.values(this.sounds).forEach(sound => {
+        if (sound) {
+          sound.stop()
+          sound.destroy()
+        }
+      })
+      this.sounds = {}
+    }
   }
 }

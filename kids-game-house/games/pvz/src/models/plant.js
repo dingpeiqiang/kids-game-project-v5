@@ -47,13 +47,11 @@ export default class Plant extends Phaser.Physics.Arcade.Sprite {
       this.scene.sounds.peaShoot.play()
     }
 
-    // 使用 sprites 图集的 pea.png 帧
-    const pea = this.scene.projectiles.create(this.x + 40, this.y, 'sprites')
-    pea.setFrame('pea.png')
-    pea.setScale(1.0)
-    pea.body.setSize(20, 20)
+    // 使用独立 pea 纹理（40×40，setScale(0.8) → 32px 显示）
+    const pea = this.scene.projectiles.create(this.x + 40, this.y, 'pea')
+    // Pea 构造函数已设置 scale(0.8)
     pea.body.setAllowGravity(false)
-    pea.setVelocityX(200)
+    pea.setVelocityX(500)
     pea.isIcePea = false
   }
 

@@ -65,6 +65,11 @@ export default class Zombie extends Phaser.Physics.Arcade.Sprite {
 
     // 脱装备
     if (this.gameData.health <= 0) {
+      // 清理定时器
+      if (this.attackTimer) {
+        this.attackTimer.remove()
+        this.attackTimer = null
+      }
       this.destroy()
     } else if (this.zombieType === 'conehead' && this.gameData.health <= 5) {
       this.zombieType = 'normal'

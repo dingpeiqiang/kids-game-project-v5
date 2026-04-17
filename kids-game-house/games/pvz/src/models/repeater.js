@@ -32,13 +32,9 @@ export default class Repeater extends Plant {
   }
 
   shootPea() {
-    // 使用 sprites 图集的 pea.png 帧
-    const pea = this.scene.projectiles.create(this.x + 40, this.y, 'sprites')
-    pea.setFrame('pea.png')
-    pea.setScale(1.0)
-    pea.body.setSize(20, 20)
-    pea.body.setAllowGravity(false)
-    pea.setVelocityX(220)
+    // 使用 pea 纹理
+    const pea = this.scene.projectiles.create(this.x + 40, this.y, 'pea')
+    pea.setVelocityX(500)
     pea.isIcePea = false
   }
 }

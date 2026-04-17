@@ -1022,6 +1022,11 @@
             <div class="placeholder" id="ieNewPlaceholder">等待生成...</div>
             <img id="ieNewImage" style="display:none;" />
             <canvas id="ieEraserCanvas" style="display:none;position:absolute;top:0;left:0;cursor:crosshair;z-index:10;"></canvas>
+            <!-- SD 生成进度条 -->
+            <div class="gen-progress" id="ieProgress" style="position:absolute;top:8px;left:8px;right:8px;z-index:20;">
+              <div class="progress-bar"><div class="fill" id="ieProgressFill" style="width:0%"></div></div>
+              <div class="progress-text" id="ieProgressText">正在连接 SD WebUI...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1142,11 +1147,6 @@
           </div>
         </div>
       </div>
-      <!-- 进度条 -->
-      <div class="gen-progress" id="ieProgress">
-            <div class="progress-bar"><div class="fill" id="ieProgressFill" style="width:0%"></div></div>
-            <div class="progress-text" id="ieProgressText">正在连接 SD WebUI...</div>
-          </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeImageEditor()">取消</button>
@@ -1314,18 +1314,32 @@
         </div>
       </div>
 
+
       <!-- 文字生成模式 -->
       <div class="ss-section" id="mgTextSection">
         <div class="ss-section-title">📝 音乐描述</div>
-        <textarea id="mgPrompt" rows="3" style="width:100%;resize:vertical;font-family:inherit;" placeholder="描述你想要生成的音乐，例如：欢快的8-bit游戏背景音乐，节奏明快，适合冒险场景"></textarea>
+        
+        <!-- 翻译工具 -->
+        <div style="margin-bottom:12px;padding:12px;background:rgba(52,152,219,0.1);border:1px solid rgba(52,152,219,0.3);border-radius:8px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:14px;">🌐 中文→英文 翻译</span>
+            <button class="btn btn-xs btn-primary" onclick="translateMgPrompt()">🔄 翻译</button>
+          </div>
+          <textarea id="mgCnPrompt" rows="2" style="width:100%;resize:vertical;font-family:inherit;background:rgba(0,0,0,0.2);" placeholder="输入中文描述，如：欢快的游戏背景音乐"></textarea>
+          <div id="mgTranslateHint" style="font-size:11px;opacity:0.7;margin-top:4px;">
+            提示：MusicGen 对英文描述效果更好，建议翻译后使用
+          </div>
+        </div>
+        
+        <textarea id="mgPrompt" rows="3" style="width:100%;resize:vertical;font-family:inherit;" placeholder="输入英文描述，如：cheerful 8-bit game background music"></textarea>
         <div style="margin-top:8px;">
-          <div style="font-size:12px;opacity:0.7;margin-bottom:6px;">快速模板</div>
+          <div style="font-size:12px;opacity:0.7;margin-bottom:6px;">快速模板（英文）</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('欢快的8-bit游戏音乐，明快节奏')">🎮 游戏音乐</button>
-            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('紧张的战斗背景音乐，鼓点强烈')">⚔️ 战斗音乐</button>
-            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('神秘的地下城氛围，阴暗低沉')">🏰 神秘氛围</button>
-            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('胜利的凯旋音乐，号角和鼓声')">🏆 胜利音乐</button>
-            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('轻松休闲的背景音乐，轻柔钢琴')">☕ 休闲音乐</button>
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('cheerful 8-bit game music, upbeat tempo, retro gaming')">🎮 游戏音乐</button>
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('intense battle music, strong drums, epic fight scene')">⚔️ 战斗音乐</button>
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('mysterious dungeon atmosphere, dark and low, haunting')">🏰 神秘氛围</button>
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('triumphant victory fanfare, horns and drums, celebratory')">🏆 胜利音乐</button>
+            <button class="btn btn-xs btn-secondary" onclick="setMgPrompt('relaxing background music, soft piano, peaceful cafe vibes')">☕ 休闲音乐</button>
           </div>
         </div>
       </div>
@@ -2308,13 +2322,13 @@ const SIZE_SPEC = {
   sun: { width: 80, height: 80, note: '阳光，代码会缩小到 55%' },
   // 割草机：显示 setScale(0.7)
   mower: { width: 100, height: 60, note: '割草机，代码会缩小到 70%' },
-  // 背景：490x290
-  background: { width: 490, height: 290, note: '游戏背景' },
+  // 背景：1100x580 (游戏全屏分辨率)
+  background: { width: 1100, height: 580, note: '游戏全屏背景 1100x580' },
 };
 
 const RESOURCES = {
   images: [
-    { key: 'grass',            alias: 'Grass Background',      file: 'grass_tile.png',       path: `${THEME_BASE}/assets/scene/grass_tile.png`,       size: SIZE_SPEC.background },
+    { key: 'grass',            alias: 'Grass Background',      file: 'grass_bg.png',       path: `${THEME_BASE}/assets/scene/grass_bg.png`,       size: SIZE_SPEC.background },
     { key: 'peashooter',       alias: 'Pea Shooter Plant',     file: 'peashooter.png',       path: `${THEME_BASE}/assets/scene/peashooter.png`,       size: SIZE_SPEC.plant },
     { key: 'sunflower',        alias: 'Sunflower Plant',       file: 'sunflower.png',        path: `${THEME_BASE}/assets/scene/sunflower.png`,        size: SIZE_SPEC.plant },
     { key: 'wallnut',          alias: 'Wall-nut Plant',        file: 'wallnut.png',          path: `${THEME_BASE}/assets/scene/wallnut.png`,          size: SIZE_SPEC.plant },
@@ -2333,11 +2347,7 @@ const RESOURCES = {
     { key: 'ice_pea',          alias: 'Ice Pea Projectile',    file: 'ice_pea.png',          path: `${THEME_BASE}/assets/scene/ice_pea.png`,          size: SIZE_SPEC.pea },
     { key: 'sprites',          alias: 'Sprites Atlas',         file: 'sprites.png',          path: `${THEME_BASE}/assets/scene/sprites.png`,          size: null },
   ],
-  audio: [
-    { key: 'peaShoot',         alias: 'Pea Shoot Sound',       file: 'pea_shoot.mp3',        path: `${THEME_BASE}/assets/audio/effects/pea_shoot.mp3` },
-    { key: 'splat',            alias: 'Splat Sound',           file: 'splat.mp3',            path: `${THEME_BASE}/assets/audio/effects/splat.mp3` },
-    { key: 'zombiesAreComing', alias: 'Zombies Are Coming',   file: 'zombies_are_coming.mp3',path: `${THEME_BASE}/assets/audio/effects/zombies_are_coming.mp3` },
-  ],
+  audio: [], // 将从 GTRS.json 动态加载
   json: [
     { key: 'sprites_atlas',  alias: 'Sprites Atlas Config',   file: 'sprites.json',        path: `${THEME_BASE}/assets/scene/sprites.json` },
     { key: 'gtrs',           alias: 'GTRS 主题配置',           file: 'GTRS.json',           path: `${THEME_BASE}/GTRS.json` },
@@ -2577,8 +2587,81 @@ async function checkSD() {
   updateRetryStatus();
 }
 
+// ==================== 从 GTRS.json 动态加载音频列表 ====================
+async function loadAudioFromGTRS() {
+  try {
+    // 添加时间戳避免缓存
+    const gtrsPath = `${THEME_BASE}/GTRS.json?t=${Date.now()}`;
+    const response = await fetch(gtrsPath);
+    if (!response.ok) {
+      console.warn('[ResourceManager] 无法加载 GTRS.json，使用默认音频列表');
+      return;
+    }
+    
+    const gtrsData = await response.json();
+    const audioList = [];
+    
+    // 遍历 GTRS 中的音频配置
+    if (gtrsData.resources && gtrsData.resources.audio) {
+      const audioConfig = gtrsData.resources.audio;
+      
+      // 处理 BGM
+      if (audioConfig.bgm) {
+        Object.entries(audioConfig.bgm).forEach(([key, config]) => {
+          const filename = config.src.split('/').pop();
+          audioList.push({
+            key: key,
+            alias: config.alias || key,
+            file: filename,
+            path: config.src  // GTRS 中已经是完整路径，不需要添加 THEME_BASE
+          });
+        });
+      }
+      
+      // 处理音效
+      if (audioConfig.effect) {
+        Object.entries(audioConfig.effect).forEach(([key, config]) => {
+          const filename = config.src.split('/').pop();
+          audioList.push({
+            key: key,
+            alias: config.alias || key,
+            file: filename,
+            path: config.src  // GTRS 中已经是完整路径
+          });
+        });
+      }
+      
+      // 处理语音
+      if (audioConfig.voice) {
+        Object.entries(audioConfig.voice).forEach(([key, config]) => {
+          const filename = config.src.split('/').pop();
+          audioList.push({
+            key: key,
+            alias: config.alias || key,
+            file: filename,
+            path: config.src  // GTRS 中已经是完整路径
+          });
+        });
+      }
+    }
+    
+    // 更新 RESOURCES.audio
+    RESOURCES.audio = audioList;
+    console.log('[ResourceManager] 从 GTRS.json 加载了', audioList.length, '个音频资源');
+    
+    // 刷新徽章和界面
+    updateBadges();
+    renderContent(currentTab);
+  } catch (error) {
+    console.error('[ResourceManager] 加载音频列表失败:', error);
+  }
+}
+
 // ==================== 初始化 ====================
-window.onload = () => {
+window.onload = async () => {
+  // 先从 GTRS.json 加载音频列表
+  await loadAudioFromGTRS();
+  
   updateBadges();
   renderContent('all');
   checkSD();
@@ -2853,11 +2936,16 @@ async function doIEGenerate() {
   const fillEl = document.getElementById('ieProgressFill');
   const textEl = document.getElementById('ieProgressText');
   const btnGen = document.getElementById('ieBtnGen');
+  const placeholder = document.getElementById('ieNewPlaceholder');
+  const newImage = document.getElementById('ieNewImage');
 
   progressEl.classList.add('show');
   fillEl.style.width = '10%';
   textEl.textContent = '正在连接 SD WebUI...';
   if (btnGen) btnGen.disabled = true;
+  // 隐藏旧图和占位符
+  placeholder.style.display = 'none';
+  newImage.style.display = 'none';
 
   let progInterval;
   try {
@@ -3322,12 +3410,63 @@ function toggleAudio(key, path) {
     }
   }
 
-  const audio = new Audio(path);
+  console.log('[AudioPlayer] 尝试播放:', { key, path });
+  
+  const audio = new Audio();
   audio._key = key;
+  
+  // 添加错误处理
+  audio.onerror = (e) => {
+    console.error('[AudioPlayer] 加载失败:', {
+      key,
+      path,
+      error: e,
+      errorCode: audio.error?.code,
+      errorMessage: audio.error?.message
+    });
+    
+    let errorMsg = '音频加载失败';
+    if (audio.error) {
+      switch(audio.error.code) {
+        case 1:
+          errorMsg = '音频加载中止';
+          break;
+        case 2:
+          errorMsg = '网络错误，无法加载音频';
+          break;
+        case 3:
+          errorMsg = '音频解码失败，文件格式可能不支持';
+          break;
+        case 4:
+          errorMsg = '音频格式不支持';
+          break;
+      }
+    }
+    
+    showToast(errorMsg + '\n路径: ' + path, true);
+    btn.classList.remove('playing');
+    btn.textContent = '▶';
+    currentAudio = null;
+  };
+  
+  audio.oncanplaythrough = () => {
+    console.log('[AudioPlayer] 音频加载成功，开始播放');
+  };
+  
   currentAudio = audio;
+  audio.src = path;
+  
   btn.classList.add('playing');
   btn.textContent = '■';
-  audio.play().catch(() => showToast('音频播放失败', true));
+  
+  audio.play().catch((err) => {
+    console.error('[AudioPlayer] 播放失败:', err);
+    showToast('播放失败: ' + err.message, true);
+    btn.classList.remove('playing');
+    btn.textContent = '▶';
+    currentAudio = null;
+  });
+  
   audio.onended = () => {
     btn.classList.remove('playing');
     btn.textContent = '▶';
@@ -3897,6 +4036,7 @@ const AudioEditor = (function() {
   let animationId = null;
   let _loop = false;
   let originalFileName = '';
+  let currentAudioKey = ''; // 当前编辑的音频 key（从游戏资源加载时设置）
 
   function init() {
     // 拖拽
@@ -3915,12 +4055,19 @@ const AudioEditor = (function() {
   }
 
   async function loadFile(file) {
-    if (!file.type.startsWith('audio/')) {
+    // 放宽类型检查，允许没有 MIME 类型的音频文件
+    const isAudio = file.type.startsWith('audio/') || /\.(wav|mp3|ogg|m4a|aac|flac)$/i.test(file.name);
+    if (!isAudio) {
       alert('请选择音频文件！');
       return;
     }
 
     originalFileName = file.name;
+    // 只有当 currentAudioKey 未设置时才清除（从文件导入时需要手动选择）
+    // 如果已经设置了 key（从资源加载），保留它
+    if (!AudioEditor.currentAudioKey) {
+      AudioEditor.currentAudioKey = '';
+    }
     document.getElementById('aeFileName').textContent = file.name;
     document.getElementById('aeDropHint').style.display = 'none';
     document.getElementById('aeFileInfo').style.display = 'block';
@@ -4298,37 +4445,19 @@ const AudioEditor = (function() {
     // 清空选项
     select.innerHTML = '<option value="">-- 选择游戏音频 --</option>';
 
-    // 从 RESOURCES.audio 中获取音频列表
-    if (typeof RESOURCES !== 'undefined' && RESOURCES.audio) {
-      RESOURCES.audio.forEach((audio, idx) => {
-        const opt = document.createElement('option');
-        opt.value = audio.key || `audio_${idx}`;
-        opt.textContent = `${audio.key || audio.file || 'audio_' + idx} ${audio.description ? ' - ' + audio.description : ''}`;
-        select.appendChild(opt);
-      });
-    }
-
-    // 添加一些常见的游戏音频 key
-    const commonAudioKeys = [
-      { key: 'bgm_game', label: '🎵 BGM - 游戏背景音乐' },
-      { key: 'bgm_menu', label: '🎵 BGM - 菜单背景音乐' },
-      { key: 'bgm_battle', label: '🎵 BGM - 战斗音乐' },
-      { key: 'sfx_shoot', label: '🔫 音效 - 射击' },
-      { key: 'sfx_explosion', label: '💥 音效 - 爆炸' },
-      { key: 'sfx_hit', label: '💫 音效 - 命中' },
-      { key: 'sfx_collect', label: '✨ 音效 - 收集' },
-      { key: 'sfx_button', label: '👆 音效 - 按钮点击' },
-      { key: 'sfx_victory', label: '🏆 音效 - 胜利' },
-      { key: 'sfx_defeat', label: '💀 音效 - 失败' },
-      { key: 'sun_collect', label: '☀️ 阳光收集音效' },
-      { key: 'plant_place', label: '🌱 植物放置音效' },
-      { key: 'zombie_groan', label: '🧟 僵尸叫声' },
-      { key: 'wave_start', label: '🏴‍☠️ 波次开始音效' }
+    // PVZ 游戏实际存在的音频文件（从 GTRS.json 中获取）
+    const pvzAudioKeys = [
+      { key: 'pea_shoot', label: '🔫 豌豆射击音效 (pea_shoot.mp3)', path: 'effects/pea_shoot.mp3' },
+      { key: 'splat', label: '💥 溅血音效 (splat.mp3)', path: 'effects/splat.mp3' },
+      { key: 'zombies_are_coming', label: '🧟 僵尸来了音效 (zombies_are_coming.mp3)', path: 'effects/zombies_are_coming.mp3' },
+      { key: 'bgMusic', label: '🎵 背景音乐 (bgMusic.wav)', path: 'bgMusic.wav' },
+      { key: 'bg_music', label: '🎵 背景音乐 (bg_music.wav)', path: 'bg_music.wav' }
     ];
 
-    commonAudioKeys.forEach(item => {
+    pvzAudioKeys.forEach(item => {
       const opt = document.createElement('option');
       opt.value = item.key;
+      opt.dataset.path = item.path; // 存储实际路径
       opt.textContent = item.label;
       select.appendChild(opt);
     });
@@ -4340,13 +4469,35 @@ const AudioEditor = (function() {
 
   // 显示应用到游戏选择界面
   function showApplyToGame() {
+    // 如果已有 currentAudioKey（从游戏资源加载的音频），直接应用
+    const key = AudioEditor.currentAudioKey;
+    if (key) {
+      confirmApplyToGame(key);
+      return;
+    }
+    // 否则显示选择器让用户选择
     loadGameAudioList();
     document.getElementById('aeApplyToGameSection').style.display = 'block';
   }
 
+
   // 确认应用到游戏
-  async function confirmApplyToGame() {
-    const selectedKey = document.getElementById('aeTargetAudio').value;
+  async function confirmApplyToGame(selectedKey) {
+    // 如果没传 selectedKey，则从选择器获取
+    let relativePath = '';
+    let filename = '';
+    
+    if (!selectedKey) {
+      const select = document.getElementById('aeTargetAudio');
+      selectedKey = select.value;
+      // 获取存储在 option 中的实际路径
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption && selectedOption.dataset.path) {
+        relativePath = selectedOption.dataset.path;
+        filename = relativePath.split('/').pop();
+      }
+    }
+    
     if (!selectedKey) {
       alert('请选择一个要替换的游戏音频！');
       return;
@@ -4356,72 +4507,178 @@ const AudioEditor = (function() {
       return;
     }
 
+    // 如果没有从选择器获取到路径，构建默认路径
+    if (!relativePath) {
+      // 根据文件名判断是否在 effects 目录
+      if (selectedKey.includes('pea') || selectedKey.includes('splat') || selectedKey.includes('zombie')) {
+        relativePath = 'effects/' + selectedKey + '.mp3';
+      } else {
+        relativePath = selectedKey + '.wav';
+      }
+      filename = relativePath.split('/').pop();
+    }
+
+    // 构建完整的目标路径（用 let 声明，允许修改）
+    let targetPath = 'themes/pvz/assets/audio/' + relativePath;
+
+    // 检查原始文件格式
+    const originalExt = originalFileName.split('.').pop().toLowerCase();
+    
+    // 如果是 WAV 格式，给出提示并自动转换
+    if (originalExt === 'wav') {
+      showToast('ℹ️ 检测到 WAV 格式，将自动转换为 MP3\n(浏览器限制：暂时保存为 WAV，请手动转换为 MP3)', false);
+      console.warn('[AudioEditor] WAV 格式不推荐，建议手动转换为 MP3');
+    }
+
+    // 由于浏览器 Web Audio API 限制，只能导出 WAV 格式
+    // 无论上传什么格式，最终都保存为 WAV
     const wav = audioBufferToWav(audioBuffer);
-    const blob = new Blob([wav], { type: 'audio/wav' });
-    const filename = selectedKey + '.wav';
+    const outputBlob = new Blob([wav], { type: 'audio/wav' });
+    
+    // 确保文件名是 .wav
+    let finalFilename = filename;
+    if (!finalFilename.endsWith('.wav')) {
+      finalFilename = finalFilename.replace(/\.[^.]+$/, '.wav');
+      targetPath = targetPath.replace(/\.[^.]+$/, '.wav');
+    }
 
-    // 尝试通过 Web API 保存
-    let applied = false;
     try {
+      // 直接写入服务器文件
       const fd = new FormData();
-      fd.append('file', blob, filename);
-      fd.append('gameCode', 'pvz');
-      fd.append('themeCode', 'pvz');
-      fd.append('category', 'audio');
-      fd.append('replaceKey', selectedKey);
+      fd.append('file', outputBlob, filename);
+      fd.append('path', targetPath);
 
-      const res = await fetch('/__apply-audio', {
+      console.log('[AudioEditor] 正在保存音频:', { targetPath, filename });
+
+      const res = await fetch('/api/local-write', {
         method: 'POST',
         body: fd
       });
-      if (res.ok) applied = true;
-    } catch (e) {
-      console.warn('应用失败:', e);
-    }
 
-    // 同时备份到 generated 目录
-    try {
-      const base64 = arrayBufferToBase64(wav);
-      await fetch('/__save-audio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          base64: base64,
-          filename: filename,
-          originalName: originalFileName
-        })
-      });
-    } catch (e) {
-      console.warn('备份失败:', e);
-    }
-
-    // 更新本地资源记录（如果存在）
-    if (typeof RESOURCES !== 'undefined' && RESOURCES.audio) {
-      const existing = RESOURCES.audio.find(a => a.key === selectedKey);
-      if (existing) {
-        existing._edited = true;
-        existing._lastApplied = Date.now();
-        existing._editedFrom = originalFileName;
+      if (res.ok) {
+        const result = await res.json();
+        
+        // 更新 GTRS.json 配置（使用最终的文件名）
+        const gtrsUpdated = await updateGTRSConfig(selectedKey, finalFilename);
+        
+        if (gtrsUpdated) {
+          showToast(`✅ 已替换音频并更新配置: ${finalFilename}\n刷新游戏即可生效`, false);
+          
+          // 重新加载音频列表，使界面立即更新
+          await loadAudioFromGTRS();
+        } else {
+          showToast(`✅ 已替换音频: ${finalFilename}\n⚠️ GTRS 配置未更新，请手动修改\n刷新游戏即可生效`, true);
+        }
+        
+        // 清除编辑器缓存，强制刷新
+        audioBuffer = null;
+        originalFileName = '';
+        AudioEditor.currentAudioKey = '';
+        document.getElementById('aeFileInfo').style.display = 'none';
+        document.getElementById('aeDropHint').style.display = 'flex';
+        document.getElementById('aeToolsSection').style.display = 'none';
+        document.getElementById('aeSaveSection').style.display = 'none';
+      } else {
+        const errText = await res.text();
+        console.error('[AudioEditor] 保存失败:', res.status, errText);
+        showToast('替换失败: ' + res.statusText, true);
       }
+    } catch(e) {
+      // 降级：下载文件
+      console.warn('[AudioEditor] 直接写入失败，降级为下载:', e);
+      const url = URL.createObjectURL(outputBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`⚠️ API不可用，已下载 ${filename}\n请手动替换到: public/themes/pvz/assets/audio/${relativePath}`, true);
     }
 
     document.getElementById('aeApplyToGameSection').style.display = 'none';
-
-    showToast(applied
-      ? `✅ 已应用「${selectedKey}」`
-      : `⚠️ 已备份，请手动替换`, false);
-
-    renderContent && renderContent(currentTab);
   }
 
-  // 转换为 base64
-  function arrayBufferToBase64(buffer) {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
+  // 更新 GTRS.json 配置文件
+  async function updateGTRSConfig(audioKey, newFilename) {
+    try {
+      // 1. 加载当前 GTRS.json
+      const gtrsPath = `${THEME_BASE}/GTRS.json`;
+      const response = await fetch(gtrsPath);
+      if (!response.ok) {
+        console.error('[AudioEditor] 无法加载 GTRS.json');
+        return false;
+      }
+      
+      const gtrsData = await response.json();
+      
+      // 2. 确定音频类型和分类
+      let category = 'effect'; // 默认音效
+      let audioType = 'effect';
+      
+      // 判断是否是背景音乐
+      if (audioKey.includes('bg') || audioKey.includes('music') || audioKey === 'bgMusic' || audioKey === 'bg_music') {
+        category = 'bgm';
+        audioType = 'bgm';
+      }
+      
+      // 3. 更新对应的音频配置 (注意: GTRS 结构是 resources.audio)
+      if (!gtrsData.resources) {
+        gtrsData.resources = {};
+      }
+      if (!gtrsData.resources.audio) {
+        gtrsData.resources.audio = {};
+      }
+      if (!gtrsData.resources.audio[audioType]) {
+        gtrsData.resources.audio[audioType] = {};
+      }
+      
+      // 构建新的音频条目
+      const fileExt = newFilename.split('.').pop().toLowerCase();
+      
+      // 如果是 WAV 格式，给出警告
+      if (fileExt === 'wav') {
+        console.warn('[AudioEditor] WAV 格式可能在某些浏览器中无法播放，建议转换为 MP3');
+      }
+      
+      const audioEntry = {
+        alias: gtrsData.resources.audio[audioType][audioKey]?.alias || audioKey,
+        src: `/themes/pvz/assets/audio/${category === 'bgm' ? '' : 'effects/'}${newFilename}`,
+        type: fileExt
+      };
+      
+      gtrsData.resources.audio[audioType][audioKey] = audioEntry;
+      
+      console.log('[AudioEditor] 更新 GTRS 配置:', {
+        audioKey,
+        category,
+        newSrc: audioEntry.src
+      });
+      
+      // 4. 保存更新后的 GTRS.json
+      const fd = new FormData();
+      fd.append('file', new Blob([JSON.stringify(gtrsData, null, 2)], { type: 'application/json' }), 'GTRS.json');
+      fd.append('path', 'themes/pvz/GTRS.json');
+      
+      const saveResponse = await fetch('/api/local-write', {
+        method: 'POST',
+        body: fd
+      });
+      
+      if (saveResponse.ok) {
+        console.log('[AudioEditor] GTRS.json 已更新');
+        showToast('✅ GTRS 配置已更新', false);
+        return true;
+      } else {
+        const errorText = await saveResponse.text();
+        console.error('[AudioEditor] 保存 GTRS.json 失败:', saveResponse.status, errorText);
+        showToast('⚠️ GTRS 配置更新失败: ' + errorText, true);
+        return false;
+      }
+    } catch (error) {
+      console.error('[AudioEditor] 更新 GTRS 配置错误:', error);
+      showToast('⚠️ GTRS 配置更新出错: ' + error.message, true);
+      return false;
     }
-    return btoa(binary);
   }
 
   // 应用到游戏（公开入口）
@@ -4458,6 +4715,7 @@ const AudioEditor = (function() {
     stop();
     audioBuffer = null;
     originalFileName = '';
+    currentAudioKey = ''; // 清除当前音频 key
     pauseTime = 0;
     document.getElementById('aeDropHint').style.display = 'flex';
     document.getElementById('aeFileInfo').style.display = 'none';
@@ -4469,6 +4727,7 @@ const AudioEditor = (function() {
   return {
     init,
     loadFile,
+    clearFile,
     togglePlay,
     seekTo,
     skipBackward,
@@ -4489,7 +4748,13 @@ const AudioEditor = (function() {
     applyToGame,
     confirmApplyToGame,
     cancelApplyToGame,
-    clearFile
+    updateGTRSConfig,
+    formatTime,
+    drawWaveform,
+    resetPlayback,
+    audioBuffer,
+    audioContext,
+    currentAudioKey
   };
 })();
 
@@ -4519,8 +4784,36 @@ function setMusicGenMode(mode) {
   document.getElementById('mgContinuationSection').style.display = mode === 'continuation' ? 'block' : 'none';
 }
 
+
 function setMgPrompt(text) {
   document.getElementById('mgPrompt').value = text;
+}
+
+// 翻译中文 prompt 到英文
+async function translateMgPrompt() {
+  const cnText = document.getElementById('mgCnPrompt').value.trim();
+  if (!cnText) {
+    showToast('请先输入中文描述', true);
+    return;
+  }
+  
+  try {
+    // 使用 MyMemory 免费翻译 API
+    const encoded = encodeURIComponent(cnText);
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encoded}&langpair=zh-CN|en`);
+    const data = await res.json();
+    
+    if (data.responseStatus === 200 && data.responseData) {
+      const enText = data.responseData.translatedText;
+      document.getElementById('mgPrompt').value = enText;
+      showToast('翻译成功！');
+    } else {
+      throw new Error('翻译失败');
+    }
+  } catch(e) {
+    showToast('翻译失败，请重试', true);
+    console.error('翻译错误:', e);
+  }
 }
 
 function saveMusicGenConfig() {
@@ -4631,51 +4924,42 @@ async function generateMusic() {
       longAudioTip.style.display = duration > 30 ? 'block' : 'none';
     }
 
-    // 构建 FastAPI 请求
+    // 构建请求
     let payload = {};
     if (mgMode === 'text') {
       payload = {
         prompt: prompt,
-        model_size: model,
+        model: model,
         duration: duration,
-        chunk_duration: duration > 30 ? chunkDuration : undefined,
-        sliding_window: duration > 30 ? slidingWindow : undefined,
         top_k: topk,
         top_p: topp,
         temperature: temperature,
         cfg_coef: cfg,
-        seed: seed,
-        output_format: 'wav'
+        seed: seed
       };
     } else if (mgMode === 'melody' && mgMelodyFile) {
       const base64 = await fileToBase64(mgMelodyFile);
       payload = {
         prompt: document.getElementById('mgMelodyPrompt')?.value || prompt,
-        model_size: 'melody',
+        model: 'melody',
         melody_base64: base64,
         duration: duration,
-        chunk_duration: duration > 30 ? chunkDuration : undefined,
-        sliding_window: duration > 30 ? slidingWindow : undefined,
         top_k: topk,
         top_p: topp,
         temperature: temperature,
         cfg_coef: cfg,
-        seed: seed,
-        output_format: 'wav'
+        seed: seed
       };
     } else if (mgMode === 'continuation' && mgContinuationFile) {
       const base64 = await fileToBase64(mgContinuationFile);
       payload = {
         continuation_base64: base64,
         duration: duration,
-        chunk_duration: duration > 30 ? chunkDuration : undefined,
-        sliding_window: duration > 30 ? slidingWindow : undefined,
         top_k: topk,
         top_p: topp,
         temperature: temperature,
         cfg_coef: cfg,
-        seed: seed,
-        output_format: 'wav'
+        seed: seed
       };
     }
 
@@ -4723,7 +5007,7 @@ async function generateMusic() {
 
 // 轮询 FastAPI 结果
 async function pollFastAPIResult(baseUrl, taskId, progressBar, progressText) {
-  const maxAttempts = 120; // FastAPI 可能需要更长时间
+  const maxAttempts = 120;
   const pollUrl = baseUrl + '/status/' + taskId;
   
   for (let i = 0; i < maxAttempts; i++) {
@@ -4732,13 +5016,20 @@ async function pollFastAPIResult(baseUrl, taskId, progressBar, progressText) {
       if (res.ok) {
         const data = await res.json();
         
-        // 更新进度
-        const progress = (i / maxAttempts) * 100;
+        // 使用 API 返回的实际进度（如果有）
+        const progress = data.progress !== undefined ? data.progress * 100 : (i / maxAttempts) * 100;
         progressBar.style.width = Math.min(95, progress) + '%';
-        progressText.textContent = '🎵 正在生成... ' + Math.round(progress) + '%';
+        
+        // 根据状态显示不同信息
+        if (data.status === 'processing') {
+          progressText.textContent = '🎵 正在生成... ' + Math.round(progress) + '%';
+        } else if (data.status === 'pending') {
+          progressText.textContent = '⏳ 等待排队...';
+        } else {
+          progressText.textContent = '🎵 正在生成... ' + Math.round(progress) + '%';
+        }
         
         if (data.status === 'completed' && data.file_url) {
-          // 下载音频文件
           const downloadUrl = baseUrl + data.file_url;
           const audioRes = await fetch(downloadUrl);
           if (audioRes.ok) {
@@ -4837,51 +5128,81 @@ async function loadAudioForEdit(key, path) {
     document.getElementById('audioEditorModal').classList.add('show');
     AudioEditor.init();
 
+    // 先设置 currentAudioKey（关键！）
+    AudioEditor.currentAudioKey = key;
+    
+    // 从路径中提取实际的文件名和扩展名
+    const actualFilename = path.split('/').pop();
+    AudioEditor.originalFileName = actualFilename;
+
     // 获取完整URL
     const baseUrl = window.location.origin;
     const fullUrl = path.startsWith('http') ? path : baseUrl + path;
 
+    console.log('[AudioEditor] 加载音频:', { key, path, fullUrl, filename: actualFilename });
+
+    // 初始化音频编辑器
+    AudioEditor.init();
+    AudioEditor.currentAudioKey = key;
+
     // 加载音频文件
+    console.log('[AudioEditor] 开始 fetch:', fullUrl);
     const response = await fetch(fullUrl);
-    if (!response.ok) throw new Error('无法加载音频文件');
+    console.log('[AudioEditor] 响应状态:', response.status, response.statusText);
+    console.log('[AudioEditor] Content-Type:', response.headers.get('content-type'));
+    
+    if (!response.ok) {
+      throw new Error(`无法加载音频文件: ${response.status} ${response.statusText}\nURL: ${fullUrl}`);
+    }
 
-    const blob = await response.blob();
-    const file = new File([blob], key + '.wav', { type: 'audio/wav' });
+    const arrayBuffer = await response.arrayBuffer();
+    console.log('[AudioEditor] 文件大小:', arrayBuffer.byteLength, 'bytes');
+    
+    // 检查文件是否太小(可能是空文件或错误页面)
+    if (arrayBuffer.byteLength < 100) {
+      console.error('[AudioEditor] 文件太小,可能是空文件或HTML错误页面');
+      const text = new TextDecoder().decode(arrayBuffer);
+      console.error('[AudioEditor] 文件内容预览:', text.substring(0, 200));
+      throw new Error(`文件太小 (${arrayBuffer.byteLength} bytes),可能不存在或路径错误`);
+    }
 
-    // 调用音频编辑器的加载函数
-    AudioEditor.loadFile(file);
-    AudioEditor.clearFile();
+    // 解码音频
+    if (!AudioEditor.audioContext) {
+      AudioEditor.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const ac = AudioEditor.audioContext;
 
-    // 手动加载
-    const dropZone = document.getElementById('aeDropZone');
+    try {
+      audioBuffer = await ac.decodeAudioData(arrayBuffer);
+      AudioEditor.audioBuffer = audioBuffer;
+      console.log('[AudioEditor] 解码成功:', {
+        duration: audioBuffer.duration,
+        sampleRate: audioBuffer.sampleRate,
+        channels: audioBuffer.numberOfChannels
+      });
+    } catch (decodeError) {
+      console.error('[AudioEditor] 解码失败:', decodeError);
+      throw new Error(`音频解码失败: ${decodeError.message}\n\n可能原因:\n1. 文件格式不支持\n2. 文件损坏\n3. 建议转换为 MP3 格式`);
+    }
+
+    // 更新 UI
     document.getElementById('aeDropHint').style.display = 'none';
     document.getElementById('aeFileInfo').style.display = 'block';
-    document.getElementById('aeFileName').textContent = key + '.wav';
+    document.getElementById('aeFileName').textContent = actualFilename;
+    document.getElementById('aeFileDuration').textContent = AudioEditor.formatTime(audioBuffer.duration);
+    document.getElementById('aeTrimEnd').value = audioBuffer.duration.toFixed(1);
     document.getElementById('aeWaveformSection').style.display = 'block';
     document.getElementById('aeToolsSection').style.display = 'block';
     document.getElementById('aeSaveSection').style.display = 'flex';
 
-    // 使用 AudioContext 加载
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    AudioEditor.audioContext = audioContext;
+    // 绘制波形和重置播放（需要在编辑器作用域内）
+    AudioEditor.drawWaveform();
+    AudioEditor.resetPlayback();
 
-    const arrayBuffer = await file.arrayBuffer();
-    audioContext.decodeAudioData(arrayBuffer).then(buffer => {
-      AudioEditor.audioBuffer = buffer;
-      AudioEditor.originalFileName = key + '.wav';
-      AudioEditor.resetPlayback();
-
-      document.getElementById('aeFileDuration').textContent = formatAudioTime(buffer.duration);
-      document.getElementById('aeTrimEnd').value = buffer.duration.toFixed(1);
-
-      AudioEditor.drawWaveform();
-    }).catch(err => {
-      showToast('音频解码失败: ' + err.message);
-    });
-
-    showToast('已加载: ' + key);
+    showToast('已加载: ' + actualFilename);
   } catch (e) {
-    showToast('加载失败: ' + e.message);
+    console.error('[AudioEditor] 加载音频失败:', e);
+    showToast('加载失败: ' + e.message, true);
     document.getElementById('audioEditorModal').classList.remove('show');
   }
 }
