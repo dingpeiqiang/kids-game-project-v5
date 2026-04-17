@@ -65,7 +65,7 @@ export default class PlayScene extends Phaser.Scene {
 
     // ═══ 游戏状态 ═══
     this.sunCount = 150
-    this.selectedPlantType = 'peashooter'
+    this.selectedPlantType = null  // 初始不选择任何植物
     this.shovelMode = false
     this.isPaused = false
     this.gameOver = false
@@ -364,7 +364,8 @@ export default class PlayScene extends Phaser.Scene {
       this.seedCards.push(card)
     })
 
-    if (this.seedCards.length > 0) this.seedCards[0].select()
+    // 初始不默认选择任何卡片
+    // if (this.seedCards.length > 0) this.seedCards[0].select()
   }
 
   // ── 铲子（卡牌样式，使用图片素材）──
