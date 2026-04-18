@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Space Invaders — Ultimate Edition</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Space Invaders v3.0 — Offline Single Player" />
+    <link rel="icon" href="/invader.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap" />
+
+    <!-- Phaser 3 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+    <!-- 资源加载器 -->
+    <script src="/resource-loader.js"></script>
+    <!-- GTRS 版游戏脚本（支持 AI 生成资源替换）-->
+    <script src="/script-gtrs.js"></script>
+
+    <style>
+      /* ===== 全局重置 ===== */
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      html, body {
+        width: 100%; height: 100%;
+        overflow: hidden;
+        background: #000011;
+        font-family: 'VT323', monospace;
+        color: #fff;
+        touch-action: none; /* 禁止移动端默认滚动，保障触屏控制 */
+      }
+
+      /* ===== 难度选择面板 ===== */
+      #difficultySelector {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(ellipse at center, #000055 0%, #000011 100%);
+        z-index: 9999;
+      }
+
+      .diff-card {
+        background: rgba(0, 0, 60, 0.92);
+        padding: 40px 50px;
+        border-radius: 12px;
+        border: 2px solid #0ff;
+        text-align: center;
+        max-width: 400px;
+        width: 90vw;
+        box-shadow: 0 0 40px rgba(0, 255, 255, 0.15);
+      }
+
+      .diff-card h1 {
+        font-size: 42px;
+        color: #0ff;
+        margin-bottom: 6px;
+        letter-spacing: 2px;
+      }
+
+      .diff-card .subtitle {
+        font-size: 18px;
+        color: #888;
+        margin-bottom: 24px;
+      }
+
+      .nickname-row {
+        margin-bottom: 24px;
+      }
+
+      .nickname-row input {
+        padding: 10px 16px;
+        font-size: 22px;
+        font-family: 'VT323', monospace;
+        background: rgba(255,255,255,0.08);
+        border: 2px solid #0ff;
+        border-radius: 6px;
+        color: #fff;
+        text-align: center;
+        width: 220px;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .nickname-row input:focus {
+        border-color: #fff;
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+      }
+
+      .diff-btn {
+        display: block;
+        width: 100%;
+        margin: 12px 0;
+        padding: 16px;
+        font-family: 'VT323', monospace;
+        font-size: 26px;
+        border-radius: 8px;
+        border: 2px solid;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.18s;
+        letter-spacing: 1px;
+      }
+
+      .diff-btn small { font-size: 14px; opacity: 0.8; display: block; margin-top: 2px; }
+
+      .diff-btn.easy   { color: #44ff44; border-color: #44ff44; }
+      .diff-btn.normal { color: #ffff44; border-color: #ffff44; }
+      .diff-btn.hard   { color: #ff4444; border-color: #ff4444; }
+
+      .diff-btn.easy:hover   { background: #44ff44; color: #000; }
+      .diff-btn.normal:hover { background: #ffff44; color: #000; }
+      .diff-btn.hard:hover   { background: #ff4444; color: #fff; }
+
+      /* 键盘选中状态 */
+      .diff-btn:focus { outline: 2px solid #fff; outline-offset: 2px; }
+
+      /* ===== 游戏容器（默认隐藏）===== */
+      #gameWrapper {
+        display: none;
+        flex-direction: column;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #gameWrapper.visible { display: flex; }
+
+      /* 顶部信息栏 */
+      .hud-bar {
+        background: rgba(0, 0, 40, 0.9);
+        padding: 6px 20px;
+        font-size: 15px;
+        color: #0ff;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-shrink: 0;
+        user-select: none;
+      }
+
+      .hud-bar span { opacity: 0.7; }
+      .hud-bar b    { color: #fff; }
+
+      /* Phaser 画布区域：撑满剩余空间 */
+      #game-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000011;
+        overflow: hidden;
+      }
+
+      /* Phaser 生成的 canvas — Scale.FIT 自行管理尺寸 */
+      #game-container canvas {
+        display: block;
+      }
+
+      /* 底部操作条 */
+      .footer-bar {
+        background: rgba(0, 0, 40, 0.9);
+        padding: 6px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        flex-shrink: 0;
+        font-size: 14px;
+        color: #666;
+      }
+
+      .footer-bar .key-hint {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 1px 8px;
+        color: #aaa;
+      }
+
+      /* 全屏按钮 */
+      .btn-fs {
+        padding: 4px 14px;
+        background: transparent;
+        border: 1px solid #0ff;
+        color: #0ff;
+        border-radius: 4px;
+        font-family: 'VT323', monospace;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.18s;
+      }
+      .btn-fs:hover { background: #0ff; color: #000; }
+
+      /* ===== 响应式（移动端隐藏底部文字）===== */
+      @media (max-width: 600px) {
+        .footer-bar { font-size: 12px; gap: 10px; padding: 4px 10px; }
+        .diff-card   { padding: 28px 24px; }
+        .diff-card h1 { font-size: 34px; }
+        .diff-btn { font-size: 22px; }
+      }
+
+      /* 简单星星动画背景（选关界面）*/
+      .stars-bg {
+        position: fixed; inset: 0; pointer-events: none; z-index: 0;
+        overflow: hidden;
+      }
+      .stars-bg::before, .stars-bg::after {
+        content: '';
+        position: absolute;
+        width: 200%;
+        height: 200%;
+        top: -50%; left: -50%;
+        background-image:
+          radial-gradient(1px 1px at 20% 30%, #fff 0%, transparent 100%),
+          radial-gradient(1px 1px at 80% 10%, #fff 0%, transparent 100%),
+          radial-gradient(1px 1px at 50% 70%, rgba(255,255,255,0.6) 0%, transparent 100%),
+          radial-gradient(2px 2px at 10% 80%, rgba(255,255,255,0.4) 0%, transparent 100%),
+          radial-gradient(1px 1px at 70% 50%, rgba(255,255,255,0.5) 0%, transparent 100%);
+        background-size: 200px 200px, 300px 300px, 250px 250px, 150px 150px, 400px 400px;
+        animation: twinkle 8s linear infinite;
+        opacity: 0.6;
+      }
+      .stars-bg::after { animation-delay: -4s; opacity: 0.3; }
+
+      @keyframes twinkle {
+        0%   { transform: translateY(0); }
+        100% { transform: translateY(20px); }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- 背景星星装饰 -->
+    <div class="stars-bg" aria-hidden="true"></div>
+
+    <!-- ====== 难度选择界面 ====== -->
+    <div id="difficultySelector">
+      <div class="diff-card">
+        <h1>🚀 SPACE INVADERS</h1>
+        <p class="subtitle">Ultimate Edition — Single Player</p>
+
+        <div class="nickname-row">
+          <input
+            type="text"
+            id="playerNickname"
+            placeholder="Enter your name"
+            maxlength="15"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <button class="diff-btn easy"   onclick="startGame('easy')">
+          🟢 EASY
+          <small>5 Lives · Slow enemies · 0.8× score</small>
+        </button>
+
+        <button class="diff-btn normal" onclick="startGame('normal')">
+          🟡 NORMAL
+          <small>3 Lives · Balanced · 1× score</small>
+        </button>
+
+        <button class="diff-btn hard"   onclick="startGame('hard')">
+          🔴 HARD
+          <small>2 Lives · Fast &amp; deadly · 1.5× score</small>
+        </button>
+
+        <div style="margin-top:18px;text-align:center;">
+          <button
+            class="diff-btn"
+            style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #334;color:#8899bb;"
+            onclick="window.open('/resource-manager.html','_blank')"
+          >
+            🎨 资源管理器
+            <small>AI 图片生成 · 纹理编辑 · 图生图 · 去水印</small>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 游戏区域 ====== -->
+    <div id="gameWrapper">
+      <!-- 顶部 HUD 提示 -->
+      <div class="hud-bar">
+        <span>🎮 <b>SPACE INVADERS</b></span>
+        <span>⬅ ➡ 移动 &nbsp;|&nbsp; <b>SPACE</b> 射击 &nbsp;|&nbsp; <b>ESC</b> 暂停 &nbsp;|&nbsp; <b>R</b> 重玩</span>
+      </div>
+
+      <!-- Phaser 挂载点 -->
+      <div id="game-container"></div>
+
+      <!-- 底部操作条 -->
+      <div class="footer-bar">
+        <span class="key-hint">← →</span><span>移动</span>
+        <span class="key-hint">SPACE</span><span>射击</span>
+        <span class="key-hint">ESC</span><span>暂停</span>
+        <span class="key-hint">R</span><span>重玩</span>
+        <span class="key-hint">M</span><span>菜单</span>
+        <button id="fullscreenBtn" class="btn-fs" onclick="toggleFullscreen()">⛶ 全屏</button>
+      </div>
+    </div>
+
+    <script>
+      // ---- 恢复昵称 ----
+      window.addEventListener('load', () => {
+        const saved = localStorage.getItem('nickname');
+        if (saved) document.getElementById('playerNickname').value = saved;
+      });
+
+      // ---- 开始游戏 ----
+      function startGame(diff) {
+        const name = document.getElementById('playerNickname').value.trim() || 'Player';
+        localStorage.setItem('nickname', name);
+        localStorage.setItem('difficulty', diff);
+
+        document.getElementById('difficultySelector').style.display = 'none';
+        document.getElementById('gameWrapper').classList.add('visible');
+
+        // 容器可见后再初始化（script-gtrs.js 暴露 window.launchPhaser）
+        if (window.launchPhaser) window.launchPhaser();
+      }
+
+      // ---- 全屏 ----
+      function toggleFullscreen() {
+        const el  = document.documentElement;
+        const btn = document.getElementById('fullscreenBtn');
+        if (!document.fullscreenElement) {
+          (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)
+            .call(el)
+            .catch(() => {});
+          btn.textContent = '⛶ 退出全屏';
+        } else {
+          (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen)
+            .call(document)
+            .catch(() => {});
+          btn.textContent = '⛶ 全屏';
+        }
+      }
+
+      ['fullscreenchange','webkitfullscreenchange','msfullscreenchange'].forEach(ev => {
+        document.addEventListener(ev, () => {
+          const btn = document.getElementById('fullscreenBtn');
+          if (btn) btn.textContent = document.fullscreenElement ? '⛶ 退出全屏' : '⛶ 全屏';
+        });
+      });
+
+      // F11 全屏
+      document.addEventListener('keydown', e => {
+        if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); }
+      });
+    </script>
+  </body>
+</html>

@@ -974,7 +974,14 @@ function showGameOver() {
   }
 }
 
-// ==================== 启动游戏 ====================
-window.addEventListener("load", () => {
-  game = new Phaser.Game(config);
-});
+// ==================== 启动游戏（由 index.html 的 startGame 调用）====================
+window.launchPhaser = function() {
+  if (!game) {
+    game = new Phaser.Game(config);
+  }
+};
+
+// 如果没有难度选择界面（比如直接访问 /resource-manager 再回来），自动启动
+if (document.getElementById('difficultySelector') === null) {
+  window.addEventListener('load', () => { game = new Phaser.Game(config); });
+}
