@@ -17,6 +17,7 @@ import { container } from 'tsyringe'
 
 type SceneData = {
   [prop: string]: any
+  currentLevel?: number
 }
 
 export default class MainScene extends Phaser.Scene {
@@ -29,6 +30,7 @@ export default class MainScene extends Phaser.Scene {
   enemyGroup: EnemyGroup
   rooms: rooms = {}
   dests: dests = {}
+  currentLevel: number = 1
 
   constructor() {
     super({ key: 'MainScene' })
@@ -38,9 +40,26 @@ export default class MainScene extends Phaser.Scene {
     // @ts-ignore debug
     window.__myGame = this
 
-    const map = this.make.tilemap({ key: 'map' })
+    // 获取当前关卡
+    this.currentLevel = sceneData.currentLevel || 1
+    const levelConfig = config.levels.find(l => l.id === this.currentLevel) || config.levels[0]
+
+    const map = this.make.tilemap({ key: levelConfig.mapKey })
     const tileset = map.addTilesetImage('SuperMarioBros-World1-1', 'tiles')
-    const worldLayer = map.createLayer('world', tileset).setCollisionByProperty({ collide: true })
+    
+    if (!tileset) {
+      console.error('Failed to load tileset')
+      return
+    }
+    
+    const worldLayer = map.createLayer('world', tileset)
+    
+    if (!worldLayer) {
+      console.error('Failed to create world layer')
+      return
+    }
+    
+    worldLayer.setCollisionByProperty({ collide: true })
 
     this.cursors = this.input.keyboard.createCursorKeys()
 
@@ -50,6 +69,9 @@ export default class MainScene extends Phaser.Scene {
 
     // 添加游戏背景
     this.add.tileSprite(0, 0, worldLayer.width, 500, 'background-clouds')
+
+    // 添加关卡标题
+    this.add.bitmapText(16, 20, 'font', `${levelConfig.name}`, 10).setDepth(100)
 
     // 添加游戏说明
     this.add.bitmapText(16, 100, 'font', config.helpText, 8).setDepth(100)
@@ -90,8 +112,8 @@ export default class MainScene extends Phaser.Scene {
     })
 
     const endPoint = worldLayer.findByIndex(5)
-    // 终点旗杆
-    new Flag(this, endPoint.pixelX, endPoint.pixelY).overlap(this.mario, () => this.restartGame(false))
+    // 终点旗杆 - 到达终点后进入下一关
+    new Flag(this, endPoint.pixelX, endPoint.pixelY).overlap(this.mario, () => this.nextLevel())
 
     // 游戏倒计时
     new CountDown(this)
@@ -150,6 +172,32 @@ export default class MainScene extends Phaser.Scene {
     mario.update(time, delta, cursors)
     enemyGroup.update(time, delta, mario)
     powerUpGroup.update(time, delta, mario)
+  }
+
+  /**
+   * 进入下一关
+   */
+  private nextLevel() {
+    const nextLevelId = this.currentLevel + 1
+    const nextLevel = config.levels.find(l => l.id === nextLevelId)
+    
+    if (nextLevel) {
+      // 有下一关，继续游戏
+      const data = {
+        coins: this.hud.getValue('coins'),
+        lives: this.hud.getValue('lives'),
+        currentLevel: nextLevelId,
+      }
+      container.clearInstances()
+      this.music.stop()
+      this.scene.restart(data)
+    } else {
+      // 没有下一关了，游戏胜利
+      this.music.stop()
+      if (window.confirm('恭喜！你通关了所有关卡！\n是否重新开始？')) {
+        this.restartGame(false)
+      }
+    }
   }
 
   /**
@@ -285,9 +333,13 @@ export default class MainScene extends Phaser.Scene {
       ? {
           coins: this.hud.getValue('coins'),
           lives: this.hud.getValue('lives'),
+          currentLevel: this.currentLevel,
         }
-      : {}
+      : {
+          currentLevel: 1,
+        }
     container.clearInstances()
+    this.music?.stop()
     this.scene.restart(data)
   }
 

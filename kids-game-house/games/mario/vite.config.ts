@@ -4,7 +4,7 @@ import { resolve } from 'path'
 export default defineConfig({
   root: './src',
   build: {
-    target: 'es2015', // 确保与 tsconfig 一致，支持 ES6 class
+    target: 'esnext', // 使用 ESNext 以支持装饰器和类构造函数
     outDir: '../dist',
     emptyOutDir: true,
     rollupOptions: {
@@ -12,6 +12,11 @@ export default defineConfig({
         main: resolve(__dirname, 'src/index.html'),
       },
     },
+  },
+  esbuild: {
+    target: 'esnext',
+    // 确保装饰器正确工作
+    keepNames: true,
   },
   server: {
     port: 3000,
@@ -24,6 +29,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['phaser'],
+    include: ['phaser', 'tsyringe', 'reflect-metadata'],
   },
 })

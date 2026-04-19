@@ -10,7 +10,12 @@ export default class Zombie extends Phaser.Physics.Arcade.Sprite {
       normal: 'zombie_normal',
       conehead: 'zombie_conehead',
       buckethead: 'zombie_buckethead',
-      newspaper: 'zombie_newspaper'
+      newspaper: 'zombie_newspaper',
+      football: 'zombie_football',     // 橄榄球僵尸
+      dancer: 'zombie_dancer',         // 舞王僵尸
+      balloon: 'zombie_balloon',       // 气球僵尸
+      miner: 'zombie_miner',           // 矿工僵尸
+      gargantuar: 'zombie_gargantuar'  // 巨人僵尸
     }
 
     super(scene, x, y, textureMap[type] || 'zombie_normal')
@@ -24,10 +29,15 @@ export default class Zombie extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(40)  // 设置层级，确保在植物之上
 
     const configs = {
-      normal:     { health: 5,  speed: -25, score: 10 },
-      conehead:   { health: 10, speed: -25, score: 20 },
-      buckethead: { health: 20, speed: -18, score: 40 },
-      newspaper:  { health: 8,  speed: -30, score: 25 }
+      normal:       { health: 5,   speed: -25, score: 10 },
+      conehead:     { health: 10,  speed: -25, score: 20 },
+      buckethead:   { health: 20,  speed: -18, score: 40 },
+      newspaper:    { health: 8,   speed: -30, score: 25 },
+      football:     { health: 30,  speed: -35, score: 60 },  // 橄榄球：高血高速
+      dancer:       { health: 15,  speed: -20, score: 50 },  // 舞王：召唤伴舞
+      balloon:      { health: 12,  speed: -28, score: 45 },  // 气球：飞行单位
+      miner:        { health: 10,  speed: -22, score: 35 },  // 矿工：挖地偷袭
+      gargantuar:   { health: 80,  speed: -12, score: 150 }  // 巨人：超高血量
     }
 
     const cfg = configs[type] || configs.normal

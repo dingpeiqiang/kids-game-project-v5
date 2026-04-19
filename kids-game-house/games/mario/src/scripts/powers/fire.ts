@@ -1,4 +1,3 @@
-import 'reflect-metadata'
 import { autoInjectable, inject } from 'tsyringe'
 
 import Player from '../objects/player'

@@ -1,6 +1,5 @@
 type direction = 'up' | 'left' | 'right'
 
-import 'reflect-metadata'
 import Brick from '../objects/brick'
 import { Power, TargetObject, Large } from './index'
 

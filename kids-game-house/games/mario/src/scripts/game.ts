@@ -1,3 +1,4 @@
+import 'reflect-metadata'
 import 'phaser'
 import MainScene from './scenes/mainScene'
 import PreloadScene from './scenes/preloadScene'

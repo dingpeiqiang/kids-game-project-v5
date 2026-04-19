@@ -9,11 +9,12 @@ export default class SeedCard extends Phaser.GameObjects.Container {
     this.cardW = cardW
     this.cardH = cardH
 
+    // 无尽模式：缩短冷却时间
     const cooldowns = {
-      sunflower: 7500, peashooter: 7500, iceshooter: 7500,
-      repeater: 7500, cherrybomb: 30000, potatomine: 30000, wallnut: 30000
+      sunflower: 5000, peashooter: 5000, iceshooter: 5000,
+      repeater: 5000, cherrybomb: 20000, potatomine: 20000, wallnut: 20000
     }
-    this.cooldownTime = cooldowns[plantType] || 5000
+    this.cooldownTime = cooldowns[plantType] || 3000
 
     const plantColors = {
       sunflower: { bg: 0xFFD700, hover: 0xFFA500 },

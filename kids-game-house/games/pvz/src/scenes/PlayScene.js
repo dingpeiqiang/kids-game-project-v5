@@ -9,6 +9,12 @@ import PotatoMine from '../models/potatomine.js'
 import Zombie from '../models/zombie.js'
 import Sun from '../models/sun.js'
 import SeedCard from '../ui/SeedCard.js'
+// 导入道具类
+import FreezeItem from '../models/FreezeItem.js'
+import DoubleSunItem from '../models/DoubleSunItem.js'
+import PlantBoostItem from '../models/PlantBoostItem.js'
+import CherryBombItem from '../models/CherryBombItem.js'
+import DoomShroomItem from '../models/DoomShroomItem.js'
 
 export default class PlayScene extends Phaser.Scene {
   constructor() {
@@ -74,23 +80,33 @@ export default class PlayScene extends Phaser.Scene {
     this.relaxMode = false
     this.countdownEnded = false  // 防止 endCountdown 重复调用
     
+    // 无尽模式配置
+    this.endlessMode = true  // 启用无尽模式
+    this.survivalTime = 0  // 生存时间（秒）
+    this.totalKills = 0  // 总击杀数
+    this.difficultyLevel = 1  // 难度等级
+    this.zombieSpawnInterval = 3500  // 初始僵尸生成间隔（毫秒）
+    this.minSpawnInterval = 800  // 最小生成间隔
+    
+    // 无尽模式平衡性调整
+    this.sunProductionRate = 6000  // 天空阳光生成间隔（比原版快）
+    this.sunflowerIncome = 75  // 向日葵产出阳光增加
+    
+    // 道具系统配置
+    this.itemSpawnRate = 45000  // 道具生成间隔（45秒）
+    this.doubleSunMode = false  // 双倍阳光模式
+    this.itemsCollected = 0  // 收集道具数量
+    
     // 植物预览
     this.plantPreview = null
-
-    this.totalWaves = 5
-    this.currentWave = 0
-    this.zombiesPerWave = [3, 5, 8, 12, 16]
-    this.zombiesSpawnedInWave = 0
-    this.score = 0
-    this.comboCount = 0
-    this.lastKillTime = 0
 
     // ═══ UI ═══
     this.createSunDisplay()
     this.createScoreDisplay()
     this.createSeedBar()
     this.createShovelButton()
-    this.createProgressDisplay()
+    this.createEndlessModeDisplay()  // 无尽模式显示
+    this.createItemDisplay()  // 道具显示
 
     // ═══ 事件 ═══
     this.physics.add.overlap(this.zombies, this.plants, this.handleZombiePlantCollision, null, this)
@@ -189,18 +205,38 @@ export default class PlayScene extends Phaser.Scene {
       })
     }
 
-    // 僵尸生成定时器
-    this.zombieSpawnTimer = this.time.addEvent({
-      delay: 3500,
-      callback: this.spawnZombie,
-      callbackScope: this,
+    // 僵尸生成定时器（使用动态间隔）
+    this.startZombieSpawning()
+
+    // 阳光生成（无尽模式加快频率）
+    this.time.addEvent({ 
+      delay: this.sunProductionRate, 
+      callback: () => this.spawnSkySun(), 
+      loop: true 
+    })
+    this.time.delayedCall(2000, () => this.spawnSkySun())
+
+    // 生存时间计时器
+    this.time.addEvent({
+      delay: 1000,
+      callback: () => {
+        if (!this.gameOver && !this.levelComplete) {
+          this.survivalTime++
+          this.updateEndlessModeDisplay()
+          this.checkDifficultyIncrease()
+        }
+      },
       loop: true
     })
-
-    // 波次 & 阳光
-    this.time.delayedCall(5000, () => this.startNextWave())
-    this.time.addEvent({ delay: 8000, callback: () => this.spawnSkySun(), loop: true })
-    this.time.delayedCall(2000, () => this.spawnSkySun())
+    
+    // 道具生成定时器
+    this.time.addEvent({
+      delay: this.itemSpawnRate,
+      callback: () => this.spawnRandomItem(),
+      loop: true
+    })
+    // 首次道具提前生成（15秒后）
+    this.time.delayedCall(15000, () => this.spawnRandomItem())
 
     this.input.keyboard.on('keydown-ESC', () => this.togglePause(), this)
 
@@ -262,7 +298,7 @@ export default class PlayScene extends Phaser.Scene {
     }
   }
 
-  // ── 阳光 UI（左侧区域，包含积分和波次）──
+  // ── 阳光 UI（左侧区域，包含积分）──
   createSunDisplay() {
     const UI_H = this.game.UI_H
     const leftX = 20
@@ -280,10 +316,7 @@ export default class PlayScene extends Phaser.Scene {
       fontSize: '14px', fill: '#00FF00', fontStyle: 'bold', stroke: '#000', strokeThickness: 1
     }).setOrigin(0.5).setDepth(101)
 
-    // 第三行：波次
-    this.waveInfoText = this.add.text(centerX, UI_H / 2 + 26, '1/5', {
-      fontSize: '12px', fill: '#FFD700', stroke: '#000', strokeThickness: 1
-    }).setOrigin(0.5).setDepth(101)
+    // 无尽模式：不显示波次信息，右侧有生存时间和击杀数
   }
 
   addSun(amount) {
@@ -548,64 +581,253 @@ export default class PlayScene extends Phaser.Scene {
     }
   }
 
-  // ── 波次进度显示（右侧，僵尸数量已隐藏）──
-  createProgressDisplay() {
-    // 僵尸数量显示已移除，波次信息在左侧阳光区显示
-    this.zombieCountText = null
-  }
-
-  startNextWave() {
-    if (this.currentWave >= this.totalWaves || this.gameOver) return
-    this.currentWave++
-    this.zombiesSpawnedInWave = 0
-    this.updateProgressDisplay()
-
-    // 波次提示
+  // ── 无尽模式显示 ──
+  createEndlessModeDisplay() {
     const W = this.game.BASE_W
-    const waveTexts = ['第 1 波!', '第 2 波 — 路障僵尸来了!', '第 3 波!', '第 4 波 — 铁桶僵尸出现!', '最终波 — 全力防守!']
-    const warn = this.add.text(W / 2, this.game.BASE_H / 2 - 50, waveTexts[this.currentWave - 1], {
-      fontSize: '28px', fill: '#FF0000', fontStyle: 'bold', stroke: '#000', strokeThickness: 3
-    }).setOrigin(0.5).setDepth(2001)
-    this.tweens.add({ targets: warn, alpha: 0, y: this.game.BASE_H / 2 - 120, duration: 2500, onComplete: () => warn.destroy() })
+    const UI_H = this.game.UI_H
+    
+    // 右侧显示区域
+    const rightX = W - 180
+    
+    // 生存时间
+    this.add.text(rightX, UI_H / 2 - 15, '⏱️', {
+      fontSize: '16px'
+    }).setOrigin(0, 0.5).setDepth(101)
+    
+    this.survivalTimeText = this.add.text(rightX + 25, UI_H / 2 - 15, '0s', {
+      fontSize: '16px', fill: '#00FFFF', fontStyle: 'bold',
+      stroke: '#000', strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(101)
+    
+    // 击杀数
+    this.add.text(rightX, UI_H / 2 + 8, '💀', {
+      fontSize: '16px'
+    }).setOrigin(0, 0.5).setDepth(101)
+    
+    this.killsText = this.add.text(rightX + 25, UI_H / 2 + 8, '0', {
+      fontSize: '16px', fill: '#FF6B6B', fontStyle: 'bold',
+      stroke: '#000', strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(101)
+    
+    // 难度等级
+    this.add.text(rightX, UI_H / 2 + 28, '📊', {
+      fontSize: '14px'
+    }).setOrigin(0, 0.5).setDepth(101)
+    
+    this.difficultyText = this.add.text(rightX + 25, UI_H / 2 + 28, 'Lv.1', {
+      fontSize: '14px', fill: '#FFD700', fontStyle: 'bold',
+      stroke: '#000', strokeThickness: 1
+    }).setOrigin(0, 0.5).setDepth(101)
   }
-
-  updateProgressDisplay() {
-    // 更新波次信息（在左侧阳光区）
-    if (this.waveInfoText) {
-      this.waveInfoText.setText(`${this.currentWave}/${this.totalWaves}`)
+  
+  // ── 道具显示 ──
+  createItemDisplay() {
+    const W = this.game.BASE_W
+    const UI_H = this.game.UI_H
+    
+    // 左侧下方显示道具统计
+    this.itemCountText = this.add.text(20, UI_H - 25, '🎁 0', {
+      fontSize: '14px', fill: '#FF69B4', fontStyle: 'bold',
+      stroke: '#000', strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(101)
+  }
+  
+  updateItemDisplay() {
+    if (this.itemCountText) {
+      this.itemCountText.setText(`🎁 ${this.itemsCollected}`)
     }
-    // 僵尸数量显示已移除
   }
-
-  // ── 僵尸生成 ──
-  spawnZombie() {
-    if (this.gameOver || this.levelComplete || this.currentWave === 0) return
-
-    const needed = this.zombiesPerWave[this.currentWave - 1]
-    if (this.zombiesSpawnedInWave < needed) {
-      let types = ['normal']
-      if (this.currentWave >= 2) types.push('normal', 'conehead')
-      if (this.currentWave >= 3) types.push('conehead', 'conehead')
-      if (this.currentWave >= 4) types.push('buckethead')
-      if (this.currentWave >= 5) types.push('buckethead', 'newspaper', 'conehead')
-
-      const type = types[Phaser.Math.Between(0, types.length - 1)]
-      new Zombie(this, type)
-      this.zombiesSpawnedInWave++
-    } else if (this.zombies.countActive(true) === 0) {
-      if (this.currentWave < this.totalWaves) {
-        this.time.delayedCall(3000, () => this.startNextWave())
-      } else {
-        this.checkVictory()
+  
+  updateEndlessModeDisplay() {
+    if (this.survivalTimeText) {
+      const minutes = Math.floor(this.survivalTime / 60)
+      const seconds = this.survivalTime % 60
+      const timeStr = minutes > 0 ? `${minutes}m${seconds}s` : `${seconds}s`
+      this.survivalTimeText.setText(timeStr)
+    }
+    
+    if (this.killsText) {
+      this.killsText.setText(this.totalKills.toString())
+    }
+    
+    if (this.difficultyText) {
+      this.difficultyText.setText(`Lv.${this.difficultyLevel}`)
+    }
+  }
+  
+  checkDifficultyIncrease() {
+    // 无尽模式：每20秒提升一次难度（更快更刺激）
+    const newLevel = Math.floor(this.survivalTime / 20) + 1
+    
+    if (newLevel > this.difficultyLevel) {
+      this.difficultyLevel = newLevel
+      
+      // 缩短僵尸生成间隔（更激进的递减）
+      this.zombieSpawnInterval = Math.max(
+        this.minSpawnInterval,
+        3500 - (this.difficultyLevel - 1) * 400  // 每级减少400ms
+      )
+      
+      // 重启生成定时器
+      this.restartZombieSpawning()
+      
+      // 显示难度提升提示
+      this.showDifficultyUpNotification()
+      
+      // 高难度时增加视觉特效
+      if (this.difficultyLevel >= 10) {
+        this.addScreenShake()
       }
     }
   }
-
-  checkVictory() {
-    if (this.currentWave >= this.totalWaves && this.zombies.countActive(true) === 0) {
-      this.levelComplete = true
-      this.showVictoryScreen()
+  
+  showDifficultyUpNotification() {
+    const W = this.game.BASE_W
+    const H = this.game.BASE_H
+    
+    const notifyText = this.add.text(W / 2, H / 2 - 100, `⚠️ 难度提升至 Lv.${this.difficultyLevel}!`, {
+      fontSize: '32px', fill: '#FF4444', fontStyle: 'bold',
+      stroke: '#000', strokeThickness: 4
+    }).setOrigin(0.5).setDepth(2001)
+    
+    // 震动效果
+    if (this.difficultyLevel >= 5) {
+      this.cameras.main.shake(300, 0.01)
     }
+    if (this.difficultyLevel >= 10) {
+      this.cameras.main.shake(500, 0.02)
+    }
+    
+    this.tweens.add({
+      targets: notifyText,
+      alpha: 0,
+      y: H / 2 - 180,
+      duration: 2500,
+      onComplete: () => notifyText.destroy()
+    })
+  }
+  
+  // 屏幕震动效果
+  addScreenShake() {
+    this.cameras.main.shake(200, 0.005)
+  }
+  
+  startZombieSpawning() {
+    if (this.zombieSpawnTimer) {
+      this.zombieSpawnTimer.remove()
+    }
+    
+    this.zombieSpawnTimer = this.time.addEvent({
+      delay: this.zombieSpawnInterval,
+      callback: this.spawnZombie,
+      callbackScope: this,
+      loop: true
+    })
+  }
+  
+  restartZombieSpawning() {
+    this.startZombieSpawning()
+  }
+
+  // ── 僵尸生成（无尽模式）──
+  spawnZombie() {
+    if (this.gameOver || this.levelComplete) return
+
+    // 根据难度等级决定僵尸类型（更激进的解锁）
+    let types = ['normal']
+    
+    if (this.difficultyLevel >= 2) {
+      types.push('conehead', 'conehead')
+    }
+    if (this.difficultyLevel >= 3) {
+      types.push('buckethead', 'newspaper')
+    }
+    if (this.difficultyLevel >= 4) {
+      types.push('football')  // 橄榄球僵尸
+    }
+    if (this.difficultyLevel >= 5) {
+      types.push('dancer', 'balloon')  // 舞王和气球
+    }
+    if (this.difficultyLevel >= 6) {
+      types.push('miner', 'buckethead', 'buckethead')
+    }
+    if (this.difficultyLevel >= 8) {
+      types.push('gargantuar')  // 巨人僵尸登场！
+    }
+    if (this.difficultyLevel >= 10) {
+      // 高难度时大量高级僵尸
+      types.push('gargantuar', 'football', 'football', 'dancer', 'balloon')
+    }
+    if (this.difficultyLevel >= 15) {
+      // 极高难度：僵尸海
+      types.push('gargantuar', 'gargantuar', 'football', 'football', 'dancer')
+    }
+
+    const type = types[Phaser.Math.Between(0, types.length - 1)]
+    new Zombie(this, type)
+  }
+  
+  // ── 道具生成系统 ──
+  spawnRandomItem() {
+    if (this.gameOver || this.levelComplete) return
+    
+    const W = this.game.BASE_W
+    const H = this.game.BASE_H
+    const GL = this.game.GRID_LEFT
+    const GY = this.game.GAME_Y
+    const GRID_W = this.game.GRID_W
+    const GAME_H = this.game.GAME_H
+    
+    // 在游戏区域内随机位置生成
+    const x = Phaser.Math.Between(GL + 50, GL + GRID_W - 50)
+    const y = Phaser.Math.Between(GY + 50, GY + GAME_H - 50)
+    
+    // 随机选择道具类型（加权概率）
+    const itemTypes = [
+      { type: 'freeze', weight: 20 },       // 20% 概率
+      { type: 'double_sun', weight: 25 },   // 25% 概率
+      { type: 'plant_boost', weight: 20 },  // 20% 概率
+      { type: 'cherry_bomb', weight: 20 },  // 20% 概率
+      { type: 'doom_shroom', weight: 15 }   // 15% 概率 - 稀有但强力
+    ]
+    
+    const selectedItem = this.weightedRandom(itemTypes)
+    
+    // 创建对应道具
+    switch (selectedItem.type) {
+      case 'freeze':
+        new FreezeItem(this, x, y)
+        break
+      case 'double_sun':
+        new DoubleSunItem(this, x, y)
+        break
+      case 'plant_boost':
+        new PlantBoostItem(this, x, y)
+        break
+      case 'cherry_bomb':
+        new CherryBombItem(this, x, y)
+        break
+      case 'doom_shroom':
+        new DoomShroomItem(this, x, y)
+        break
+    }
+    
+    console.log(`[PlayScene] 🎁 生成道具: ${selectedItem.type} at (${x}, ${y})`)
+  }
+  
+  // 加权随机选择
+  weightedRandom(items) {
+    const totalWeight = items.reduce((sum, item) => sum + item.weight, 0)
+    let random = Math.random() * totalWeight
+    
+    for (const item of items) {
+      random -= item.weight
+      if (random <= 0) {
+        return item
+      }
+    }
+    
+    return items[0]
   }
 
   showVictoryScreen() {
@@ -618,13 +840,28 @@ export default class PlayScene extends Phaser.Scene {
     const W = this.game.BASE_W
     const H = this.game.BASE_H
     this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setDepth(3000)
-    this.add.text(W / 2, H / 2 - 50, '🎉 关卡完成!', {
+    this.add.text(W / 2, H / 2 - 80, '🎉 关卡完成!', {
       fontSize: '44px', fill: '#00FF00', fontStyle: 'bold', stroke: '#000', strokeThickness: 4
     }).setOrigin(0.5).setDepth(3001)
-    this.add.text(W / 2, H / 2 + 10, `最终得分: ${this.score}`, {
+    
+    // 无尽模式统计
+    const minutes = Math.floor(this.survivalTime / 60)
+    const seconds = this.survivalTime % 60
+    const timeStr = minutes > 0 ? `${minutes}分${seconds}秒` : `${seconds}秒`
+    
+    this.add.text(W / 2, H / 2 - 20, `⏱️ 生存时间: ${timeStr}`, {
+      fontSize: '22px', fill: '#00FFFF', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(3001)
+    
+    this.add.text(W / 2, H / 2 + 20, `💀 击杀僵尸: ${this.totalKills}`, {
+      fontSize: '22px', fill: '#FF6B6B', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(3001)
+    
+    this.add.text(W / 2, H / 2 + 60, `🏆 最终得分: ${this.score}`, {
       fontSize: '24px', fill: '#FFD700', fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(3001)
-    this.add.text(W / 2, H / 2 + 60, '点击返回标题', {
+    
+    this.add.text(W / 2, H / 2 + 110, '点击返回标题', {
       fontSize: '20px', fill: '#FFFFFF'
     }).setOrigin(0.5).setDepth(3001)
     this.input.once('pointerdown', () => this.scene.start('TitleScene'))
@@ -778,7 +1015,7 @@ export default class PlayScene extends Phaser.Scene {
     const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.85).setDepth(3000)
 
     // 主标题
-    const titleText = this.add.text(W / 2, H / 2 - 80, '💀 游戏结束', {
+    const titleText = this.add.text(W / 2, H / 2 - 100, '💀 游戏结束', {
       fontSize: '52px',
       fill: '#FF4444',
       fontStyle: 'bold',
@@ -787,29 +1024,66 @@ export default class PlayScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(3001)
 
     // 副标题
-    const subText = this.add.text(W / 2, H / 2 - 20, '僵尸吃掉了你的脑子！', {
+    const subText = this.add.text(W / 2, H / 2 - 40, '僵尸吃掉了你的脑子！', {
       fontSize: '24px',
       fill: '#FFD700',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(3001)
 
-    // 分数显示
-    const scoreText = this.add.text(W / 2, H / 2 + 40, `最终得分: ${this.score}`, {
-      fontSize: '28px',
-      fill: '#00FF00',
+    // 无尽模式统计
+    const minutes = Math.floor(this.survivalTime / 60)
+    const seconds = this.survivalTime % 60
+    const timeStr = minutes > 0 ? `${minutes}分${seconds}秒` : `${seconds}秒`
+    
+    const statsY = H / 2 + 20
+    
+    // 生存时间
+    this.add.text(W / 2, statsY, `⏱️ 生存时间: ${timeStr}`, {
+      fontSize: '22px',
+      fill: '#00FFFF',
       fontStyle: 'bold',
       stroke: '#000',
       strokeThickness: 3
     }).setOrigin(0.5).setDepth(3001)
-
-    // 波次显示
-    const waveText = this.add.text(W / 2, H / 2 + 80, `坚守了 ${this.currentWave} 波`, {
-      fontSize: '18px',
-      fill: '#AAAAAA'
+    
+    // 击杀数
+    this.add.text(W / 2, statsY + 40, `💀 击杀僵尸: ${this.totalKills}`, {
+      fontSize: '22px',
+      fill: '#FF6B6B',
+      fontStyle: 'bold',
+      stroke: '#000',
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(3001)
+    
+    // 难度等级
+    this.add.text(W / 2, statsY + 80, `📊 达到难度: Lv.${this.difficultyLevel}`, {
+      fontSize: '22px',
+      fill: '#FFD700',
+      fontStyle: 'bold',
+      stroke: '#000',
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(3001)
+    
+    // 道具收集
+    this.add.text(W / 2, statsY + 120, `🎁 收集道具: ${this.itemsCollected}`, {
+      fontSize: '22px',
+      fill: '#FF69B4',
+      fontStyle: 'bold',
+      stroke: '#000',
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(3001)
+    
+    // 分数
+    const scoreText = this.add.text(W / 2, statsY + 160, `🏆 最终得分: ${this.score}`, {
+      fontSize: '26px',
+      fill: '#00FF00',
+      fontStyle: 'bold',
+      stroke: '#000',
+      strokeThickness: 4
     }).setOrigin(0.5).setDepth(3001)
 
     // 按钮容器
-    const btnY = H / 2 + 140
+    const btnY = H / 2 + 260
     const btnSpacing = 160
 
     // 重新开始按钮
@@ -877,6 +1151,10 @@ export default class PlayScene extends Phaser.Scene {
     if (wasAlive && zombie.gameData && zombie.gameData.health <= 0) {
       console.log('[PlayScene] 🧟 僵尸被消灭! Type:', zombie.zombieType, '| Score:', zombieScore)
       
+      // 无尽模式：更新击杀数
+      this.totalKills++
+      this.updateEndlessModeDisplay()
+      
       // 连击
       const now = Date.now()
       if (now - this.lastKillTime < 2000) this.comboCount++
@@ -887,7 +1165,81 @@ export default class PlayScene extends Phaser.Scene {
       if (this.comboCount > 1) baseScore += this.comboCount * 3
       console.log('[PlayScene] 💰 击杀得分:', baseScore, '(连击 x' + this.comboCount + ')')
       this.addScore(baseScore)
+      
+      // 击杀特效
+      this.showKillEffect(zombie, baseScore)
+      
+      // 高连击时屏幕震动
+      if (this.comboCount >= 5) {
+        this.cameras.main.shake(100, 0.005)
+      }
+      if (this.comboCount >= 10) {
+        this.cameras.main.shake(200, 0.01)
+      }
     }
+  }
+  
+  // 显示击杀特效
+  showKillEffect(zombie, score) {
+    // 分数飘字
+    const scoreText = this.add.text(zombie.x, zombie.y - 30, `+${score}`, {
+      fontSize: '20px',
+      fill: '#FFFF00',
+      fontStyle: 'bold',
+      stroke: '#000',
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(2001)
+    
+    // 连击提示
+    if (this.comboCount >= 3) {
+      const comboText = this.add.text(zombie.x, zombie.y - 60, `${this.comboCount} COMBO!`, {
+        fontSize: '24px',
+        fill: '#FF6B6B',
+        fontStyle: 'bold',
+        stroke: '#000',
+        strokeThickness: 4
+      }).setOrigin(0.5).setDepth(2001)
+      
+      this.tweens.add({
+        targets: comboText,
+        scale: 1.5,
+        duration: 200,
+        yoyo: true,
+        onComplete: () => {
+          this.tweens.add({
+            targets: comboText,
+            alpha: 0,
+            y: comboText.y - 50,
+            duration: 800,
+            onComplete: () => comboText.destroy()
+          })
+        }
+      })
+    }
+    
+    // 分数上漂动画
+    this.tweens.add({
+      targets: scoreText,
+      y: scoreText.y - 80,
+      alpha: 0,
+      scale: 1.3,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => scoreText.destroy()
+    })
+    
+    // 爆炸粒子效果（简单版：使用圆形Graphics）
+    const particles = this.add.graphics().setDepth(1999)
+    particles.fillStyle(0xFF4444, 0.8)
+    particles.fillCircle(zombie.x, zombie.y, 30)
+    
+    this.tweens.add({
+      targets: particles,
+      alpha: 0,
+      scale: 2,
+      duration: 300,
+      onComplete: () => particles.destroy()
+    })
   }
 
   // ── 僵尸-植物碰撞 ──

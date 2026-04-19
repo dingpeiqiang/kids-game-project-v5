@@ -1,3 +1,5 @@
+import config from '../config'
+
 export default class PreloadScene extends Phaser.Scene {
   constructor() {
     super({ key: 'PreloadScene' })
@@ -18,13 +20,16 @@ export default class PreloadScene extends Phaser.Scene {
     // 背景
     this.load.image('background-clouds', 'assets/images/clouds.png')
 
-    // 地图数据
-    this.load.tilemapTiledJSON('map', 'assets/maps/super-mario.json')
+    // 加载所有关卡地图数据
+    config.levels.forEach(level => {
+      this.load.tilemapTiledJSON(level.mapKey, level.mapFile)
+    })
 
     this.load.spritesheet('tiles', 'assets/images/super-mario.png', {
       frameWidth: 16,
       frameHeight: 16,
       spacing: 2,
+      margin: 1,
     })
 
     this.load.atlas('atlas', 'assets/mario-sprites.png', 'assets/mario-sprites.json')
@@ -41,6 +46,7 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start('MainScene')
+    // 从第一个关卡开始
+    this.scene.start('MainScene', { currentLevel: 1 })
   }
 }

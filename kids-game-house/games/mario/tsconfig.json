@@ -2,7 +2,7 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "target": "ES2015",
+    "target": "ESNext",
     "module": "ESNext",
     "strict": true,
     "noImplicitAny": false,
@@ -13,6 +13,7 @@
     "lib": ["dom", "ES2015", "ESNext"],
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
+    "useDefineForClassFields": false
   },
   "include": [
     "src",
