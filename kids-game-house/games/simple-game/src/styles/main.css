@@ -1,0 +1,297 @@
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0ede8;overflow:hidden;user-select:none;-webkit-user-select:none}
+:root{--bg:#f0ede8;--card:#fff;--primary:#5b9bd5;--accent:#f5c842;--text:#333;--sub:#888;--radius:16px}
+
+/* 顶部栏 */
+.top-bar{position:fixed;top:0;left:0;right:0;height:56px;background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+.top-bar .logo{font-size:18px;font-weight:700;color:var(--primary);letter-spacing:1px}
+.top-bar .top-right{display:flex;align-items:center;gap:16px}
+.coin-display{display:flex;align-items:center;gap:6px;background:#fff8e7;border:1.5px solid #f5c842;border-radius:20px;padding:4px 14px;font-size:14px;font-weight:600;color:#c8860a}
+.coin-icon{width:18px;height:18px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+
+/* 主界面 */
+.main-container{position:fixed;top:56px;left:0;right:0;bottom:64px;overflow-y:auto;padding:20px;scroll-behavior:smooth}
+.main-container::-webkit-scrollbar{width:0}
+
+/* Banner */
+.daily-banner{background:linear-gradient(135deg,#5b9bd5,#8ec5fc);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden}
+.daily-banner::before{content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;background:rgba(255,255,255,0.1);border-radius:50%}
+.daily-banner .banner-label{font-size:12px;opacity:0.85;margin-bottom:4px}
+.daily-banner .banner-title{font-size:20px;font-weight:700;margin-bottom:6px}
+.daily-banner .banner-sub{font-size:13px;opacity:0.8}
+.banner-tag{position:absolute;right:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);border-radius:8px;padding:8px 12px;text-align:center}
+.banner-tag .tag-num{font-size:22px;font-weight:700}
+.banner-tag .tag-label{font-size:10px;opacity:0.85}
+
+/* 游戏卡片 */
+.section-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.section-title .cat-label{display:flex;align-items:center;gap:6px;padding:4px 12px 4px 6px;background:color-mix(in srgb, var(--cat-color) 12%, transparent);border-radius:20px;font-size:15px}
+.section-title .cat-count{font-size:12px;color:var(--sub);font-weight:400;background:#f0f0f0;padding:2px 10px;border-radius:10px}
+.game-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.game-card{border-radius:var(--radius);overflow:hidden;background:var(--card);box-shadow:0 2px 12px rgba(0,0,0,0.06);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;position:relative}
+.game-card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,0.1)}
+.game-card:active{transform:translateY(-1px)}
+.card-cover{width:100%;aspect-ratio:16/10;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.card-cover canvas{width:100%;height:100%;border-radius:0;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges}
+.card-tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.5);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;backdrop-filter:blur(4px)}
+.card-info{padding:10px 12px}
+.card-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.card-desc{font-size:11px;color:var(--sub);line-height:1.4}
+.card-meta{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.card-players{font-size:11px;color:var(--sub)}
+.card-best{font-size:11px;color:var(--accent);font-weight:600;cursor:pointer;transition:all 0.2s;padding:2px 6px;border-radius:6px}
+.card-best:hover{background:rgba(245,200,66,0.15);transform:scale(1.05)}
+.card-best:active{transform:scale(0.98)}
+
+/* 排名显示 */
+.card-rank {
+  margin-top: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  color: #0369a1;
+  transition: all 0.2s;
+}
+
+.card-rank:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(3, 105, 161, 0.2);
+}
+
+.card-rank.rank-gold {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+}
+
+.card-rank.rank-silver {
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  color: #374151;
+}
+
+.card-rank.rank-bronze {
+  background: linear-gradient(135deg, #fed7aa, #fdba74);
+  color: #9a3412;
+}
+
+.card-rank.card-rank-empty {
+  background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* 底部导航 */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:64px;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);display:flex;box-shadow:0 -2px 16px rgba(0,0,0,0.06);z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--sub);font-size:10px;cursor:pointer;transition:color 0.2s}
+.nav-item.active{color:var(--primary)}
+.nav-item svg{width:22px;height:22px}
+.nav-item.active svg path{fill:var(--primary)}
+
+/* 游戏界面 */
+#game-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;display:none;background:#1a1a2e;overflow:hidden}
+#game-layer.show{display:flex;align-items:center;justify-content:center}
+#gameCanvas{display:flex;align-items:center;justify-content:center}
+#mainGameCanvas{display:block;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
+
+/* 道具栏 */
+.item-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:300;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);padding:10px 12px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.3);max-width:90vw;overflow-x:auto;scrollbar-width:none}
+.item-bar::-webkit-scrollbar{display:none}
+.item-slot{min-width:48px;width:48px;height:48px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s;position:relative;overflow:hidden;flex-shrink:0}
+.item-slot:hover{background:rgba(255,255,255,0.2);transform:translateY(-4px);box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.item-slot:active{transform:translateY(-2px)}
+.item-slot.disabled{opacity:0.4;cursor:not-allowed}
+.item-slot .item-icon{font-size:22px;line-height:1;z-index:2}
+.item-slot .item-count{position:absolute;bottom:-4px;right:-4px;background:#ff6b6b;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #1a1a2e;z-index:2}
+
+/* 结束界面 */
+#result-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:300;display:none;align-items:center;justify-content:center}
+#result-overlay.show{display:flex}
+.result-card{background:#fff;border-radius:24px;padding:32px 28px;width:min(360px,90vw);text-align:center;animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.result-icon{width:72px;height:72px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px}
+.result-icon.basic{background:#e8f4fd;color:var(--primary)}
+.result-icon.good{background:#fff8e7;color:#f5a623}
+.result-icon.best{background:#fff3e0;color:#ff7043}
+.result-title{font-size:22px;font-weight:700;color:#333;margin-bottom:6px}
+.result-score{font-size:40px;font-weight:800;color:var(--primary);margin-bottom:4px}
+.result-best{font-size:13px;color:#999;margin-bottom:8px}
+.result-rank{background:linear-gradient(135deg,#f8f9fa,#e9ecef);border-radius:12px;padding:12px 16px;margin-bottom:12px;text-align:center;animation:rankPop 0.5s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes rankPop{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}
+.result-rank .rank-badge{font-size:32px;margin-bottom:4px}
+.result-rank .rank-text{font-size:13px;line-height:1.4}
+.buff-list{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;min-height:28px}
+.buff-tag{background:#f0f7ff;border:1px solid #5b9bd5;color:#5b9bd5;font-size:11px;padding:4px 10px;border-radius:12px}
+.buff-tag.crit{background:#fff3e0;border-color:#ff7043;color:#e64a19}
+.btn-group{display:flex;gap:12px;margin-top:16px}
+.btn{outline:none;border:none;border-radius:12px;padding:12px 24px;font-size:15px;font-weight:600;cursor:pointer;transition:transform 0.15s,opacity 0.15s;flex:1}
+.btn:active{transform:scale(0.96)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-secondary{background:#f5f5f5;color:#666}
+
+/* 排行榜 */
+#rank-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:250;display:none;align-items:flex-start;justify-content:center;padding-top:40px}
+#rank-overlay.show{display:flex}
+.rank-panel{background:#fff;border-radius:20px 20px 0 0;width:min(420px,100vw);max-height:80vh;overflow-y:auto;animation:slideUp 0.35s ease}
+.rank-header{padding:20px 20px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f0f0f0;position:sticky;top:0;background:#fff;border-radius:20px 20px 0 0}
+.rank-title{font-size:18px;font-weight:700;color:#333}
+.rank-close{width:32px;height:32px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#666}
+.rank-tabs{display:flex;padding:0 20px;gap:8px;margin-top:16px}
+.rank-tab{padding:6px 16px;border-radius:20px;font-size:13px;color:#666;cursor:pointer;transition:all 0.2s;background:#f5f5f5}
+.rank-tab.active{background:var(--primary);color:#fff;font-weight:600}
+
+/* 我的排名卡片 */
+.my-rank-card{display:none;align-items:center;justify-content:space-between;margin:16px 20px 8px;padding:16px;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);border-radius:12px;color:#fff;box-shadow:0 4px 12px rgba(91,155,213,0.3)}
+.my-rank-info,.my-rank-score{flex:1;text-align:center}
+.my-rank-label{font-size:11px;opacity:0.9;margin-bottom:4px}
+.my-rank-value{font-size:20px;font-weight:800}
+.my-rank-btn{padding:10px 16px;background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.5);border-radius:10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+.my-rank-btn:hover{background:rgba(255,255,255,0.35);transform:scale(1.05)}
+.my-rank-btn:active{transform:scale(0.98)}
+
+.rank-list{padding:12px 20px 80px}
+.rank-item{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #f8f8f8}
+.rank-item:last-child{border:none}
+.rank-num{width:28px;text-align:center;font-size:14px;font-weight:700;color:#ccc}
+.rank-num.top3{font-size:18px}
+.rank-num.gold{color:#ffd700}
+.rank-num.silver{color:#c0c0c0}
+.rank-num.bronze{color:#cd7f32}
+.rank-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;margin:0 10px}
+.rank-name{flex:1;font-size:14px;color:#333;display:flex;align-items:center;gap:6px}
+.rank-score{font-size:15px;font-weight:700;color:var(--primary)}
+
+/* 我的排名行 */
+.rank-me{background:rgba(91,155,213,0.08);border-radius:8px;padding:10px 8px;margin:0 -8px}
+.rank-me .rank-avatar{background:linear-gradient(135deg,#FFD700,#FFA500)}
+.rank-me .rank-name{font-weight:700;color:#5b9bd5}
+.me-badge{background:#5b9bd5;color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700}
+
+/* 高亮动画 */
+@keyframes highlightPulse{
+  0%,100%{background:rgba(91,155,213,0.08)}
+  50%{background:rgba(91,155,213,0.25)}
+}
+.rank-item.highlight-me{animation:highlightPulse 1s ease-in-out 2}
+
+/* Buff 飘字 */
+.buff-popup{position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:500;background:#fff;border-radius:12px;padding:10px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15);display:none;align-items:center;gap:8px;animation:buffPop 0.5s cubic-bezier(0.34,1.56,0.64,1)}
+.buff-popup.show{display:flex}
+@keyframes buffPop{0%{transform:translateX(-50%) translateY(-20px);opacity:0;scale:0.8}100%{transform:translateX(-50%) translateY(0);opacity:1;scale:1}}
+.buff-popup .buff-icon{font-size:24px}
+.buff-popup .buff-text{font-size:14px;font-weight:600;color:#333}
+.buff-popup .buff-time{font-size:12px;color:#999}
+
+/* 暴击特效 */
+.crit-flash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:400;pointer-events:none;display:none}
+.crit-flash.show{display:block;animation:critFlash 0.6s ease-out forwards}
+@keyframes critFlash{0%{background:rgba(255,180,0,0.3)}100%{background:rgba(255,180,0,0)}}
+
+/* 连击环 */
+.combo-ring{position:fixed;bottom:80px;right:20px;z-index:150;display:none;flex-direction:column;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.95);box-shadow:0 2px 12px rgba(0,0,0,0.1)}
+.combo-ring.show{display:flex;animation:comboPop 0.3s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes comboPop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
+.combo-ring .combo-num{font-size:22px;font-weight:800;color:var(--primary)}
+.combo-ring .combo-label{font-size:10px;color:#999}
+
+/* 积分飘字 */
+.score-fly{position:fixed;z-index:300;pointer-events:none;font-weight:800;font-size:20px;color:var(--primary);text-shadow:0 2px 4px rgba(0,0,0,0.15);animation:scoreFly 1s ease-out forwards}
+@keyframes scoreFly{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-60px) scale(1.3)}}
+
+/* Loading */
+#loading{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+#loading.hide{display:none}
+.loader{width:48px;height:48px;border:4px solid #e8f0f8;border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{color:var(--sub);font-size:14px}
+
+/* 每日奖励弹窗 */
+#daily-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:350;display:none;align-items:center;justify-content:center}
+#daily-overlay.show{display:flex}
+.daily-card{background:#fff;border-radius:24px;padding:32px 28px;width:min(320px,90vw);text-align:center;animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)}
+.daily-card .dc-icon{font-size:48px;margin-bottom:12px}
+.daily-card .dc-title{font-size:18px;font-weight:700;color:#333;margin-bottom:8px}
+.daily-card .dc-desc{font-size:13px;color:#999;margin-bottom:20px;line-height:1.5}
+.daily-card .dc-btn{width:100%;padding:12px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+
+/* 玩法引导 */
+#guide-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:600;display:none;align-items:center;justify-content:center}
+#guide-overlay.show{display:flex}
+.guide-card{background:#fff;border-radius:24px;padding:32px 28px;width:min(340px,90vw);text-align:center;animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)}
+.guide-icon{font-size:56px;margin-bottom:12px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.guide-name{font-size:22px;font-weight:800;color:#333;margin-bottom:4px}
+.guide-desc{font-size:13px;color:#666;line-height:1.4}
+
+/* 引导头部布局 */
+.guide-header{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.guide-title-section{flex:1}
+
+.guide-ops{margin-bottom:16px}
+.guide-op{display:flex;align-items:center;gap:10px;background:#f8f9fa;border-radius:12px;padding:10px 14px;margin-bottom:8px;text-align:left}
+.guide-op-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.guide-op-text{font-size:13px;color:#333;line-height:1.4}
+.guide-tips{background:#fff8e7;border:1px solid #f5c842;border-radius:10px;padding:10px 14px;margin-bottom:14px;text-align:left}
+.guide-tips-title{font-size:11px;color:#c8860a;font-weight:600;margin-bottom:4px}
+.guide-tips-text{font-size:12px;color:#8a6500;line-height:1.5}
+.guide-skip{margin-bottom:16px;font-size:12px;color:#999}
+.guide-skip input{vertical-align:middle;margin-right:4px}
+.guide-btn{width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:transform 0.15s,opacity 0.15s}
+.guide-btn:hover{opacity:0.9}
+.guide-btn:active{transform:scale(0.97)}
+
+/* 我的页面 */
+#me-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(8px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+#me-overlay.show{display:flex}
+.me-container{background:#fff;border-radius:20px;width:100%;max-width:400px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
+.me-container::-webkit-scrollbar{width:0}
+
+/* 可滚动内容区域 */
+.me-content{flex:1;overflow-y:auto;padding:24px}
+.me-content::-webkit-scrollbar{width:0}
+
+/* 用户信息头部 */
+.me-header{display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:2px solid #f0f0f0}
+.me-avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;box-shadow:0 4px 12px rgba(91,155,213,0.3)}
+.me-info{flex:1}
+.me-name{font-size:20px;font-weight:700;color:#333;margin-bottom:4px}
+.me-level{font-size:13px;color:#5b9bd5;font-weight:600;background:rgba(91,155,213,0.1);padding:3px 10px;border-radius:10px;display:inline-block}
+
+/* 统计数据 */
+.me-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.stat-item{background:linear-gradient(135deg,#f8f9fa,#e9ecef);border-radius:12px;padding:16px 8px;text-align:center}
+.stat-value{font-size:24px;font-weight:800;color:#5b9bd5;margin-bottom:4px}
+.stat-label{font-size:11px;color:#888;font-weight:500}
+
+/* 区块标题 */
+.section-title-small{font-size:15px;font-weight:700;color:#333;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+/* 成就列表 */
+.achievement-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:24px}
+.achievement-item{background:#f8f9fa;border-radius:10px;padding:12px;text-align:center;border:2px solid transparent;transition:all 0.2s}
+.achievement-item.unlocked{border-color:#f5c842;background:#fff8e7}
+.achievement-icon{font-size:28px;margin-bottom:6px}
+.achievement-name{font-size:12px;font-weight:600;color:#333;margin-bottom:2px}
+.achievement-desc{font-size:10px;color:#888}
+
+/* 道具网格 */
+.item-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
+.item-slot{aspect-ratio:1;background:#f8f9fa;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;border:2px solid #e0e0e0;transition:all 0.2s}
+.item-slot.has-item{border-color:#5b9bd5;background:rgba(91,155,213,0.05)}
+.item-icon{font-size:24px;margin-bottom:4px}
+.item-count{position:absolute;bottom:-4px;right:-4px;background:#ff6b6b;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* 设置列表 */
+.setting-list{background:#f8f9fa;border-radius:12px;overflow:hidden;margin-bottom:24px}
+.setting-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid #f0f0f0;cursor:pointer;transition:background 0.2s;font-size:14px;color:#333}
+.setting-item:last-child{border-bottom:none}
+.setting-item:hover{background:#f8f9fa}
+.setting-item:active{background:#e9ecef}
+.setting-arrow{font-size:18px;color:#ccc}
+
+/* 关闭按钮 */
+.me-close-btn{width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:transform 0.15s,opacity 0.15s;box-shadow:0 4px 12px rgba(91,155,213,0.3)}
+.me-close-btn:hover{opacity:0.9}
+.me-close-btn:active{transform:scale(0.97)}

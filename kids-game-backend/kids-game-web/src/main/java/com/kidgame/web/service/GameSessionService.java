@@ -14,7 +14,7 @@ import com.kidgame.dao.mapper.GameRecordMapper;
 import com.kidgame.dao.mapper.GameSessionMapper;
 import com.kidgame.service.FatiguePointsService;
 import com.kidgame.web.request.SubmitGameResultRequest;
-import com.kidgame.web.util.LeaderboardUtil;
+import com.kidgame.service.util.LeaderboardUtil;
 import com.kidgame.common.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +45,9 @@ public class GameSessionService {
 
     @Autowired
     private GameRecordMapper gameRecordMapper;
+
+    @Autowired
+    private LeaderboardUtil leaderboardUtil;
 
     /**
      * 启动游戏会话
@@ -143,7 +146,7 @@ public class GameSessionService {
 
         // 更新排行榜
         try {
-            LeaderboardUtil.updateScore(session.getUserId(), session.getGameId(), result.getScore());
+            leaderboardUtil.updateScore(session.getUserId(), session.getGameId(), result.getScore());
         } catch (Exception e) {
             log.error("[GameSession] 更新排行榜失败", e);
         }

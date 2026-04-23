@@ -5,7 +5,7 @@
     <!-- 查询排行榜数据（带排名） -->
     <select id="selectLeaderboardWithRank" resultType="java.util.HashMap">
         SELECT 
-            @rownum := @rownum + 1 AS rank,
+            @rownum := @rownum + 1 AS `rank`,
             user_id,
             username,
             nickname,
@@ -17,13 +17,13 @@
         FROM (
             SELECT 
                 user_id,
-                username,
-                nickname,
-                avatar_url,
-                dimension_value,
-                decimal_value,
-                extra_data,
-                create_time
+                MAX(username) AS username,
+                MAX(nickname) AS nickname,
+                MAX(avatar_url) AS avatar_url,
+                MAX(dimension_value) AS dimension_value,
+                MAX(decimal_value) AS decimal_value,
+                MAX(extra_data) AS extra_data,
+                MAX(create_time) AS create_time
             FROM t_leaderboard_data
             WHERE game_id = #{gameId}
               AND dimension_code = #{dimensionCode}
@@ -40,15 +40,8 @@
               <if test="rankYear != null and rankYear != ''">
                 AND rank_year = #{rankYear}
               </if>
-            ORDER BY 
-                <choose>
-                    <when test="sortOrder == 'ASC'">
-                        dimension_value ASC
-                    </when>
-                    <otherwise>
-                        dimension_value DESC
-                    </otherwise>
-                </choose>
+            GROUP BY user_id
+            ORDER BY dimension_value DESC
             LIMIT #{limit}
         ) AS ranked_data,
         (SELECT @rownum := 0) AS r
@@ -57,24 +50,43 @@
     <!-- 查询用户的最佳排名 -->
     <select id="selectUserBestRank" resultType="java.util.HashMap">
         SELECT 
-            COUNT(*) + 1 AS userRank,
-            best.dimension_value AS userValue,
-            total.totalCount
-        FROM (
-            SELECT MAX(dimension_value) AS dimension_value
-            FROM t_leaderboard_data
-            WHERE user_id = #{userId}
-              AND game_id = #{gameId}
-              AND dimension_code = #{dimensionCode}
-              AND deleted = 0
-        ) AS best,
-        (
-            SELECT COUNT(DISTINCT user_id) AS totalCount
-            FROM t_leaderboard_data
-            WHERE game_id = #{gameId}
-              AND dimension_code = #{dimensionCode}
-              AND deleted = 0
-        ) AS total
+            (
+                SELECT 
+                    CASE 
+                        WHEN userMaxValue IS NULL THEN NULL
+                        ELSE (
+                            SELECT COUNT(*) + 1
+                            FROM t_leaderboard_data ld1
+                            WHERE ld1.game_id = #{gameId}
+                              AND ld1.dimension_code = #{dimensionCode}
+                              AND ld1.deleted = 0
+                              AND ld1.dimension_value > userMaxValue
+                        )
+                    END
+                FROM (
+                    SELECT MAX(dimension_value) AS userMaxValue
+                    FROM t_leaderboard_data
+                    WHERE user_id = #{userId}
+                      AND game_id = #{gameId}
+                      AND dimension_code = #{dimensionCode}
+                      AND deleted = 0
+                ) AS user_best
+            ) AS userRank,
+            (
+                SELECT MAX(dimension_value)
+                FROM t_leaderboard_data
+                WHERE user_id = #{userId}
+                  AND game_id = #{gameId}
+                  AND dimension_code = #{dimensionCode}
+                  AND deleted = 0
+            ) AS userValue,
+            (
+                SELECT COUNT(DISTINCT user_id)
+                FROM t_leaderboard_data
+                WHERE game_id = #{gameId}
+                  AND dimension_code = #{dimensionCode}
+                  AND deleted = 0
+            ) AS totalCount
     </select>
 
     <!-- 更新或插入排行榜数据（取最大值） -->

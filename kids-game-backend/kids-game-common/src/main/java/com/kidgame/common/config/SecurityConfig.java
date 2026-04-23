@@ -67,8 +67,11 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/**",
                     "/api/kid/login",
+                    "/api/kid/register",
                     "/api/parent/login",
+                    "/api/parent/register",
                     "/api/user/login",
+                    "/api/user/register",
                     "/api/user/refresh-token",
 
                     // Swagger 文档
@@ -84,7 +87,10 @@ public class SecurityConfig {
                     "/api/game/config/**",
                     "/api/game/report",
                     "/api/game/verify",
-                    "/api/question/random"
+                    "/api/question/random",
+
+                    // 排行榜公开接口
+                    "/api/leaderboard/top"
                 ).permitAll()
                 
                 // 需要认证的端点

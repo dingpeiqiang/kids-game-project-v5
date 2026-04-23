@@ -135,6 +135,9 @@ public class UserServiceImpl implements UserService {
         // 创建用户扩展信息
         UserProfile profile = new UserProfile();
         profile.setUserId(user.getUserId());
+        profile.setProfileType(user.getUserType() == 0
+                ? UserProfile.ProfileType.KID_INFO
+                : UserProfile.ProfileType.PARENT_INFO);
         profile.setProfileData(dto.getExtInfoJson());
         profile.setCreateTime(System.currentTimeMillis());
         profile.setUpdateTime(System.currentTimeMillis());
