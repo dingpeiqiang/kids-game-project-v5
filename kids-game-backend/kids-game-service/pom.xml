@@ -57,18 +57,6 @@
             <artifactId>jakarta.annotation-api</artifactId>
         </dependency>
 
-        <!-- 腾讯云 COS Java SDK -->
-        <dependency>
-            <groupId>com.qcloud</groupId>
-            <artifactId>cos_api</artifactId>
-        </dependency>
-
-        <!-- 腾讯云 COS STS SDK（临时密钥） -->
-        <dependency>
-            <groupId>com.qcloud</groupId>
-            <artifactId>cos-sts_api</artifactId>
-        </dependency>
-
         <!-- JSch SFTP 支持 -->
         <dependency>
             <groupId>com.jcraft</groupId>

@@ -23,14 +23,10 @@ import java.util.UUID;
 /**
  * 资源上传服务实现 (本地存储版本)
  * 
- * 仅在 COS 服务未配置时使用
- * 注意：此实现返回的是相对路径 URL，不是完整的 HTTPS URL
- * 
- * @deprecated 生产环境请使用 ResourceUploadCosServiceImpl
+ * 默认的资源上传实现，将文件保存到服务器本地
  */
 @Slf4j
 @Service
-@ConditionalOnMissingBean(ResourceUploadCosServiceImpl.class)
 public class ResourceUploadServiceImpl implements ResourceUploadService {
     
     @Value("${resource.upload.path:./uploads}")

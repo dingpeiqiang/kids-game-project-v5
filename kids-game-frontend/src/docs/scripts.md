@@ -57,7 +57,6 @@ set-env-vars.bat
 - 数据库连接信息
 - Redis 连接信息
 - JWT 密钥
-- COS 云存储配置
 
 ---
 

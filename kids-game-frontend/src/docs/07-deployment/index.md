@@ -97,12 +97,6 @@ REDIS_PORT=6379
 # JWT 配置
 JWT_SECRET=your_secret_key
 JWT_EXPIRATION=604800000
-
-# COS 配置
-COS_SECRET_ID=your_secret_id
-COS_SECRET_KEY=your_secret_key
-COS_BUCKET=your_bucket
-COS_REGION=ap-guangzhou
 ```
 
 ### 前端环境变量
