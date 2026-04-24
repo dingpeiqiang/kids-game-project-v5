@@ -1,13 +1,16 @@
 # 多阶段构建 - 前端生产镜像
 FROM node:18-alpine AS builder
 
+# 安装构建依赖（用于编译原生模块）
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
 
 # 复制依赖文件
 COPY kids-game-frontend/package*.json ./
 
-# 安装依赖
-RUN npm ci
+# 安装依赖（忽略引擎检查警告）
+RUN npm ci --ignore-engines || npm install --ignore-engines
 
 # 复制源代码
 COPY kids-game-frontend/ ./
