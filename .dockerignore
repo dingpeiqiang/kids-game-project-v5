@@ -1,0 +1,49 @@
+# Docker 忽略文件
+.git
+.gitignore
+*.md
+docs/
+.idea/
+.vscode/
+.workbuddy/
+.lingma/
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+target/
+*.jar
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test reports
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+
+# Backup files
+*.bak
+*.backup

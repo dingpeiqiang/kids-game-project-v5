@@ -1,0 +1,132 @@
+# ========================================
+# 生产环境配置文件
+# 所有敏感信息通过环境变量注入
+# ========================================
+
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: kids-game-platform
+  
+  # 数据库配置（从环境变量读取）
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/kids_game?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:kidgame}
+    password: ${SPRING_DATASOURCE_PASSWORD:kidgame123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: ${DB_MIN_IDLE:5}
+      maximum-pool-size: ${DB_MAX_POOL:20}
+      connection-timeout: 30000
+      idle-timeout: 300000
+      max-lifetime: 600000
+      connection-test-query: SELECT 1
+
+  # Redis 配置（可选）
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 30000ms
+      lettuce:
+        pool:
+          enabled: true
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+# JWT 安全配置
+security:
+  jwt:
+    secret: ${JWT_SECRET:change-this-to-a-secure-random-string-at-least-32-chars}
+    expiration: ${JWT_EXPIRATION:604800000}  # 7 天
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}  # 30 天
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  type-aliases-package: com.kidgame.dao.entity
+  mapper-locations: classpath*:mapper/**/*.xml
+  global-config:
+    ddl-auto: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.slf4j.Slf4jImpl}
+    map-underscore-to-camel-case: true
+
+# 游戏配置
+kidgame:
+  game:
+    time-limit: ${GAME_TIME_LIMIT:30}
+    fatigue-points:
+      initial: ${FATIGUE_INITIAL_POINTS:10}
+      daily-limit: ${FATIGUE_DAILY_LIMIT:10}
+      points-per-answer: ${FATIGUE_POINTS_PER_ANSWER:1}
+  parent:
+    default-pin: ${PARENT_DEFAULT_PIN:0000}
+    warning-thresholds: [5, 10, 15]
+
+# 腾讯云 COS 配置（可选，不使用则留空）
+tencent:
+  cos:
+    secret-id: ${TENCENT_COS_SECRET_ID:}
+    secret-key: ${TENCENT_COS_SECRET_KEY:}
+    bucket: ${TENCENT_COS_BUCKET:}
+    region: ${TENCENT_COS_REGION:ap-guangzhou}
+    base-url: ${TENCENT_COS_BASE_URL:}
+
+# 资源上传配置
+resource:
+  upload:
+    path: ${RESOURCE_UPLOAD_PATH:/app/uploads}
+  cdn:
+    domain: ${RESOURCE_CDN_DOMAIN:}
+
+# SFTP 配置（可选）
+sftp:
+  enabled: ${SFTP_ENABLED:false}
+  host: ${SFTP_HOST:}
+  port: ${SFTP_PORT:22}
+  username: ${SFTP_USERNAME:}
+  password: ${SFTP_PASSWORD:}
+  base-directory: ${SFTP_BASE_DIRECTORY:/upload}
+  base-url: ${SFTP_BASE_URL:}
+  connection-timeout: ${SFTP_CONNECTION_TIMEOUT:30000}
+  read-timeout: ${SFTP_READ_TIMEOUT:30000}
+
+# API 限流配置
+kidgame:
+  api:
+    rate-limit-per-minute: ${API_RATE_LIMIT:100}
+
+# 日志配置
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.kidgame: ${LOG_LEVEL_APP:INFO}
+    com.baomidou.mybatisplus: ${LOG_LEVEL_MYBATIS:WARN}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE_PATH:/app/logs/application.log}
+    max-size: 10MB
+    max-history: 30
+
+# Actuator 监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
