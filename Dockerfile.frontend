@@ -15,6 +15,12 @@ RUN npm ci --ignore-engines || npm install --ignore-engines
 # 复制源代码
 COPY kids-game-frontend/ ./
 
+# 复制共享代码（GTRS 验证器）
+COPY kids-game-house/shared/utils/gtrs-validator.ts ./src/utils/gtrs-validator-shared.ts
+
+# 更新导入路径（将外部引用改为本地文件）
+RUN sed -i "s|from '../../../kids-game-house/shared/utils/gtrs-validator'|from './gtrs-validator-shared'|" src/utils/gtrs-validator.ts
+
 # 构建应用
 ARG VITE_API_BASE_URL=http://localhost:8080
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
