@@ -179,6 +179,7 @@ import { Document, Edit, Refresh, ZoomIn, Delete, Upload, Brush } from '@element
 import ImageDIYPanel from './ImageDIYPanel.vue'
 import type { GTRSTheme } from '@/utils/gtrs-validator'
 import { unifiedUploadService } from '@/services/unified-upload.service'
+import { envConfig } from '@/core/config/env'
 
 interface Props {
   modelValue: GTRSTheme
@@ -467,7 +468,7 @@ const getImageUrl = (path: string): string => {
   }
 
   // 相对路径转换为完整 URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const baseUrl = envConfig.resourceBaseUrl.replace(/\/resources\/?$/, '') || window.location.origin
   return path.startsWith('/resources/') ? `${baseUrl}${path}` : `${window.location.origin}${path}`
 }
 

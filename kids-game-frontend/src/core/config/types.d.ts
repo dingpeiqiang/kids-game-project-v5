@@ -10,6 +10,8 @@ export interface EnvConfig {
   apiBaseUrl: string;
   wsBaseUrl: string;
   resourceBaseUrl: string;
+  /** 游戏静态资源 CDN 地址（可选），为空时使用当前 origin */
+  gameCdnUrl?: string;
 }
 
 /**

@@ -1,0 +1,65 @@
+# Git
+.git
+.gitignore
+
+# Node modules（会在容器内重新安装）
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist
+build
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+docs/
+
+# Tests
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+coverage/
+
+# Environment files
+.env
+.env.*
+!.env.production.example
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+!Dockerfile.frontend
+!Dockerfile.backend
+!Dockerfile.backend.lowmem
+
+# Kids game house（游戏不需要打包到镜像）
+kids-game-house/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Reports and logs
+reports/
+logs/
+tasks/
+
+# Scripts（构建不需要）
+*.sh
+!deploy.sh

@@ -12,7 +12,7 @@ spring:
   
   # 数据库配置（从环境变量读取）
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/kids_game?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/kids_game?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectionAttributes=none}
     username: ${SPRING_DATASOURCE_USERNAME:kidgame}
     password: ${SPRING_DATASOURCE_PASSWORD:kidgame123}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -73,6 +73,8 @@ kidgame:
   parent:
     default-pin: ${PARENT_DEFAULT_PIN:0000}
     warning-thresholds: [5, 10, 15]
+  api:
+    rate-limit-per-minute: ${API_RATE_LIMIT:100}
 
 # 资源上传配置
 resource:
@@ -92,11 +94,6 @@ sftp:
   base-url: ${SFTP_BASE_URL:}
   connection-timeout: ${SFTP_CONNECTION_TIMEOUT:30000}
   read-timeout: ${SFTP_READ_TIMEOUT:30000}
-
-# API 限流配置
-kidgame:
-  api:
-    rate-limit-per-minute: ${API_RATE_LIMIT:100}
 
 # 日志配置
 logging:

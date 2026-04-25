@@ -372,6 +372,7 @@ import { Document, Edit, Delete, Microphone, VideoPause, VideoPlay, Check, Close
 import type { GTRSTheme } from '@/utils/gtrs-validator'
 import { unifiedUploadService } from '@/services/unified-upload.service'
 import AudioDebug from '@/utils/audio-debug'
+import { envConfig } from '@/core/config/env'
 // ⭐ 后端已支持自动转码，无需前端转换
 
 interface Props {
@@ -525,7 +526,7 @@ const getAudioUrl = (path: string): string => {
   }
 
   // 相对路径转换为完整 URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  const baseUrl = envConfig.resourceBaseUrl.replace(/\/resources\/?$/, '') || window.location.origin
   return path.startsWith('/resources/') ? `${baseUrl}${path}` : `${window.location.origin}${path}`
 }
 

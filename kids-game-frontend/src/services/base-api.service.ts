@@ -8,6 +8,7 @@ import type { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axio
 import type { ApiResponse, PageData } from './api.types';
 import { API_CONSTANTS, isPageData } from './api.types';
 import { handleApiError, type ErrorHandlerOptions, type ApiError } from '@/utils/error-handler';
+import { envConfig } from '@/core/config/env';
 
 /**
  * 请求配置选项
@@ -27,7 +28,8 @@ export class BaseApiService {
   private retryDelay: number = 1000;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_URL || API_CONSTANTS.DEFAULT_API_URL;
+    // 使用 envConfig 而非 import.meta.env，保证容器运行时 window.__ENV__ 注入生效
+    this.baseUrl = envConfig.apiBaseUrl;
     this.loadToken();
     
     // 创建 Axios 实例

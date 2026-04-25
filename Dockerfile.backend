@@ -3,21 +3,22 @@ FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /app
 
-# 复制 POM 文件
-COPY kids-game-backend/pom.xml ./
-COPY kids-game-backend/kids-game-common/pom.xml ./kids-game-common/
-COPY kids-game-backend/kids-game-dao/pom.xml ./kids-game-dao/
-COPY kids-game-backend/kids-game-service/pom.xml ./kids-game-service/
-COPY kids-game-backend/kids-game-web/pom.xml ./kids-game-web/
+# 第 1 步：只复制 POM 文件，下载依赖（这一层会被缓存）
+COPY kids-game-backend/pom.xml ./pom.xml
+COPY kids-game-backend/kids-game-common/pom.xml ./kids-game-common/pom.xml
+COPY kids-game-backend/kids-game-dao/pom.xml ./kids-game-dao/pom.xml
+COPY kids-game-backend/kids-game-service/pom.xml ./kids-game-service/pom.xml
+COPY kids-game-backend/kids-game-web/pom.xml ./kids-game-web/pom.xml
 
-# 下载依赖（利用 Docker 缓存层）
-RUN mvn dependency:go-offline -B
+# 下载依赖（只有 POM 变化时才会重新执行）
+RUN mvn dependency:go-offline -B -q || true
 
-# 复制源代码
+# 第 2 步：复制源代码并构建
 COPY kids-game-backend/ ./
 
 # 构建应用（跳过测试以加快构建速度）
-RUN mvn clean package -DskipTests
+# Maven 会使用之前下载的依赖，不会重新下载
+RUN mvn clean package -DskipTests -B
 
 # 生产阶段 - 使用 JRE 运行时
 FROM eclipse-temurin:17-jre-alpine

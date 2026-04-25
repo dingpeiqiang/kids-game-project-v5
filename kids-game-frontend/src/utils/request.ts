@@ -1,10 +1,13 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 import { API_CONSTANTS } from '@/services/api.types'
+import { envConfig } from '@/core/config/env'
 
 // 创建 axios 实例
+// 注意：production 使用空字符串 baseURL，API 路径带完整 /api/ 前缀
+// 开发环境 baseURL 为 http://localhost:8080/api
 const service: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: envConfig.apiBaseUrl,
   timeout: 15000 // 请求超时时间
 })
 

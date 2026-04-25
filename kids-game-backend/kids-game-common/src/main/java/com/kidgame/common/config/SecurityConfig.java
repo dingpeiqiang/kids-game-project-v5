@@ -81,6 +81,10 @@ public class SecurityConfig {
                     "/webjars/**",
                     "/favicon.ico",
 
+                    // Actuator 健康检查（Docker healthcheck 需要）
+                    "/actuator/health",
+                    "/actuator/info",
+
                     // 游戏相关公开接口
                     "/api/game/list",
                     "/api/game/code/*",

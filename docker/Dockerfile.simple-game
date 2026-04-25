@@ -1,0 +1,35 @@
+# 多阶段构建 - simple-game 游戏镜像
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 复制依赖文件
+COPY kids-game-house/games/simple-game/package*.json ./
+
+# 安装依赖（包括 devDependencies）
+RUN npm ci --ignore-engines --prefer-offline --no-audit || npm install --ignore-engines
+
+# 复制源代码
+COPY kids-game-house/games/simple-game/ ./
+
+# 构建游戏（跳过 tsc，直接使用 vite build）
+RUN npx vite build 2>&1 | tee /tmp/build.log || (cat /tmp/build.log && exit 1)
+
+# 生产阶段 - 使用 Nginx 提供静态文件
+FROM nginx:alpine
+
+# 配置 Nginx 日志
+RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
+    ln -sf /dev/stderr /var/log/nginx/error.log
+
+# 复制构建产物
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 暴露端口
+EXPOSE 80
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
