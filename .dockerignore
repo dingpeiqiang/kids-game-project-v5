@@ -1,49 +1,65 @@
-# Docker 忽略文件
+# Git
 .git
 .gitignore
-*.md
-docs/
-.idea/
-.vscode/
-.workbuddy/
-.lingma/
 
-# Node modules
-node_modules/
+# Node modules（会在容器内重新安装）
+node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # Build outputs
-dist/
-build/
-target/
-*.jar
-
-# Logs
-logs/
+dist
+build
 *.log
 
-# Environment files
-.env
-.env.local
-.env.*.local
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
-# Test reports
+# Documentation
+*.md
+docs/
+
+# Tests
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
 coverage/
-.nyc_output/
+
+# Environment files
+.env
+.env.*
+!.env.production.example
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+!Dockerfile.frontend
+!Dockerfile.backend
+!Dockerfile.backend.lowmem
+
+# Kids game house（游戏不需要打包到镜像）
+kids-game-house/
 
 # Temporary files
 tmp/
 temp/
 *.tmp
-*.swp
-*.swo
 
-# Backup files
-*.bak
-*.backup
+# Reports and logs
+reports/
+logs/
+tasks/
+
+# Scripts（构建不需要）
+*.sh
+!deploy.sh
