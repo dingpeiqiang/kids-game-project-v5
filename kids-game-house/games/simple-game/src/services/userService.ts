@@ -310,7 +310,7 @@ class UserService {
   }
 
   // ── 游戏数据 ──────────────────────────────────────────────────
-  async recordGameResult(gameId: string, score: number): Promise<{ synced: boolean; rank?: number }> {
+  async recordGameResult(gameId: string, score: number, gameStats?: any): Promise<{ synced: boolean; rank?: number }> {
     console.log('[UserService] recordGameResult 被调用', { gameId, score, isLoggedIn: this.isLoggedIn })
     
     if (!this._current) {
@@ -337,12 +337,12 @@ class UserService {
     this._checkAchievements(u)
 
     console.log('[UserService] 本地数据已更新，准备同步到后端...')
-    // 同步分数到后端排行榜
-    return await this.syncScoreToBackend(gameId, score)
+    // 同步分数到后端排行榜（传递游戏统计数据）
+    return await this.syncScoreToBackend(gameId, score, gameStats)
   }
 
   // ── 同步分数到后端排行榜 ─────────────────────────────────────
-  private async syncScoreToBackend(gameId: string, score: number): Promise<{ synced: boolean; rank?: number }> {
+  private async syncScoreToBackend(gameId: string, score: number, gameStats?: any): Promise<{ synced: boolean; rank?: number }> {
     const accessToken = tokenStore.getAccess()
     const backendUserId = tokenStore.getUserId()
 
@@ -363,7 +363,7 @@ class UserService {
     }
 
     try {
-      console.log('[UserService] 调用 submitScore API...', { gameId: numericGameId, score })
+      console.log('[UserService] 调用 submitScore API...', { gameId: numericGameId, score, gameStats })
       const result = await submitScore(numericGameId, score, accessToken)
       console.log('[UserService] submitScore 返回结果:', result)
       if (result.success) {

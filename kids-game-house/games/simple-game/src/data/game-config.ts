@@ -30,60 +30,60 @@ export interface GameConfig {
  * - order: 调整同分类内的显示顺序
  * - badge: 添加角标（支持：新/热门/限时/推荐 等）
  *
- * 注意：如果某个游戏 ID 未在此配置中出现，默认 visible=true, order=99, badge=''
+ * 注意：如果某个游戏 ID 未在此配置中出现，默认 visible=false（不显示）
  */
 export const GAME_DISPLAY_CONFIG: GameConfig[] = [
-  // ── 热门消除 ──
-  { id: 'eliminate',     visible: true,  order: 1,  badge: '热门' },
-  { id: 'tetris',        visible: true,  order: 2,  badge: '' },
-  { id: 'jewelMatch',    visible: true,  order: 3,  badge: '' },
-  { id: 'bubbleShooter', visible: true,  order: 4,  badge: '' },
+  // // ── 热门消除 ──
+  // { id: 'eliminate',     visible: true,  order: 1,  badge: '热门' },
+  // { id: 'tetris',        visible: true,  order: 2,  badge: '' },
+  // { id: 'jewelMatch',    visible: true,  order: 3,  badge: '' },
+  // { id: 'bubbleShooter', visible: true,  order: 4,  badge: '' },
 
-  // ── 反应力 ──
-  { id: 'pop',           visible: true,  order: 1,  badge: '' },
-  { id: 'whackMole',     visible: true,  order: 2,  badge: '推荐' },
-  { id: 'colorTap',      visible: true,  order: 3,  badge: '' },
+  // // ── 反应力 ──
+  // { id: 'pop',           visible: true,  order: 1,  badge: '' },
+  // { id: 'whackMole',     visible: true,  order: 2,  badge: '推荐' },
+  // { id: 'colorTap',      visible: true,  order: 3,  badge: '' },
 
-  // ── 切割爽感 ──
-  { id: 'fruitSlice',    visible: true,  order: 1,  badge: '' },
-  { id: 'cookieCut',     visible: true,  order: 2,  badge: '' },
+  // // ── 切割爽感 ──
+  // { id: 'fruitSlice',    visible: true,  order: 1,  badge: '' },
+  // { id: 'cookieCut',     visible: true,  order: 2,  badge: '' },
 
-  // ── 动作闯关 ──
-  { id: 'dodge',         visible: true,  order: 1,  badge: '' },
-  { id: 'racingRun',     visible: true,  order: 2,  badge: '热门' },
-  { id: 'snake',         visible: true,  order: 3,  badge: '推荐' },
-  { id: 'neonRun',       visible: true,  order: 4,  badge: '' },
-  { id: 'slimeJump',     visible: true,  order: 5,  badge: '' },
+  // // ── 动作闯关 ──
+  // { id: 'dodge',         visible: true,  order: 1,  badge: '' },
+  // { id: 'racingRun',     visible: true,  order: 2,  badge: '热门' },
+  // { id: 'snake',         visible: true,  order: 3,  badge: '推荐' },
+  // { id: 'neonRun',       visible: true,  order: 4,  badge: '' },
+  // { id: 'slimeJump',     visible: true,  order: 5,  badge: '' },
 
-  // ── 益智休闲 ──
-  { id: 'sort',          visible: true,  order: 1,  badge: '' },
-  { id: 'bouncePath',    visible: true,  order: 2,  badge: '' },
-  { id: 'starCatcher',   visible: true,  order: 3,  badge: '' },
+  // // ── 益智休闲 ──
+  // { id: 'sort',          visible: true,  order: 1,  badge: '' },
+  // { id: 'bouncePath',    visible: true,  order: 2,  badge: '' },
+  // { id: 'starCatcher',   visible: true,  order: 3,  badge: '' },
 
-  // ── 3D沉浸 ──
-  { id: 'stack3d',       visible: true,  order: 1,  badge: '' },
-  { id: 'tower3d',       visible: true,  order: 2,  badge: '' },
+  // // ── 3D沉浸 ──
+  // { id: 'stack3d',       visible: true,  order: 1,  badge: '' },
+  // { id: 'tower3d',       visible: true,  order: 2,  badge: '' },
 
-  // ── 堆叠建造 ──
-  { id: 'stack',         visible: true,  order: 1,  badge: '' },
+  // // ── 堆叠建造 ──
+  // { id: 'stack',         visible: true,  order: 1,  badge: '' },
 
   // ── 射击枪战 ──
-  { id: 'spaceShooter',  visible: true,  order: 1,  badge: '新' },
-  { id: 'rpgShooter',    visible: true,  order: 2,  badge: '推荐' },
+  { id: 'spaceShooter',  visible: true,  order: 1,  badge: '新' }
+  // { id: 'rpgShooter',    visible: true,  order: 2,  badge: '推荐' },
 
-  // ── 策略塔防 ──
-  { id: 'towerDefense',  visible: true,  order: 1,  badge: '新' },
+  // // ── 策略塔防 ──
+  // { id: 'towerDefense',  visible: true,  order: 1,  badge: '新' },
 
-  // ── 卡牌记忆 ──
-  { id: 'memoryMatch',   visible: true,  order: 1,  badge: '' },
+  // // ── 卡牌记忆 ──
+  // { id: 'memoryMatch',   visible: true,  order: 1,  badge: '' },
 ]
 
 // ── 工具函数 ──────────────────────────────────────────────
 
-/** 获取某个游戏的显示配置（未配置则返回默认值） */
+/** 获取某个游戏的显示配置（未配置则默认不显示） */
 export function getGameDisplayConfig(gameId: string): GameConfig {
   const found = GAME_DISPLAY_CONFIG.find(c => c.id === gameId)
-  return found || { id: gameId, visible: true, order: 99, badge: '' }
+  return found || { id: gameId, visible: false, order: 99, badge: '' }
 }
 
 /** 获取所有可见的游戏ID列表 */

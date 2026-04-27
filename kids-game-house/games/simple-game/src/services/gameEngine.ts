@@ -18,6 +18,8 @@ export class GameEngine {
     crits: 0,
     sessionCoins: 0,
   }
+  private _isVictory = false
+  private _gameStats: any = null  // 游戏统计数据
 
   private onScoreFly?: ScoreCallback
   private onCritFlash?: CritCallback
@@ -49,6 +51,8 @@ export class GameEngine {
       sessionCoins: 0,
     }
     this.state.running = true
+    this._isVictory = false
+    this._gameStats = null
   }
 
   stop() {
@@ -169,6 +173,19 @@ export class GameEngine {
 
   endGame() {
     this.state.running = false
+  }
+
+  setVictory(v: boolean) { this._isVictory = v }
+  isVictory() { return this._isVictory }
+  
+  // 设置游戏统计数据
+  setGameStats(stats: any) {
+    this._gameStats = stats
+  }
+  
+  // 获取游戏统计数据
+  getGameStats() {
+    return this._gameStats
   }
 }
 

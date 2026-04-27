@@ -1,4 +1,10 @@
 *{margin:0;padding:0;box-sizing:border-box}
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+}
 body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0ede8;overflow:hidden;user-select:none;-webkit-user-select:none}
 :root{--bg:#f0ede8;--card:#fff;--primary:#5b9bd5;--accent:#f5c842;--text:#333;--sub:#888;--radius:16px}
 
@@ -111,9 +117,9 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0ede8;o
 .item-slot .item-count{position:absolute;bottom:-4px;right:-4px;background:#ff6b6b;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #1a1a2e;z-index:2}
 
 /* 结束界面 */
-#result-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:300;display:none;align-items:center;justify-content:center}
+#result-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:300;display:none;align-items:center;justify-content:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #result-overlay.show{display:flex}
-.result-card{background:#fff;border-radius:24px;padding:32px 28px;width:min(360px,90vw);text-align:center;animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)}
+.result-card{background:#fff;border-radius:24px;padding:28px 24px;padding-bottom:calc(28px + env(safe-area-inset-bottom, 0px));width:min(360px,92vw);max-height:90vh;overflow-y:auto;text-align:center;animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1);-webkit-overflow-scrolling:touch}
 @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
 .result-icon{width:72px;height:72px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px}
 .result-icon.basic{background:#e8f4fd;color:var(--primary)}
@@ -122,6 +128,10 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0ede8;o
 .result-title{font-size:22px;font-weight:700;color:#333;margin-bottom:6px}
 .result-score{font-size:40px;font-weight:800;color:var(--primary);margin-bottom:4px}
 .result-best{font-size:13px;color:#999;margin-bottom:8px}
+.result-stats{margin:12px 0;padding:12px;background:linear-gradient(135deg,#f8f9fa,#e9ecef);border-radius:12px;animation:statsFadeIn 0.4s ease}
+@keyframes statsFadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.result-stats .stat-item{font-size:13px;color:#555;padding:4px 0;display:flex;justify-content:space-between;align-items:center}
+.result-stats .stat-item b{color:#333;font-weight:700}
 .result-rank{background:linear-gradient(135deg,#f8f9fa,#e9ecef);border-radius:12px;padding:12px 16px;margin-bottom:12px;text-align:center;animation:rankPop 0.5s cubic-bezier(0.34,1.56,0.64,1)}
 @keyframes rankPop{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}
 .result-rank .rank-badge{font-size:32px;margin-bottom:4px}
@@ -129,11 +139,11 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0ede8;o
 .buff-list{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;min-height:28px}
 .buff-tag{background:#f0f7ff;border:1px solid #5b9bd5;color:#5b9bd5;font-size:11px;padding:4px 10px;border-radius:12px}
 .buff-tag.crit{background:#fff3e0;border-color:#ff7043;color:#e64a19}
-.btn-group{display:flex;gap:12px;margin-top:16px}
-.btn{outline:none;border:none;border-radius:12px;padding:12px 24px;font-size:15px;font-weight:600;cursor:pointer;transition:transform 0.15s,opacity 0.15s;flex:1}
+.btn-group{display:flex;gap:12px;margin-top:20px}
+.btn{outline:none;border:none;border-radius:14px;padding:14px 20px;font-size:16px;font-weight:700;cursor:pointer;transition:transform 0.15s,opacity 0.15s;flex:1;min-height:48px;-webkit-tap-highlight-color:transparent}
 .btn:active{transform:scale(0.96)}
-.btn-primary{background:var(--primary);color:#fff}
-.btn-secondary{background:#f5f5f5;color:#666}
+.btn-primary{background:linear-gradient(135deg,#4f8ef7,#3366e6);color:#fff;box-shadow:0 4px 12px rgba(51,102,230,0.3)}
+.btn-secondary{background:#f5f5f5;color:#666;border:1px solid #e0e0e0}
 
 /* 排行榜 */
 #rank-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:250;display:none;align-items:flex-start;justify-content:center;padding-top:40px}

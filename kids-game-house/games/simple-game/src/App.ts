@@ -222,6 +222,10 @@ class App {
           <div class="result-title" id="resultTitle">本局结束!</div>
           <div class="result-score" id="resultScore">0</div>
           <div class="result-best" id="resultBest">历史最高: 0</div>
+          
+          <!-- 游戏统计数据 -->
+          <div class="result-stats" id="resultStats" style="display:none; margin:12px 0; padding:12px; background:linear-gradient(135deg,#f8f9fa,#e9ecef); border-radius:12px;"></div>
+          
           <div class="result-rank" id="resultRank" style="display:none">
             <div class="rank-badge" id="rankBadge"></div>
             <div class="rank-text" id="rankText"></div>
@@ -324,6 +328,14 @@ class App {
   private async renderGameCards() {
     const container = document.getElementById('categorySections')!
     
+    // ⭐ 停止所有预览动画 + 断开旧 Observer
+    this.previewAnimFrames.forEach((rafId) => cancelAnimationFrame(rafId))
+    this.previewAnimFrames.clear()
+    if (this.previewObserver) {
+      this.previewObserver.disconnect()
+      this.previewObserver = null
+    }
+    
     // ⭐ 清空现有内容，避免重复渲染
     container.innerHTML = ''
     
@@ -382,14 +394,17 @@ class App {
       // 游戏网格
       const grid = document.createElement('div')
       grid.className = 'game-grid'
-      gamesInCat.forEach((game, i) => {
+      const gamesToPreview: Game[] = []
+      gamesInCat.forEach((game) => {
         const best = bestScores[game.id] || 0
         const rank = rankMap[game.id] !== undefined ? rankMap[game.id] : null
         const card = this.createGameCard(game, best, rank)
         grid.appendChild(card)
-        setTimeout(() => this.renderPreview(game), i * 80 + 100)
+        gamesToPreview.push(game)
       })
       container.appendChild(grid)
+      // ⭐ DOM 已挂载到 document，再启动预览动画
+      gamesToPreview.forEach(game => this.renderPreview(game))
     })
   }
 
@@ -452,9 +467,39 @@ class App {
     return card
   }
 
-  private renderPreview(game: Game) {
-    const canvas = document.getElementById('preview_' + game.id) as HTMLCanvasElement
-    if (!canvas) return
+  // preview 动画管理：只对视口内卡片运行动画，离开视口则停止
+  private previewAnimFrames: Map<string, number> = new Map()
+  private previewObserver: IntersectionObserver | null = null
+
+  private initPreviewObserver() {
+    if (this.previewObserver) return
+    this.previewObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const canvas = entry.target as HTMLCanvasElement
+        const gameId = canvas.id.replace('preview_', '')
+        if (entry.isIntersecting) {
+          // 进入视口 → 启动动画
+          if (!this.previewAnimFrames.has(gameId)) {
+            const game = GAMES.find(g => g.id === gameId)
+            if (game) this.startPreviewAnimation(game, canvas)
+          }
+        } else {
+          // 离开视口 → 停止动画
+          this.stopPreviewAnimation(gameId)
+        }
+      })
+    }, { rootMargin: '100px' })
+  }
+
+  private stopPreviewAnimation(gameId: string) {
+    const rafId = this.previewAnimFrames.get(gameId)
+    if (rafId) {
+      cancelAnimationFrame(rafId)
+      this.previewAnimFrames.delete(gameId)
+    }
+  }
+
+  private startPreviewAnimation(game: Game, canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d')!
     const [c1, c2] = game.color.split(',')
     const grad = ctx.createLinearGradient(0, 0, 320, 200)
@@ -470,7 +515,10 @@ class App {
 
     let frame = 0
     const animate = () => {
-      if (!document.getElementById('preview_' + game.id)) return
+      if (!document.getElementById('preview_' + game.id)) {
+        this.previewAnimFrames.delete(game.id)
+        return
+      }
       ctx.fillStyle = grad
       ctx.fillRect(0, 0, 320, 200)
       items.forEach((it, i) => {
@@ -488,9 +536,33 @@ class App {
       ctx.textAlign = 'center'
       ctx.fillText('▶', 160, 110)
       frame++
-      requestAnimationFrame(animate)
+      this.previewAnimFrames.set(game.id, requestAnimationFrame(animate))
     }
-    animate()
+    this.previewAnimFrames.set(game.id, requestAnimationFrame(animate))
+  }
+
+  private renderPreview(game: Game) {
+    const canvas = document.getElementById('preview_' + game.id) as HTMLCanvasElement
+    if (!canvas) return
+
+    // 先画一帧静态画面（避免白屏）
+    const ctx = canvas.getContext('2d')!
+    const [c1, c2] = game.color.split(',')
+    const grad = ctx.createLinearGradient(0, 0, 320, 200)
+    grad.addColorStop(0, c1)
+    grad.addColorStop(1, c2)
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, 320, 200)
+    ctx.globalAlpha = 0.9
+    ctx.fillStyle = '#fff'
+    ctx.font = 'bold 18px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('▶', 160, 110)
+    ctx.globalAlpha = 1
+
+    // 用 IntersectionObserver 懒加载动画
+    this.initPreviewObserver()
+    this.previewObserver!.observe(canvas)
   }
 
   private bindEvents() {
@@ -803,27 +875,148 @@ class App {
       ?? storageService.get().bestScores[gameId]
       ?? 0
 
-    // 记录战绩并同步到后端（登录用户）
-    let myRank: number | undefined
-    console.log('[App] endGame - 检查登录状态', { isLoggedIn: userService.isLoggedIn, gameId, score })
+    // ⚡ 先显示结果弹窗，再异步同步分数（避免网络阻塞导致卡住）
+    this.showResult(gameId, score, prevBest)
+
+    // 异步记录战绩（不阻塞弹窗显示）
+    this.syncScoreAsync(gameId, score, prevBest)
+  }
+
+  private showResult(gameId: string, score: number, prevBest: number) {
+    // 获取游戏统计数据
+    const gameStats = gameEngine.getGameStats()
+    
+    // 金币
+    const coinsEarned = Math.round(score / 10)
     if (userService.isLoggedIn) {
-      try {
-        console.log('[App] 调用 userService.recordGameResult...')
-        const result = await userService.recordGameResult(gameId, score)
-        console.log('[App] recordGameResult 返回结果:', result)
-        if (result.synced && result.rank) {
-          myRank = result.rank
-        }
-        
-        // 清除该游戏的排行榜缓存，以便下次获取最新数据
-        this.clearRankCache(gameId)
-        console.log('[App] 已清除排行榜缓存:', gameId)
-      } catch (e) {
-        console.warn('[App] 分数同步失败:', e)
-        showToast('分数同步失败，请检查网络', 'error')
+      userService.addCoins(coinsEarned)
+      userService.incrementGames()
+    } else {
+      storageService.addCoins(coinsEarned)
+      storageService.incrementGames()
+    }
+
+    // 更新UI
+    const dispCoins = userService.isLoggedIn ? userService.current!.coins : storageService.get().coins
+    const dispGames = userService.isLoggedIn ? userService.current!.todayGames : storageService.get().todayGames
+    document.getElementById('coinCount')!.textContent = String(dispCoins)
+    document.getElementById('todayGames')!.textContent = String(dispGames)
+
+    // 计算排名（本地）
+    const rankInfo = this.calculateRank(score)
+    
+    // 结果弹窗
+    const pct = prevBest > 0 ? Math.round(score / prevBest * 100) : 100
+    const isVictory = gameEngine.isVictory()
+    let tier = 'basic', icon = '🎮', title = '继续加油'
+    if (isVictory) {
+      tier = 'best'; icon = '🎉'; title = '恭喜通关!'
+      audioService.win()
+    } else if (score > prevBest && score > 0) {
+      tier = 'best'; icon = '🏆'; title = '新纪录!'
+      audioService.win()
+    } else if (pct >= 60) {
+      tier = 'good'; icon = '⭐'; title = '很棒!'
+    }
+
+    const resultIcon = document.getElementById('resultIcon')!
+    resultIcon.className = 'result-icon ' + tier
+    resultIcon.textContent = icon
+    document.getElementById('resultTitle')!.textContent = title
+    document.getElementById('resultScore')!.textContent =
+      score + (coinsEarned > 0 ? ' +' + coinsEarned + '💰' : '')
+    document.getElementById('resultBest')!.textContent = '历史最高: ' + (prevBest || 0)
+
+    // 显示游戏统计数据（如果有）
+    const statsEl = document.getElementById('resultStats')
+    if (statsEl && gameStats) {
+      statsEl.style.display = 'block'
+      let statsHtml = ''
+      if (gameStats.maxCombo > 0) {
+        statsHtml += `<div class="stat-item">🔥 最大连击: <b>${gameStats.maxCombo}</b></div>`
+      }
+      if (gameStats.totalKills > 0) {
+        statsHtml += `<div class="stat-item">💀 总击杀: <b>${gameStats.totalKills}</b></div>`
+      }
+      if (gameStats.gameTime > 0) {
+        const minutes = Math.floor(gameStats.gameTime / 60)
+        const seconds = gameStats.gameTime % 60
+        statsHtml += `<div class="stat-item">⏱️ 游戏时长: <b>${minutes}:${seconds.toString().padStart(2, '0')}</b></div>`
+      }
+      if (gameStats.level > 0) {
+        statsHtml += `<div class="stat-item">📊 等级: <b>${gameStats.level}</b></div>`
+      }
+      if (gameStats.won) {
+        statsHtml += `<div class="stat-item" style="color:#FFD700">🎉 通关成功!</div>`
+      }
+      statsEl.innerHTML = statsHtml
+    } else if (statsEl) {
+      statsEl.style.display = 'none'
+    }
+
+    // 显示排名信息（先用本地排名，后端同步后更新）
+    const rankEl = document.getElementById('resultRank')!
+    const rankBadgeEl = document.getElementById('rankBadge')!
+    const rankTextEl = document.getElementById('rankText')!
+
+    if (rankInfo) {
+      rankEl.style.display = 'block'
+      rankBadgeEl.textContent = rankInfo.badge
+      rankTextEl.innerHTML = rankInfo.text
+
+      if (rankInfo.rank <= 3) {
+        rankBadgeEl.style.color = rankInfo.rank === 1 ? '#FFD700' : rankInfo.rank === 2 ? '#C0C0C0' : '#CD7F32'
+      } else {
+        rankBadgeEl.style.color = '#5b9bd5'
       }
     } else {
-      console.log('[App] 游客模式，更新本地分数')
+      rankEl.style.display = 'none'
+    }
+
+    // Buff明细
+    const buffsEl = document.getElementById('resultBuffs')!
+    buffsEl.innerHTML = ''
+    if (gameEngine.getCrits() > 0) {
+      buffsEl.innerHTML += `<span class="buff-tag crit">⚡暴击 x${gameEngine.getCrits()}</span>`
+    }
+    if (gameEngine.getCombo() >= 10) {
+      buffsEl.innerHTML += `<span class="buff-tag">🔥连击 x${gameEngine.getCombo()}</span>`
+    }
+
+    document.getElementById('result-overlay')!.classList.add('show')
+  }
+
+  private async syncScoreAsync(gameId: string, score: number, prevBest: number) {
+    console.log('[App] syncScoreAsync - 检查登录状态', { isLoggedIn: userService.isLoggedIn, gameId, score })
+    if (userService.isLoggedIn) {
+      try {
+        // 获取游戏统计数据
+        const gameStats = gameEngine.getGameStats()
+        
+        console.log('[App] 调用 userService.recordGameResult...')
+        const result = await userService.recordGameResult(gameId, score, gameStats)
+        console.log('[App] recordGameResult 返回结果:', result)
+        if (result.synced && result.rank) {
+          // 后端同步成功，更新排名显示
+          const rankEl = document.getElementById('resultRank')
+          const rankBadgeEl = document.getElementById('rankBadge')
+          const rankTextEl = document.getElementById('rankText')
+          if (rankEl && rankBadgeEl && rankTextEl) {
+            rankEl.style.display = 'block'
+            const badge = result.rank <= 3 ? ['🥇', '🥈', '🥉'][result.rank - 1] : `#${result.rank}`
+            rankBadgeEl.textContent = badge
+            rankTextEl.innerHTML = `当前排名 <b>${result.rank}</b> 位`
+            rankBadgeEl.style.color = result.rank === 1 ? '#FFD700' : result.rank === 2 ? '#C0C0C0' : result.rank === 3 ? '#CD7F32' : '#5b9bd5'
+          }
+        }
+        
+        // 清除该游戏的排行榜缓存
+        this.clearRankCache(gameId)
+      } catch (e) {
+        console.warn('[App] 分数同步失败:', e)
+        // 不阻塞，静默失败
+      }
+    } else {
       // 游客模式：更新本地分数
       storageService.updateBest(gameId, score)
     }
@@ -849,8 +1042,12 @@ class App {
     
     // 结果弹窗
     const pct = prevBest > 0 ? Math.round(score / prevBest * 100) : 100
+    const isVictory = gameEngine.isVictory()
     let tier = 'basic', icon = '🎮', title = '继续加油'
-    if (score > prevBest && score > 0) {
+    if (isVictory) {
+      tier = 'best'; icon = '🎉'; title = '恭喜通关!'
+      audioService.win()
+    } else if (score > prevBest && score > 0) {
       tier = 'best'; icon = '🏆'; title = '新纪录!'
       audioService.win()
     } else if (pct >= 60) {
@@ -870,14 +1067,8 @@ class App {
     const rankBadgeEl = document.getElementById('rankBadge')!
     const rankTextEl = document.getElementById('rankText')!
 
-    if (myRank !== undefined) {
-      // 使用后端同步的排名
-      rankEl.style.display = 'block'
-      const badge = myRank <= 3 ? ['🥇', '🥈', '🥉'][myRank - 1] : `#${myRank}`
-      rankBadgeEl.textContent = badge
-      rankTextEl.innerHTML = `当前排名 <b>${myRank}</b> 位`
-      rankBadgeEl.style.color = myRank === 1 ? '#FFD700' : myRank === 2 ? '#C0C0C0' : myRank === 3 ? '#CD7F32' : '#5b9bd5'
-    } else if (rankInfo) {
+    if (rankInfo) {
+      // 使用计算的排名信息
       rankEl.style.display = 'block'
       rankBadgeEl.textContent = rankInfo.badge
       rankTextEl.innerHTML = rankInfo.text
@@ -958,12 +1149,17 @@ class App {
 
   private replayGame() {
     document.getElementById('result-overlay')!.classList.remove('show')
+    // 清理可能残留的 Phaser DOM（spaceShooter 等）
+    document.getElementById('phaser-space-shooter')?.remove()
+    document.getElementById('gameCanvas')!.innerHTML = ''
     this.startGame()
   }
 
   private exitGame() {
     document.getElementById('game-layer')!.classList.remove('show')
     document.getElementById('gameCanvas')!.innerHTML = ''
+    // 清理可能残留的 Phaser DOM（spaceShooter 等）
+    document.getElementById('phaser-space-shooter')?.remove()
     document.getElementById('topBar')!.style.display = 'flex'
     document.getElementById('bottomNav')!.style.display = 'flex'
     document.getElementById('mainView')!.style.display = 'block'
