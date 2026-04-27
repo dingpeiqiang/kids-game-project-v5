@@ -196,17 +196,17 @@ class UserService {
   get isLoggedIn(): boolean { return this._current !== null && !!tokenStore.getAccess() }
 
   // ── 注册 ──────────────────────────────────────────────────────
-  async register(username: string, password: string): Promise<{ ok: boolean; msg: string }> {
+  async register(username: string, password: string, nickname?: string): Promise<{ ok: boolean; msg: string }> {
     username = username.trim()
-    if (!username || username.length < 2 || username.length > 12) {
-      return { ok: false, msg: '昵称长度2-12个字符' }
+    if (!username || username.length < 4 || username.length > 12) {
+      return { ok: false, msg: '账号长度4-12个字符' }
     }
     if (!password || password.length < 4 || password.length > 16) {
       return { ok: false, msg: '密码长度4-16个字符' }
     }
 
     // 调用后端注册
-    const res = await apiClient.register(username, password)
+    const res = await apiClient.register(username, password, nickname)
     if (!res.ok) return { ok: false, msg: res.msg }
 
     // 注册成功后自动登录

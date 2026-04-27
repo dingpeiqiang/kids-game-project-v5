@@ -44,8 +44,7 @@ export default class PlaneShooterScene extends GameScene {
 
   // ─── 玩家相关 ──────────────────────────────────────────────────────
   private player!: GameObject
-  private playerHealth: number = 3
-  private maxHealth: number = 3
+  private playerHealth: number = 5  // ⭐ 初始生命改为5个
   private hasShield: boolean = false
   private doubleBulletTimer: Phaser.Time.TimerEvent | null = null
   
@@ -63,17 +62,13 @@ export default class PlaneShooterScene extends GameScene {
   // ─── 道具系统 ──────────────────────────────────────────────────────
   private props: Prop[] = []
   private propDropChance: number = 0.15 // 15% 掉率
-  private bombCount: number = 0
   
   // ─── UI 元素 ──────────────────────────────────────────────────────
   private healthText!: Phaser.GameObjects.Text
   private scoreText!: Phaser.GameObjects.Text
-  private timeText!: Phaser.GameObjects.Text
-  private bombText!: Phaser.GameObjects.Text
   private gameOverText!: Phaser.GameObjects.Text
   
   // ─── 游戏数值 ──────────────────────────────────────────────────────
-  private gameTime: number = 0
   private difficultyMultiplier: number = 1
   // score 继承自 GameScene 基类
   
@@ -122,16 +117,8 @@ export default class PlaneShooterScene extends GameScene {
     // 启动敌机生成器
     this.startEnemySpawner()
     
-    // 启动游戏计时器
-    this.gameTime = 0
-    this.time.addEvent({
-      delay: 1000,
-      callback: () => {
-        this.gameTime++
-        this.updateDifficulty()
-      },
-      loop: true
-    })
+    // ⭐ 移除游戏计时器（不再需要倒计时）
+    // 难度增长改为基于分数或击杀数
   }
 
   // ─── 创建游戏对象（抽象方法实现）────────────────────────────────────
@@ -302,17 +289,13 @@ export default class PlaneShooterScene extends GameScene {
       strokeThickness: 4
     }
     
-    // 生命值
-    this.healthText = this.add.text(20, 20, `❤️ 生命：${this.playerHealth}/${this.maxHealth}`, style)
+    // 生命值（⭐ 移除maxHealth限制，直接显示当前生命）
+    this.healthText = this.add.text(20, 20, `❤️ 生命：${this.playerHealth}`, style)
     
     // 分数
     this.scoreText = this.add.text(this.screenW / 2, 20, `🎯 得分：${this.score}`, style).setOrigin(0.5, 0)
     
-    // 时间
-    this.timeText = this.add.text(this.screenW - 20, 20, `⏱️ ${this.formatTime(0)}`, { ...style }).setOrigin(1, 0)
-    
-    // 炸弹
-    this.bombText = this.add.text(20, 60, `💣 炸弹：${this.bombCount}`, style)
+    // ⭐ 移除时间显示和炸弹显示（道具立即生效）
   }
 
   /**
@@ -444,15 +427,18 @@ export default class PlaneShooterScene extends GameScene {
     let texture = 'enemy_small'
     let size = 0.6
     
-    if (rand < 0.1 && this.gameTime > 30) {
-      // 10% 概率生成大型敌机（30 秒后）
+    // ⭐ 改为基于分数的敌机生成逻辑
+    const difficultyLevel = Math.floor(this.score / 1000)
+    
+    if (rand < 0.1 && difficultyLevel >= 1) {
+      // 10% 概率生成大型敌机（分数达到1000后）
       type = 'large'
       health = 5
       scoreValue = 500
       texture = 'enemy_large'
       size = 1.2
-    } else if (rand < 0.3 && this.gameTime > 15) {
-      // 20% 概率生成中型敌机（15 秒后）
+    } else if (rand < 0.3 && difficultyLevel >= 0) {
+      // 20% 概率生成中型敌机（游戏开始就有）
       type = 'medium'
       health = 3
       scoreValue = 300
@@ -635,7 +621,7 @@ export default class PlaneShooterScene extends GameScene {
     }
     
     this.playerHealth--
-    this.healthText.setText(`❤️ 生命：${this.playerHealth}/${this.maxHealth}`)
+    this.healthText.setText(`❤️ 生命：${this.playerHealth}`)  // ⭐ 移除maxHealth显示
     
     // 播放受伤闪烁效果
     this.tweens.add({
@@ -744,17 +730,86 @@ export default class PlaneShooterScene extends GameScene {
         break
         
       case 'heart':
-        if (this.playerHealth < this.maxHealth) {
-          this.playerHealth++
-          this.healthText.setText(`❤️ 生命：${this.playerHealth}/${this.maxHealth}`)
-        }
+        // ⭐ 移除maxHealth限制，生命值可以无限叠加
+        this.playerHealth++
+        this.healthText.setText(`❤️ 生命：${this.playerHealth}`)
         break
         
       case 'bomb':
-        this.bombCount++
-        this.bombText.setText(`💣 炸弹：${this.bombCount}`)
+        // ⭐ 炸弹道具立即生效：清屏效果
+        this.useBomb()
         break
     }
+  }
+
+  /**
+   * ⭐ 使用炸弹（清屏效果）
+   */
+  private useBomb(): void {
+    if (this.isGameOver) return
+    
+    // 播放爆炸音效
+    this.sound.play('sfx_explosion', { volume: 0.8 })
+    
+    // ⭐ 清屏效果：消灭所有敌机和敌方子弹
+    let destroyedCount = 0
+    
+    // 消灭所有敌机
+    this.enemies.forEach(enemy => {
+      if (enemy.isActive) {
+        // 创建爆炸特效
+        this.createExplosion(enemy.sprite.x, enemy.sprite.y)
+        enemy.sprite.destroy()
+        enemy.isActive = false
+        destroyedCount++
+      }
+    })
+    
+    // 清除所有敌方子弹
+    this.enemyBullets.forEach(bullet => {
+      if (bullet.isActive) {
+        bullet.sprite.destroy()
+        bullet.isActive = false
+      }
+    })
+    
+    // 获得分数奖励
+    const scoreBonus = destroyedCount * 50
+    if (scoreBonus > 0) {
+      this.score += scoreBonus
+      this.scoreText.setText(`🎯 得分：${this.score}`)
+      
+      // 显示得分提示
+      const bonusText = this.add.text(this.screenW / 2, this.screenH / 2, `+${scoreBonus}`, {
+        fontFamily: 'Arial',
+        fontSize: '48px',
+        color: '#ffff00',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 6
+      }).setOrigin(0.5)
+      
+      this.tweens.add({
+        targets: bonusText,
+        y: this.screenH / 2 - 100,
+        alpha: 0,
+        duration: 1000,
+        onComplete: () => bonusText.destroy()
+      })
+    }
+    
+    // 屏幕闪白效果
+    const flash = this.add.rectangle(this.screenW / 2, this.screenH / 2, this.screenW, this.screenH, 0xffffff, 0.5)
+      .setDepth(999)
+    
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 300,
+      onComplete: () => flash.destroy()
+    })
+    
+    console.log(`💣 炸弹清屏！消灭 ${destroyedCount} 个敌人，获得 ${scoreBonus} 分`)
   }
 
   /**
@@ -774,25 +829,16 @@ export default class PlaneShooterScene extends GameScene {
    * 更新难度
    */
   private updateDifficulty(): void {
-    // 每 30 秒增加难度
-    if (this.gameTime % 30 === 0) {
-      this.difficultyMultiplier += 0.1
-      this.enemySpawnInterval = Math.max(500, this.enemySpawnInterval - 100)
-      
-      // 重置生成器
-      this.enemySpawnTimer?.remove()
+    // ⭐ 移除基于时间的难度增长，改为基于分数
+    // 每获得1000分增加一次难度
+    const difficultyLevel = Math.floor(this.score / 1000)
+    this.difficultyMultiplier = 1 + (difficultyLevel * 0.1)
+    this.enemySpawnInterval = Math.max(500, 1500 - (difficultyLevel * 100))
+    
+    // 重置生成器（如果需要）
+    if (this.enemySpawnTimer) {
+      this.enemySpawnTimer.remove()
       this.startEnemySpawner()
     }
-    
-    this.timeText.setText(`⏱️ ${this.formatTime(this.gameTime)}`)
-  }
-
-  /**
-   * 格式化时间
-   */
-  private formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 }

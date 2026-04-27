@@ -37,18 +37,15 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * 跨域配置
+     * 注意：使用 allowedOriginPatterns("*") 时不能同时设置 allowCredentials(true)
+     * simple-game 使用 JWT Token（Bearer Header），不依赖 Cookie，无需 credentials
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns(
-                    "http://localhost:*",
-                    "http://127.0.0.1:*",
-                    "https://*.kids-game.com"
-                )
+                .allowedOriginPatterns("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true)
                 .maxAge(3600);
     }
 

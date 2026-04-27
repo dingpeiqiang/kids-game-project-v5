@@ -3,7 +3,24 @@
   <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/svg+xml" href="/vite.svg">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- viewport设置（禁止缩放，适配移动端） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- 微信浏览器优化 -->
+    <meta name="x5-orientation" content="portrait">
+    <meta name="x5-fullscreen" content="true">
+    <meta name="x5-page-mode" content="app">
+    
+    <!-- iOS Safari优化 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- 防止 HTML 缓存 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <title>儿童游戏平台</title>
     <!-- Phaser 3 从 CDN 加载，不打包进 bundle -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>

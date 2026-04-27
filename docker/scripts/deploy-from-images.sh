@@ -23,21 +23,38 @@ stop_log_collector() {
         done < "$PIDS_FILE"
         rm -f "$PIDS_FILE"
     fi
+    
+    # 额外清理：杀死所有 docker compose logs 进程
+    pkill -f "docker compose.*logs.*backend" 2>/dev/null || true
+    pkill -f "docker compose.*logs.*frontend" 2>/dev/null || true
+    
+    # 等待进程完全退出
+    sleep 1
 }
 
 # ---- 启动日志收集 ----
 start_log_collector() {
     stop_log_collector
 
-    # 截断旧日志（重新部署时清空）
-    : > "$LOG_DIR/backend.log"
-    : > "$LOG_DIR/frontend.log"
+    # 强制清空日志文件（使用 truncate 确保完全清空）
+    truncate -s 0 "$LOG_DIR/backend.log" 2>/dev/null || : > "$LOG_DIR/backend.log"
+    truncate -s 0 "$LOG_DIR/frontend.log" 2>/dev/null || : > "$LOG_DIR/frontend.log"
+    
+    # 验证文件已清空
+    if [ -s "$LOG_DIR/backend.log" ] || [ -s "$LOG_DIR/frontend.log" ]; then
+        echo "WARNING: 日志文件未能完全清空，尝试删除重建..."
+        rm -f "$LOG_DIR/backend.log" "$LOG_DIR/frontend.log"
+        touch "$LOG_DIR/backend.log" "$LOG_DIR/frontend.log"
+    fi
 
-    # 后台持续写文件
-    docker compose -f "$COMPOSE_FILE" logs -f --no-log-prefix backend > "$LOG_DIR/backend.log"   2>&1 &
+    # 后台持续写文件（使用 --tail=100 显示最近100行，包含启动日志）
+    docker compose -f "$COMPOSE_FILE" logs -f --no-log-prefix --tail=100 backend > "$LOG_DIR/backend.log"   2>&1 &
     echo $! >> "$PIDS_FILE"
-    docker compose -f "$COMPOSE_FILE" logs -f --no-log-prefix frontend > "$LOG_DIR/frontend.log" 2>&1 &
+    docker compose -f "$COMPOSE_FILE" logs -f --no-log-prefix --tail=100 frontend > "$LOG_DIR/frontend.log" 2>&1 &
     echo $! >> "$PIDS_FILE"
+    
+    # 等待日志收集进程启动
+    sleep 1
 }
 
 # 检查镜像是否存在

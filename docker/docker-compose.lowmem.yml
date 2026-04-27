@@ -5,6 +5,7 @@ services:
     container_name: kids-game-mysql
     restart: unless-stopped
     environment:
+      TZ: Asia/Shanghai
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-kids_game}
       MYSQL_USER: ${MYSQL_USER:-kidgame}
@@ -14,6 +15,8 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     logging:
       driver: "json-file"
       options:
@@ -44,10 +47,14 @@ services:
     image: redis:7-alpine
     container_name: kids-game-redis
     restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     # 限制 Redis 内存使用
     mem_limit: 100m
     mem_reservation: 50m
@@ -77,6 +84,7 @@ services:
     container_name: kids-game-backend
     restart: unless-stopped
     environment:
+      TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/kids_game?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-kidgame}
@@ -107,6 +115,8 @@ services:
       # 直接挂载到宿主机目录（方便查看完整日志）
       - ./logs:/app/logs
       - backend-uploads:/app/uploads
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     networks:
       - kids-game-network
     healthcheck:
@@ -128,6 +138,11 @@ services:
       dockerfile: docker/Dockerfile.frontend
     container_name: kids-game-frontend
     restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     ports:
       - "80:80"
     # 限制 Nginx 内存使用
@@ -155,6 +170,11 @@ services:
       dockerfile: docker/Dockerfile.simple-game
     container_name: kids-game-simple-game
     restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     ports:
       - "3001:80"
     # 限制内存使用

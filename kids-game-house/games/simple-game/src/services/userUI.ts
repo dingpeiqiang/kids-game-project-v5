@@ -11,14 +11,30 @@ import { GAMES } from '../data/games'
 // ============================================================
 export function showToast(msg: string, type: 'success' | 'error' | 'info' = 'info') {
   const existing = document.getElementById('ugp-toast')
-  existing?.remove()
+  if (existing) {
+    // 强制移除旧的 toast
+    existing.remove()
+  }
+  
   const el = document.createElement('div')
   el.id = 'ugp-toast'
   el.className = `ugp-toast ugp-toast-${type}`
   el.textContent = msg
   document.body.appendChild(el)
+  
+  // 显示动画
   requestAnimationFrame(() => el.classList.add('show'))
-  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300) }, 2500)
+  
+  // 确保3秒后一定消失
+  setTimeout(() => {
+    el.classList.remove('show')
+    setTimeout(() => {
+      // 再次检查元素是否存在，避免重复移除
+      if (document.body.contains(el)) {
+        el.remove()
+      }
+    }, 300)
+  }, 3000)
 }
 
 // ============================================================
@@ -105,6 +121,26 @@ export class AuthModal {
       document.getElementById('ugp-reg-pass')?.addEventListener('keydown', (e) => {
         if ((e as KeyboardEvent).key === 'Enter') this.doRegister()
       })
+      
+      // 账号格式实时验证
+      const usernameInput = document.getElementById('ugp-reg-user') as HTMLInputElement
+      const usernameHint = document.getElementById('usernameHint')
+      if (usernameInput && usernameHint) {
+        usernameInput.addEventListener('input', () => {
+          const value = usernameInput.value
+          const validation = this.validateUsername(value)
+          if (value.length === 0) {
+            usernameHint.textContent = ''
+            usernameHint.className = 'ugp-field-hint'
+          } else if (validation.valid) {
+            usernameHint.textContent = '✓ 账号格式正确'
+            usernameHint.className = 'ugp-field-hint ugp-hint-success'
+          } else {
+            usernameHint.textContent = validation.message
+            usernameHint.className = 'ugp-field-hint ugp-hint-error'
+          }
+        })
+      }
     }
   }
 
@@ -130,8 +166,8 @@ export class AuthModal {
     return `
       ${accountList}
       <div class="ugp-field">
-        <label>昵称</label>
-        <input id="ugp-login-user" class="ugp-input" type="text" placeholder="输入您的昵称" maxlength="12" autocomplete="username" />
+        <label>账号</label>
+        <input id="ugp-login-user" class="ugp-input" type="text" placeholder="输入您的账号" maxlength="12" autocomplete="username" />
       </div>
       <div class="ugp-field">
         <label>密码</label>
@@ -139,15 +175,27 @@ export class AuthModal {
       </div>
       <div class="ugp-error" id="authError"></div>
       <button class="ugp-btn ugp-btn-primary" id="btnDoLogin">登录</button>
-      <button class="ugp-btn ugp-btn-ghost" id="btnGuest">游客游玩（无需登录）</button>
+      <div class="ugp-guest-notice">
+        <div class="ugp-guest-icon">⚠️</div>
+        <div class="ugp-guest-text">
+          <div class="ugp-guest-title">游客试玩模式</div>
+          <div class="ugp-guest-desc">游戏数据仅保存在当前设备，清除缓存或更换设备后将丢失。建议注册账号以永久保存进度。</div>
+        </div>
+      </div>
+      <button class="ugp-btn ugp-btn-ghost" id="btnGuest">👤 游客试玩（数据不保存）</button>
     `
   }
 
   private registerPanel() {
     return `
       <div class="ugp-field">
-        <label>昵称 <span class="ugp-hint">2-12个字符</span></label>
-        <input id="ugp-reg-user" class="ugp-input" type="text" placeholder="起个好听的名字" maxlength="12" autocomplete="username" />
+        <label>账号 <span class="ugp-hint">字母/数字/下划线，4-12位</span></label>
+        <input id="ugp-reg-user" class="ugp-input" type="text" placeholder="设置登录账号" maxlength="12" autocomplete="username" />
+        <div class="ugp-field-hint" id="usernameHint"></div>
+      </div>
+      <div class="ugp-field">
+        <label>昵称 <span class="ugp-hint">显示名称，2-12个字符</span></label>
+        <input id="ugp-reg-nickname" class="ugp-input" type="text" placeholder="起个好听的昵称" maxlength="12" />
       </div>
       <div class="ugp-field">
         <label>密码 <span class="ugp-hint">4-16个字符</span></label>
@@ -161,6 +209,28 @@ export class AuthModal {
       <div class="ugp-error" id="authError"></div>
       <button class="ugp-btn ugp-btn-primary" id="btnDoRegister">立即注册</button>
     `
+  }
+
+  private validateUsername(username: string): { valid: boolean; message: string } {
+    if (!username || username.length === 0) {
+      return { valid: false, message: '请输入账号' }
+    }
+    
+    if (username.length < 4) {
+      return { valid: false, message: '账号至少4个字符' }
+    }
+    
+    if (username.length > 12) {
+      return { valid: false, message: '账号最多12个字符' }
+    }
+    
+    // 只允许字母、数字、下划线，且必须以字母或数字开头
+    const pattern = /^[a-zA-Z0-9][a-zA-Z0-9_]*$/
+    if (!pattern.test(username)) {
+      return { valid: false, message: '只能包含字母、数字和下划线' }
+    }
+    
+    return { valid: true, message: '' }
   }
 
   private async doLogin() {
@@ -186,21 +256,46 @@ export class AuthModal {
   }
 
   private async doRegister() {
-    const user = (document.getElementById('ugp-reg-user') as HTMLInputElement)?.value || ''
+    const username = (document.getElementById('ugp-reg-user') as HTMLInputElement)?.value.trim() || ''
+    const nickname = (document.getElementById('ugp-reg-nickname') as HTMLInputElement)?.value.trim() || ''
     const pass = (document.getElementById('ugp-reg-pass') as HTMLInputElement)?.value || ''
     const pass2 = (document.getElementById('ugp-reg-pass2') as HTMLInputElement)?.value || ''
     const errorEl = document.getElementById('authError')
     const btn = document.getElementById('btnDoRegister') as HTMLButtonElement | null
 
+    // 验证账号格式
+    const usernameValidation = this.validateUsername(username)
+    if (!usernameValidation.valid) {
+      if (errorEl) { errorEl.textContent = usernameValidation.message; errorEl.style.display = 'block' }
+      return
+    }
+
+    // 验证昵称
+    if (!nickname || nickname.length < 2) {
+      if (errorEl) { errorEl.textContent = '昵称长度至少2个字符'; errorEl.style.display = 'block' }
+      return
+    }
+    
+    if (nickname.length > 12) {
+      if (errorEl) { errorEl.textContent = '昵称长度最多12个字符'; errorEl.style.display = 'block' }
+      return
+    }
+
+    // 验证密码
     if (pass !== pass2) {
       if (errorEl) { errorEl.textContent = '两次密码不一致'; errorEl.style.display = 'block' }
+      return
+    }
+
+    if (pass.length < 4 || pass.length > 16) {
+      if (errorEl) { errorEl.textContent = '密码长度4-16个字符'; errorEl.style.display = 'block' }
       return
     }
 
     if (btn) { btn.disabled = true; btn.textContent = '注册中...' }
 
     try {
-      const res = await userService.register(user, pass)
+      const res = await userService.register(username, pass, nickname)
       if (res.ok) {
         this.close()
         this.onSuccess?.()
@@ -217,7 +312,7 @@ export class AuthModal {
     userService.guestLogin()
     this.close()
     this.onSuccess?.()
-    showToast(`游客模式已进入，数据仅保存在本机`, 'info')
+    showToast('⚠️ 游客模式：游戏数据仅保存在当前设备，清除缓存后将丢失', 'info')
   }
 }
 
@@ -516,6 +611,9 @@ export function injectUserStyles() {
 .ugp-field{display:flex;flex-direction:column;gap:6px}
 .ugp-field label{font-size:13px;font-weight:600;color:#555;display:flex;align-items:center;gap:6px}
 .ugp-hint{font-size:11px;color:#aaa;font-weight:400}
+.ugp-field-hint{font-size:11px;margin-top:2px;transition:all 0.2s;min-height:16px}
+.ugp-hint-success{color:#4caf50}
+.ugp-hint-error{color:#e53935}
 .ugp-input{border:1.5px solid #e8e8e8;border-radius:10px;padding:10px 14px;font-size:14px;
   outline:none;transition:border 0.2s;background:#fafafa}
 .ugp-input:focus{border-color:#5b9bd5;background:#fff}
@@ -532,6 +630,12 @@ export function injectUserStyles() {
 .ugp-divider::before{left:0}.ugp-divider::after{right:0}
 .ugp-reg-gift{background:#fff8e7;border:1px solid #f5c842;border-radius:10px;
   padding:10px 14px;font-size:13px;color:#c8860a;text-align:center}
+.ugp-guest-notice{display:flex;gap:10px;padding:12px;background:#fff3e0;border:1px solid #ffcc80;
+  border-radius:10px;margin-top:4px}
+.ugp-guest-icon{font-size:20px;flex-shrink:0}
+.ugp-guest-text{flex:1}
+.ugp-guest-title{font-size:13px;font-weight:600;color:#e65100;margin-bottom:4px}
+.ugp-guest-desc{font-size:11px;color:#bf3602;line-height:1.5}
 /* 账号列表 */
 .ugp-acct-list-label{font-size:12px;color:#aaa;font-weight:600;letter-spacing:0.5px}
 .ugp-acct-list{display:flex;flex-direction:column;gap:8px;max-height:180px;overflow-y:auto}

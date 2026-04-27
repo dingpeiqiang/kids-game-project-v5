@@ -20,23 +20,28 @@ show_menu() {
     echo "   Kids Game - 日志查看工具"
     echo "========================================="
     echo ""
+    echo "  【实时日志】(Ctrl+C 返回)"
     echo "  1. 后端实时日志"
     echo "  2. 前端实时日志"
-    echo "  3. MySQL 实时日志"
-    echo "  4. Redis 实时日志"
-    echo "  5. 所有服务实时日志"
+    echo "  3. simple-game 实时日志"
+    echo "  4. MySQL 实时日志"
+    echo "  5. Redis 实时日志"
+    echo "  6. 所有服务实时日志"
     echo ""
-    echo "  6. 后端最近 50 行日志"
-    echo "  7. 前端最近 50 行日志"
-    echo "  8. 查看所有服务最近 50 行"
+    echo "  【历史日志】"
+    echo "  7. 后端最近 50 行"
+    echo "  8. 前端最近 50 行"
+    echo "  9. simple-game 最近 50 行"
+    echo "  10. 查看所有服务最近 50 行"
     echo ""
-    echo "  9. 后端错误日志 (最近 20 行)"
-    echo "  10. 容器状态"
+    echo "  【其他】"
+    echo "  11. 后端错误日志 (最近 20 行)"
+    echo "  12. 容器状态"
     echo ""
     echo "  0. 退出"
     echo ""
     echo "========================================="
-    printf "请选择 (0-10): "
+    printf "请选择 (0-12): "
 }
 
 # 查看实时日志
@@ -117,27 +122,33 @@ while true; do
             view_live_logs "frontend" "前端实时日志"
             ;;
         3)
-            view_live_logs "mysql" "MySQL 实时日志"
+            view_live_logs "simple-game" "simple-game 实时日志"
             ;;
         4)
-            view_live_logs "redis" "Redis 实时日志"
+            view_live_logs "mysql" "MySQL 实时日志"
             ;;
         5)
-            view_live_logs "" "所有服务实时日志"
+            view_live_logs "redis" "Redis 实时日志"
             ;;
         6)
-            view_history_logs "backend" "后端日志" 50
+            view_live_logs "" "所有服务实时日志"
             ;;
         7)
-            view_history_logs "frontend" "前端日志" 50
+            view_history_logs "backend" "后端日志" 50
             ;;
         8)
-            view_history_logs "" "所有服务日志" 50
+            view_history_logs "frontend" "前端日志" 50
             ;;
         9)
-            view_error_logs
+            view_history_logs "simple-game" "simple-game 日志" 50
             ;;
         10)
+            view_history_logs "" "所有服务日志" 50
+            ;;
+        11)
+            view_error_logs
+            ;;
+        12)
             view_status
             ;;
         0)

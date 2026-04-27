@@ -1,6 +1,7 @@
 import './styles/main.css'
 import type { Game, Buff } from './types'
 import { GAMES, GAME_GUIDES, MOCK_RANK_DATA, GAME_CATEGORIES } from './data/games'
+import { isGameVisible, getGameDisplayConfig } from './data/game-config'
 import { storageService } from './services/storage'
 import { audioService } from './services/audio'
 import { gameEngine } from './services/gameEngine'
@@ -334,8 +335,9 @@ class App {
     let rankMap: Record<string, number | null> = {}
     if (userService.isLoggedIn && userService.current) {
       try {
-        // simple-game的游戏ID是字符串，需要转换为数字ID
-        const gameIds = GAMES.map(g => this.convertGameIdToNumber(g.id))
+        // simple-game的游戏ID是字符串，需要转换为数字ID（只获取可见游戏的排名）
+        const visibleGames = GAMES.filter(g => isGameVisible(g.id))
+        const gameIds = visibleGames.map(g => this.convertGameIdToNumber(g.id))
         const userId = parseInt(userService.current.id)
         
         console.log('[App] 获取批量排名', { userId, gameCount: gameIds.length })
@@ -346,7 +348,7 @@ class App {
             console.log('[App] 批量排名返回:', Object.keys(res.data).length, '个游戏')
             console.log('[App] 原始数据:', res.data)
             // 将数字ID映射回字符串ID
-            GAMES.forEach(game => {
+            visibleGames.forEach(game => {
               const numericId = this.convertGameIdToNumber(game.id)
               if (res.data![numericId]) {
                 const rankData = res.data![numericId]
@@ -366,7 +368,9 @@ class App {
     }
 
     GAME_CATEGORIES.forEach(cat => {
-      const gamesInCat = GAMES.filter(g => g.category === cat.id)
+      const gamesInCat = GAMES
+        .filter(g => g.category === cat.id && isGameVisible(g.id))
+        .sort((a, b) => getGameDisplayConfig(a.id).order - getGameDisplayConfig(b.id).order)
       if (gamesInCat.length === 0) return
 
       // 分类标题
@@ -422,6 +426,7 @@ class App {
       <div class="card-cover">
         <canvas id="preview_${game.id}" width="320" height="200"></canvas>
         <div class="card-tag">${game.tag}</div>
+        ${getGameDisplayConfig(game.id).badge ? `<div class="card-badge">${getGameDisplayConfig(game.id).badge}</div>` : ''}
       </div>
       <div class="card-info">
         <div class="card-name">${game.name}</div>
@@ -713,10 +718,13 @@ class App {
     document.getElementById('bottomNav')!.style.display = 'none'
     document.getElementById('mainView')!.style.display = 'none'
     
-    // 显示 HTML 道具栏（仅2D游戏）
-    if (this.currentGame.type === '2d') {
+    // 显示 HTML 道具栏（仅2D游戏，排除 spaceShooter）
+    if (this.currentGame.type === '2d' && this.currentGame.id !== 'spaceShooter') {
       document.getElementById('itemBar')!.style.display = 'flex'
       this.updateItemCounts()
+    } else {
+      // 隐藏道具栏
+      document.getElementById('itemBar')!.style.display = 'none'
     }
 
     const hasDoubleCard = userService.isLoggedIn
@@ -731,15 +739,30 @@ class App {
 
     const canvas = document.getElementById('gameCanvas')!
     const W = 400, H = 600
-    // 根据屏幕计算缩放比例
-    const scale = Math.min(
-      window.innerWidth * 0.95 / W,
-      window.innerHeight * 0.85 / H
-    )
-    const displayW = W * scale
-    const displayH = H * scale
-    // 添加 image-rendering 防止模糊
-    canvas.innerHTML = `<canvas id="mainGameCanvas" width="${W}" height="${H}" style="width:${displayW}px;height:${displayH}px;display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
+    // 根据屏幕计算缩放比例（spaceShooter 使用全屏，其他游戏保留边距）
+    const isSpaceShooter = this.currentGame.id === 'spaceShooter'
+    
+    let displayW: number, displayH: number
+    
+    if (isSpaceShooter) {
+      // 太空射击游戏：使用 Phaser ScaleManager ENVELOP 模式
+      // Phaser 会自动创建 canvas 并处理缩放适配，无需手动创建
+      canvas.innerHTML = ''  // 清空，Phaser 会自行创建 DOM
+      console.log('[App] spaceShooter 使用 Phaser ENVELOP 模式，设计分辨率 400x600')
+    } else {
+      // 其他游戏：保持宽高比，不超出屏幕
+      const widthRatio = window.innerWidth / W
+      const heightRatio = window.innerHeight * 0.85 / H
+      const scale = Math.min(widthRatio, heightRatio)
+      displayW = W * scale
+      displayH = H * scale
+    }
+    
+    // 非 spaceShooter 游戏的 Canvas 创建
+    if (!isSpaceShooter) {
+      // 添加 image-rendering 防止模糊
+      canvas.innerHTML = `<canvas id="mainGameCanvas" width="${W}" height="${H}" style="width:${displayW}px;height:${displayH}px;display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
+    }
 
     switch (this.currentGame.id) {
       case 'eliminate': initEliminate(gameEngine, () => this.endGame()); break
@@ -944,6 +967,8 @@ class App {
     document.getElementById('topBar')!.style.display = 'flex'
     document.getElementById('bottomNav')!.style.display = 'flex'
     document.getElementById('mainView')!.style.display = 'block'
+    // 隐藏道具栏
+    document.getElementById('itemBar')!.style.display = 'none'
     this.currentGame = null
 
     // 刷新卡片上的最高分
@@ -1034,8 +1059,8 @@ class App {
     // 清空现有选项（保留第一个）
     select.innerHTML = '<option value="">-- 选择游戏 --</option>'
     
-    // 添加所有游戏选项
-    GAMES.forEach(game => {
+    // 添加所有可见游戏选项
+    GAMES.filter(g => isGameVisible(g.id)).forEach(game => {
       const option = document.createElement('option')
       option.value = game.id
       option.textContent = game.name

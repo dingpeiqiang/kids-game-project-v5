@@ -131,7 +131,8 @@ async function request<T = any>(
  */
 export async function apiRegister(
   username: string,
-  password: string
+  password: string,
+  nickname?: string
 ): Promise<{ ok: boolean; msg: string; userId?: number }> {
   const res = await request<UserInfoData>(
     '/user/register',
@@ -141,7 +142,7 @@ export async function apiRegister(
         username,
         password,
         userType: 'KID',   // simple-game 用户均为 KID 类型
-        nickname: username, // 默认昵称同用户名
+        nickname: nickname || username, // 如果未提供昵称，使用账号作为昵称
       }),
     },
     false // 注册不需要 Token
@@ -374,8 +375,8 @@ class ApiClient {
     return headers
   }
 
-  async register(username: string, password: string) {
-    return apiRegister(username, password)
+  async register(username: string, password: string, nickname?: string) {
+    return apiRegister(username, password, nickname)
   }
 
   async login(username: string, password: string) {

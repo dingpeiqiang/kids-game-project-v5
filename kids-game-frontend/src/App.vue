@@ -9,6 +9,7 @@ import { onMounted } from 'vue';
 import { Config } from '@/core/config';
 import { wsClient } from '@/core/network/ws';
 import { useUserStore } from '@/core/store/user.store';
+import { versionManager } from '@/utils/version';
 
 onMounted(() => {
   console.log('[App] 正在初始化应用...');
@@ -24,6 +25,11 @@ onMounted(() => {
   const userStore = useUserStore();
   userStore.restoreFromStorage();
   console.log('[App] 用户状态已恢复');
+
+  // 初始化版本管理器（检测更新）
+  versionManager.init().catch(err => {
+    console.warn('[App] 版本管理器初始化失败:', err);
+  });
 
   // WebSocket 连接延迟到用户登录后由各个页面自行管理
   // 这样避免未登录用户也建立连接
