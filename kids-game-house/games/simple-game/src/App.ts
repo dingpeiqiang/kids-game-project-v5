@@ -33,6 +33,7 @@ import { initSnake } from './games/snake'
 import { initWhackMole } from './games/whackMole'
 import { initRacingRun } from './games/racingRun'
 import { initRpgShooter } from './games/rpgShooter'
+import { initDragonShooter } from './games/dragonShooter'
 
 class App {
   private currentGame: Game | null = null
@@ -790,8 +791,8 @@ class App {
     document.getElementById('bottomNav')!.style.display = 'none'
     document.getElementById('mainView')!.style.display = 'none'
     
-    // 显示 HTML 道具栏（仅2D游戏，排除 spaceShooter）
-    if (this.currentGame.type === '2d' && this.currentGame.id !== 'spaceShooter') {
+    // 显示 HTML 道具栏（仅2D游戏，排除 spaceShooter 和 dragonShooter）
+    if (this.currentGame.type === '2d' && this.currentGame.id !== 'spaceShooter' && this.currentGame.id !== 'dragonShooter') {
       document.getElementById('itemBar')!.style.display = 'flex'
       this.updateItemCounts()
     } else {
@@ -861,6 +862,7 @@ class App {
       case 'whackMole': initWhackMole(gameEngine, () => this.endGame()); break
       case 'racingRun': initRacingRun(gameEngine, () => this.endGame()); break
       case 'rpgShooter': initRpgShooter(gameEngine, () => this.endGame()); break
+      case 'dragonShooter': initDragonShooter(gameEngine, () => this.endGame()); break
     }
   }
 
@@ -1158,8 +1160,9 @@ class App {
   private exitGame() {
     document.getElementById('game-layer')!.classList.remove('show')
     document.getElementById('gameCanvas')!.innerHTML = ''
-    // 清理可能残留的 Phaser DOM（spaceShooter 等）
+    // 清理可能残留的游戏 DOM
     document.getElementById('phaser-space-shooter')?.remove()
+    document.getElementById('dragon-shooter-wrapper')?.remove()
     document.getElementById('topBar')!.style.display = 'flex'
     document.getElementById('bottomNav')!.style.display = 'flex'
     document.getElementById('mainView')!.style.display = 'block'

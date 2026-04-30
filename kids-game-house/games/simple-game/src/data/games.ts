@@ -39,6 +39,7 @@ export const GAMES: Game[] = [
   { id: 'whackMole', name: '打地鼠', desc: '快速敲击出洞的地鼠，金色鼠得分多，小心炸弹！', type: '2d', category: 'reaction', tag: '反应', color: '#8B5E3C,#FFD700', players: 2760, best: 0, preview: 'whackMole' },
   { id: 'racingRun', name: '极速赛车', desc: '飙车躲障碍！拾取道具触发火焰加速、护盾、磁铁吸分，超爽！', type: '2d', category: 'action', tag: '赛车', color: '#FF6B00,#FFD700', players: 3180, best: 0, preview: 'racingRun' },
   { id: 'rpgShooter', name: '星际猎手', desc: 'RPG移动射击！击杀敌人获得经验升级，提升属性挑战波次！', type: '2d', category: 'shoot', tag: 'RPG射击', color: '#5352ED,#9B59B6', players: 2100, best: 0, preview: 'rpgShooter' },
+  { id: 'dragonShooter', name: '打龙小游戏', desc: '国产爆款！滑动控制自动射击，龙体分裂爽感无限！', type: '2d', category: 'shoot', tag: '射击', color: '#FFD700,#FF5722', players: 9999, best: 0, preview: 'dragonShooter' },
 ]
 
 export const GAME_GUIDES: Record<string, GameGuide> = {
@@ -298,6 +299,19 @@ export const GAME_GUIDES: Record<string, GameGuide> = {
     tipsTitle: '💡 小技巧',
     tips: '升级可以提升HP上限和攻击力！合理走位躲避敌人，优先击杀落单的敌人。速度道具适合近距离缠斗，攻击道具适合远程火力压制！',
     bg: '#5352ED'
+  },
+  dragonShooter: {
+    icon: '🐉', name: '打龙小游戏', desc: '国产爆款！国风卡通风格，自动射击，龙体分裂，越打越多越爽！',
+    ops: [
+      { icon: '👆', text: '<b>滑动/拖拽</b>控制角色左右移动' },
+      { icon: '🔫', text: '<b>自动射击</b>，无需手动点击' },
+      { icon: '🐉', text: '龙体分裂！击杀龙段生成小龙' },
+      { icon: '🎁', text: '拾取道具：⚔️攻击/⚡射速/🔫多重/💥穿透/❤️回血' },
+      { icon: '🎁', text: '关卡升级！选择Buff强化自己' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '连击越多得分越高！优先打龙段制造分裂，获得更多击杀机会。升级时选择合适的Buff，强化自己的战斗风格！',
+    bg: '#FFD700'
   }
 }
 
