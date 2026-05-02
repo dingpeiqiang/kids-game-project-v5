@@ -21,6 +21,9 @@ interface RouteIndex {
 }
 
 // 默认路线（如果 JSON 文件不存在时使用）
+// 注意：也导入 constants.ts 中的 LEVEL_SPECIFIC_ROUTES 作为回退
+import { PRESET_ROUTES } from './constants'
+
 const DEFAULT_LEVEL_ROUTES: Record<number, CustomRoute> = {
   1: {
     id: 'level_1_default',
@@ -43,6 +46,9 @@ const DEFAULT_LEVEL_ROUTES: Record<number, CustomRoute> = {
     points: generateDefaultRoute('boss', 10)
   }
 }
+
+// 从 constants.ts 导入的关卡专属路线（generateLevelRoute 生成）
+// 已在 constants.ts 中为 1/3/5/10 关配置了专属路线
 
 // 生成默认路线点
 function generateDefaultRoute(type: string, level: number): Array<{ x: number; y: number }> {
@@ -237,20 +243,19 @@ export class RouteLoader {
   // 获取指定关卡的可用路线列表（含默认路线兜底）
   getRoutesForLevel(level: number): CustomRoute[] {
     const routes: CustomRoute[] = []
-    
-    // 先尝试从已加载的获取
+
+    // 1. 优先使用加载的关卡专属路线
     if (this.levelRoutes[level]) {
       routes.push(this.levelRoutes[level])
     }
-    
-    // 如果没有该关卡的专属路线
+
+    // 2. 如果没有专属路线，使用 PRESET_ROUTES 作为回退
     if (routes.length === 0) {
-      // 用第一个可用关卡路线作为fallback，或用默认第1关路线
-      const fallback = Object.values(this.levelRoutes)[0] || DEFAULT_LEVEL_ROUTES[1]
-      if (fallback) {
-        routes.push({ ...fallback, id: `level_${level}_fallback`, name: `${level}级路线(备用)` })
-      }
+      routes.push(...PRESET_ROUTES)
     }
+
+    // 3. 始终补充自定义路线
+    routes.push(...this.customRoutes)
 
     return routes
   }

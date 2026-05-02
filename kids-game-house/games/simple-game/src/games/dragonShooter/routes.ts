@@ -12,55 +12,173 @@ import {
 } from './constants'
 
 // 存储玩家绘制的自定义路线
-let customRoutes: CustomRoute[] = []
+export let customRoutes: CustomRoute[] = []
 
-// 路线编辑器管理器
+// ──────────────────────────────────────────────
+// Douglas-Peucker 抽稀算法
+// ──────────────────────────────────────────────
+function perpendicularDistance(point: RoutePoint, lineStart: RoutePoint, lineEnd: RoutePoint): number {
+  const dx = lineEnd.x - lineStart.x
+  const dy = lineEnd.y - lineStart.y
+  const mag = Math.hypot(dx, dy)
+  if (mag === 0) return Math.hypot(point.x - lineStart.x, point.y - lineStart.y)
+  return Math.abs(dy * point.x - dx * point.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x) / mag
+}
+
+export function simplifyDouglasPeucker(points: RoutePoint[], epsilon: number): RoutePoint[] {
+  if (points.length < 3) return points
+  let maxDist = 0
+  let maxIdx = 0
+  const start = points[0]
+  const end = points[points.length - 1]
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = perpendicularDistance(points[i], start, end)
+    if (d > maxDist) { maxDist = d; maxIdx = i }
+  }
+  if (maxDist > epsilon) {
+    const left = simplifyDouglasPeucker(points.slice(0, maxIdx + 1), epsilon)
+    const right = simplifyDouglasPeucker(points.slice(maxIdx), epsilon)
+    return [...left.slice(0, -1), ...right]
+  }
+  return [start, end]
+}
+
+// ──────────────────────────────────────────────
+// Centripetal Catmull-Rom（弦长参数化，α=0.5）
+// 自动避免畸形拐角，真正贴合尖锐转弯
+// ──────────────────────────────────────────────
+function interpCentripetal(p0: RoutePoint, p1: RoutePoint, p2: RoutePoint, p3: RoutePoint, t: number): RoutePoint {
+  const t2 = t * t
+  const t3 = t2 * t
+  return {
+    x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+    y: 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+  }
+}
+
+export function resampleCatmullRom(points: RoutePoint[], numSamples: number): RoutePoint[] {
+  if (points.length < 2) return points
+  if (points.length === 2) {
+    const result: RoutePoint[] = []
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / (numSamples - 1)
+      result.push({ x: points[0].x + (points[1].x - points[0].x) * t, y: points[0].y + (points[1].y - points[0].y) * t })
+    }
+    return result
+  }
+
+  // 弦长参数化：以实际距离为比例分配采样点
+  const segLengths: number[] = []
+  let totalLen = 0
+  for (let i = 0; i < points.length - 1; i++) {
+    const d = Math.hypot(points[i + 1].x - points[i].x, points[i + 1].y - points[i].y)
+    segLengths.push(d)
+    totalLen += d
+  }
+
+  const result: RoutePoint[] = []
+  const n = points.length
+  result.push({ ...points[0] })
+
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)]
+    const p1 = points[i]
+    const p2 = points[Math.min(n - 1, i + 1)]
+    const p3 = points[Math.min(n - 1, i + 2)]
+    const segLen = segLengths[i]
+    const segSamples = Math.max(2, Math.round((segLen / totalLen) * numSamples))
+
+    for (let j = 1; j <= segSamples; j++) {
+      const t = j / segSamples
+      result.push(interpCentripetal(p0, p1, p2, p3, t))
+    }
+  }
+  return result
+}
+
+// 优化路线：弦长 Catmull-Rom 生成圆润曲线（不删点，保持形状）
+export function optimizeRoute(points: RoutePoint[]): RoutePoint[] {
+  if (points.length < 3) return points
+  // 用 Catmull-Rom 重采样到 200 个密集点，曲线自然圆润
+  return resampleCatmullRom(points, Math.max(200, points.length * 3))
+}
+
+// 添加自定义路线
+export function addCustomRoute(route: CustomRoute): void {
+  customRoutes.push(route)
+  saveCustomRoutes()
+}
+
+// 清除所有自定义路线
+export function clearCustomRoutes(): void {
+  customRoutes = []
+  saveCustomRoutes()
+}
+
+// 获取当前自定义路线
+export function getCustomRoutes(): CustomRoute[] {
+  return customRoutes
+}
+
+// 路线编辑器管理器（支持多路线）
 export class RouteEditor {
-  private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
-  private currentRoute: RoutePoint[] = []
-  private isDrawing = false
+  // 多条路线，当前编辑的索引
+  private routes: RoutePoint[][] = []
+  private currentIndex = 0
+  isDrawing = false
 
-  constructor(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-    this.canvas = canvas
+  constructor(_canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
     this.ctx = ctx
   }
 
+  // 新建一条空路线并开始编辑
+  newRoute() {
+    this.routes.push([])
+    this.currentIndex = this.routes.length - 1
+    this.isDrawing = true
+  }
+
+  // 删除指定路线
+  deleteRoute(index: number) {
+    if (index < 0 || index >= this.routes.length) return
+    this.routes.splice(index, 1)
+    if (this.currentIndex >= this.routes.length) {
+      this.currentIndex = Math.max(0, this.routes.length - 1)
+    }
+    this.isDrawing = false
+  }
+
+  // 切换到指定路线编辑
+  selectRoute(index: number) {
+    if (index < 0 || index >= this.routes.length) return
+    this.currentIndex = index
+    this.isDrawing = false
+  }
+
   startDrawing() {
-    this.currentRoute = []
+    if (this.routes.length === 0) this.newRoute()
+    else this.routes[this.currentIndex] = []
     this.isDrawing = true
   }
 
   addPoint(x: number, y: number) {
     if (!this.isDrawing) return
-    this.currentRoute.push({ x, y })
+    const route = this.routes[this.currentIndex]
+    const last = route[route.length - 1]
+    if (last && Math.hypot(x - last.x, y - last.y) < 4) return
+    route.push({ x, y })
   }
 
-  endDrawing(): CustomRoute | null {
+  loadPreviewPoints(points: RoutePoint[]) {
+    if (this.routes.length === 0) this.newRoute()
+    this.routes[this.currentIndex] = [...points]
     this.isDrawing = false
-
-    if (this.currentRoute.length < 3) {
-      this.currentRoute = []
-      return null
-    }
-
-    const points: RoutePoint[] = this.currentRoute.map(p => ({
-      x: p.x - CANVAS_OFFSET_X,
-      y: p.y - CANVAS_OFFSET_Y
-    }))
-
-    const route: CustomRoute = {
-      id: `custom_${Date.now()}`,
-      name: `自定义路线 ${customRoutes.length + 1}`,
-      points
-    }
-
-    this.currentRoute = []
-    return route
   }
 
   clear() {
-    this.currentRoute = []
+    this.routes = []
+    this.currentIndex = 0
     this.isDrawing = false
   }
 
@@ -69,41 +187,90 @@ export class RouteEditor {
   }
 
   getCurrentPoints(): RoutePoint[] {
-    return this.currentRoute
+    return this.routes[this.currentIndex] || []
   }
 
-  drawCurrentRoute() {
-    if (this.currentRoute.length < 2) return
+  getAllPoints(): RoutePoint[][] {
+    return this.routes
+  }
 
+  getRouteCount(): number {
+    return this.routes.length
+  }
+
+  getCurrentIndex(): number {
+    return this.currentIndex
+  }
+
+  // 颜色列表（不同路线不同颜色）
+  private static readonly COLORS = [
+    '#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1',
+    '#96CEB4', '#FF8C00', '#DA70D6', '#00CED1'
+  ]
+
+  private drawSmooth(points: RoutePoint[], color: string, lineWidth: number, dash: boolean) {
+    if (points.length < 2) return
     this.ctx.save()
-    this.ctx.strokeStyle = '#FFD700'
-    this.ctx.lineWidth = 3
-    this.ctx.setLineDash([8, 4])
-    this.ctx.shadowColor = '#FFD700'
-    this.ctx.shadowBlur = 10
+    this.ctx.strokeStyle = color
+    this.ctx.lineWidth = lineWidth
+    if (dash) this.ctx.setLineDash([8, 4])
+    this.ctx.shadowColor = color
+    this.ctx.shadowBlur = 8
+    this.ctx.lineCap = 'round'
+    this.ctx.lineJoin = 'round'
 
     this.ctx.beginPath()
-    this.ctx.moveTo(this.currentRoute[0].x, this.currentRoute[0].y)
-    for (let i = 1; i < this.currentRoute.length; i++) {
-      this.ctx.lineTo(this.currentRoute[i].x, this.currentRoute[i].y)
+    this.ctx.moveTo(points[0].x, points[0].y)
+    const last = points[points.length - 1]
+    if (points.length === 2) {
+      this.ctx.lineTo(last.x, last.y)
+    } else {
+      const secondLast = points[points.length - 2]
+      for (let i = 1; i < points.length - 1; i++) {
+        const prev = points[i - 1]
+        const curr = points[i]
+        const next = points[i + 1]
+        this.ctx.quadraticCurveTo(curr.x, curr.y, (prev.x + next.x) / 2, (prev.y + next.y) / 2)
+      }
+      this.ctx.quadraticCurveTo(secondLast.x, secondLast.y, last.x, last.y)
     }
     this.ctx.stroke()
 
-    const start = this.currentRoute[0]
-    const end = this.currentRoute[this.currentRoute.length - 1]
-
+    // 起点绿、终点红
     this.ctx.setLineDash([])
+    this.ctx.shadowBlur = 0
     this.ctx.fillStyle = '#90EE90'
     this.ctx.beginPath()
-    this.ctx.arc(start.x, start.y, 8, 0, Math.PI * 2)
+    this.ctx.arc(points[0].x, points[0].y, 6, 0, Math.PI * 2)
     this.ctx.fill()
-
     this.ctx.fillStyle = '#FF6B6B'
     this.ctx.beginPath()
-    this.ctx.arc(end.x, end.y, 8, 0, Math.PI * 2)
+    this.ctx.arc(last.x, last.y, 6, 0, Math.PI * 2)
     this.ctx.fill()
-
     this.ctx.restore()
+  }
+
+  drawCurrentRoute() {
+    const count = this.routes.length
+    this.routes.forEach((route, i) => {
+      const color = RouteEditor.COLORS[i % RouteEditor.COLORS.length]
+      const isActive = i === this.currentIndex
+      this.drawSmooth(route, color, isActive ? 3 : 2, !isActive)
+    })
+    // 路线编号
+    this.routes.forEach((route, i) => {
+      if (route.length === 0) return
+      const color = RouteEditor.COLORS[i % RouteEditor.COLORS.length]
+      this.ctx.save()
+      this.ctx.fillStyle = color
+      this.ctx.font = 'bold 12px sans-serif'
+      this.ctx.textAlign = 'center'
+      this.ctx.textBaseline = 'bottom'
+      this.ctx.shadowColor = 'rgba(0,0,0,0.8)'
+      this.ctx.shadowBlur = 3
+      this.ctx.fillText(`${i + 1}`, route[0].x, route[0].y - 10)
+      this.ctx.restore()
+    })
   }
 }
 
@@ -252,15 +419,4 @@ export function deleteCustomRoute(routeId: string): void {
     saveCustomRoutes()
     console.log(`✅ 已删除路线: ${routeId}`)
   }
-}
-
-// 获取自定义路线列表
-export function getCustomRoutes(): CustomRoute[] {
-  return customRoutes
-}
-
-// 添加自定义路线
-export function addCustomRoute(route: CustomRoute): void {
-  customRoutes.push(route)
-  saveCustomRoutes()
 }

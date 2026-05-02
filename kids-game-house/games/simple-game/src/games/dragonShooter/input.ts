@@ -9,6 +9,7 @@ import {
   BASE_W, BASE_H, CANVAS_W, CANVAS_H, CANVAS_OFFSET_X, CANVAS_OFFSET_Y,
   STORAGE_KEY
 } from './constants'
+import { audioService } from '../../services/audio'
 
 export interface InputCallbacks {
   onRouteEditorClear: () => void
@@ -28,10 +29,10 @@ export function createInputHandler(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
   state: GameState,
-  routeEditor: RouteEditorType,
+  routeEditorRef: { current: RouteEditorType },
   customRoutes: CustomRoute[],
   callbacks: InputCallbacks,
-  isDrawingModeRef: { value: boolean }
+  _isDrawingModeRef: { value: boolean }
 ) {
 
   // 坐标转换：画布坐标 → 游戏区域坐标
@@ -56,13 +57,20 @@ export function createInputHandler(
     }
   }
 
-  // 触摸/点击按下
+  // 触摸/点击按下（统一使用游戏坐标，与渲染坐标一致）
   function handleDown(x: number, y: number) {
     console.log('🖱️ handleDown:', { x: Math.round(x), y: Math.round(y), phase: state.phase })
 
-    // 路线编辑模式
+    // 路线编辑模式（使用 canvas 原始坐标）
     if (state.phase === 'routeEdit') {
-      handleRouteEditMode(x, y)
+      const btnClicked = handleRouteEditMode(x, y)
+      // 只有点击了按钮区域才返回（按钮内部已处理 active）
+      if (btnClicked) return
+      // 否则标记正在绘制，后续 move 可以直接加点了
+      state.touch.active = true
+      state.touch.startX = x
+      state.touch.startY = y
+      state.touch.currentX = x
       return
     }
 
@@ -72,6 +80,28 @@ export function createInputHandler(
     }
 
     if (state.phase === 'gameOver') return
+
+    // 道具选择弹窗：检测点击了哪张卡（game 坐标，与渲染器一致）
+    if (state.phase === 'powerup_select' && state.powerupSelect) {
+      const ps = state.powerupSelect
+      if (ps.revealedIdx === null && !ps.closing) {
+        const cardW = 90, cardH = 120, cardGap = 20
+        const totalW = cardW * 3 + cardGap * 2
+        const startX = (BASE_W - totalW) / 2
+        const cardY = BASE_H / 2 - cardH / 2
+
+        if (y >= cardY && y <= cardY + cardH) {
+          if (x >= startX && x <= startX + cardW) {
+            ps.revealedIdx = 0; audioService.click()
+          } else if (x >= startX + cardW + cardGap && x <= startX + cardW * 2 + cardGap) {
+            ps.revealedIdx = 1; audioService.click()
+          } else if (x >= startX + (cardW + cardGap) * 2 && x <= startX + totalW) {
+            ps.revealedIdx = 2; audioService.click()
+          }
+        }
+      }
+      return
+    }
 
     if (state.phase === 'playing' && state.isPaused) {
       state.isPaused = false
@@ -91,51 +121,70 @@ export function createInputHandler(
     }
   }
 
-  function handleRouteEditMode(x: number, y: number) {
+  function handleRouteEditMode(x: number, y: number): boolean {
     const btnY = CANVAS_H - 80
     const btnH = 50
-    const btnW = 85
-    const btnGap = 5
-    const btnStartX = (CANVAS_W - (btnW * 4 + btnGap * 3)) / 2
+    const btnW = 62
+    const btnGap = 4
+    // 6个按钮：新建 清除 保存 优化 导出 返回
+    const totalBtns = 6
+    const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
+    // 点击按钮区域：阻止后续 active 设置，清除按钮状态
     if (y >= btnY && y <= btnY + btnH) {
+      state.touch.active = false
       if (x >= btnStartX && x < btnStartX + btnW) {
-        callbacks.onRouteEditorClear()
-        return
+        callbacks.onRouteEditorNew?.()
+        return true
       }
-      else if (x >= btnStartX + btnW + btnGap && x < btnStartX + (btnW + btnGap) * 2) {
-        callbacks.onRouteEditorSave()
-        return
+      if (x >= btnStartX + btnW + btnGap && x < btnStartX + (btnW + btnGap) * 2) {
+        callbacks.onRouteEditorClear?.()
+        return true
       }
-      else if (x >= btnStartX + (btnW + btnGap) * 2 && x < btnStartX + (btnW + btnGap) * 3) {
-        callbacks.onRouteEditorExport()
-        return
+      if (x >= btnStartX + (btnW + btnGap) * 2 && x < btnStartX + (btnW + btnGap) * 3) {
+        callbacks.onRouteEditorSave?.()
+        return true
       }
-      else if (x >= btnStartX + (btnW + btnGap) * 3 && x < btnStartX + (btnW + btnGap) * 4) {
-        callbacks.onRouteEditorReturn()
-        return
+      if (x >= btnStartX + (btnW + btnGap) * 3 && x < btnStartX + (btnW + btnGap) * 4) {
+        callbacks.onRouteEditorOptimize?.()
+        return true
+      }
+      if (x >= btnStartX + (btnW + btnGap) * 4 && x < btnStartX + (btnW + btnGap) * 5) {
+        callbacks.onRouteEditorExport?.()
+        return true
+      }
+      if (x >= btnStartX + (btnW + btnGap) * 5 && x < btnStartX + (btnW + btnGap) * 6) {
+        callbacks.onRouteEditorReturn?.()
+        return true
       }
     }
 
-    routeEditor.startDrawing()
+    // 只有未在绘制状态时才启用绘制（避免每次点击都清空当前路线）
+    if (!routeEditorRef.current.isDrawing) {
+      routeEditorRef.current.startDrawing()
+    }
+    return false
   }
 
   function handleStartScreen(x: number, y: number) {
+    // 防御：callbacks 为空时直接返回
+    if (!callbacks) return
+
     const btnY = BASE_H / 2 + 10
     const btnHeight = 30
 
     if (y > btnY - 10 && y < btnY + btnHeight && x > BASE_W / 2 - 150 && x < BASE_W / 2) {
-      callbacks.onStartChallenge()
+      callbacks.onStartChallenge?.()
       return
     }
 
     if (y > btnY - 10 && y < btnY + btnHeight && x > BASE_W / 2 && x < BASE_W / 2 + 150) {
-      callbacks.onStartEndless()
+      callbacks.onStartEndless?.()
       return
     }
 
     if (y > BASE_H / 2 + 35 && y < BASE_H / 2 + 65) {
-      callbacks.onDrawRoute()
+      callbacks.onDrawRoute?.()
       return
     }
   }
@@ -143,12 +192,8 @@ export function createInputHandler(
   // 移动
   function handleMove(x: number, y: number) {
     if (state.phase === 'routeEdit') {
-      if (!isDrawingModeRef.value && state.touch.active) {
-        routeEditor.startDrawing()
-        routeEditor.addPoint(state.touch.startX, state.touch.startY)
-      }
-      if (isDrawingModeRef.value) {
-        routeEditor.addPoint(x, y)
+      if (state.touch.active) {
+        routeEditorRef.current.addPoint(x, y)
       }
       return
     }
@@ -161,7 +206,7 @@ export function createInputHandler(
   function handleUp() {
     state.touch.active = false
     if (state.phase === 'routeEdit') {
-      routeEditor.stopDrawing()
+      routeEditorRef.current.stopDrawing()
     }
   }
 

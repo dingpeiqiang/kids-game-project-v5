@@ -4,13 +4,12 @@
 
 import type {
   Dragon, DragonSegment,
-  CustomRoute,
   GameState
 } from './types'
 import type { RouteEditor as RouteEditorType } from './routes'
 import {
   COLORS, BASE_W, BASE_H, CANVAS_W, CANVAS_H, CANVAS_OFFSET_X, CANVAS_OFFSET_Y,
-  SCENES, DRAGON_CONFIGS, POWERUP_ICONS
+  SCENES, DRAGON_CONFIGS, POWERUP_ICONS, POWERUP_SEGMENT_COLORS
 } from './constants'
 import { lightenColor } from './effects'
 
@@ -21,8 +20,7 @@ import { lightenColor } from './effects'
 export function createRenderer(
   ctx: CanvasRenderingContext2D,
   state: GameState,
-  routeEditor: RouteEditorType,
-  customRoutes: CustomRoute[]
+  routeEditor: RouteEditorType
 ) {
 
   // ========== 云朵 ==========
@@ -76,133 +74,256 @@ export function createRenderer(
 
     const config = DRAGON_CONFIGS[type]
     const isRetracting = (seg as any)._isRetracting || false
+    const hpRatio = dragonMaxHp > 0 ? dragonHp / dragonMaxHp : 1
+    const t = Date.now()
 
-    // 光晕
+    // --- 基础描边 + 光晕 ---
     ctx.shadowColor = seg.color
-    ctx.shadowBlur = type === 'boss' ? 18 : 10
+    ctx.shadowBlur = type === 'boss' ? 22 : 12
 
-    // 龙身
+    // --- 身体节段（非龙头） ---
     if (!seg.isHead) {
-      ctx.fillStyle = seg.color
+      // 受伤闪烁：血量低时白色闪烁
+      const damagedFlash = hpRatio < 0.3 ? (Math.sin(t * 0.008) * 0.5 + 0.5) * 0.6 : 0
+
+      // 径向渐变（3D 球形感）
+      const grad = ctx.createRadialGradient(
+        -seg.size * 0.25, -seg.size * 0.25, seg.size * 0.05,
+        0, 0, seg.size
+      )
+      if (damagedFlash > 0) {
+        grad.addColorStop(0, '#FFFFFF')
+        grad.addColorStop(0.5, lightenColor(seg.color, 30))
+        grad.addColorStop(1, lightenColor(seg.color, -20))
+      } else {
+        grad.addColorStop(0, lightenColor(seg.color, 50))
+        grad.addColorStop(0.45, seg.color)
+        grad.addColorStop(1, lightenColor(seg.color, -30))
+      }
+      ctx.fillStyle = grad
       ctx.beginPath()
       ctx.arc(0, 0, seg.size, 0, Math.PI * 2)
       ctx.fill()
 
+      // 高光叠加层（左上白色椭圆）
+      ctx.save()
+      ctx.globalAlpha = 0.45
+      const hlGrad = ctx.createRadialGradient(
+        -seg.size * 0.3, -seg.size * 0.3, 0,
+        -seg.size * 0.2, -seg.size * 0.2, seg.size * 0.55
+      )
+      hlGrad.addColorStop(0, 'rgba(255,255,255,0.9)')
+      hlGrad.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = hlGrad
+      ctx.beginPath()
+      ctx.arc(0, 0, seg.size, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+
+      // 道具节段专属光环（不断脉冲）
+      if (seg.attachedPowerUp) {
+        const pulseRing = 1 + Math.sin(t / 200) * 0.12
+        const glowCfg = POWERUP_SEGMENT_COLORS[seg.attachedPowerUp] as unknown as { glowColor: string } | undefined
+        ctx.save()
+        ctx.strokeStyle = glowCfg?.glowColor ?? '#FFFFFF'
+        ctx.lineWidth = 2.5
+        ctx.globalAlpha = 0.5 + Math.sin(t / 200) * 0.3
+        ctx.shadowColor = glowCfg?.glowColor ?? '#FFFFFF'
+        ctx.shadowBlur = 12
+        ctx.beginPath()
+        ctx.arc(0, 0, (seg.size + 5) * pulseRing, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.restore()
+      }
+
+      // 龙纹（精英/BOSS 有鳞片环）
+      if (seg.hasPattern && !seg.attachedPowerUp) {
+        ctx.strokeStyle = `rgba(255,255,255,0.25)`
+        ctx.lineWidth = 1.5
+        for (let r = 0.4; r < 0.95; r += 0.2) {
+          ctx.beginPath()
+          ctx.arc(0, 0, seg.size * r, 0, Math.PI * 2)
+          ctx.stroke()
+        }
+      }
+
+      // 减速冰霜效果
+      if (isSlowed) {
+        ctx.strokeStyle = 'rgba(135, 206, 235, 0.7)'
+        ctx.lineWidth = 2
+        ctx.setLineDash([4, 4])
+        ctx.beginPath()
+        ctx.arc(0, 0, seg.size + 4, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+
       // 血量数字
       const hpText = Math.round(dragonHp).toString()
-      const fontSize = Math.max(10, seg.size * 0.5)
-      const hpRatio = dragonMaxHp > 0 ? dragonHp / dragonMaxHp : 1
-      const r = Math.round(255 * (1 - hpRatio))
-      const g = Math.round(255 * hpRatio)
-
-      ctx.strokeStyle = '#000'
-      ctx.lineWidth = 1.5
-      ctx.font = `${fontSize}px sans-serif`
+      const fontSize = Math.max(9, seg.size * 0.48)
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)'
+      ctx.lineWidth = 2
+      ctx.font = `bold ${fontSize}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.strokeText(hpText, 0, 1)
-      ctx.fillStyle = `rgb(${r}, ${g}, 50)`
+      ctx.fillStyle = hpRatio < 0.3 ? '#FFFFFF' : `rgb(${Math.round(255 * (1 - hpRatio))}, ${Math.round(255 * hpRatio)}, 50)`
       ctx.fillText(hpText, 0, 1)
     }
 
-    // 龙纹（精英/BOSS有）
-    if (seg.hasPattern) {
-      ctx.strokeStyle = lightenColor(seg.color, 40)
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.arc(0, 0, seg.size * 0.65, 0, Math.PI * 2)
-      ctx.stroke()
-    }
-
+    // --- 龙头 ---
     if (seg.isHead) {
+      const breathScale = 1 + Math.sin(t * 0.003) * 0.04  // 呼吸微微缩放
+      ctx.scale(breathScale, breathScale)
+
+      // 龙身渐变（底色）
+      const headGrad = ctx.createRadialGradient(
+        -seg.size * 0.3, -seg.size * 0.3, seg.size * 0.05,
+        0, 0, seg.size
+      )
+      headGrad.addColorStop(0, lightenColor(seg.color, 60))
+      headGrad.addColorStop(0.5, seg.color)
+      headGrad.addColorStop(1, lightenColor(seg.color, -25))
+
       // 回缩状态闪烁红边框
       if (isRetracting) {
-        const flashIntensity = Math.sin(Date.now() * 0.01) * 0.5 + 0.5
-        ctx.strokeStyle = `rgba(255, 0, 0, ${flashIntensity})`
-        ctx.lineWidth = 4
+        const flashIntensity = Math.sin(t * 0.01) * 0.5 + 0.5
+        ctx.save()
+        ctx.strokeStyle = `rgba(255, 60, 60, ${flashIntensity})`
+        ctx.lineWidth = 5
+        ctx.shadowColor = '#FF4444'
+        ctx.shadowBlur = 20
         ctx.beginPath()
         ctx.arc(0, 0, seg.size + 6, 0, Math.PI * 2)
         ctx.stroke()
+        ctx.restore()
       }
-      
-      // 眼睛
-      ctx.fillStyle = '#FFFFFF'
+
+      // 头部主体
+      ctx.shadowBlur = 18
+      ctx.fillStyle = headGrad
       ctx.beginPath()
-      ctx.arc(-seg.size * 0.28, -seg.size * 0.12, seg.size * 0.2, 0, Math.PI * 2)
-      ctx.arc(seg.size * 0.28, -seg.size * 0.12, seg.size * 0.2, 0, Math.PI * 2)
+      ctx.arc(0, 0, seg.size, 0, Math.PI * 2)
       ctx.fill()
 
-      ctx.fillStyle = '#222222'
+      // 高光
+      ctx.save()
+      ctx.globalAlpha = 0.4
+      const shineGrad = ctx.createRadialGradient(
+        -seg.size * 0.3, -seg.size * 0.35, 0,
+        -seg.size * 0.2, -seg.size * 0.25, seg.size * 0.6
+      )
+      shineGrad.addColorStop(0, 'rgba(255,255,255,0.9)')
+      shineGrad.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = shineGrad
       ctx.beginPath()
-      ctx.arc(-seg.size * 0.28, -seg.size * 0.12, seg.size * 0.09, 0, Math.PI * 2)
-      ctx.arc(seg.size * 0.28, -seg.size * 0.12, seg.size * 0.09, 0, Math.PI * 2)
+      ctx.arc(0, 0, seg.size, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+
+      // 龙鳞纹理（头部鳞片纹）
+      ctx.strokeStyle = `rgba(255,255,255,0.2)`
+      ctx.lineWidth = 1
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+        const rx = Math.cos(a) * seg.size * 0.65
+        const ry = Math.sin(a) * seg.size * 0.65
+        ctx.beginPath()
+        ctx.arc(rx, ry, seg.size * 0.18, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+
+      // 眼睛（带眼神光）
+      ctx.shadowBlur = 0
+      ctx.fillStyle = '#FFFFFF'
+      ctx.beginPath()
+      ctx.arc(-seg.size * 0.28, -seg.size * 0.08, seg.size * 0.22, 0, Math.PI * 2)
+      ctx.arc(seg.size * 0.28, -seg.size * 0.08, seg.size * 0.22, 0, Math.PI * 2)
+      ctx.fill()
+
+      // 眼珠（竖瞳）
+      const blink = Math.sin(t * 0.0015) > 0.97 ? 0.1 : 1  // 偶尔眨眼
+      ctx.fillStyle = '#111111'
+      ctx.save()
+      ctx.scale(1, blink)
+      ctx.beginPath()
+      ctx.ellipse(-seg.size * 0.28, -seg.size * 0.08, seg.size * 0.08, seg.size * 0.16, 0, 0, Math.PI * 2)
+      ctx.ellipse(seg.size * 0.28, -seg.size * 0.08, seg.size * 0.08, seg.size * 0.16, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+
+      // 眼神光（高光点）
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'
+      ctx.beginPath()
+      ctx.arc(-seg.size * 0.32, -seg.size * 0.14, seg.size * 0.06, 0, Math.PI * 2)
+      ctx.arc(seg.size * 0.24, -seg.size * 0.14, seg.size * 0.06, 0, Math.PI * 2)
       ctx.fill()
 
       // 龙角
       if (seg.hasHorn) {
-        ctx.strokeStyle = lightenColor(seg.color, 50)
-        ctx.lineWidth = 3
+        ctx.shadowColor = seg.color
+        ctx.shadowBlur = 6
+        const hornGrad = ctx.createLinearGradient(-seg.size, -seg.size * 0.5, seg.size * 0.5, -seg.size * 0.5)
+        hornGrad.addColorStop(0, lightenColor(seg.color, 60))
+        hornGrad.addColorStop(1, lightenColor(seg.color, -10))
+        ctx.strokeStyle = hornGrad
+        ctx.lineWidth = 3.5
+        ctx.lineCap = 'round'
+
         ctx.beginPath()
-        ctx.moveTo(-seg.size * 0.45, -seg.size * 0.2)
-        ctx.lineTo(-seg.size * 0.8, -seg.size * 0.5)
-        ctx.moveTo(seg.size * 0.45, -seg.size * 0.2)
-        ctx.lineTo(seg.size * 0.8, -seg.size * 0.5)
+        ctx.moveTo(-seg.size * 0.45, -seg.size * 0.15)
+        ctx.quadraticCurveTo(-seg.size * 0.65, -seg.size * 0.5, -seg.size * 0.9, -seg.size * 0.65)
+        ctx.stroke()
+
+        ctx.beginPath()
+        ctx.moveTo(seg.size * 0.45, -seg.size * 0.15)
+        ctx.quadraticCurveTo(seg.size * 0.65, -seg.size * 0.5, seg.size * 0.9, -seg.size * 0.65)
         ctx.stroke()
       }
 
-      // 龙须
-      ctx.strokeStyle = lightenColor(seg.color, 45)
-      ctx.lineWidth = 2.5
+      // 龙须（随时间轻微摆动）
+      ctx.shadowBlur = 0
+      const whiskerWave = Math.sin(t * 0.004) * 0.08
+      ctx.strokeStyle = lightenColor(seg.color, 50)
+      ctx.lineWidth = 2
+      ctx.lineCap = 'round'
       ctx.beginPath()
-      ctx.moveTo(-seg.size * 0.4, -seg.size * 0.1)
-      ctx.quadraticCurveTo(-seg.size * 0.8, -seg.size * 0.4, -seg.size * 1.0, -seg.size * 0.25)
-      ctx.moveTo(seg.size * 0.4, -seg.size * 0.1)
-      ctx.quadraticCurveTo(seg.size * 0.8, -seg.size * 0.4, seg.size * 1.0, -seg.size * 0.25)
+      ctx.moveTo(-seg.size * 0.4, -seg.size * 0.05)
+      ctx.quadraticCurveTo(
+        -seg.size * 0.75, -seg.size * 0.3 + whiskerWave * 10,
+        -seg.size * 1.1, -seg.size * 0.15 + whiskerWave * 15
+      )
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(seg.size * 0.4, -seg.size * 0.05)
+      ctx.quadraticCurveTo(
+        seg.size * 0.75, -seg.size * 0.3 - whiskerWave * 10,
+        seg.size * 1.1, -seg.size * 0.15 - whiskerWave * 15
+      )
       ctx.stroke()
 
-      // BOSS显示"王"
+      // BOSS 显示"王"
       if (type === 'boss') {
-        ctx.fillStyle = COLORS.accent
+        ctx.fillStyle = '#FFD700'
         ctx.font = `bold ${seg.size * 0.65}px sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText('王', 0, 0)
+        ctx.shadowColor = '#FFD700'
+        ctx.shadowBlur = 10
+        ctx.strokeStyle = '#8B4513'
+        ctx.lineWidth = 2
+        ctx.strokeText('王', 0, 1)
+        ctx.fillText('王', 0, 1)
       }
 
-      // 宝箱龙显示"宝"
-      if (type === 'treasure') {
-        ctx.fillStyle = '#FFD700'
-        ctx.font = `bold ${seg.size * 0.6}px sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText('宝', 0, 0)
-      }
-
-      // 金币龙显示"$"
-      if (type === 'coin') {
-        ctx.fillStyle = '#FFD700'
-        ctx.font = `bold ${seg.size * 0.7}px sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText('$', 0, 0)
-      }
-    }
-
-    // 减速效果
-    if (isSlowed) {
-      ctx.strokeStyle = '#87CEEB'
-      ctx.lineWidth = 2
-      ctx.setLineDash([4, 4])
-      ctx.beginPath()
-      ctx.arc(0, 0, seg.size + 4, 0, Math.PI * 2)
-      ctx.stroke()
-      ctx.setLineDash([])
+      // 宝箱龙/金币龙已废弃（无分裂后不再使用），此处留空
+      // 防止 TS 报错：treasure/coin 类型已被 Dragon.type 移除
+      void type;
     }
 
     // 道具图标
     if (seg.attachedPowerUp) {
       const icon = POWERUP_ICONS[seg.attachedPowerUp]
-      const pulse = 1 + Math.sin(Date.now() / 150) * 0.15
+      const pulse = 1 + Math.sin(t / 150) * 0.15
 
       ctx.save()
       ctx.translate(0, -seg.size - 12)
@@ -402,7 +523,7 @@ export function createRenderer(
       const pulse = 1 + Math.sin(Date.now() / 150) * 0.15
       ctx.scale(pulse, pulse)
 
-      const icon = POWERUP_ICONS[p.type]
+      const icon = POWERUP_ICONS[p.type as keyof typeof POWERUP_ICONS]
 
       // 外层光晕
       ctx.shadowColor = icon.color
@@ -521,6 +642,58 @@ export function createRenderer(
       ctx.fillText(`${state.coins}`, BASE_W - 12, BASE_H - 10)
     }
 
+    // ====== 有持续时间的道具状态栏（底部） ======
+    if (state.activeBuffs.length > 0) {
+      const buffBarY = BASE_H - 8
+      ctx.textAlign = 'left'
+      for (let i = 0; i < state.activeBuffs.length; i++) {
+        const buff = state.activeBuffs[i]
+        const bw = 52
+        const bh = 16
+        const bx = 8 + i * (bw + 4)
+
+        // 背景
+        ctx.fillStyle = 'rgba(0,0,0,0.65)'
+        ctx.beginPath()
+        ctx.roundRect(bx, buffBarY - bh, bw, bh, 4)
+        ctx.fill()
+
+        // 进度条（从右往左缩短）
+        const ratio = Math.max(0, buff.remaining / buff.duration)
+        if (ratio > 0) {
+          ctx.fillStyle = buff.color
+          ctx.globalAlpha = 0.5
+          ctx.beginPath()
+          ctx.roundRect(bx + 1, buffBarY - bh + 1, (bw - 2) * ratio, bh - 2, 3)
+          ctx.fill()
+          ctx.globalAlpha = 1
+        }
+
+        // 图标
+        ctx.fillStyle = '#fff'
+        ctx.font = '10px sans-serif'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(buff.icon, bx + 3, buffBarY - bh / 2)
+
+        // 剩余秒数
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 9px sans-serif'
+        ctx.textAlign = 'right'
+        ctx.fillText(buff.remaining.toFixed(1) + 's', bx + bw - 3, buffBarY - bh / 2)
+        ctx.textAlign = 'left'
+
+        // 层数
+        if (buff.stacks && buff.stacks > 1) {
+          ctx.fillStyle = '#FFD700'
+          ctx.font = 'bold 8px sans-serif'
+          ctx.textAlign = 'right'
+          ctx.fillText('x' + buff.stacks, bx + bw - 3, buffBarY - bh / 2 - 10)
+          ctx.textAlign = 'left'
+        }
+      }
+      ctx.textBaseline = 'alphabetic'
+    }
+
     ctx.shadowBlur = 0
   }
 
@@ -588,9 +761,9 @@ export function createRenderer(
     // 按钮区域
     const btnY = CANVAS_H - 80
     const btnH = 50
-    const btnW = 85
+    const btnW = 75
     const btnGap = 5
-    const btnStartX = (CANVAS_W - (btnW * 4 + btnGap * 3)) / 2
+    const btnStartX = (CANVAS_W - (btnW * 5 + btnGap * 4)) / 2
 
     ctx.fillStyle = '#FF6B6B'
     ctx.fillRect(btnStartX, btnY, btnW, btnH)
@@ -603,19 +776,24 @@ export function createRenderer(
     ctx.fillStyle = '#FFFFFF'
     ctx.fillText('💾 保存', btnStartX + btnW + btnGap + btnW / 2, btnY + 32)
 
-    ctx.fillStyle = '#2196F3'
+    ctx.fillStyle = '#FF9800'
     ctx.fillRect(btnStartX + (btnW + btnGap) * 2, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 2 + btnW / 2, btnY + 32)
+    ctx.fillText('✨ 优化', btnStartX + (btnW + btnGap) * 2 + btnW / 2, btnY + 32)
 
-    ctx.fillStyle = COLORS.accent
+    ctx.fillStyle = '#2196F3'
     ctx.fillRect(btnStartX + (btnW + btnGap) * 3, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 3 + btnW / 2, btnY + 32)
+    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 3 + btnW / 2, btnY + 32)
+
+    ctx.fillStyle = COLORS.accent
+    ctx.fillRect(btnStartX + (btnW + btnGap) * 4, btnY, btnW, btnH)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 4 + btnW / 2, btnY + 32)
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.font = '11px sans-serif'
-    ctx.fillText('可在边框外绘制路线', CANVAS_W / 2, btnY + btnH + 15)
+    ctx.fillText('✨优化：抽稀+圆滑后保存', CANVAS_W / 2, btnY + btnH + 15)
     
     drawFloatTexts()
   }
@@ -669,6 +847,33 @@ export function createRenderer(
     // 路线编辑模式
     if (state.phase === 'routeEdit') {
       drawRouteEditor()
+      drawFloatTexts()
+      return
+    }
+
+    // 关卡过渡动画（全屏遮罩 + 大字）
+    if (state.levelTransition) {
+      // 画半透明黑色背景
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
+      // 大字居中
+      const alpha = Math.min(1, state.levelTransitionTimer)
+      ctx.globalAlpha = alpha
+      ctx.fillStyle = '#FFD700'
+      ctx.font = 'bold 48px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.shadowColor = '#FF8E00'
+      ctx.shadowBlur = 20
+      ctx.fillText(`第 ${state.level} 关`, CANVAS_W / 2, CANVAS_H / 2 - 20)
+      ctx.font = 'bold 20px sans-serif'
+      ctx.fillStyle = '#FFFFFF'
+      ctx.shadowBlur = 10
+      ctx.fillText('准备开始...', CANVAS_W / 2, CANVAS_H / 2 + 30)
+      ctx.globalAlpha = 1
+      ctx.shadowBlur = 0
+      ctx.textAlign = 'left'
+      drawFloatTexts()
       return
     }
 
@@ -727,9 +932,185 @@ export function createRenderer(
       if (state.phase === 'gameOver') {
         drawGameOver(false)
       }
+
+      if (state.phase === 'powerup_select') {
+        drawPowerUpSelectOverlay()
+      }
     }
 
     ctx.restore()
+  }
+
+  // ========== 缓动函数 ==========
+  function easeOutCubic(t: number): number {
+    return 1 - Math.pow(1 - t, 3)
+  }
+  function easeOutBack(t: number): number {
+    const c1 = 1.70158, c3 = c1 + 1
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+  }
+  function easeOutQuad(t: number): number {
+    return 1 - (1 - t) * (1 - t)
+  }
+
+  // ========== 圆角矩形辅助 ==========
+  function roundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number, y: number, w: number, h: number, r: number
+  ) {
+    ctx.beginPath()
+    ctx.moveTo(x + r, y)
+    ctx.lineTo(x + w - r, y)
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+    ctx.lineTo(x + w, y + h - r)
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+    ctx.lineTo(x + r, y + h)
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+    ctx.lineTo(x, y + r)
+    ctx.quadraticCurveTo(x, y, x + r, y)
+    ctx.closePath()
+  }
+
+  // ========== 道具选择弹窗 ==========
+  function drawPowerUpSelectOverlay() {
+    const ps = state.powerupSelect
+    if (!ps) return
+    const t = Date.now()
+
+    // 半透明黑色遮罩（关闭时渐隐）
+    const overlayAlpha = ps.closing ? (1 - ps.closeProgress) * 0.75 : 0.75
+    ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha})`
+    ctx.fillRect(0, 0, BASE_W, BASE_H)
+
+    // 标题
+    ctx.save()
+    ctx.globalAlpha = ps.closing ? (1 - ps.closeProgress) : 1
+    ctx.fillStyle = '#FFE066'
+    ctx.font = 'bold 18px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.shadowColor = '#FFE066'
+    ctx.shadowBlur = 10
+    ctx.fillText('✨ 选择你的仙术 ✨', BASE_W / 2, BASE_H / 2 - 110)
+    ctx.restore()
+
+    // 三张卡片
+    const cardW = 90
+    const cardH = 120
+    const cardGap = 20
+    const totalW = cardW * 3 + cardGap * 2
+    const startX = (BASE_W - totalW) / 2
+    const cardY = BASE_H / 2 - cardH / 2
+
+    ps.cards.forEach((card, i) => {
+      const cx = startX + i * (cardW + cardGap) + cardW / 2
+      const cy = cardY + cardH / 2
+      const isRevealed = ps.revealedIdx === i
+      const isOtherRevealed = ps.revealedIdx !== null && ps.revealedIdx !== i
+      const flipT = isRevealed ? ps.revealProgress : (isOtherRevealed ? 1 : 0)
+      const closeScale = ps.closing ? Math.max(0.01, 1 - ps.closeProgress * 0.3) : 1
+      // 悬浮动画
+      const floatY = isRevealed ? 0 : Math.sin(t / 400 + i * 1.2) * 4
+
+      ctx.save()
+      ctx.translate(cx, cy + floatY)
+      ctx.scale(closeScale, closeScale)
+
+      // 绕卡片中心翻转：scaleX 从 1(背面) → 0 → -1(正面)
+      // 翻到一半(flipT=0.5)时 scaleX=0，之后显示正面
+      const flipScaleX = Math.max(-1, 1 - flipT * 2)  // 1→0→-1
+      const showingFront = flipT > 0.5
+
+      if (showingFront) {
+        // 正面：先把坐标系翻正，再画内容
+        ctx.scale(-1, 1)
+        ctx.scale(Math.abs(flipScaleX), 1)  // 保证内容不缩放
+      } else {
+        ctx.scale(flipScaleX, 1)
+      }
+
+      if (showingFront) {
+        // === 正面 ===
+        const faceGrad = ctx.createLinearGradient(-cardW / 2, -cardH / 2, cardW / 2, cardH / 2)
+        faceGrad.addColorStop(0, '#2a2a4a')
+        faceGrad.addColorStop(1, '#1a1a2e')
+        const radius = 12
+        roundRect(ctx, -cardW / 2, -cardH / 2, cardW, cardH, radius)
+        ctx.fillStyle = faceGrad
+        ctx.fill()
+        ctx.strokeStyle = card.color
+        ctx.lineWidth = 2.5
+        ctx.shadowColor = card.color
+        ctx.shadowBlur = 15
+        ctx.stroke()
+
+        // 选中高亮（仅选中卡有金边）
+        ctx.strokeStyle = '#FFD700'
+        ctx.lineWidth = 3
+        ctx.shadowColor = '#FFD700'
+        ctx.shadowBlur = 20
+        roundRect(ctx, -cardW / 2 - 3, -cardH / 2 - 3, cardW + 6, cardH + 6, radius + 2)
+        ctx.stroke()
+
+        // 道具图标
+        ctx.shadowBlur = 20
+        ctx.shadowColor = card.color
+        ctx.fillStyle = card.color
+        ctx.font = '36px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(card.icon, 0, -cardH / 4)
+
+        // 名称
+        ctx.shadowBlur = 0
+        ctx.fillStyle = '#FFFFFF'
+        ctx.font = 'bold 11px sans-serif'
+        ctx.fillText(card.name, 0, cardH / 8)
+
+        // 描述
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'
+        ctx.font = '9px sans-serif'
+        ctx.fillText(card.desc, 0, cardH / 4 + 8)
+      } else {
+        // === 背面 ===
+        const backGrad = ctx.createLinearGradient(-cardW / 2, -cardH / 2, cardW / 2, cardH / 2)
+        backGrad.addColorStop(0, '#3a2a5a')
+        backGrad.addColorStop(1, '#2a1a4a')
+        const radius = 12
+        roundRect(ctx, -cardW / 2, -cardH / 2, cardW, cardH, radius)
+        ctx.fillStyle = backGrad
+        ctx.fill()
+
+        ctx.strokeStyle = isOtherRevealed ? 'rgba(255,255,255,0.15)' : 'rgba(180, 120, 255, 0.8)'
+        ctx.lineWidth = isOtherRevealed ? 1 : 2
+        ctx.shadowColor = '#9B59B6'
+        ctx.shadowBlur = isOtherRevealed ? 4 : 10
+        roundRect(ctx, -cardW / 2, -cardH / 2, cardW, cardH, radius)
+        ctx.stroke()
+
+        // 问号符文
+        ctx.shadowBlur = 8
+        ctx.shadowColor = '#BB77FF'
+        ctx.fillStyle = 'rgba(180, 120, 255, 0.9)'
+        ctx.font = 'bold 40px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText('?', 0, -8)
+
+        // 装饰线
+        ctx.strokeStyle = 'rgba(180, 120, 255, 0.5)'
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.moveTo(-cardW * 0.3, cardH * 0.25)
+        ctx.lineTo(cardW * 0.3, cardH * 0.25)
+        ctx.stroke()
+        ctx.fillStyle = 'rgba(180, 120, 255, 0.7)'
+        ctx.font = '9px sans-serif'
+        ctx.fillText('点击选择', 0, cardH * 0.25 + 14)
+      }
+
+      ctx.restore()
+    })
   }
 
   return { render }
