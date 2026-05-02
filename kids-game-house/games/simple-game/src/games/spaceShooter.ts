@@ -14,8 +14,8 @@ import { Scene, Textures, Input, Math as PhaserMath, GameObjects } from 'phaser'
  * - 渲染：通过 Phaser CanvasTexture 在 Canvas 2D 上绘制，保持原有绘制代码
  */
 export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
-  // === 设计分辨率 ===
-  const BASE_W = 400, BASE_H = 600
+  // === 设计分辨率 ===（9:16 比例，贴近手机屏幕）
+  const BASE_W = 360, BASE_H = 640
 
   // === 创建 Phaser 游戏容器 ===
   const gameContainer = document.getElementById('gameCanvas')!
@@ -36,7 +36,7 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     width: 100vw;
     height: 100vh;
     z-index: 1000;
-    background: #0a0a1e;
+    background: linear-gradient(to bottom, #0a0a2e 0%, #1a1a3e 50%, #0a0a2e 100%);
     overflow: hidden;
     margin: 0;
     padding: 0;
@@ -90,7 +90,7 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     private pierceStacks = 0
 
     // Buff 上限控制
-    private readonly MAX_ACTIVE_BUFFS = 2
+    private readonly MAX_ACTIVE_BUFFS = 3  // 最多3种不同buff同时激活
     private activeBuffOrder: string[] = [] // 跟踪 buff 激活顺序
     private screenFlash = 0
     private spawnTimer = 0
@@ -458,7 +458,7 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
           audioService.win(); break
         }
         case 'shield': {
-          const dur = 3 // 固定3秒，不叠加
+          const dur = 10 // 10秒无敌
           this.invincible = dur
           this.addShockwave(this.playerX, this.playerY, 80, '#4FC3F7')
           audioService.win(); break
@@ -911,7 +911,7 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
             this.playerX - this.PLAYER_W / 2, this.playerY - this.PLAYER_H / 2, this.PLAYER_W, this.PLAYER_H,
             e.x - e.w / 2, e.y - e.h / 2, e.w, e.h
           )) {
-            this.playerHP--; this.invincible = 2; this.shakeAmt = 6; this.screenFlash = 0.3; this.combo = 0
+            this.playerHP--; this.invincible = 3; this.shakeAmt = 6; this.screenFlash = 0.3; this.combo = 0
             this.explode(this.playerX, this.playerY, '#FF4757', 20, 5)
             audioService.pop()
             this.enemies.splice(i, 1)
@@ -978,7 +978,7 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
           b.x - 3, b.y - 5, 6, 10,
           this.playerX - this.PLAYER_W / 2, this.playerY - this.PLAYER_H / 2, this.PLAYER_W, this.PLAYER_H
         )) {
-          this.playerHP--; this.invincible = 2; this.shakeAmt = 5; this.screenFlash = 0.25; this.combo = 0
+          this.playerHP--; this.invincible = 3; this.shakeAmt = 5; this.screenFlash = 0.25; this.combo = 0
           this.explode(this.playerX, this.playerY, '#FF4757', 15, 4)
           audioService.pop()
           this.enemyBullets.splice(i, 1)
@@ -1076,10 +1076,12 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
 
       // 敌人子弹
       for (const b of this.enemyBullets) {
-        ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = 6
-        ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill()
-        ctx.fillStyle = b.color + '44'
-        ctx.beginPath(); ctx.arc(b.x, b.y + 5, 2.5, 0, Math.PI * 2); ctx.fill()
+        ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = 10  // 增强光晕
+        ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI * 2); ctx.fill()  // 从3增加到5
+        // 添加尾迹效果
+        ctx.fillStyle = b.color + '66'  // 半透明尾迹
+        ctx.beginPath(); ctx.arc(b.x, b.y + 7, 4, 0, Math.PI * 2); ctx.fill()  // 从2.5增加到4，位置下移
+        ctx.beginPath(); ctx.arc(b.x, b.y + 12, 3, 0, Math.PI * 2); ctx.fill()  // 新增第二个尾迹点
       }
       ctx.shadowBlur = 0
 
@@ -1090,19 +1092,19 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
       for (const b of this.bullets) {
         // 击穿弹：更大的子弹 + 橙色尾迹
         if (b.pierce > 0) {
-          ctx.fillStyle = '#FF9800'; ctx.shadowColor = '#FF9800'; ctx.shadowBlur = 12
-          ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI * 2); ctx.fill()
+          ctx.fillStyle = '#FF9800'; ctx.shadowColor = '#FF9800'; ctx.shadowBlur = 15
+          ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI * 2); ctx.fill()  // 从4增加到6
+          ctx.shadowBlur = 0
+          const trailGrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + 20)
+          trailGrad.addColorStop(0, 'rgba(255,152,0,0.8)'); trailGrad.addColorStop(1, 'transparent')
+          ctx.fillStyle = trailGrad; ctx.fillRect(b.x - 3, b.y, 6, 20)  // 尾迹加宽加长
+        } else {
+          ctx.fillStyle = '#00E5FF'; ctx.shadowColor = '#00E5FF'; ctx.shadowBlur = 12
+          ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI * 2); ctx.fill()  // 从3增加到5
           ctx.shadowBlur = 0
           const trailGrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + 16)
-          trailGrad.addColorStop(0, 'rgba(255,152,0,0.6)'); trailGrad.addColorStop(1, 'transparent')
-          ctx.fillStyle = trailGrad; ctx.fillRect(b.x - 2, b.y, 4, 16)
-        } else {
-          ctx.fillStyle = '#00E5FF'; ctx.shadowColor = '#00E5FF'; ctx.shadowBlur = 8
-          ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill()
-          ctx.shadowBlur = 0
-          const trailGrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + 12)
-          trailGrad.addColorStop(0, 'rgba(0,229,255,0.5)'); trailGrad.addColorStop(1, 'transparent')
-          ctx.fillStyle = trailGrad; ctx.fillRect(b.x - 1.5, b.y, 3, 12)
+          trailGrad.addColorStop(0, 'rgba(0,229,255,0.7)'); trailGrad.addColorStop(1, 'transparent')
+          ctx.fillStyle = trailGrad; ctx.fillRect(b.x - 2.5, b.y, 5, 16)  // 尾迹加宽加长
         }
       }
       ctx.shadowBlur = 0
@@ -1136,13 +1138,30 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
         ctx.save(); ctx.translate(p.x, p.y)
         const bob = Math.sin(Date.now() / 200 + p.x) * 3
         ctx.translate(0, bob)
-        // 光晕
-        ctx.fillStyle = 'rgba(255,215,0,0.3)'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 15
-        ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill()
+        
+        // 脉冲动画（让道具更醒目）
+        const pulse = 1 + Math.sin(Date.now() / 150) * 0.15
+        ctx.scale(pulse, pulse)
+        
+        // 外层光晕（更大更强）
+        ctx.fillStyle = 'rgba(255,215,0,0.4)'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 25
+        ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill()
+        
+        // 中层圆环（白色边框）
+        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.shadowBlur = 10
+        ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.stroke()
+        
+        // 内层背景（深色，突出图标）
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'
+        ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill()
+        
         ctx.shadowBlur = 0
-        // 图标
-        ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText(puIcons[p.type] || '?', 0, 0)
+        
+        // 图标（更大更清晰）
+        ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillText(puIcons[p.type] || '?', 0, 1)  // 微调位置居中
+        
         ctx.restore()
       }
 
@@ -1203,9 +1222,50 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
 
     // === 绘制玩家 ===
     private drawPlayer(ctx: CanvasRenderingContext2D) {
-      if (this.invincible > 0 && Math.floor(this.invincible * 10) % 2 === 0) return
       const level = this.getPlayerLevel()
       ctx.save(); ctx.translate(this.playerX, this.playerY)
+      
+      // 无敌状态特效（不闪烁，而是显示护盾）
+      if (this.invincible > 0) {
+        // 外层护盾光环（旋转）
+        const shieldPulse = 1 + Math.sin(Date.now() / 100) * 0.1
+        const shieldRotation = Date.now() / 500
+        
+        ctx.save()
+        ctx.rotate(shieldRotation)
+        
+        // 第一层：蓝色光晕
+        ctx.strokeStyle = 'rgba(79, 195, 247, 0.6)'
+        ctx.lineWidth = 3
+        ctx.shadowColor = '#4FC3F7'
+        ctx.shadowBlur = 20
+        ctx.beginPath()
+        ctx.arc(0, 0, 35 * shieldPulse, 0, Math.PI * 2)
+        ctx.stroke()
+        
+        // 第二层：白色内环
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
+        ctx.lineWidth = 2
+        ctx.shadowBlur = 10
+        ctx.beginPath()
+        ctx.arc(0, 0, 28 * shieldPulse, 0, Math.PI * 2)
+        ctx.stroke()
+        
+        // 第三层：能量粒子环绕
+        for (let i = 0; i < 8; i++) {
+          const angle = (Date.now() / 300) + (i * Math.PI / 4)
+          const px = Math.cos(angle) * 32 * shieldPulse
+          const py = Math.sin(angle) * 32 * shieldPulse
+          ctx.fillStyle = '#4FC3F7'
+          ctx.shadowColor = '#4FC3F7'
+          ctx.shadowBlur = 8
+          ctx.beginPath()
+          ctx.arc(px, py, 3, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        
+        ctx.restore()
+      }
 
       // 引擎火焰
       const flicker = Math.random() * 4
@@ -1399,11 +1459,10 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
   }
 
   // === 创建 Phaser 游戏实例 ===
-  // FIT 模式：等比缩放，完整显示，自动居中，背景色填充多余空间
   if (!isMobile) {
     // PC 端：限制父容器最大尺寸，保持合理比例
-    phaserParent.style.maxWidth = '450px'
-    phaserParent.style.maxHeight = '800px'
+    phaserParent.style.maxWidth = '420px'
+    phaserParent.style.maxHeight = '760px'
     phaserParent.style.width = '100%'
     phaserParent.style.height = '100%'
     phaserParent.style.aspectRatio = BASE_W + '/' + BASE_H
@@ -1414,14 +1473,14 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     width: BASE_W,
     height: BASE_H,
     parent: phaserParent,
-    backgroundColor: '#0a0a1e',
+    backgroundColor: '#0a0a2e',
     scale: {
-      mode: Phaser.Scale.FIT,              // FIT 模式：等比缩放，完整显示，自动居中
-      autoCenter: Phaser.Scale.CENTER_BOTH, // 水平和垂直都居中
+      mode: Phaser.Scale.FIT,              // FIT 模式：等比缩放，完整显示
+      autoCenter: Phaser.Scale.CENTER_BOTH,
       width: BASE_W,
       height: BASE_H,
       min: { width: BASE_W, height: BASE_H },
-      max: { width: BASE_W * 4, height: BASE_H * 4 }, // 允许更大的缩放范围
+      max: { width: BASE_W * 4, height: BASE_H * 4 },
     },
     scene: [SpaceShooterScene],
     input: {

@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 5100,
     host: true,
     proxy: {
       // 代理 API 请求到后端服务器，避免跨域问题

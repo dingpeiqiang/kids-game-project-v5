@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "lastModified": "2026-05-01T12:14:43.028Z",
+  "levels": {
+    "1": "level_1.json",
+    "3": "level_3.json",
+    "5": "level_5.json",
+    "10": "level_10.json"
+  },
+  "custom": []
+}
