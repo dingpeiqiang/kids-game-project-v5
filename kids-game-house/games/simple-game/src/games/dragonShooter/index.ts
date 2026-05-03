@@ -269,20 +269,44 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       state.levelTarget = routes.length
       state.maxDragons = Math.max(1, routes.length)
       
-      // 🎯 设置玩家初始位置（从路线配置中读取）
-      const firstRoute = routes[0]
-      if (firstRoute.playerStartX !== undefined && firstRoute.playerStartY !== undefined) {
-        state.playerX = firstRoute.playerStartX
-        state.playerY = firstRoute.playerStartY
-        state.playerStartX = firstRoute.playerStartX
-        state.playerStartY = firstRoute.playerStartY
-        console.log(`🎯 玩家初始位置: (${firstRoute.playerStartX}, ${firstRoute.playerStartY})`)
+      // 🎯 设置玩家初始位置（优先从自定义路线中读取）
+      const customRoutesList = routeLoader.getCustomRoutes()
+      let playerStartPosition: { x: number; y: number } | null = null
+      
+      // 1. 尝试从自定义路线中获取玩家起点
+      if (customRoutesList.length > 0) {
+        for (const route of customRoutesList) {
+          if (route.playerStartX !== undefined && route.playerStartY !== undefined) {
+            playerStartPosition = { x: route.playerStartX, y: route.playerStartY }
+            console.log(`🎯 从自定义路线获取玩家起点: (${route.playerStartX}, ${route.playerStartY})`)
+            break
+          }
+        }
+      }
+      
+      // 2. 如果自定义路线中没有，尝试从关卡路线中获取
+      if (!playerStartPosition) {
+        const firstRoute = routes[0]
+        if (firstRoute.playerStartX !== undefined && firstRoute.playerStartY !== undefined) {
+          playerStartPosition = { x: firstRoute.playerStartX, y: firstRoute.playerStartY }
+          console.log(`🎯 从关卡路线获取玩家起点: (${firstRoute.playerStartX}, ${firstRoute.playerStartY})`)
+        }
+      }
+      
+      // 3. 设置玩家位置
+      if (playerStartPosition) {
+        state.playerX = playerStartPosition.x
+        state.playerY = playerStartPosition.y
+        state.playerStartX = playerStartPosition.x
+        state.playerStartY = playerStartPosition.y
+        console.log(`✅ 玩家初始位置: (${playerStartPosition.x}, ${playerStartPosition.y})`)
       } else {
-        // 默认位置
+        // 默认位置（底部中央）
         state.playerX = BASE_W / 2
         state.playerY = BASE_H - 55
         state.playerStartX = BASE_W / 2
         state.playerStartY = BASE_H - 55
+        console.log(`ℹ️ 使用默认玩家位置: (${BASE_W / 2}, ${BASE_H - 55})`)
       }
       
       console.log(`🎮 开始第${state.level}关, levelTarget=${state.levelTarget}, maxDragons=${state.maxDragons}`)
