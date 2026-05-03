@@ -107,15 +107,7 @@ export function createInputHandler(
         return
       }
 
-      // 无模式：新建路线并开始绘制
-      routeEditorRef.current.newRoute()
-      routeEditorRef.current.newRoute()
-      routeEditorRef.current.addPoint(x, y)
-      state.touch.active = true
-      state.touch.startX = x
-      state.touch.startY = y
-      state.touch.currentX = x
-      state.touch.currentY = y  // 🎯 新增：初始化当前Y坐标
+      // 无模式或其他模式：不做任何操作（等待用户选择模式）
       return
     }
 
