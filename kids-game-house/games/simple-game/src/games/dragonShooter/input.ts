@@ -291,21 +291,36 @@ export function createInputHandler(
     // 防御：callbacks 为空时直接返回
     if (!callbacks) return
 
-    console.log('🖱️ handleStartScreen:', { x: Math.round(x), y: Math.round(y) })
-    const btnY = BASE_H / 2 + 10
-    const btnHeight = 30
+    console.log('🖱️ handleStartScreen:', {
+      x: Math.round(x), y: Math.round(y),
+      BASE_W, BASE_H,
+      '闯关区': { y1: BASE_H/2 - 85, y2: BASE_H/2 + 40, x1: 30, x2: 330 },
+      '编辑区': { y1: BASE_H/2 + 35, y2: BASE_H/2 + 65 }
+    })
 
-    if (y > btnY - 10 && y < btnY + btnHeight && x > BASE_W / 2 - 150 && x < BASE_W / 2 + 150) {
+    // 闯关按钮：y 在 305-370（中心 325），x 在 30-330
+    const challengeY1 = BASE_H / 2 - 85
+    const challengeY2 = BASE_H / 2 + 40
+    const challengeX1 = BASE_W / 2 - 150
+    const challengeX2 = BASE_W / 2 + 150
+
+    if (y >= challengeY1 && y <= challengeY2 && x >= challengeX1 && x <= challengeX2) {
       console.log('🎮 开始闯关按钮被点击')
       callbacks.onStartChallenge?.()
       return
     }
 
-    if (y > BASE_H / 2 + 35 && y < BASE_H / 2 + 65) {
+    // 编辑路线按钮：y 在 345-385（中心 365），x 在 30-330
+    const editY1 = BASE_H / 2 + 35
+    const editY2 = BASE_H / 2 + 65
+
+    if (y >= editY1 && y <= editY2 && x >= challengeX1 && x <= challengeX2) {
       console.log('📝 编辑路线按钮被点击')
       callbacks.onDrawRoute?.()
       return
     }
+
+    console.log('❓ 未命中任何按钮')
   }
 
   // 移动
