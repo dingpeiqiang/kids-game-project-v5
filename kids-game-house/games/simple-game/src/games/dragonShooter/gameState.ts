@@ -953,108 +953,108 @@ function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
     case 'rapidFire':     // 迅击弹：攻速大幅提升（叠加 shootCooldown 减少）
       S.rapidFireStacks = (S.rapidFireStacks || 0) + 1
       state.shootCooldown = Math.max(60, state.shootCooldown * 0.6)  // 🎯 更强的射速提升（原0.7）
-      addOrRefreshBuff(state, 'rapidFire', '迅击弹', '⚡', '#FFD700', 60)
+      addOrRefreshBuff(state, 'rapidFire', '迅击弹', '⚡', '#FFD700', 30)
       pushText('⚡ 迅击弹！')
       break
     case 'multiShot':     // 多重弹：额外弹道
       S.multiShotStacks = (S.multiShotStacks || 0) + 1
       state.bulletCount = Math.min(10, state.bulletCount + 2)  // 🎯 每次+2发（原+1），最多10发
-      addOrRefreshBuff(state, 'multiShot', '多重弹', '🔫', '#FF6B6B', 60)
+      addOrRefreshBuff(state, 'multiShot', '多重弹', '🔫', '#FF6B6B', 30)
       pushText('🔫 多重弹！')
       break
     case 'armorPierce':   // 破甲弹：无视部分龙防御（穿透+1）
       S.armorPierceStacks = (S.armorPierceStacks || 0) + 1
       state.bulletPierce += 3  // 🎯 更强的穿透（原+2）
-      addOrRefreshBuff(state, 'armorPierce', '破甲弹', '🔪', '#B0C4DE', 60)
+      addOrRefreshBuff(state, 'armorPierce', '破甲弹', '🔪', '#B0C4DE', 30)
       pushText('🔪 破甲弹！')
       break
     case 'heavyHit':    // 重击弹：单发伤害大幅提高
       S.heavyHitStacks = (S.heavyHitStacks || 0) + 1
       state.bulletDamage = Math.floor(state.bulletDamage * 2.0)  // 🎯 双倍伤害（原1.8）
-      addOrRefreshBuff(state, 'heavyHit', '重击弹', '💪', '#FF4500', 60)
+      addOrRefreshBuff(state, 'heavyHit', '重击弹', '💪', '#FF4500', 30)
       pushText('💪 重击弹！')
       break
     case 'rapidBurst':    // 连射增幅：短时间极速连射（临时极短冷却）
       S.rapidBurstStacks = (S.rapidBurstStacks || 0) + 1
       state.shootCooldown = Math.max(30, state.shootCooldown * 0.3)  // 🎯 更快的连射（原0.4）
-      addOrRefreshBuff(state, 'rapidBurst', '连射增幅', '🔥', '#FF4500', 60)
+      addOrRefreshBuff(state, 'rapidBurst', '连射增幅', '🔥', '#FF4500', 30)
       pushText('🔥 连射增幅！')
       break
     case 'autoAim':       // 精准锁定：子弹自动吸附龙身
       S.autoAimStacks = (S.autoAimStacks || 0) + 1
       state.bulletPierce += 1
-      addOrRefreshBuff(state, 'autoAim', '精准锁定', '🎯', '#00CED1', 60)
+      addOrRefreshBuff(state, 'autoAim', '精准锁定', '🎯', '#00CED1', 30)
       pushText('🎯 精准锁定！')
       break
 
     // ── 二，范围爆发类（6）─────────────────────────────────────
     case 'blast':         // 爆裂冲击：小范围爆炸（持续60秒，每秒触发）
       S.blastStacks = (S.blastStacks || 0) + 1
-      addOrRefreshBuff(state, 'blast', '爆裂冲击', '💥', '#FF6347', 60)
+      addOrRefreshBuff(state, 'blast', '爆裂冲击', '💥', '#FF6347', 30)
       audioService.explosion()
       pushText('💥 爆裂冲击！')
       break
     case 'slash':         // 横向横扫：横向范围伤害（持续60秒）
       S.slashStacks = (S.slashStacks || 0) + 1
-      addOrRefreshBuff(state, 'slash', '横向横扫', '⚔️', '#DDA0DD', 60)
+      addOrRefreshBuff(state, 'slash', '横向横扫', '⚔️', '#DDA0DD', 30)
       pushText('⚔️ 横向横扫！')
       break
     case 'ringWave':      // 环形震荡：定时释放环形冲击波（叠加 timer）
       S.ringWaveStacks = (S.ringWaveStacks || 0) + 1
       S._ringWaveTimer = (S._ringWaveTimer || 0) + 3
-      addOrRefreshBuff(state, 'ringWave', '环形震荡', '🌊', '#00CED1', 60)
+      addOrRefreshBuff(state, 'ringWave', '环形震荡', '🌊', '#00CED1', 30)
       pushText('🌊 环形震荡！')
       break
     case 'windPressure':  // 全屏风压：大范围减速龙
       S.windPressureStacks = (S.windPressureStacks || 0) + 1
       state.slowAllTimer = Math.max(state.slowAllTimer, (state.slowAllTimer || 0) + 60)
-      addOrRefreshBuff(state, 'windPressure', '全屏风压', '🌪️', '#87CEEB', 60)
+      addOrRefreshBuff(state, 'windPressure', '全屏风压', '🌪️', '#87CEEB', 30)
       pushText('🌪️ 全屏风压！')
       break
     case 'chainBlast':    // 分段爆破：命中后连锁爆破（持续60秒）
       S.chainBlastStacks = (S.chainBlastStacks || 0) + 1
-      addOrRefreshBuff(state, 'chainBlast', '分段爆破', '⛓️', '#808080', 60)
+      addOrRefreshBuff(state, 'chainBlast', '分段爆破', '⛓️', '#808080', 30)
       pushText('⛓️ 分段爆破！')
       break
     case 'splash':        // 范围溅射：伤害小幅溅射周围（持续60秒）
       S.splashStacks = (S.splashStacks || 0) + 1
-      addOrRefreshBuff(state, 'splash', '范围溅射', '💦', '#1E90FF', 60)
+      addOrRefreshBuff(state, 'splash', '范围溅射', '💦', '#1E90FF', 30)
       pushText('💦 范围溅射！')
       break
 
     // ── 三，持续压制类（5）─────────────────────────────────────
     case 'burn':          // 持续灼烧：每帧对所有龙附加灼烧层数（持续60秒）
       S.burnStacks = (S.burnStacks || 0) + 1
-      addOrRefreshBuff(state, 'burn', '持续灼烧', '🔥', '#FF4500', 60)
+      addOrRefreshBuff(state, 'burn', '持续灼烧', '🔥', '#FF4500', 30)
       pushText('🔥 持续灼烧！')
       break
     case 'slowField':     // 迟缓领域：降低整条龙移动速度
       S.slowFieldStacks = (S.slowFieldStacks || 0) + 1
       state.slowAllTimer = Math.max(state.slowAllTimer || 0, 60)
-      addOrRefreshBuff(state, 'slowField', '迟缓领域', '❄️', '#87CEFA', 60)
+      addOrRefreshBuff(state, 'slowField', '迟缓领域', '❄️', '#87CEFA', 30)
       pushText('❄️ 迟缓领域！')
       break
     case 'toxin':         // 毒素侵蚀：持续叠加毒素掉血
       S.toxinStacks = (S.toxinStacks || 0) + 3
-      addOrRefreshBuff(state, 'toxin', '毒素侵蚀', '☠️', '#9ACD32', 60)
+      addOrRefreshBuff(state, 'toxin', '毒素侵蚀', '☠️', '#9ACD32', 30)
       pushText('☠️ 毒素侵蚀！')
       break
     case 'energyField':   // 能量涌动：角色周围持续生成伤害圈（叠加）
       S.energyFieldStacks = (S.energyFieldStacks || 0) + 1
-      addOrRefreshBuff(state, 'energyField', '能量涌动', '⚡', '#FFD700', 60)
+      addOrRefreshBuff(state, 'energyField', '能量涌动', '⚡', '#FFD700', 30)
       pushText('⚡ 能量涌动！')
       break
     case 'defDown':       // 减防光环：降低全场巨龙防御（持续60秒）
       S.defDownStacks = (S.defDownStacks || 0) + 1
       state.bulletDamage = Math.floor(state.bulletDamage * 1.15)
-      addOrRefreshBuff(state, 'defDown', '减防光环', '🛡️', '#B0C4DE', 60)
+      addOrRefreshBuff(state, 'defDown', '减防光环', '🛡️', '#B0C4DE', 30)
       pushText('🛡️ 减防光环！')
       break
 
     // ── 四，特殊斩杀类（3）─────────────────────────────────────
     case 'slashBlade':    // 断龙利刃：概率直接斩断一节龙身（持续60秒）
       S.slashBladeStacks = (S.slashBladeStacks || 0) + 1
-      addOrRefreshBuff(state, 'slashBlade', '断龙利刃', '🗡️', '#8B0000', 60)
+      addOrRefreshBuff(state, 'slashBlade', '断龙利刃', '🗡️', '#8B0000', 30)
       // 立即触发一次斩断
       for (const dragon of state.dragons) {
         if (dragon.alive && dragon.segments.length > 3) {
@@ -1066,14 +1066,14 @@ function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
       break
     case 'executeWave':   // 斩杀剑气：纵向长剑气贯穿路线（持续60秒）
       S.executeWaveStacks = (S.executeWaveStacks || 0) + 1
-      addOrRefreshBuff(state, 'executeWave', '斩杀剑气', '⚡', '#9370DB', 60)
+      addOrRefreshBuff(state, 'executeWave', '斩杀剑气', '⚡', '#9370DB', 30)
       audioService.lightning()
       pushText('⚡ 斩杀剑气！')
       break
     case 'crit':          // 极限暴击：大幅提升暴击概率（持续60秒）
       S.critStacks = (S.critStacks || 0) + 1
       state.bulletDamage = Math.floor(state.bulletDamage * 1.5)
-      addOrRefreshBuff(state, 'crit', '极限暴击', '💢', '#FF1493', 60)
+      addOrRefreshBuff(state, 'crit', '极限暴击', '💢', '#FF1493', 30)
       pushText('💢 极限暴击！')
       break
   }
