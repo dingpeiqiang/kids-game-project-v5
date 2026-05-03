@@ -410,41 +410,53 @@ export function createRenderer(
     const playerDrawY = state.playerY ?? BASE_H - 55
     ctx.translate(state.playerX, playerDrawY)
 
-    // 无敌状态护盾特效
+    // 🎯 增强版：无敌状态护盾特效
     if (state.invincibleTimer > 0) {
-      const shieldPulse = 1 + Math.sin(Date.now() / 100) * 0.1
-      const shieldRotation = Date.now() / 500
+      const shieldPulse = 1 + Math.sin(Date.now() / 80) * 0.15
+      const shieldRotation = Date.now() / 400
 
+      // 外层护盾（旋转六边形）
       ctx.save()
       ctx.rotate(shieldRotation)
-
-      ctx.strokeStyle = 'rgba(79, 195, 247, 0.6)'
-      ctx.lineWidth = 3
+      ctx.strokeStyle = 'rgba(79, 195, 247, 0.8)'
+      ctx.lineWidth = 4
       ctx.shadowColor = '#4FC3F7'
-      ctx.shadowBlur = 20
+      ctx.shadowBlur = 25
+      
+      // 绘制六边形护盾
       ctx.beginPath()
-      ctx.arc(0, 0, 35 * shieldPulse, 0, Math.PI * 2)
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2
+        const radius = 38 * shieldPulse
+        const x = Math.cos(angle) * radius
+        const y = Math.sin(angle) * radius
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      }
+      ctx.closePath()
       ctx.stroke()
-
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
-      ctx.lineWidth = 2
-      ctx.shadowBlur = 10
+      
+      // 内层圆形护盾
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+      ctx.lineWidth = 2.5
+      ctx.shadowBlur = 15
       ctx.beginPath()
-      ctx.arc(0, 0, 28 * shieldPulse, 0, Math.PI * 2)
+      ctx.arc(0, 0, 30 * shieldPulse, 0, Math.PI * 2)
       ctx.stroke()
-
       ctx.restore()
 
-      for (let i = 0; i < 8; i++) {
-        const angle = (Date.now() / 300) + (i * Math.PI / 4)
-        const px = Math.cos(angle) * 32 * shieldPulse
-        const py = Math.sin(angle) * 32 * shieldPulse
+      // 护盾粒子效果（更多粒子，更大范围）
+      for (let i = 0; i < 12; i++) {
+        const angle = (Date.now() / 250) + (i * Math.PI / 6)
+        const px = Math.cos(angle) * 35 * shieldPulse
+        const py = Math.sin(angle) * 35 * shieldPulse
+        const particleSize = 2 + Math.sin(Date.now() / 100 + i) * 1
 
-        ctx.fillStyle = '#4FC3F7'
+        ctx.fillStyle = `rgba(79, 195, 247, ${0.6 + Math.sin(Date.now() / 150 + i) * 0.3})`
         ctx.shadowColor = '#4FC3F7'
-        ctx.shadowBlur = 8
+        ctx.shadowBlur = 12
         ctx.beginPath()
-        ctx.arc(px, py, 3, 0, Math.PI * 2)
+        ctx.arc(px, py, particleSize, 0, Math.PI * 2)
         ctx.fill()
       }
 
@@ -455,212 +467,340 @@ export function createRenderer(
     ctx.shadowBlur = 0
 
     // ═══════════════════════════════════════
-    // 英雄射手角色设计
+    // 🎯 增强版：英雄射手角色设计
     // ═══════════════════════════════════════
 
-    // 1. 披风/斗篷（动态飘动效果）
-    const capeWave = Math.sin(Date.now() / 200) * 3
+    // 1. 披风/斗篷（动态飘动效果 - 更流畅）
+    const capeWave = Math.sin(Date.now() / 150) * 4
     ctx.save()
-    ctx.fillStyle = 'rgba(139, 0, 0, 0.7)'  // 深红色披风
+    
+    // 披风渐变
+    const capeGrad = ctx.createLinearGradient(0, 5, 0, 35)
+    capeGrad.addColorStop(0, 'rgba(139, 0, 0, 0.8)')
+    capeGrad.addColorStop(0.5, 'rgba(178, 34, 34, 0.6)')
+    capeGrad.addColorStop(1, 'rgba(220, 20, 60, 0.4)')
+    ctx.fillStyle = capeGrad
+    
     ctx.beginPath()
     ctx.moveTo(-18, 5)
-    ctx.quadraticCurveTo(-22 + capeWave, 25, -15 + capeWave * 1.5, 35)
-    ctx.lineTo(15 - capeWave * 1.5, 35)
-    ctx.quadraticCurveTo(22 - capeWave, 25, 18, 5)
+    ctx.quadraticCurveTo(-24 + capeWave, 25, -16 + capeWave * 1.8, 38)
+    ctx.lineTo(16 - capeWave * 1.8, 38)
+    ctx.quadraticCurveTo(24 - capeWave, 25, 18, 5)
     ctx.closePath()
     ctx.fill()
+    
+    // 披风边缘装饰
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
     ctx.restore()
 
-    // 2. 身体盔甲（金属质感）
-    const armorGrad = ctx.createLinearGradient(-15, -15, 15, 15)
-    armorGrad.addColorStop(0, '#C0C0C0')  // 银色高光
-    armorGrad.addColorStop(0.5, '#808080')  // 中灰色
+    // 2. 身体盔甲（金属质感 - 更强光泽）
+    const armorGrad = ctx.createRadialGradient(-5, -5, 0, 0, 0, 20)
+    armorGrad.addColorStop(0, '#E8E8E8')  // 亮银色高光
+    armorGrad.addColorStop(0.4, '#C0C0C0')  // 银色
+    armorGrad.addColorStop(0.7, '#808080')  // 中灰色
     armorGrad.addColorStop(1, '#505050')  // 深灰阴影
     ctx.fillStyle = armorGrad
     ctx.beginPath()
-    ctx.arc(0, 0, 18, 0, Math.PI * 2)
+    ctx.arc(0, 0, 20, 0, Math.PI * 2)
     ctx.fill()
 
-    // 盔甲边缘装饰
+    // 盔甲边缘装饰（发光效果）
     ctx.strokeStyle = '#FFD700'  // 金色边框
-    ctx.lineWidth = 2
+    ctx.lineWidth = 2.5
+    ctx.shadowColor = '#FFD700'
+    ctx.shadowBlur = 12
+    ctx.beginPath()
+    ctx.arc(0, 0, 20, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.shadowBlur = 0
+    
+    // 盔甲中心徽章
+    ctx.fillStyle = '#FFD700'
     ctx.shadowColor = '#FFD700'
     ctx.shadowBlur = 8
     ctx.beginPath()
-    ctx.arc(0, 0, 18, 0, Math.PI * 2)
-    ctx.stroke()
+    ctx.arc(0, 0, 5, 0, Math.PI * 2)
+    ctx.fill()
     ctx.shadowBlur = 0
 
-    // 3. 头盔/头饰
-    const helmetGrad = ctx.createRadialGradient(-5, -10, 0, 0, -5, 15)
-    helmetGrad.addColorStop(0, '#E8E8E8')
-    helmetGrad.addColorStop(1, '#909090')
+    // 3. 头盔/头饰（更立体的设计）
+    const helmetGrad = ctx.createRadialGradient(-5, -10, 0, 0, -8, 16)
+    helmetGrad.addColorStop(0, '#F0F0F0')  // 更亮的银色
+    helmetGrad.addColorStop(0.5, '#C0C0C0')
+    helmetGrad.addColorStop(1, '#808080')
     ctx.fillStyle = helmetGrad
     ctx.beginPath()
-    ctx.arc(0, -8, 14, 0, Math.PI * 2)
+    ctx.arc(0, -8, 15, 0, Math.PI * 2)
     ctx.fill()
-
-    // 头盔顶部装饰（羽饰）
-    ctx.fillStyle = '#DC143C'  // 深红色羽毛
-    ctx.beginPath()
-    ctx.moveTo(-8, -18)
-    ctx.quadraticCurveTo(0, -28, 8, -18)
-    ctx.quadraticCurveTo(0, -22, -8, -18)
-    ctx.fill()
-
-    // 4. 面部细节
-    // 眼睛（锐利的眼神）
-    ctx.fillStyle = '#1E90FF'  // 蓝色眼睛
-    ctx.shadowColor = '#1E90FF'
-    ctx.shadowBlur = 4
-    ctx.beginPath()
-    ctx.ellipse(-5, -6, 3, 2, 0, 0, Math.PI * 2)
-    ctx.ellipse(5, -6, 3, 2, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.shadowBlur = 0
-
-    // 眼眉（严肃表情）
-    ctx.strokeStyle = '#404040'
+    
+    // 头盔边缘高光
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.lineWidth = 1.5
     ctx.beginPath()
-    ctx.moveTo(-8, -10)
-    ctx.lineTo(-2, -9)
-    ctx.moveTo(2, -9)
-    ctx.lineTo(8, -10)
+    ctx.arc(0, -8, 15, 0, Math.PI * 2)
     ctx.stroke()
 
-    // 5. 武器 - 弓箭
+    // 头盔顶部装饰（羽饰 - 更大更醒目）
+    ctx.save()
+    const featherWave = Math.sin(Date.now() / 180) * 2
+    ctx.fillStyle = '#DC143C'  // 深红色羽毛
+    ctx.shadowColor = '#DC143C'
+    ctx.shadowBlur = 6
+    ctx.beginPath()
+    ctx.moveTo(-10 + featherWave, -20)
+    ctx.quadraticCurveTo(0 + featherWave, -32, 10 + featherWave, -20)
+    ctx.quadraticCurveTo(0 + featherWave, -24, -10 + featherWave, -20)
+    ctx.fill()
+    ctx.restore()
+
+    // 4. 面部细节（更有神韵）
+    // 眼睛（发光效果）
+    ctx.fillStyle = '#00BFFF'  // 深天蓝眼睛
+    ctx.shadowColor = '#00BFFF'
+    ctx.shadowBlur = 8
+    ctx.beginPath()
+    ctx.ellipse(-5, -6, 3.5, 2.5, 0, 0, Math.PI * 2)
+    ctx.ellipse(5, -6, 3.5, 2.5, 0, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 眼白高光
+    ctx.fillStyle = '#FFFFFF'
+    ctx.shadowBlur = 0
+    ctx.beginPath()
+    ctx.arc(-4, -7, 1.2, 0, Math.PI * 2)
+    ctx.arc(6, -7, 1.2, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 眼眉（更锐利的表情）
+    ctx.strokeStyle = '#303030'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(-9, -11)
+    ctx.lineTo(-2, -10)
+    ctx.moveTo(2, -10)
+    ctx.lineTo(9, -11)
+    ctx.stroke()
+
+    // 5. 武器 - 弓箭（增强版）
     ctx.save()
     // 旋转坐标系到射击方向
-    // state.shootAngle: Canvas 标准角度（0=右，-PI/2=上）
     ctx.rotate(state.shootAngle)
 
-    // 弓身（垂直于射击方向，开口朝后）
-    ctx.strokeStyle = '#8B4513'  // 棕色木弓
-    ctx.lineWidth = 3
+    // 弓身（更粗更有质感）
+    const bowGrad = ctx.createLinearGradient(-2, -22, 2, 22)
+    bowGrad.addColorStop(0, '#A0522D')
+    bowGrad.addColorStop(0.5, '#8B4513')
+    bowGrad.addColorStop(1, '#654321')
+    ctx.strokeStyle = bowGrad
+    ctx.lineWidth = 4
     ctx.lineCap = 'round'
     ctx.shadowColor = '#8B4513'
-    ctx.shadowBlur = 4
+    ctx.shadowBlur = 8
     ctx.beginPath()
-    // 弓身是弧形，开口朝向负X方向（后方）
-    ctx.arc(0, 0, 22, -Math.PI / 2.5, Math.PI / 2.5)
+    ctx.arc(0, 0, 24, -Math.PI / 2.5, Math.PI / 2.5)
     ctx.stroke()
     ctx.shadowBlur = 0
-
-    // 弓弦（连接弓的两端）
-    ctx.strokeStyle = '#E0E0E0'  // 浅灰色弦
-    ctx.lineWidth = 1.5
+    
+    // 弓身装饰纹路
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)'
+    ctx.lineWidth = 1
     ctx.beginPath()
-    const bowTopX = 22 * Math.cos(-Math.PI / 2.5)
-    const bowTopY = 22 * Math.sin(-Math.PI / 2.5)
-    const bowBottomX = 22 * Math.cos(Math.PI / 2.5)
-    const bowBottomY = 22 * Math.sin(Math.PI / 2.5)
+    ctx.arc(0, 0, 22, -Math.PI / 3, Math.PI / 3)
+    ctx.stroke()
+
+    // 弓弦（发光效果）
+    ctx.strokeStyle = '#E0E0E0'
+    ctx.lineWidth = 2
+    ctx.shadowColor = '#FFFFFF'
+    ctx.shadowBlur = 4
+    ctx.beginPath()
+    const bowTopX = 24 * Math.cos(-Math.PI / 2.5)
+    const bowTopY = 24 * Math.sin(-Math.PI / 2.5)
+    const bowBottomX = 24 * Math.cos(Math.PI / 2.5)
+    const bowBottomY = 24 * Math.sin(Math.PI / 2.5)
     ctx.moveTo(bowTopX, bowTopY)
     ctx.lineTo(bowBottomX, bowBottomY)
     ctx.stroke()
+    ctx.shadowBlur = 0
 
-    // 箭矢（沿射击方向）
-    ctx.strokeStyle = '#FFD700'  // 金色箭杆
-    ctx.lineWidth = 2.5
+    // 箭矢（金色发光箭杆）
+    const arrowGlow = 0.7 + Math.sin(Date.now() / 150) * 0.3
+    ctx.strokeStyle = `rgba(255, 215, 0, ${arrowGlow})`
+    ctx.lineWidth = 3
     ctx.shadowColor = '#FFD700'
-    ctx.shadowBlur = 6
+    ctx.shadowBlur = 10
     ctx.beginPath()
-    ctx.moveTo(-5, 0)   // 箭尾
-    ctx.lineTo(35, 0)   // 箭头位置
+    ctx.moveTo(-6, 0)
+    ctx.lineTo(38, 0)
     ctx.stroke()
     ctx.shadowBlur = 0
 
-    // 箭头（三角形）
-    ctx.fillStyle = '#FF4500'  // 橙红色箭头
+    // 箭头（更尖锐的设计）
+    ctx.fillStyle = '#FF4500'
+    ctx.shadowColor = '#FF4500'
+    ctx.shadowBlur = 8
     ctx.beginPath()
-    ctx.moveTo(38, 0)      // 箭头尖端
-    ctx.lineTo(30, -4)     // 左翼
-    ctx.lineTo(33, 0)      // 中间凹进
-    ctx.lineTo(30, 4)      // 右翼
+    ctx.moveTo(42, 0)
+    ctx.lineTo(32, -5)
+    ctx.lineTo(35, 0)
+    ctx.lineTo(32, 5)
+    ctx.closePath()
+    ctx.fill()
+    ctx.shadowBlur = 0
+    
+    // 箭头高光
+    ctx.fillStyle = '#FFA500'
+    ctx.beginPath()
+    ctx.moveTo(40, 0)
+    ctx.lineTo(34, -2)
+    ctx.lineTo(36, 0)
+    ctx.lineTo(34, 2)
     ctx.closePath()
     ctx.fill()
 
-    // 箭羽（尾部装饰）
-    ctx.fillStyle = '#DC143C'  // 深红色羽毛
+    // 箭羽（更大的羽毛，动态效果）
+    ctx.save()
+    const fletchWave = Math.sin(Date.now() / 120) * 1.5
+    ctx.fillStyle = '#DC143C'
+    ctx.shadowColor = '#DC143C'
+    ctx.shadowBlur = 4
     ctx.beginPath()
-    ctx.moveTo(-5, 0)
-    ctx.lineTo(-10, -3)
-    ctx.lineTo(-8, 0)
-    ctx.lineTo(-10, 3)
+    ctx.moveTo(-6, 0)
+    ctx.lineTo(-12, -4 + fletchWave)
+    ctx.lineTo(-9, 0)
+    ctx.lineTo(-12, 4 - fletchWave)
     ctx.closePath()
     ctx.fill()
+    ctx.restore()
 
     ctx.restore()
 
-    // ── 选中/未选中特效 ──
+    // ── 选中/未选中特效（增强版）──
     if (!state.isSelected) {
       // 未选中：灰色虚线环 + 暗淡
       ctx.save()
-      ctx.globalAlpha = 0.6
+      ctx.globalAlpha = 0.5
       ctx.setLineDash([6, 4])
-      ctx.strokeStyle = 'rgba(180, 180, 180, 0.7)'
+      ctx.strokeStyle = 'rgba(180, 180, 180, 0.6)'
       ctx.lineWidth = 2
       ctx.beginPath()
-      ctx.arc(0, 0, 32, 0, Math.PI * 2)
+      ctx.arc(0, 0, 35, 0, Math.PI * 2)
       ctx.stroke()
       ctx.setLineDash([])
       ctx.restore()
 
-      // 提示文字
-      ctx.fillStyle = 'rgba(200, 200, 200, 0.9)'
-      ctx.font = 'bold 10px sans-serif'
+      // 提示文字（更醒目）
+      ctx.fillStyle = 'rgba(220, 220, 220, 0.9)'
+      ctx.font = 'bold 11px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'bottom'
-      ctx.shadowColor = 'rgba(0,0,0,0.8)'
-      ctx.shadowBlur = 3
-      ctx.fillText('👆 点击选中', 0, -35)
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'
+      ctx.shadowBlur = 4
+      ctx.fillText('👆 点击选中', 0, -38)
       ctx.shadowBlur = 0
     } else {
-      // 选中：金色脉冲光环 + 能量粒子
-      const selPulse = 1 + Math.sin(Date.now() / 200) * 0.08
+      // 选中：金色脉冲光环 + 能量粒子（增强版）
+      const selPulse = 1 + Math.sin(Date.now() / 150) * 0.1
+      
+      // 外层光环（旋转八角星）
       ctx.save()
-      ctx.strokeStyle = `rgba(255, 215, 0, ${0.7 + Math.sin(Date.now() / 200) * 0.2})`
+      const starRotation = Date.now() / 800
+      ctx.rotate(starRotation)
+      ctx.strokeStyle = `rgba(255, 215, 0, ${0.8 + Math.sin(Date.now() / 150) * 0.2})`
       ctx.lineWidth = 3
       ctx.shadowColor = '#FFD700'
-      ctx.shadowBlur = 18
+      ctx.shadowBlur = 20
+      
       ctx.beginPath()
-      ctx.arc(0, 0, 32 * selPulse, 0, Math.PI * 2)
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2
+        const outerR = 42 * selPulse
+        const innerR = 36 * selPulse
+        const x1 = Math.cos(angle) * outerR
+        const y1 = Math.sin(angle) * outerR
+        const midAngle = angle + Math.PI / 8
+        const x2 = Math.cos(midAngle) * innerR
+        const y2 = Math.sin(midAngle) * innerR
+        if (i === 0) ctx.moveTo(x1, y1)
+        else ctx.lineTo(x1, y1)
+        ctx.lineTo(x2, y2)
+      }
+      ctx.closePath()
+      ctx.stroke()
+      ctx.restore()
+      
+      // 内层圆形光环
+      ctx.save()
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + Math.sin(Date.now() / 200) * 0.3})`
+      ctx.lineWidth = 2
+      ctx.shadowColor = '#FFFFFF'
+      ctx.shadowBlur = 15
+      ctx.beginPath()
+      ctx.arc(0, 0, 35 * selPulse, 0, Math.PI * 2)
       ctx.stroke()
       ctx.restore()
 
-      // 四角星光（增强版）
-      const starAngle = Date.now() / 600
+      // 四角星光（更大更亮）
+      const starAngle = Date.now() / 500
       ctx.strokeStyle = '#FFD700'
-      ctx.lineWidth = 2
+      ctx.lineWidth = 2.5
       ctx.shadowColor = '#FFD700'
-      ctx.shadowBlur = 10
+      ctx.shadowBlur = 15
       for (let i = 0; i < 4; i++) {
         const a = starAngle + (i * Math.PI / 2)
-        const sx = Math.cos(a) * 38
-        const sy = Math.sin(a) * 38
-        // 十字星芒
+        const sx = Math.cos(a) * 45
+        const sy = Math.sin(a) * 45
+        // 十字星芒（更长）
         ctx.beginPath()
-        ctx.moveTo(sx - 6, sy)
-        ctx.lineTo(sx + 6, sy)
-        ctx.moveTo(sx, sy - 6)
-        ctx.lineTo(sx, sy + 6)
+        ctx.moveTo(sx - 8, sy)
+        ctx.lineTo(sx + 8, sy)
+        ctx.moveTo(sx, sy - 8)
+        ctx.lineTo(sx, sy + 8)
         ctx.stroke()
-        // 小光点
-        ctx.fillStyle = '#FFFACD'
+        // 对角线星芒
         ctx.beginPath()
-        ctx.arc(sx, sy, 2, 0, Math.PI * 2)
+        ctx.moveTo(sx - 5, sy - 5)
+        ctx.lineTo(sx + 5, sy + 5)
+        ctx.moveTo(sx - 5, sy + 5)
+        ctx.lineTo(sx + 5, sy - 5)
+        ctx.stroke()
+        // 中心光点（更大）
+        ctx.fillStyle = '#FFFACD'
+        ctx.shadowColor = '#FFFACD'
+        ctx.shadowBlur = 8
+        ctx.beginPath()
+        ctx.arc(sx, sy, 3, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.shadowBlur = 0
+      
+      // 能量粒子环绕
+      for (let i = 0; i < 6; i++) {
+        const particleAngle = (Date.now() / 400) + (i * Math.PI / 3)
+        const px = Math.cos(particleAngle) * 40
+        const py = Math.sin(particleAngle) * 40
+        const particleSize = 2 + Math.sin(Date.now() / 100 + i) * 1
+        
+        ctx.fillStyle = `rgba(255, 215, 0, ${0.7 + Math.sin(Date.now() / 150 + i) * 0.3})`
+        ctx.shadowColor = '#FFD700'
+        ctx.shadowBlur = 10
+        ctx.beginPath()
+        ctx.arc(px, py, particleSize, 0, Math.PI * 2)
         ctx.fill()
       }
       ctx.shadowBlur = 0
 
-      // 选中提示
-      ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
-      ctx.font = 'bold 10px sans-serif'
+      // 选中提示（更醒目）
+      ctx.fillStyle = 'rgba(255, 215, 0, 1)'
+      ctx.font = 'bold 12px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'bottom'
-      ctx.shadowColor = 'rgba(0,0,0,0.8)'
-      ctx.shadowBlur = 3
-      ctx.fillText('✨ 已选中', 0, -35)
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'
+      ctx.shadowBlur = 5
+      ctx.fillText('✨ 已选中 - 可移动', 0, -38)
       ctx.shadowBlur = 0
     }
 
