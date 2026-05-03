@@ -6,6 +6,7 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { routeLoader } from './routeLoader'
 import type { GameState, CustomRoute } from './types'
+import { performanceMonitor } from './performance'
 
 // 常量
 import {
@@ -82,10 +83,17 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
   // 创建输入处理器
   const inputCallbacks = {
     onRouteEditorNew: () => {
-      // 已有路线时：清空当前路线重新画；没有路线时：新建
-      const count = routeEditorRef.current.getRouteCount()
-      if (count === 0) routeEditorRef.current.newRoute()
-      else routeEditorRef.current.startDrawing()
+      // 新建一条空路线并开始编辑
+      routeEditorRef.current.newRoute()
+      state.floatTexts.push({ 
+        x: CANVAS_W / 2, 
+        y: CANVAS_H / 2, 
+        text: '➕ 已新建路线，请开始绘制', 
+        color: '#9C27B0', 
+        life: 1.5, 
+        vy: -0.5, 
+        size: 24 
+      })
     },
     onRouteEditorClear: () => {
       routeEditorRef.current.clear()
@@ -100,10 +108,9 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       let saved = 0
       for (const pts of allRoutes) {
         if (pts.length < 3) continue
-        const points = optimizeRoute(pts.map((p: any) => ({
-          x: p.x - CANVAS_OFFSET_X,
-          y: p.y - CANVAS_OFFSET_Y
-        })))
+        // 现在路线编辑器直接使用游戏坐标，不需要转换
+        // 但为了保持与旧数据兼容，仍然进行优化处理
+        const points = optimizeRoute(pts)
         addCustomRoute({
           id: `custom_${Date.now()}_${saved}`,
           name: `路线 ${customRoutes.length + 1}`,
@@ -112,9 +119,25 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         saved++
       }
       if (saved > 0) {
-        state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: `✅ 已保存 ${saved} 条路线!`, color: '#4CAF50', life: 2, vy: -0.5, size: 28 })
+        state.floatTexts.push({ 
+          x: CANVAS_W / 2, 
+          y: CANVAS_H / 2, 
+          text: `✅ 已保存 ${saved} 条路线！路线仍在编辑器中`, 
+          color: '#4CAF50', 
+          life: 2.5, 
+          vy: -0.5, 
+          size: 28 
+        })
       } else {
-        state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '⚠️ 每条路线至少3个点!', color: '#FF6B6B', life: 2, vy: -0.5, size: 24 })
+        state.floatTexts.push({ 
+          x: CANVAS_W / 2, 
+          y: CANVAS_H / 2, 
+          text: '⚠️ 每条路线至少3个点!', 
+          color: '#FF6B6B', 
+          life: 2, 
+          vy: -0.5, 
+          size: 24 
+        })
       }
     },
     onRouteEditorOptimize: () => {
@@ -123,12 +146,9 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '⚠️ 点太少，无法优化!', color: '#FF6B6B', life: 1.5, vy: -0.5, size: 24 })
         return
       }
-      const rawPoints = canvasPoints.map((p: any) => ({
-        x: p.x - CANVAS_OFFSET_X,
-        y: p.y - CANVAS_OFFSET_Y
-      }))
-      const optimized = optimizeRoute(rawPoints)
-      routeEditorRef.current.loadPreviewPoints(optimized.map(p => ({ x: p.x + CANVAS_OFFSET_X, y: p.y + CANVAS_OFFSET_Y })))
+      // 现在路线编辑器直接使用游戏坐标，不需要转换
+      const optimized = optimizeRoute(canvasPoints)
+      routeEditorRef.current.loadPreviewPoints(optimized)
       state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: `✨ ${canvasPoints.length}→${optimized.length}点 圆滑完成`, color: '#FF9800', life: 2, vy: -0.5, size: 22 })
     },
     onRouteEditorExport: () => {
@@ -137,10 +157,11 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '⚠️ 没有路线可导出!', color: '#FF6B6B', life: 1.5, vy: -0.5, size: 24 })
         return
       }
+      // 现在路线编辑器直接使用游戏坐标，不需要转换
       const routesData = allRoutes.map((pts, i) => ({
         id: `route_${Date.now()}_${i}`,
         name: `路线${i + 1}`,
-        points: pts.map((p: any) => ({ x: p.x - CANVAS_OFFSET_X, y: p.y - CANVAS_OFFSET_Y }))
+        points: pts  // 直接使用，已经是游戏坐标
       })).filter(r => r.points.length >= 3)
       if (routesData.length === 0) {
         state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '⚠️ 每条路线至少3个点!', color: '#FF6B6B', life: 1.5, vy: -0.5, size: 24 })
@@ -163,15 +184,72 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       state.isRouteEditMode = false
     },
     onStartChallenge: () => {
+      console.log('🎯 开始闯关模式')
       state.mode = 'challenge'
       state.phase = 'playing'
+      state.level = 1
+      state.score = 0
+      state.coins = 0
+      state.playerHP = state.playerMaxHP
+      state.dragons = []
+      state.bullets = []
+      state.particles = []
+      state.powerUps = []
+      state.coinDrops = []
+      state.floatTexts = []
+      state.levelProgress = 0
+      state.dragonsSpawnedInLevel = 0
+      state.isPaused = false
+      
       initClouds(state)
+      
+      // 初始化关卡：根据第1关的路线数量设置目标
+      const routes = routeLoader.getRoutesForLevel(state.level)
+      console.log('🛤️ 路线数据:', routes.length, routes.map(r => ({ name: r.name, points: r.points.length })))
+      if (routes.length === 0) {
+        console.error('❌ 警告：没有可用路线！使用备用路线')
+        // 备用路线
+        routes.push({
+          id: 'fallback',
+          name: '备用波浪路线',
+          points: Array.from({ length: 100 }, (_, i) => ({
+            x: 180 + Math.sin(i * 0.1) * 40,
+            y: -50 + i * 7
+          }))
+        })
+      }
+      state.levelTarget = routes.length
+      state.maxDragons = Math.max(1, routes.length)
+      console.log(`🎮 开始第${state.level}关, levelTarget=${state.levelTarget}, maxDragons=${state.maxDragons}`)
+      console.log(`🎮 开始第${state.level}关，共${state.levelTarget}条路线, 路线数:`, routes.length)
+      if (routes.length > 0) {
+        console.log('🛤️ 路线信息:', routes[0].name, '点数:', routes[0].points.length)
+      }
     },
     onStartEndless: () => {
       state.mode = 'endless'
-      state.timeLeft = 99999
       state.phase = 'playing'
+      state.level = 1
+      state.score = 0
+      state.coins = 0
+      state.timeLeft = 99999
+      state.playerHP = state.playerMaxHP
+      state.dragons = []
+      state.bullets = []
+      state.particles = []
+      state.powerUps = []
+      state.coinDrops = []
+      state.floatTexts = []
+      state.levelProgress = 0
+      state.dragonsSpawnedInLevel = 0
+      
       initClouds(state)
+      
+      // 无尽模式也使用路线配置
+      const routes = routeLoader.getRoutesForLevel(state.level)
+      state.levelTarget = routes.length > 0 ? routes.length : 3
+      state.maxDragons = state.levelTarget
+      console.log(`🎮 开始无尽模式，第${state.level}关`)
     },
     onDrawRoute: () => {
       state.phase = 'routeEdit'
@@ -190,6 +268,11 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     const dt = Math.min(0.033, (timestamp - lastTime) / 1000)
     lastTime = timestamp
 
+    // 调试：每60帧打印一次phase
+    if (Math.floor(timestamp / 1000) % 2 === 0 && Math.floor(timestamp) % 60 === 0) {
+      console.log('🎨 gameLoop running, phase:', state.phase, 'dragons:', state.dragons.length)
+    }
+
     if (state.phase === 'playing' && !state.isPaused) {
       // 计时器更新
       if (state.invincibleTimer > 0) state.invincibleTimer -= dt
@@ -202,13 +285,39 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         if (state.comboTimer <= 0) state.combo = 0
       }
 
-      // 玩家移动
+      // 玩家移动和射击角度控制
       if (state.touch.active) {
-        const diff = state.touch.currentX - state.playerX
-        const moveSpeed = Math.abs(diff) > 80 ? 0.35 : Math.abs(diff) > 40 ? 0.25 : 0.18
-        state.playerX += diff * moveSpeed
+        const touchX = state.touch.currentX
+        const touchY = state.touch.startY
+        const isOnPlayer = (state.touch as any).isOnPlayer === true  // 是否选中玩家
+        
+        // 判断玩家是否在底部区域（Y > BASE_H * 0.7）
+        const isAtBottom = state.playerY > BASE_H * 0.7
+        
+        if (isAtBottom && isOnPlayer) {
+          // === 底部模式 + 选中玩家：可以水平移动 ===
+          state.canMove = true
+          
+          // 水平移动
+          const diff = touchX - state.playerX
+          const moveSpeed = Math.abs(diff) > 80 ? 0.35 : Math.abs(diff) > 40 ? 0.25 : 0.18
+          state.playerX += diff * moveSpeed
+          state.playerX = Math.max(30, Math.min(BASE_W - 30, state.playerX))
+          
+          // 同时更新射击角度（跟随触摸方向）
+          const dx = touchX - state.playerX
+          const dy = touchY - state.playerY
+          state.shootAngle = Math.atan2(dy, dx)
+        } else {
+          // === 未选中玩家 OR 中间模式：只调整射击方向 ===
+          state.canMove = false
+          
+          // 只更新射击角度
+          const dx = touchX - state.playerX
+          const dy = touchY - state.playerY
+          state.shootAngle = Math.atan2(dy, dx)
+        }
       }
-      state.playerX = Math.max(30, Math.min(BASE_W - 30, state.playerX))
 
       // 游戏逻辑更新
       spawnDragons(state)
@@ -246,7 +355,20 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       updatePowerUpSelect(state, Math.min(dt, 0.05))
     }
 
+    // 更新性能监控
+    performanceMonitor.update({
+      dragons: state.dragons.length,
+      bullets: state.bullets.length,
+      particles: state.particles.length,
+      floatTexts: state.floatTexts.length,
+      coinDrops: state.coinDrops.length
+    })
+
     render()
+    
+    // 渲染性能监控覆盖层
+    performanceMonitor.render()
+    
     requestAnimationFrame(gameLoop)
   }
 

@@ -157,16 +157,24 @@ export class RouteEditor {
   }
 
   startDrawing() {
-    if (this.routes.length === 0) this.newRoute()
-    else this.routes[this.currentIndex] = []
-    this.isDrawing = true
+    if (this.routes.length === 0) {
+      // 没有路线时，新建一条
+      this.newRoute()
+    } else {
+      // 有路线时，不清空，只是启用绘制模式
+      // 如果需要在现有路线上继续添加点，保持 isDrawing = true
+      // 如果要新建路线，应该调用 newRoute()
+      this.isDrawing = true
+    }
   }
 
   addPoint(x: number, y: number) {
     if (!this.isDrawing) return
     const route = this.routes[this.currentIndex]
     const last = route[route.length - 1]
-    if (last && Math.hypot(x - last.x, y - last.y) < 4) return
+    // 距离阈值从 4 降为 1，大幅降低迟钝感；点数上限 600 防止过长路线导致卡顿
+    if (last && Math.hypot(x - last.x, y - last.y) < 1) return
+    if (route.length >= 600) return
     route.push({ x, y })
   }
 
@@ -219,6 +227,7 @@ export class RouteEditor {
     this.ctx.lineCap = 'round'
     this.ctx.lineJoin = 'round'
 
+    // 路线编辑器绘制的点已经是画布坐标，直接绘制
     this.ctx.beginPath()
     this.ctx.moveTo(points[0].x, points[0].y)
     const last = points[points.length - 1]
@@ -230,9 +239,19 @@ export class RouteEditor {
         const prev = points[i - 1]
         const curr = points[i]
         const next = points[i + 1]
-        this.ctx.quadraticCurveTo(curr.x, curr.y, (prev.x + next.x) / 2, (prev.y + next.y) / 2)
+        this.ctx.quadraticCurveTo(
+          curr.x,
+          curr.y,
+          (prev.x + next.x) / 2,
+          (prev.y + next.y) / 2
+        )
       }
-      this.ctx.quadraticCurveTo(secondLast.x, secondLast.y, last.x, last.y)
+      this.ctx.quadraticCurveTo(
+        secondLast.x,
+        secondLast.y,
+        last.x,
+        last.y
+      )
     }
     this.ctx.stroke()
 

@@ -99,77 +99,146 @@ export class AudioService {
   }
 
   // ============ UI 音效 ============
-  click = () => this.playTone(800, 0.08, 'sine', 0.1)
+  click = () => {
+    this.playTone(1000, 0.05, 'sine', 0.08)
+    setTimeout(() => this.playTone(1200, 0.04, 'sine', 0.06), 30)
+  }
 
   // ============ 游戏内音效 ============
-  shoot = () => this.playTone(600, 0.06, 'square', 0.06)
-  hit = () => this.playTone(400, 0.05, 'sawtooth', 0.06)
-  kill = () => {
-    this.playTone(200, 0.15, 'sawtooth', 0.1)
-    this.playNoise(0.12, 0.15)
+  shoot = () => {
+    // 灵珠发射音：清脆的上升音
+    this.rise(400, 900, 0.08, 'sine', 0.08)
+    setTimeout(() => this.playTone(1100, 0.05, 'triangle', 0.05), 40)
   }
-  pop = () => this.playTone(1200, 0.12, 'sine', 0.12)
+  
+  hit = () => {
+    // 命中音：短促的打击感
+    this.playTone(300, 0.04, 'square', 0.08)
+    this.playNoise(0.03, 0.1)
+  }
+  
+  kill = () => {
+    // 击杀音：华丽的下降和弦
+    this.slideDown(600, 200, 0.2, 'sine', 0.12)
+    setTimeout(() => this.playTone(400, 0.15, 'triangle', 0.1), 50)
+    this.playNoise(0.15, 0.12)
+  }
+  pop = () => {
+    this.playTone(1400, 0.08, 'sine', 0.1)
+    setTimeout(() => this.playTone(1800, 0.06, 'sine', 0.08), 40)
+  }
+  
   crit = () => {
-    this.playTone(880, 0.15, 'square', 0.08)
-    setTimeout(() => this.playTone(1100, 0.2, 'sine', 0.1), 80)
+    // 暴击音：高音双响
+    this.playTone(1000, 0.1, 'triangle', 0.1)
+    setTimeout(() => this.playTone(1400, 0.12, 'sine', 0.12), 60)
+    setTimeout(() => this.playTone(1800, 0.15, 'sine', 0.1), 120)
   }
 
   // ============ 道具生效音效 ============
   buff = () => {
-    this.playTone(660, 0.1, 'sine', 0.1)
-    setTimeout(() => this.playTone(880, 0.15, 'sine', 0.1), 60)
+    // 道具获取音：明亮的三音符
+    this.playTone(523, 0.08, 'sine', 0.1)
+    setTimeout(() => this.playTone(659, 0.08, 'sine', 0.1), 60)
+    setTimeout(() => this.playTone(784, 0.12, 'sine', 0.12), 120)
   }
+  
   explosion = () => {
-    this.playNoise(0.3, 0.2)
-    this.slideDown(300, 60, 0.3, 'sawtooth', 0.15)
+    // 爆炸音：震撼的低频+噪音
+    this.playNoise(0.35, 0.25)
+    this.slideDown(250, 50, 0.35, 'sawtooth', 0.18)
+    setTimeout(() => this.playTone(150, 0.2, 'square', 0.12), 50)
   }
+  
   freeze = () => {
-    this.playTone(1200, 0.1, 'sine', 0.08)
-    this.slideDown(900, 400, 0.3, 'triangle', 0.1)
+    // 冰冻音：清脆的冰晶声
+    this.playTone(1500, 0.08, 'sine', 0.1)
+    this.slideDown(1200, 600, 0.25, 'triangle', 0.12)
+    setTimeout(() => this.playTone(1800, 0.1, 'sine', 0.08), 100)
   }
+  
   shield = () => {
-    this.rise(300, 900, 0.2, 'sine', 0.1)
-    setTimeout(() => this.playTone(1200, 0.15, 'sine', 0.08), 150)
+    // 护盾音：温暖的上升和弦
+    this.rise(350, 900, 0.2, 'sine', 0.12)
+    setTimeout(() => this.playTone(1100, 0.15, 'triangle', 0.1), 150)
+    setTimeout(() => this.playTone(1400, 0.12, 'sine', 0.08), 200)
   }
+  
   lightning = () => {
-    this.playTone(1500, 0.08, 'sawtooth', 0.1)
-    setTimeout(() => this.playTone(1800, 0.12, 'square', 0.08), 50)
+    // 闪电音：尖锐的电击声
+    this.playTone(1800, 0.06, 'sawtooth', 0.12)
+    setTimeout(() => this.playTone(2200, 0.08, 'square', 0.1), 40)
+    setTimeout(() => this.playTone(2500, 0.1, 'sawtooth', 0.08), 80)
   }
+  
   slowMo = () => {
-    this.slideDown(500, 150, 0.4, 'triangle', 0.08)
+    // 减速音：低沉的拖长音
+    this.slideDown(500, 120, 0.4, 'triangle', 0.1)
+    this.playNoise(0.2, 0.08)
   }
+  
   bigShot = () => {
-    this.playTone(200, 0.15, 'sine', 0.1)
-    this.rise(300, 600, 0.1, 'square', 0.08)
+    // 重击音：强有力的低音
+    this.playTone(180, 0.12, 'sine', 0.15)
+    this.rise(250, 700, 0.12, 'square', 0.1)
   }
+  
   rapidFire = () => {
-    this.playTone(1000, 0.04, 'square', 0.05)
+    // 速射音：轻快的短音
+    this.playTone(1100, 0.03, 'triangle', 0.06)
   }
 
   // ============ 资源/状态音效 ============
   combo = () => {
-    this.playTone(440, 0.1, 'triangle', 0.08)
-    setTimeout(() => this.playTone(660, 0.15, 'triangle', 0.1), 50)
+    // 连击音：欢快的上升音阶
+    this.playTone(523, 0.08, 'triangle', 0.1)
+    setTimeout(() => this.playTone(659, 0.08, 'triangle', 0.1), 50)
+    setTimeout(() => this.playTone(784, 0.1, 'triangle', 0.12), 100)
   }
+  
   coin = () => {
-    this.rise(800, 1600, 0.08, 'sine', 0.08)
-    setTimeout(() => this.playTone(2000, 0.08, 'sine', 0.06), 60)
+    // 金币音：清脆的叮当声
+    this.playTone(1200, 0.06, 'sine', 0.1)
+    setTimeout(() => this.playTone(1600, 0.08, 'sine', 0.12), 50)
+    setTimeout(() => this.playTone(2000, 0.1, 'sine', 0.1), 100)
   }
-  collect = () => this.playTone(600, 0.08, 'sine', 0.08)
+  
+  collect = () => {
+    this.playTone(800, 0.06, 'sine', 0.1)
+    setTimeout(() => this.playTone(1000, 0.08, 'sine', 0.08), 40)
+  }
 
   // ============ 结果音效 ============
   win = () => {
-    ;[523, 659, 784, 1047].forEach((f, i) => setTimeout(() => this.playTone(f, 0.2, 'sine', 0.1), i * 100))
+    // 胜利音：欢快的胜利旋律
+    const notes = [523, 659, 784, 1047]
+    notes.forEach((f, i) => {
+      setTimeout(() => {
+        this.playTone(f, 0.25, 'sine', 0.12)
+        if (i === notes.length - 1) {
+          setTimeout(() => this.playTone(f * 1.5, 0.3, 'triangle', 0.1), 200)
+        }
+      }, i * 120)
+    })
   }
+  
   levelUp = () => {
-    this.rise(400, 800, 0.15, 'sine', 0.1)
-    setTimeout(() => this.rise(800, 1200, 0.15, 'sine', 0.1), 100)
-    setTimeout(() => this.playTone(1500, 0.2, 'sine', 0.1), 200)
+    // 升级音：华丽的上升音阶
+    this.rise(400, 800, 0.12, 'sine', 0.12)
+    setTimeout(() => this.rise(800, 1200, 0.12, 'sine', 0.12), 100)
+    setTimeout(() => this.rise(1200, 1600, 0.15, 'triangle', 0.12), 200)
+    setTimeout(() => this.playTone(2000, 0.25, 'sine', 0.15), 300)
   }
-  lose = () => this.playTone(220, 0.4, 'sawtooth', 0.08)
+  
+  lose = () => {
+    // 失败音：低沉的悲伤音调
+    this.slideDown(400, 200, 0.4, 'sawtooth', 0.1)
+    setTimeout(() => this.playTone(180, 0.3, 'triangle', 0.08), 200)
+  }
+  
   fail = () => {
-    this.playTone(300, 0.15, 'sawtooth', 0.1)
-    setTimeout(() => this.playTone(200, 0.3, 'sawtooth', 0.08), 100)
+    this.playTone(350, 0.12, 'sawtooth', 0.1)
+    setTimeout(() => this.playTone(250, 0.25, 'sawtooth', 0.08), 100)
   }
 }
 

@@ -266,6 +266,10 @@ export interface Dragon {
   poisonTimer: number
   // _isRetracting 标记（渲染器用）
   _isRetracting?: boolean
+  // 动态加速状态（内部使用）
+  _boostTimer?: number      // 加速剩余时间
+  _boostCheckInterval?: number  // 下次检查加速的倒计时（5秒间隔）
+  _isBoosting?: boolean     // 是否正在加速
 }
 
 // 子弹
@@ -358,6 +362,10 @@ export interface GameState {
   totalKills: number
   timeLeft: number
   playerX: number
+  playerY: number          // 玩家Y坐标（底部或中间）
+  shootAngle: number       // 射击角度（弧度，-PI/2为向上）
+  canMove: boolean         // 是否可以移动
+  isSelected: boolean      // 玩家是否被选中（选中才能移动，未选中只能调射击方向）
   playerHP: number
   playerMaxHP: number
   invincibleTimer: number
@@ -413,6 +421,10 @@ export interface GameState {
   lastDragonId: number
   levelProgress: number
   levelTarget: number
+  dragonsSpawnedInLevel: number  // 本关已生成的龙总数
+  // 关卡过渡状态
+  levelTransition: boolean
+  levelTransitionTimer: number
   currentScene: number
   isPaused: boolean
   touch: TouchState

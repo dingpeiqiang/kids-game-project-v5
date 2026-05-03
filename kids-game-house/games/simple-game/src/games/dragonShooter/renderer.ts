@@ -64,11 +64,11 @@ export function createRenderer(
 
     for (let i = dragon.segments.length - 1; i >= 0; i--) {
       const seg = dragon.segments[i]
-      drawDragonSegment(seg, seg.hp, seg.maxHp, dragon.type, dragon.slowed)
+      drawDragonSegment(seg, seg.hp, seg.maxHp, dragon.type, dragon.slowed, dragon._isBoosting)
     }
   }
 
-  function drawDragonSegment(seg: DragonSegment, dragonHp: number, dragonMaxHp: number, type: keyof typeof DRAGON_CONFIGS, isSlowed: boolean) {
+  function drawDragonSegment(seg: DragonSegment, dragonHp: number, dragonMaxHp: number, type: keyof typeof DRAGON_CONFIGS, isSlowed: boolean, isBoosting: boolean) {
     ctx.save()
     ctx.translate(seg.x, seg.y)
 
@@ -156,6 +156,29 @@ export function createRenderer(
         ctx.arc(0, 0, seg.size + 4, 0, Math.PI * 2)
         ctx.stroke()
         ctx.setLineDash([])
+      }
+
+      // 加速火焰拖尾特效
+      if (isBoosting) {
+        const boostPulse = Math.sin(t * 0.015) * 0.3 + 0.7
+        const boostGrad = ctx.createRadialGradient(0, 0, seg.size * 0.5, 0, 0, seg.size * 2)
+        boostGrad.addColorStop(0, `rgba(255, 100, 0, ${boostPulse * 0.6})`)
+        boostGrad.addColorStop(0.5, `rgba(255, 50, 0, ${boostPulse * 0.3})`)
+        boostGrad.addColorStop(1, 'rgba(255, 0, 0, 0)')
+        ctx.fillStyle = boostGrad
+        ctx.beginPath()
+        ctx.arc(0, 0, seg.size * 1.8, 0, Math.PI * 2)
+        ctx.fill()
+
+        ctx.save()
+        ctx.strokeStyle = `rgba(255, 150, 0, ${boostPulse * 0.9})`
+        ctx.lineWidth = 3
+        ctx.shadowColor = '#FF6600'
+        ctx.shadowBlur = 15
+        ctx.beginPath()
+        ctx.arc(0, 0, seg.size + 5, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.restore()
       }
 
       // 血量数字
@@ -315,6 +338,31 @@ export function createRenderer(
         ctx.fillText('王', 0, 1)
       }
 
+      // 龙头加速火焰特效（整体发光拖尾）
+      if (isBoosting) {
+        const pulse = Math.sin(t * 0.02) * 0.25 + 0.75
+        ctx.save()
+        // 外层橙红光芒
+        const boostGlow = ctx.createRadialGradient(0, 0, seg.size * 0.8, 0, 0, seg.size * 2.5)
+        boostGlow.addColorStop(0, `rgba(255, 80, 0, ${pulse * 0.5})`)
+        boostGlow.addColorStop(0.5, `rgba(255, 30, 0, ${pulse * 0.25})`)
+        boostGlow.addColorStop(1, 'rgba(255, 0, 0, 0)')
+        ctx.fillStyle = boostGlow
+        ctx.beginPath()
+        ctx.arc(0, 0, seg.size * 2.2, 0, Math.PI * 2)
+        ctx.fill()
+
+        // 火焰描边环
+        ctx.strokeStyle = `rgba(255, 150, 0, ${pulse})`
+        ctx.lineWidth = 3.5
+        ctx.shadowColor = '#FF6600'
+        ctx.shadowBlur = 20
+        ctx.beginPath()
+        ctx.arc(0, 0, seg.size + 6, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.restore()
+      }
+
       // 宝箱龙/金币龙已废弃（无分裂后不再使用），此处留空
       // 防止 TS 报错：treasure/coin 类型已被 Dragon.type 移除
       void type;
@@ -437,6 +485,62 @@ export function createRenderer(
     ctx.beginPath()
     ctx.arc(0, 4, 6, 0.1 * Math.PI, 0.9 * Math.PI)
     ctx.stroke()
+
+    // ── 选中/未选中特效 ──
+    if (!state.isSelected) {
+      // 未选中：灰色虚线环 + 暗淡
+      ctx.save()
+      ctx.globalAlpha = 0.5
+      ctx.setLineDash([6, 4])
+      ctx.strokeStyle = 'rgba(180, 180, 180, 0.7)'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(0, 0, 28, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.restore()
+
+      // 提示文字
+      ctx.fillStyle = 'rgba(200, 200, 200, 0.8)'
+      ctx.font = 'bold 9px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'bottom'
+      ctx.shadowColor = 'rgba(0,0,0,0.8)'
+      ctx.shadowBlur = 3
+      ctx.fillText('点击选中', 0, -30)
+      ctx.shadowBlur = 0
+    } else {
+      // 选中：金色脉冲光环
+      const selPulse = 1 + Math.sin(Date.now() / 200) * 0.08
+      ctx.save()
+      ctx.strokeStyle = `rgba(255, 215, 0, ${0.6 + Math.sin(Date.now() / 200) * 0.2})`
+      ctx.lineWidth = 2.5
+      ctx.shadowColor = '#FFD700'
+      ctx.shadowBlur = 15
+      ctx.beginPath()
+      ctx.arc(0, 0, 28 * selPulse, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.restore()
+
+      // 四角星光
+      const starAngle = Date.now() / 800
+      ctx.strokeStyle = '#FFD700'
+      ctx.lineWidth = 1.5
+      ctx.shadowColor = '#FFD700'
+      ctx.shadowBlur = 6
+      for (let i = 0; i < 4; i++) {
+        const a = starAngle + (i * Math.PI / 2)
+        const sx = Math.cos(a) * 32
+        const sy = Math.sin(a) * 32
+        ctx.beginPath()
+        ctx.moveTo(sx - 4, sy)
+        ctx.lineTo(sx + 4, sy)
+        ctx.moveTo(sx, sy - 4)
+        ctx.lineTo(sx, sy + 4)
+        ctx.stroke()
+      }
+      ctx.shadowBlur = 0
+    }
 
     ctx.restore()
 
@@ -758,38 +862,50 @@ export function createRenderer(
       routeEditor.drawCurrentRoute()
     }
 
-    // 按钮区域
+    // 按钮区域 - 6个按钮：新建 清除 保存 优化 导出 返回
     const btnY = CANVAS_H - 80
     const btnH = 50
-    const btnW = 75
-    const btnGap = 5
-    const btnStartX = (CANVAS_W - (btnW * 5 + btnGap * 4)) / 2
+    const btnW = 62
+    const btnGap = 4
+    const totalBtns = 6
+    const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
-    ctx.fillStyle = '#FF6B6B'
+    // 新建按钮
+    ctx.fillStyle = '#9C27B0'
     ctx.fillRect(btnStartX, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.font = 'bold 13px sans-serif'
-    ctx.fillText('🗑️ 清除', btnStartX + btnW / 2, btnY + 32)
+    ctx.font = 'bold 11px sans-serif'
+    ctx.fillText('➕ 新建', btnStartX + btnW / 2, btnY + 32)
 
-    ctx.fillStyle = '#4CAF50'
+    // 清除按钮
+    ctx.fillStyle = '#FF6B6B'
     ctx.fillRect(btnStartX + btnW + btnGap, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('💾 保存', btnStartX + btnW + btnGap + btnW / 2, btnY + 32)
+    ctx.fillText('🗑️ 清除', btnStartX + btnW + btnGap + btnW / 2, btnY + 32)
 
-    ctx.fillStyle = '#FF9800'
+    // 保存按钮
+    ctx.fillStyle = '#4CAF50'
     ctx.fillRect(btnStartX + (btnW + btnGap) * 2, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('✨ 优化', btnStartX + (btnW + btnGap) * 2 + btnW / 2, btnY + 32)
+    ctx.fillText('💾 保存', btnStartX + (btnW + btnGap) * 2 + btnW / 2, btnY + 32)
 
-    ctx.fillStyle = '#2196F3'
+    // 优化按钮
+    ctx.fillStyle = '#FF9800'
     ctx.fillRect(btnStartX + (btnW + btnGap) * 3, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 3 + btnW / 2, btnY + 32)
+    ctx.fillText('✨ 优化', btnStartX + (btnW + btnGap) * 3 + btnW / 2, btnY + 32)
 
-    ctx.fillStyle = COLORS.accent
+    // 导出按钮
+    ctx.fillStyle = '#2196F3'
     ctx.fillRect(btnStartX + (btnW + btnGap) * 4, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 4 + btnW / 2, btnY + 32)
+    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 4 + btnW / 2, btnY + 32)
+
+    // 返回按钮
+    ctx.fillStyle = COLORS.accent
+    ctx.fillRect(btnStartX + (btnW + btnGap) * 5, btnY, btnW, btnH)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 5 + btnW / 2, btnY + 32)
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.font = '11px sans-serif'
@@ -1022,15 +1138,15 @@ export function createRenderer(
       const showingFront = flipT > 0.5
 
       if (showingFront) {
-        // 正面：先把坐标系翻正，再画内容
+        // 正面：先把坐标系翻正（恢复为正常方向）
         ctx.scale(-1, 1)
-        ctx.scale(Math.abs(flipScaleX), 1)  // 保证内容不缩放
+        ctx.scale(Math.abs(flipScaleX), 1)
       } else {
         ctx.scale(flipScaleX, 1)
       }
 
       if (showingFront) {
-        // === 正面 ===
+        // === 正面（坐标系已翻正）===
         const faceGrad = ctx.createLinearGradient(-cardW / 2, -cardH / 2, cardW / 2, cardH / 2)
         faceGrad.addColorStop(0, '#2a2a4a')
         faceGrad.addColorStop(1, '#1a1a2e')
@@ -1053,24 +1169,40 @@ export function createRenderer(
         ctx.stroke()
 
         // 道具图标
+        ctx.save()
         ctx.shadowBlur = 20
         ctx.shadowColor = card.color
         ctx.fillStyle = card.color
         ctx.font = '36px sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(card.icon, 0, -cardH / 4)
+        ctx.fillText(card.icon, 0, -cardH / 4 + 10)
+        ctx.restore()
 
         // 名称
+        ctx.save()
         ctx.shadowBlur = 0
         ctx.fillStyle = '#FFFFFF'
         ctx.font = 'bold 11px sans-serif'
-        ctx.fillText(card.name, 0, cardH / 8)
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(card.name || '', 0, 8)
+        ctx.restore()
 
-        // 描述
+        // 描述（多行截断）
+        ctx.save()
         ctx.fillStyle = 'rgba(255,255,255,0.7)'
         ctx.font = '9px sans-serif'
-        ctx.fillText(card.desc, 0, cardH / 4 + 8)
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        const descText = card.desc || ''
+        if (descText.length > 12) {
+          ctx.fillText(descText.slice(0, 12), 0, 24)
+          ctx.fillText(descText.slice(12, 24), 0, 36)
+        } else {
+          ctx.fillText(descText, 0, 24)
+        }
+        ctx.restore()
       } else {
         // === 背面 ===
         const backGrad = ctx.createLinearGradient(-cardW / 2, -cardH / 2, cardW / 2, cardH / 2)

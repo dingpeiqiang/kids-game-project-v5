@@ -100,9 +100,48 @@ export function updateDragon(dragon: Dragon, dt: number): void {
   const pixelLen = rf.getPixelLength()
   const pixelSpeed = getDragonPixelSpeed(dragon)
 
+  // === 动态加速机制：每5秒判断一次，当龙身可见比例<50%时触发1.5s加速 ===
+  let speedBoost = 1.0  // 默认速度倍率
+
+  // 初始化检查间隔计时器
+  if (dragon._boostCheckInterval === undefined) {
+    dragon._boostCheckInterval = 0
+  }
+
+  if (dragon._isBoosting) {
+    // 正在加速中
+    dragon._boostTimer! -= dt
+    speedBoost = 2.0
+    if (dragon._boostTimer! <= 0) {
+      dragon._isBoosting = false
+      dragon._boostTimer = 0
+    }
+  } else {
+    // 未在加速，每帧倒计时检查间隔
+    dragon._boostCheckInterval -= dt
+    if (dragon._boostCheckInterval <= 0) {
+      dragon._boostCheckInterval = 5.0  // 下次检查：5秒后
+
+      // 计算龙身可见比例：龙总长 = segments.length × 节段间距(像素)
+      // 可见长度 = head.progress × 路线总长
+      // 但更直观：progress 表示头走了路线全长的百分比
+      // 龙身可见比例 ≈ max(0, 1 - totalLengthInRoutePixels / (headProgress × routePixelLength))
+      // 简化：用 head.progress 作为主要指标（头走到哪，尾还在后面）
+      // visibleRatio = head.progress（头已走的路程 / 路线全长），即龙身可见百分比
+      const visibleRatio = Math.min(1, Math.max(0, dragon.progress))
+      const hiddenRatio = 1 - visibleRatio
+
+      if (hiddenRatio > 0.5 && !dragon.slowed) {
+        dragon._isBoosting = true
+        dragon._boostTimer = 1.5
+        speedBoost = 2.0
+      }
+    }
+  }
+
   // === 1. 目标距离推进（由本函数全权控制，不调用 rf.update）===
   if (!dragon.isRetracting) {
-    const speedMult = dragon.slowed ? 0.5 : 1
+    const speedMult = dragon.slowed ? 0.5 : speedBoost
     // 自己推进目标距离，不再依赖 rf.update()
     ss.target = Math.min(pixelLen, ss.target + pixelSpeed * dt * speedMult)
 
@@ -283,6 +322,10 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
       seg.x = startPos.x
       seg.y = startPos.y
     }
+    // 同步 RouteFollower 的初始距离为 0（与节的初始位置一致）
+    // 这样龙会从路线起点开始移动
+    ;(routeFollower as any)._currentDistance = 0
+    routeFollower.setProgress(0)
   }
 
   const dragonObj: Dragon = {
@@ -306,7 +349,11 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
     burnTimer: 0,
     burnDamage: 0,
     poisonStacks: 0,
-    poisonTimer: 0
+    poisonTimer: 0,
+    // 初始化加速状态
+    _boostTimer: 0,
+    _boostCheckInterval: 0,  // 首次立即检查
+    _isBoosting: false
   }
 
   // 注册像素速度缓存

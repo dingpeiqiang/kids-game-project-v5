@@ -209,11 +209,12 @@ function generateWaveRoute(): RoutePoint[] {
   const points: RoutePoint[] = []
   const amplitude = 70
   const totalPoints = 1600
+  const startY = 60  // 从画布顶部附近开始，龙立即可见
   for (let i = 0; i <= totalPoints; i++) {
     const progress = i / totalPoints
     points.push({
       x: CENTER_X + Math.sin(progress * Math.PI * 8) * amplitude,
-      y: -200 + progress * (BASE_H + 400)
+      y: startY + progress * (BASE_H + 100)
     })
   }
   return points

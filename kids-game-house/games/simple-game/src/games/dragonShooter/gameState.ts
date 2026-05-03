@@ -15,7 +15,7 @@ import {
   MAX_PARTICLES, MAX_POWERUPS, MAX_COIN_DROPS, MAX_FLOAT_TEXTS, MAX_BULLETS,
   STORAGE_KEY
 } from './constants'
-import { lightenColor, spawnExplosionParticles, spawnDeathEffect } from './effects'
+import { lightenColor } from './effects'
 import {
   createDragon as _createDragon,
   updateDragon,
@@ -25,6 +25,130 @@ import {
   DRAGON_SEGMENT_GAP
 } from './dragon'
 import { routeLoader } from './routeLoader'
+
+// 对象池 - 用于减少垃圾回收压力
+const particlePool: Particle[] = []
+const bulletPool: Bullet[] = []
+const floatTextPool: FloatText[] = []
+const coinDropPool: CoinDrop[] = []
+
+/**
+ * 从对象池获取粒子对象
+ */
+function getParticleFromPool(): Particle {
+  if (particlePool.length > 0) {
+    const p = particlePool.pop()!
+    // 重置属性
+    p.vx = 0
+    p.vy = 0
+    p.life = 0
+    p.maxLife = 0
+    p.size = 0
+    p.color = '#FFFFFF'
+    return p
+  }
+  return {
+    x: 0, y: 0,
+    vx: 0, vy: 0,
+    life: 0, maxLife: 0,
+    size: 0, color: '#FFFFFF'
+  }
+}
+
+/**
+ * 回收粒子对象到对象池
+ */
+function recycleParticle(particle: Particle): void {
+  if (particlePool.length < 100) { // 限制池大小
+    particlePool.push(particle)
+  }
+}
+
+/**
+ * 从对象池获取子弹对象
+ */
+function getBulletFromPool(): Bullet {
+  if (bulletPool.length > 0) {
+    const b = bulletPool.pop()!
+    // 重置属性
+    b.vx = 0
+    b.vy = 0
+    b.damage = 0
+    b.pierce = 0
+    b.size = 0
+    return b
+  }
+  return {
+    x: 0, y: 0,
+    vx: 0, vy: 0,
+    damage: 0, pierce: 0, size: 0
+  }
+}
+
+/**
+ * 回收子弹对象到对象池
+ */
+function recycleBullet(bullet: Bullet): void {
+  if (bulletPool.length < 50) { // 限制池大小
+    bulletPool.push(bullet)
+  }
+}
+
+/**
+ * 从对象池获取浮动文字对象
+ */
+function getFloatTextFromPool(): FloatText {
+  if (floatTextPool.length > 0) {
+    const ft = floatTextPool.pop()!
+    // 重置属性
+    ft.text = ''
+    ft.color = '#FFFFFF'
+    ft.life = 0
+    ft.vy = 0
+    ft.size = 0
+    return ft
+  }
+  return {
+    x: 0, y: 0,
+    text: '', color: '#FFFFFF',
+    life: 0, vy: 0, size: 0
+  }
+}
+
+/**
+ * 回收浮动文字对象到对象池
+ */
+function recycleFloatText(ft: FloatText): void {
+  if (floatTextPool.length < 50) { // 限制池大小
+    floatTextPool.push(ft)
+  }
+}
+
+/**
+ * 从对象池获取金币掉落对象
+ */
+function getCoinDropFromPool(): CoinDrop {
+  if (coinDropPool.length > 0) {
+    const c = coinDropPool.pop()!
+    // 重置属性
+    c.vy = 0
+    c.life = 0
+    return c
+  }
+  return {
+    x: 0, y: 0,
+    vy: 0, life: 0
+  }
+}
+
+/**
+ * 回收金币掉落对象到对象池
+ */
+function recycleCoinDrop(coin: CoinDrop): void {
+  if (coinDropPool.length < 30) { // 限制池大小
+    coinDropPool.push(coin)
+  }
+}
 
 /**
  * 创建初始游戏状态
@@ -41,10 +165,11 @@ export function createInitialState(): GameState {
     maxCombo: 0,
     totalKills: 0,
     timeLeft: 300,
-    // 关卡过渡
-    levelTransition: false,
-    levelTransitionTimer: 0,
     playerX: BASE_W / 2,
+    playerY: BASE_H - 55,      // 默认在底部
+    shootAngle: -Math.PI / 2,  // 默认向上射击
+    canMove: true,             // 默认可以移动
+    isSelected: true,          // 默认选中（可移动）
     playerHP: 3,
     playerMaxHP: 3,
     invincibleTimer: 0,
@@ -69,6 +194,10 @@ export function createInitialState(): GameState {
     lastDragonId: 0,
     levelProgress: 0,
     levelTarget: 3,
+    dragonsSpawnedInLevel: 0,  // 本关已生成的龙总数
+    // 关卡过渡状态
+    levelTransition: false,
+    levelTransitionTimer: 0,
     currentScene: 0,
     isPaused: false,
     touch: { active: false, startX: 0, startY: 0, currentX: 0, startTime: 0 },
@@ -141,7 +270,18 @@ export function updateFloatTexts(state: GameState, dt: number) {
     const ft = state.floatTexts[i]
     ft.life -= dt
     ft.y += ft.vy
-    if (ft.life <= 0) state.floatTexts.splice(i, 1)
+    if (ft.life <= 0) {
+      recycleFloatText(ft)
+      state.floatTexts.splice(i, 1)
+    }
+  }
+  // 性能限制 - 使用更高效的方式截断数组
+  if (state.floatTexts.length > MAX_FLOAT_TEXTS) {
+    // 回收多余的浮动文字
+    for (let i = MAX_FLOAT_TEXTS; i < state.floatTexts.length; i++) {
+      recycleFloatText(state.floatTexts[i])
+    }
+    state.floatTexts.length = MAX_FLOAT_TEXTS
   }
 }
 
@@ -149,16 +289,26 @@ export function updateFloatTexts(state: GameState, dt: number) {
  * 更新粒子效果
  */
 export function updateParticles(state: GameState, dt: number) {
+  // 使用倒序遍历避免splice导致的索引问题
   for (let i = state.particles.length - 1; i >= 0; i--) {
     const p = state.particles[i]
     p.x += p.vx
     p.y += p.vy
     p.vy += 0.15 // 重力
     p.life -= dt
-    if (p.life <= 0) state.particles.splice(i, 1)
+    if (p.life <= 0) {
+      recycleParticle(p)
+      state.particles.splice(i, 1)
+    }
   }
-  // 性能限制
-  while (state.particles.length > MAX_PARTICLES) state.particles.shift()
+  // 性能限制 - 使用更高效的方式截断数组
+  if (state.particles.length > MAX_PARTICLES) {
+    // 回收多余的粒子
+    for (let i = MAX_PARTICLES; i < state.particles.length; i++) {
+      recycleParticle(state.particles[i])
+    }
+    state.particles.length = MAX_PARTICLES
+  }
 }
 
 /**
@@ -170,19 +320,39 @@ export function updateCoinDrops(state: GameState, dt: number) {
     c.y += c.vy
     c.vy += 0.3
     c.life -= dt
-    // 收集检测（简化：玩家附近自动收集）
+    // 收集检测（简化：玩家附近自动收集）- 使用距离平方比较
     const dx = c.x - state.playerX
     const dy = c.y - (BASE_H - 55)
-    if (Math.sqrt(dx * dx + dy * dy) < 40) {
+    if (dx * dx + dy * dy < 1600) { // 40*40
       state.coins++
+      const coin = c
+      recycleCoinDrop(coin)
       state.coinDrops.splice(i, 1)
       audioService.coin()
-      state.floatTexts.push({ x: c.x, y: c.y, text: '+$1', color: '#FFD700', life: 1, vy: -1, size: 16 })
+      const ft = getFloatTextFromPool()
+      ft.x = coin.x
+      ft.y = coin.y
+      ft.text = '+$1'
+      ft.color = '#FFD700'
+      ft.life = 1
+      ft.vy = -1
+      ft.size = 16
+      state.floatTexts.push(ft)
       continue
     }
-    if (c.life <= 0 || c.y > BASE_H + 20) state.coinDrops.splice(i, 1)
+    if (c.life <= 0 || c.y > BASE_H + 20) {
+      recycleCoinDrop(c)
+      state.coinDrops.splice(i, 1)
+    }
   }
-  while (state.coinDrops.length > MAX_COIN_DROPS) state.coinDrops.shift()
+  // 性能限制 - 使用更高效的方式截断数组
+  if (state.coinDrops.length > MAX_COIN_DROPS) {
+    // 回收多余的金币
+    for (let i = MAX_COIN_DROPS; i < state.coinDrops.length; i++) {
+      recycleCoinDrop(state.coinDrops[i])
+    }
+    state.coinDrops.length = MAX_COIN_DROPS
+  }
 }
 
 /**
@@ -194,10 +364,10 @@ export function updatePowerUps(state: GameState, dt: number) {
     p.bobPhase += dt * 3
     p.life -= dt
 
-    // 玩家收集检测
+    // 玩家收集检测 - 使用距离平方比较
     const dx = p.x - state.playerX
     const dy = p.y - (BASE_H - 55)
-    if (Math.sqrt(dx * dx + dy * dy) < 35) {
+    if (dx * dx + dy * dy < 1225) { // 35*35
       // 直接拾取：只支持旧版4种
       switch (p.type) {
         case 'damage':    state.bulletDamage = Math.floor(state.bulletDamage * 1.5); break
@@ -212,7 +382,10 @@ export function updatePowerUps(state: GameState, dt: number) {
 
     if (p.life <= 0) state.powerUps.splice(i, 1)
   }
-  while (state.powerUps.length > MAX_POWERUPS) state.powerUps.shift()
+  // 性能限制 - 使用更高效的方式截断数组
+  if (state.powerUps.length > MAX_POWERUPS) {
+    state.powerUps.length = MAX_POWERUPS
+  }
 }
 
 // applyBuff 已废弃（被 applySelectedPowerUp 替代，直接拾取道具系统已移除）
@@ -253,7 +426,7 @@ export function shoot(state: GameState) {
   if (now - state.lastShotTime < state.shootCooldown) return
   state.lastShotTime = now
 
-  const baseAngle = -Math.PI / 2
+  const baseAngle = state.shootAngle  // 使用玩家当前的射击角度
   const spread = 0.08
   const count = state.bulletCount
   const bigShot = state.bigShotTimer > 0
@@ -264,17 +437,20 @@ export function shoot(state: GameState) {
     let angle = baseAngle
     if (count > 1) angle = baseAngle + ((i / (count - 1)) - 0.5) * spread * (count - 1)
 
-    if (state.bullets.length >= MAX_BULLETS) state.bullets.shift()
+    if (state.bullets.length >= MAX_BULLETS) {
+      const removed = state.bullets.shift()!
+      recycleBullet(removed)
+    }
 
-    state.bullets.push({
-      x: state.playerX,
-      y: BASE_H - 80,
-      vx: Math.cos(angle) * actualSpeed,
-      vy: Math.sin(angle) * actualSpeed,
-      damage: state.bulletDamage,
-      pierce: state.bulletPierce,
-      size: bulletSz
-    })
+    const bullet = getBulletFromPool()
+    bullet.x = state.playerX
+    bullet.y = state.playerY - 25  // 从玩家位置上方发射
+    bullet.vx = Math.cos(angle) * actualSpeed
+    bullet.vy = Math.sin(angle) * actualSpeed
+    bullet.damage = state.bulletDamage
+    bullet.pierce = state.bulletPierce
+    bullet.size = bulletSz
+    state.bullets.push(bullet)
 
     audioService.shoot()
   }
@@ -291,11 +467,12 @@ export function updateBullets(state: GameState, dt: number) {
 
     // 边界移除
     if (b.x < -50 || b.x > BASE_W + 50 || b.y < -200 || b.y > BASE_H + 50) {
+      recycleBullet(b)
       state.bullets.splice(bi, 1)
       continue
     }
 
-    // 龙碰撞检测
+    // 龙碰撞检测 - 优化：使用距离平方比较避免开方运算
     for (let di = state.dragons.length - 1; di >= 0; di--) {
       const dragon = state.dragons[di]
       if (!dragon.alive) continue
@@ -304,9 +481,10 @@ export function updateBullets(state: GameState, dt: number) {
         const seg = dragon.segments[si]
         const dx = b.x - seg.x
         const dy = b.y - seg.y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-
-        if (dist < seg.size + b.size) {
+        const distSquared = dx * dx + dy * dy
+        const collisionRadius = seg.size + b.size
+        
+        if (distSquared < collisionRadius * collisionRadius) {
           // 命中！
           seg.hp -= b.damage
           state.combo++
@@ -319,27 +497,31 @@ export function updateBullets(state: GameState, dt: number) {
           state.score += earnedScore
 
           // 飘字
-          state.floatTexts.push({
-            x: seg.x, y: seg.y - seg.size - 8,
-            text: `-${b.damage}`,
-            color: state.combo > 5 ? '#FFD700' : '#FFFFFF',
-            life: 0.8, vy: -1.2, size: 14 + Math.min(state.combo, 10)
-          })
+          const ft = getFloatTextFromPool()
+          ft.x = seg.x
+          ft.y = seg.y - seg.size - 8
+          ft.text = `-${b.damage}`
+          ft.color = state.combo > 5 ? '#FFD700' : '#FFFFFF'
+          ft.life = 0.8
+          ft.vy = -1.2
+          ft.size = 14 + Math.min(state.combo, 10)
+          state.floatTexts.push(ft)
 
           audioService.hit()
 
           // 命中粒子效果
           for (let k = 0; k < 4; k++) {
             if (state.particles.length < MAX_PARTICLES) {
-              state.particles.push({
-                x: seg.x, y: seg.y,
-                vx: (Math.random() - 0.5) * 6,
-                vy: (Math.random() - 0.5) * 6,
-                life: 0.4 + Math.random() * 0.3,
-                maxLife: 0.7,
-                size: 2 + Math.random() * 3,
-                color: seg.color
-              })
+              const p = getParticleFromPool()
+              p.x = seg.x
+              p.y = seg.y
+              p.vx = (Math.random() - 0.5) * 6
+              p.vy = (Math.random() - 0.5) * 6
+              p.life = 0.4 + Math.random() * 0.3
+              p.maxLife = 0.7
+              p.size = 2 + Math.random() * 3
+              p.color = seg.color
+              state.particles.push(p)
             }
           }
 
@@ -352,15 +534,26 @@ export function updateBullets(state: GameState, dt: number) {
           // chainBlast：命中后触发连锁爆破
           if (S.chainBlastStacks > 0) {
             const chainR = 60 + S.chainBlastStacks * 10
+            const chainRSquared = chainR * chainR
             for (const drag of state.dragons) {
               if (!drag.alive) continue
               for (let si2 = drag.segments.length - 1; si2 >= 0; si2--) {
                 const s2 = drag.segments[si2]
-                const d2 = Math.sqrt((b.x - s2.x) ** 2 + (b.y - s2.y) ** 2)
-                if (d2 < chainR && d2 > 0) {
+                const d2x = b.x - s2.x
+                const d2y = b.y - s2.y
+                const d2Squared = d2x * d2x + d2y * d2y
+                if (d2Squared < chainRSquared && d2Squared > 0) {
                   const chainDmg = b.damage * 0.35
                   s2.hp -= chainDmg
-                  state.floatTexts.push({ x: s2.x, y: s2.y - s2.size, text: `-${Math.round(chainDmg)}`, color: '#FF9F43', life: 0.5, vy: -1, size: 12 })
+                  const ft = getFloatTextFromPool()
+                  ft.x = s2.x
+                  ft.y = s2.y - s2.size
+                  ft.text = `-${Math.round(chainDmg)}`
+                  ft.color = '#FF9F43'
+                  ft.life = 0.5
+                  ft.vy = -1
+                  ft.size = 12
+                  state.floatTexts.push(ft)
                   if (s2.hp <= 0) handleSegmentDeath(state, drag, si2)
                 }
               }
@@ -374,18 +567,22 @@ export function updateBullets(state: GameState, dt: number) {
             // 散射范围（splashStacks 增强：基础30 + 每层5%）
             const splashMult = 1 + (S.splashStacks || 0) * 0.05
             const splashR = (10 + b.size) * splashMult
+            const splashRSquared = splashR * splashR
             for (const drag of state.dragons) {
               if (!drag.alive || drag === dragon) continue
               for (let si2 = drag.segments.length - 1; si2 >= 0; si2--) {
                 const s2 = drag.segments[si2]
-                const d2 = Math.sqrt((b.x - s2.x) ** 2 + (b.y - s2.y) ** 2)
-                if (d2 < splashR + s2.size) {
+                const d2x = b.x - s2.x
+                const d2y = b.y - s2.y
+                const d2Squared = d2x * d2x + d2y * d2y
+                if (d2Squared < splashRSquared + s2.size * s2.size) {
                   s2.hp -= b.damage * 0.4  // 散射伤害 40%
                   if (s2.hp <= 0) handleSegmentDeath(state, drag, si2)
                 }
               }
             }
           } else {
+            recycleBullet(b)
             state.bullets.splice(bi, 1)
           }
           break
@@ -408,11 +605,12 @@ function handleSegmentDeath(state: GameState, dragon: Dragon, segmentIndex: numb
 
   // 金币掉落（概率）
   if (Math.random() < 0.15 && state.coinDrops.length < MAX_COIN_DROPS) {
-    state.coinDrops.push({
-      x: seg.x, y: seg.y,
-      vy: -3 - Math.random() * 2,
-      life: 5
-    })
+    const c = getCoinDropFromPool()
+    c.x = seg.x
+    c.y = seg.y
+    c.vy = -3 - Math.random() * 2
+    c.life = 5
+    state.coinDrops.push(c)
   }
 
   // 分裂或死亡
@@ -436,18 +634,30 @@ function handleSegmentDeath(state: GameState, dragon: Dragon, segmentIndex: numb
       // 宝箱龙给大量金币
       for (let i = 0; i < 5; i++) {
         if (state.coinDrops.length < MAX_COIN_DROPS) {
-          state.coinDrops.push({
-            x: dragon.segments[0].x + (Math.random() - 0.5) * 40,
-            y: dragon.segments[0].y + (Math.random() - 0.5) * 30,
-            vy: -4 - Math.random() * 3,
-            life: 6
-          })
+          const c = getCoinDropFromPool()
+          c.x = dragon.segments[0].x + (Math.random() - 0.5) * 40
+          c.y = dragon.segments[0].y + (Math.random() - 0.5) * 30
+          c.vy = -4 - Math.random() * 3
+          c.life = 6
+          state.coinDrops.push(c)
         }
       }
     }
 
     dragon.alive = false
     state.levelProgress++
+    
+    // 显示关卡进度提示
+    const ft = getFloatTextFromPool()
+    ft.x = BASE_W / 2
+    ft.y = BASE_H / 3
+    ft.text = `🐉 ${state.levelProgress}/${state.levelTarget}`
+    ft.color = '#4CAF50'
+    ft.life = 1.5
+    ft.vy = -0.5
+    ft.size = 20
+    state.floatTexts.push(ft)
+    console.log(`✅ 龙被消灭! 关卡进度: ${state.levelProgress}/${state.levelTarget}`)
   }
   // 无分裂机制：龙被纯击打消灭，不再产生新龙
 }
@@ -514,10 +724,15 @@ export function updatePowerUpSelect(state: GameState, dt: number) {
  */
 function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
   const pushText = (text: string) => {
-    state.floatTexts.push({
-      x: state.playerX, y: BASE_H - 80,
-      text, color: card.color, life: 1.5, vy: -1, size: 16
-    })
+    const ft = getFloatTextFromPool()
+    ft.x = state.playerX
+    ft.y = BASE_H - 80
+    ft.text = text
+    ft.color = card.color
+    ft.life = 1.5
+    ft.vy = -1
+    ft.size = 16
+    state.floatTexts.push(ft)
   }
   const S = state as any
 
@@ -651,7 +866,36 @@ function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
  * 生成龙（根据关卡进度）
  */
 export function spawnDragons(state: GameState) {
-  if (state.dragons.filter(d => d.alive).length >= state.maxDragons) return
+  // 优化：直接计数活着的龙，避免创建新数组
+  let aliveDragons = 0
+  for (const dragon of state.dragons) {
+    if (dragon.alive) aliveDragons++
+  }
+  
+  // 如果当前关卡的所有龙都已消灭，则进入下一关
+  if (aliveDragons === 0 && state.levelProgress >= state.levelTarget) {
+    // 所有龙已消灭，触发关卡升级
+    checkLevelUp(state)
+    return
+  }
+  
+  // 如果已经达到本关最大龙数，不再生成
+  if (aliveDragons >= state.maxDragons) {
+    return
+  }
+  
+  // 如果本关已生成的龙总数达到目标，不再生成
+  if (state.dragonsSpawnedInLevel >= state.levelTarget) return
+
+  // 获取本关卡路线
+  const allRoutes = routeLoader.getRoutesForLevel(state.level)
+  if (allRoutes.length === 0) {
+    console.warn('⚠️ 没有可用路线！level=', state.level)
+    return
+  }
+
+  // 调试：检查龙生成
+  console.log(`🐉 生成检查: level=${state.level}, alive=${aliveDragons}, spawned=${state.dragonsSpawnedInLevel}, target=${state.levelTarget}, max=${state.maxDragons}`)
   
   // 根据关卡决定龙类型（elite/boss 由 LEVEL_CONFIGS.eliteChance/bossChance 控制概率）
   let type: Dragon['type'] = 'small'
@@ -665,10 +909,6 @@ export function spawnDragons(state: GameState) {
   else if (state.level >= 2 && r < 0.45) type = 'medium'
 
   // 选择路线：按已有龙的数量轮询，每条龙走不同路线
-  const allRoutes = routeLoader.getRoutesForLevel(state.level)
-  if (allRoutes.length === 0) return
-
-  // 已有龙数量作为索引，轮询使用路线（多路线时每条龙走不同路线）
   const route = allRoutes[state.dragons.length % allRoutes.length]
 
   if (route.points.length < 10) return
@@ -677,6 +917,7 @@ export function spawnDragons(state: GameState) {
   dragon.id = ++state.lastDragonId
   
   state.dragons.push(dragon)
+  state.dragonsSpawnedInLevel++  // 增加已生成计数
   console.log(`🐉 生成 ${type} 龙 #${dragon.id}, 节数: ${dragon.segments.length}`)
 }
 
@@ -702,6 +943,7 @@ export function updateDragons(state: GameState, dt: number) {
   // energyField：能量涌动，持续伤害圈
   const energyFieldStacks = S.energyFieldStacks || 0
   const energyR     = 80 + energyFieldStacks * 15  // 范围随叠加层数扩大
+  const energyRSquared = energyR * energyR
 
   // ringWave 定时触发
   if ((S._ringWaveTimer || 0) > 0) {
@@ -713,11 +955,20 @@ export function updateDragons(state: GameState, dt: number) {
       for (const dragon of state.dragons) {
         for (let si = dragon.segments.length - 1; si >= 0; si--) {
           const seg = dragon.segments[si]
-          const dist = Math.sqrt((seg.x - state.playerX) ** 2 + (seg.y - (BASE_H - 55)) ** 2)
-          if (dist < 150) {
+          const distX = seg.x - state.playerX
+          const distY = seg.y - (BASE_H - 55)
+          if (distX * distX + distY * distY < 22500) { // 150*150
             const dmg = state.bulletDamage * 0.3
             seg.hp -= dmg
-            state.floatTexts.push({ x: seg.x, y: seg.y - seg.size, text: `-${Math.round(dmg)}`, color: '#3498DB', life: 0.6, vy: -1, size: 12 })
+            const ft = getFloatTextFromPool()
+            ft.x = seg.x
+            ft.y = seg.y - seg.size
+            ft.text = `-${Math.round(dmg)}`
+            ft.color = '#3498DB'
+            ft.life = 0.6
+            ft.vy = -1
+            ft.size = 12
+            state.floatTexts.push(ft)
             if (seg.hp <= 0) handleSegmentDeath(state, dragon, si)
           }
         }
@@ -758,8 +1009,9 @@ export function updateDragons(state: GameState, dt: number) {
       const playerY = BASE_H - 55
       for (let si = dragon.segments.length - 1; si >= 0; si--) {
         const seg = dragon.segments[si]
-        const dist = Math.sqrt((seg.x - state.playerX) ** 2 + (seg.y - playerY) ** 2)
-        if (dist < energyR) {
+        const distX = seg.x - state.playerX
+        const distY = seg.y - playerY
+        if (distX * distX + distY * distY < energyRSquared) {
           const efDmg = (state.bulletDamage * 0.08 * energyFieldStacks) * dt
           if (efDmg > 0) {
             seg.hp -= efDmg
@@ -777,6 +1029,18 @@ export function updateDragons(state: GameState, dt: number) {
       state.playerHP--
       audioService.lose()
       dragon.alive = false
+      state.levelProgress++  // 到达终点的龙也计入进度
+      
+      // 显示提示
+      const ft = getFloatTextFromPool()
+      ft.x = BASE_W / 2
+      ft.y = BASE_H / 3
+      ft.text = `⚠️ ${state.levelProgress}/${state.levelTarget}`
+      ft.color = '#FF4444'
+      ft.life = 1.5
+      ft.vy = -0.5
+      ft.size = 20
+      state.floatTexts.push(ft)
 
       if (state.playerHP <= 0) {
         state.phase = 'gameOver'
@@ -784,11 +1048,15 @@ export function updateDragons(state: GameState, dt: number) {
       } else {
         // 非即死：给予短暂无敌并显示提示
         state.invincibleTimer = 1.5
-        state.floatTexts.push({
-          x: BASE_W / 2, y: BASE_H / 2,
-          text: '⚠️ 怪物入侵！', color: '#FF4444',
-          life: 1.5, vy: -0.5, size: 22
-        })
+        const ft2 = getFloatTextFromPool()
+        ft2.x = BASE_W / 2
+        ft2.y = BASE_H / 2
+        ft2.text = '⚠️ 怪物入侵！'
+        ft2.color = '#FF4444'
+        ft2.life = 1.5
+        ft2.vy = -0.5
+        ft2.size = 22
+        state.floatTexts.push(ft2)
       }
     }
   }
@@ -812,11 +1080,25 @@ export function updateTimer(state: GameState, dt: number) {
  * 关卡升级检查
  */
 export function checkLevelUp(state: GameState): boolean {
-  console.log(`[level] lv=${state.level} progress=${state.levelProgress}/${state.levelTarget}`)
-  if (state.levelProgress >= state.levelTarget) {
+  // 获取当前关卡的路线数量
+  const allRoutes = routeLoader.getRoutesForLevel(state.level)
+  const routeCount = allRoutes.length
+  
+  // 检查是否所有路线的龙都已消灭
+  if (state.levelProgress >= state.levelTarget && routeCount > 0) {
+    console.log(`✅ 第${state.level}关完成！共${routeCount}条路线，已消灭${state.levelProgress}条龙`)
+    
     state.level++
     state.levelProgress = 0
-    state.levelTarget = Math.min(8, 3 + Math.floor(state.level * 0.5))
+    state.dragonsSpawnedInLevel = 0  // 重置本关生成计数
+    
+    // 根据新关卡的路线数量设置目标
+    const nextRoutes = routeLoader.getRoutesForLevel(state.level)
+    state.levelTarget = nextRoutes.length > 0 ? nextRoutes.length : 3
+    
+    // 设置最大同时存在的龙数（等于路线数）
+    state.maxDragons = state.levelTarget
+    
     state.currentScene = (state.currentScene + 1) % SCENES.length
 
     // 奖励
@@ -868,4 +1150,76 @@ export function saveCustomRoutes(customRoutes: CustomRoute[]): void {
   } catch (error) {
     console.error('❌ 保存自定义路线失败:', error)
   }
+}
+
+/**
+ * 生成爆炸粒子效果（使用对象池）
+ */
+function spawnExplosionParticles(state: GameState, x: number, y: number, color: string, size: number): void {
+  const count = Math.floor(size * 0.6)
+  for (let i = 0; i < count; i++) {
+    if (state.particles.length >= MAX_PARTICLES) break
+    const angle = Math.random() * Math.PI * 2
+    const speed = 1 + Math.random() * 3
+    const p = getParticleFromPool()
+    p.x = x
+    p.y = y
+    p.vx = Math.cos(angle) * speed
+    p.vy = Math.sin(angle) * speed
+    p.life = 0.4 + Math.random() * 0.3
+    p.maxLife = 0.7
+    p.size = 2 + Math.random() * 2
+    p.color = i % 2 === 0 ? color : lightenColor(color, 20)
+    state.particles.push(p)
+  }
+
+  if (size > 8 && state.particles.length < MAX_PARTICLES) {
+    const p = getParticleFromPool()
+    p.x = x
+    p.y = y
+    p.vx = 0
+    p.vy = 0
+    p.life = 0.1
+    p.maxLife = 0.1
+    p.size = size * 1.2
+    p.color = lightenColor(color, 40)
+    state.particles.push(p)
+  }
+
+  const emberCount = Math.floor(size * 0.3)
+  for (let i = 0; i < emberCount; i++) {
+    if (state.particles.length >= MAX_PARTICLES) break
+    const angle = Math.random() * Math.PI * 2
+    const speed = 0.3 + Math.random() * 0.8
+    const p = getParticleFromPool()
+    p.x = x + (Math.random() - 0.5) * size * 0.5
+    p.y = y + (Math.random() - 0.5) * size * 0.5
+    p.vx = Math.cos(angle) * speed * 0.5
+    p.vy = Math.sin(angle) * speed * 0.5 - 0.3
+    p.life = 0.6 + Math.random() * 0.4
+    p.maxLife = 1.0
+    p.size = 1 + Math.random() * 1.5
+    p.color = '#FF6347'
+    state.particles.push(p)
+  }
+}
+
+/**
+ * 龙死亡特效（使用对象池）
+ */
+function spawnDeathEffect(state: GameState, dragon: Dragon): void {
+  // 对每个节段产生爆炸效果
+  for (const seg of dragon.segments) {
+    spawnExplosionParticles(state, seg.x, seg.y, seg.color, seg.size)
+  }
+  // 死亡飘字
+  const ft = getFloatTextFromPool()
+  ft.x = dragon.segments[0]?.x ?? 0
+  ft.y = dragon.segments[0]?.y ?? 0
+  ft.text = '💀'
+  ft.color = '#FF6B6B'
+  ft.life = 1
+  ft.vy = -1
+  ft.size = 24
+  state.floatTexts.push(ft)
 }

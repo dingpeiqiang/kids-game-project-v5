@@ -16,6 +16,8 @@ export interface InputCallbacks {
   onRouteEditorSave: () => void
   onRouteEditorExport: () => void
   onRouteEditorReturn: () => void
+  onRouteEditorNew?: () => void  // 可选：新建路线
+  onRouteEditorOptimize?: () => void  // 可选：优化路线
   onStartChallenge: () => void
   onStartEndless: () => void
   onDrawRoute: () => void
@@ -31,13 +33,26 @@ export function createInputHandler(
   state: GameState,
   routeEditorRef: { current: RouteEditorType },
   customRoutes: CustomRoute[],
-  callbacks: InputCallbacks,
-  _isDrawingModeRef: { value: boolean }
+  callbacks: InputCallbacks
 ) {
+  // 缓存画布尺寸，避免重复获取
+  let cachedRect: DOMRect | null = null
+  let lastResizeTime = 0
+  
+  // 获取画布矩形信息（带缓存）
+  function getCanvasRect(): DOMRect {
+    const now = Date.now()
+    // 每100ms更新一次缓存，或者在resize时更新
+    if (!cachedRect || now - lastResizeTime > 100) {
+      cachedRect = canvas.getBoundingClientRect()
+      lastResizeTime = now
+    }
+    return cachedRect
+  }
 
   // 坐标转换：画布坐标 → 游戏区域坐标
   function getPos(e: MouseEvent | Touch) {
-    const rect = canvas.getBoundingClientRect()
+    const rect = getCanvasRect()
     const scaleX = CANVAS_W / rect.width
     const scaleY = CANVAS_H / rect.height
     const canvasX = (e.clientX - rect.left) * scaleX
@@ -50,7 +65,7 @@ export function createInputHandler(
 
   // 原始画布坐标（路线编辑用）
   function getCanvasPos(e: MouseEvent | Touch) {
-    const rect = canvas.getBoundingClientRect()
+    const rect = getCanvasRect()
     return {
       x: (e.clientX - rect.left) * (CANVAS_W / rect.width),
       y: (e.clientY - rect.top) * (CANVAS_H / rect.height)
@@ -61,12 +76,17 @@ export function createInputHandler(
   function handleDown(x: number, y: number) {
     console.log('🖱️ handleDown:', { x: Math.round(x), y: Math.round(y), phase: state.phase })
 
-    // 路线编辑模式（使用 canvas 原始坐标）
+    // 路线编辑模式
     if (state.phase === 'routeEdit') {
+      // x,y 已经是画布坐标（直接来自 getCanvasPos）
       const btnClicked = handleRouteEditMode(x, y)
-      // 只有点击了按钮区域才返回（按钮内部已处理 active）
+
+      // 点击了按钮区域，直接返回
       if (btnClicked) return
-      // 否则标记正在绘制，后续 move 可以直接加点了
+
+      // 整个画布任意位置都可以开始绘制
+      routeEditorRef.current.newRoute()
+      routeEditorRef.current.addPoint(x, y)
       state.touch.active = true
       state.touch.startX = x
       state.touch.startY = y
@@ -109,15 +129,64 @@ export function createInputHandler(
     }
 
     if (state.phase === 'playing' && !state.isPaused) {
+      // 检查是否点击了位置切换按钮
+      const btnX = BASE_W - 50
+      const btnY = 65
+      const btnSize = 30
+      if (x >= btnX - btnSize/2 && x <= btnX + btnSize/2 && 
+          y >= btnY - btnSize/2 && y <= btnY + btnSize/2) {
+        // 切换玩家位置：底部 <-> 中间
+        if (state.playerY > BASE_H * 0.7) {
+          // 从底部切换到中间
+          state.playerY = BASE_H / 2
+          state.shootAngle = -Math.PI / 2  // 重置为向上
+          console.log('🎯 切换到中间模式（只能调整射击方向）')
+        } else {
+          // 从中间切换到底部
+          state.playerY = BASE_H - 55
+          state.shootAngle = -Math.PI / 2  // 重置为向上
+          console.log('🏃 切换到底部模式（可以移动+射击）')
+        }
+        audioService.click()
+        return
+      }
+      
       if (x > BASE_W - 40 && y > 35 && y < 60) {
         callbacks.onPauseToggle()
         return
       }
+      
+      // 判断触摸点是否在玩家身上（玩家半径约30px）
+      const playerRadius = 30
+      const distToPlayer = Math.sqrt(
+        Math.pow(x - state.playerX, 2) +
+        Math.pow(y - (BASE_H - 55), 2)
+      )
+
+      // 点击玩家本体：切换选中态
+      if (distToPlayer <= playerRadius + 5) {
+        state.isSelected = !state.isSelected
+        state.canMove = state.isSelected
+        audioService.click()
+        console.log(state.isSelected ? '✅ 玩家已选中（可移动）' : '❌ 玩家未选中（只能调整射击方向）')
+        return
+      }
+
       state.touch.active = true
       state.touch.startX = x
       state.touch.startY = y
       state.touch.currentX = x
       state.touch.startTime = Date.now()
+
+      // 标记是否选中玩家（用于后续移动逻辑）
+      ;(state.touch as any).isOnPlayer = distToPlayer <= playerRadius
+
+      // 未选中时禁止移动（只能调射击方向）
+      if (!state.isSelected) {
+        state.canMove = false
+      } else {
+        state.canMove = true
+      }
     }
   }
 
@@ -159,10 +228,6 @@ export function createInputHandler(
       }
     }
 
-    // 只有未在绘制状态时才启用绘制（避免每次点击都清空当前路线）
-    if (!routeEditorRef.current.isDrawing) {
-      routeEditorRef.current.startDrawing()
-    }
     return false
   }
 
@@ -213,34 +278,38 @@ export function createInputHandler(
   // 绑定事件
   canvas.addEventListener('touchstart', (e) => {
     e.preventDefault()
-    const useCanvas = state.phase === 'routeEdit'
-    const pos = useCanvas ? getCanvasPos(e.touches[0]) : getPos(e.touches[0])
+    const pos = state.phase === 'routeEdit' ? getCanvasPos(e.touches[0]) : getPos(e.touches[0])
     handleDown(pos.x, pos.y)
   }, { passive: false })
 
   canvas.addEventListener('touchmove', (e) => {
     e.preventDefault()
-    const useCanvas = state.phase === 'routeEdit'
-    const pos = useCanvas ? getCanvasPos(e.touches[0]) : getPos(e.touches[0])
+    const pos = state.phase === 'routeEdit' ? getCanvasPos(e.touches[0]) : getPos(e.touches[0])
     handleMove(pos.x, pos.y)
   }, { passive: false })
 
   canvas.addEventListener('touchend', handleUp)
 
   canvas.addEventListener('mousedown', (e) => {
-    const useCanvas = state.phase === 'routeEdit'
-    const pos = useCanvas ? getCanvasPos(e) : getPos(e)
+    // 路线编辑模式用画布坐标（任意位置绘制），其他模式用游戏坐标
+    const pos = state.phase === 'routeEdit' ? getCanvasPos(e) : getPos(e)
     handleDown(pos.x, pos.y)
   })
 
   canvas.addEventListener('mousemove', (e) => {
-    const useCanvas = state.phase === 'routeEdit'
-    const pos = useCanvas ? getCanvasPos(e) : getPos(e)
+    const pos = state.phase === 'routeEdit' ? getCanvasPos(e) : getPos(e)
     handleMove(pos.x, pos.y)
   })
 
   canvas.addEventListener('mouseup', handleUp)
   canvas.addEventListener('mouseleave', handleUp)
+
+  // 监听窗口大小变化，更新缓存
+  const handleResize = () => {
+    cachedRect = null
+    lastResizeTime = Date.now()
+  }
+  window.addEventListener('resize', handleResize)
 
   return { getPos, getCanvasPos, handleDown, handleMove, handleUp }
 }
