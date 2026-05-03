@@ -299,21 +299,82 @@ export class RouteEditor {
 
   // 绘制游戏场景预览（显示虚线框和背景）
   drawGamePreview() {
-    // 绘制游戏区域虚线框
+    // 1. 绘制游戏区域背景渐变（模拟游戏场景）
     this.ctx.save()
-    this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)'
+    const grad = this.ctx.createLinearGradient(
+      CANVAS_OFFSET_X, CANVAS_OFFSET_Y,
+      CANVAS_OFFSET_X, CANVAS_OFFSET_Y + BASE_H
+    )
+    // 使用青云色渐变（与游戏场景一致）
+    grad.addColorStop(0, '#87CEEB')    // 天蓝色
+    grad.addColorStop(0.5, '#E0F7FA')  // 浅青色
+    grad.addColorStop(1, '#B2EBF2')    // 淡青色
+    this.ctx.fillStyle = grad
+    this.ctx.fillRect(CANVAS_OFFSET_X, CANVAS_OFFSET_Y, BASE_W, BASE_H)
+    this.ctx.restore()
+
+    // 2. 绘制装饰性云朵（模拟游戏场景氛围）
+    this.ctx.save()
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
+    // 云朵1
+    this.ctx.beginPath()
+    this.ctx.arc(CANVAS_OFFSET_X + 50, CANVAS_OFFSET_Y + 80, 25, 0, Math.PI * 2)
+    this.ctx.arc(CANVAS_OFFSET_X + 75, CANVAS_OFFSET_Y + 75, 20, 0, Math.PI * 2)
+    this.ctx.arc(CANVAS_OFFSET_X + 100, CANVAS_OFFSET_Y + 80, 22, 0, Math.PI * 2)
+    this.ctx.fill()
+    
+    // 云朵2
+    this.ctx.beginPath()
+    this.ctx.arc(CANVAS_OFFSET_X + 250, CANVAS_OFFSET_Y + 120, 20, 0, Math.PI * 2)
+    this.ctx.arc(CANVAS_OFFSET_X + 270, CANVAS_OFFSET_Y + 115, 18, 0, Math.PI * 2)
+    this.ctx.arc(CANVAS_OFFSET_X + 290, CANVAS_OFFSET_Y + 120, 19, 0, Math.PI * 2)
+    this.ctx.fill()
+    
+    // 云朵3
+    this.ctx.beginPath()
+    this.ctx.arc(CANVAS_OFFSET_X + 150, CANVAS_OFFSET_Y + 200, 22, 0, Math.PI * 2)
+    this.ctx.arc(CANVAS_OFFSET_X + 172, CANVAS_OFFSET_Y + 195, 19, 0, Math.PI * 2)
+    this.ctx.arc(CANVAS_OFFSET_X + 194, CANVAS_OFFSET_Y + 200, 21, 0, Math.PI * 2)
+    this.ctx.fill()
+    this.ctx.restore()
+
+    // 3. 绘制游戏区域边框（金色虚线）
+    this.ctx.save()
+    this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)'
     this.ctx.lineWidth = 3
     this.ctx.setLineDash([10, 5])
+    this.ctx.shadowColor = 'rgba(255, 215, 0, 0.5)'
+    this.ctx.shadowBlur = 10
     this.ctx.strokeRect(CANVAS_OFFSET_X, CANVAS_OFFSET_Y, BASE_W, BASE_H)
     this.ctx.restore()
 
-    // 绘制提示文字
+    // 4. 绘制提示文字
     this.ctx.save()
-    this.ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
-    this.ctx.font = 'bold 14px sans-serif'
+    this.ctx.fillStyle = 'rgba(255, 215, 0, 0.95)'
+    this.ctx.font = 'bold 16px sans-serif'
     this.ctx.textAlign = 'center'
     this.ctx.textBaseline = 'top'
-    this.ctx.fillText('🎮 游戏区域', CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y + 10)
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
+    this.ctx.shadowBlur = 4
+    this.ctx.fillText('🎮 游戏场景预览', CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y + 15)
+    
+    // 辅助说明
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+    this.ctx.font = '12px sans-serif'
+    this.ctx.shadowBlur = 0
+    this.ctx.fillText('路线将在此区域内显示', CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y + 40)
+    this.ctx.restore()
+
+    // 5. 绘制坐标轴参考线（可选，帮助定位）
+    this.ctx.save()
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'
+    this.ctx.lineWidth = 1
+    this.ctx.setLineDash([5, 5])
+    // 中线
+    this.ctx.beginPath()
+    this.ctx.moveTo(CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y)
+    this.ctx.lineTo(CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y + BASE_H)
+    this.ctx.stroke()
     this.ctx.restore()
   }
 }
