@@ -293,9 +293,14 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     },
 
     onDrawRoute: () => {
-      state.phase = 'routeEdit'
-      state.isRouteEditMode = true
-      routeEditorRef.current.clear()
+      // 切换画路线模式
+      if (routeEditorRef.current.activeMode === 'route') {
+        routeEditorRef.current.activeMode = null
+        state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '❌ 已退出画路线模式', color: '#9E9E9E', life: 1.5, vy: -0.5, size: 22 })
+      } else {
+        routeEditorRef.current.activeMode = 'route'
+        state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '✏️ 点击画布绘制路线', color: '#E040FB', life: 2.5, vy: -0.5, size: 22 })
+      }
     },
     onPauseToggle: () => togglePause(state),
     onNextLevel: () => startNextLevel(state)

@@ -234,7 +234,7 @@ export function createInputHandler(
     const btnH = 50
     const btnW = 58
     const btnGap = 3
-    // 8个按钮：新建 清除 保存 优化 预览 玩家起点 导出 返回
+    // 8个按钮：新建 清除 保存 优化 预览 画路线 玩家起点 导出
     const totalBtns = 8
     const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
@@ -262,15 +262,15 @@ export function createInputHandler(
         return true
       }
       if (x >= btnStartX + (btnW + btnGap) * 5 && x < btnStartX + (btnW + btnGap) * 6) {
-        callbacks.onSetPlayerStart?.()
+        callbacks.onDrawRoute?.()
         return true
       }
       if (x >= btnStartX + (btnW + btnGap) * 6 && x < btnStartX + (btnW + btnGap) * 7) {
-        callbacks.onRouteEditorExport?.()
+        callbacks.onSetPlayerStart?.()
         return true
       }
       if (x >= btnStartX + (btnW + btnGap) * 7 && x < btnStartX + (btnW + btnGap) * 8) {
-        callbacks.onRouteEditorReturn?.()
+        callbacks.onRouteEditorExport?.()
         return true
       }
     }

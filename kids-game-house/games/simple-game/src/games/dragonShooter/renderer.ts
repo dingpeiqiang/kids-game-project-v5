@@ -1044,16 +1044,29 @@ export function createRenderer(
       routeEditor.drawCurrentRoute()
     }
 
-    // 按钮区域 - 8个按钮：新建 清除 保存 优化 预览 玩家起点 导出 返回
+    // 按钮区域 - 8个按钮：新建 清除 保存 优化 预览 画路线 玩家起点 导出 返回
     const btnY = CANVAS_H - 80
     const btnH = 50
-    const btnW = 58
+    const btnW = 55
     const btnGap = 3
     const totalBtns = 8
     const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
+    // 当前模式指示器
+    const modeText = routeEditor.activeMode === 'route' ? '✏️ 画路线中' :
+                     routeEditor.activeMode === 'playerStart' ? '🎯 设置起点中' : ''
+    if (modeText) {
+      ctx.fillStyle = routeEditor.activeMode === 'route' ? '#9C27B0' : '#2E7D32'
+      ctx.fillRect(CANVAS_W / 2 - 60, 50, 120, 28)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.font = 'bold 12px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(modeText, CANVAS_W / 2, 70)
+      ctx.textAlign = 'left'
+    }
+
     // 新建按钮
-    ctx.fillStyle = '#9C27B0'
+    ctx.fillStyle = routeEditor.activeMode === 'route' && routeEditor.routes.length === 0 ? '#BB6BD9' : '#9C27B0'
     ctx.fillRect(btnStartX, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
     ctx.font = 'bold 11px sans-serif'
@@ -1083,28 +1096,31 @@ export function createRenderer(
     ctx.fillStyle = '#FFFFFF'
     ctx.fillText('👁️ 预览', btnStartX + (btnW + btnGap) * 4 + btnW / 2, btnY + 32)
 
-    // 玩家起点按钮（特殊颜色：高亮绿色）
-    const playerStartColor = routeEditor.isSettingPlayerStart ? '#00FF88' : '#2E7D32'
-    ctx.fillStyle = playerStartColor
+    // 画路线按钮（选中时高亮）
+    const isRouteMode = routeEditor.activeMode === 'route'
+    ctx.fillStyle = isRouteMode ? '#E040FB' : '#7B1FA2'
     ctx.fillRect(btnStartX + (btnW + btnGap) * 5, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('🎯 起点', btnStartX + (btnW + btnGap) * 5 + btnW / 2, btnY + 32)
+    ctx.fillText('✏️ 画路线', btnStartX + (btnW + btnGap) * 5 + btnW / 2, btnY + 32)
+
+    // 玩家起点按钮（选中时高亮）
+    const isPlayerStartMode = routeEditor.activeMode === 'playerStart'
+    ctx.fillStyle = isPlayerStartMode ? '#00FF88' : '#2E7D32'
+    ctx.fillRect(btnStartX + (btnW + btnGap) * 6, btnY, btnW, btnH)
+    ctx.fillStyle = isPlayerStartMode ? '#000' : '#FFFFFF'
+    ctx.font = 'bold 11px sans-serif'
+    ctx.fillText('🎯 起点', btnStartX + (btnW + btnGap) * 6 + btnW / 2, btnY + 32)
 
     // 导出按钮
     ctx.fillStyle = '#2196F3'
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 6, btnY, btnW, btnH)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 6 + btnW / 2, btnY + 32)
-
-    // 返回按钮
-    ctx.fillStyle = COLORS.accent
     ctx.fillRect(btnStartX + (btnW + btnGap) * 7, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 7 + btnW / 2, btnY + 32)
+    ctx.font = 'bold 11px sans-serif'
+    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 7 + btnW / 2, btnY + 32)
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.font = '11px sans-serif'
-    ctx.fillText('✨优化：抽稀+圆滑 | 🎯起点：设置玩家初始位置', CANVAS_W / 2, btnY + btnH + 15)
+    ctx.fillText('✨优化：抽稀+圆滑 | ✏️画路线/🎯起点：选择模式后点击画布', CANVAS_W / 2, btnY + btnH + 15)
     
     drawFloatTexts()
   }
