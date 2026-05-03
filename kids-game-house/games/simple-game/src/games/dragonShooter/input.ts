@@ -21,6 +21,7 @@ export interface InputCallbacks {
   onRouteEditorPreview?: () => void  // 可选：预览游戏效果
   onSetPlayerStart?: () => void  // 可选：设置玩家起点
   onClearPlayerStart?: () => void  // 可选：清除玩家起点
+  onNextLevel?: () => void  // 可选：进入下一关
   onStartChallenge: () => void
   onDrawRoute: () => void
   onPauseToggle: () => void
@@ -122,6 +123,19 @@ export function createInputHandler(
             ps.revealedIdx = 2; audioService.click()
           }
         }
+      }
+      return
+    }
+
+    // 关卡完成：点击按钮进入下一关
+    if (state.phase === 'levelComplete') {
+      const btnW = 200
+      const btnH = 50
+      const btnX = BASE_W / 2 - btnW / 2
+      const btnY = BASE_H / 2 + 60
+      if (x >= btnX && x <= btnX + btnW && y >= btnY && y <= btnY + btnH) {
+        callbacks.onNextLevel?.()
+        return
       }
       return
     }

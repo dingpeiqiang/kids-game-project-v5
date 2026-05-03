@@ -19,7 +19,7 @@ import {
   spawnDragons, updateDragons, shoot, updateBullets,
   updatePowerUps, updateParticles, updateCoinDrops,
   updateFloatTexts, updateTimer, togglePause,
-  checkLevelUp,
+  checkLevelUp, startNextLevel,
   setGameOverCallback
 } from './gameState'
 import { createRenderer } from './renderer'
@@ -297,7 +297,8 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       state.isRouteEditMode = true
       routeEditorRef.current.clear()
     },
-    onPauseToggle: () => togglePause(state)
+    onPauseToggle: () => togglePause(state),
+    onNextLevel: () => startNextLevel(state)
   }
 
   createInputHandler(canvas, ctx, state, routeEditorRef, customRoutes, inputCallbacks)
@@ -391,20 +392,12 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
 
       // 关卡检查
       checkLevelUp(state)
+    }
 
-      // 关卡过渡动画
-      if (state.levelTransition) {
-        state.levelTransitionTimer -= dt
-        if (state.levelTransitionTimer <= 0) {
-          state.levelTransition = false
-          state.isPaused = false
-          state.floatTexts.push({
-            x: BASE_W / 2, y: BASE_H / 2,
-            text: `🎉 第${state.level}关!`,
-            color: '#FFD700', life: 2, vy: -0.5, size: 28
-          })
-        }
-      }
+    // ===== 关卡完成阶段（只更新浮动文字和粒子） =====
+    if (state.phase === 'levelComplete') {
+      updateFloatTexts(state, dt)
+      updateParticles(state, dt)
     }
 
     // ===== 道具选择弹窗（全时更新） =====

@@ -1149,6 +1149,68 @@ export function createRenderer(
     ctx.fillText('正在返回...', BASE_W / 2, BASE_H / 2 + 85)
   }
 
+  // ========== 关卡完成界面 ==========
+  function drawLevelComplete() {
+    // 全屏遮罩
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+    ctx.fillRect(0, 0, BASE_W, BASE_H)
+
+    // 标题
+    ctx.fillStyle = '#4CAF50'
+    ctx.font = 'bold 36px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('🎉 关卡通过!', BASE_W / 2, BASE_H / 2 - 100)
+
+    // 分割线
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(BASE_W / 2 - 120, BASE_H / 2 - 70)
+    ctx.lineTo(BASE_W / 2 + 120, BASE_H / 2 - 70)
+    ctx.stroke()
+
+    // 统计信息
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = '18px sans-serif'
+    ctx.fillText(`第 ${state.level - 1} 关`, BASE_W / 2, BASE_H / 2 - 40)
+
+    ctx.font = '16px sans-serif'
+    ctx.fillStyle = '#AAAAAA'
+    ctx.fillText(`击杀: ${state.levelCompleteKills}`, BASE_W / 2, BASE_H / 2 - 10)
+    ctx.fillText(`得分: ${state.levelCompleteScore}`, BASE_W / 2, BASE_H / 2 + 20)
+
+    // 分割线
+    ctx.beginPath()
+    ctx.moveTo(BASE_W / 2 - 80, BASE_H / 2 + 45)
+    ctx.lineTo(BASE_W / 2 + 80, BASE_H / 2 + 45)
+    ctx.stroke()
+
+    // 下一关按钮
+    const btnW = 200
+    const btnH = 50
+    const btnX = BASE_W / 2 - btnW / 2
+    const btnY = BASE_H / 2 + 60
+
+    // 按钮背景（带渐变）
+    const grad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH)
+    grad.addColorStop(0, '#4CAF50')
+    grad.addColorStop(1, '#388E3C')
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.roundRect(btnX, btnY, btnW, btnH, 10)
+    ctx.fill()
+
+    // 按钮文字
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = 'bold 20px sans-serif'
+    ctx.fillText(`进入第 ${state.level} 关`, BASE_W / 2, btnY + 33)
+
+    // 提示
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.font = '12px sans-serif'
+    ctx.fillText('点击按钮继续', BASE_W / 2, btnY + btnH + 20)
+  }
+
   // ========== 主渲染函数 ==========
   function render() {
     // 清除画布
@@ -1248,6 +1310,10 @@ export function createRenderer(
 
       if (state.phase === 'powerup_select') {
         drawPowerUpSelectOverlay()
+      }
+
+      if (state.phase === 'levelComplete') {
+        drawLevelComplete()
       }
     }
 

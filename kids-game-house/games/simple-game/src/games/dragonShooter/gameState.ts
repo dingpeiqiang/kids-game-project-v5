@@ -1115,10 +1115,65 @@ export function checkLevelUp(state: GameState): boolean {
     state.levelTransition = true
     state.levelTransitionTimer = 2.0
 
+    // 保存本关统计
+    state.levelCompleteScore = state.score
+    state.levelCompleteKills = state.levelProgress
+
+    // 进入关卡完成界面（玩家点击继续）
+    state.phase = 'levelComplete'
+    state.isPaused = true
+
     audioService.levelUp()
     return true
   }
   return false
+}
+
+/**
+ * 开始下一关（从关卡完成界面调用）
+ */
+export function startNextLevel(state: GameState) {
+  const nextRoutes = routeLoader.getRoutesForLevel(state.level)
+
+  // 清除旧数据
+  state.dragons = []
+  state.bullets = []
+  state.powerUps = []
+  state.particles = []
+  state.floatTexts = []
+  state.coinDrops = []
+
+  // 重置闯关状态
+  state.levelProgress = 0
+  state.dragonsSpawnedInLevel = 0
+  state.levelTarget = nextRoutes.length > 0 ? nextRoutes.length : 3
+  state.maxDragons = state.levelTarget
+
+  // 玩家位置重置
+  const firstRoute = nextRoutes[0]
+  if (firstRoute?.playerStartX !== undefined && firstRoute?.playerStartY !== undefined) {
+    state.playerX = firstRoute.playerStartX
+    state.playerY = firstRoute.playerStartY
+    state.playerStartX = firstRoute.playerStartX
+    state.playerStartY = firstRoute.playerStartY
+  } else {
+    state.playerX = BASE_W / 2
+    state.playerY = BASE_H - 55
+    state.playerStartX = BASE_W / 2
+    state.playerStartY = BASE_H - 55
+  }
+
+  state.phase = 'playing'
+  state.isPaused = false
+
+  // 显示关卡开始提示
+  state.floatTexts.push({
+    x: BASE_W / 2, y: BASE_H / 2,
+    text: `🎉 第${state.level}关!`,
+    color: '#FFD700', life: 2, vy: -0.5, size: 28
+  })
+
+  console.log(`🎮 开始第${state.level}关, levelTarget=${state.levelTarget}`)
 }
 
 /**

@@ -358,7 +358,7 @@ export interface TouchState {
 // 游戏状态
 export interface GameState {
   mode: 'challenge'
-  phase: 'start' | 'playing' | 'paused' | 'buffSelect' | 'powerup_select' | 'gameOver' | 'routeEdit'
+  phase: 'start' | 'playing' | 'paused' | 'buffSelect' | 'powerup_select' | 'gameOver' | 'routeEdit' | 'levelComplete'
   level: number
   score: number
   coins: number
@@ -433,6 +433,9 @@ export interface GameState {
   // 关卡过渡状态
   levelTransition: boolean
   levelTransitionTimer: number
+  // 关卡完成统计
+  levelCompleteScore: number
+  levelCompleteKills: number
   currentScene: number
   isPaused: boolean
   touch: TouchState
