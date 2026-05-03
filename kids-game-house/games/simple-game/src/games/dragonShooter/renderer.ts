@@ -1044,12 +1044,12 @@ export function createRenderer(
       routeEditor.drawCurrentRoute()
     }
 
-    // 按钮区域 - 8个按钮：新建 清除 保存 优化 预览 画路线 玩家起点 导出 返回
+    // 按钮区域 - 9个按钮：新建 清除 保存 优化 预览 画路线 玩家起点 导出 返回
     const btnY = CANVAS_H - 80
     const btnH = 50
     const btnW = 55
     const btnGap = 3
-    const totalBtns = 8
+    const totalBtns = 9
     const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
     // 当前模式指示器
@@ -1117,6 +1117,13 @@ export function createRenderer(
     ctx.fillStyle = '#FFFFFF'
     ctx.font = 'bold 11px sans-serif'
     ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 7 + btnW / 2, btnY + 32)
+
+    // 🎯 返回按钮（第9个按钮）
+    ctx.fillStyle = '#FF5722'
+    ctx.fillRect(btnStartX + (btnW + btnGap) * 8, btnY, btnW, btnH)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = 'bold 11px sans-serif'
+    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 8 + btnW / 2, btnY + 32)
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.font = '11px sans-serif'

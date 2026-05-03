@@ -227,7 +227,7 @@ export function createInputHandler(
     const btnW = 55  // 必须与 renderer.ts 一致！
     const btnGap = 3
     // 8个按钮：新建 清除 保存 优化 预览 画路线 玩家起点 导出
-    const totalBtns = 8
+    const totalBtns = 9  // 🎯 修复：改为9个按钮（增加返回按钮）
     const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
     console.log('🔍 handleRouteEditMode:', {
@@ -270,6 +270,11 @@ export function createInputHandler(
       }
       if (x >= btnStartX + (btnW + btnGap) * 7 && x < btnStartX + (btnW + btnGap) * 8) {
         callbacks.onRouteEditorExport?.()
+        return true
+      }
+      // 🎯 返回按钮（第9个按钮）
+      if (x >= btnStartX + (btnW + btnGap) * 8 && x < btnStartX + (btnW + btnGap) * 9) {
+        callbacks.onRouteEditorReturn?.()
         return true
       }
     }
