@@ -1180,6 +1180,7 @@ export function startNextLevel(state: GameState) {
 
   state.phase = 'playing'
   state.isPaused = false
+  state.levelTransition = false  // 清除过渡状态，避免遮罩残留
 
   // 显示关卡开始提示
   state.floatTexts.push({
