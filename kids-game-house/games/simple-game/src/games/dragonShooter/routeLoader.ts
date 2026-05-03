@@ -86,13 +86,27 @@ export class RouteLoader {
         const level = parseInt(levelStr)
         const routes = await this.loadSingleRoute(`/games/dragonShooter/routes/levels/${filename}`)
         if (routes && routes.length > 0) {
-          // 每个关卡的多条路线合并为一条虚拟路线（id 包含所有路线 id）
-          const combined: CustomRoute = {
+          // 🎯 关键修复：将关卡文件中的所有路线都添加进来，而不是只取第一条
+          console.log(`📂 加载第${level}关: ${routes.length} 条路线`)
+          
+          // 将所有路线添加到自定义路线列表中
+          routes.forEach((route, idx) => {
+            // 保留原始路线的id和name，或者生成新的
+            const finalRoute: CustomRoute = {
+              id: route.id || `level_${level}_route_${idx}`,
+              name: route.name || `第${level}关-路线${idx + 1}`,
+              points: route.points
+            }
+            this.customRoutes.push(finalRoute)
+            console.log(`  ✅ 路线 ${idx + 1}: ${finalRoute.name}, ${finalRoute.points.length} 点`)
+          })
+          
+          // 仍然保留一个代表路线用于 getLevelRoute
+          this.levelRoutes[level] = {
             id: `level_${level}_combined`,
             name: `第${level}关`,
-            points: routes[0].points, // 仍用第一条作为关卡代表路线
+            points: routes[0].points,
           }
-          this.levelRoutes[level] = combined
         }
       }
       return true
