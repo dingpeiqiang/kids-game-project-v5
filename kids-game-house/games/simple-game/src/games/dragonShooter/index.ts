@@ -24,7 +24,7 @@ import {
 } from './gameState'
 import { createRenderer } from './renderer'
 import { createInputHandler } from './input'
-import { RouteEditor as RouteEditorImpl, addCustomRoute, clearCustomRoutes, loadCustomRoutes, customRoutes, optimizeRoute } from './routes'
+import { RouteEditor as RouteEditorImpl, addCustomRoute, clearCustomRoutes, loadCustomRoutes, customRoutes, getCustomRoutes, optimizeRoute } from './routes'
 
 /**
  * 初始化打龙游戏主入口
@@ -395,6 +395,17 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
   // 启动游戏
   initClouds(state)
   loadCustomRoutes()
+  
+  // 🎯 关键修复：将 routes.ts 加载的自定义路线同步到 routeLoader
+  const loadedRoutes = getCustomRoutes()
+  if (loadedRoutes.length > 0) {
+    console.log(`🔄 同步 ${loadedRoutes.length} 条自定义路线到 routeLoader...`)
+    loadedRoutes.forEach((route: CustomRoute) => {
+      routeLoader.addCustomRoute(route)
+    })
+    console.log(`✅ 已同步 ${loadedRoutes.length} 条自定义路线`)
+  }
+  
   console.log('🚀 启动 gameLoop, phase:', state.phase)
   requestAnimationFrame(gameLoop)
 }
