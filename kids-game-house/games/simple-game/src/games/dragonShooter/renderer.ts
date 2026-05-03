@@ -365,6 +365,29 @@ export function createRenderer(
     const playerDrawY = state.playerY ?? BASE_H - 55
     ctx.translate(state.playerX, playerDrawY)
 
+    // 🎯 移动端适配：根据 Canvas 缩放比例调整玩家大小
+    // 获取当前 Canvas 的缩放比例
+    const canvasElement = ctx.canvas as HTMLCanvasElement
+    const canvasStyle = window.getComputedStyle(canvasElement)
+    const transform = canvasStyle.transform
+    let currentScale = 1
+    
+    if (transform && transform !== 'none') {
+      const match = transform.match(/matrix\(([^)]+)\)/)
+      if (match) {
+        const values = match[1].split(',').map(Number)
+        currentScale = values[0] || 1  // matrix(a, b, c, d, e, f) 中的 a 值
+      }
+    }
+    
+    // 🎯 关键修复：当缩放比例 > 1.5 时，缩小玩家绘制尺寸
+    // 这样在移动端（通常 scale > 2）玩家不会显得过大
+    const sizeMultiplier = currentScale > 1.5 ? (1.5 / currentScale) : 1
+    const playerSize = 20 * sizeMultiplier  // 基础半径20
+    const helmetSize = 15 * sizeMultiplier
+    const capeWidth = 18 * sizeMultiplier
+    const capeLength = 38 * sizeMultiplier
+
     // 🎯 增强版：无敌状态护盾特效
     if (state.invincibleTimer > 0) {
       const shieldPulse = 1 + Math.sin(Date.now() / 80) * 0.15
@@ -374,15 +397,15 @@ export function createRenderer(
       ctx.save()
       ctx.rotate(shieldRotation)
       ctx.strokeStyle = 'rgba(79, 195, 247, 0.8)'
-      ctx.lineWidth = 4
+      ctx.lineWidth = 4 * sizeMultiplier
       ctx.shadowColor = '#4FC3F7'
-      ctx.shadowBlur = 25
+      ctx.shadowBlur = 25 * sizeMultiplier
       
       // 绘制六边形护盾
       ctx.beginPath()
       for (let i = 0; i < 6; i++) {
         const angle = (i / 6) * Math.PI * 2
-        const radius = 38 * shieldPulse
+        const radius = 38 * shieldPulse * sizeMultiplier
         const x = Math.cos(angle) * radius
         const y = Math.sin(angle) * radius
         if (i === 0) ctx.moveTo(x, y)
@@ -393,23 +416,23 @@ export function createRenderer(
       
       // 内层圆形护盾
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
-      ctx.lineWidth = 2.5
-      ctx.shadowBlur = 15
+      ctx.lineWidth = 2.5 * sizeMultiplier
+      ctx.shadowBlur = 15 * sizeMultiplier
       ctx.beginPath()
-      ctx.arc(0, 0, 30 * shieldPulse, 0, Math.PI * 2)
+      ctx.arc(0, 0, 30 * shieldPulse * sizeMultiplier, 0, Math.PI * 2)
       ctx.stroke()
       ctx.restore()
 
       // 护盾粒子效果（更多粒子，更大范围）
       for (let i = 0; i < 12; i++) {
         const angle = (Date.now() / 250) + (i * Math.PI / 6)
-        const px = Math.cos(angle) * 35 * shieldPulse
-        const py = Math.sin(angle) * 35 * shieldPulse
-        const particleSize = 2 + Math.sin(Date.now() / 100 + i) * 1
+        const px = Math.cos(angle) * 35 * shieldPulse * sizeMultiplier
+        const py = Math.sin(angle) * 35 * shieldPulse * sizeMultiplier
+        const particleSize = (2 + Math.sin(Date.now() / 100 + i)) * sizeMultiplier
 
         ctx.fillStyle = `rgba(79, 195, 247, ${0.6 + Math.sin(Date.now() / 150 + i) * 0.3})`
         ctx.shadowColor = '#4FC3F7'
-        ctx.shadowBlur = 12
+        ctx.shadowBlur = 12 * sizeMultiplier
         ctx.beginPath()
         ctx.arc(px, py, particleSize, 0, Math.PI * 2)
         ctx.fill()
@@ -430,83 +453,83 @@ export function createRenderer(
     ctx.save()
     
     // 披风渐变
-    const capeGrad = ctx.createLinearGradient(0, 5, 0, 35)
+    const capeGrad = ctx.createLinearGradient(0, 5 * sizeMultiplier, 0, capeLength)
     capeGrad.addColorStop(0, 'rgba(139, 0, 0, 0.8)')
     capeGrad.addColorStop(0.5, 'rgba(178, 34, 34, 0.6)')
     capeGrad.addColorStop(1, 'rgba(220, 20, 60, 0.4)')
     ctx.fillStyle = capeGrad
     
     ctx.beginPath()
-    ctx.moveTo(-18, 5)
-    ctx.quadraticCurveTo(-24 + capeWave, 25, -16 + capeWave * 1.8, 38)
-    ctx.lineTo(16 - capeWave * 1.8, 38)
-    ctx.quadraticCurveTo(24 - capeWave, 25, 18, 5)
+    ctx.moveTo(-capeWidth, 5 * sizeMultiplier)
+    ctx.quadraticCurveTo(-24 * sizeMultiplier + capeWave * sizeMultiplier, 25 * sizeMultiplier, -16 * sizeMultiplier + capeWave * 1.8 * sizeMultiplier, capeLength)
+    ctx.lineTo(16 * sizeMultiplier - capeWave * 1.8 * sizeMultiplier, capeLength)
+    ctx.quadraticCurveTo(24 * sizeMultiplier - capeWave * sizeMultiplier, 25 * sizeMultiplier, capeWidth, 5 * sizeMultiplier)
     ctx.closePath()
     ctx.fill()
     
     // 披风边缘装饰
     ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'
-    ctx.lineWidth = 1.5
+    ctx.lineWidth = 1.5 * sizeMultiplier
     ctx.stroke()
     ctx.restore()
 
     // 2. 身体盔甲（金属质感 - 更强光泽）
-    const armorGrad = ctx.createRadialGradient(-5, -5, 0, 0, 0, 20)
+    const armorGrad = ctx.createRadialGradient(-5 * sizeMultiplier, -5 * sizeMultiplier, 0, 0, 0, playerSize)
     armorGrad.addColorStop(0, '#E8E8E8')  // 亮银色高光
     armorGrad.addColorStop(0.4, '#C0C0C0')  // 银色
     armorGrad.addColorStop(0.7, '#808080')  // 中灰色
     armorGrad.addColorStop(1, '#505050')  // 深灰阴影
     ctx.fillStyle = armorGrad
     ctx.beginPath()
-    ctx.arc(0, 0, 20, 0, Math.PI * 2)
+    ctx.arc(0, 0, playerSize, 0, Math.PI * 2)
     ctx.fill()
 
     // 盔甲边缘装饰（发光效果）
     ctx.strokeStyle = '#FFD700'  // 金色边框
-    ctx.lineWidth = 2.5
+    ctx.lineWidth = 2.5 * sizeMultiplier
     ctx.shadowColor = '#FFD700'
-    ctx.shadowBlur = 12
+    ctx.shadowBlur = 12 * sizeMultiplier
     ctx.beginPath()
-    ctx.arc(0, 0, 20, 0, Math.PI * 2)
+    ctx.arc(0, 0, playerSize, 0, Math.PI * 2)
     ctx.stroke()
     ctx.shadowBlur = 0
     
     // 盔甲中心徽章
     ctx.fillStyle = '#FFD700'
     ctx.shadowColor = '#FFD700'
-    ctx.shadowBlur = 8
+    ctx.shadowBlur = 8 * sizeMultiplier
     ctx.beginPath()
-    ctx.arc(0, 0, 5, 0, Math.PI * 2)
+    ctx.arc(0, 0, 5 * sizeMultiplier, 0, Math.PI * 2)
     ctx.fill()
     ctx.shadowBlur = 0
 
     // 3. 头盔/头饰（更立体的设计）
-    const helmetGrad = ctx.createRadialGradient(-5, -10, 0, 0, -8, 16)
+    const helmetGrad = ctx.createRadialGradient(-5 * sizeMultiplier, -10 * sizeMultiplier, 0, 0, -8 * sizeMultiplier, helmetSize)
     helmetGrad.addColorStop(0, '#F0F0F0')  // 更亮的银色
     helmetGrad.addColorStop(0.5, '#C0C0C0')
     helmetGrad.addColorStop(1, '#808080')
     ctx.fillStyle = helmetGrad
     ctx.beginPath()
-    ctx.arc(0, -8, 15, 0, Math.PI * 2)
+    ctx.arc(0, -8 * sizeMultiplier, helmetSize, 0, Math.PI * 2)
     ctx.fill()
     
     // 头盔边缘高光
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
-    ctx.lineWidth = 1.5
+    ctx.lineWidth = 1.5 * sizeMultiplier
     ctx.beginPath()
-    ctx.arc(0, -8, 15, 0, Math.PI * 2)
+    ctx.arc(0, -8 * sizeMultiplier, helmetSize, 0, Math.PI * 2)
     ctx.stroke()
 
     // 头盔顶部装饰（羽饰 - 更大更醒目）
     ctx.save()
-    const featherWave = Math.sin(Date.now() / 180) * 2
+    const featherWave = Math.sin(Date.now() / 180) * 2 * sizeMultiplier
     ctx.fillStyle = '#DC143C'  // 深红色羽毛
     ctx.shadowColor = '#DC143C'
-    ctx.shadowBlur = 6
+    ctx.shadowBlur = 6 * sizeMultiplier
     ctx.beginPath()
-    ctx.moveTo(-10 + featherWave, -20)
-    ctx.quadraticCurveTo(0 + featherWave, -32, 10 + featherWave, -20)
-    ctx.quadraticCurveTo(0 + featherWave, -24, -10 + featherWave, -20)
+    ctx.moveTo(-10 * sizeMultiplier + featherWave, -20 * sizeMultiplier)
+    ctx.quadraticCurveTo(0 + featherWave, -32 * sizeMultiplier, 10 * sizeMultiplier + featherWave, -20 * sizeMultiplier)
+    ctx.quadraticCurveTo(0 + featherWave, -24 * sizeMultiplier, -10 * sizeMultiplier + featherWave, -20 * sizeMultiplier)
     ctx.fill()
     ctx.restore()
 
@@ -514,29 +537,29 @@ export function createRenderer(
     // 眼睛（发光效果）
     ctx.fillStyle = '#00BFFF'  // 深天蓝眼睛
     ctx.shadowColor = '#00BFFF'
-    ctx.shadowBlur = 8
+    ctx.shadowBlur = 8 * sizeMultiplier
     ctx.beginPath()
-    ctx.ellipse(-5, -6, 3.5, 2.5, 0, 0, Math.PI * 2)
-    ctx.ellipse(5, -6, 3.5, 2.5, 0, 0, Math.PI * 2)
+    ctx.ellipse(-5 * sizeMultiplier, -6 * sizeMultiplier, 3.5 * sizeMultiplier, 2.5 * sizeMultiplier, 0, 0, Math.PI * 2)
+    ctx.ellipse(5 * sizeMultiplier, -6 * sizeMultiplier, 3.5 * sizeMultiplier, 2.5 * sizeMultiplier, 0, 0, Math.PI * 2)
     ctx.fill()
     
     // 眼白高光
     ctx.fillStyle = '#FFFFFF'
     ctx.shadowBlur = 0
     ctx.beginPath()
-    ctx.arc(-4, -7, 1.2, 0, Math.PI * 2)
-    ctx.arc(6, -7, 1.2, 0, Math.PI * 2)
+    ctx.arc(-4 * sizeMultiplier, -7 * sizeMultiplier, 1.2 * sizeMultiplier, 0, Math.PI * 2)
+    ctx.arc(6 * sizeMultiplier, -7 * sizeMultiplier, 1.2 * sizeMultiplier, 0, Math.PI * 2)
     ctx.fill()
 
     // 眼眉（更锐利的表情）
     ctx.strokeStyle = '#303030'
-    ctx.lineWidth = 2
+    ctx.lineWidth = 2 * sizeMultiplier
     ctx.lineCap = 'round'
     ctx.beginPath()
-    ctx.moveTo(-9, -11)
-    ctx.lineTo(-2, -10)
-    ctx.moveTo(2, -10)
-    ctx.lineTo(9, -11)
+    ctx.moveTo(-9 * sizeMultiplier, -11 * sizeMultiplier)
+    ctx.lineTo(-2 * sizeMultiplier, -10 * sizeMultiplier)
+    ctx.moveTo(2 * sizeMultiplier, -10 * sizeMultiplier)
+    ctx.lineTo(9 * sizeMultiplier, -11 * sizeMultiplier)
     ctx.stroke()
 
     // 5. 武器 - 弓箭（增强版）
