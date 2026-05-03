@@ -109,12 +109,24 @@ export function optimizeRoute(points: RoutePoint[]): RoutePoint[] {
 export function addCustomRoute(route: CustomRoute): void {
   customRoutes.push(route)
   saveCustomRoutes()
+  
+  // 🎯 关键修复：同步到 routeLoader，确保游戏中也能看到新路线
+  import('./routeLoader').then(module => {
+    module.routeLoader.addCustomRoute(route)
+    console.log(`✅ 已同步自定义路线到 routeLoader: ${route.name}`)
+  })
 }
 
 // 清除所有自定义路线
 export function clearCustomRoutes(): void {
   customRoutes = []
   saveCustomRoutes()
+  
+  // 🎯 关键修复：同步到 routeLoader
+  import('./routeLoader').then(module => {
+    module.routeLoader.getCustomRoutes().length = 0  // 清空 routeLoader 的自定义路线
+    console.log('✅ 已清空 routeLoader 中的自定义路线')
+  })
 }
 
 // 获取当前自定义路线
