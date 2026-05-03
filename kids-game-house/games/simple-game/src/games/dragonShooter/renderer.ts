@@ -792,25 +792,147 @@ export function createRenderer(
     for (const b of state.bullets) {
       ctx.save()
       ctx.translate(b.x, b.y)
+      
+      // 🎯 计算子弹飞行方向（根据速度向量）
+      const angle = Math.atan2(b.vy || 0, b.vx || 0)
+      ctx.rotate(angle + Math.PI / 2)  // 旋转使剑尖朝前
 
-      ctx.shadowColor = COLORS.gold
-      ctx.shadowBlur = 15
-      ctx.fillStyle = COLORS.gold
+      // ========== 1. 剑气光晕（最外层）==========
+      ctx.save()
+      ctx.shadowColor = '#00FFFF'
+      ctx.shadowBlur = 20
+      ctx.fillStyle = 'rgba(0, 255, 255, 0.15)'
       ctx.beginPath()
-      ctx.arc(0, 0, 8, 0, Math.PI * 2)
+      ctx.ellipse(0, 0, 6, 28, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+
+      // ========== 2. 剑身主体（银白色金属质感）==========
+      const bladeGrad = ctx.createLinearGradient(-3, -25, 3, -25)
+      bladeGrad.addColorStop(0, '#E0E0E0')     // 左侧高光
+      bladeGrad.addColorStop(0.3, '#FFFFFF')   // 中心亮白
+      bladeGrad.addColorStop(0.7, '#C0C0C0')   // 右侧阴影
+      bladeGrad.addColorStop(1, '#A0A0A0')     // 边缘暗部
+      
+      ctx.fillStyle = bladeGrad
+      ctx.shadowColor = '#FFFFFF'
+      ctx.shadowBlur = 10
+      
+      // 绘制剑身（细长的菱形）
+      ctx.beginPath()
+      ctx.moveTo(0, -28)        // 剑尖
+      ctx.lineTo(3, -15)        // 剑身右侧
+      ctx.lineTo(2, 0)          // 剑身中部
+      ctx.lineTo(3, 15)         // 剑身下部右侧
+      ctx.lineTo(0, 20)         // 剑柄顶部
+      ctx.lineTo(-3, 15)        // 剑身下部左侧
+      ctx.lineTo(-2, 0)         // 剑身中部左侧
+      ctx.lineTo(-3, -15)       // 剑身左侧
+      ctx.closePath()
+      ctx.fill()
+      
+      // 剑身中线（增加立体感）
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(0, -26)
+      ctx.lineTo(0, 18)
+      ctx.stroke()
+
+      // ========== 3. 护手（十字形金色装饰）==========
+      ctx.fillStyle = '#FFD700'  // 金色
+      ctx.shadowColor = '#FFD700'
+      ctx.shadowBlur = 8
+      
+      // 横向护手
+      ctx.fillRect(-8, 18, 16, 3)
+      
+      // 纵向装饰
+      ctx.fillRect(-2, 16, 4, 7)
+      
+      // 护手边缘高光
+      ctx.strokeStyle = '#FFF8DC'
+      ctx.lineWidth = 1
+      ctx.strokeRect(-8, 18, 16, 3)
+
+      // ========== 4. 剑柄（深棕色皮革包裹）==========
+      const handleGrad = ctx.createLinearGradient(-2, 21, 2, 21)
+      handleGrad.addColorStop(0, '#8B4513')  // 深棕色
+      handleGrad.addColorStop(0.5, '#A0522D')  // 中棕色
+      handleGrad.addColorStop(1, '#654321')  // 暗棕色
+      
+      ctx.fillStyle = handleGrad
+      ctx.shadowBlur = 0
+      ctx.fillRect(-2.5, 21, 5, 12)
+      
+      // 剑柄纹理（缠绕的绳索）
+      ctx.strokeStyle = '#D2691E'
+      ctx.lineWidth = 1
+      for (let i = 0; i < 4; i++) {
+        const y = 22 + i * 3
+        ctx.beginPath()
+        ctx.moveTo(-2.5, y)
+        ctx.lineTo(2.5, y + 1.5)
+        ctx.stroke()
+      }
+
+      // ========== 5. 剑首（金色圆球）==========
+      ctx.fillStyle = '#FFD700'
+      ctx.shadowColor = '#FFD700'
+      ctx.shadowBlur = 6
+      ctx.beginPath()
+      ctx.arc(0, 35, 3, 0, Math.PI * 2)
+      ctx.fill()
+      
+      // 剑首高光
+      ctx.fillStyle = '#FFF8DC'
+      ctx.beginPath()
+      ctx.arc(-1, 34, 1.5, 0, Math.PI * 2)
       ctx.fill()
 
-      ctx.fillStyle = '#FFFFFF'
-      ctx.beginPath()
-      ctx.arc(-2, -2, 3, 0, Math.PI * 2)
-      ctx.fill()
+      // ========== 6. 剑气粒子特效（围绕剑身）==========
+      const time = Date.now() / 200
+      for (let i = 0; i < 3; i++) {
+        const offset = (time + i * 0.5) % 3
+        const particleY = -20 + offset * 15
+        const alpha = 1 - offset / 3
+        
+        ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.6})`
+        ctx.shadowColor = '#00FFFF'
+        ctx.shadowBlur = 8
+        ctx.beginPath()
+        ctx.arc(Math.sin(time + i) * 2, particleY, 2, 0, Math.PI * 2)
+        ctx.fill()
+      }
 
-      // 尾迹
-      const trail = ctx.createLinearGradient(0, 0, 0, 26)
-      trail.addColorStop(0, 'rgba(255, 215, 0, 0.85)')
-      trail.addColorStop(1, 'transparent')
-      ctx.fillStyle = trail
-      ctx.fillRect(-4, 0, 8, 26)
+      // ========== 7. 流光尾迹（动态拖尾）==========
+      const trailLength = 35
+      const trailGrad = ctx.createLinearGradient(0, 20, 0, 20 + trailLength)
+      trailGrad.addColorStop(0, 'rgba(0, 255, 255, 0.6)')
+      trailGrad.addColorStop(0.3, 'rgba(135, 206, 250, 0.4)')
+      trailGrad.addColorStop(0.7, 'rgba(255, 215, 0, 0.2)')
+      trailGrad.addColorStop(1, 'transparent')
+      
+      ctx.fillStyle = trailGrad
+      ctx.shadowBlur = 12
+      ctx.shadowColor = '#00FFFF'
+      
+      // 主尾迹
+      ctx.beginPath()
+      ctx.moveTo(-3, 20)
+      ctx.quadraticCurveTo(-2, 35, 0, 20 + trailLength)
+      ctx.quadraticCurveTo(2, 35, 3, 20)
+      ctx.closePath()
+      ctx.fill()
+      
+      // 侧边光效
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
+      ctx.beginPath()
+      ctx.moveTo(-1.5, 22)
+      ctx.quadraticCurveTo(-1, 32, 0, 20 + trailLength * 0.8)
+      ctx.quadraticCurveTo(1, 32, 1.5, 22)
+      ctx.closePath()
+      ctx.fill()
 
       ctx.restore()
     }
