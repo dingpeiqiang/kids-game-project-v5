@@ -50,35 +50,42 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
   if (isMobile) {
     const wrapper = document.createElement('div')
     wrapper.id = 'dragon-shooter-wrapper'
+    // 🎯 全屏覆盖，无留白 - 使用 viewport 单位确保完全填满
     wrapper.style.cssText = `
       position: fixed;
       top: 0;
       left: 0;
-      right: 0;
-      bottom: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       z-index: 1000;
       background: #000;
       overflow: hidden;
       touch-action: none;
+      margin: 0;
+      padding: 0;
     `
     
-    // 🎯 关键修复：Canvas全屏，通过CSS缩放保持宽高比
+    // 🎯 关键修复：Canvas通过CSS缩放实现最大化显示（保持宽高比）
     canvas.style.cssText = `
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      max-width: 100%;
-      max-height: 100%;
+      max-width: 100vw;
+      max-height: 100vh;
       width: auto;
       height: auto;
-      object-fit: contain;
     `
     
     wrapper.appendChild(canvas)
     document.body.appendChild(wrapper)
+    
+    // 🎯 防止移动端滚动和缩放
+    document.body.style.overflow = 'hidden'
+    document.body.style.touchAction = 'none'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+    document.body.style.height = '100%'
   } else {
     canvas.style.cssText = `display: block; width: ${CANVAS_W}px; height: ${CANVAS_H}px;`
     container.appendChild(canvas)
@@ -91,6 +98,18 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
 
   // 注册游戏结束回调（3秒后返回主界面）
   setGameOverCallback(() => {
+    // 🎯 清理移动端样式
+    if (isMobile) {
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.height = ''
+      
+      // 移除 wrapper
+      const wrapper = document.getElementById('dragon-shooter-wrapper')
+      if (wrapper) wrapper.remove()
+    }
     onEnd()
   })
 
