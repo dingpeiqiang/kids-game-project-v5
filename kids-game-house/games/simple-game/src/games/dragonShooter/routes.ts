@@ -140,11 +140,12 @@ export class RouteEditor {
   // 多条路线，当前编辑的索引
   private routes: RoutePoint[][] = []
   private currentIndex = 0
+  // 当前编辑模式：'route' | 'playerStart' | null
+  activeMode: 'route' | 'playerStart' | null = null
   isDrawing = false
   showPreview = false  // 是否显示游戏预览
   // 玩家初始位置标记（画布坐标）
   playerStartPoint: RoutePoint | null = null
-  isSettingPlayerStart = false  // 是否正在设置玩家初始位置
 
   constructor(_canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
     this.ctx = ctx
@@ -152,9 +153,17 @@ export class RouteEditor {
 
   // 开始设置玩家初始位置
   startSettingPlayerStart() {
-    this.isSettingPlayerStart = true
+    this.activeMode = 'playerStart'
     this.isDrawing = false
     console.log('🎯 开始设置玩家初始位置，点击画布指定位置')
+  }
+
+  // 退出玩家起点设置模式
+  exitPlayerStartMode() {
+    if (this.activeMode === 'playerStart') {
+      this.activeMode = null
+      console.log('❌ 退出玩家初始位置设置')
+    }
   }
 
   // 设置玩家初始位置
@@ -163,7 +172,7 @@ export class RouteEditor {
     if (x >= CANVAS_OFFSET_X && x <= CANVAS_OFFSET_X + BASE_W &&
         y >= CANVAS_OFFSET_Y && y <= CANVAS_OFFSET_Y + BASE_H) {
       this.playerStartPoint = { x, y }
-      this.isSettingPlayerStart = false
+      this.activeMode = null  // 设置完成后退出模式
       console.log(`✅ 玩家初始位置已设置: (${x.toFixed(0)}, ${y.toFixed(0)})`)
       return true
     }

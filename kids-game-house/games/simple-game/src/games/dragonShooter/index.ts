@@ -180,8 +180,8 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     },
     onSetPlayerStart: () => {
       // 切换设置玩家起点模式
-      if (routeEditorRef.current.isSettingPlayerStart) {
-        routeEditorRef.current.isSettingPlayerStart = false
+      if (routeEditorRef.current.activeMode === 'playerStart') {
+        routeEditorRef.current.exitPlayerStartMode()
         state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '❌ 已取消设置玩家起点', color: '#9E9E9E', life: 1.5, vy: -0.5, size: 24 })
       } else {
         routeEditorRef.current.startSettingPlayerStart()

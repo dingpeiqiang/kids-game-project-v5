@@ -87,10 +87,28 @@ export function createInputHandler(
       // 点击了按钮区域，直接返回
       if (btnClicked) return
 
-      // 正在设置玩家起点模式，不触发画路线
-      if (routeEditorRef.current.isSettingPlayerStart) return
+      // 根据当前模式决定行为
+      const mode = routeEditorRef.current.activeMode
 
-      // 整个画布任意位置都可以开始绘制
+      // 玩家起点模式：点击画布设置位置
+      if (mode === 'playerStart') {
+        return  // 交给 routeEdit 区域的点击处理
+      }
+
+      // 路线绘制模式
+      if (mode === 'route') {
+        routeEditorRef.current.newRoute()
+        routeEditorRef.current.addPoint(x, y)
+        state.touch.active = true
+        state.touch.startX = x
+        state.touch.startY = y
+        state.touch.currentX = x
+        state.touch.currentY = y
+        return
+      }
+
+      // 无模式：新建路线并开始绘制
+      routeEditorRef.current.newRoute()
       routeEditorRef.current.newRoute()
       routeEditorRef.current.addPoint(x, y)
       state.touch.active = true
@@ -257,9 +275,8 @@ export function createInputHandler(
       }
     }
 
-    // 如果正在设置玩家起点，且点击在游戏区域内
-    if (routeEditorRef.current.isSettingPlayerStart) {
-      // 点击在游戏区域
+    // 玩家起点模式：点击游戏区域设置位置
+    if (routeEditorRef.current.activeMode === 'playerStart') {
       if (x >= CANVAS_OFFSET_X && x <= CANVAS_OFFSET_X + BASE_W &&
           y >= CANVAS_OFFSET_Y && y <= CANVAS_OFFSET_Y + BASE_H) {
         routeEditorRef.current.setPlayerStartPoint(x, y)
@@ -292,8 +309,9 @@ export function createInputHandler(
   // 移动
   function handleMove(x: number, y: number) {
     if (state.phase === 'routeEdit') {
-      // 设置玩家起点模式下，不画路线点
-      if (state.touch.active && !routeEditorRef.current.isSettingPlayerStart) {
+      // 玩家起点模式下，不画路线点
+      if (routeEditorRef.current.activeMode === 'playerStart') return
+      if (state.touch.active) {
         routeEditorRef.current.addPoint(x, y)
       }
       return
