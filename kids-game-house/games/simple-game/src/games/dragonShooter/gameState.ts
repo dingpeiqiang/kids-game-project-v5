@@ -880,13 +880,22 @@ export function spawnDragons(state: GameState) {
     return
   }
   
-  // 如果已经达到本关最大龙数，不再生成
+  // 🎯 修复：如果已经达到本关最大龙数，不再生成
   if (aliveDragons >= state.maxDragons) {
+    // 只在第一次达到时打印日志，避免刷屏
+    if (aliveDragons === state.maxDragons && state.dragonsSpawnedInLevel < state.levelTarget) {
+      console.log(`⏸️ 已达到最大龙数 ${state.maxDragons}，等待消灭后再`)
+    }
     return
   }
   
   // 如果本关已生成的龙总数达到目标，不再生成
-  if (state.dragonsSpawnedInLevel >= state.levelTarget) return
+  if (state.dragonsSpawnedInLevel >= state.levelTarget) {
+    if (state.dragonsSpawnedInLevel === state.levelTarget && aliveDragons > 0) {
+      console.log(`⏸️ 已生成所有 ${state.levelTarget} 条龙，当前存活: ${aliveDragons}`)
+    }
+    return
+  }
 
   // 获取本关卡路线
   const allRoutes = routeLoader.getRoutesForLevel(state.level)
@@ -896,7 +905,7 @@ export function spawnDragons(state: GameState) {
   }
 
   // 调试：检查龙生成
-  console.log(`🐉 生成检查: level=${state.level}, alive=${aliveDragons}, spawned=${state.dragonsSpawnedInLevel}, target=${state.levelTarget}, max=${state.maxDragons}`)
+  console.log(`🐉 生成检查: level=${state.level}, alive=${aliveDragons}, spawned=${state.dragonsSpawnedInLevel}, target=${state.levelTarget}, max=${state.maxDragons}, routes=${allRoutes.length}`)
   
   // 根据关卡决定龙类型（elite/boss 由 LEVEL_CONFIGS.eliteChance/bossChance 控制概率）
   let type: Dragon['type'] = 'small'
@@ -909,8 +918,11 @@ export function spawnDragons(state: GameState) {
   else if (state.level >= 3 && r < 0.3) type = 'large'
   else if (state.level >= 2 && r < 0.45) type = 'medium'
 
-  // 选择路线：按已有龙的数量轮询，每条龙走不同路线
-  const route = allRoutes[state.dragons.length % allRoutes.length]
+  // 🎯 修复：使用已生成的龙数来选择路线，确保每条龙走不同路线
+  const routeIndex = state.dragonsSpawnedInLevel % allRoutes.length
+  const route = allRoutes[routeIndex]
+  
+  console.log(`🛤️ 选择路线 #${routeIndex}: ${route.name}, 点数: ${route.points.length}`)
 
   if (route.points.length < 10) return
 
