@@ -235,42 +235,62 @@ export function createInputHandler(
   }
 
   function handleRouteEditMode(x: number, y: number): boolean {
-    // 🎯 简化版：4个核心按钮
+    // 🎯 简化版：5个核心按钮 + 1个返回按钮
     const btnY = CANVAS_H - 85
     const btnH = 50
-    const btnW = 70
-    const btnGap = 10
-    const totalBtns = 4
+    const btnW = 65
+    const btnGap = 8
+    const totalBtns = 5
     const totalWidth = btnW * totalBtns + btnGap * (totalBtns - 1)
     const btnStartX = (CANVAS_W - totalWidth) / 2
+    
+    // 返回按钮（第二行）
+    const returnBtnW = 100
+    const returnBtnH = 40
+    const returnBtnY = btnY + btnH + 8
+    const returnBtnX = (CANVAS_W - returnBtnW) / 2
 
     // 点击按钮区域：阻止后续 active 设置
     if (y >= btnY && y <= btnY + btnH) {
       state.touch.active = false
       
-      // 1. 画路线（切换模式）
+      // 1. 新建路线
       if (x >= btnStartX && x < btnStartX + btnW) {
+        callbacks.onRouteEditorNew?.()
+        return true
+      }
+      
+      // 2. 画路线（切换模式）
+      if (x >= btnStartX + btnW + btnGap && x < btnStartX + (btnW + btnGap) * 2) {
         callbacks.onDrawRoute?.()
         return true
       }
       
-      // 2. 设置起点（切换模式）
-      if (x >= btnStartX + btnW + btnGap && x < btnStartX + (btnW + btnGap) * 2) {
+      // 3. 设置起点（切换模式）
+      if (x >= btnStartX + (btnW + btnGap) * 2 && x < btnStartX + (btnW + btnGap) * 3) {
         callbacks.onSetPlayerStart?.()
         return true
       }
       
-      // 3. 保存
-      if (x >= btnStartX + (btnW + btnGap) * 2 && x < btnStartX + (btnW + btnGap) * 3) {
+      // 4. 保存
+      if (x >= btnStartX + (btnW + btnGap) * 3 && x < btnStartX + (btnW + btnGap) * 4) {
         callbacks.onRouteEditorSave?.()
         return true
       }
       
-      // 4. 返回
-      if (x >= btnStartX + (btnW + btnGap) * 3 && x < btnStartX + (btnW + btnGap) * 4) {
-        callbacks.onRouteEditorReturn?.()
+      // 5. 导出
+      if (x >= btnStartX + (btnW + btnGap) * 4 && x < btnStartX + (btnW + btnGap) * 5) {
+        callbacks.onRouteEditorExport?.()
         return true
       }
+    }
+    
+    // 返回按钮（第二行）
+    if (y >= returnBtnY && y <= returnBtnY + returnBtnH &&
+        x >= returnBtnX && x <= returnBtnX + returnBtnW) {
+      state.touch.active = false
+      callbacks.onRouteEditorReturn?.()
+      return true
     }
 
     // 玩家起点模式：点击游戏区域设置位置
