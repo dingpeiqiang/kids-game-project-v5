@@ -367,9 +367,10 @@ export class RouteEditor {
   drawPlayerStartPoint() {
     if (!this.playerStartPoint) return
 
-    // playerStartPoint 存储的是画布坐标（包含偏移），绘制时需要转换为游戏区域坐标
-    const x = this.playerStartPoint.x - CANVAS_OFFSET_X
-    const y = this.playerStartPoint.y - CANVAS_OFFSET_Y
+    // 🎯 关键修复：playerStartPoint 存储的是画布坐标（包含偏移）
+    // 在编辑器模式下，没有 ctx.translate，所以直接使用画布坐标
+    const x = this.playerStartPoint.x
+    const y = this.playerStartPoint.y
     const time = Date.now()
 
     this.ctx.save()
