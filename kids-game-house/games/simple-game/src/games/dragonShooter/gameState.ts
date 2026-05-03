@@ -1028,6 +1028,21 @@ export function updateDragons(state: GameState, dt: number) {
 
     updateDragon(dragon, dt)
 
+    // 检查龙是否碰到玩家（任何一段碰到玩家都gameover）
+    if (dragon.alive) {
+      const playerY = state.playerY || BASE_H - 55
+      for (const seg of dragon.segments) {
+        const dx = seg.x - state.playerX
+        const dy = seg.y - playerY
+        if (dx * dx + dy * dy < (seg.size + 20) * (seg.size + 20)) {
+          // 碰撞！直接 gameover
+          state.phase = 'gameOver'
+          setTimeout(() => { _gameOverCallback?.() }, 2000)
+          return
+        }
+      }
+    }
+
     // 检查是否到达终点（龙头触底 = 游戏结束）
     const headPos = getDragonHeadPosition(dragon)
     if (headPos && headPos.y >= BASE_H - 20) {
