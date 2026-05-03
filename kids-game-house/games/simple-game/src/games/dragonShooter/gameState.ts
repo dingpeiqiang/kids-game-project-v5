@@ -1138,8 +1138,9 @@ export function checkLevelUp(state: GameState): boolean {
 
     // 进入关卡过渡（暂停2秒，显示大字提示）
     state.isPaused = true
+    // 🎯 关卡过渡动画（缩短等待时间）
     state.levelTransition = true
-    state.levelTransitionTimer = 2.0
+    state.levelTransitionTimer = 1.0  // 🎯 从2.0秒缩短到1.0秒
 
     // 保存本关统计
     state.levelCompleteScore = state.score
