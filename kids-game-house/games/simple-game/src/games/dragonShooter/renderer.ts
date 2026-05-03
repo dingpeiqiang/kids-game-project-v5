@@ -844,12 +844,16 @@ export function createRenderer(
       ctx.textAlign = 'left'
       for (let i = 0; i < state.activeBuffs.length; i++) {
         const buff = state.activeBuffs[i]
-        const bw = 52
-        const bh = 16
+        const bw = 60  // 🎯 增加宽度以容纳更多文字
+        const bh = 18  // 🎯 增加高度
         const bx = 8 + i * (bw + 4)
 
-        // 背景
-        ctx.fillStyle = 'rgba(0,0,0,0.65)'
+        // 🎯 最后3秒闪烁效果
+        const isExpiring = buff.remaining <= 3
+        const blinkAlpha = isExpiring ? (Math.sin(Date.now() / 100) * 0.3 + 0.7) : 1
+
+        // 背景（带闪烁）
+        ctx.fillStyle = `rgba(0,0,0,${0.65 * blinkAlpha})`
         ctx.beginPath()
         ctx.roundRect(bx, buffBarY - bh, bw, bh, 4)
         ctx.fill()
@@ -858,7 +862,7 @@ export function createRenderer(
         const ratio = Math.max(0, buff.remaining / buff.duration)
         if (ratio > 0) {
           ctx.fillStyle = buff.color
-          ctx.globalAlpha = 0.5
+          ctx.globalAlpha = 0.5 * blinkAlpha
           ctx.beginPath()
           ctx.roundRect(bx + 1, buffBarY - bh + 1, (bw - 2) * ratio, bh - 2, 3)
           ctx.fill()
@@ -867,15 +871,23 @@ export function createRenderer(
 
         // 图标
         ctx.fillStyle = '#fff'
-        ctx.font = '10px sans-serif'
+        ctx.font = '12px sans-serif'  // 🎯 增大图标
         ctx.textBaseline = 'middle'
-        ctx.fillText(buff.icon, bx + 3, buffBarY - bh / 2)
+        ctx.fillText(buff.icon, bx + 4, buffBarY - bh / 2)
 
-        // 剩余秒数
-        ctx.fillStyle = '#fff'
+        // 🎯 道具名称缩写（前2个字符）
+        ctx.fillStyle = `rgba(255,255,255,${0.8 * blinkAlpha})`
         ctx.font = 'bold 9px sans-serif'
+        ctx.textAlign = 'center'
+        const shortName = buff.name.substring(0, 2)
+        ctx.fillText(shortName, bx + 20, buffBarY - bh / 2)
+
+        // 🎯 剩余秒数（整数，最后3秒红色闪烁）
+        const remainingSecs = Math.ceil(buff.remaining)
+        ctx.fillStyle = isExpiring ? '#FF4444' : '#fff'
+        ctx.font = 'bold 11px sans-serif'  // 🎯 增大数字
         ctx.textAlign = 'right'
-        ctx.fillText(buff.remaining.toFixed(1) + 's', bx + bw - 3, buffBarY - bh / 2)
+        ctx.fillText(`${remainingSecs}s`, bx + bw - 4, buffBarY - bh / 2)
         ctx.textAlign = 'left'
 
         // 层数
