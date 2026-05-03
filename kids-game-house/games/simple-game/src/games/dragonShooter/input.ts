@@ -97,7 +97,10 @@ export function createInputHandler(
 
       // 路线绘制模式
       if (mode === 'route') {
-        routeEditorRef.current.newRoute()
+        // 🎯 修复：只在没有路线时才新建，否则继续在当前路线上绘制
+        if (routeEditorRef.current.getRouteCount() === 0) {
+          routeEditorRef.current.newRoute()
+        }
         routeEditorRef.current.addPoint(x, y)
         state.touch.active = true
         state.touch.startX = x
@@ -222,13 +225,19 @@ export function createInputHandler(
   }
 
   function handleRouteEditMode(x: number, y: number): boolean {
-    const btnY = CANVAS_H - 80
-    const btnH = 50
-    const btnW = 55  // 必须与 renderer.ts 一致！
-    const btnGap = 3
-    // 8个按钮：新建 清除 保存 优化 预览 画路线 玩家起点 导出
-    const totalBtns = 9  // 🎯 修复：改为9个按钮（增加返回按钮）
-    const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
+    const btnY = CANVAS_H - 85
+    const btnH = 45
+    const btnW = 52
+    const btnGap = 4
+    const groupGap = 12
+    
+    // 计算分组位置（与 renderer.ts 保持一致）
+    const group1Width = btnW * 3 + btnGap * 2
+    const group2Width = btnW * 3 + btnGap * 2
+    const totalWidth = group1Width + groupGap + group2Width + groupGap + (btnW * 3 + btnGap * 2)
+    const btnStartX = (CANVAS_W - totalWidth) / 2
+    const group2Start = btnStartX + group1Width + groupGap
+    const group3Start = group2Start + group2Width + groupGap
 
     console.log('🔍 handleRouteEditMode:', {
       x: Math.round(x), y: Math.round(y),
@@ -240,6 +249,8 @@ export function createInputHandler(
     // 点击按钮区域：阻止后续 active 设置，清除按钮状态
     if (y >= btnY && y <= btnY + btnH) {
       state.touch.active = false
+      
+      // 🎯 第一组：路线管理
       if (x >= btnStartX && x < btnStartX + btnW) {
         callbacks.onRouteEditorNew?.()
         return true
@@ -252,28 +263,31 @@ export function createInputHandler(
         callbacks.onRouteEditorSave?.()
         return true
       }
-      if (x >= btnStartX + (btnW + btnGap) * 3 && x < btnStartX + (btnW + btnGap) * 4) {
+      
+      // 🎯 第二组：路线优化
+      if (x >= group2Start && x < group2Start + btnW) {
         callbacks.onRouteEditorOptimize?.()
         return true
       }
-      if (x >= btnStartX + (btnW + btnGap) * 4 && x < btnStartX + (btnW + btnGap) * 5) {
+      if (x >= group2Start + btnW + btnGap && x < group2Start + (btnW + btnGap) * 2) {
         callbacks.onRouteEditorPreview?.()
         return true
       }
-      if (x >= btnStartX + (btnW + btnGap) * 5 && x < btnStartX + (btnW + btnGap) * 6) {
+      if (x >= group2Start + (btnW + btnGap) * 2 && x < group2Start + (btnW + btnGap) * 3) {
         callbacks.onDrawRoute?.()
         return true
       }
-      if (x >= btnStartX + (btnW + btnGap) * 6 && x < btnStartX + (btnW + btnGap) * 7) {
+      
+      // 🎯 第三组：高级功能
+      if (x >= group3Start && x < group3Start + btnW) {
         callbacks.onSetPlayerStart?.()
         return true
       }
-      if (x >= btnStartX + (btnW + btnGap) * 7 && x < btnStartX + (btnW + btnGap) * 8) {
+      if (x >= group3Start + btnW + btnGap && x < group3Start + (btnW + btnGap) * 2) {
         callbacks.onRouteEditorExport?.()
         return true
       }
-      // 🎯 返回按钮（第9个按钮）
-      if (x >= btnStartX + (btnW + btnGap) * 8 && x < btnStartX + (btnW + btnGap) * 9) {
+      if (x >= group3Start + (btnW + btnGap) * 2 && x < group3Start + (btnW + btnGap) * 3) {
         callbacks.onRouteEditorReturn?.()
         return true
       }

@@ -1047,90 +1047,115 @@ export function createRenderer(
     // 🎯 绘制玩家起点标记（如果有设置）
     routeEditor.drawPlayerStartPoint()
 
-    // 按钮区域 - 9个按钮：新建 清除 保存 优化 预览 画路线 玩家起点 导出 返回
-    const btnY = CANVAS_H - 80
-    const btnH = 50
-    const btnW = 55
-    const btnGap = 3
+    // 🎯 UI重构：按钮区域 - 9个按钮分组布局
+    const btnY = CANVAS_H - 85
+    const btnH = 45
+    const btnW = 52
+    const btnGap = 4
+    const groupGap = 12  // 组间距
     const totalBtns = 9
-    const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
+    
+    // 计算总宽度（3组：3+3+3）
+    const group1Width = btnW * 3 + btnGap * 2
+    const group2Width = btnW * 3 + btnGap * 2
+    const group3Width = btnW * 3 + btnGap * 2
+    const totalWidth = group1Width + groupGap + group2Width + groupGap + group3Width
+    const btnStartX = (CANVAS_W - totalWidth) / 2
+    
+    // 辅助函数：绘制带圆角和阴影的按钮
+    function drawButton(x: number, y: number, w: number, h: number, color: string, text: string, isActive: boolean = false) {
+      ctx.save()
+      
+      // 按钮背景（圆角矩形）
+      ctx.fillStyle = color
+      if (isActive) {
+        // 激活状态：添加光晕效果
+        ctx.shadowColor = color
+        ctx.shadowBlur = 15
+      } else {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)'
+        ctx.shadowBlur = 5
+        ctx.shadowOffsetY = 2
+      }
+      
+      // 绘制圆角矩形
+      const radius = 8
+      ctx.beginPath()
+      ctx.moveTo(x + radius, y)
+      ctx.lineTo(x + w - radius, y)
+      ctx.quadraticCurveTo(x + w, y, x + w, y + radius)
+      ctx.lineTo(x + w, y + h - radius)
+      ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
+      ctx.lineTo(x + radius, y + h)
+      ctx.quadraticCurveTo(x, y + h, x, y + h - radius)
+      ctx.lineTo(x, y + radius)
+      ctx.quadraticCurveTo(x, y, x + radius, y)
+      ctx.closePath()
+      ctx.fill()
+      
+      // 按钮文字
+      ctx.shadowColor = 'transparent'
+      ctx.shadowBlur = 0
+      ctx.shadowOffsetY = 0
+      ctx.fillStyle = isActive && text.includes('起点') ? '#000' : '#FFFFFF'
+      ctx.font = 'bold 10px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(text, x + w / 2, y + h / 2 + 1)
+      
+      ctx.restore()
+    }
 
     // 当前模式指示器
     const modeText = routeEditor.activeMode === 'route' ? '✏️ 画路线中' :
                      routeEditor.activeMode === 'playerStart' ? '🎯 设置起点中' : ''
     if (modeText) {
+      ctx.save()
       ctx.fillStyle = routeEditor.activeMode === 'route' ? '#9C27B0' : '#2E7D32'
-      ctx.fillRect(CANVAS_W / 2 - 60, 50, 120, 28)
+      ctx.shadowColor = ctx.fillStyle
+      ctx.shadowBlur = 10
+      const indicatorW = 140
+      const indicatorH = 32
+      const radius = 16
+      ctx.beginPath()
+      ctx.moveTo(CANVAS_W / 2 - indicatorW / 2 + radius, 45)
+      ctx.lineTo(CANVAS_W / 2 + indicatorW / 2 - radius, 45)
+      ctx.quadraticCurveTo(CANVAS_W / 2 + indicatorW / 2, 45, CANVAS_W / 2 + indicatorW / 2, 45 + radius)
+      ctx.lineTo(CANVAS_W / 2 + indicatorW / 2, 45 + indicatorH - radius)
+      ctx.quadraticCurveTo(CANVAS_W / 2 + indicatorW / 2, 45 + indicatorH, CANVAS_W / 2 + indicatorW / 2 - radius, 45 + indicatorH)
+      ctx.lineTo(CANVAS_W / 2 - indicatorW / 2 + radius, 45 + indicatorH)
+      ctx.quadraticCurveTo(CANVAS_W / 2 - indicatorW / 2, 45 + indicatorH, CANVAS_W / 2 - indicatorW / 2, 45 + indicatorH - radius)
+      ctx.lineTo(CANVAS_W / 2 - indicatorW / 2, 45 + radius)
+      ctx.quadraticCurveTo(CANVAS_W / 2 - indicatorW / 2, 45, CANVAS_W / 2 - indicatorW / 2 + radius, 45)
+      ctx.closePath()
+      ctx.fill()
+      
+      ctx.shadowBlur = 0
       ctx.fillStyle = '#FFFFFF'
-      ctx.font = 'bold 12px sans-serif'
+      ctx.font = 'bold 13px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(modeText, CANVAS_W / 2, 70)
-      ctx.textAlign = 'left'
+      ctx.fillText(modeText, CANVAS_W / 2, 45 + indicatorH / 2 + 1)
+      ctx.restore()
     }
 
-    // 新建按钮
-    ctx.fillStyle = routeEditor.activeMode === 'route' && routeEditor.routes.length === 0 ? '#BB6BD9' : '#9C27B0'
-    ctx.fillRect(btnStartX, btnY, btnW, btnH)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = 'bold 11px sans-serif'
-    ctx.fillText('➕ 新建', btnStartX + btnW / 2, btnY + 32)
-
-    // 清除按钮
-    ctx.fillStyle = '#FF6B6B'
-    ctx.fillRect(btnStartX + btnW + btnGap, btnY, btnW, btnH)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('🗑️ 清除', btnStartX + btnW + btnGap + btnW / 2, btnY + 32)
-
-    // 保存按钮
-    ctx.fillStyle = '#4CAF50'
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 2, btnY, btnW, btnH)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('💾 保存', btnStartX + (btnW + btnGap) * 2 + btnW / 2, btnY + 32)
-
-    // 优化按钮
-    ctx.fillStyle = '#FF9800'
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 3, btnY, btnW, btnH)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('✨ 优化', btnStartX + (btnW + btnGap) * 3 + btnW / 2, btnY + 32)
-
-    // 预览按钮
-    ctx.fillStyle = '#00BCD4'
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 4, btnY, btnW, btnH)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('👁️ 预览', btnStartX + (btnW + btnGap) * 4 + btnW / 2, btnY + 32)
-
-    // 画路线按钮（选中时高亮）
-    const isRouteMode = routeEditor.activeMode === 'route'
-    ctx.fillStyle = isRouteMode ? '#E040FB' : '#7B1FA2'
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 5, btnY, btnW, btnH)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('✏️ 画路线', btnStartX + (btnW + btnGap) * 5 + btnW / 2, btnY + 32)
-
-    // 玩家起点按钮（选中时高亮）
-    const isPlayerStartMode = routeEditor.activeMode === 'playerStart'
-    ctx.fillStyle = isPlayerStartMode ? '#00FF88' : '#2E7D32'
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 6, btnY, btnW, btnH)
-    ctx.fillStyle = isPlayerStartMode ? '#000' : '#FFFFFF'
-    ctx.font = 'bold 11px sans-serif'  // 🎯 确保字体一致
-    ctx.fillText('🎯 起点', btnStartX + (btnW + btnGap) * 6 + btnW / 2, btnY + 32)
+    // 🎯 第一组：路线管理（新建、清除、保存）
+    drawButton(btnStartX, btnY, btnW, btnH, '#9C27B0', '➕ 新建')
+    drawButton(btnStartX + btnW + btnGap, btnY, btnW, btnH, '#FF6B6B', '🗑️ 清除')
+    drawButton(btnStartX + (btnW + btnGap) * 2, btnY, btnW, btnH, '#4CAF50', '💾 保存')
     
-    // 🎯 修复：重置字体和颜色，避免影响后续按钮
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = 'bold 11px sans-serif'
-
-    // 导出按钮
-    ctx.fillStyle = '#2196F3'
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 7, btnY, btnW, btnH)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = 'bold 11px sans-serif'
-    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 7 + btnW / 2, btnY + 32)
-
-    // 🎯 返回按钮（第9个按钮）
-    ctx.fillStyle = '#FF5722'
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 8, btnY, btnW, btnH)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = 'bold 11px sans-serif'
-    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 8 + btnW / 2, btnY + 32)
+    // 🎯 第二组：路线优化（优化、预览、画路线）
+    const group2Start = btnStartX + group1Width + groupGap
+    drawButton(group2Start, btnY, btnW, btnH, '#FF9800', '✨ 优化')
+    drawButton(group2Start + btnW + btnGap, btnY, btnW, btnH, '#00BCD4', '👁️ 预览')
+    const isRouteMode = routeEditor.activeMode === 'route'
+    drawButton(group2Start + (btnW + btnGap) * 2, btnY, btnW, btnH, isRouteMode ? '#E040FB' : '#7B1FA2', '✏️ 画路线', isRouteMode)
+    
+    // 🎯 第三组：高级功能（起点、导出、返回）
+    const group3Start = group2Start + group2Width + groupGap
+    const isPlayerStartMode = routeEditor.activeMode === 'playerStart'
+    drawButton(group3Start, btnY, btnW, btnH, isPlayerStartMode ? '#00FF88' : '#2E7D32', '🎯 起点', isPlayerStartMode)
+    drawButton(group3Start + btnW + btnGap, btnY, btnW, btnH, '#2196F3', '📥 导出')
+    drawButton(group3Start + (btnW + btnGap) * 2, btnY, btnW, btnH, '#FF5722', '⬅️ 返回')
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.font = '11px sans-serif'
