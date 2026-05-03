@@ -1013,13 +1013,14 @@ export function createRenderer(
     ctx.fillText('在下方区域按下并拖动鼠标绘制', CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y + 90)
     ctx.fillText('保存后路线会保留，可继续编辑', CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y + 110)
 
-    if (routeEditor.getCurrentPoints().length > 0) {
-      routeEditor.drawCurrentRoute()
-    }
-
-    // 如果启用预览，显示游戏场景效果
+    // 如果启用预览，先显示游戏场景效果（作为背景）
     if (routeEditor.showPreview) {
       routeEditor.drawGamePreview()
+    }
+
+    // 然后绘制路线（在预览背景之上）
+    if (routeEditor.getCurrentPoints().length > 0) {
+      routeEditor.drawCurrentRoute()
     }
 
     // 按钮区域 - 7个按钮：新建 清除 保存 优化 预览 导出 返回
