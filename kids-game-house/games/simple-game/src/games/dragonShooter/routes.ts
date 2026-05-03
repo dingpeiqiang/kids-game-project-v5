@@ -235,13 +235,28 @@ export class RouteEditor {
   }
 
   addPoint(x: number, y: number) {
-    if (!this.isDrawing) return
+    if (!this.isDrawing) {
+      console.log('⚠️ addPoint 被拒绝：isDrawing = false')
+      return
+    }
     const route = this.routes[this.currentIndex]
+    if (!route) {
+      console.log('⚠️ addPoint 被拒绝：route 不存在')
+      return
+    }
     const last = route[route.length - 1]
-    // 距离阈值从 4 降为 1，大幅降低迟钝感；点数上限 600 防止过长路线导致卡顿
-    if (last && Math.hypot(x - last.x, y - last.y) < 1) return
-    if (route.length >= 600) return
+    // 距离阈值从 1 改为 4，提升绘制流畅度；点数上限 600
+    const DISTANCE_THRESHOLD = 4
+    if (last && Math.hypot(x - last.x, y - last.y) < DISTANCE_THRESHOLD) {
+      console.log('⚠️ addPoint 被拒绝：距离太近', Math.hypot(x - last.x, y - last.y).toFixed(2))
+      return
+    }
+    if (route.length >= 600) {
+      console.log('⚠️ 路线已达上限 600 点')
+      return
+    }
     route.push({ x, y })
+    // console.log('✅ 添加点，当前路线:', route.length, '点')
   }
 
   loadPreviewPoints(points: RoutePoint[]) {

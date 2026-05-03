@@ -111,7 +111,7 @@ export function createInputHandler(
           }
         }
         routeEditorRef.current.addPoint(x, y)
-        console.log('✅ 添加点，路线数:', routeEditorRef.current.getRouteCount(), '当前路线点数:', routeEditorRef.current.getCurrentRoutePoints?.()?.length || 0)
+        console.log('✅ 添加点，路线数:', routeEditorRef.current.getRouteCount(), '当前路线点数:', routeEditorRef.current.getCurrentPoints().length)
         state.touch.active = true
         state.touch.startX = x
         state.touch.startY = y
