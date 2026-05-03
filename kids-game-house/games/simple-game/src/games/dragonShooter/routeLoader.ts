@@ -135,14 +135,33 @@ export class RouteLoader {
 
   private async loadSingleRoute(url: string): Promise<CustomRoute[] | null> {
     try {
+      console.log(`🔍 加载路线文件: ${url}`)
       const response = await fetch(url, { cache: 'no-cache' })
-      if (!response.ok) return null
+      if (!response.ok) {
+        console.error(`❌ 加载失败: ${response.status} ${response.statusText}`)
+        return null
+      }
       const data: any = await response.json()
+      console.log(`📄 解析数据:`, {
+        hasRoute: !!data.route,
+        hasRoutes: !!data.routes,
+        routesCount: data.routes?.length || 0
+      })
       // 兼容两种格式：单条 {"route": {...}} 或多条 {"routes": [...]}
-      if (data.route) return [data.route]
-      if (data.routes && Array.isArray(data.routes)) return data.routes
+      if (data.route) {
+        console.log(`✅ 单条路线格式`)
+        return [data.route]
+      }
+      if (data.routes && Array.isArray(data.routes)) {
+        console.log(`✅ 多条路线格式: ${data.routes.length} 条`)
+        return data.routes
+      }
+      console.warn(`⚠️ 未知的数据格式`)
       return null
-    } catch { return null }
+    } catch (error) {
+      console.error(`❌ 加载异常:`, error)
+      return null
+    }
   }
 
   // 程序生成路线（无 JSON 文件时回退）
