@@ -230,6 +230,13 @@ export function createInputHandler(
     const totalBtns = 8
     const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
+    console.log('🔍 handleRouteEditMode:', {
+      x: Math.round(x), y: Math.round(y),
+      btnStartX: Math.round(btnStartX),
+      btnY, btnH, btnW,
+      inBtnArea: y >= btnY && y <= btnY + btnH
+    })
+
     // 点击按钮区域：阻止后续 active 设置，清除按钮状态
     if (y >= btnY && y <= btnY + btnH) {
       state.touch.active = false
