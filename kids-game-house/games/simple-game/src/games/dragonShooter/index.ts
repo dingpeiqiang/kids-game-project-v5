@@ -308,7 +308,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       // 玩家移动和射击角度控制
       if (state.touch.active) {
         const touchX = state.touch.currentX
-        const touchY = state.touch.startY
+        const touchY = state.touch.currentY  // 🎯 修复：使用当前Y坐标，实时跟随鼠标位置
         const isOnPlayer = (state.touch as any).isOnPlayer === true  // 是否选中玩家
         
         // 判断玩家是否在底部区域（Y > BASE_H * 0.7）

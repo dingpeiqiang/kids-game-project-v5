@@ -92,6 +92,7 @@ export function createInputHandler(
       state.touch.startX = x
       state.touch.startY = y
       state.touch.currentX = x
+      state.touch.currentY = y  // 🎯 新增：初始化当前Y坐标
       return
     }
 
@@ -177,6 +178,7 @@ export function createInputHandler(
       state.touch.startX = x
       state.touch.startY = y
       state.touch.currentX = x
+      state.touch.currentY = y  // 🎯 新增：初始化当前Y坐标
       state.touch.startTime = Date.now()
 
       // 标记是否选中玩家（用于后续移动逻辑）
@@ -270,6 +272,7 @@ export function createInputHandler(
 
     if (!state.touch.active) return
     state.touch.currentX = x
+    state.touch.currentY = y  // 🎯 新增：实时更新当前Y坐标
   }
 
   // 抬起

@@ -346,6 +346,7 @@ export interface TouchState {
   startX: number
   startY: number
   currentX: number
+  currentY: number  // 🎯 新增：当前Y坐标，用于实时跟随鼠标位置
   startTime: number
 }
 
