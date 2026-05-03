@@ -331,8 +331,8 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
   const levelBonus = Math.min(3, Math.floor((level - 1) / 3))
   fixedAttachCount += levelBonus
   
-  // 3. 保底机制：至少1个道具（即使是最小的龙）
-  fixedAttachCount = Math.max(1, fixedAttachCount)
+  // 3. 🎯 保底机制：至少3个道具（确保每条龙都有足够的道具掉落）
+  fixedAttachCount = Math.max(3, fixedAttachCount)
   
   console.log(`🎁 关卡 ${level}, 龙类型: ${type}, 固定道具数: ${fixedAttachCount} (基础 + 关卡加成${levelBonus})`)
 

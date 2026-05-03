@@ -37,37 +37,68 @@ export function createRenderer(
     ctx.restore()
   }
 
-  // ========== 路线轨迹 ==========
+  // ========== 路线轨迹（offscreen canvas 缓存，避免每帧重绘所有点） ==========
+  const _routeCache = new Map<string, HTMLCanvasElement>()
+
+  function getRouteCacheKey(route: any): string {
+    return `${route.id || ''}_${route.points?.length || 0}`
+  }
+
   function drawRouteTrail(dragon: Dragon) {
     const route = dragon.routeFollower['route']
     if (!route || !route.points || route.points.length < 2) return
 
-    // 路线颜色和龙的颜色一致（shiftHue 后的），透明度降低
     const headColor = dragon.segments[0]?.color || '#FFD700'
-    ctx.save()
-    ctx.strokeStyle = headColor + '4D'  // 4D ≈ 30% opacity
-    ctx.lineWidth = 2.5
-    ctx.setLineDash([5, 5])
-    ctx.shadowColor = headColor
-    ctx.shadowBlur = 6
+    const cacheKey = getRouteCacheKey(route)
 
-    ctx.beginPath()
-    ctx.moveTo(route.points[0].x, route.points[0].y)
+    let cached = _routeCache.get(cacheKey)
+    // 缓存未命中或路线变化时重新渲染
+    if (!cached) {
+      const bounds = getRouteBounds(route.points)
+      const pad = 10
+      cached = document.createElement('canvas')
+      cached.width = Math.ceil(bounds.w + pad * 2)
+      cached.height = Math.ceil(bounds.h + pad * 2)
+      const cctx = cached.getContext('2d')!
 
-    for (let i = 1; i < route.points.length; i++) {
-      ctx.lineTo(route.points[i].x, route.points[i].y)
+      cctx.strokeStyle = headColor + '4D'
+      cctx.lineWidth = 2.5
+      cctx.setLineDash([5, 5])
+      cctx.shadowColor = headColor
+      cctx.shadowBlur = 6
+      cctx.beginPath()
+      cctx.moveTo(route.points[0].x - bounds.minX + pad, route.points[0].y - bounds.minY + pad)
+      for (let i = 1; i < route.points.length; i++) {
+        cctx.lineTo(route.points[i].x - bounds.minX + pad, route.points[i].y - bounds.minY + pad)
+      }
+      cctx.stroke()
+      ;(cached as any)._bounds = bounds
+      ;(cached as any)._pad = pad
+      _routeCache.set(cacheKey, cached)
     }
 
-    ctx.stroke()
-    ctx.restore()
+    const b = (cached as any)._bounds as { minX: number; minY: number; w: number; h: number }
+    const p = (cached as any)._pad as number
+    ctx.drawImage(cached, b.minX - p, b.minY - p)
   }
 
-  // ========== 龙 ==========
+  function getRouteBounds(points: { x: number; y: number }[]) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const p of points) {
+      if (p.x < minX) minX = p.x
+      if (p.y < minY) minY = p.y
+      if (p.x > maxX) maxX = p.x
+      if (p.y > maxY) maxY = p.y
+    }
+    return { minX, minY, w: maxX - minX, h: maxY - minY }
+  }
+
+  // ========== 龙（性能优化版） ==========
+  let _frameTime = 0
+
   function drawDragon(dragon: Dragon) {
     if (!dragon.alive) return
-
-    // dragon.segments 是游戏坐标，和子弹/道具一样
-    // 主渲染循环（1001行）已有 ctx.translate(CANVAS_OFFSET_X, CANVAS_OFFSET_Y)
+    _frameTime = Date.now() // 每帧缓存一次时间
     for (let i = dragon.segments.length - 1; i >= 0; i--) {
       const seg = dragon.segments[i]
       drawDragonSegment(seg, seg.hp, seg.maxHp, dragon.type, dragon.slowed, dragon._isBoosting)
@@ -78,214 +109,138 @@ export function createRenderer(
     ctx.save()
     ctx.translate(seg.x, seg.y)
 
-    const config = DRAGON_CONFIGS[type]
     const isRetracting = (seg as any)._isRetracting || false
     const hpRatio = dragonMaxHp > 0 ? dragonHp / dragonMaxHp : 1
-    const t = Date.now()
-
-    // --- 基础描边 + 光晕 ---
-    ctx.shadowColor = seg.color
-    ctx.shadowBlur = type === 'boss' ? 22 : 12
+    const t = _frameTime
+    const s = seg.size
 
     // --- 身体节段（非龙头） ---
     if (!seg.isHead) {
-      // 受伤闪烁：血量低时白色闪烁
       const damagedFlash = hpRatio < 0.3 ? (Math.sin(t * 0.008) * 0.5 + 0.5) * 0.6 : 0
 
-      // 径向渐变（3D 球形感）
-      const grad = ctx.createRadialGradient(
-        -seg.size * 0.25, -seg.size * 0.25, seg.size * 0.05,
-        0, 0, seg.size
-      )
+      // 🎯 性能：仅龙头/BOSS/受伤时使用 shadowBlur
+      const needShadow = type === 'boss' || hpRatio < 0.3
+      if (needShadow) { ctx.shadowColor = seg.color; ctx.shadowBlur = type === 'boss' ? 18 : 8 }
+
+      // 径向渐变（保留3D效果但减少一次 save/restore）
+      const grad = ctx.createRadialGradient(-s * 0.25, -s * 0.25, s * 0.05, 0, 0, s)
       if (damagedFlash > 0) {
-        grad.addColorStop(0, '#FFFFFF')
-        grad.addColorStop(0.5, lightenColor(seg.color, 30))
-        grad.addColorStop(1, lightenColor(seg.color, -20))
+        grad.addColorStop(0, '#FFFFFF'); grad.addColorStop(0.5, lightenColor(seg.color, 30)); grad.addColorStop(1, lightenColor(seg.color, -20))
       } else {
-        grad.addColorStop(0, lightenColor(seg.color, 50))
-        grad.addColorStop(0.45, seg.color)
-        grad.addColorStop(1, lightenColor(seg.color, -30))
+        grad.addColorStop(0, lightenColor(seg.color, 50)); grad.addColorStop(0.45, seg.color); grad.addColorStop(1, lightenColor(seg.color, -30))
       }
       ctx.fillStyle = grad
-      ctx.beginPath()
-      ctx.arc(0, 0, seg.size, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill()
 
-      // 高光叠加层（左上白色椭圆）
-      ctx.save()
-      ctx.globalAlpha = 0.45
-      const hlGrad = ctx.createRadialGradient(
-        -seg.size * 0.3, -seg.size * 0.3, 0,
-        -seg.size * 0.2, -seg.size * 0.2, seg.size * 0.55
-      )
-      hlGrad.addColorStop(0, 'rgba(255,255,255,0.9)')
-      hlGrad.addColorStop(1, 'rgba(255,255,255,0)')
-      ctx.fillStyle = hlGrad
-      ctx.beginPath()
-      ctx.arc(0, 0, seg.size, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
+      // 🎯 性能：高光用简单白色半透明圆代替渐变（省掉 createRadialGradient + nested save/restore）
+      ctx.shadowBlur = 0
+      ctx.globalAlpha = 0.35
+      ctx.fillStyle = '#FFFFFF'
+      ctx.beginPath(); ctx.arc(-s * 0.3, -s * 0.3, s * 0.35, 0, Math.PI * 2); ctx.fill()
+      ctx.globalAlpha = 1
 
-      // 道具节段专属光环（不断脉冲）
+      // 道具节段专属光环（去掉嵌套 save/restore，手动恢复状态）
       if (seg.attachedPowerUp) {
         const pulseRing = 1 + Math.sin(t / 200) * 0.12
         const glowCfg = POWERUP_SEGMENT_COLORS[seg.attachedPowerUp] as unknown as { glowColor: string } | undefined
-        ctx.save()
         ctx.strokeStyle = glowCfg?.glowColor ?? '#FFFFFF'
         ctx.lineWidth = 2.5
         ctx.globalAlpha = 0.5 + Math.sin(t / 200) * 0.3
         ctx.shadowColor = glowCfg?.glowColor ?? '#FFFFFF'
-        ctx.shadowBlur = 12
-        ctx.beginPath()
-        ctx.arc(0, 0, (seg.size + 5) * pulseRing, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.restore()
+        ctx.shadowBlur = 10
+        ctx.beginPath(); ctx.arc(0, 0, (s + 5) * pulseRing, 0, Math.PI * 2); ctx.stroke()
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0
       }
 
-      // 龙纹（精英/BOSS 有鳞片环）
+      // 龙纹
       if (seg.hasPattern && !seg.attachedPowerUp) {
-        ctx.strokeStyle = `rgba(255,255,255,0.25)`
-        ctx.lineWidth = 1.5
-        for (let r = 0.4; r < 0.95; r += 0.2) {
-          ctx.beginPath()
-          ctx.arc(0, 0, seg.size * r, 0, Math.PI * 2)
-          ctx.stroke()
-        }
+        ctx.strokeStyle = `rgba(255,255,255,0.25)`; ctx.lineWidth = 1.5
+        for (let r = 0.4; r < 0.95; r += 0.2) { ctx.beginPath(); ctx.arc(0, 0, s * r, 0, Math.PI * 2); ctx.stroke() }
       }
 
-      // 减速冰霜效果
+      // 减速冰霜
       if (isSlowed) {
-        ctx.strokeStyle = 'rgba(135, 206, 235, 0.7)'
-        ctx.lineWidth = 2
-        ctx.setLineDash([4, 4])
-        ctx.beginPath()
-        ctx.arc(0, 0, seg.size + 4, 0, Math.PI * 2)
-        ctx.stroke()
+        ctx.strokeStyle = 'rgba(135, 206, 235, 0.7)'; ctx.lineWidth = 2
+        ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(0, 0, s + 4, 0, Math.PI * 2); ctx.stroke()
         ctx.setLineDash([])
       }
 
-      // 加速火焰拖尾特效
+      // 加速火焰拖尾（去掉嵌套 save/restore）
       if (isBoosting) {
-        const boostPulse = Math.sin(t * 0.015) * 0.3 + 0.7
-        const boostGrad = ctx.createRadialGradient(0, 0, seg.size * 0.5, 0, 0, seg.size * 2)
-        boostGrad.addColorStop(0, `rgba(255, 100, 0, ${boostPulse * 0.6})`)
-        boostGrad.addColorStop(0.5, `rgba(255, 50, 0, ${boostPulse * 0.3})`)
-        boostGrad.addColorStop(1, 'rgba(255, 0, 0, 0)')
-        ctx.fillStyle = boostGrad
-        ctx.beginPath()
-        ctx.arc(0, 0, seg.size * 1.8, 0, Math.PI * 2)
-        ctx.fill()
-
-        ctx.save()
-        ctx.strokeStyle = `rgba(255, 150, 0, ${boostPulse * 0.9})`
-        ctx.lineWidth = 3
-        ctx.shadowColor = '#FF6600'
-        ctx.shadowBlur = 15
-        ctx.beginPath()
-        ctx.arc(0, 0, seg.size + 5, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.restore()
+        const bp = Math.sin(t * 0.015) * 0.3 + 0.7
+        const bg = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 2)
+        bg.addColorStop(0, `rgba(255, 100, 0, ${bp * 0.6})`); bg.addColorStop(0.5, `rgba(255, 50, 0, ${bp * 0.3})`); bg.addColorStop(1, 'rgba(255, 0, 0, 0)')
+        ctx.fillStyle = bg
+        ctx.beginPath(); ctx.arc(0, 0, s * 1.8, 0, Math.PI * 2); ctx.fill()
+        ctx.strokeStyle = `rgba(255, 150, 0, ${bp * 0.9})`; ctx.lineWidth = 3
+        ctx.shadowColor = '#FF6600'; ctx.shadowBlur = 12
+        ctx.beginPath(); ctx.arc(0, 0, s + 5, 0, Math.PI * 2); ctx.stroke()
+        ctx.shadowBlur = 0
       }
 
       // 血量数字
-      const hpText = Math.round(dragonHp).toString()
-      const fontSize = Math.max(9, seg.size * 0.48)
-      ctx.strokeStyle = 'rgba(0,0,0,0.7)'
-      ctx.lineWidth = 2
-      ctx.font = `bold ${fontSize}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.strokeText(hpText, 0, 1)
+      const ht = Math.round(dragonHp).toString()
+      const fs = Math.max(9, s * 0.48)
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 2
+      ctx.font = `bold ${fs}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      ctx.strokeText(ht, 0, 1)
       ctx.fillStyle = hpRatio < 0.3 ? '#FFFFFF' : `rgb(${Math.round(255 * (1 - hpRatio))}, ${Math.round(255 * hpRatio)}, 50)`
-      ctx.fillText(hpText, 0, 1)
+      ctx.fillText(ht, 0, 1)
+
+      ctx.restore()
+      return
     }
 
-    // --- 龙头 ---
+    // --- 龙头（保留完整视觉效果，减少嵌套save/restore） ---
     if (seg.isHead) {
-      const breathScale = 1 + Math.sin(t * 0.003) * 0.04  // 呼吸微微缩放
+      const breathScale = 1 + Math.sin(t * 0.003) * 0.04
       ctx.scale(breathScale, breathScale)
+      const s2 = s // 已缩放后的size引用
 
-      // 龙身渐变（底色）
-      const headGrad = ctx.createRadialGradient(
-        -seg.size * 0.3, -seg.size * 0.3, seg.size * 0.05,
-        0, 0, seg.size
-      )
-      headGrad.addColorStop(0, lightenColor(seg.color, 60))
-      headGrad.addColorStop(0.5, seg.color)
-      headGrad.addColorStop(1, lightenColor(seg.color, -25))
+      const headGrad = ctx.createRadialGradient(-s2 * 0.3, -s2 * 0.3, s2 * 0.05, 0, 0, s2)
+      headGrad.addColorStop(0, lightenColor(seg.color, 60)); headGrad.addColorStop(0.5, seg.color); headGrad.addColorStop(1, lightenColor(seg.color, -25))
 
-      // 回缩状态闪烁红边框
+      // 回缩状态闪烁红边框（去掉嵌套 save）
       if (isRetracting) {
-        const flashIntensity = Math.sin(t * 0.01) * 0.5 + 0.5
-        ctx.save()
-        ctx.strokeStyle = `rgba(255, 60, 60, ${flashIntensity})`
-        ctx.lineWidth = 5
-        ctx.shadowColor = '#FF4444'
-        ctx.shadowBlur = 20
-        ctx.beginPath()
-        ctx.arc(0, 0, seg.size + 6, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.restore()
+        const fi = Math.sin(t * 0.01) * 0.5 + 0.5
+        ctx.strokeStyle = `rgba(255, 60, 60, ${fi})`; ctx.lineWidth = 5
+        ctx.shadowColor = '#FF4444'; ctx.shadowBlur = 20
+        ctx.beginPath(); ctx.arc(0, 0, s2 + 6, 0, Math.PI * 2); ctx.stroke()
       }
 
       // 头部主体
       ctx.shadowBlur = 18
       ctx.fillStyle = headGrad
-      ctx.beginPath()
-      ctx.arc(0, 0, seg.size, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.beginPath(); ctx.arc(0, 0, s2, 0, Math.PI * 2); ctx.fill()
 
-      // 高光
-      ctx.save()
-      ctx.globalAlpha = 0.4
-      const shineGrad = ctx.createRadialGradient(
-        -seg.size * 0.3, -seg.size * 0.35, 0,
-        -seg.size * 0.2, -seg.size * 0.25, seg.size * 0.6
-      )
-      shineGrad.addColorStop(0, 'rgba(255,255,255,0.9)')
-      shineGrad.addColorStop(1, 'rgba(255,255,255,0)')
-      ctx.fillStyle = shineGrad
-      ctx.beginPath()
-      ctx.arc(0, 0, seg.size, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
+      // 🎯 性能：高光用简单白色半透明圆
+      ctx.globalAlpha = 0.4; ctx.fillStyle = '#FFFFFF'
+      ctx.beginPath(); ctx.arc(-s2 * 0.3, -s2 * 0.35, s2 * 0.35, 0, Math.PI * 2); ctx.fill()
+      ctx.globalAlpha = 1
 
-      // 龙鳞纹理（头部鳞片纹）
-      ctx.strokeStyle = `rgba(255,255,255,0.2)`
-      ctx.lineWidth = 1
+      // 龙鳞纹理
+      ctx.strokeStyle = `rgba(255,255,255,0.2)`; ctx.lineWidth = 1
       for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
-        const rx = Math.cos(a) * seg.size * 0.65
-        const ry = Math.sin(a) * seg.size * 0.65
-        ctx.beginPath()
-        ctx.arc(rx, ry, seg.size * 0.18, 0, Math.PI * 2)
-        ctx.stroke()
+        ctx.beginPath(); ctx.arc(Math.cos(a) * s2 * 0.65, Math.sin(a) * s2 * 0.65, s2 * 0.18, 0, Math.PI * 2); ctx.stroke()
       }
 
-      // 眼睛（带眼神光）
-      ctx.shadowBlur = 0
-      ctx.fillStyle = '#FFFFFF'
-      ctx.beginPath()
-      ctx.arc(-seg.size * 0.28, -seg.size * 0.08, seg.size * 0.22, 0, Math.PI * 2)
-      ctx.arc(seg.size * 0.28, -seg.size * 0.08, seg.size * 0.22, 0, Math.PI * 2)
-      ctx.fill()
+      // 眼睛
+      ctx.shadowBlur = 0; ctx.fillStyle = '#FFFFFF'
+      ctx.beginPath(); ctx.arc(-s2 * 0.28, -s2 * 0.08, s2 * 0.22, 0, Math.PI * 2); ctx.fill()
+      ctx.beginPath(); ctx.arc(s2 * 0.28, -s2 * 0.08, s2 * 0.22, 0, Math.PI * 2); ctx.fill()
 
-      // 眼珠（竖瞳）
-      const blink = Math.sin(t * 0.0015) > 0.97 ? 0.1 : 1  // 偶尔眨眼
+      // 眼珠（竖瞳，去掉嵌套save）
+      const blink = Math.sin(t * 0.0015) > 0.97 ? 0.1 : 1
       ctx.fillStyle = '#111111'
-      ctx.save()
-      ctx.scale(1, blink)
-      ctx.beginPath()
-      ctx.ellipse(-seg.size * 0.28, -seg.size * 0.08, seg.size * 0.08, seg.size * 0.16, 0, 0, Math.PI * 2)
-      ctx.ellipse(seg.size * 0.28, -seg.size * 0.08, seg.size * 0.08, seg.size * 0.16, 0, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.save(); ctx.scale(1, blink)
+      ctx.beginPath(); ctx.ellipse(-s2 * 0.28, -s2 * 0.08, s2 * 0.08, s2 * 0.16, 0, 0, Math.PI * 2); ctx.fill()
+      ctx.beginPath(); ctx.ellipse(s2 * 0.28, -s2 * 0.08, s2 * 0.08, s2 * 0.16, 0, 0, Math.PI * 2); ctx.fill()
       ctx.restore()
 
-      // 眼神光（高光点）
+      // 眼神光
       ctx.fillStyle = 'rgba(255,255,255,0.9)'
-      ctx.beginPath()
-      ctx.arc(-seg.size * 0.32, -seg.size * 0.14, seg.size * 0.06, 0, Math.PI * 2)
-      ctx.arc(seg.size * 0.24, -seg.size * 0.14, seg.size * 0.06, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.beginPath(); ctx.arc(-s2 * 0.32, -s2 * 0.14, s2 * 0.06, 0, Math.PI * 2); ctx.fill()
+      ctx.beginPath(); ctx.arc(s2 * 0.24, -s2 * 0.14, s2 * 0.06, 0, Math.PI * 2); ctx.fill()
 
       // 龙角
       if (seg.hasHorn) {

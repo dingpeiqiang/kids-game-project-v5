@@ -50,7 +50,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
   if (isMobile) {
     const wrapper = document.createElement('div')
     wrapper.id = 'dragon-shooter-wrapper'
-    // 🎯 全屏覆盖，无留白 - 使用 viewport 单位确保完全填满
+    // 全屏覆盖，无留白（参考 spaceShooter Phaser FIT 模式）
     wrapper.style.cssText = `
       position: fixed;
       top: 0;
@@ -64,39 +64,49 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       margin: 0;
       padding: 0;
     `
-    
-    // 🎯 关键修复：Canvas全屏，通过CSS transform scale实现最大化（类似Phaser FIT模式）
+
+    // Canvas 绝对定位，通过 transform scale + 偏移实现 FIT 模式
+    // 关键：缩放基准是游戏内容区 BASE_W×BASE_H，不是整个画布
+    // 这样游戏内容区会尽量填满屏幕，多余画布区域被 wrapper 的 overflow:hidden 裁掉
+    canvas.style.position = 'absolute'
+    canvas.style.top = '0px'
+    canvas.style.left = '0px'
+
     const updateCanvasScale = () => {
-      const windowWidth = window.innerWidth
-      const windowHeight = window.innerHeight
-      
-      // 计算缩放比例（保持宽高比，完整显示）
-      const scaleX = windowWidth / CANVAS_W
-      const scaleY = windowHeight / CANVAS_H
+      const windowWidth = window.visualViewport?.width ?? window.innerWidth
+      const windowHeight = window.visualViewport?.height ?? window.innerHeight
+
+      // 以游戏内容区为基准计算缩放（类似 Phaser Scale.FIT）
+      const scaleX = windowWidth / BASE_W
+      const scaleY = windowHeight / BASE_H
       const scale = Math.min(scaleX, scaleY)
-      
-      // 应用transform scale
-      canvas.style.transform = `translate(-50%, -50%) scale(${scale})`
+
+      // 缩放后游戏内容区尺寸
+      const scaledBaseW = BASE_W * scale
+      const scaledBaseH = BASE_H * scale
+
+      // 将画布定位到：游戏内容区在视口内居中
+      // 画布左上角 = 居中位置 - 游戏区偏移量 * scale
+      canvas.style.left = ((windowWidth - scaledBaseW) / 2 - CANVAS_OFFSET_X * scale) + 'px'
+      canvas.style.top = ((windowHeight - scaledBaseH) / 2 - CANVAS_OFFSET_Y * scale) + 'px'
+      canvas.style.transform = `scale(${scale})`
+      canvas.style.transformOrigin = '0 0'
     }
-    
-    // 初始设置
+
     updateCanvasScale()
-    
-    // 监听窗口大小变化
+    window.visualViewport?.addEventListener('resize', updateCanvasScale)
     window.addEventListener('resize', updateCanvasScale)
-    
+
     wrapper.appendChild(canvas)
     document.body.appendChild(wrapper)
-    
-    // 🎯 防止移动端滚动和缩放
+
+    // 防止移动端滚动和缩放（参考 spaceShooter）
     document.body.style.overflow = 'hidden'
     document.body.style.touchAction = 'none'
-    document.body.style.position = 'fixed'
-    document.body.style.width = '100%'
-    document.body.style.height = '100%'
-    
-    // 🎯 保存 resize 监听器引用，以便游戏结束时移除
-    ;(window as any)._dragonShooterResizeHandler = updateCanvasScale
+    ;(window as any)._dragonShooterResizeHandler = () => {
+      window.visualViewport?.removeEventListener('resize', updateCanvasScale)
+      window.removeEventListener('resize', updateCanvasScale)
+    }
   } else {
     canvas.style.cssText = `display: block; width: ${CANVAS_W}px; height: ${CANVAS_H}px;`
     container.appendChild(canvas)
@@ -403,11 +413,6 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
   function gameLoop(timestamp: number) {
     const dt = Math.min(0.033, (timestamp - lastTime) / 1000)
     lastTime = timestamp
-
-    // 🎯 调试：监控 phase 变化
-    if (state.phase === 'levelComplete' || state.phase === 'playing') {
-      console.log(`🔄 gameLoop: phase=${state.phase}, isPaused=${state.isPaused}, levelTransition=${state.levelTransition}, dragons=${state.dragons.length}`)
-    }
 
     if (state.phase === 'playing' && !state.isPaused) {
       // 计时器更新
