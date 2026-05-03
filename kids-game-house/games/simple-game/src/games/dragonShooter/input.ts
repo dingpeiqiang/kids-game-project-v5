@@ -284,15 +284,18 @@ export function createInputHandler(
     // 防御：callbacks 为空时直接返回
     if (!callbacks) return
 
+    console.log('🖱️ handleStartScreen:', { x: Math.round(x), y: Math.round(y) })
     const btnY = BASE_H / 2 + 10
     const btnHeight = 30
 
     if (y > btnY - 10 && y < btnY + btnHeight && x > BASE_W / 2 - 150 && x < BASE_W / 2 + 150) {
+      console.log('🎮 开始闯关按钮被点击')
       callbacks.onStartChallenge?.()
       return
     }
 
     if (y > BASE_H / 2 + 35 && y < BASE_H / 2 + 65) {
+      console.log('📝 编辑路线按钮被点击')
       callbacks.onDrawRoute?.()
       return
     }

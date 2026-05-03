@@ -229,7 +229,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     onRouteEditorReturn: () => {
       state.phase = 'start'
       state.isRouteEditMode = false
-      routeEditorRef.current.isSettingPlayerStart = false
+      routeEditorRef.current.activeMode = null
     },
     onStartChallenge: () => {
       console.log('🎯 开始闯关模式')
@@ -293,6 +293,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     },
 
     onDrawRoute: () => {
+      console.log('✏️ onDrawRoute called, activeMode:', routeEditorRef.current.activeMode)
       // 切换画路线模式
       if (routeEditorRef.current.activeMode === 'route') {
         routeEditorRef.current.activeMode = null
