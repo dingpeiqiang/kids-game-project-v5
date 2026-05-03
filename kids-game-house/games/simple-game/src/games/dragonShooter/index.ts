@@ -7,6 +7,8 @@ import type { GameEngine } from '../../services/gameEngine'
 import { routeLoader } from './routeLoader'
 import type { GameState, CustomRoute } from './types'
 import { performanceMonitor } from './performance'
+import { apiSubmitGameResult, apiStartGameSession } from '../../services/apiClient'
+import { userService } from '../../services/userService'
 
 // 常量
 import {
@@ -114,11 +116,52 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
 
   const ctx = canvas.getContext('2d')!
 
+  // 🎯 游戏会话管理
+  let sessionId: number | null = null
+  let sessionToken: string | null = null
+  let gameStartTime = Date.now()
+
   // 创建游戏状态
   const state = createInitialState()
 
   // 注册游戏结束回调（3秒后返回主界面）
-  setGameOverCallback(() => {
+  setGameOverCallback(async () => {
+    // 🎯 提交游戏积分到后台
+    if (userService.isLoggedIn && userService.current && sessionId && sessionToken) {
+      try {
+        const duration = Math.floor((Date.now() - gameStartTime) / 1000)  // 秒
+        console.log('[打龙] 准备提交分数:', {
+          sessionId,
+          score: state.score,
+          level: state.level,
+          duration,
+          kills: state.totalKills,
+        })
+        
+        const result = await apiSubmitGameResult({
+          sessionId: sessionId,
+          sessionToken: sessionToken,
+          score: state.score,
+          duration: duration,
+          level: state.level,
+          isWin: state.phase === 'levelComplete',  // 如果是关卡完成则胜利
+          details: {
+            totalKills: state.totalKills,
+            coins: state.coins,
+            maxCombo: state.combo,
+          }
+        })
+        
+        if (result.ok) {
+          console.log('[打龙] 分数提交成功')
+        } else {
+          console.warn('[打龙] 分数提交失败:', result.msg)
+        }
+      } catch (error) {
+        console.error('[打龙] 提交分数异常:', error)
+      }
+    }
+    
     // 🎯 清理移动端样式
     if (isMobile) {
       document.body.style.overflow = ''
@@ -543,6 +586,32 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     })
     console.log(`✅ 已同步 ${loadedRoutes.length} 条自定义路线`)
   }
+  
+  // 🎯 初始化游戏会话（异步）
+  async function initGameSession() {
+    if (userService.isLoggedIn && userService.current) {
+      try {
+        // dragonShooter 的游戏ID为2（需要根据后端实际配置调整）
+        const GAME_ID = 2
+        
+        console.log('[打龙] 创建游戏会话...')
+        const result = await apiStartGameSession(GAME_ID)
+        
+        if (result.ok && result.data) {
+          sessionId = result.data.sessionId
+          sessionToken = result.data.sessionToken
+          gameStartTime = Date.now()
+          console.log('[打龙] 游戏会话创建成功:', sessionId)
+        } else {
+          console.warn('[打龙] 创建游戏会话失败:', result.msg)
+        }
+      } catch (error) {
+        console.error('[打龙] 创建游戏会话异常:', error)
+      }
+    }
+  }
+  
+  initGameSession()  // 异步初始化会话
   
   console.log('🚀 启动 gameLoop, phase:', state.phase)
   requestAnimationFrame(gameLoop)
