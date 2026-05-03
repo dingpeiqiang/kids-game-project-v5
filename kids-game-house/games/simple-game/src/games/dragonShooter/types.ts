@@ -449,6 +449,7 @@ export interface GameState {
   screenShake: {
     intensity: number  // 震动强度
     duration: number   // 剩余持续时间
+    cooldown: number   // 🎯 冷却时间（秒），防止频繁触发
   }
 }
 

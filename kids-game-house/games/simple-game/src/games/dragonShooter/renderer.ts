@@ -1366,7 +1366,17 @@ export function createRenderer(
       ctx.translate(shakeX, shakeY)
       
       // 更新震动状态
-      state.screenShake.duration -= 1 / 60  // 假设60FPS
+      const deltaTime = 1 / 60  // 假设60FPS
+      state.screenShake.duration -= deltaTime
+      
+      // 🎯 同时减少冷却时间
+      if (state.screenShake.cooldown > 0) {
+        state.screenShake.cooldown -= deltaTime
+        if (state.screenShake.cooldown < 0) {
+          state.screenShake.cooldown = 0
+        }
+      }
+      
       if (state.screenShake.duration <= 0) {
         state.screenShake.intensity = 0
         state.screenShake.duration = 0

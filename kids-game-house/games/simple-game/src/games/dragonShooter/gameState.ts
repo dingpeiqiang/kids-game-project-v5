@@ -225,7 +225,8 @@ export function createInitialState(): GameState {
     // 🎯 屏幕震动效果初始化
     screenShake: {
       intensity: 0,
-      duration: 0
+      duration: 0,
+      cooldown: 0  // 🎯 初始无冷却
     }
   }
 }
@@ -813,9 +814,20 @@ function handleSegmentDeath(state: GameState, dragon: Dragon, segmentIndex: numb
   
   // 🎯 屏幕震动效果（根据龙的类型调整强度）
   const isHead = seg.isHead
-  const shakeIntensity = isHead ? 8 : 4  // 龙头震动更强
+  
+  // 🎯 关键优化：添加冷却时间，防止频繁触发
+  if (state.screenShake.cooldown > 0) {
+    // 在冷却期内，不触发新的抖动
+    return
+  }
+  
+  // 🎯 降低抖动强度和持续时间，提升体验
+  const shakeIntensity = isHead ? 4 : 2  // 从 8/4 降低到 4/2
   state.screenShake.intensity = shakeIntensity
-  state.screenShake.duration = 0.3  // 持续0.3秒
+  state.screenShake.duration = 0.15  // 从 0.3秒 缩短到 0.15秒
+  
+  // 🎯 设置冷却时间：龙头击杀后0.3秒内不再触发，龙身0.2秒
+  state.screenShake.cooldown = isHead ? 0.3 : 0.2
 
   // 金币掉落（概率）
   if (Math.random() < 0.15 && state.coinDrops.length < MAX_COIN_DROPS) {
