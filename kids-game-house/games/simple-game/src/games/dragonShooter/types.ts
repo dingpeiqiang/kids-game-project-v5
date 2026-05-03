@@ -259,6 +259,8 @@ export interface Dragon {
   retractAnimProgress: number
   retractStartProgress: number
   retractTargetProgress: number
+  // 🎯 新增：路线索引，用于区分不同路线的龙
+  routeIndex?: number
   // 灼烧/毒素状态
   burnTimer: number
   burnDamage: number

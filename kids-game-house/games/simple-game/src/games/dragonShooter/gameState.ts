@@ -926,7 +926,8 @@ export function spawnDragons(state: GameState) {
 
   if (route.points.length < 10) return
 
-  const dragon = _createDragon(0, type, route, state.level)
+  // 🎯 关键修复：传递路线索引给 createDragon，让龙根据路线显示不同颜色
+  const dragon = _createDragon(0, type, route, state.level, routeIndex)
   dragon.id = ++state.lastDragonId
   
   state.dragons.push(dragon)

@@ -38,6 +38,76 @@ export function lightenColor(color: string, percent: number): string {
   return `#${(1 << 24 | R << 16 | G << 8 | B).toString(16).slice(1).padStart(6, '0')}`
 }
 
+// 🎯 新增：色相偏移函数，用于根据路线索引调整龙的颜色
+export function shiftHue(color: string, degrees: number): string {
+  let hex = color.replace('#', '')
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
+  }
+  
+  // RGB 转 HSL
+  let r = parseInt(hex.substring(0, 2), 16) / 255
+  let g = parseInt(hex.substring(2, 4), 16) / 255
+  let b = parseInt(hex.substring(4, 6), 16) / 255
+  
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  let h = 0
+  const l = (max + min) / 2
+  let s = 0
+  
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6
+        break
+      case g:
+        h = ((b - r) / d + 2) / 6
+        break
+      case b:
+        h = ((r - g) / d + 4) / 6
+        break
+    }
+  }
+  
+  // 色相偏移
+  h = (h + degrees / 360) % 1
+  if (h < 0) h += 1
+  
+  // HSL 转 RGB
+  let newR, newG, newB
+  
+  if (s === 0) {
+    newR = newG = newB = l
+  } else {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1
+      if (t > 1) t -= 1
+      if (t < 1/6) return p + (q - p) * 6 * t
+      if (t < 1/2) return q
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+      return p
+    }
+    
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+    const p = 2 * l - q
+    newR = hue2rgb(p, q, h + 1/3)
+    newG = hue2rgb(p, q, h)
+    newB = hue2rgb(p, q, h - 1/3)
+  }
+  
+  // 转回十六进制
+  const toHex = (c: number) => {
+    const hex = Math.round(c * 255).toString(16)
+    return hex.length === 1 ? '0' + hex : hex
+  }
+  
+  return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`
+}
+
 /** 更新单条龙的位置和状态（含身体节段跟随） */
 /**
  * 龙移动系统 — 丝滑版 v2
@@ -229,7 +299,7 @@ export function updateDragon(dragon: Dragon, dt: number): void {
 }
 
 // 创建龙（由 spawnDragons 调用，传入路线和关卡）
-export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route: CustomRoute, level: number): Dragon {
+export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route: CustomRoute, level: number, routeIndex?: number): Dragon {
   const config = DRAGON_CONFIGS[type]
   if (!config) {
     console.error(`❌ 未知的龙类型: ${type}`)
@@ -292,7 +362,16 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
     const size = config.size
 
     let attachedPowerUp: PowerUpCardType | undefined
-    let segColor = i === 0 ? lightenColor(config.color, 25) : config.color
+    
+    // 🎯 关键修复：根据路线索引调整颜色，让不同路线的龙显示不同颜色
+    let baseColor = config.color
+    if (routeIndex !== undefined && routeIndex > 0) {
+      // 路线0使用原始颜色，路线1+使用调整后的颜色
+      const hueShift = routeIndex * 60  // 每条路线色相偏移60度
+      baseColor = shiftHue(config.color, hueShift)
+    }
+    
+    let segColor = i === 0 ? lightenColor(baseColor, 25) : baseColor
 
     if (attachedIndices.has(i)) {
       attachedPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)] as PowerUpCardType
@@ -360,6 +439,8 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
     retractAnimProgress: 0,
     retractStartProgress: 0,
     retractTargetProgress: 0,
+    // 🎯 保存路线索引，用于渲染时区分不同路线的龙
+    routeIndex,
     burnTimer: 0,
     burnDamage: 0,
     poisonStacks: 0,

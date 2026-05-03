@@ -14,13 +14,32 @@ interface RouteIndex {
 
 // 路线加载器类
 export class RouteLoader {
-  private levelRoutes: Record<number, CustomRoute> = {}
-  private customRoutes: CustomRoute[] = []
+  // 🎯 关键修改：每个关卡对应多条路线
+  private levelRoutes: Record<number, CustomRoute[]> = {}
+  private customRoutes: CustomRoute[] = []  // 编辑器绘制的自定义路线
   private loaded = false
 
-  // 每关唯一专属路线（文件优先，无则程序生成）
-  getLevelRoute(level: number): CustomRoute {
-    if (this.levelRoutes[level]) return this.levelRoutes[level]
+  // 获取指定关卡的所有路线（关卡文件中的路线 + 自定义路线）
+  getRoutesForLevel(level: number): CustomRoute[] {
+    const result: CustomRoute[] = []
+    
+    // 1. 添加关卡文件中的路线
+    if (this.levelRoutes[level]) {
+      result.push(...this.levelRoutes[level])
+    } else {
+      // 如果没有配置文件，生成一条默认路线
+      result.push(this._generateFallbackRoute(level))
+    }
+    
+    // 2. 添加自定义路线（编辑器绘制的）
+    result.push(...this.customRoutes)
+    
+    console.log(`🛤️ 第${level}关可用路线: ${result.length} 条`)
+    return result
+  }
+  
+  // 生成默认路线（当没有配置文件时）
+  private _generateFallbackRoute(level: number): CustomRoute {
     const types = ['wave', 'zigzag', 'spiral', 'boss']
     const type = types[Math.min(level - 1, types.length - 1)]
     return {
@@ -30,14 +49,7 @@ export class RouteLoader {
     }
   }
 
-  // 获取指定关卡需要的龙路线列表（关卡专属 + 自定义）
-  getRoutesForLevel(level: number): CustomRoute[] {
-    const result: CustomRoute[] = [this.getLevelRoute(level)]
-    result.push(...this.customRoutes)
-    return result
-  }
-
-  getAllLevelRoutes(): Record<number, CustomRoute> { return this.levelRoutes }
+  getAllLevelRoutes(): Record<number, CustomRoute[]> { return this.levelRoutes }
   getCustomRoutes(): CustomRoute[] { return this.customRoutes }
   isLoaded(): boolean { return this.loaded }
 
@@ -58,7 +70,9 @@ export class RouteLoader {
 
   getStats(): { levelCount: number; customCount: number; totalPoints: number } {
     let totalPoints = 0
-    Object.values(this.levelRoutes).forEach(r => { totalPoints += r.points.length })
+    Object.values(this.levelRoutes).forEach(routes => {
+      routes.forEach(r => { totalPoints += r.points.length })
+    })
     this.customRoutes.forEach(r => { totalPoints += r.points.length })
     return { levelCount: Object.keys(this.levelRoutes).length, customCount: this.customRoutes.length, totalPoints }
   }
@@ -86,27 +100,20 @@ export class RouteLoader {
         const level = parseInt(levelStr)
         const routes = await this.loadSingleRoute(`/games/dragonShooter/routes/levels/${filename}`)
         if (routes && routes.length > 0) {
-          // 🎯 关键修复：将关卡文件中的所有路线都添加进来，而不是只取第一条
+          // 🎯 关键修复：将关卡文件中的所有路线都添加进来
           console.log(`📂 加载第${level}关: ${routes.length} 条路线`)
           
-          // 将所有路线添加到自定义路线列表中
-          routes.forEach((route, idx) => {
-            // 保留原始路线的id和name，或者生成新的
-            const finalRoute: CustomRoute = {
-              id: route.id || `level_${level}_route_${idx}`,
-              name: route.name || `第${level}关-路线${idx + 1}`,
-              points: route.points
-            }
-            this.customRoutes.push(finalRoute)
-            console.log(`  ✅ 路线 ${idx + 1}: ${finalRoute.name}, ${finalRoute.points.length} 点`)
-          })
+          // 将所有路线存储到 levelRoutes[level] 数组中
+          this.levelRoutes[level] = routes.map((route, idx) => ({
+            id: route.id || `level_${level}_route_${idx}`,
+            name: route.name || `第${level}关-路线${idx + 1}`,
+            points: route.points
+          }))
           
-          // 仍然保留一个代表路线用于 getLevelRoute
-          this.levelRoutes[level] = {
-            id: `level_${level}_combined`,
-            name: `第${level}关`,
-            points: routes[0].points,
-          }
+          // 打印每条路线的信息
+          this.levelRoutes[level].forEach((route, idx) => {
+            console.log(`  ✅ 路线 ${idx + 1}: ${route.name}, ${route.points.length} 点`)
+          })
         }
       }
       return true
