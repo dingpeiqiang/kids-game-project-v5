@@ -699,10 +699,11 @@ export function updatePowerUpSelect(state: GameState, dt: number) {
     if (ps.revealProgress >= 1) {
       ps.revealProgress = 1
       console.log('🃏 翻牌动画完成')
+      // 🎯 修复：添加持续时间（2秒），让玩家有时间看清道具信息
       setTimeout(() => {
         console.log('🃏 开始关闭动画')
         if (state.powerupSelect) state.powerupSelect.closing = true
-      }, 500)
+      }, 2000)  // 从500ms改为2000ms，给玩家足够时间阅读
     }
   }
 

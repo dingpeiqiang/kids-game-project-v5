@@ -1329,10 +1329,11 @@ export function createRenderer(
       const showingFront = flipT > 0.5
 
       if (showingFront) {
-        // 正面：先把坐标系翻正（恢复为正常方向）
-        ctx.scale(-1, 1)
+        // 🎯 修复：正面显示时，使用正常坐标系（不翻转）
+        // 因为 flipScaleX 是负数，取绝对值后恢复正常方向
         ctx.scale(Math.abs(flipScaleX), 1)
       } else {
+        // 背面：正常翻转
         ctx.scale(flipScaleX, 1)
       }
 
@@ -1359,7 +1360,7 @@ export function createRenderer(
         roundRect(ctx, -cardW / 2 - 3, -cardH / 2 - 3, cardW + 6, cardH + 6, radius + 2)
         ctx.stroke()
 
-        // 道具图标
+        // 🎯 修复：道具图标（正常绘制，不需要额外翻转）
         ctx.save()
         ctx.shadowBlur = 20
         ctx.shadowColor = card.color
@@ -1370,7 +1371,7 @@ export function createRenderer(
         ctx.fillText(card.icon, 0, -cardH / 4 + 10)
         ctx.restore()
 
-        // 名称
+        // 🎯 修复：名称（正常绘制）
         ctx.save()
         ctx.shadowBlur = 0
         ctx.fillStyle = '#FFFFFF'
@@ -1380,7 +1381,7 @@ export function createRenderer(
         ctx.fillText(card.name || '', 0, 8)
         ctx.restore()
 
-        // 描述（多行截断）
+        // 🎯 修复：描述（多行截断，正常绘制）
         ctx.save()
         ctx.fillStyle = 'rgba(255,255,255,0.7)'
         ctx.font = '9px sans-serif'
