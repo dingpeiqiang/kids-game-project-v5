@@ -363,8 +363,8 @@ export class RouteEditor {
     this.drawPlayerStartPoint()
   }
 
-  // 绘制玩家初始位置标记
-  private drawPlayerStartPoint() {
+  // 🎯 公开方法：绘制玩家初始位置标记（供 renderer.ts 调用）
+  drawPlayerStartPoint() {
     if (!this.playerStartPoint) return
 
     // playerStartPoint 存储的是画布坐标（包含偏移），绘制时需要转换为游戏区域坐标

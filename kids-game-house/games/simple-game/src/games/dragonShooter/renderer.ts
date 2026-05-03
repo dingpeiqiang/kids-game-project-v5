@@ -1044,6 +1044,9 @@ export function createRenderer(
       routeEditor.drawCurrentRoute()
     }
 
+    // 🎯 绘制玩家起点标记（如果有设置）
+    routeEditor.drawPlayerStartPoint()
+
     // 按钮区域 - 9个按钮：新建 清除 保存 优化 预览 画路线 玩家起点 导出 返回
     const btnY = CANVAS_H - 80
     const btnH = 50
@@ -1108,8 +1111,12 @@ export function createRenderer(
     ctx.fillStyle = isPlayerStartMode ? '#00FF88' : '#2E7D32'
     ctx.fillRect(btnStartX + (btnW + btnGap) * 6, btnY, btnW, btnH)
     ctx.fillStyle = isPlayerStartMode ? '#000' : '#FFFFFF'
-    ctx.font = 'bold 11px sans-serif'
+    ctx.font = 'bold 11px sans-serif'  // 🎯 确保字体一致
     ctx.fillText('🎯 起点', btnStartX + (btnW + btnGap) * 6 + btnW / 2, btnY + 32)
+    
+    // 🎯 修复：重置字体和颜色，避免影响后续按钮
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = 'bold 11px sans-serif'
 
     // 导出按钮
     ctx.fillStyle = '#2196F3'
