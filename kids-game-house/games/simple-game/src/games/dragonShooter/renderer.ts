@@ -864,12 +864,17 @@ export function createRenderer(
       routeEditor.drawCurrentRoute()
     }
 
-    // 按钮区域 - 6个按钮：新建 清除 保存 优化 导出 返回
+    // 如果启用预览，显示游戏场景效果
+    if (routeEditor.showPreview) {
+      routeEditor.drawGamePreview()
+    }
+
+    // 按钮区域 - 7个按钮：新建 清除 保存 优化 预览 导出 返回
     const btnY = CANVAS_H - 80
     const btnH = 50
-    const btnW = 62
-    const btnGap = 4
-    const totalBtns = 6
+    const btnW = 58
+    const btnGap = 3
+    const totalBtns = 7
     const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
     // 新建按钮
@@ -897,21 +902,27 @@ export function createRenderer(
     ctx.fillStyle = '#FFFFFF'
     ctx.fillText('✨ 优化', btnStartX + (btnW + btnGap) * 3 + btnW / 2, btnY + 32)
 
-    // 导出按钮
-    ctx.fillStyle = '#2196F3'
+    // 预览按钮
+    ctx.fillStyle = '#00BCD4'
     ctx.fillRect(btnStartX + (btnW + btnGap) * 4, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 4 + btnW / 2, btnY + 32)
+    ctx.fillText('👁️ 预览', btnStartX + (btnW + btnGap) * 4 + btnW / 2, btnY + 32)
+
+    // 导出按钮
+    ctx.fillStyle = '#2196F3'
+    ctx.fillRect(btnStartX + (btnW + btnGap) * 5, btnY, btnW, btnH)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 5 + btnW / 2, btnY + 32)
 
     // 返回按钮
     ctx.fillStyle = COLORS.accent
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 5, btnY, btnW, btnH)
+    ctx.fillRect(btnStartX + (btnW + btnGap) * 6, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 5 + btnW / 2, btnY + 32)
+    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 6 + btnW / 2, btnY + 32)
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.font = '11px sans-serif'
-    ctx.fillText('✨优化：抽稀+圆滑后保存', CANVAS_W / 2, btnY + btnH + 15)
+    ctx.fillText('✨优化：抽稀+圆滑后保存 | 👁️预览：查看游戏效果', CANVAS_W / 2, btnY + btnH + 15)
     
     drawFloatTexts()
   }

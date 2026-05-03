@@ -6,6 +6,8 @@ import type { CustomRoute, RoutePoint } from './types'
 import {
   CANVAS_OFFSET_X,
   CANVAS_OFFSET_Y,
+  BASE_W,
+  BASE_H,
   PRESET_ROUTES,
   LEVEL_SPECIFIC_ROUTES,
   STORAGE_KEY
@@ -127,6 +129,7 @@ export class RouteEditor {
   private routes: RoutePoint[][] = []
   private currentIndex = 0
   isDrawing = false
+  showPreview = false  // 是否显示游戏预览
 
   constructor(_canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
     this.ctx = ctx
@@ -292,6 +295,26 @@ export class RouteEditor {
       this.ctx.fillText(`${i + 1}`, route[0].x, route[0].y - 10)
       this.ctx.restore()
     })
+  }
+
+  // 绘制游戏场景预览（显示虚线框和背景）
+  drawGamePreview() {
+    // 绘制游戏区域虚线框
+    this.ctx.save()
+    this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)'
+    this.ctx.lineWidth = 3
+    this.ctx.setLineDash([10, 5])
+    this.ctx.strokeRect(CANVAS_OFFSET_X, CANVAS_OFFSET_Y, BASE_W, BASE_H)
+    this.ctx.restore()
+
+    // 绘制提示文字
+    this.ctx.save()
+    this.ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
+    this.ctx.font = 'bold 14px sans-serif'
+    this.ctx.textAlign = 'center'
+    this.ctx.textBaseline = 'top'
+    this.ctx.fillText('🎮 游戏区域', CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y + 10)
+    this.ctx.restore()
   }
 }
 

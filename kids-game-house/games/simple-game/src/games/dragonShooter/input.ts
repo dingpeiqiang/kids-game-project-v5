@@ -18,6 +18,7 @@ export interface InputCallbacks {
   onRouteEditorReturn: () => void
   onRouteEditorNew?: () => void  // 可选：新建路线
   onRouteEditorOptimize?: () => void  // 可选：优化路线
+  onRouteEditorPreview?: () => void  // 可选：预览游戏效果
   onStartChallenge: () => void
   onStartEndless: () => void
   onDrawRoute: () => void
@@ -193,10 +194,10 @@ export function createInputHandler(
   function handleRouteEditMode(x: number, y: number): boolean {
     const btnY = CANVAS_H - 80
     const btnH = 50
-    const btnW = 62
-    const btnGap = 4
-    // 6个按钮：新建 清除 保存 优化 导出 返回
-    const totalBtns = 6
+    const btnW = 58
+    const btnGap = 3
+    // 7个按钮：新建 清除 保存 优化 预览 导出 返回
+    const totalBtns = 7
     const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
     // 点击按钮区域：阻止后续 active 设置，清除按钮状态
@@ -219,10 +220,14 @@ export function createInputHandler(
         return true
       }
       if (x >= btnStartX + (btnW + btnGap) * 4 && x < btnStartX + (btnW + btnGap) * 5) {
-        callbacks.onRouteEditorExport?.()
+        callbacks.onRouteEditorPreview?.()
         return true
       }
       if (x >= btnStartX + (btnW + btnGap) * 5 && x < btnStartX + (btnW + btnGap) * 6) {
+        callbacks.onRouteEditorExport?.()
+        return true
+      }
+      if (x >= btnStartX + (btnW + btnGap) * 6 && x < btnStartX + (btnW + btnGap) * 7) {
         callbacks.onRouteEditorReturn?.()
         return true
       }

@@ -154,6 +154,20 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       routeEditorRef.current.loadPreviewPoints(optimized)
       state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: `✨ ${canvasPoints.length}→${optimized.length}点 圆滑完成`, color: '#FF9800', life: 2, vy: -0.5, size: 22 })
     },
+    onRouteEditorPreview: () => {
+      // 切换预览状态
+      routeEditorRef.current.showPreview = !routeEditorRef.current.showPreview
+      const status = routeEditorRef.current.showPreview ? '已开启' : '已关闭'
+      state.floatTexts.push({ 
+        x: CANVAS_W / 2, 
+        y: CANVAS_H / 2, 
+        text: `👁️ 游戏预览 ${status}`, 
+        color: '#00BCD4', 
+        life: 1.5, 
+        vy: -0.5, 
+        size: 24 
+      })
+    },
     onRouteEditorExport: () => {
       const allRoutes = routeEditorRef.current.getAllPoints()
       if (allRoutes.length === 0) {
