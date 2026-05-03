@@ -291,47 +291,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         console.log('🛤️ 路线信息:', routes[0].name, '点数:', routes[0].points.length)
       }
     },
-    onStartEndless: () => {
-      state.mode = 'endless'
-      state.phase = 'playing'
-      state.level = 1
-      state.score = 0
-      state.coins = 0
-      state.timeLeft = 99999
-      state.playerHP = state.playerMaxHP
-      state.dragons = []
-      state.bullets = []
-      state.particles = []
-      state.powerUps = []
-      state.coinDrops = []
-      state.floatTexts = []
-      state.levelProgress = 0
-      state.dragonsSpawnedInLevel = 0
-      
-      initClouds(state)
-      
-      // 无尽模式也使用路线配置
-      const routes = routeLoader.getRoutesForLevel(state.level)
-      state.levelTarget = routes.length > 0 ? routes.length : 3
-      state.maxDragons = state.levelTarget
-      
-      // 🎯 设置玩家初始位置（从路线配置中读取）
-      const firstRoute = routes[0]
-      if (firstRoute.playerStartX !== undefined && firstRoute.playerStartY !== undefined) {
-        state.playerX = firstRoute.playerStartX
-        state.playerY = firstRoute.playerStartY
-        state.playerStartX = firstRoute.playerStartX
-        state.playerStartY = firstRoute.playerStartY
-        console.log(`🎯 无尽模式玩家初始位置: (${firstRoute.playerStartX}, ${firstRoute.playerStartY})`)
-      } else {
-        // 默认位置
-        state.playerX = BASE_W / 2
-        state.playerY = BASE_H - 55
-        state.playerStartX = BASE_W / 2
-        state.playerStartY = BASE_H - 55
-      }
-      console.log(`🎮 开始无尽模式，第${state.level}关`)
-    },
+
     onDrawRoute: () => {
       state.phase = 'routeEdit'
       state.isRouteEditMode = true

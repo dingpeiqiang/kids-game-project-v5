@@ -22,7 +22,6 @@ export interface InputCallbacks {
   onSetPlayerStart?: () => void  // 可选：设置玩家起点
   onClearPlayerStart?: () => void  // 可选：清除玩家起点
   onStartChallenge: () => void
-  onStartEndless: () => void
   onDrawRoute: () => void
   onPauseToggle: () => void
 }
@@ -262,13 +261,8 @@ export function createInputHandler(
     const btnY = BASE_H / 2 + 10
     const btnHeight = 30
 
-    if (y > btnY - 10 && y < btnY + btnHeight && x > BASE_W / 2 - 150 && x < BASE_W / 2) {
+    if (y > btnY - 10 && y < btnY + btnHeight && x > BASE_W / 2 - 150 && x < BASE_W / 2 + 150) {
       callbacks.onStartChallenge?.()
-      return
-    }
-
-    if (y > btnY - 10 && y < btnY + btnHeight && x > BASE_W / 2 && x < BASE_W / 2 + 150) {
-      callbacks.onStartEndless?.()
       return
     }
 

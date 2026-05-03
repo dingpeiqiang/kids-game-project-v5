@@ -915,13 +915,9 @@ export function createRenderer(
     ctx.textAlign = 'left'
     ctx.font = '12px sans-serif'
     ctx.fillStyle = '#ccc'
-    if (state.mode === 'challenge') {
-      const m = Math.floor(state.timeLeft / 60)
-      const s = Math.floor(state.timeLeft % 60)
-      ctx.fillText(`${m}:${s.toString().padStart(2,'0')}`, 12, BASE_H - 10)
-    } else {
-      ctx.fillText('无尽', 12, BASE_H - 10)
-    }
+    const m = Math.floor(state.timeLeft / 60)
+    const s = Math.floor(state.timeLeft % 60)
+    ctx.fillText(`${m}:${s.toString().padStart(2,'0')}`, 12, BASE_H - 10)
 
     if (state.coins > 0) {
       ctx.textAlign = 'right'
@@ -1005,18 +1001,15 @@ export function createRenderer(
 
     ctx.fillStyle = COLORS.accent
     ctx.font = 'bold 16px sans-serif'
-    ctx.fillText('🎮 开始闯关', BASE_W / 2 - 75, BASE_H / 2 + 10)
-
-    ctx.fillStyle = COLORS.jade
-    ctx.fillText('💫 无尽挑战', BASE_W / 2 + 75, BASE_H / 2 + 10)
+    ctx.fillText('🎮 开始闯关', BASE_W / 2, BASE_H / 2 + 10)
 
     ctx.fillStyle = '#9370DB'
     ctx.font = 'bold 14px sans-serif'
-    ctx.fillText('✏️ 绘制路线', BASE_W / 2, BASE_H / 2 + 50)
+    ctx.fillText('✏️ 绘制路线', BASE_W / 2, BASE_H / 2 + 45)
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.font = '12px sans-serif'
-    ctx.fillText('点击对应按钮', BASE_W / 2, BASE_H / 2 + 80)
+    ctx.fillText('点击对应按钮', BASE_W / 2, BASE_H / 2 + 75)
   }
 
   // ========== 路线编辑界面 ==========

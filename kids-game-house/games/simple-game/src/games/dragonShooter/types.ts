@@ -357,7 +357,7 @@ export interface TouchState {
 
 // 游戏状态
 export interface GameState {
-  mode: 'challenge' | 'endless'
+  mode: 'challenge'
   phase: 'start' | 'playing' | 'paused' | 'buffSelect' | 'powerup_select' | 'gameOver' | 'routeEdit'
   level: number
   score: number
