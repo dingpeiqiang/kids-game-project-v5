@@ -5,12 +5,6 @@
 
 import type { CustomRoute, RoutePoint } from './types'
 
-interface SingleRouteFile {
-  version: string
-  lastModified: string
-  route: CustomRoute
-}
-
 interface RouteIndex {
   version: string
   lastModified: string
@@ -90,8 +84,16 @@ export class RouteLoader {
       const index: RouteIndex = await response.json()
       for (const [levelStr, filename] of Object.entries(index.levels)) {
         const level = parseInt(levelStr)
-        const route = await this.loadSingleRoute(`/games/dragonShooter/routes/levels/${filename}`)
-        if (route) this.levelRoutes[level] = route
+        const routes = await this.loadSingleRoute(`/games/dragonShooter/routes/levels/${filename}`)
+        if (routes && routes.length > 0) {
+          // 每个关卡的多条路线合并为一条虚拟路线（id 包含所有路线 id）
+          const combined: CustomRoute = {
+            id: `level_${level}_combined`,
+            name: `第${level}关`,
+            points: routes[0].points, // 仍用第一条作为关卡代表路线
+          }
+          this.levelRoutes[level] = combined
+        }
       }
       return true
     } catch { return false }
@@ -103,19 +105,22 @@ export class RouteLoader {
       if (indexResponse.ok) {
         const index: { files: string[] } = await indexResponse.json()
         for (const filename of index.files) {
-          const route = await this.loadSingleRoute(`/games/dragonShooter/routes/custom/${filename}`)
-          if (route) this.customRoutes.push(route)
+          const routes = await this.loadSingleRoute(`/games/dragonShooter/routes/custom/${filename}`)
+          if (routes) this.customRoutes.push(...routes)
         }
       }
     } catch { this.customRoutes = [] }
   }
 
-  private async loadSingleRoute(url: string): Promise<CustomRoute | null> {
+  private async loadSingleRoute(url: string): Promise<CustomRoute[] | null> {
     try {
       const response = await fetch(url, { cache: 'no-cache' })
       if (!response.ok) return null
-      const data: SingleRouteFile = await response.json()
-      return data.route
+      const data: any = await response.json()
+      // 兼容两种格式：单条 {"route": {...}} 或多条 {"routes": [...]}
+      if (data.route) return [data.route]
+      if (data.routes && Array.isArray(data.routes)) return data.routes
+      return null
     } catch { return null }
   }
 

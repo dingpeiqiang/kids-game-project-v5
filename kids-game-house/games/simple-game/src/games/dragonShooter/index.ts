@@ -108,9 +108,12 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       let saved = 0
       for (const pts of allRoutes) {
         if (pts.length < 3) continue
-        // 现在路线编辑器直接使用游戏坐标，不需要转换
-        // 但为了保持与旧数据兼容，仍然进行优化处理
-        const points = optimizeRoute(pts)
+        // 路线编辑器存画布坐标，需要转换为游戏坐标（减去偏移量）
+        const gameCoordsPoints = pts.map(p => ({
+          x: p.x - CANVAS_OFFSET_X,
+          y: p.y - CANVAS_OFFSET_Y
+        }))
+        const points = optimizeRoute(gameCoordsPoints)
         addCustomRoute({
           id: `custom_${Date.now()}_${saved}`,
           name: `路线 ${customRoutes.length + 1}`,
@@ -146,7 +149,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '⚠️ 点太少，无法优化!', color: '#FF6B6B', life: 1.5, vy: -0.5, size: 24 })
         return
       }
-      // 现在路线编辑器直接使用游戏坐标，不需要转换
+      // optimizeRoute 接收画布坐标，优化后直接加载预览
       const optimized = optimizeRoute(canvasPoints)
       routeEditorRef.current.loadPreviewPoints(optimized)
       state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: `✨ ${canvasPoints.length}→${optimized.length}点 圆滑完成`, color: '#FF9800', life: 2, vy: -0.5, size: 22 })
@@ -157,11 +160,14 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '⚠️ 没有路线可导出!', color: '#FF6B6B', life: 1.5, vy: -0.5, size: 24 })
         return
       }
-      // 现在路线编辑器直接使用游戏坐标，不需要转换
+      // 路线编辑器存画布坐标，导出时需要转换为游戏坐标
       const routesData = allRoutes.map((pts, i) => ({
         id: `route_${Date.now()}_${i}`,
         name: `路线${i + 1}`,
-        points: pts  // 直接使用，已经是游戏坐标
+        points: pts.map(p => ({
+          x: p.x - CANVAS_OFFSET_X,
+          y: p.y - CANVAS_OFFSET_Y
+        }))
       })).filter(r => r.points.length >= 3)
       if (routesData.length === 0) {
         state.floatTexts.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, text: '⚠️ 每条路线至少3个点!', color: '#FF6B6B', life: 1.5, vy: -0.5, size: 24 })

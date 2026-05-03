@@ -180,6 +180,8 @@ export class RouteEditor {
 
   loadPreviewPoints(points: RoutePoint[]) {
     if (this.routes.length === 0) this.newRoute()
+    // 点是画布坐标（来自 routeLoader，JSON 文件存的是游戏坐标，但编辑器显示时需要转换为画布坐标）
+    // 注意：loadPreviewPoints 接收的应该是画布坐标（用于编辑器预览）
     this.routes[this.currentIndex] = [...points]
     this.isDrawing = false
   }

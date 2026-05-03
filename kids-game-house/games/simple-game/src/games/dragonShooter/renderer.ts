@@ -62,6 +62,8 @@ export function createRenderer(
   function drawDragon(dragon: Dragon) {
     if (!dragon.alive) return
 
+    // dragon.segments 是游戏坐标，和子弹/道具一样
+    // 主渲染循环（1001行）已有 ctx.translate(CANVAS_OFFSET_X, CANVAS_OFFSET_Y)
     for (let i = dragon.segments.length - 1; i >= 0; i--) {
       const seg = dragon.segments[i]
       drawDragonSegment(seg, seg.hp, seg.maxHp, dragon.type, dragon.slowed, dragon._isBoosting)
@@ -1025,7 +1027,7 @@ export function createRenderer(
     if (state.phase === 'start') {
       drawStartScreen()
     } else {
-      // 路线轨迹
+      // 路线轨迹（路线存游戏坐标，在 translate 区域内绘制）
       if (state.dragons.length > 0) {
         drawRouteTrail(state.dragons[0])
       }
