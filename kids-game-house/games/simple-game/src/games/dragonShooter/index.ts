@@ -347,9 +347,9 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     const dt = Math.min(0.033, (timestamp - lastTime) / 1000)
     lastTime = timestamp
 
-    // 调试：每60帧打印一次phase
-    if (Math.floor(timestamp / 1000) % 2 === 0 && Math.floor(timestamp) % 60 === 0) {
-      console.log('🎨 gameLoop running, phase:', state.phase, 'dragons:', state.dragons.length)
+    // 🎯 调试：监控 phase 变化
+    if (state.phase === 'levelComplete' || state.phase === 'playing') {
+      console.log(`🔄 gameLoop: phase=${state.phase}, isPaused=${state.isPaused}, levelTransition=${state.levelTransition}, dragons=${state.dragons.length}`)
     }
 
     if (state.phase === 'playing' && !state.isPaused) {

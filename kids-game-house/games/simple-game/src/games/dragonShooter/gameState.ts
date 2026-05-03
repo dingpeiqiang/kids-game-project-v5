@@ -1160,7 +1160,10 @@ export function checkLevelUp(state: GameState): boolean {
  * 开始下一关（从关卡完成界面调用）
  */
 export function startNextLevel(state: GameState) {
+  console.log(`🚀 startNextLevel 被调用, 当前关卡: ${state.level}, phase: ${state.phase}`)
+  
   const nextRoutes = routeLoader.getRoutesForLevel(state.level)
+  console.log(`📊 获取到 ${nextRoutes.length} 条路线`)
 
   // 清除旧数据
   state.dragons = []
@@ -1183,16 +1186,20 @@ export function startNextLevel(state: GameState) {
     state.playerY = firstRoute.playerStartY
     state.playerStartX = firstRoute.playerStartX
     state.playerStartY = firstRoute.playerStartY
+    console.log(`🎯 使用自定义起点: (${state.playerX}, ${state.playerY})`)
   } else {
     state.playerX = BASE_W / 2
     state.playerY = BASE_H - 55
     state.playerStartX = BASE_W / 2
     state.playerStartY = BASE_H - 55
+    console.log(`🎯 使用默认起点: (${state.playerX}, ${state.playerY})`)
   }
 
   state.phase = 'playing'
   state.isPaused = false
   state.levelTransition = false  // 清除过渡状态，避免遮罩残留
+  
+  console.log(`✅ 状态设置完成: phase=${state.phase}, isPaused=${state.isPaused}, levelTransition=${state.levelTransition}`)
 
   // 显示关卡开始提示
   state.floatTexts.push({

@@ -155,14 +155,17 @@ export function createInputHandler(
 
     // 关卡完成：点击按钮进入下一关
     if (state.phase === 'levelComplete') {
+      console.log('🖱️ 关卡完成界面点击, 坐标:', x.toFixed(0), y.toFixed(0))
       const btnW = 200
       const btnH = 50
       const btnX = BASE_W / 2 - btnW / 2
       const btnY = BASE_H / 2 + 60
       if (x >= btnX && x <= btnX + btnW && y >= btnY && y <= btnY + btnH) {
+        console.log('✅ 点击了下一关按钮')
         callbacks.onNextLevel?.()
         return
       }
+      console.log('⚠️ 点击位置不在按钮范围内')
       return
     }
 
