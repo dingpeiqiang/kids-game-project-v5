@@ -318,12 +318,23 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
 
   const powerUpTypes = Object.keys(POWERUP_ICONS) as Array<keyof typeof POWERUP_ICONS>
 
-  // 固定附加的道具节段数量（稀有，由类型决定）
+  // 🎯 关键优化：每一关都要有道具，且数量随关卡等级提升
+  // 固定附加的道具节段数量（由类型和关卡等级共同决定）
   let fixedAttachCount = 0
+  
+  // 1. 基础数量：根据龙的类型
   if (type === 'boss') fixedAttachCount = 3
   else if (type === 'elite') fixedAttachCount = 2
   else if (type === 'large' || type === 'medium') fixedAttachCount = 1
-  else if (level >= 3) fixedAttachCount = 1
+  
+  // 2. 关卡加成：每3关增加1个固定道具（最多额外+3）
+  const levelBonus = Math.min(3, Math.floor((level - 1) / 3))
+  fixedAttachCount += levelBonus
+  
+  // 3. 保底机制：至少1个道具（即使是最小的龙）
+  fixedAttachCount = Math.max(1, fixedAttachCount)
+  
+  console.log(`🎁 关卡 ${level}, 龙类型: ${type}, 固定道具数: ${fixedAttachCount} (基础 + 关卡加成${levelBonus})`)
 
   const attachedIndices = new Set<number>()
   
@@ -366,9 +377,14 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
   }
 
   // 🎯 随机道具节段（根据概率）- 也采用均匀分布
+  // 🎯 关键优化：随机道具概率随关卡等级提升
+  const levelProbabilityBonus = Math.min(0.12, POWERUP_SEGMENT_CHANCE + (level - 1) * 0.01)
+  
   // 计算期望的随机道具数量
   const availableForRandom = segmentCount - 3 - attachedIndices.size  // 排除龙头附近和已占用的
-  const expectedRandomCount = Math.floor(availableForRandom * POWERUP_SEGMENT_CHANCE)
+  const expectedRandomCount = Math.floor(availableForRandom * levelProbabilityBonus)
+  
+  console.log(`🎲 随机道具概率: ${(levelProbabilityBonus * 100).toFixed(1)}% (基础${POWERUP_SEGMENT_CHANCE * 100}% + 关卡加成), 期望数量: ${expectedRandomCount}`)
   
   if (expectedRandomCount > 0) {
     // 将可用区域分成 expectedRandomCount 个区间
