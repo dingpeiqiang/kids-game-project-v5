@@ -1334,19 +1334,61 @@ export function checkLevelUp(state: GameState): boolean {
     if (state.playerHP < state.playerMaxHP) state.playerHP++
     state.invincibleTimer = 3
 
-    // 进入关卡过渡（暂停2秒，显示大字提示）
+    // 🎯 关键修复：直接进入过渡动画，自动进入下一关（无需点击）
     state.isPaused = true
-    // 🎯 关卡过渡动画（缩短等待时间）
     state.levelTransition = true
-    state.levelTransitionTimer = 1.0  // 🎯 从2.0秒缩短到1.0秒
+    state.levelTransitionTimer = 1.5  // 1.5秒过渡时间（让玩家看清统计信息）
+    
+    console.log(`🚀 自动进入第${state.level}关...`)
+    
+    // 延迟执行关卡初始化，等待过渡动画播放
+    setTimeout(() => {
+      const nextRoutes = routeLoader.getRoutesForLevel(state.level)
+      console.log(`📊 获取到 ${nextRoutes.length} 条路线`)
 
-    // 保存本关统计
-    state.levelCompleteScore = state.score
-    state.levelCompleteKills = state.levelProgress
+      // 清除旧数据
+      state.dragons = []
+      state.bullets = []
+      state.powerUps = []
+      state.particles = []
+      state.floatTexts = []
+      state.coinDrops = []
 
-    // 进入关卡完成界面（玩家点击继续）
-    state.phase = 'levelComplete'
-    state.isPaused = true
+      // 重置闯关状态
+      state.levelProgress = 0
+      state.dragonsSpawnedInLevel = 0
+      state.levelTarget = nextRoutes.length > 0 ? nextRoutes.length : 3
+      state.maxDragons = state.levelTarget
+
+      // 玩家位置重置
+      const firstRoute = nextRoutes[0]
+      if (firstRoute?.playerStartX !== undefined && firstRoute?.playerStartY !== undefined) {
+        state.playerX = firstRoute.playerStartX
+        state.playerY = firstRoute.playerStartY
+        state.playerStartX = firstRoute.playerStartX
+        state.playerStartY = firstRoute.playerStartY
+        console.log(`🎯 使用自定义起点: (${state.playerX}, ${state.playerY})`)
+      } else {
+        state.playerX = BASE_W / 2
+        state.playerY = BASE_H - 55
+        state.playerStartX = BASE_W / 2
+        state.playerStartY = BASE_H - 55
+        console.log(`🎯 使用默认起点: (${state.playerX}, ${state.playerY})`)
+      }
+
+      state.phase = 'playing'
+      state.levelTransition = false  // 清除过渡状态
+      state.isPaused = false
+      
+      console.log(`✅ 关卡初始化完成: phase=${state.phase}, levelTarget=${state.levelTarget}`)
+      
+      // 显示关卡开始提示
+      state.floatTexts.push({
+        x: BASE_W / 2, y: BASE_H / 2,
+        text: `🎉 第${state.level}关!`,
+        color: '#FFD700', life: 2, vy: -0.5, size: 28
+      })
+    }, 1200)  // 1200ms后初始化关卡（给过渡动画留300ms余量）
 
     audioService.levelUp()
     return true
