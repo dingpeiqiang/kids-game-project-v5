@@ -408,10 +408,208 @@ export function updateActiveBuffs(state: GameState, dt: number) {
       toRemove.push(i)
     }
   }
-  // 倒序删除避免索引偏移
+  
+  // 🎯 关键修复：倒序删除，并在删除前清除对应效果
   for (let i = toRemove.length - 1; i >= 0; i--) {
+    const expiredBuff = state.activeBuffs[toRemove[i]]
+    console.log(`⏰ Buff过期: ${expiredBuff.name}, 类型: ${expiredBuff.type}`)
+    
+    // 清除对应buff的效果
+    removeBuffEffect(state, expiredBuff.type)
+    
+    // 从数组中移除
     state.activeBuffs.splice(toRemove[i], 1)
   }
+}
+
+/** 🎯 清除buff效果的函数 */
+function removeBuffEffect(state: GameState, buffType: string) {
+  const S = state as any
+  
+  switch (buffType) {
+    // ── 普攻强化类 ──
+    case 'rapidFire':     // 迅击弹：恢复射速
+      S.rapidFireStacks = Math.max(0, (S.rapidFireStacks || 1) - 1)
+      if (S.rapidFireStacks === 0) {
+        // 恢复到基础射速（350ms）
+        state.shootCooldown = 350
+        console.log('🔄 恢复基础射速: 350ms')
+      } else {
+        // 还有层数，重新计算射速
+        state.shootCooldown = Math.max(60, 350 * Math.pow(0.6, S.rapidFireStacks))
+      }
+      break
+      
+    case 'multiShot':     // 多重弹：减少弹道
+      S.multiShotStacks = Math.max(0, (S.multiShotStacks || 1) - 1)
+      if (S.multiShotStacks === 0) {
+        state.bulletCount = 1  // 恢复基础1发
+        console.log('🔄 恢复基础弹道: 1发')
+      } else {
+        state.bulletCount = Math.min(10, 1 + S.multiShotStacks * 2)
+      }
+      break
+      
+    case 'armorPierce':   // 破甲弹：减少穿透
+      S.armorPierceStacks = Math.max(0, (S.armorPierceStacks || 1) - 1)
+      if (S.armorPierceStacks === 0) {
+        state.bulletPierce = 1  // 恢复基础穿透
+        console.log('🔄 恢复基础穿透: 1')
+      } else {
+        state.bulletPierce = 1 + S.armorPierceStacks * 3
+      }
+      break
+      
+    case 'heavyHit':    // 重击弹：恢复伤害
+      S.heavyHitStacks = Math.max(0, (S.heavyHitStacks || 1) - 1)
+      if (S.heavyHitStacks === 0) {
+        // 需要重新计算基础伤害（考虑其他buff）
+        recalculateBaseDamage(state)
+        console.log('🔄 恢复基础伤害')
+      }
+      // 注意：damage是累积乘法，无法精确恢复，依赖recalculateBaseDamage
+      break
+      
+    case 'rapidBurst':    // 连射增幅：恢复冷却
+      S.rapidBurstStacks = Math.max(0, (S.rapidBurstStacks || 1) - 1)
+      if (S.rapidBurstStacks === 0) {
+        recalculateBaseCooldown(state)
+        console.log('🔄 恢复基础冷却')
+      }
+      break
+      
+    case 'autoAim':       // 精准锁定：减少穿透
+      S.autoAimStacks = Math.max(0, (S.autoAimStacks || 1) - 1)
+      if (S.autoAimStacks === 0) {
+        recalculateBasePierce(state)
+      }
+      break
+      
+    // ── 范围爆发类 ──
+    case 'blast':
+      S.blastStacks = Math.max(0, (S.blastStacks || 1) - 1)
+      break
+      
+    case 'slash':
+      S.slashStacks = Math.max(0, (S.slashStacks || 1) - 1)
+      break
+      
+    case 'ringWave':
+      S.ringWaveStacks = Math.max(0, (S.ringWaveStacks || 1) - 1)
+      break
+      
+    case 'windPressure':
+      S.windPressureStacks = Math.max(0, (S.windPressureStacks || 1) - 1)
+      if (S.windPressureStacks === 0) {
+        state.slowAllTimer = 0  // 清除减速
+      }
+      break
+      
+    case 'chainBlast':
+      S.chainBlastStacks = Math.max(0, (S.chainBlastStacks || 1) - 1)
+      break
+      
+    case 'splash':
+      S.splashStacks = Math.max(0, (S.splashStacks || 1) - 1)
+      break
+      
+    // ── 持续压制类 ──
+    case 'burn':
+      S.burnStacks = Math.max(0, (S.burnStacks || 1) - 1)
+      break
+      
+    case 'slowField':
+      S.slowFieldStacks = Math.max(0, (S.slowFieldStacks || 1) - 1)
+      if (S.slowFieldStacks === 0) {
+        state.slowAllTimer = 0
+      }
+      break
+      
+    case 'toxin':
+      S.toxinStacks = Math.max(0, (S.toxinStacks || 3) - 3)
+      break
+      
+    case 'energyField':
+      S.energyFieldStacks = Math.max(0, (S.energyFieldStacks || 1) - 1)
+      break
+      
+    case 'defDown':       // 减防光环：恢复伤害
+      S.defDownStacks = Math.max(0, (S.defDownStacks || 1) - 1)
+      if (S.defDownStacks === 0) {
+        recalculateBaseDamage(state)
+      }
+      break
+      
+    // ── 特殊斩杀类 ──
+    case 'slashBlade':
+      S.slashBladeStacks = Math.max(0, (S.slashBladeStacks || 1) - 1)
+      break
+      
+    case 'executeWave':
+      S.executeWaveStacks = Math.max(0, (S.executeWaveStacks || 1) - 1)
+      break
+      
+    case 'crit':          // 极限暴击：恢复伤害
+      S.critStacks = Math.max(0, (S.critStacks || 1) - 1)
+      if (S.critStacks === 0) {
+        recalculateBaseDamage(state)
+      }
+      break
+  }
+}
+
+/** 🎯 重新计算基础伤害（考虑所有伤害相关buff） */
+function recalculateBaseDamage(state: GameState) {
+  const S = state as any
+  let damage = 15  // 基础伤害
+  
+  // 应用所有活跃的伤害buff
+  if (S.heavyHitStacks > 0) {
+    damage *= Math.pow(2.0, S.heavyHitStacks)
+  }
+  if (S.defDownStacks > 0) {
+    damage *= Math.pow(1.15, S.defDownStacks)
+  }
+  if (S.critStacks > 0) {
+    damage *= Math.pow(1.5, S.critStacks)
+  }
+  
+  state.bulletDamage = Math.floor(damage)
+  console.log(`🎯 重新计算伤害: ${state.bulletDamage} (heavyHit=${S.heavyHitStacks || 0}, defDown=${S.defDownStacks || 0}, crit=${S.critStacks || 0})`)
+}
+
+/** 🎯 重新计算基础冷却（考虑所有冷却相关buff） */
+function recalculateBaseCooldown(state: GameState) {
+  const S = state as any
+  let cooldown = 350  // 基础冷却
+  
+  // 应用所有活跃的冷却buff
+  if (S.rapidFireStacks > 0) {
+    cooldown *= Math.pow(0.6, S.rapidFireStacks)
+  }
+  if (S.rapidBurstStacks > 0) {
+    cooldown *= Math.pow(0.3, S.rapidBurstStacks)
+  }
+  
+  state.shootCooldown = Math.max(30, cooldown)
+  console.log(`🎯 重新计算冷却: ${state.shootCooldown}ms (rapidFire=${S.rapidFireStacks || 0}, rapidBurst=${S.rapidBurstStacks || 0})`)
+}
+
+/** 🎯 重新计算基础穿透（考虑所有穿透相关buff） */
+function recalculateBasePierce(state: GameState) {
+  const S = state as any
+  let pierce = 1  // 基础穿透
+  
+  // 应用所有活跃的穿透buff
+  if (S.armorPierceStacks > 0) {
+    pierce += S.armorPierceStacks * 3
+  }
+  if (S.autoAimStacks > 0) {
+    pierce += S.autoAimStacks
+  }
+  
+  state.bulletPierce = pierce
+  console.log(`🎯 重新计算穿透: ${state.bulletPierce} (armorPierce=${S.armorPierceStacks || 0}, autoAim=${S.autoAimStacks || 0})`)
 }
 
 /** 给 state 添加或刷新一个 activeBuff（叠加或刷新时间） */
