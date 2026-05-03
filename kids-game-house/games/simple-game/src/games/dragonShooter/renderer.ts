@@ -525,38 +525,62 @@ export function createRenderer(
 
     // 5. 武器 - 弓箭
     ctx.save()
-    ctx.rotate(state.shootAngle + Math.PI / 2)  // 根据射击方向旋转
+    // 旋转坐标系到射击方向
+    // state.shootAngle: Canvas 标准角度（0=右，-PI/2=上）
+    ctx.rotate(state.shootAngle)
 
-    // 弓身
+    // 弓身（垂直于射击方向，开口朝后）
     ctx.strokeStyle = '#8B4513'  // 棕色木弓
     ctx.lineWidth = 3
     ctx.lineCap = 'round'
+    ctx.shadowColor = '#8B4513'
+    ctx.shadowBlur = 4
     ctx.beginPath()
-    ctx.arc(0, 0, 25, -Math.PI / 3, Math.PI / 3)
+    // 弓身是弧形，开口朝向负X方向（后方）
+    ctx.arc(0, 0, 22, -Math.PI / 2.5, Math.PI / 2.5)
     ctx.stroke()
+    ctx.shadowBlur = 0
 
-    // 弓弦
-    ctx.strokeStyle = '#C0C0C0'  // 银色弦
+    // 弓弦（连接弓的两端）
+    ctx.strokeStyle = '#E0E0E0'  // 浅灰色弦
     ctx.lineWidth = 1.5
     ctx.beginPath()
-    ctx.moveTo(25 * Math.cos(-Math.PI / 3), 25 * Math.sin(-Math.PI / 3))
-    ctx.lineTo(25 * Math.cos(Math.PI / 3), 25 * Math.sin(Math.PI / 3))
+    const bowTopX = 22 * Math.cos(-Math.PI / 2.5)
+    const bowTopY = 22 * Math.sin(-Math.PI / 2.5)
+    const bowBottomX = 22 * Math.cos(Math.PI / 2.5)
+    const bowBottomY = 22 * Math.sin(Math.PI / 2.5)
+    ctx.moveTo(bowTopX, bowTopY)
+    ctx.lineTo(bowBottomX, bowBottomY)
     ctx.stroke()
 
-    // 箭矢
-    ctx.strokeStyle = '#FFD700'  // 金色箭
-    ctx.lineWidth = 2
+    // 箭矢（沿射击方向）
+    ctx.strokeStyle = '#FFD700'  // 金色箭杆
+    ctx.lineWidth = 2.5
+    ctx.shadowColor = '#FFD700'
+    ctx.shadowBlur = 6
     ctx.beginPath()
-    ctx.moveTo(0, 0)
-    ctx.lineTo(30, 0)
+    ctx.moveTo(-5, 0)   // 箭尾
+    ctx.lineTo(35, 0)   // 箭头位置
     ctx.stroke()
+    ctx.shadowBlur = 0
 
-    // 箭头
+    // 箭头（三角形）
     ctx.fillStyle = '#FF4500'  // 橙红色箭头
     ctx.beginPath()
-    ctx.moveTo(30, 0)
-    ctx.lineTo(25, -3)
-    ctx.lineTo(25, 3)
+    ctx.moveTo(38, 0)      // 箭头尖端
+    ctx.lineTo(30, -4)     // 左翼
+    ctx.lineTo(33, 0)      // 中间凹进
+    ctx.lineTo(30, 4)      // 右翼
+    ctx.closePath()
+    ctx.fill()
+
+    // 箭羽（尾部装饰）
+    ctx.fillStyle = '#DC143C'  // 深红色羽毛
+    ctx.beginPath()
+    ctx.moveTo(-5, 0)
+    ctx.lineTo(-10, -3)
+    ctx.lineTo(-8, 0)
+    ctx.lineTo(-10, 3)
     ctx.closePath()
     ctx.fill()
 
