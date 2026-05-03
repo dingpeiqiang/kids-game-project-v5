@@ -367,7 +367,9 @@ export class RouteEditor {
   private drawPlayerStartPoint() {
     if (!this.playerStartPoint) return
 
-    const { x, y } = this.playerStartPoint
+    // playerStartPoint 存储的是画布坐标（包含偏移），绘制时需要转换为游戏区域坐标
+    const x = this.playerStartPoint.x - CANVAS_OFFSET_X
+    const y = this.playerStartPoint.y - CANVAS_OFFSET_Y
     const time = Date.now()
 
     this.ctx.save()
@@ -414,10 +416,10 @@ export class RouteEditor {
     this.ctx.fillText('玩家起点', x, y - 40)
 
     // 设置中提示
-    if (this.isSettingPlayerStart) {
+    if (this.activeMode === 'playerStart') {
       this.ctx.fillStyle = 'rgba(0, 255, 136, 0.9)'
       this.ctx.font = 'bold 12px sans-serif'
-      this.ctx.fillText('👆 点击设置玩家起点', CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y + BASE_H + 20)
+      this.ctx.fillText('👆 点击设置玩家起点', BASE_W / 2, BASE_H + 20)
     }
 
     this.ctx.restore()
