@@ -235,12 +235,12 @@ export function createInputHandler(
   }
 
   function handleRouteEditMode(x: number, y: number): boolean {
-    // 🎯 简化版：5个核心按钮 + 1个返回按钮
+    // 🎯 简化版：6个核心按钮 + 1个返回按钮
     const btnY = CANVAS_H - 85
-    const btnH = 50
-    const btnW = 65
-    const btnGap = 8
-    const totalBtns = 5
+    const btnH = 48
+    const btnW = 58
+    const btnGap = 6
+    const totalBtns = 6
     const totalWidth = btnW * totalBtns + btnGap * (totalBtns - 1)
     const btnStartX = (CANVAS_W - totalWidth) / 2
     
@@ -260,26 +260,32 @@ export function createInputHandler(
         return true
       }
       
-      // 2. 画路线（切换模式）
+      // 2. 重置当前路线
       if (x >= btnStartX + btnW + btnGap && x < btnStartX + (btnW + btnGap) * 2) {
+        callbacks.onRouteEditorClear?.()
+        return true
+      }
+      
+      // 3. 画路线（切换模式）
+      if (x >= btnStartX + (btnW + btnGap) * 2 && x < btnStartX + (btnW + btnGap) * 3) {
         callbacks.onDrawRoute?.()
         return true
       }
       
-      // 3. 设置起点（切换模式）
-      if (x >= btnStartX + (btnW + btnGap) * 2 && x < btnStartX + (btnW + btnGap) * 3) {
+      // 4. 设置起点（切换模式）
+      if (x >= btnStartX + (btnW + btnGap) * 3 && x < btnStartX + (btnW + btnGap) * 4) {
         callbacks.onSetPlayerStart?.()
         return true
       }
       
-      // 4. 保存
-      if (x >= btnStartX + (btnW + btnGap) * 3 && x < btnStartX + (btnW + btnGap) * 4) {
+      // 5. 保存
+      if (x >= btnStartX + (btnW + btnGap) * 4 && x < btnStartX + (btnW + btnGap) * 5) {
         callbacks.onRouteEditorSave?.()
         return true
       }
       
-      // 5. 导出
-      if (x >= btnStartX + (btnW + btnGap) * 4 && x < btnStartX + (btnW + btnGap) * 5) {
+      // 6. 导出
+      if (x >= btnStartX + (btnW + btnGap) * 5 && x < btnStartX + (btnW + btnGap) * 6) {
         callbacks.onRouteEditorExport?.()
         return true
       }

@@ -992,12 +992,12 @@ export function createRenderer(
       ctx.restore()
     }
 
-    // 🎯 简化版：5个核心按钮
-    const totalBtns = 5
+    // 🎯 简化版：6个核心按钮
+    const totalBtns = 6
     const btnY = CANVAS_H - 85
-    const btnH = 50
-    const btnW = 65
-    const btnGap = 8
+    const btnH = 48
+    const btnW = 58
+    const btnGap = 6
     const totalWidth = btnW * totalBtns + btnGap * (totalBtns - 1)
     const btnStartX = (CANVAS_W - totalWidth) / 2
 
@@ -1048,19 +1048,22 @@ export function createRenderer(
     // 1. 新建路线（开始新的一条）
     drawButton(btnStartX, btnY, btnW, btnH, '#9C27B0', '➕ 新建')
     
-    // 2. 画路线（默认模式）
+    // 2. 重置当前路线
+    drawButton(btnStartX + btnW + btnGap, btnY, btnW, btnH, '#FF6B6B', '🗑️ 重置')
+    
+    // 3. 画路线（默认模式）
     const isRouteMode = routeEditor.activeMode === 'route'
-    drawButton(btnStartX + btnW + btnGap, btnY, btnW, btnH, isRouteMode ? '#E040FB' : '#7B1FA2', '✏️ 画路线', isRouteMode)
+    drawButton(btnStartX + (btnW + btnGap) * 2, btnY, btnW, btnH, isRouteMode ? '#E040FB' : '#7B1FA2', '✏️ 画路线', isRouteMode)
     
-    // 3. 设置起点
+    // 4. 设置起点
     const isPlayerStartMode = routeEditor.activeMode === 'playerStart'
-    drawButton(btnStartX + (btnW + btnGap) * 2, btnY, btnW, btnH, isPlayerStartMode ? '#00FF88' : '#2E7D32', '🎯 起点', isPlayerStartMode)
+    drawButton(btnStartX + (btnW + btnGap) * 3, btnY, btnW, btnH, isPlayerStartMode ? '#00FF88' : '#2E7D32', '🎯 起点', isPlayerStartMode)
     
-    // 4. 保存
-    drawButton(btnStartX + (btnW + btnGap) * 3, btnY, btnW, btnH, '#4CAF50', '💾 保存')
+    // 5. 保存
+    drawButton(btnStartX + (btnW + btnGap) * 4, btnY, btnW, btnH, '#4CAF50', '💾 保存')
     
-    // 5. 导出JSON
-    drawButton(btnStartX + (btnW + btnGap) * 4, btnY, btnW, btnH, '#2196F3', '📥 导出')
+    // 6. 导出JSON
+    drawButton(btnStartX + (btnW + btnGap) * 5, btnY, btnW, btnH, '#2196F3', '📥 导出')
     
     // 6. 返回（单独一行，居中）
     const returnBtnW = 100
@@ -1071,7 +1074,7 @@ export function createRenderer(
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
     ctx.font = '11px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('点击“新建”创建多条路线 | 绘制后点击“保存”', CANVAS_W / 2, btnY + btnH * 2 + 55)
+    ctx.fillText('点击“新建”创建多条路线 | “重置”清除当前路线', CANVAS_W / 2, btnY + btnH * 2 + 55)
     
     drawFloatTexts()
   }
