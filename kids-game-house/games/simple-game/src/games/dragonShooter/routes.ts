@@ -142,9 +142,51 @@ export class RouteEditor {
   private currentIndex = 0
   isDrawing = false
   showPreview = false  // 是否显示游戏预览
+  // 玩家初始位置标记（画布坐标）
+  playerStartPoint: RoutePoint | null = null
+  isSettingPlayerStart = false  // 是否正在设置玩家初始位置
 
   constructor(_canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
     this.ctx = ctx
+  }
+
+  // 开始设置玩家初始位置
+  startSettingPlayerStart() {
+    this.isSettingPlayerStart = true
+    this.isDrawing = false
+    console.log('🎯 开始设置玩家初始位置，点击画布指定位置')
+  }
+
+  // 设置玩家初始位置
+  setPlayerStartPoint(x: number, y: number) {
+    // 确保在游戏区域内
+    if (x >= CANVAS_OFFSET_X && x <= CANVAS_OFFSET_X + BASE_W &&
+        y >= CANVAS_OFFSET_Y && y <= CANVAS_OFFSET_Y + BASE_H) {
+      this.playerStartPoint = { x, y }
+      this.isSettingPlayerStart = false
+      console.log(`✅ 玩家初始位置已设置: (${x.toFixed(0)}, ${y.toFixed(0)})`)
+      return true
+    }
+    return false
+  }
+
+  // 获取玩家初始位置
+  getPlayerStartPoint(): RoutePoint | null {
+    return this.playerStartPoint
+  }
+
+  // 清除玩家初始位置
+  clearPlayerStartPoint() {
+    this.playerStartPoint = null
+  }
+
+  // 获取玩家初始位置（转换为游戏坐标）
+  getPlayerStartGamePoint(): { x: number; y: number } | null {
+    if (!this.playerStartPoint) return null
+    return {
+      x: this.playerStartPoint.x - CANVAS_OFFSET_X,
+      y: this.playerStartPoint.y - CANVAS_OFFSET_Y
+    }
   }
 
   // 新建一条空路线并开始编辑
@@ -307,6 +349,69 @@ export class RouteEditor {
       this.ctx.fillText(`${i + 1}`, route[0].x, route[0].y - 10)
       this.ctx.restore()
     })
+
+    // 绘制玩家初始位置标记
+    this.drawPlayerStartPoint()
+  }
+
+  // 绘制玩家初始位置标记
+  private drawPlayerStartPoint() {
+    if (!this.playerStartPoint) return
+
+    const { x, y } = this.playerStartPoint
+    const time = Date.now()
+
+    this.ctx.save()
+
+    // 外圈脉冲效果
+    const pulseScale = 1 + Math.sin(time / 200) * 0.1
+    const alpha = 0.6 + Math.sin(time / 300) * 0.2
+
+    // 外圈
+    this.ctx.strokeStyle = `rgba(0, 255, 136, ${alpha})`
+    this.ctx.lineWidth = 3
+    this.ctx.shadowColor = '#00FF88'
+    this.ctx.shadowBlur = 15
+    this.ctx.beginPath()
+    this.ctx.arc(x, y, 25 * pulseScale, 0, Math.PI * 2)
+    this.ctx.stroke()
+
+    // 内圈
+    this.ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.8})`
+    this.ctx.lineWidth = 2
+    this.ctx.shadowBlur = 10
+    this.ctx.beginPath()
+    this.ctx.arc(x, y, 15 * pulseScale, 0, Math.PI * 2)
+    this.ctx.stroke()
+
+    // 中心点
+    this.ctx.fillStyle = '#00FF88'
+    this.ctx.shadowBlur = 8
+    this.ctx.beginPath()
+    this.ctx.arc(x, y, 8, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    // 玩家图标
+    this.ctx.fillStyle = '#FFFFFF'
+    this.ctx.font = 'bold 14px sans-serif'
+    this.ctx.textAlign = 'center'
+    this.ctx.textBaseline = 'middle'
+    this.ctx.shadowBlur = 0
+    this.ctx.fillText('🎯', x, y)
+
+    // 标签
+    this.ctx.fillStyle = '#00FF88'
+    this.ctx.font = 'bold 11px sans-serif'
+    this.ctx.fillText('玩家起点', x, y - 40)
+
+    // 设置中提示
+    if (this.isSettingPlayerStart) {
+      this.ctx.fillStyle = 'rgba(0, 255, 136, 0.9)'
+      this.ctx.font = 'bold 12px sans-serif'
+      this.ctx.fillText('👆 点击设置玩家起点', CANVAS_OFFSET_X + BASE_W / 2, CANVAS_OFFSET_Y + BASE_H + 20)
+    }
+
+    this.ctx.restore()
   }
 
   // 绘制游戏场景预览（显示虚线框和背景）

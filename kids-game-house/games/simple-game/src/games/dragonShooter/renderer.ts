@@ -41,19 +41,23 @@ export function createRenderer(
   function drawRouteTrail(dragon: Dragon) {
     const route = dragon.routeFollower['route']
     if (!route || !route.points || route.points.length < 2) return
-    
+
+    // 路线颜色和龙的颜色一致（shiftHue 后的），透明度降低
+    const headColor = dragon.segments[0]?.color || '#FFD700'
     ctx.save()
-    ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)'
-    ctx.lineWidth = 2
+    ctx.strokeStyle = headColor + '4D'  // 4D ≈ 30% opacity
+    ctx.lineWidth = 2.5
     ctx.setLineDash([5, 5])
-    
+    ctx.shadowColor = headColor
+    ctx.shadowBlur = 6
+
     ctx.beginPath()
     ctx.moveTo(route.points[0].x, route.points[0].y)
-    
+
     for (let i = 1; i < route.points.length; i++) {
       ctx.lineTo(route.points[i].x, route.points[i].y)
     }
-    
+
     ctx.stroke()
     ctx.restore()
   }
@@ -1047,12 +1051,12 @@ export function createRenderer(
       routeEditor.drawCurrentRoute()
     }
 
-    // 按钮区域 - 7个按钮：新建 清除 保存 优化 预览 导出 返回
+    // 按钮区域 - 8个按钮：新建 清除 保存 优化 预览 玩家起点 导出 返回
     const btnY = CANVAS_H - 80
     const btnH = 50
     const btnW = 58
     const btnGap = 3
-    const totalBtns = 7
+    const totalBtns = 8
     const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
     // 新建按钮
@@ -1086,21 +1090,28 @@ export function createRenderer(
     ctx.fillStyle = '#FFFFFF'
     ctx.fillText('👁️ 预览', btnStartX + (btnW + btnGap) * 4 + btnW / 2, btnY + 32)
 
-    // 导出按钮
-    ctx.fillStyle = '#2196F3'
+    // 玩家起点按钮（特殊颜色：高亮绿色）
+    const playerStartColor = routeEditor.isSettingPlayerStart ? '#00FF88' : '#2E7D32'
+    ctx.fillStyle = playerStartColor
     ctx.fillRect(btnStartX + (btnW + btnGap) * 5, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 5 + btnW / 2, btnY + 32)
+    ctx.fillText('🎯 起点', btnStartX + (btnW + btnGap) * 5 + btnW / 2, btnY + 32)
+
+    // 导出按钮
+    ctx.fillStyle = '#2196F3'
+    ctx.fillRect(btnStartX + (btnW + btnGap) * 6, btnY, btnW, btnH)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillText('📥 导出', btnStartX + (btnW + btnGap) * 6 + btnW / 2, btnY + 32)
 
     // 返回按钮
     ctx.fillStyle = COLORS.accent
-    ctx.fillRect(btnStartX + (btnW + btnGap) * 6, btnY, btnW, btnH)
+    ctx.fillRect(btnStartX + (btnW + btnGap) * 7, btnY, btnW, btnH)
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 6 + btnW / 2, btnY + 32)
+    ctx.fillText('⬅️ 返回', btnStartX + (btnW + btnGap) * 7 + btnW / 2, btnY + 32)
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.font = '11px sans-serif'
-    ctx.fillText('✨优化：抽稀+圆滑后保存 | 👁️预览：查看游戏效果', CANVAS_W / 2, btnY + btnH + 15)
+    ctx.fillText('✨优化：抽稀+圆滑 | 🎯起点：设置玩家初始位置', CANVAS_W / 2, btnY + btnH + 15)
     
     drawFloatTexts()
   }
@@ -1218,7 +1229,9 @@ export function createRenderer(
     } else {
       // 路线轨迹（路线存游戏坐标，在 translate 区域内绘制）
       if (state.dragons.length > 0) {
-        drawRouteTrail(state.dragons[0])
+        for (const dragon of state.dragons) {
+          drawRouteTrail(dragon)
+        }
       }
       
       for (const dragon of state.dragons) {

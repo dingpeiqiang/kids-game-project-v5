@@ -13,6 +13,9 @@ export interface CustomRoute {
   id: string
   name: string
   points: RoutePoint[]
+  // 玩家初始位置（画布坐标）
+  playerStartX?: number
+  playerStartY?: number
 }
 
 // 龙身体节
@@ -366,6 +369,8 @@ export interface GameState {
   timeLeft: number
   playerX: number
   playerY: number          // 玩家Y坐标（底部或中间）
+  playerStartX: number     // 玩家初始位置X
+  playerStartY: number     // 玩家初始位置Y
   shootAngle: number       // 射击角度（弧度，-PI/2为向上）
   canMove: boolean         // 是否可以移动
   isSelected: boolean      // 玩家是否被选中（选中才能移动，未选中只能调射击方向）

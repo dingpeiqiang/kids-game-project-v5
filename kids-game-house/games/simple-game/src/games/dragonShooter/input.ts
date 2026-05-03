@@ -19,6 +19,8 @@ export interface InputCallbacks {
   onRouteEditorNew?: () => void  // 可选：新建路线
   onRouteEditorOptimize?: () => void  // 可选：优化路线
   onRouteEditorPreview?: () => void  // 可选：预览游戏效果
+  onSetPlayerStart?: () => void  // 可选：设置玩家起点
+  onClearPlayerStart?: () => void  // 可选：清除玩家起点
   onStartChallenge: () => void
   onStartEndless: () => void
   onDrawRoute: () => void
@@ -162,7 +164,7 @@ export function createInputHandler(
       const playerRadius = 30
       const distToPlayer = Math.sqrt(
         Math.pow(x - state.playerX, 2) +
-        Math.pow(y - (BASE_H - 55), 2)
+        Math.pow(y - state.playerY, 2)
       )
 
       // 点击玩家本体：切换选中态
@@ -198,8 +200,8 @@ export function createInputHandler(
     const btnH = 50
     const btnW = 58
     const btnGap = 3
-    // 7个按钮：新建 清除 保存 优化 预览 导出 返回
-    const totalBtns = 7
+    // 8个按钮：新建 清除 保存 优化 预览 玩家起点 导出 返回
+    const totalBtns = 8
     const btnStartX = (CANVAS_W - (btnW * totalBtns + btnGap * (totalBtns - 1))) / 2
 
     // 点击按钮区域：阻止后续 active 设置，清除按钮状态
@@ -226,11 +228,26 @@ export function createInputHandler(
         return true
       }
       if (x >= btnStartX + (btnW + btnGap) * 5 && x < btnStartX + (btnW + btnGap) * 6) {
-        callbacks.onRouteEditorExport?.()
+        callbacks.onSetPlayerStart?.()
         return true
       }
       if (x >= btnStartX + (btnW + btnGap) * 6 && x < btnStartX + (btnW + btnGap) * 7) {
+        callbacks.onRouteEditorExport?.()
+        return true
+      }
+      if (x >= btnStartX + (btnW + btnGap) * 7 && x < btnStartX + (btnW + btnGap) * 8) {
         callbacks.onRouteEditorReturn?.()
+        return true
+      }
+    }
+
+    // 如果正在设置玩家起点，且点击在游戏区域内
+    if (routeEditorRef.current.isSettingPlayerStart) {
+      // 点击在游戏区域
+      if (x >= CANVAS_OFFSET_X && x <= CANVAS_OFFSET_X + BASE_W &&
+          y >= CANVAS_OFFSET_Y && y <= CANVAS_OFFSET_Y + BASE_H) {
+        routeEditorRef.current.setPlayerStartPoint(x, y)
+        state.touch.active = false
         return true
       }
     }
