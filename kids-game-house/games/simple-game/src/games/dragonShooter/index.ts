@@ -51,13 +51,22 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     const wrapper = document.createElement('div')
     wrapper.id = 'dragon-shooter-wrapper'
     wrapper.style.cssText = `
-      position: fixed; top: 0; left: 0;
-      width: 100vw; height: 100vh; z-index: 1000;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh; /* 动态视口高度，适配移动端浏览器 */
+      z-index: 1000;
       background: #000;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
+      margin: 0;
+      padding: 0;
     `
     
     // 🎯 关键修复：保持宽高比，自适应屏幕
