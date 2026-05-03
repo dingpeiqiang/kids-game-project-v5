@@ -87,6 +87,9 @@ export function createInputHandler(
       // 点击了按钮区域，直接返回
       if (btnClicked) return
 
+      // 正在设置玩家起点模式，不触发画路线
+      if (routeEditorRef.current.isSettingPlayerStart) return
+
       // 整个画布任意位置都可以开始绘制
       routeEditorRef.current.newRoute()
       routeEditorRef.current.addPoint(x, y)
@@ -261,7 +264,7 @@ export function createInputHandler(
           y >= CANVAS_OFFSET_Y && y <= CANVAS_OFFSET_Y + BASE_H) {
         routeEditorRef.current.setPlayerStartPoint(x, y)
         state.touch.active = false
-        return true
+        return true  // 阻止后续触发画路线
       }
     }
 
@@ -289,7 +292,8 @@ export function createInputHandler(
   // 移动
   function handleMove(x: number, y: number) {
     if (state.phase === 'routeEdit') {
-      if (state.touch.active) {
+      // 设置玩家起点模式下，不画路线点
+      if (state.touch.active && !routeEditorRef.current.isSettingPlayerStart) {
         routeEditorRef.current.addPoint(x, y)
       }
       return
