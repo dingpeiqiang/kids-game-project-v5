@@ -406,7 +406,9 @@ export function createRenderer(
   // ========== 玩家 ==========
   function drawPlayer() {
     ctx.save()
-    ctx.translate(state.playerX, BASE_H - 55)
+    // 使用 state.playerY（编辑器设置的起点位置），默认为底部
+    const playerDrawY = state.playerY ?? BASE_H - 55
+    ctx.translate(state.playerX, playerDrawY)
 
     // 无敌状态护盾特效
     if (state.invincibleTimer > 0) {
