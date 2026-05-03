@@ -56,69 +56,29 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       left: 0;
       right: 0;
       bottom: 0;
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh; /* 动态视口高度，适配移动端浏览器 */
+      width: 100%;
+      height: 100%;
       z-index: 1000;
       background: #000;
       overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0;
-      padding: 0;
+      touch-action: none;
     `
     
-    // 🎯 关键修复：保持宽高比，自适应屏幕
-    const aspectRatio = CANVAS_W / CANVAS_H
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    const viewportAspect = viewportWidth / viewportHeight
-    
-    let displayWidth, displayHeight
-    
-    if (viewportAspect > aspectRatio) {
-      // 屏幕更宽，以高度为准
-      displayHeight = viewportHeight
-      displayWidth = displayHeight * aspectRatio
-    } else {
-      // 屏幕更高，以宽度为准
-      displayWidth = viewportWidth
-      displayHeight = displayWidth / aspectRatio
-    }
-    
+    // 🎯 关键修复：Canvas全屏，通过CSS缩放保持宽高比
     canvas.style.cssText = `
-      width: ${displayWidth}px;
-      height: ${displayHeight}px;
-      max-width: 100vw;
-      max-height: 100vh;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
     `
     
     wrapper.appendChild(canvas)
     document.body.appendChild(wrapper)
-    
-    // 🎯 监听窗口大小变化，动态调整
-    const handleResize = () => {
-      const newViewportWidth = window.innerWidth
-      const newViewportHeight = window.innerHeight
-      const newViewportAspect = newViewportWidth / newViewportHeight
-      
-      let newDisplayWidth, newDisplayHeight
-      
-      if (newViewportAspect > aspectRatio) {
-        newDisplayHeight = newViewportHeight
-        newDisplayWidth = newDisplayHeight * aspectRatio
-      } else {
-        newDisplayWidth = newViewportWidth
-        newDisplayHeight = newDisplayWidth / aspectRatio
-      }
-      
-      canvas.style.width = `${newDisplayWidth}px`
-      canvas.style.height = `${newDisplayHeight}px`
-    }
-    
-    window.addEventListener('resize', handleResize)
-    window.addEventListener('orientationchange', handleResize)
   } else {
     canvas.style.cssText = `display: block; width: ${CANVAS_W}px; height: ${CANVAS_H}px;`
     container.appendChild(canvas)
