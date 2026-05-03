@@ -336,21 +336,61 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
     console.log(`🎁 龙头附近道具: 节段 #${nearHeadIndex}`)
   }
   
-  // 剩余的固定道具随机分布
-  for (let i = attachedIndices.size; i < fixedAttachCount; i++) {
-    const maxIdx = Math.min(segmentCount - 2, 20)
-    let idx: number
-    do {
-      idx = Math.floor(Math.random() * (maxIdx - 3)) + 3
-    } while (attachedIndices.has(idx))  // 避免重复
-    attachedIndices.add(idx)
+  // 🎯 剩余道具均匀分布：将龙身分成若干区间，每个区间最多放一个道具
+  const remainingCount = fixedAttachCount - attachedIndices.size
+  if (remainingCount > 0) {
+    // 计算可用区间（排除龙头附近的10个节段和尾部2个节段）
+    const availableStart = 10
+    const availableEnd = segmentCount - 2
+    const availableLength = availableEnd - availableStart
+    
+    if (availableLength > 0) {
+      // 将可用区域分成 remainingCount 个区间
+      const intervalSize = Math.floor(availableLength / remainingCount)
+      
+      for (let i = 0; i < remainingCount; i++) {
+        // 在每个区间内随机选择一个位置
+        const intervalStart = availableStart + i * intervalSize
+        const intervalEnd = Math.min(intervalStart + intervalSize, availableEnd)
+        
+        if (intervalEnd > intervalStart) {
+          let idx: number
+          do {
+            idx = Math.floor(Math.random() * (intervalEnd - intervalStart)) + intervalStart
+          } while (attachedIndices.has(idx))  // 避免重复
+          attachedIndices.add(idx)
+          console.log(`🎁 均匀分布道具: 节段 #${idx} (区间 ${intervalStart}-${intervalEnd})`)
+        }
+      }
+    }
   }
 
-  // 随机道具节段（根据概率）
-  for (let i = 3; i < segmentCount - 1; i++) {
-    if (attachedIndices.has(i)) continue  // 已被固定占用
-    if (Math.random() < POWERUP_SEGMENT_CHANCE) {
-      attachedIndices.add(i)
+  // 🎯 随机道具节段（根据概率）- 也采用均匀分布
+  // 计算期望的随机道具数量
+  const availableForRandom = segmentCount - 3 - attachedIndices.size  // 排除龙头附近和已占用的
+  const expectedRandomCount = Math.floor(availableForRandom * POWERUP_SEGMENT_CHANCE)
+  
+  if (expectedRandomCount > 0) {
+    // 将可用区域分成 expectedRandomCount 个区间
+    const randomStart = 10  // 从第10个节段开始（避开龙头附近）
+    const randomEnd = segmentCount - 2  // 到倒数第2个节段
+    const randomLength = randomEnd - randomStart
+    
+    if (randomLength > 0) {
+      const intervalSize = Math.floor(randomLength / expectedRandomCount)
+      
+      for (let i = 0; i < expectedRandomCount; i++) {
+        const intervalStart = randomStart + i * intervalSize
+        const intervalEnd = Math.min(intervalStart + intervalSize, randomEnd)
+        
+        if (intervalEnd > intervalStart && Math.random() < POWERUP_SEGMENT_CHANCE) {
+          let idx: number
+          do {
+            idx = Math.floor(Math.random() * (intervalEnd - intervalStart)) + intervalStart
+          } while (attachedIndices.has(idx))  // 避免重复
+          attachedIndices.add(idx)
+        }
+      }
     }
   }
 

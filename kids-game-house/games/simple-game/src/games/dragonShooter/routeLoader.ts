@@ -97,7 +97,9 @@ export class RouteLoader {
           this.levelRoutes[level] = routes.map((route, idx) => ({
             id: route.id || `level_${level}_route_${idx}`,
             name: route.name || `第${level}关-路线${idx + 1}`,
-            points: route.points
+            points: route.points,
+            playerStartX: route.playerStartX,
+            playerStartY: route.playerStartY
           }))
           
           // 打印每条路线的信息
