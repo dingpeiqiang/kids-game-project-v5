@@ -53,12 +53,63 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     wrapper.style.cssText = `
       position: fixed; top: 0; left: 0;
       width: 100vw; height: 100vh; z-index: 1000;
-      background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 50%, #B2EBF2 100%);
+      background: #000;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     `
-    canvas.style.cssText = `position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; object-fit: contain;`
+    
+    // 🎯 关键修复：保持宽高比，自适应屏幕
+    const aspectRatio = CANVAS_W / CANVAS_H
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const viewportAspect = viewportWidth / viewportHeight
+    
+    let displayWidth, displayHeight
+    
+    if (viewportAspect > aspectRatio) {
+      // 屏幕更宽，以高度为准
+      displayHeight = viewportHeight
+      displayWidth = displayHeight * aspectRatio
+    } else {
+      // 屏幕更高，以宽度为准
+      displayWidth = viewportWidth
+      displayHeight = displayWidth / aspectRatio
+    }
+    
+    canvas.style.cssText = `
+      width: ${displayWidth}px;
+      height: ${displayHeight}px;
+      max-width: 100vw;
+      max-height: 100vh;
+    `
+    
     wrapper.appendChild(canvas)
     document.body.appendChild(wrapper)
+    
+    // 🎯 监听窗口大小变化，动态调整
+    const handleResize = () => {
+      const newViewportWidth = window.innerWidth
+      const newViewportHeight = window.innerHeight
+      const newViewportAspect = newViewportWidth / newViewportHeight
+      
+      let newDisplayWidth, newDisplayHeight
+      
+      if (newViewportAspect > aspectRatio) {
+        newDisplayHeight = newViewportHeight
+        newDisplayWidth = newDisplayHeight * aspectRatio
+      } else {
+        newDisplayWidth = newViewportWidth
+        newDisplayHeight = newDisplayWidth / aspectRatio
+      }
+      
+      canvas.style.width = `${newDisplayWidth}px`
+      canvas.style.height = `${newDisplayHeight}px`
+    }
+    
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
   } else {
     canvas.style.cssText = `display: block; width: ${CANVAS_W}px; height: ${CANVAS_H}px;`
     container.appendChild(canvas)
