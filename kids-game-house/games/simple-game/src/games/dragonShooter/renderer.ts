@@ -1121,18 +1121,22 @@ export function createRenderer(
 
   // ========== 关卡完成界面 ==========
   function drawLevelComplete() {
-    // 全屏遮罩
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+    // 🎯 如果正在过渡，使用淡出效果
+    const alpha = state.levelTransition ? Math.max(0, state.levelTransitionTimer) : 1
+    
+    // 全屏遮罩（带透明度）
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.85 * alpha})`
     ctx.fillRect(0, 0, BASE_W, BASE_H)
 
-    // 标题
+    // 标题（带透明度）
+    ctx.globalAlpha = alpha
     ctx.fillStyle = '#4CAF50'
     ctx.font = 'bold 36px sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText('🎉 关卡通过!', BASE_W / 2, BASE_H / 2 - 100)
 
     // 分割线
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+    ctx.strokeStyle = `rgba(255,255,255,${0.2 * alpha})`
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(BASE_W / 2 - 120, BASE_H / 2 - 70)
@@ -1155,16 +1159,16 @@ export function createRenderer(
     ctx.lineTo(BASE_W / 2 + 80, BASE_H / 2 + 45)
     ctx.stroke()
 
-    // 下一关按钮
+    // 下一关按钮（带透明度）
     const btnW = 200
     const btnH = 50
     const btnX = BASE_W / 2 - btnW / 2
     const btnY = BASE_H / 2 + 60
 
-    // 按钮背景（带渐变）
+    // 按钮背景（带渐变和透明度）
     const grad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH)
-    grad.addColorStop(0, '#4CAF50')
-    grad.addColorStop(1, '#388E3C')
+    grad.addColorStop(0, `rgba(76, 175, 80, ${alpha})`)
+    grad.addColorStop(1, `rgba(56, 142, 60, ${alpha})`)
     ctx.fillStyle = grad
     ctx.beginPath()
     ctx.roundRect(btnX, btnY, btnW, btnH, 10)
@@ -1176,9 +1180,11 @@ export function createRenderer(
     ctx.fillText(`进入第 ${state.level} 关`, BASE_W / 2, btnY + 33)
 
     // 提示
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.fillStyle = `rgba(255,255,255,${0.5 * alpha})`
     ctx.font = '12px sans-serif'
     ctx.fillText('点击按钮继续', BASE_W / 2, btnY + btnH + 20)
+    
+    ctx.globalAlpha = 1
   }
 
   // ========== 主渲染函数 ==========

@@ -1162,53 +1162,60 @@ export function checkLevelUp(state: GameState): boolean {
 export function startNextLevel(state: GameState) {
   console.log(`🚀 startNextLevel 被调用, 当前关卡: ${state.level}, phase: ${state.phase}`)
   
-  const nextRoutes = routeLoader.getRoutesForLevel(state.level)
-  console.log(`📊 获取到 ${nextRoutes.length} 条路线`)
-
-  // 清除旧数据
-  state.dragons = []
-  state.bullets = []
-  state.powerUps = []
-  state.particles = []
-  state.floatTexts = []
-  state.coinDrops = []
-
-  // 重置闯关状态
-  state.levelProgress = 0
-  state.dragonsSpawnedInLevel = 0
-  state.levelTarget = nextRoutes.length > 0 ? nextRoutes.length : 3
-  state.maxDragons = state.levelTarget
-
-  // 玩家位置重置
-  const firstRoute = nextRoutes[0]
-  if (firstRoute?.playerStartX !== undefined && firstRoute?.playerStartY !== undefined) {
-    state.playerX = firstRoute.playerStartX
-    state.playerY = firstRoute.playerStartY
-    state.playerStartX = firstRoute.playerStartX
-    state.playerStartY = firstRoute.playerStartY
-    console.log(`🎯 使用自定义起点: (${state.playerX}, ${state.playerY})`)
-  } else {
-    state.playerX = BASE_W / 2
-    state.playerY = BASE_H - 55
-    state.playerStartX = BASE_W / 2
-    state.playerStartY = BASE_H - 55
-    console.log(`🎯 使用默认起点: (${state.playerX}, ${state.playerY})`)
-  }
-
-  state.phase = 'playing'
+  // 🎯 关键修复：先启用过渡动画，延迟初始化关卡
+  state.levelTransition = true
+  state.levelTransitionTimer = 1.0  // 1秒过渡时间
   state.isPaused = false
-  state.levelTransition = false  // 清除过渡状态，避免遮罩残留
   
-  console.log(`✅ 状态设置完成: phase=${state.phase}, isPaused=${state.isPaused}, levelTransition=${state.levelTransition}`)
+  console.log(`✅ 进入过渡状态: levelTransition=${state.levelTransition}, timer=${state.levelTransitionTimer}`)
+  
+  // 延迟执行关卡初始化，等待过渡动画播放
+  setTimeout(() => {
+    const nextRoutes = routeLoader.getRoutesForLevel(state.level)
+    console.log(`📊 获取到 ${nextRoutes.length} 条路线`)
 
-  // 显示关卡开始提示
-  state.floatTexts.push({
-    x: BASE_W / 2, y: BASE_H / 2,
-    text: `🎉 第${state.level}关!`,
-    color: '#FFD700', life: 2, vy: -0.5, size: 28
-  })
+    // 清除旧数据
+    state.dragons = []
+    state.bullets = []
+    state.powerUps = []
+    state.particles = []
+    state.floatTexts = []
+    state.coinDrops = []
 
-  console.log(`🎮 开始第${state.level}关, levelTarget=${state.levelTarget}`)
+    // 重置闯关状态
+    state.levelProgress = 0
+    state.dragonsSpawnedInLevel = 0
+    state.levelTarget = nextRoutes.length > 0 ? nextRoutes.length : 3
+    state.maxDragons = state.levelTarget
+
+    // 玩家位置重置
+    const firstRoute = nextRoutes[0]
+    if (firstRoute?.playerStartX !== undefined && firstRoute?.playerStartY !== undefined) {
+      state.playerX = firstRoute.playerStartX
+      state.playerY = firstRoute.playerStartY
+      state.playerStartX = firstRoute.playerStartX
+      state.playerStartY = firstRoute.playerStartY
+      console.log(`🎯 使用自定义起点: (${state.playerX}, ${state.playerY})`)
+    } else {
+      state.playerX = BASE_W / 2
+      state.playerY = BASE_H - 55
+      state.playerStartX = BASE_W / 2
+      state.playerStartY = BASE_H - 55
+      console.log(`🎯 使用默认起点: (${state.playerX}, ${state.playerY})`)
+    }
+
+    state.phase = 'playing'
+    state.levelTransition = false  // 清除过渡状态
+    
+    console.log(`✅ 关卡初始化完成: phase=${state.phase}, levelTarget=${state.levelTarget}`)
+    
+    // 显示关卡开始提示
+    state.floatTexts.push({
+      x: BASE_W / 2, y: BASE_H / 2,
+      text: `🎉 第${state.level}关!`,
+      color: '#FFD700', life: 2, vy: -0.5, size: 28
+    })
+  }, 800)  // 800ms后初始化关卡（给过渡动画留200ms余量）
 }
 
 /**
