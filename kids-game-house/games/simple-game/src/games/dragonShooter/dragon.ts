@@ -256,9 +256,23 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
   else if (level >= 3) fixedAttachCount = 1
 
   const attachedIndices = new Set<number>()
-  for (let i = 0; i < fixedAttachCount; i++) {
+  
+  // 🎯 关键优化：确保龙头附近（前10个节段内）至少有一个道具
+  // 这样玩家在游戏早期就能获得道具，提升游戏体验
+  if (segmentCount > 10 && fixedAttachCount > 0) {
+    // 在龙头附近（第3-8个节段）放置第一个道具
+    const nearHeadIndex = Math.floor(Math.random() * 6) + 3  // 3-8之间
+    attachedIndices.add(nearHeadIndex)
+    console.log(`🎁 龙头附近道具: 节段 #${nearHeadIndex}`)
+  }
+  
+  // 剩余的固定道具随机分布
+  for (let i = attachedIndices.size; i < fixedAttachCount; i++) {
     const maxIdx = Math.min(segmentCount - 2, 20)
-    const idx = Math.floor(Math.random() * (maxIdx - 3)) + 3
+    let idx: number
+    do {
+      idx = Math.floor(Math.random() * (maxIdx - 3)) + 3
+    } while (attachedIndices.has(idx))  // 避免重复
     attachedIndices.add(idx)
   }
 
