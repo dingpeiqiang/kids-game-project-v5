@@ -97,9 +97,15 @@ export function createInputHandler(
 
       // 路线绘制模式
       if (mode === 'route') {
-        // 🎯 修复：只在没有路线时才新建，否则继续在当前路线上绘制
-        if (routeEditorRef.current.getRouteCount() === 0) {
-          routeEditorRef.current.newRoute()
+        // 🎯 修复：检查是否正在绘制，如果没有则启用绘制模式
+        if (!routeEditorRef.current.isDrawing) {
+          // 如果还没有任何路线，新建一条
+          if (routeEditorRef.current.getRouteCount() === 0) {
+            routeEditorRef.current.newRoute()
+          } else {
+            // 已有路线，启用绘制模式（继续在当前路线上绘制）
+            routeEditorRef.current.startDrawing()
+          }
         }
         routeEditorRef.current.addPoint(x, y)
         state.touch.active = true
