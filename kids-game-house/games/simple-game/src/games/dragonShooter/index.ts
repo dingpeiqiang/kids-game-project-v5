@@ -68,17 +68,17 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       justify-content: center;
     `
     
-    // 🎯 关键修复：通过JavaScript动态计算Canvas缩放比例
+    // 🎯 关键修复：通过JavaScript动态计算Canvas缩放比例（cover模式，填满屏幕）
     const updateCanvasSize = () => {
       const windowWidth = window.innerWidth
       const windowHeight = window.innerHeight
       const canvasWidth = CANVAS_W
       const canvasHeight = CANVAS_H
       
-      // 计算缩放比例（保持宽高比）
+      // 计算缩放比例（使用max实现cover效果，填满屏幕）
       const scaleX = windowWidth / canvasWidth
       const scaleY = windowHeight / canvasHeight
-      const scale = Math.min(scaleX, scaleY)
+      const scale = Math.max(scaleX, scaleY)  // 🎯 取较大值，确保填满屏幕
       
       // 应用缩放
       canvas.style.width = `${canvasWidth * scale}px`
