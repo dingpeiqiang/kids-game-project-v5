@@ -63,19 +63,33 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       touch-action: none;
       margin: 0;
       padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     `
     
-    // 🎯 关键修复：Canvas通过CSS缩放实现最大化显示（保持宽高比）
-    canvas.style.cssText = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      max-width: 100vw;
-      max-height: 100vh;
-      width: auto;
-      height: auto;
-    `
+    // 🎯 关键修复：通过JavaScript动态计算Canvas缩放比例
+    const updateCanvasSize = () => {
+      const windowWidth = window.innerWidth
+      const windowHeight = window.innerHeight
+      const canvasWidth = CANVAS_W
+      const canvasHeight = CANVAS_H
+      
+      // 计算缩放比例（保持宽高比）
+      const scaleX = windowWidth / canvasWidth
+      const scaleY = windowHeight / canvasHeight
+      const scale = Math.min(scaleX, scaleY)
+      
+      // 应用缩放
+      canvas.style.width = `${canvasWidth * scale}px`
+      canvas.style.height = `${canvasHeight * scale}px`
+    }
+    
+    // 初始设置
+    updateCanvasSize()
+    
+    // 监听窗口大小变化
+    window.addEventListener('resize', updateCanvasSize)
     
     wrapper.appendChild(canvas)
     document.body.appendChild(wrapper)
@@ -86,6 +100,9 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     document.body.style.position = 'fixed'
     document.body.style.width = '100%'
     document.body.style.height = '100%'
+    
+    // 🎯 保存 resize 监听器引用，以便游戏结束时移除
+    ;(window as any)._dragonShooterResizeHandler = updateCanvasSize
   } else {
     canvas.style.cssText = `display: block; width: ${CANVAS_W}px; height: ${CANVAS_H}px;`
     container.appendChild(canvas)
@@ -105,6 +122,13 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       document.body.style.position = ''
       document.body.style.width = ''
       document.body.style.height = ''
+      
+      // 移除 resize 监听器
+      const resizeHandler = (window as any)._dragonShooterResizeHandler
+      if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler)
+        delete (window as any)._dragonShooterResizeHandler
+      }
       
       // 移除 wrapper
       const wrapper = document.getElementById('dragon-shooter-wrapper')
