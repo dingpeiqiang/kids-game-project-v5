@@ -97,17 +97,21 @@ export function createInputHandler(
 
       // 路线绘制模式
       if (mode === 'route') {
-        // 🎯 修复：检查是否正在绘制，如果没有则启用绘制模式
+        console.log('✏️ route mode, isDrawing:', routeEditorRef.current.isDrawing, 'routes:', routeEditorRef.current.getRouteCount())
+        // 检查是否正在绘制，如果没有则启用绘制模式
         if (!routeEditorRef.current.isDrawing) {
           // 如果还没有任何路线，新建一条
           if (routeEditorRef.current.getRouteCount() === 0) {
+            console.log('📝 新建路线')
             routeEditorRef.current.newRoute()
           } else {
-            // 已有路线，启用绘制模式（继续在当前路线上绘制）
+            // 已有路线，继续在当前路线上绘制
+            console.log('✏️ 继续绘制当前路线')
             routeEditorRef.current.startDrawing()
           }
         }
         routeEditorRef.current.addPoint(x, y)
+        console.log('✅ 添加点，路线数:', routeEditorRef.current.getRouteCount(), '当前路线点数:', routeEditorRef.current.getCurrentRoutePoints?.()?.length || 0)
         state.touch.active = true
         state.touch.startX = x
         state.touch.startY = y
