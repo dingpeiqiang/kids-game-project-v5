@@ -1222,6 +1222,21 @@ export function createRenderer(
 
     // 游戏模式：居中+裁剪
     ctx.save()
+    
+    // 🎯 应用屏幕震动效果
+    if (state.screenShake.duration > 0) {
+      const shakeX = (Math.random() - 0.5) * state.screenShake.intensity * 2
+      const shakeY = (Math.random() - 0.5) * state.screenShake.intensity * 2
+      ctx.translate(shakeX, shakeY)
+      
+      // 更新震动状态
+      state.screenShake.duration -= 1 / 60  // 假设60FPS
+      if (state.screenShake.duration <= 0) {
+        state.screenShake.intensity = 0
+        state.screenShake.duration = 0
+      }
+    }
+    
     ctx.translate(CANVAS_OFFSET_X, CANVAS_OFFSET_Y)
 
     ctx.beginPath()

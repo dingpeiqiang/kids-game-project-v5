@@ -445,6 +445,11 @@ export interface GameState {
   isRouteSelectMode: boolean
   powerupSelect: PowerUpSelectState | null
   activeBuffs: ActiveBuff[]
+  // 🎯 屏幕震动效果
+  screenShake: {
+    intensity: number  // 震动强度
+    duration: number   // 剩余持续时间
+  }
 }
 
 // ============================================

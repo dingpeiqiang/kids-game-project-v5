@@ -179,9 +179,9 @@ export function createInitialState(): GameState {
     shieldTimer: 0,
     slowAllTimer: 0,
     bigShotTimer: 0,
-    bulletDamage: 10,
-    bulletSpeed: 7,
-    shootCooldown: 450,
+    bulletDamage: 15,  // 🎯 提升基础伤害（原10），更快击杀
+    bulletSpeed: 8,    // 🎯 提升子弹速度（原7），更流畅
+    shootCooldown: 350, // 🎯 降低冷却时间（原450），射速更快
     bulletCount: 1,
     bulletPierce: 0,
     lastShotTime: 0,
@@ -222,6 +222,11 @@ export function createInitialState(): GameState {
     slowBulletTimer: 0,
     powerupSelect: null,
     activeBuffs: [],
+    // 🎯 屏幕震动效果初始化
+    screenShake: {
+      intensity: 0,
+      duration: 0
+    }
   }
 }
 
@@ -601,9 +606,15 @@ function handleSegmentDeath(state: GameState, dragon: Dragon, segmentIndex: numb
   const seg = dragon.segments[segmentIndex]
   const killedPowerUp = seg.attachedPowerUp ?? null
 
-  // 死亡特效
-  spawnExplosionParticles(state, seg.x, seg.y, seg.color, 12)
+  // 🎯 死亡特效 - 增强版
+  spawnExplosionParticles(state, seg.x, seg.y, seg.color, 18)  // 🎯 更多粒子（原12）
   audioService.kill()
+  
+  // 🎯 屏幕震动效果（根据龙的类型调整强度）
+  const isHead = seg.isHead
+  const shakeIntensity = isHead ? 8 : 4  // 龙头震动更强
+  state.screenShake.intensity = shakeIntensity
+  state.screenShake.duration = 0.3  // 持续0.3秒
 
   // 金币掉落（概率）
   if (Math.random() < 0.15 && state.coinDrops.length < MAX_COIN_DROPS) {
@@ -743,31 +754,31 @@ function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
     // ── 一，普攻强化类（6）─────────────────────────────────────
     case 'rapidFire':     // 迅击弹：攻速大幅提升（叠加 shootCooldown 减少）
       S.rapidFireStacks = (S.rapidFireStacks || 0) + 1
-      state.shootCooldown = Math.max(80, state.shootCooldown * 0.7)
+      state.shootCooldown = Math.max(60, state.shootCooldown * 0.6)  // 🎯 更强的射速提升（原0.7）
       addOrRefreshBuff(state, 'rapidFire', '迅击弹', '⚡', '#FFD700', 5)
       pushText('⚡ 迅击弹！')
       break
     case 'multiShot':     // 多重弹：额外弹道
       S.multiShotStacks = (S.multiShotStacks || 0) + 1
-      state.bulletCount = Math.min(8, state.bulletCount + 1)
+      state.bulletCount = Math.min(10, state.bulletCount + 2)  // 🎯 每次+2发（原+1），最多10发
       addOrRefreshBuff(state, 'multiShot', '多重弹', '🔫', '#FF6B6B', 5)
       pushText('🔫 多重弹！')
       break
     case 'armorPierce':   // 破甲弹：无视部分龙防御（穿透+1）
       S.armorPierceStacks = (S.armorPierceStacks || 0) + 1
-      state.bulletPierce += 2
+      state.bulletPierce += 3  // 🎯 更强的穿透（原+2）
       addOrRefreshBuff(state, 'armorPierce', '破甲弹', '🔪', '#B0C4DE', 5)
       pushText('🔪 破甲弹！')
       break
-    case 'heavyHit':      // 重击弹：单发伤害大幅提高
+    case 'heavyHit':    // 重击弹：单发伤害大幅提高
       S.heavyHitStacks = (S.heavyHitStacks || 0) + 1
-      state.bulletDamage = Math.floor(state.bulletDamage * 1.8)
+      state.bulletDamage = Math.floor(state.bulletDamage * 2.0)  // 🎯 双倍伤害（原1.8）
       addOrRefreshBuff(state, 'heavyHit', '重击弹', '💪', '#FF4500', 5)
       pushText('💪 重击弹！')
       break
     case 'rapidBurst':    // 连射增幅：短时间极速连射（临时极短冷却）
       S.rapidBurstStacks = (S.rapidBurstStacks || 0) + 1
-      state.shootCooldown = Math.max(40, state.shootCooldown * 0.4)
+      state.shootCooldown = Math.max(30, state.shootCooldown * 0.3)  // 🎯 更快的连射（原0.4）
       addOrRefreshBuff(state, 'rapidBurst', '连射增幅', '🔥', '#FF4500', 5)
       pushText('🔥 连射增幅！')
       break

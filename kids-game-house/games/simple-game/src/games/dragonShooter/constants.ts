@@ -125,72 +125,72 @@ export const POWERUP_SEGMENT_COLORS: Record<PowerUpCardType, { color: string }> 
 export const LEVEL_CONFIGS: LevelConfig[] = [
   // ── 1-3 关：低血量，优先普攻+范围基础 ──
   {
-    level: 1, hpMult: 1.0, speedMult: 1.0,
-    killsPerDrop: 8,
+    level: 1, hpMult: 0.8, speedMult: 0.9,  // 🎯 降低初始难度
+    killsPerDrop: 6,  // 🎯 更快获得道具
     allowedCategories: ['attack'],
     eliteChance: 0, bossChance: 0,
     baseSegments: 50,
   },
   {
-    level: 2, hpMult: 1.3, speedMult: 1.0,
-    killsPerDrop: 7,
+    level: 2, hpMult: 1.0, speedMult: 0.95,  // 🎯 平缓增长
+    killsPerDrop: 6,
     allowedCategories: ['attack'],
     eliteChance: 0, bossChance: 0,
     baseSegments: 60,
   },
   {
-    level: 3, hpMult: 1.6, speedMult: 1.05,
-    killsPerDrop: 6,
+    level: 3, hpMult: 1.3, speedMult: 1.0,  // 🎯 降低血量倍率
+    killsPerDrop: 5,  // 🎯 更快获得道具
     allowedCategories: ['attack', 'burst'],
     eliteChance: 0.1, bossChance: 0,
     baseSegments: 75,
   },
   // ── 4-7 关：血量加厚，新增持续压制 ──
   {
-    level: 4, hpMult: 2.0, speedMult: 1.1,
-    killsPerDrop: 6,
+    level: 4, hpMult: 1.6, speedMult: 1.05,  // 🎯 降低血量倍率（原2.0）
+    killsPerDrop: 5,
     allowedCategories: ['attack', 'burst', 'sustain'],
     eliteChance: 0.15, bossChance: 0,
     baseSegments: 90,
   },
   {
-    level: 5, hpMult: 2.5, speedMult: 1.15,
+    level: 5, hpMult: 2.0, speedMult: 1.1,  // 🎯 降低血量倍率（原2.5）
     killsPerDrop: 5,
     allowedCategories: ['attack', 'burst', 'sustain'],
     eliteChance: 0.2, bossChance: 0,
     baseSegments: 110,
   },
   {
-    level: 6, hpMult: 3.1, speedMult: 1.2,
-    killsPerDrop: 5,
+    level: 6, hpMult: 2.5, speedMult: 1.15,  // 🎯 降低血量倍率（原3.1）
+    killsPerDrop: 4,  // 🎯 更快获得道具
     allowedCategories: ['attack', 'burst', 'sustain'],
     eliteChance: 0.25, bossChance: 0,
     baseSegments: 130,
   },
   {
-    level: 7, hpMult: 3.8, speedMult: 1.25,
-    killsPerDrop: 5,
+    level: 7, hpMult: 3.0, speedMult: 1.2,  // 🎯 降低血量倍率（原3.8）
+    killsPerDrop: 4,
     allowedCategories: ['attack', 'burst', 'sustain', 'execute'],
     eliteChance: 0.3, bossChance: 0,
     baseSegments: 155,
   },
   // ── 8-10 关：超高血量+长龙，高频斩杀/爆破 ──
   {
-    level: 8, hpMult: 4.8, speedMult: 1.3,
+    level: 8, hpMult: 3.8, speedMult: 1.25,  // 🎯 降低血量倍率（原4.8）
     killsPerDrop: 4,
     allowedCategories: ['attack', 'burst', 'sustain', 'execute'],
     eliteChance: 0.35, bossChance: 0.1,
     baseSegments: 185,
   },
   {
-    level: 9, hpMult: 6.0, speedMult: 1.35,
-    killsPerDrop: 4,
+    level: 9, hpMult: 4.8, speedMult: 1.3,  // 🎯 降低血量倍率（原6.0）
+    killsPerDrop: 3,  // 🎯 更快获得强力道具
     allowedCategories: ['attack', 'burst', 'sustain', 'execute'],
     eliteChance: 0.4, bossChance: 0.15,
     baseSegments: 220,
   },
   {
-    level: 10, hpMult: 7.5, speedMult: 1.4,
+    level: 10, hpMult: 6.0, speedMult: 1.35,  // 🎯 降低血量倍率（原7.5）
     killsPerDrop: 3,
     allowedCategories: ['burst', 'execute'],
     eliteChance: 0.5, bossChance: 0.2,
