@@ -63,33 +63,27 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       touch-action: none;
       margin: 0;
       padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     `
     
-    // 🎯 关键修复：通过JavaScript动态计算Canvas缩放比例（cover模式，填满屏幕）
-    const updateCanvasSize = () => {
+    // 🎯 关键修复：Canvas全屏，通过CSS transform scale实现最大化（类似Phaser FIT模式）
+    const updateCanvasScale = () => {
       const windowWidth = window.innerWidth
       const windowHeight = window.innerHeight
-      const canvasWidth = CANVAS_W
-      const canvasHeight = CANVAS_H
       
-      // 计算缩放比例（使用max实现cover效果，填满屏幕）
-      const scaleX = windowWidth / canvasWidth
-      const scaleY = windowHeight / canvasHeight
-      const scale = Math.max(scaleX, scaleY)  // 🎯 取较大值，确保填满屏幕
+      // 计算缩放比例（保持宽高比，完整显示）
+      const scaleX = windowWidth / CANVAS_W
+      const scaleY = windowHeight / CANVAS_H
+      const scale = Math.min(scaleX, scaleY)
       
-      // 应用缩放
-      canvas.style.width = `${canvasWidth * scale}px`
-      canvas.style.height = `${canvasHeight * scale}px`
+      // 应用transform scale
+      canvas.style.transform = `translate(-50%, -50%) scale(${scale})`
     }
     
     // 初始设置
-    updateCanvasSize()
+    updateCanvasScale()
     
     // 监听窗口大小变化
-    window.addEventListener('resize', updateCanvasSize)
+    window.addEventListener('resize', updateCanvasScale)
     
     wrapper.appendChild(canvas)
     document.body.appendChild(wrapper)
@@ -102,7 +96,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     document.body.style.height = '100%'
     
     // 🎯 保存 resize 监听器引用，以便游戏结束时移除
-    ;(window as any)._dragonShooterResizeHandler = updateCanvasSize
+    ;(window as any)._dragonShooterResizeHandler = updateCanvasScale
   } else {
     canvas.style.cssText = `display: block; width: ${CANVAS_W}px; height: ${CANVAS_H}px;`
     container.appendChild(canvas)
