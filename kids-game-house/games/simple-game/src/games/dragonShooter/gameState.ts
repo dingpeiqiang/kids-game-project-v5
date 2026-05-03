@@ -867,72 +867,55 @@ function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
  * 生成龙（根据关卡进度）
  */
 export function spawnDragons(state: GameState) {
-  // 优化：直接计数活着的龙，避免创建新数组
   let aliveDragons = 0
   for (const dragon of state.dragons) {
     if (dragon.alive) aliveDragons++
   }
-  
-  // 如果当前关卡的所有龙都已消灭，则进入下一关
+
+  // 所有龙已消灭，且完成了本关目标，进入下一关
   if (aliveDragons === 0 && state.levelProgress >= state.levelTarget) {
-    // 所有龙已消灭，触发关卡升级
     checkLevelUp(state)
     return
   }
-  
-  // 🎯 修复：如果已经达到本关最大龙数，不再生成
-  if (aliveDragons >= state.maxDragons) {
-    // 只在第一次达到时打印日志，避免刷屏
-    if (aliveDragons === state.maxDragons && state.dragonsSpawnedInLevel < state.levelTarget) {
-      console.log(`⏸️ 已达到最大龙数 ${state.maxDragons}，等待消灭后再`)
-    }
-    return
-  }
-  
-  // 如果本关已生成的龙总数达到目标，不再生成
-  if (state.dragonsSpawnedInLevel >= state.levelTarget) {
-    if (state.dragonsSpawnedInLevel === state.levelTarget && aliveDragons > 0) {
-      console.log(`⏸️ 已生成所有 ${state.levelTarget} 条龙，当前存活: ${aliveDragons}`)
-    }
-    return
-  }
 
-  // 获取本关卡路线
+  // 已全部生成且还有存活的，不再生成
+  if (state.dragonsSpawnedInLevel >= state.levelTarget) return
+
+  // 获取本关卡所有路线
   const allRoutes = routeLoader.getRoutesForLevel(state.level)
   if (allRoutes.length === 0) {
     console.warn('⚠️ 没有可用路线！level=', state.level)
     return
   }
 
-  // 调试：检查龙生成
-  console.log(`🐉 生成检查: level=${state.level}, alive=${aliveDragons}, spawned=${state.dragonsSpawnedInLevel}, target=${state.levelTarget}, max=${state.maxDragons}, routes=${allRoutes.length}`)
-  
-  // 根据关卡决定龙类型（elite/boss 由 LEVEL_CONFIGS.eliteChance/bossChance 控制概率）
-  let type: Dragon['type'] = 'small'
-  const r = Math.random()
-  const lvlIdx = Math.min(Math.max(0, state.level - 1), LEVEL_CONFIGS.length - 1)
-  const lvlCfg = LEVEL_CONFIGS[lvlIdx]
+  // 调试日志（只在首次生成时打印）
+  if (state.dragonsSpawnedInLevel === 0) {
+    console.log(`🐉 关卡 ${state.level} 开始：共 ${allRoutes.length} 条路线`)
+  }
 
-  if (state.level >= 8 && r < lvlCfg.bossChance) type = 'boss'
-  else if (state.level >= 5 && r < lvlCfg.bossChance + lvlCfg.eliteChance) type = 'elite'
-  else if (state.level >= 3 && r < 0.3) type = 'large'
-  else if (state.level >= 2 && r < 0.45) type = 'medium'
+  // 一次性生成所有龙（每条路线一条龙）
+  // 路线索引决定龙颜色（0=红, 1=蓝, 2=绿, 3=黄, 4=紫）
+  for (let routeIdx = 0; routeIdx < allRoutes.length; routeIdx++) {
+    const route = allRoutes[routeIdx]
+    if (route.points.length < 10) continue
 
-  // 🎯 修复：使用已生成的龙数来选择路线，确保每条龙走不同路线
-  const routeIndex = state.dragonsSpawnedInLevel % allRoutes.length
-  const route = allRoutes[routeIndex]
-  
-  console.log(`🛤️ 选择路线 #${routeIndex}: ${route.name}, 点数: ${route.points.length}`)
+    // 根据关卡决定龙类型
+    let type: Dragon['type'] = 'small'
+    const r = Math.random()
+    const lvlIdx = Math.min(Math.max(0, state.level - 1), LEVEL_CONFIGS.length - 1)
+    const lvlCfg = LEVEL_CONFIGS[lvlIdx]
+    if (state.level >= 8 && r < lvlCfg.bossChance) type = 'boss'
+    else if (state.level >= 5 && r < lvlCfg.bossChance + lvlCfg.eliteChance) type = 'elite'
+    else if (state.level >= 3 && r < 0.3) type = 'large'
+    else if (state.level >= 2 && r < 0.45) type = 'medium'
 
-  if (route.points.length < 10) return
+    const dragon = _createDragon(0, type, route, state.level, routeIdx)
+    dragon.id = ++state.lastDragonId
+    state.dragons.push(dragon)
+    console.log(`🐉 生成 ${type} 龙 #${dragon.id}，路线 #${routeIdx}「${route.name}」，节数: ${dragon.segments.length}`)
+  }
 
-  // 🎯 关键修复：传递路线索引给 createDragon，让龙根据路线显示不同颜色
-  const dragon = _createDragon(0, type, route, state.level, routeIndex)
-  dragon.id = ++state.lastDragonId
-  
-  state.dragons.push(dragon)
-  state.dragonsSpawnedInLevel++  // 增加已生成计数
-  console.log(`🐉 生成 ${type} 龙 #${dragon.id}, 节数: ${dragon.segments.length}`)
+  state.dragonsSpawnedInLevel = allRoutes.length
 }
 
 /**

@@ -19,23 +19,13 @@ export class RouteLoader {
   private customRoutes: CustomRoute[] = []  // 编辑器绘制的自定义路线
   private loaded = false
 
-  // 获取指定关卡的所有路线（关卡文件中的路线 + 自定义路线）
+  // 获取指定关卡的所有路线（仅关卡文件中的路线，自定义路线不混入）
   getRoutesForLevel(level: number): CustomRoute[] {
-    const result: CustomRoute[] = []
-    
-    // 1. 添加关卡文件中的路线
-    if (this.levelRoutes[level]) {
-      result.push(...this.levelRoutes[level])
-    } else {
-      // 如果没有配置文件，生成一条默认路线
-      result.push(this._generateFallbackRoute(level))
+    if (this.levelRoutes[level] && this.levelRoutes[level].length > 0) {
+      return [...this.levelRoutes[level]]
     }
-    
-    // 2. 添加自定义路线（编辑器绘制的）
-    result.push(...this.customRoutes)
-    
-    console.log(`🛤️ 第${level}关可用路线: ${result.length} 条`)
-    return result
+    // 没有配置文件时，生成一条默认路线
+    return [this._generateFallbackRoute(level)]
   }
   
   // 生成默认路线（当没有配置文件时）
