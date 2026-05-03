@@ -224,7 +224,7 @@ export function createInputHandler(
   function handleRouteEditMode(x: number, y: number): boolean {
     const btnY = CANVAS_H - 80
     const btnH = 50
-    const btnW = 58
+    const btnW = 55  // 必须与 renderer.ts 一致！
     const btnGap = 3
     // 8个按钮：新建 清除 保存 优化 预览 画路线 玩家起点 导出
     const totalBtns = 8
