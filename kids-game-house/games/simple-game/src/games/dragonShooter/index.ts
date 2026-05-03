@@ -457,6 +457,15 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       updateParticles(state, dt)
     }
 
+    // 🎯 关键修复：在任何阶段都更新关卡过渡计时器
+    if (state.levelTransition && state.levelTransitionTimer > 0) {
+      state.levelTransitionTimer -= dt
+      if (state.levelTransitionTimer <= 0) {
+        state.levelTransition = false
+        state.levelTransitionTimer = 0
+      }
+    }
+
     // ===== 道具选择弹窗（全时更新） =====
     if ((state as any).phase === 'powerup_select' || state.powerupSelect) {
       updatePowerUpSelect(state, Math.min(dt, 0.05))
