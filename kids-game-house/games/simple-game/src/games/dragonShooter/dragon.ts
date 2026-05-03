@@ -322,17 +322,18 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
   // 固定附加的道具节段数量（由类型和关卡等级共同决定）
   let fixedAttachCount = 0
   
-  // 1. 基础数量：根据龙的类型
+  // 1. 基础数量：根据龙的类型（🎯 每条龙至少2个道具）
   if (type === 'boss') fixedAttachCount = 3
   else if (type === 'elite') fixedAttachCount = 2
-  else if (type === 'large' || type === 'medium') fixedAttachCount = 1
+  else if (type === 'large' || type === 'medium') fixedAttachCount = 2
+  else if (type === 'small') fixedAttachCount = 2  // 🎯 小型龙也从2个开始
   
-  // 2. 关卡加成：每3关增加1个固定道具（最多额外+3）
-  const levelBonus = Math.min(3, Math.floor((level - 1) / 3))
+  // 2. 关卡加成：每2关增加1个固定道具（最多额外+4），增长更快
+  const levelBonus = Math.min(4, Math.floor((level - 1) / 2))
   fixedAttachCount += levelBonus
   
-  // 3. 🎯 保底机制：至少3个道具（确保每条龙都有足够的道具掉落）
-  fixedAttachCount = Math.max(3, fixedAttachCount)
+  // 3. 🎯 保底机制：至少2个道具（确保每条龙都有足够的道具掉落）
+  fixedAttachCount = Math.max(2, fixedAttachCount)
   
   console.log(`🎁 关卡 ${level}, 龙类型: ${type}, 固定道具数: ${fixedAttachCount} (基础 + 关卡加成${levelBonus})`)
 
