@@ -832,6 +832,10 @@ export function updateBullets(state: GameState, dt: number) {
               if (!drag.alive) continue
               for (let si2 = drag.segments.length - 1; si2 >= 0; si2--) {
                 const s2 = drag.segments[si2]
+                
+                // 🎯 关键修复：跳过已死亡的节段
+                if (s2.hp <= 0) continue
+                
                 const d2x = b.x - s2.x
                 const d2y = b.y - s2.y
                 const d2Squared = d2x * d2x + d2y * d2y
@@ -865,6 +869,10 @@ export function updateBullets(state: GameState, dt: number) {
               if (!drag.alive || drag === dragon) continue
               for (let si2 = drag.segments.length - 1; si2 >= 0; si2--) {
                 const s2 = drag.segments[si2]
+                
+                // 🎯 关键修复：跳过已死亡的节段
+                if (s2.hp <= 0) continue
+                
                 const d2x = b.x - s2.x
                 const d2y = b.y - s2.y
                 const d2Squared = d2x * d2x + d2y * d2y
@@ -890,6 +898,12 @@ export function updateBullets(state: GameState, dt: number) {
  */
 function handleSegmentDeath(state: GameState, dragon: Dragon, segmentIndex: number) {
   const seg = dragon.segments[segmentIndex]
+  
+  // 🎯 关键修复：防止重复处理已死亡的节段
+  if (seg.hp > 0) {
+    return  // 血量还大于0，不应该进入死亡处理
+  }
+  
   const killedPowerUp = seg.attachedPowerUp ?? null
 
   // 🎯 死亡特效 - 增强版
@@ -900,18 +914,15 @@ function handleSegmentDeath(state: GameState, dragon: Dragon, segmentIndex: numb
   const isHead = seg.isHead
   
   // 🎯 关键优化：添加冷却时间，防止频繁触发
-  if (state.screenShake.cooldown > 0) {
-    // 在冷却期内，不触发新的抖动
-    return
+  if (state.screenShake.cooldown <= 0) {
+    // 只有在非冷却期才触发震动
+    const shakeIntensity = isHead ? 4 : 2  // 从 8/4 降低到 4/2
+    state.screenShake.intensity = shakeIntensity
+    state.screenShake.duration = 0.15  // 从 0.3秒 缩短到 0.15秒
+    
+    // 🎯 设置冷却时间：龙头击杀后0.3秒内不再触发，龙身0.2秒
+    state.screenShake.cooldown = isHead ? 0.3 : 0.2
   }
-  
-  // 🎯 降低抖动强度和持续时间，提升体验
-  const shakeIntensity = isHead ? 4 : 2  // 从 8/4 降低到 4/2
-  state.screenShake.intensity = shakeIntensity
-  state.screenShake.duration = 0.15  // 从 0.3秒 缩短到 0.15秒
-  
-  // 🎯 设置冷却时间：龙头击杀后0.3秒内不再触发，龙身0.2秒
-  state.screenShake.cooldown = isHead ? 0.3 : 0.2
 
   // 金币掉落（概率）
   if (Math.random() < 0.15 && state.coinDrops.length < MAX_COIN_DROPS) {
@@ -1268,6 +1279,10 @@ export function updateDragons(state: GameState, dt: number) {
       for (const dragon of state.dragons) {
         for (let si = dragon.segments.length - 1; si >= 0; si--) {
           const seg = dragon.segments[si]
+          
+          // 🎯 关键修复：跳过已死亡的节段
+          if (seg.hp <= 0) continue
+          
           const distX = seg.x - state.playerX
           const distY = seg.y - (BASE_H - 55)
           if (distX * distX + distY * distY < 22500) { // 150*150
@@ -1310,6 +1325,10 @@ export function updateDragons(state: GameState, dt: number) {
     if (hasBurn || hasToxin) {
       for (let si = dragon.segments.length - 1; si >= 0; si--) {
         const seg = dragon.segments[si]
+        
+        // 🎯 关键修复：跳过已死亡的节段
+        if (seg.hp <= 0) continue
+        
         let dmg = 0
         if (hasBurn)  dmg += burnDPS  * dt
         if (hasToxin) dmg += toxinDPS * dt
@@ -1325,6 +1344,10 @@ export function updateDragons(state: GameState, dt: number) {
       const playerY = BASE_H - 55
       for (let si = dragon.segments.length - 1; si >= 0; si--) {
         const seg = dragon.segments[si]
+        
+        // 🎯 关键修复：跳过已死亡的节段
+        if (seg.hp <= 0) continue
+        
         const distX = seg.x - state.playerX
         const distY = seg.y - playerY
         if (distX * distX + distY * distY < energyRSquared) {
