@@ -350,6 +350,39 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       //   return
       // }
     }
+    
+    // ✅ 如果选择了炮台类型，点击地图放置炮台
+    if (state.buildMode.selectedTurret && state.gameStarted && !state.gameEnded) {
+      const config = TURRET_CONFIGS[state.buildMode.selectedTurret]
+      if (!config) {
+        console.error('炮台配置不存在')
+        return
+      }
+      
+      // 使用 mousePos（在 handleTouchStart 中已更新）
+      const success = placeTurret(state, mousePos.x, mousePos.y, state.buildMode.selectedTurret, 1)
+      
+      if (success) {
+        playSound('build')
+        
+        // 显示消耗提示
+        state.floatTexts.push({
+          text: `💎 -${config.cost}`,
+          x: mousePos.x,
+          y: mousePos.y - 20,
+          life: 1.0,
+          color: '#FBBF24',
+          size: 12,
+          vy: -0.8
+        })
+        
+        // ✅ 放置后清除选中状态
+        state.buildMode.selectedTurret = null
+        console.log(`📱 炮台放置成功，消耗 ${config.cost} 水晶`)
+      } else {
+        console.log('📱 炮台放置失败')
+      }
+    }
   }
   
   const handleClick = (e: MouseEvent) => {
