@@ -136,6 +136,10 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   state.buildMode.selectedTurret = null
   state.buildMode.buildTab = 'turret' as 'turret' | 'trap'
   
+  // 拖拽状态
+  let isDragging = false
+  let draggedTurretType: string | null = null
+  
   // 事件监听
   const handleMouseMove = (e: MouseEvent) => {
     const rect = canvas.getBoundingClientRect()
@@ -146,6 +150,87 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     mousePos.y = (e.clientY - rect.top) * scaleY
     state.buildMode.previewX = mousePos.x
     state.buildMode.previewY = mousePos.y
+    
+    // 如果正在拖拽炮台，更新预览位置
+    if (isDragging && draggedTurretType) {
+      state.buildMode.selectedTurret = draggedTurretType
+    }
+  }
+  
+  // 鼠标按下事件（用于拖拽炮台）
+  const handleMouseDown = (e: MouseEvent) => {
+    if (!state.gameStarted || state.gameEnded) return
+    
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = CANVAS_WIDTH / rect.width
+    const scaleY = CANVAS_HEIGHT / rect.height
+    const mx = (e.clientX - rect.left) * scaleX
+    const my = (e.clientY - rect.top) * scaleY
+    
+    // 检查是否点击了炮台按钮
+    if (mobileButtons) {
+      for (const btn of mobileButtons.turretButtons) {
+        if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+          const config = TURRET_CONFIGS[btn.type]
+          if (config && state.resources.crystals >= config.cost) {
+            isDragging = true
+            draggedTurretType = btn.type
+            state.buildMode.selectedTurret = btn.type
+            playSound('select')
+            return
+          }
+        }
+      }
+    }
+  }
+  
+  // 鼠标松开事件（用于放置炮台）
+  const handleMouseUp = (e: MouseEvent) => {
+    if (isDragging && draggedTurretType) {
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = CANVAS_WIDTH / rect.width
+      const scaleY = CANVAS_HEIGHT / rect.height
+      const mx = (e.clientX - rect.left) * scaleX
+      const my = (e.clientY - rect.top) * scaleY
+      
+      // 检查是否在按钮区域外（避免误触）
+      const btnPanelY = CANVAS_HEIGHT - 65 // 按钮面板顶部位置
+      if (my < btnPanelY) {
+        // 尝试放置炮台
+        const config = TURRET_CONFIGS[draggedTurretType]
+        if (config && state.resources.crystals >= config.cost) {
+          let targetLevel = 1
+          let totalCost = config.cost
+          for (const upg of config.upgradePath) {
+            if (state.resources.crystals >= totalCost + upg.cost) {
+              targetLevel = upg.level
+              totalCost += upg.cost
+            } else {
+              break
+            }
+          }
+          
+          if (spendCrystals(state, totalCost)) {
+            placeTurret(state, mx, my, draggedTurretType, targetLevel)
+            if (targetLevel > 1) {
+              state.floatTexts.push({
+                text: `🏆 Lv${targetLevel}`,
+                x: mx,
+                y: my - 30,
+                life: 1.5,
+                color: '#FBBF24',
+                size: 14,
+                vy: -1
+              })
+            }
+            playSound('build')
+          }
+        }
+      }
+      
+      isDragging = false
+      draggedTurretType = null
+    }
   }
   
   // 触摸事件处理（手机端支持）
@@ -950,17 +1035,12 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
           ctx.font = 'bold 7px sans-serif'
           ctx.fillText(`${config.cost} 💎`, bx + btnW / 2, pcPanelY + 44)
           
-          // 快捷键提示
-          ctx.fillStyle = textColor
-          ctx.font = '6px sans-serif'
-          ctx.fillText(`[${i + 1}]`, bx + btnW / 2, pcPanelY + 49)
-          
           // 保存PC按钮区域
           if (!mobileButtons) mobileButtons = { turretButtons: [], buildButton: null }
           mobileButtons.turretButtons.push({ type, x: bx, y: pcPanelY + 8, w: btnW, h: btnH })
         })
         
-        // PC端建造模式提示（选择炮台后显示）
+        // PC端提示（选择炮台后显示）
         if (state.buildMode.selectedTurret) {
           ctx.fillStyle = '#4ECDC4'
           ctx.font = '9px sans-serif'
@@ -1031,7 +1111,7 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     canvas.removeEventListener('touchend', handleTouchEnd)
   }
   
-  // 键盘事件 - 建造模式和游戏控制
+  // 键盘事件 - 游戏控制
   const handleKeyDown = (e: KeyboardEvent) => {
     const key = e.key.toLowerCase()
     
@@ -1041,31 +1121,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     if (e.key === 'Escape') {
       state.buildMode.selectedTurret = null
       state.buildMode.selectedTrap = null
-    }
-    
-    // 数字键快速选择炮台类型（直接选择，无需进入建造模式）
-    if (state.gameStarted && !state.gameEnded) {
-      if (e.key === '1') {
-        state.buildMode.selectedTurret = 'laser'
-        state.buildMode.selectedTrap = null
-        console.log('选择激光炮台')
-        playSound('select')
-      } else if (e.key === '2') {
-        state.buildMode.selectedTurret = 'missile'
-        state.buildMode.selectedTrap = null
-        console.log('选择导弹炮台')
-        playSound('select')
-      } else if (e.key === '3') {
-        state.buildMode.selectedTurret = 'frost'
-        state.buildMode.selectedTrap = null
-        console.log('选择冰冻炮台')
-        playSound('select')
-      } else if (e.key === '4') {
-        state.buildMode.selectedTurret = 'lightning'
-        state.buildMode.selectedTrap = null
-        console.log('选择闪电炮台')
-        playSound('select')
-      }
     }
   }
   
@@ -1093,6 +1148,5 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   console.log('  - 鼠标移动：控制角色')
   console.log('  - 点击底部炮台按钮：选择炮台')
   console.log('  - 点击地图：放置已选炮台')
-  console.log('  - 数字键1-4：快速选择炮台类型')
   console.log('  - ESC键：取消选中')
 }

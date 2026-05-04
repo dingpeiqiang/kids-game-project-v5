@@ -766,8 +766,8 @@ class App {
     
     // 非 spaceShooter 游戏的 Canvas 创建
     if (!isSpaceShooter) {
-      // 添加 image-rendering 防止模糊
-      canvas.innerHTML = `<canvas id="mainGameCanvas" width="${W}" height="${H}" style="width:${displayW}px;height:${displayH}px;display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
+      // 添加 image-rendering 防止模糊，以及居中样式
+      canvas.innerHTML = `<canvas id="mainGameCanvas" width="${W}" height="${H}" style="width:${displayW}px;height:${displayH}px;display:block;margin-left:auto;margin-right:auto;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
     }
 
     switch (this.currentGame.id) {
