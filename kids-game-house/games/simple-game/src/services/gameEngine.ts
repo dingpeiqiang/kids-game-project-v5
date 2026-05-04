@@ -175,6 +175,10 @@ export class GameEngine {
     this.state.running = false
   }
 
+  isRunning() {
+    return this.state.running
+  }
+
   setVictory(v: boolean) { this._isVictory = v }
   isVictory() { return this._isVictory }
   

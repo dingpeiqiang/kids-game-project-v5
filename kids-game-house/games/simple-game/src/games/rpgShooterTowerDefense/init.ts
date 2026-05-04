@@ -372,6 +372,12 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     const dt = Math.min((currentTime - lastTime) / 1000, 0.1)
     lastTime = currentTime
     
+    // 检查引擎是否已启动，如果已启动则开始游戏
+    if (!state.gameStarted && engine.isRunning()) {
+      state.gameStarted = true
+      console.log('🎮 RPG塔防射击游戏开始！')
+    }
+    
     // 更新逻辑
     if (state.gameStarted && !state.gameEnded) {
       updateGame(state, dt, currentTime)
@@ -455,9 +461,25 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     }
     
     // 检查游戏结束
-    if (state.gameEnded) {
+    if (state.gameEnded && !state.gameEndProcessed) {
+      state.gameEndProcessed = true
+      
+      // 设置游戏统计数据
+      const gameStats = {
+        score: state.resources.score,
+        maxCombo: state.combo.maxCombo,
+        totalKills: state.resources.kills,
+        gameTime: Math.floor(state.elapsed),
+        won: state.wave >= 8,
+        level: state.player.level
+      }
+      engine.setGameStats(gameStats)
+      
+      // 设置胜利状态
+      engine.setVictory(state.wave >= 8)
+      
       cleanup()
-      setTimeout(onEnd, 2000)
+      onEnd()
     }
   }
   
@@ -787,8 +809,10 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       ctx.restore()
     }
     
-    // ========== 手机端建造按钮面板 ==========
+    // ========== 建造按钮面板 ==========
     const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window)
+    const turretTypes = ['laser', 'missile', 'frost', 'lightning']
+    const btnW = 58, btnH = 38, btnGap = 6
     
     if (state.gameStarted && !state.gameEnded) {
       if (isMobile) {
@@ -800,11 +824,9 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         
         drawPanel(btnPanelX, btnPanelY, btnPanelW, btnPanelH, 'rgba(10, 20, 35, 0.92)')
         
-        const turretTypes = ['laser', 'missile', 'frost', 'lightning']
         const turretIcons: Record<string, string> = { laser: '⚡', missile: '🚀', frost: '❄️', lightning: '⚡' }
         const turretNames: Record<string, string> = { laser: '激光', missile: '导弹', frost: '冰冻', lightning: '闪电' }
         
-        const btnW = 58, btnH = 38, btnGap = 6
         const startX = btnPanelX + 8
         const btnY = btnPanelY + (btnPanelH - btnH) / 2
         
@@ -866,6 +888,7 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         const pcPanelX = (CANVAS_WIDTH - pcPanelW) / 2
         const pcPanelY = CANVAS_HEIGHT - btnH - 20
         const isBuildActive = state.buildMode.active
+        const buildBtnX = pcPanelX + btnGap + 4 * (btnW + btnGap)
         
         // PC端面板（始终显示，让PC用户也能点击选择）
         drawPanel(pcPanelX, pcPanelY, pcPanelW, btnH + 16, 'rgba(15, 25, 45, 0.85)')
@@ -926,36 +949,19 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       }
     }
     
-    // 开始/结束界面
+    // 游戏未开始时显示等待画面
     if (!state.gameStarted) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
+      ctx.fillStyle = '#1a1a2e'
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
       
       ctx.fillStyle = '#fff'
-      ctx.font = 'bold 32px sans-serif'
+      ctx.font = 'bold 24px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('🏰 RPG塔防射击', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 60)
+      ctx.fillText('🏰 RPG塔防射击', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20)
       
-      ctx.font = '16px sans-serif'
-      ctx.fillText('建造炮台防御敌人，同时控制角色射击！', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20)
-      
-      ctx.fillStyle = '#00E676'
-      ctx.font = 'bold 18px sans-serif'
-      ctx.fillText('点击屏幕开始游戏', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30)
-    }
-    
-    if (state.gameEnded) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-      
-      ctx.fillStyle = '#fff'
-      ctx.font = 'bold 32px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('游戏结束', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40)
-      
-      ctx.font = '18px sans-serif'
-      ctx.fillText(`到达波次: ${state.wave}/8`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2)
-      ctx.fillText(`最终得分: ${state.resources.score}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30)
+      ctx.font = '14px sans-serif'
+      ctx.fillStyle = '#9CA3AF'
+      ctx.fillText('准备开始...', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 15)
     }
     
     // 虚拟摇杆（仅在游戏进行中显示）
@@ -1003,19 +1009,12 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     canvas.removeEventListener('touchend', handleTouchEnd)
   }
   
-  // 键盘事件 - 开始游戏和建造模式
+  // 键盘事件 - 建造模式和游戏控制
   const handleKeyDown = (e: KeyboardEvent) => {
     const key = e.key.toLowerCase()
     
     // 保存按键状态（支持WASD移动）
     state.keys[key] = true
-    
-    if (e.key === ' ' || e.key === 'Enter') {
-      if (!state.gameStarted) {
-        state.gameStarted = true
-        console.log('游戏开始！')
-      }
-    }
     
     if (key === 'b') {
       if (state.gameStarted && !state.gameEnded) {
@@ -1060,17 +1059,11 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
   
-  // 点击开始游戏
-  const handleStartClick = () => {
-    if (!state.gameStarted) {
-      state.gameStarted = true
-      canvas.removeEventListener('click', handleStartClick)
-    }
-  }
+  // 等待引导界面开始（由统一模板控制游戏流程）
+  state.gameStarted = false
+  state.gameEndProcessed = false
   
-  canvas.addEventListener('click', handleStartClick)
-  
-  // 初始渲染 - 立即显示开始界面
+  // 初始渲染 - 显示等待画面
   render(ctx, state)
   console.log('初始渲染完成')
   
@@ -1084,5 +1077,4 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   console.log('  - 按B键：进入/退出建造模式')
   console.log('  - 建造模式下点击：放置炮台')
   console.log('  - ESC键：取消建造')
-  console.log('  - 空格/回车：开始游戏')
 }

@@ -248,6 +248,7 @@ export interface GameState {
   // 游戏流程
   gameStarted: boolean
   gameEnded: boolean
+  gameEndProcessed: boolean  // 游戏结束是否已处理（避免重复调用onEnd）
   elapsed: number       // 总游戏时间
   difficulty: number    // 难度系数
 

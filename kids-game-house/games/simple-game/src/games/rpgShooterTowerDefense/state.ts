@@ -78,6 +78,7 @@ export function createInitialState(): GameState {
     // 游戏流程
     gameStarted: false,
     gameEnded: false,
+    gameEndProcessed: false,
     elapsed: 0,
     difficulty: 1,
 

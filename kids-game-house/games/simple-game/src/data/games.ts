@@ -313,6 +313,19 @@ export const GAME_GUIDES: Record<string, GameGuide> = {
     tipsTitle: '💡 小技巧',
     tips: '连击越多得分越高！优先打龙段制造分裂，获得更多击杀机会。升级时选择合适的Buff，强化自己的战斗风格！',
     bg: '#FFD700'
+  },
+  rpgShooterTD: {
+    icon: '🏰', name: 'RPG塔防射击', desc: '双系统战斗！建造炮台防御+角色移动射击，策略与操作并重！',
+    ops: [
+      { icon: '🖱️', text: '<b>鼠标移动</b>控制角色位置' },
+      { icon: '🔫', text: '<b>自动射击</b>朝向鼠标方向' },
+      { icon: '🔨', text: '<b>按B键</b>进入建造模式' },
+      { icon: '🏗️', text: '<b>点击空地</b>放置炮台' },
+      { icon: '🔢', text: '<b>数字键1-4</b>切换炮台类型' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '击杀敌人获得金币建造炮台！激光塔射速快、导弹塔范围大、冰冻塔减速、闪电塔连锁！守住8波敌人即可获胜！',
+    bg: '#4ECDC4'
   }
 }
 
