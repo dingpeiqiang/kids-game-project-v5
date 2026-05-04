@@ -128,10 +128,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   // 鼠标位置
   const mousePos = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 }
   
-  // ✅ 防止手机端 touch 和 click 事件重复触发
-  let lastTouchTime = 0
-  const TOUCH_CLICK_DELAY = 500  // 500ms 内的 click 视为重复
-  
   // ✅ 选中的炮台（用于显示选中效果和升级弹窗）
   let selectedTurretForUpgrade: any = null
   let upgradeDialogPos = { x: 0, y: 0 }  // 升级弹窗位置
@@ -209,10 +205,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   
   const handleTouchStart = (e: TouchEvent) => {
     e.preventDefault()
-    
-    // ✅ 记录触摸时间，用于防止 click 重复触发
-    lastTouchTime = Date.now()
-    
     const rect = canvas.getBoundingClientRect()
     
     // 检测双指点击（切换建造模式）
@@ -233,12 +225,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     const touch = e.touches[0]
     const touchX = touch.clientX - rect.left
     const touchY = touch.clientY - rect.top
-    
-    // ✅ 更新 mousePos（用于放置炮台等逻辑）
-    const scaleX = CANVAS_WIDTH / rect.width
-    const scaleY = CANVAS_HEIGHT / rect.height
-    mousePos.x = touchX * scaleX
-    mousePos.y = touchY * scaleY
     
     // 先检查是否点击了手机按钮区域（炮台选择、建造按钮）
     if (mobileButtons) {
@@ -292,12 +278,17 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     }
     
     // 其他区域的触摸视为点击
-    // mousePos 已经在前面更新过了
-    console.log(`📱 触摸位置: (${touchX.toFixed(0)}, ${touchY.toFixed(0)}) -> Canvas: (${mousePos.x.toFixed(0)}, ${mousePos.y.toFixed(0)})`)
+    const scaleX = CANVAS_WIDTH / rect.width
+    const scaleY = CANVAS_HEIGHT / rect.height
+    mousePos.x = touchX * scaleX
+    mousePos.y = touchY * scaleY
     
-    // ✅ 直接执行 handleClick 的逻辑（不创建 MouseEvent）
-    // 注意：由于 handleTouchStart 已经记录了 lastTouchTime
-    // handleClick 中的防抖检查会跳过，所以我们需要在这里直接处理
+    // 模拟点击事件
+    const clickEvent = new MouseEvent('click', {
+      clientX: touch.clientX,
+      clientY: touch.clientY
+    })
+    handleClick(clickEvent)
   }
   
   const handleTouchEnd = (e: TouchEvent) => {
@@ -338,13 +329,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   }
   
   const handleClick = (e: MouseEvent) => {
-    // ✅ 防止手机端 touch 和 click 重复触发
-    const now = Date.now()
-    if (now - lastTouchTime < TOUCH_CLICK_DELAY) {
-      console.log('⚠️ 忽略重复的 click 事件（由 touch 触发）')
-      return
-    }
-    
     // ✅ 游戏未开始时，点击任意位置开始游戏
     if (!state.gameStarted) {
       state.gameStarted = true
@@ -366,8 +350,7 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
             if (success) {
               playSound('upgrade')
               console.log(`✅ 炮台升级到 Lv.${btn.turret.level}`)
-              // ✅ 升级成功后关闭弹窗
-              selectedTurretForUpgrade = null
+              // 升级后保持选中状态，可以继续查看
             }
             return  // ✅ 重要：升级后直接返回，不再执行后续逻辑
           }
@@ -395,14 +378,15 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       })
       
       if (clickedTurret) {
-        // ✅ 如果点击的是已选中的炮台，保持弹窗打开（不关闭）
-        // 用户可以通过点击空白处、按ESC或点击其他炮台来关闭弹窗
+        // ✅ 如果点击的是已选中的炮台，关闭弹窗；否则显示新弹窗
         if (selectedTurretForUpgrade === clickedTurret) {
-          // 点击同一个炮台，保持选中状态，不执行任何操作
-          console.log(`ℹ️ 炮台已选中，弹窗保持打开`)
+          // 点击同一个炮台，关闭弹窗
+          selectedTurretForUpgrade = null
+          console.log(`❌ 再次点击同一炮台，关闭弹窗`)
         } else {
           // 点击新炮台，显示新弹窗
           selectedTurretForUpgrade = clickedTurret
+          upgradeDialogPos = { x: clickedTurret.x, y: clickedTurret.y - 60 }
           playSound('select')
           console.log(`🔍 选中新炮台，显示升级弹窗`)
         }
@@ -921,29 +905,20 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       const config = TURRET_CONFIGS[turret.type]
       const nextUpgrade = config.upgradePath.find(u => u.level === turret.level + 1)
       
-      // ✅ 计算弹窗位置（确保不超出屏幕，且不遮挡炮台）
-      const dialogW = 160
-      const dialogH = nextUpgrade ? 75 : 50
+      // ✅ 计算弹窗位置（确保不超出屏幕）- 缩小尺寸
+      const dialogW = 160  // 从 200 缩小到 160
+      const dialogH = nextUpgrade ? 75 : 50  // 从 95/60 缩小到 75/50
+      let dialogX = upgradeDialogPos.x - dialogW / 2
+      let dialogY = upgradeDialogPos.y
       
-      // ✅ 智能定位：优先显示在炮台右上方，如果空间不够则显示在左上方
-      let dialogX = turret.x + 30  // 默认右侧偏移30像素
-      let dialogY = turret.y - dialogH - 20  // 炮台上方20像素
-      
-      // 如果右侧空间不够，切换到左侧
-      if (dialogX + dialogW > CANVAS_WIDTH - 10) {
-        dialogX = turret.x - dialogW - 30  // 左侧偏移30像素
-      }
-      
-      // 如果上方空间不够，显示在下方
-      if (dialogY < 10) {
-        dialogY = turret.y + 40  // 炮台下方40像素
-      }
-      
-      // 边界检查（确保完全在屏幕内）
+      // 边界检查
       if (dialogX < 10) dialogX = 10
       if (dialogX + dialogW > CANVAS_WIDTH - 10) dialogX = CANVAS_WIDTH - dialogW - 10
       if (dialogY < 10) dialogY = 10
       if (dialogY + dialogH > CANVAS_HEIGHT - 10) dialogY = CANVAS_HEIGHT - dialogH - 10
+      
+      // 更新实际位置
+      upgradeDialogPos = { x: dialogX + dialogW / 2, y: dialogY }
       
       // 弹窗背景
       ctx.fillStyle = 'rgba(15, 25, 45, 0.98)'

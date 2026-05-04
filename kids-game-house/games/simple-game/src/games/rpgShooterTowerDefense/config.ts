@@ -19,22 +19,30 @@ export function initCanvasSize() {
   const windowWidth = window.innerWidth
   const windowHeight = window.innerHeight
   
-  // 计算合适的Canvas尺寸（保持4:3比例）
-  // 手机端使用更小的尺寸
+  // ✅ 计算合适的Canvas尺寸（保持基础比例 400:600 = 2:3）
   const isMobile = windowWidth < 768
-  const widthPercent = isMobile ? 0.75 : 0.9  // 手机端75%，桌面端90%
-  const heightPercent = isMobile ? 0.5 : 0.7   // 手机端50%，桌面端70%
   
-  const targetWidth = Math.min(windowWidth * widthPercent, BASE_CANVAS_WIDTH)
-  const targetHeight = targetWidth * (BASE_CANVAS_HEIGHT / BASE_CANVAS_WIDTH)
-  
-  // 如果高度超出屏幕，按高度计算
-  if (targetHeight > windowHeight * heightPercent) {
-    CANVAS_HEIGHT = Math.min(windowHeight * heightPercent, BASE_CANVAS_HEIGHT)
-    CANVAS_WIDTH = CANVAS_HEIGHT * (BASE_CANVAS_WIDTH / BASE_CANVAS_HEIGHT)
+  if (isMobile) {
+    // 手机端：使用屏幕宽度的 95%，最大不超过 BASE_CANVAS_WIDTH
+    CANVAS_WIDTH = Math.min(windowWidth * 0.95, BASE_CANVAS_WIDTH)
+    CANVAS_HEIGHT = CANVAS_WIDTH * (BASE_CANVAS_HEIGHT / BASE_CANVAS_WIDTH)
+    
+    // 如果高度超出屏幕，按高度计算
+    const maxHeight = windowHeight * 0.6  // 手机端最多占用60%高度
+    if (CANVAS_HEIGHT > maxHeight) {
+      CANVAS_HEIGHT = maxHeight
+      CANVAS_WIDTH = CANVAS_HEIGHT * (BASE_CANVAS_WIDTH / BASE_CANVAS_HEIGHT)
+    }
   } else {
-    CANVAS_WIDTH = targetWidth
-    CANVAS_HEIGHT = targetHeight
+    // 桌面端：使用更大的尺寸
+    CANVAS_WIDTH = Math.min(windowWidth * 0.9, BASE_CANVAS_WIDTH)
+    CANVAS_HEIGHT = CANVAS_WIDTH * (BASE_CANVAS_HEIGHT / BASE_CANVAS_WIDTH)
+    
+    const maxHeight = windowHeight * 0.8
+    if (CANVAS_HEIGHT > maxHeight) {
+      CANVAS_HEIGHT = maxHeight
+      CANVAS_WIDTH = CANVAS_HEIGHT * (BASE_CANVAS_WIDTH / BASE_CANVAS_HEIGHT)
+    }
   }
   
   // 计算缩放比例
