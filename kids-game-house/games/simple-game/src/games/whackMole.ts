@@ -103,8 +103,7 @@ export function initWhackMole(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('whackMole', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -631,9 +630,7 @@ export function initWhackMole(engine: GameEngine, onEnd: () => void) {
     requestAnimationFrame(loop)
   }
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }
 

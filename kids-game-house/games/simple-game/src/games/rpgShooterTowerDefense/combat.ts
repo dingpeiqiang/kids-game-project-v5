@@ -141,7 +141,7 @@ function applyProjectileEffect(
 
 // 自动瞄准并射击最近的敌人
 let _lastShootTime = 0
-const _shootCooldown = 200  // 毫秒（稍快一点更跟手）
+const _shootCooldown = 400  // 毫秒（降低攻速）
 
 export function updateAutoAim(state: GameState, dt: number): void {
   const player = state.player
@@ -227,6 +227,14 @@ export interface JoystickState {
 export function updatePlayer(state: GameState, dt: number): void {
   const player = state.player
   const speed = player.speed * 60 * dt
+
+  // 递减无敌时间和受伤锁定
+  if (player.invincible > 0) {
+    player.invincible -= dt
+  }
+  if (player.hitLock > 0) {
+    player.hitLock -= dt
+  }
 
   // 键盘/WASD移动
   if (state.keys.w || state.keys.arrowup) player.y -= speed
@@ -318,7 +326,7 @@ export function drawPlayer(
   ctx.fillText(`Lv.${player.level}`, player.x, player.y - 18 * SCALE_RATIO)
   
   // 绘制攻击范围（半透明圆圈，根据屏幕尺寸调整）
-  const attackRange = 120 * SCALE_RATIO
+  const attackRange = 80 * SCALE_RATIO
   
   ctx.strokeStyle = 'rgba(69, 183, 209, 0.2)'
   ctx.lineWidth = 1

@@ -64,8 +64,7 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('dodge', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -568,8 +567,7 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
         }
         
         // 更新 HTML 道具栏
-        updateHTMLPowerupBar()
-        
+                
         return false
       }
       return true
@@ -711,8 +709,6 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
     requestAnimationFrame(loop)
   }
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   requestAnimationFrame(loop)
 }

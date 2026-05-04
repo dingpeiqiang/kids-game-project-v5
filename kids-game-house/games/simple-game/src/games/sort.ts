@@ -51,8 +51,7 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('sort', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -483,8 +482,6 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
   
   initLevel()
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

@@ -52,8 +52,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('fruitSlice', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -465,9 +464,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   setTimeout(spawnFruit, 400)
   setTimeout(spawnFruit, 800)
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   // 首次绘制（避免黑屏）
   draw()
   

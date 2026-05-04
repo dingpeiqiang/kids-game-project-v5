@@ -50,8 +50,7 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('cookieCut', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -340,8 +339,6 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
   spawnCookie()
   setTimeout(spawnCookie, 500)
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

@@ -189,12 +189,14 @@ export interface Player {
   y: number
   hp: number
   maxHp: number
+  lives: number         // 剩余生命（复活次数）
   level: number
   exp: number
   expToLevel: number
   atk: number
   speed: number
   invincible: number    // 无敌时间
+  hitLock: number       // 受伤锁定，防止同帧多次扣命
   shootAngle: number
   lastShot: number
 }

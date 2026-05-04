@@ -40,8 +40,7 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('pop', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -488,6 +487,4 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
   }
   requestAnimationFrame(loop)
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-}
+    }

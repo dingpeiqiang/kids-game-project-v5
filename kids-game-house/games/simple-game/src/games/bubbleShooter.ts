@@ -52,8 +52,7 @@ export function initBubbleShooter(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('bubbleShooter', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -605,8 +604,6 @@ export function initBubbleShooter(engine: GameEngine, onEnd: () => void) {
   engine.start()
   initBoard()
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

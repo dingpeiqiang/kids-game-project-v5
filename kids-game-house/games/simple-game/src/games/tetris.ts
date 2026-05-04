@@ -524,8 +524,6 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
   current = randomShape()
   nextShape = randomShape()
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

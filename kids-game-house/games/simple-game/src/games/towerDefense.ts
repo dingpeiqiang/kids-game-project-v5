@@ -119,8 +119,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     //     app.setupCustomPowerupBar('towerDefense', powerups, inventory, (powerupId) => {
     //       if (usePowerup(powerupId)) {
     //         audioService.collect()
-    //         updateHTMLPowerupBar()
-    //       }
+    //             //       }
     //     })
   }
   
@@ -1375,8 +1374,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
   }
   
   // 初始HTML 道具栏
-  updateHTMLPowerupBar()
-
+  
   // === 输入处理 ===
   function handleClick(px: number, py: number) {
     // HUD 区域 - 选择塔类型

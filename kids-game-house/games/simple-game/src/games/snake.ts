@@ -136,8 +136,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('snake', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -635,8 +634,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
       const powerups = ['invincible', 'magnet', 'slow', 'score2x']
       const random = powerups[Math.floor(Math.random() * powerups.length)]
       inventory.push(random)
-      updateHTMLPowerupBar()
-      console.log('[道具] 获得道具:', random)
+            console.log('[道具] 获得道具:', random)
     }
 
     // ====== 渲染 ======
@@ -909,9 +907,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     rafId = requestAnimationFrame(loop)
   }
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   rafId = requestAnimationFrame(loop)
 
   // 清理

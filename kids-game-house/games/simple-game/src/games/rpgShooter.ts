@@ -99,8 +99,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     // app.setupCustomPowerupBar('rpgShooter', powerups, inventory, (powerupId) => {
     //   if (usePowerup(powerupId)) {
     //     audioService.collect()
-    //     updateHTMLPowerupBar()
-    //   }
+    //         //   }
     // })
   }
   
@@ -1181,8 +1180,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
           const pCfg = RPG_SHOOTER_POWERUPS.find(p => p.id === d.powerupType)
           floatTexts.push({ text: `${pCfg?.icon ?? '📦'} 获得${pCfg?.name ?? '道具'}!`, x: d.x, y: d.y - 10, life: 1.5, color: pCfg?.color ?? '#A855F7', size: 16 })
           // 刷新 HTML 道具栏
-          updateHTMLPowerupBar()
-        }
+                  }
         explode(d.x, d.y, '#fff', 8, 2)
         audioService.win()
         drops.splice(i, 1)
@@ -1410,7 +1408,6 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   render()
   
   // 初始化HTML 道具栏
-  updateHTMLPowerupBar()
-  
+    
   loop()
 }

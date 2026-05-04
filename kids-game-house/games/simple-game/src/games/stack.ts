@@ -102,8 +102,7 @@ export function initStack(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('stack', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -563,9 +562,7 @@ export function initStack(engine: GameEngine, onEnd: () => void) {
 
   engine.start()
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   // 首次绘制（避免黑屏）
   draw()
   

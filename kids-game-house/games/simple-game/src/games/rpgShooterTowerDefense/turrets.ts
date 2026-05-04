@@ -61,7 +61,8 @@ export function placeTurret(
   state: GameState,
   x: number,
   y: number,
-  turretType: TurretType
+  turretType: TurretType,
+  targetLevel: number = 1
 ): boolean {
   const check = canPlaceTurret(state, x, y, turretType)
   if (!check.canPlace) {
@@ -81,8 +82,16 @@ export function placeTurret(
   
   const config = TURRET_CONFIGS[turretType]
   
+  // 计算总成本（基础 + 升级费用）
+  let totalCost = config.cost
+  for (const upg of config.upgradePath) {
+    if (upg.level <= targetLevel) {
+      totalCost += upg.cost
+    }
+  }
+  
   // 消耗资源
-  if (!spendCrystals(state, config.cost)) {
+  if (!spendCrystals(state, totalCost)) {
     return false
   }
   
@@ -90,18 +99,27 @@ export function placeTurret(
   const gridX = Math.round(x / GRID_SIZE) * GRID_SIZE
   const gridY = Math.round(y / GRID_SIZE) * GRID_SIZE
   
+  // 获取指定等级的属性
+  let levelStats = { hp: config.hp, damage: config.damage, fireRate: config.fireRate, range: config.range }
+  for (const upg of config.upgradePath) {
+    if (upg.level === targetLevel) {
+      levelStats = { hp: upg.hp, damage: upg.damage, fireRate: upg.fireRate, range: upg.range }
+      break
+    }
+  }
+  
   // 创建炮台
   const turret: Turret = {
     id: generateTurretId(),
     type: turretType,
-    level: 1,
+    level: targetLevel,
     x: gridX,
     y: gridY,
-    hp: config.hp,
-    maxHp: config.hp,
-    damage: config.damage,
-    fireRate: config.fireRate,
-    range: config.range,
+    hp: levelStats.hp,
+    maxHp: levelStats.hp,
+    damage: levelStats.damage,
+    fireRate: levelStats.fireRate,
+    range: levelStats.range,
     lastShot: 0,
     target: null,
     angle: 0
@@ -495,56 +513,115 @@ export function selectBuildType(
 // 绘制炮台
 export function drawTurret(
   ctx: CanvasRenderingContext2D,
-  turret: Turret
+  turret: Turret,
+  isSelected: boolean = false
 ): void {
   ctx.save()
   ctx.translate(turret.x, turret.y)
   
   // 根据类型绘制不同颜色
-  const colors: Record<TurretType, string> = {
-    laser: '#4ECDC4',
-    missile: '#FF6B6B',
-    frost: '#87CEEB',
-    lightning: '#FFD700'
+  const colors: Record<TurretType, { primary: string; secondary: string; glow: string }> = {
+    laser: { primary: '#00D9FF', secondary: '#0099CC', glow: 'rgba(0, 217, 255, 0.5)' },
+    missile: { primary: '#FF6B6B', secondary: '#CC4444', glow: 'rgba(255, 107, 107, 0.5)' },
+    frost: { primary: '#7FDBFF', secondary: '#4FC3F7', glow: 'rgba(127, 219, 255, 0.5)' },
+    lightning: { primary: '#FFD700', secondary: '#FFA500', glow: 'rgba(255, 215, 0, 0.5)' }
   }
   
   const color = colors[turret.type]
+  const r = 14 * SCALE_RATIO
   
-  // 底座
-  ctx.fillStyle = '#2C3E50'
-  ctx.beginPath()
-  ctx.arc(0, 0, 14 * SCALE_RATIO, 0, Math.PI * 2)  // 从18改为14
-  ctx.fill()
-  
-  // 主体
-  ctx.fillStyle = color
-  ctx.shadowColor = color
-  ctx.shadowBlur = 10
-  ctx.beginPath()
-  ctx.arc(0, 0, 10 * SCALE_RATIO, 0, Math.PI * 2)  // 从14改为10
-  ctx.fill()
-  ctx.shadowBlur = 0
-  
-  // 等级标识
-  if (turret.level > 1) {
-    ctx.fillStyle = '#FFD700'
-    ctx.font = `bold ${8 * SCALE_RATIO}px sans-serif`  // 从10改为8
-    ctx.textAlign = 'center'
-    ctx.fillText(`Lv${turret.level}`, 0, -18 * SCALE_RATIO)  // 从-22改为-18
+  // 选中光环
+  if (isSelected) {
+    ctx.beginPath()
+    ctx.arc(0, 0, r + 8, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'
+    ctx.fill()
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    ctx.stroke()
   }
   
-  // 血条
-  const barWidth = 20 * SCALE_RATIO  // 从24改为20
-  const barHeight = 2 * SCALE_RATIO   // 从3改为2
-  const x = -barWidth / 2
-  const y = -24 * SCALE_RATIO         // 从-28改为-24
+  // 外发光
+  ctx.shadowColor = color.glow
+  ctx.shadowBlur = 15
   
-  ctx.fillStyle = 'rgba(0,0,0,0.5)'
-  ctx.fillRect(x, y, barWidth, barHeight)
+  // 六边形底座
+  ctx.fillStyle = '#1a2530'
+  ctx.beginPath()
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 6
+    const px = Math.cos(angle) * (r + 2)
+    const py = Math.sin(angle) * (r + 2)
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+  ctx.fill()
+  
+  // 主体六边形
+  ctx.fillStyle = color.primary
+  ctx.beginPath()
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 6
+    const px = Math.cos(angle) * r
+    const py = Math.sin(angle) * r
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+  ctx.fill()
+  
+  ctx.shadowBlur = 0
+  
+  // 内部装饰
+  ctx.fillStyle = color.secondary
+  ctx.beginPath()
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 6
+    const px = Math.cos(angle) * (r * 0.5)
+    const py = Math.sin(angle) * (r * 0.5)
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+  ctx.fill()
+  
+  // 中心圆点
+  ctx.fillStyle = '#fff'
+  ctx.beginPath()
+  ctx.arc(0, 0, 3 * SCALE_RATIO, 0, Math.PI * 2)
+  ctx.fill()
+  
+  // 等级标识（外围）
+  if (turret.level > 1) {
+    ctx.fillStyle = '#FFD700'
+    ctx.strokeStyle = '#000'
+    ctx.lineWidth = 2
+    ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.strokeText(`★${turret.level}`, 0, -(r + 10))
+    ctx.fillText(`★${turret.level}`, 0, -(r + 10))
+    ctx.textBaseline = 'alphabetic'
+  }
+  
+  // 血条（更窄更短）
+  const barWidth = 18 * SCALE_RATIO
+  const barHeight = 3 * SCALE_RATIO
+  const hpX = -barWidth / 2
+  const hpY = r + 5
+  
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'
+  ctx.beginPath()
+  ctx.roundRect(hpX, hpY, barWidth, barHeight, 2)
+  ctx.fill()
   
   const hpRatio = turret.hp / turret.maxHp
-  ctx.fillStyle = hpRatio > 0.6 ? '#00E676' : hpRatio > 0.3 ? '#FFA502' : '#FF4757'
-  ctx.fillRect(x, y, barWidth * hpRatio, barHeight)
+  const hpColor = hpRatio > 0.6 ? '#4ADE80' : hpRatio > 0.3 ? '#FBBF24' : '#EF4444'
+  ctx.fillStyle = hpColor
+  ctx.beginPath()
+  ctx.roundRect(hpX, hpY, barWidth * hpRatio, barHeight, 2)
+  ctx.fill()
   
   ctx.restore()
 }

@@ -115,9 +115,9 @@ export const TURRET_DISPLAY = {
 // 玩家初始属性
 export const PLAYER_INITIAL = {
   hp: 100,
-  atk: 10,
+  atk: 8,      // 降低攻击力（原10）
   speed: 4.5,
-  shootCooldown: 250  // 毫秒
+  shootCooldown: 400  // 毫秒
 }
 
 // 等级经验需求
@@ -231,15 +231,15 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
   return configs[waveNumber - 1] || configs[configs.length - 1]
 }
 
-// 敌人基础属性
+// 敌人基础属性（增加HP平衡）
 export const ENEMY_BASE_STATS = {
-  basic:   { hp: 30,  speed: 1.0, damage: 10, score: 10,  crystals: 3,  color: '#FF6B6B' },
-  fast:    { hp: 20,  speed: 2.0, damage: 8,  score: 15,  crystals: 4,  color: '#00E5FF' },
-  tank:    { hp: 150, speed: 0.5, damage: 20, score: 30,  crystals: 8,  color: '#FFD93D' },
+  basic:   { hp: 50,  speed: 1.0, damage: 10, score: 10,  crystals: 3,  color: '#FF6B6B' },
+  fast:    { hp: 35,  speed: 2.0, damage: 8,  score: 15,  crystals: 4,  color: '#00E5FF' },
+  tank:    { hp: 200, speed: 0.5, damage: 20, score: 30,  crystals: 8,  color: '#FFD93D' },
   exploder:{ hp: 25,  speed: 2.5, damage: 50, score: 20,  crystals: 5,  color: '#FF4757' },
   splitter:{ hp: 60,  speed: 0.8, damage: 12, score: 25,  crystals: 6,  color: '#9B59B6' },
   flyer:   { hp: 35,  speed: 1.5, damage: 10, score: 20,  crystals: 5,  color: '#87CEEB' },
-  boss:    { hp: 1000, speed: 0.3, damage: 50, score: 500, crystals: 100, color: '#FF0000' }
+  boss:    { hp: 1200, speed: 0.3, damage: 50, score: 500, crystals: 100, color: '#FF0000' }
 }
 
 // 敌人射击配置（波次解锁）

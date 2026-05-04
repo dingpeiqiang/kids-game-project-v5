@@ -42,8 +42,7 @@ export function initBouncePath(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('bouncePath', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -323,8 +322,6 @@ export function initBouncePath(engine: GameEngine, onEnd: () => void) {
   // 初始生成星星
   for (let i = 0; i < 5; i++) spawnStar()
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

@@ -2,7 +2,7 @@
 
 import { GameState, Enemy, EnemyType, Turret } from './types'
 import { ENEMY_BASE_STATS, ENEMY_SHOOT_CONFIGS, CANVAS_WIDTH, CANVAS_HEIGHT } from './config'
-import { addCrystals, addExp, addCombo, resetCombo } from './state'
+import { addCrystals, addExp, addCombo, resetCombo, playerHit } from './state'
 import { playSound } from './sounds'
 
 // 生成唯一ID
@@ -25,6 +25,10 @@ export function createEnemy(
   const shootConfig = (ENEMY_SHOOT_CONFIGS as any)[type]
   const canShoot = shootConfig && wave >= shootConfig.minWave
   
+  // 速度随波次提升：每波+5%
+  const speedMultiplier = Math.pow(1.05, wave - 1)
+  const finalSpeed = base.speed * speedMultiplier
+  
   return {
     id: generateEnemyId(),
     type,
@@ -32,8 +36,8 @@ export function createEnemy(
     y,
     hp: Math.floor(base.hp * difficultyMultiplier),
     maxHp: Math.floor(base.hp * difficultyMultiplier),
-    speed: base.speed,
-    baseSpeed: base.speed,
+    speed: finalSpeed,
+    baseSpeed: finalSpeed,
     damage: Math.floor(base.damage * difficultyMultiplier),
     score: base.score,
     crystals: base.crystals,
@@ -144,9 +148,7 @@ export function updateEnemies(state: GameState, dt: number): void {
     
     if (distToPlayer < 20) {
       // 对玩家造成伤害
-      import('./state').then(({ playerHit }) => {
-        playerHit(state, enemy.damage)
-      })
+      playerHit(state, enemy.damage)
       
       // 自爆虫爆炸
       if (enemy.type === 'exploder') {
@@ -515,12 +517,12 @@ export function drawEnemy(
   // 血条
   drawHealthBar(ctx, enemy)
   
-  // 减速/冻结图标
+  // 减速/冻结图标（在translate后的坐标）
   if (enemy.slowed) {
     ctx.fillStyle = '#87CEEB'
     ctx.font = '12px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('❄️', 0, -20)
+    ctx.fillText('❄️', 10, -18)
   }
   
   ctx.restore()
@@ -610,12 +612,12 @@ function drawBoss(ctx: CanvasRenderingContext2D, x: number, y: number, size: num
   ctx.fill()
 }
 
-// 绘制血条
+// 绘制血条（在ctx.save/translated之后调用，使用相对于原点的坐标）
 function drawHealthBar(ctx: CanvasRenderingContext2D, enemy: Enemy): void {
   const barWidth = 24
   const barHeight = 4
-  const x = enemy.x - barWidth / 2
-  const y = enemy.y - 20
+  const x = -barWidth / 2  // 相对于已translate的原点
+  const y = -20
   
   // 背景
   ctx.fillStyle = 'rgba(0,0,0,0.5)'

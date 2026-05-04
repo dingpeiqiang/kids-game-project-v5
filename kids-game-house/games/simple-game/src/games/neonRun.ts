@@ -45,8 +45,7 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('neonRun', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -336,8 +335,7 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
       const powerups = ['invincible', 'slow', 'magnet', 'score2x']
       const random = powerups[Math.floor(Math.random() * powerups.length)]
       inventory.push(random)
-      updateHTMLPowerupBar()
-      console.log('[道具] 获得道具:', random)
+            console.log('[道具] 获得道具:', random)
     }
 
     // 速度增加
@@ -378,8 +376,6 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
     requestAnimationFrame(loop)
   }
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

@@ -96,8 +96,7 @@ export function initTower3D(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('tower3d', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -340,8 +339,6 @@ export function initTower3D(engine: GameEngine, onEnd: () => void) {
     requestAnimationFrame(loop)
   }
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   requestAnimationFrame(loop)
 }

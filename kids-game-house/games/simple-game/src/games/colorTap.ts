@@ -53,8 +53,7 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('colorTap', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -353,8 +352,6 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
   engine.start()
   spawnChallenge()
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

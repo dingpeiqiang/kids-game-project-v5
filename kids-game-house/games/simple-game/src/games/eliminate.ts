@@ -46,8 +46,7 @@ export function initEliminate(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('eliminate', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -1250,6 +1249,4 @@ export function initEliminate(engine: GameEngine, onEnd: () => void) {
   }
   requestAnimationFrame(loop)
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-}
+    }

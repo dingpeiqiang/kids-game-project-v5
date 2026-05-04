@@ -51,8 +51,7 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('slimeJump', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -407,8 +406,6 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
     spawnPlatform(H - 200 - i * 70)
   }
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

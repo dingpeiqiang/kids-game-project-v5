@@ -44,8 +44,7 @@ export function initStarCatcher(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('starCatcher', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -326,8 +325,6 @@ export function initStarCatcher(engine: GameEngine, onEnd: () => void) {
 
   engine.start()
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

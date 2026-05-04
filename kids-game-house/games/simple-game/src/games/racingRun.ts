@@ -136,8 +136,7 @@ export function initRacingRun(engine: GameEngine, onEnd: () => void) {
     app.setupCustomPowerupBar('racingRun', powerups, inventory, (powerupId) => {
       if (usePowerup(powerupId)) {
         audioService.collect()
-        updateHTMLPowerupBar()
-      }
+              }
     })
   }
   
@@ -1418,8 +1417,6 @@ export function initRacingRun(engine: GameEngine, onEnd: () => void) {
 
   engine.start()
   
-  // 初始化 HTML 道具栏
-  updateHTMLPowerupBar()
-  
+      
   loop()
 }

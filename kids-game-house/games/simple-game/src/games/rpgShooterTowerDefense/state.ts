@@ -24,9 +24,10 @@ export function createInitialState(): GameState {
     breakTime: 0,
     timeLeft: 0,
     resources: {
-      crystals: 200,  // 初始水晶（增加以改善体验）
-      energy: 60,     // 初始能量
-      score: 0
+      crystals: 200,
+      energy: 60,
+      score: 0,
+      kills: 0
     },
 
     // 角色
@@ -35,6 +36,7 @@ export function createInitialState(): GameState {
       y: CANVAS_HEIGHT / 2,
       hp: playerStats.hp,
       maxHp: playerStats.hp,
+      lives: 5,        // 初始5条命
       level: 1,
       exp: 0,
       expToLevel: getExpToLevel(1),
@@ -42,7 +44,8 @@ export function createInitialState(): GameState {
       speed: playerStats.speed,
       invincible: 0,
       shootAngle: -Math.PI / 2,
-      lastShot: 0
+      lastShot: 0,
+      hitLock: 0  // 受伤锁定，防止同一帧多次扣命
     },
 
     // 塔防系统
@@ -217,7 +220,11 @@ export function addExp(state: GameState, amount: number): void {
 
 // 玩家受伤
 export function playerHit(state: GameState, damage: number): void {
-  if (state.player.invincible > 0) return
+  // 无敌时间或受伤锁定期内无法受伤
+  if (state.player.invincible > 0 || state.player.hitLock > 0) return
+  
+  // 设置受伤锁定，防止同一帧多次扣命
+  state.player.hitLock = 0.1  // 100ms锁定
   
   state.player.hp -= damage
   state.player.invincible = 2.0  // 2秒无敌时间
@@ -242,7 +249,7 @@ export function playerHit(state: GameState, damage: number): void {
   }
   
   if (state.player.hp <= 0) {
-    state.gameEnded = true
+    state.gameEnded = true  // HP归零，游戏结束
   } else {
     // 播放受伤音效
     playSound('playerHurt')
