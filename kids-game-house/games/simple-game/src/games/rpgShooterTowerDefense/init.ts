@@ -116,6 +116,13 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   // 设置Canvas尺寸
   canvas.width = CANVAS_WIDTH
   canvas.height = CANVAS_HEIGHT
+  
+  // ✅ 设置Canvas的CSS样式，确保显示尺寸与逻辑尺寸一致
+  canvas.style.width = `${CANVAS_WIDTH}px`
+  canvas.style.height = `${CANVAS_HEIGHT}px`
+  canvas.style.display = 'block'
+  canvas.style.margin = '0 auto'  // 居中显示
+  
   console.log(`Canvas 尺寸: ${CANVAS_WIDTH}x${CANVAS_HEIGHT}`)
   
   // 创建游戏状态
@@ -212,6 +219,13 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     
     // ✅ 记录触摸时间，用于防止 click 重复触发
     lastTouchTime = Date.now()
+    
+    // ✅ 游戏未开始时，触摸任意位置开始游戏
+    if (!state.gameStarted) {
+      state.gameStarted = true
+      console.log('🎮 游戏开始！')
+      return
+    }
     
     const rect = canvas.getBoundingClientRect()
     
