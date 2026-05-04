@@ -280,30 +280,61 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       joystick.active = false
     }
     
-    // 检测手机按钮点击
+    // 检测手机按钮点击或拖拽放置
     if (mobileButtons) {
       const touch = e.changedTouches[0]
       const rect = canvas.getBoundingClientRect()
       const tx = (touch.clientX - rect.left) * (CANVAS_WIDTH / rect.width)
       const ty = (touch.clientY - rect.top) * (CANVAS_HEIGHT / rect.height)
       
-      // 检查炮台按钮
+      // 检查是否点击了炮台按钮（选中炮台）
+      let clickedBtn = false
       for (const btn of mobileButtons.turretButtons) {
         if (tx >= btn.x && tx <= btn.x + btn.w && ty >= btn.y && ty <= btn.y + btn.h) {
           state.buildMode.selectedTurret = btn.type
           playSound('select')
-          return
+          clickedBtn = true
+          break
         }
       }
       
-      // 检查建造/退出按钮
-      const buildBtn = mobileButtons.buildButton
-      if (tx >= buildBtn.x && tx <= buildBtn.x + buildBtn.w && ty >= buildBtn.y && ty <= buildBtn.y + buildBtn.h) {
-        state.buildMode.active = !state.buildMode.active
-        if (state.buildMode.active) {
-          state.buildMode.selectedTurret = state.buildMode.selectedTurret || 'laser'
+      // 如果没有点击按钮，且已经选中了炮台，尝试放置炮台
+      if (!clickedBtn && state.buildMode.selectedTurret) {
+        // 检查是否在按钮区域外（避免误触）
+        const btnPanelY = CANVAS_HEIGHT - 95 // 按钮面板顶部位置
+        if (ty < btnPanelY) {
+          // 尝试放置炮台
+          const config = TURRET_CONFIGS[state.buildMode.selectedTurret]
+          if (config && state.resources.crystals >= config.cost) {
+            // 找到最高可用等级
+            let targetLevel = 1
+            let totalCost = config.cost
+            for (const upg of config.upgradePath) {
+              if (state.resources.crystals >= totalCost + upg.cost) {
+                targetLevel = upg.level
+                totalCost += upg.cost
+              } else {
+                break
+              }
+            }
+            
+            if (spendCrystals(state, totalCost)) {
+              placeTurret(state, tx, ty, state.buildMode.selectedTurret, targetLevel)
+              if (targetLevel > 1) {
+                state.floatTexts.push({
+                  text: `🏆 Lv${targetLevel}`,
+                  x: tx,
+                  y: ty - 30,
+                  life: 1.5,
+                  color: '#FBBF24',
+                  size: 14,
+                  vy: -1
+                })
+              }
+              playSound('build')
+            }
+          }
         }
-        return
       }
     }
   }
@@ -312,43 +343,41 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     // 如果正在显示升级弹窗，处理升级/出售
 
     
-    // 建造模式：点击地图放置炮台（自动升级到最高可用等级）
-    if (state.buildMode.active) {
-      if (state.buildMode.selectedTurret) {
-        const config = TURRET_CONFIGS[state.buildMode.selectedTurret]
-        if (!config) return
-        
-        // 找到最高可用等级
-        let targetLevel = 1
-        let totalCost = config.cost
-        for (const upg of config.upgradePath) {
-          if (state.resources.crystals >= totalCost + upg.cost) {
-            targetLevel = upg.level
-            totalCost += upg.cost
-          } else {
-            break
-          }
+    // 直接放置炮台（选中炮台后点击地图即可放置）
+    if (state.buildMode.selectedTurret) {
+      const config = TURRET_CONFIGS[state.buildMode.selectedTurret]
+      if (!config) return
+      
+      // 找到最高可用等级
+      let targetLevel = 1
+      let totalCost = config.cost
+      for (const upg of config.upgradePath) {
+        if (state.resources.crystals >= totalCost + upg.cost) {
+          targetLevel = upg.level
+          totalCost += upg.cost
+        } else {
+          break
         }
-        
-        if (spendCrystals(state, totalCost)) {
-          placeTurret(state, mousePos.x, mousePos.y, state.buildMode.selectedTurret, targetLevel)
-          if (targetLevel > 1) {
-            state.floatTexts.push({
-              text: `🏆 Lv${targetLevel}`,
-              x: mousePos.x,
-              y: mousePos.y - 30,
-              life: 1.5,
-              color: '#FBBF24',
-              size: 14,
-              vy: -1
-            })
-          }
-          playSound('build')
+      }
+      
+      if (spendCrystals(state, totalCost)) {
+        placeTurret(state, mousePos.x, mousePos.y, state.buildMode.selectedTurret, targetLevel)
+        if (targetLevel > 1) {
+          state.floatTexts.push({
+            text: `🏆 Lv${targetLevel}`,
+            x: mousePos.x,
+            y: mousePos.y - 30,
+            life: 1.5,
+            color: '#FBBF24',
+            size: 14,
+            vy: -1
+          })
         }
-      } else if (state.buildMode.selectedTrap) {
-        placeTrap(state, mousePos.x, mousePos.y, state.buildMode.selectedTrap)
         playSound('build')
       }
+    } else if (state.buildMode.selectedTrap) {
+      placeTrap(state, mousePos.x, mousePos.y, state.buildMode.selectedTrap)
+      playSound('build')
     }
   }
   
@@ -523,6 +552,9 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     
     // 绘制玩家
     drawPlayer(ctx, state)
+    
+    // 绘制建造预览（选中炮台后显示）
+    drawBuildPreview(ctx, state)
     
     // 绘制粒子
     for (const particle of state.particles) {
@@ -809,7 +841,7 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       ctx.restore()
     }
     
-    // ========== 建造按钮面板 ==========
+    // ========== 炮台选择面板（支持拖拽放置）==========
     const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window)
     const turretTypes = ['laser', 'missile', 'frost', 'lightning']
     const btnW = 58, btnH = 38, btnGap = 6
@@ -817,10 +849,10 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     if (state.gameStarted && !state.gameEnded) {
       if (isMobile) {
         // 手机端：底部炮台选择面板
-        const btnPanelW = 340
-        const btnPanelH = 55
+        const btnPanelW = 300
+        const btnPanelH = 60
         const btnPanelX = (CANVAS_WIDTH - btnPanelW) / 2
-        const btnPanelY = CANVAS_HEIGHT - btnPanelH - 40
+        const btnPanelY = CANVAS_HEIGHT - btnPanelH - 35
         
         drawPanel(btnPanelX, btnPanelY, btnPanelW, btnPanelH, 'rgba(10, 20, 35, 0.92)')
         
@@ -832,46 +864,37 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         
         turretTypes.forEach((type, i) => {
           const bx = startX + i * (btnW + btnGap)
+          const config = TURRET_CONFIGS[type]
+          const canAfford = state.resources.crystals >= config.cost
           const isSelected = state.buildMode.selectedTurret === type
           
-          ctx.fillStyle = isSelected ? 'rgba(74, 222, 128, 0.85)' : 'rgba(255, 255, 255, 0.08)'
+          ctx.fillStyle = canAfford ? (isSelected ? 'rgba(74, 222, 128, 0.85)' : 'rgba(255, 255, 255, 0.08)') : 'rgba(50, 50, 50, 0.5)'
           ctx.beginPath()
           ctx.roundRect(bx, btnY, btnW, btnH, 8)
           ctx.fill()
           
-          ctx.strokeStyle = isSelected ? '#4ADE80' : 'rgba(255,255,255,0.2)'
+          ctx.strokeStyle = canAfford ? (isSelected ? '#4ADE80' : 'rgba(255,255,255,0.2)') : 'rgba(100, 100, 100, 0.3)'
           ctx.lineWidth = isSelected ? 2 : 1
           ctx.stroke()
           
-          ctx.fillStyle = isSelected ? '#fff' : '#9CA3AF'
-          ctx.font = '13px sans-serif'
+          // 图标
+          ctx.fillStyle = canAfford ? (isSelected ? '#fff' : '#9CA3AF') : '#666'
+          ctx.font = '12px sans-serif'
           ctx.textAlign = 'center'
-          ctx.fillText(turretIcons[type], bx + btnW / 2, btnY + 14)
-          ctx.font = '8px sans-serif'
-          ctx.fillText(turretNames[type], bx + btnW / 2, btnY + 28)
+          ctx.fillText(turretIcons[type], bx + btnW / 2, btnY + 12)
+          
+          // 名称
+          ctx.font = '7px sans-serif'
+          ctx.fillText(turretNames[type], bx + btnW / 2, btnY + 24)
+          
+          // 消耗钻石数量
+          ctx.font = 'bold 8px sans-serif'
+          const crystalColor = canAfford ? '#00D4FF' : '#666'
+          ctx.fillStyle = crystalColor
+          ctx.fillText(`${config.cost} 💎`, bx + btnW / 2, btnY + 35)
         })
         
-        // 建造/退出按钮
-        const buildBtnX = startX + 4 * (btnW + btnGap)
-        const isBuildActive = state.buildMode.active
-        
-        ctx.fillStyle = isBuildActive ? 'rgba(239, 68, 68, 0.85)' : 'rgba(78, 205, 196, 0.85)'
-        ctx.beginPath()
-        ctx.roundRect(buildBtnX, btnY, btnW, btnH, 8)
-        ctx.fill()
-        
-        ctx.strokeStyle = isBuildActive ? '#EF4444' : '#4ECDC4'
-        ctx.lineWidth = 2
-        ctx.stroke()
-        
-        ctx.fillStyle = '#fff'
-        ctx.font = 'bold 9px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText(isBuildActive ? '❌ 退出' : '🔨 建造', buildBtnX + btnW / 2, btnY + 15)
-        ctx.font = '7px sans-serif'
-        ctx.fillText(isBuildActive ? '取消' : '点击放置', buildBtnX + btnW / 2, btnY + 27)
-        
-        // 保存按钮区域用于触摸检测
+        // 保存按钮区域用于触摸检测（移除建造按钮）
         mobileButtons = {
           turretButtons: turretTypes.map((type, i) => ({
             type,
@@ -880,15 +903,13 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
             w: btnW,
             h: btnH
           })),
-          buildButton: { x: buildBtnX, y: btnY, w: btnW, h: btnH }
+          buildButton: null
         }
       } else {
         // PC端：显示炮台选择面板
-        const pcPanelW = turretTypes.length * (btnW + btnGap) + btnGap + btnW + 20
+        const pcPanelW = turretTypes.length * (btnW + btnGap) + btnGap + 20
         const pcPanelX = (CANVAS_WIDTH - pcPanelW) / 2
-        const pcPanelY = CANVAS_HEIGHT - btnH - 20
-        const isBuildActive = state.buildMode.active
-        const buildBtnX = pcPanelX + btnGap + 4 * (btnW + btnGap)
+        const pcPanelY = CANVAS_HEIGHT - btnH - 25
         
         // PC端面板（始终显示，让PC用户也能点击选择）
         drawPanel(pcPanelX, pcPanelY, pcPanelW, btnH + 16, 'rgba(15, 25, 45, 0.85)')
@@ -896,12 +917,15 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         // 炮台选择按钮
         turretTypes.forEach((type, i) => {
           const bx = pcPanelX + btnGap + i * (btnW + btnGap)
+          const config = TURRET_CONFIGS[type]
+          const canAfford = state.resources.crystals >= config.cost
           const selected = state.buildMode.selectedTurret === type
           const colors: Record<string, string> = { laser: '#60A5FA', missile: '#F97316', frost: '#22D3EE', lightning: '#A78BFA' }
           const icons: Record<string, string> = { laser: '⚡', missile: '🚀', frost: '❄️', lightning: '⚡' }
           
-          // 按钮背景
-          ctx.fillStyle = selected ? colors[type] : 'rgba(255,255,255,0.1)'
+          // 按钮背景（根据是否能负担改变颜色）
+          const bgColor = canAfford ? (selected ? colors[type] : 'rgba(255,255,255,0.1)') : 'rgba(50, 50, 50, 0.5)'
+          ctx.fillStyle = bgColor
           drawRoundedRect(bx, pcPanelY + 8, btnW, btnH, 6)
           ctx.fill()
           if (selected) {
@@ -911,40 +935,38 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
           }
           
           // 按钮内容
-          ctx.fillStyle = selected ? '#fff' : '#9CA3AF'
+          const textColor = canAfford ? (selected ? '#fff' : '#9CA3AF') : '#666'
+          ctx.fillStyle = textColor
           ctx.font = '10px sans-serif'
           ctx.textAlign = 'center'
           ctx.fillText(icons[type], bx + btnW / 2, pcPanelY + 22)
           ctx.font = '8px sans-serif'
           const names: Record<string, string> = { laser: '激光', missile: '导弹', frost: '冰冻', lightning: '闪电' }
-          ctx.fillText(names[type], bx + btnW / 2, pcPanelY + 36)
-          ctx.font = '7px sans-serif'
-          ctx.fillText(`[${i + 1}]`, bx + btnW / 2, pcPanelY + 47)
+          ctx.fillText(names[type], bx + btnW / 2, pcPanelY + 32)
+          
+          // 消耗钻石数量
+          const crystalColor = canAfford ? '#00D4FF' : '#666'
+          ctx.fillStyle = crystalColor
+          ctx.font = 'bold 7px sans-serif'
+          ctx.fillText(`${config.cost} 💎`, bx + btnW / 2, pcPanelY + 44)
+          
+          // 快捷键提示
+          ctx.fillStyle = textColor
+          ctx.font = '6px sans-serif'
+          ctx.fillText(`[${i + 1}]`, bx + btnW / 2, pcPanelY + 49)
           
           // 保存PC按钮区域
           if (!mobileButtons) mobileButtons = { turretButtons: [], buildButton: null }
           mobileButtons.turretButtons.push({ type, x: bx, y: pcPanelY + 8, w: btnW, h: btnH })
         })
         
-        // 建造/退出按钮
-        drawPanel(buildBtnX, pcPanelY + 8, btnW, btnH, isBuildActive ? 'rgba(239, 68, 68, 0.8)' : 'rgba(78, 205, 196, 0.8)')
-        ctx.fillStyle = '#fff'
-        ctx.font = 'bold 10px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText(isBuildActive ? '❌' : '🔨', buildBtnX + btnW / 2, pcPanelY + 22)
-        ctx.font = '8px sans-serif'
-        ctx.fillText(isBuildActive ? '取消' : '建造', buildBtnX + btnW / 2, pcPanelY + 36)
-        
-        if (!mobileButtons) mobileButtons = { turretButtons: [], buildButton: null }
-        mobileButtons.buildButton = { x: buildBtnX, y: pcPanelY + 8, w: btnW, h: btnH }
-        
-        // PC端建造模式提示
-        if (state.buildMode.active) {
+        // PC端建造模式提示（选择炮台后显示）
+        if (state.buildMode.selectedTurret) {
           ctx.fillStyle = '#4ECDC4'
           ctx.font = '9px sans-serif'
           ctx.textAlign = 'center'
-          const sel = state.buildMode.selectedTurret || '激光'
-          ctx.fillText(`已选: ${sel} | 点击地图放置 | ESC退出`, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 8)
+          const sel = TURRET_DISPLAY[state.buildMode.selectedTurret]?.name || '激光炮台'
+          ctx.fillText(`已选: ${sel} | 点击地图放置 | ESC取消`, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 8)
         }
       }
     }
@@ -1016,38 +1038,33 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     // 保存按键状态（支持WASD移动）
     state.keys[key] = true
     
-    if (key === 'b') {
-      if (state.gameStarted && !state.gameEnded) {
-        state.buildMode.active = !state.buildMode.active
-        if (state.buildMode.active) {
-          state.buildMode.selectedTurret = 'laser'  // 默认选择激光炮台
-          console.log('进入建造模式 - 激光炮台')
-        } else {
-          console.log('退出建造模式')
-        }
-      }
-    }
-    
     if (e.key === 'Escape') {
-      state.buildMode.active = false
       state.buildMode.selectedTurret = null
       state.buildMode.selectedTrap = null
     }
     
-    // 数字键快速切换炮台类型
-    if (state.buildMode.active) {
+    // 数字键快速选择炮台类型（直接选择，无需进入建造模式）
+    if (state.gameStarted && !state.gameEnded) {
       if (e.key === '1') {
         state.buildMode.selectedTurret = 'laser'
-        console.log('切换到激光炮台')
+        state.buildMode.selectedTrap = null
+        console.log('选择激光炮台')
+        playSound('select')
       } else if (e.key === '2') {
         state.buildMode.selectedTurret = 'missile'
-        console.log('切换到导弹炮台')
+        state.buildMode.selectedTrap = null
+        console.log('选择导弹炮台')
+        playSound('select')
       } else if (e.key === '3') {
         state.buildMode.selectedTurret = 'frost'
-        console.log('切换到冰冻炮台')
+        state.buildMode.selectedTrap = null
+        console.log('选择冰冻炮台')
+        playSound('select')
       } else if (e.key === '4') {
         state.buildMode.selectedTurret = 'lightning'
-        console.log('切换到闪电炮台')
+        state.buildMode.selectedTrap = null
+        console.log('选择闪电炮台')
+        playSound('select')
       }
     }
   }
@@ -1074,7 +1091,8 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   console.log('✅ RPG塔防射击游戏已启动！')
   console.log('📝 操作说明：')
   console.log('  - 鼠标移动：控制角色')
-  console.log('  - 按B键：进入/退出建造模式')
-  console.log('  - 建造模式下点击：放置炮台')
-  console.log('  - ESC键：取消建造')
+  console.log('  - 点击底部炮台按钮：选择炮台')
+  console.log('  - 点击地图：放置已选炮台')
+  console.log('  - 数字键1-4：快速选择炮台类型')
+  console.log('  - ESC键：取消选中')
 }
