@@ -279,15 +279,16 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       // }
     }
     
-    // 检查是否点击了左下角区域（启动虚拟摇杆）
-    if (touchX < CANVAS_WIDTH * 0.4 && touchY > CANVAS_HEIGHT * 0.6) {
-      // 启动虚拟摇杆
+    // ✅ 检查是否点击了左下角区域（启动虚拟摇杆）
+    // 只有在非建造模式下才启用摇杆，避免与放置炮台冲突
+    if (!state.buildMode.selectedTurret && touchX < CANVAS_WIDTH * 0.25 && touchY > CANVAS_HEIGHT * 0.75) {
+      // 启动虚拟摇杆（更小的触发区域：左下角 25% x 25% = 6.25% 屏幕面积）
       joystick.active = true
       joystick.startX = touchX
       joystick.startY = touchY
       joystick.currentX = touchX
       joystick.currentY = touchY
-      console.log('虚拟摇杆已激活')
+      console.log('🕹️ 虚拟摇杆已激活')
       return
     }
     
