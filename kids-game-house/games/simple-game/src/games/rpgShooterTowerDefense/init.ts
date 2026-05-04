@@ -128,6 +128,10 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   // 鼠标位置
   const mousePos = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 }
   
+  // ✅ 防止手机端 touch 和 click 事件重复触发
+  let lastTouchTime = 0
+  const TOUCH_CLICK_DELAY = 500  // 500ms 内的 click 视为重复
+  
   // ✅ 选中的炮台（用于显示选中效果和升级弹窗）
   let selectedTurretForUpgrade: any = null
   let upgradeDialogPos = { x: 0, y: 0 }  // 升级弹窗位置
@@ -205,6 +209,10 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   
   const handleTouchStart = (e: TouchEvent) => {
     e.preventDefault()
+    
+    // ✅ 记录触摸时间，用于防止 click 重复触发
+    lastTouchTime = Date.now()
+    
     const rect = canvas.getBoundingClientRect()
     
     // 检测双指点击（切换建造模式）
@@ -329,6 +337,13 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   }
   
   const handleClick = (e: MouseEvent) => {
+    // ✅ 防止手机端 touch 和 click 重复触发
+    const now = Date.now()
+    if (now - lastTouchTime < TOUCH_CLICK_DELAY) {
+      console.log('⚠️ 忽略重复的 click 事件（由 touch 触发）')
+      return
+    }
+    
     // ✅ 游戏未开始时，点击任意位置开始游戏
     if (!state.gameStarted) {
       state.gameStarted = true
