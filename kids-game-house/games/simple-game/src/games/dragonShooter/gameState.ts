@@ -1442,6 +1442,10 @@ export function checkLevelUp(state: GameState): boolean {
   if (state.levelProgress >= state.levelTarget && routeCount > 0) {
     console.log(`✅ 第${state.level}关完成！共${routeCount}条路线，已消灭${state.levelProgress}条龙`)
     
+    // 🎯 关键修复：保存本关的统计数据
+    state.levelCompleteScore = state.score
+    state.levelCompleteKills = state.totalKills
+    
     state.level++
     state.levelProgress = 0
     state.dragonsSpawnedInLevel = 0  // 重置本关生成计数
