@@ -126,6 +126,14 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
 
   // 注册游戏结束回调（3秒后返回主界面）
   setGameOverCallback(async () => {
+    //  关键修复：游戏结束时打印最终分数，确保分数已累积
+    console.log('[打龙] 游戏结束，最终分数:', {
+      score: state.score,
+      level: state.level,
+      totalKills: state.totalKills,
+      phase: state.phase,
+    })
+    
     // 🎯 提交游戏积分到后台
     if (userService.isLoggedIn && userService.current && sessionId && sessionToken) {
       try {
@@ -452,6 +460,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
 
   // ===== 游戏主循环 =====
   let lastTime = performance.now()
+  let lastSyncedScore = 0  // 🎯 记录上次同步的分数，避免重复调用
 
   function gameLoop(timestamp: number) {
     const dt = Math.min(0.033, (timestamp - lastTime) / 1000)
@@ -467,6 +476,13 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       if (state.comboTimer > 0) {
         state.comboTimer -= dt
         if (state.comboTimer <= 0) state.combo = 0
+      }
+
+      //  关键修复：同步分数到 gameEngine（增量同步）
+      if (state.score > lastSyncedScore) {
+        const scoreDelta = state.score - lastSyncedScore
+        engine.addScore(scoreDelta, state.playerX, state.playerY)
+        lastSyncedScore = state.score
       }
 
       // 玩家移动和射击角度控制
