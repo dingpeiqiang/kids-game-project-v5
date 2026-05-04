@@ -23,7 +23,7 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   initCanvasSize()
   
   // ==================== 音效系统 ====================
-  const playSound = (type: 'select' | 'build' | 'upgrade' | 'shoot' | 'explosion' | 'hit') => {
+  const playSound = (type: 'select' | 'build' | 'upgrade' | 'sell' | 'shoot' | 'explosion' | 'hit') => {
     // 简单的音效模拟（使用Web Audio API）
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -55,6 +55,14 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
           oscillator.start(audioContext.currentTime)
           oscillator.stop(audioContext.currentTime + 0.2)
+          break
+        case 'sell':
+          oscillator.frequency.value = 500
+          oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.15)
+          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime)
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15)
+          oscillator.start(audioContext.currentTime)
+          oscillator.stop(audioContext.currentTime + 0.15)
           break
         case 'shoot':
           oscillator.frequency.value = 400
@@ -120,6 +128,10 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   // 鼠标位置
   const mousePos = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 }
   
+  // ✅ 选中的炮台（用于显示选中效果和升级弹窗）
+  let selectedTurretForUpgrade: any = null
+  let upgradeDialogPos = { x: 0, y: 0 }  // 升级弹窗位置
+  
   // 虚拟摇杆状态（手机端）
   const joystick = {
     active: false,
@@ -136,10 +148,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   state.buildMode.selectedTurret = null
   state.buildMode.buildTab = 'turret' as 'turret' | 'trap'
   
-  // 拖拽状态
-  let isDragging = false
-  let draggedTurretType: string | null = null
-  
   // 事件监听
   const handleMouseMove = (e: MouseEvent) => {
     const rect = canvas.getBoundingClientRect()
@@ -150,87 +158,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     mousePos.y = (e.clientY - rect.top) * scaleY
     state.buildMode.previewX = mousePos.x
     state.buildMode.previewY = mousePos.y
-    
-    // 如果正在拖拽炮台，更新预览位置
-    if (isDragging && draggedTurretType) {
-      state.buildMode.selectedTurret = draggedTurretType
-    }
-  }
-  
-  // 鼠标按下事件（用于拖拽炮台）
-  const handleMouseDown = (e: MouseEvent) => {
-    if (!state.gameStarted || state.gameEnded) return
-    
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = CANVAS_WIDTH / rect.width
-    const scaleY = CANVAS_HEIGHT / rect.height
-    const mx = (e.clientX - rect.left) * scaleX
-    const my = (e.clientY - rect.top) * scaleY
-    
-    // 检查是否点击了炮台按钮
-    if (mobileButtons) {
-      for (const btn of mobileButtons.turretButtons) {
-        if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
-          const config = TURRET_CONFIGS[btn.type]
-          if (config && state.resources.crystals >= config.cost) {
-            isDragging = true
-            draggedTurretType = btn.type
-            state.buildMode.selectedTurret = btn.type
-            playSound('select')
-            return
-          }
-        }
-      }
-    }
-  }
-  
-  // 鼠标松开事件（用于放置炮台）
-  const handleMouseUp = (e: MouseEvent) => {
-    if (isDragging && draggedTurretType) {
-      const rect = canvas.getBoundingClientRect()
-      const scaleX = CANVAS_WIDTH / rect.width
-      const scaleY = CANVAS_HEIGHT / rect.height
-      const mx = (e.clientX - rect.left) * scaleX
-      const my = (e.clientY - rect.top) * scaleY
-      
-      // 检查是否在按钮区域外（避免误触）
-      const btnPanelY = CANVAS_HEIGHT - 65 // 按钮面板顶部位置
-      if (my < btnPanelY) {
-        // 尝试放置炮台
-        const config = TURRET_CONFIGS[draggedTurretType]
-        if (config && state.resources.crystals >= config.cost) {
-          let targetLevel = 1
-          let totalCost = config.cost
-          for (const upg of config.upgradePath) {
-            if (state.resources.crystals >= totalCost + upg.cost) {
-              targetLevel = upg.level
-              totalCost += upg.cost
-            } else {
-              break
-            }
-          }
-          
-          if (spendCrystals(state, totalCost)) {
-            placeTurret(state, mx, my, draggedTurretType, targetLevel)
-            if (targetLevel > 1) {
-              state.floatTexts.push({
-                text: `🏆 Lv${targetLevel}`,
-                x: mx,
-                y: my - 30,
-                life: 1.5,
-                color: '#FBBF24',
-                size: 14,
-                vy: -1
-              })
-            }
-            playSound('build')
-          }
-        }
-      }
-      
-      isDragging = false
-      draggedTurretType = null
-    }
   }
   
   // 触摸事件处理（手机端支持）
@@ -317,18 +244,18 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         }
       }
       
-      // 检查建造/退出按钮
-      const bBtn = mobileButtons.buildButton
-      if (btnX >= bBtn.x && btnX <= bBtn.x + bBtn.w && btnY >= bBtn.y && btnY <= bBtn.y + bBtn.h) {
-        state.buildMode.active = !state.buildMode.active
-        if (!state.buildMode.active) {
-          state.buildMode.selectedTurret = null
-          state.buildMode.selectedTrap = null
-        }
-        playSound('select')
-        console.log(`建造模式: ${state.buildMode.active}`)
-        return
-      }
+      // 检查建造/退出按钮（已移除，不再需要）
+      // const bBtn = mobileButtons.buildButton
+      // if (bBtn && btnX >= bBtn.x && btnX <= bBtn.x + bBtn.w && btnY >= bBtn.y && btnY <= bBtn.y + bBtn.h) {
+      //   state.buildMode.active = !state.buildMode.active
+      //   if (!state.buildMode.active) {
+      //     state.buildMode.selectedTurret = null
+      //     state.buildMode.selectedTrap = null
+      //   }
+      //   playSound('select')
+      //   console.log(`建造模式: ${state.buildMode.active}`)
+      //   return
+      // }
     }
     
     // 检查是否点击了左下角区域（启动虚拟摇杆）
@@ -365,104 +292,154 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       joystick.active = false
     }
     
-    // 检测手机按钮点击或拖拽放置
+    // 检测手机按钮点击
     if (mobileButtons) {
       const touch = e.changedTouches[0]
       const rect = canvas.getBoundingClientRect()
       const tx = (touch.clientX - rect.left) * (CANVAS_WIDTH / rect.width)
       const ty = (touch.clientY - rect.top) * (CANVAS_HEIGHT / rect.height)
       
-      // 检查是否点击了炮台按钮（选中炮台）
-      let clickedBtn = false
+      // 检查炮台按钮
       for (const btn of mobileButtons.turretButtons) {
         if (tx >= btn.x && tx <= btn.x + btn.w && ty >= btn.y && ty <= btn.y + btn.h) {
           state.buildMode.selectedTurret = btn.type
           playSound('select')
-          clickedBtn = true
-          break
+          console.log(`选择炮台: ${btn.type}`)
+          return
         }
       }
       
-      // 如果没有点击按钮，且已经选中了炮台，尝试放置炮台
-      if (!clickedBtn && state.buildMode.selectedTurret) {
-        // 检查是否在按钮区域外（避免误触）
-        const btnPanelY = CANVAS_HEIGHT - 95 // 按钮面板顶部位置
-        if (ty < btnPanelY) {
-          // 尝试放置炮台
-          const config = TURRET_CONFIGS[state.buildMode.selectedTurret]
-          if (config && state.resources.crystals >= config.cost) {
-            // 找到最高可用等级
-            let targetLevel = 1
-            let totalCost = config.cost
-            for (const upg of config.upgradePath) {
-              if (state.resources.crystals >= totalCost + upg.cost) {
-                targetLevel = upg.level
-                totalCost += upg.cost
-              } else {
-                break
-              }
-            }
-            
-            if (spendCrystals(state, totalCost)) {
-              placeTurret(state, tx, ty, state.buildMode.selectedTurret, targetLevel)
-              if (targetLevel > 1) {
-                state.floatTexts.push({
-                  text: `🏆 Lv${targetLevel}`,
-                  x: tx,
-                  y: ty - 30,
-                  life: 1.5,
-                  color: '#FBBF24',
-                  size: 14,
-                  vy: -1
-                })
-              }
-              playSound('build')
-            }
-          }
-        }
-      }
+      // 检查建造/退出按钮（已移除，不再需要）
+      // const buildBtn = mobileButtons.buildButton
+      // if (buildBtn && tx >= buildBtn.x && tx <= buildBtn.x + buildBtn.w && ty >= buildBtn.y && ty <= buildBtn.y + buildBtn.h) {
+      //   state.buildMode.active = !state.buildMode.active
+      //   if (state.buildMode.active) {
+      //     state.buildMode.selectedTurret = state.buildMode.selectedTurret || 'laser'
+      //   }
+      //   return
+      // }
     }
   }
   
   const handleClick = (e: MouseEvent) => {
-    // 如果正在显示升级弹窗，处理升级/出售
-
+    // ✅ 游戏未开始时，点击任意位置开始游戏
+    if (!state.gameStarted) {
+      state.gameStarted = true
+      console.log('游戏开始！')
+      return
+    }
     
-    // 直接放置炮台（选中炮台后点击地图即可放置）
+    // ✅ 检测是否点击了已放置的炮台（非建造模式下）
+    if (!state.buildMode.selectedTurret && state.gameStarted && !state.gameEnded) {
+      // ✅ 先检查是否点击了升级/出售按钮
+      if (mobileButtons) {
+        // 检查升级按钮
+        if (mobileButtons.upgradeButton) {
+          const btn = mobileButtons.upgradeButton
+          if (mousePos.x >= btn.x && mousePos.x <= btn.x + btn.w && 
+              mousePos.y >= btn.y && mousePos.y <= btn.y + btn.h) {
+            // ✅ 点击了升级按钮 - 执行升级
+            const success = upgradeTurret(state, btn.turret)
+            if (success) {
+              playSound('upgrade')
+              console.log(`✅ 炮台升级到 Lv.${btn.turret.level}`)
+              // 升级后保持选中状态，可以继续查看
+            }
+            return  // ✅ 重要：升级后直接返回，不再执行后续逻辑
+          }
+        }
+        
+        // 检查出售按钮
+        if (mobileButtons.sellButton) {
+          const btn = mobileButtons.sellButton
+          if (mousePos.x >= btn.x && mousePos.x <= btn.x + btn.w && 
+              mousePos.y >= btn.y && mousePos.y <= btn.y + btn.h) {
+            // ✅ 点击了出售按钮 - 执行出售
+            sellTurret(state, btn.turret)
+            selectedTurretForUpgrade = null  // 出售后取消选中
+            playSound('sell')
+            console.log(`✅ 炮台已出售，获得 💎${btn.value}`)
+            return  // ✅ 重要：出售后直接返回
+          }
+        }
+      }
+      
+      // ✅ 检查是否点击了炮台（只有在没有点击按钮时才执行）
+      const clickedTurret = state.turrets.find(t => {
+        const dist = Math.sqrt((t.x - mousePos.x) ** 2 + (t.y - mousePos.y) ** 2)
+        return dist < 20  // 点击半径20像素
+      })
+      
+      if (clickedTurret) {
+        // ✅ 如果点击的是已选中的炮台，关闭弹窗；否则显示新弹窗
+        if (selectedTurretForUpgrade === clickedTurret) {
+          // 点击同一个炮台，关闭弹窗
+          selectedTurretForUpgrade = null
+          console.log(`❌ 再次点击同一炮台，关闭弹窗`)
+        } else {
+          // 点击新炮台，显示新弹窗
+          selectedTurretForUpgrade = clickedTurret
+          upgradeDialogPos = { x: clickedTurret.x, y: clickedTurret.y - 60 }
+          playSound('select')
+          console.log(`🔍 选中新炮台，显示升级弹窗`)
+        }
+        return
+      } else {
+        // 点击空白处，取消选中
+        selectedTurretForUpgrade = null
+        console.log(`❌ 点击空白处，取消选中`)
+      }
+    }
+    
+    // 检测PC端底部炮台按钮点击（与手机端相同逻辑）
+    if (mobileButtons && state.gameStarted && !state.gameEnded) {
+      const rect = canvas.getBoundingClientRect()
+      const clickX = (e.clientX - rect.left) * (CANVAS_WIDTH / rect.width)
+      const clickY = (e.clientY - rect.top) * (CANVAS_HEIGHT / rect.height)
+      
+      // 检查炮台按钮
+      for (const btn of mobileButtons.turretButtons) {
+        if (clickX >= btn.x && clickX <= btn.x + btn.w && clickY >= btn.y && clickY <= btn.y + btn.h) {
+          state.buildMode.selectedTurret = btn.type
+          playSound('select')
+          console.log(`选择炮台: ${btn.type}`)
+          return
+        }
+      }
+    }
+    
+    // 直接放置炮台（不需要建造模式，只要有选中的炮台类型且有足够水晶）
     if (state.buildMode.selectedTurret) {
       const config = TURRET_CONFIGS[state.buildMode.selectedTurret]
-      if (!config) return
-      
-      // 找到最高可用等级
-      let targetLevel = 1
-      let totalCost = config.cost
-      for (const upg of config.upgradePath) {
-        if (state.resources.crystals >= totalCost + upg.cost) {
-          targetLevel = upg.level
-          totalCost += upg.cost
-        } else {
-          break
-        }
+      if (!config) {
+        console.error('炮台配置不存在')
+        return
       }
       
-      if (spendCrystals(state, totalCost)) {
-        placeTurret(state, mousePos.x, mousePos.y, state.buildMode.selectedTurret, targetLevel)
-        if (targetLevel > 1) {
-          state.floatTexts.push({
-            text: `🏆 Lv${targetLevel}`,
-            x: mousePos.x,
-            y: mousePos.y - 30,
-            life: 1.5,
-            color: '#FBBF24',
-            size: 14,
-            vy: -1
-          })
-        }
+      // ✅ 调用 placeTurret 函数，它会自动处理扣费和放置
+      const success = placeTurret(state, mousePos.x, mousePos.y, state.buildMode.selectedTurret, 1)
+      
+      if (success) {
         playSound('build')
+        
+        // 显示消耗提示
+        state.floatTexts.push({
+          text: `💎 -${config.cost}`,
+          x: mousePos.x,
+          y: mousePos.y - 20,
+          life: 1.0,
+          color: '#FBBF24',
+          size: 12,
+          vy: -0.8
+        })
+        
+        // ✅ 放置后清除选中状态
+        state.buildMode.selectedTurret = null
+        console.log(`炮台放置成功，消耗 ${config.cost} 水晶`)
+      } else {
+        // placeTurret 已经显示了错误提示（如水晶不足、位置无效等）
+        console.log('炮台放置失败')
       }
-    } else if (state.buildMode.selectedTrap) {
-      placeTrap(state, mousePos.x, mousePos.y, state.buildMode.selectedTrap)
-      playSound('build')
     }
   }
   
@@ -485,12 +462,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   const gameLoop = (currentTime: number) => {
     const dt = Math.min((currentTime - lastTime) / 1000, 0.1)
     lastTime = currentTime
-    
-    // 检查引擎是否已启动，如果已启动则开始游戏
-    if (!state.gameStarted && engine.isRunning()) {
-      state.gameStarted = true
-      console.log('🎮 RPG塔防射击游戏开始！')
-    }
     
     // 更新逻辑
     if (state.gameStarted && !state.gameEnded) {
@@ -575,25 +546,9 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     }
     
     // 检查游戏结束
-    if (state.gameEnded && !state.gameEndProcessed) {
-      state.gameEndProcessed = true
-      
-      // 设置游戏统计数据
-      const gameStats = {
-        score: state.resources.score,
-        maxCombo: state.combo.maxCombo,
-        totalKills: state.resources.kills,
-        gameTime: Math.floor(state.elapsed),
-        won: state.wave >= 8,
-        level: state.player.level
-      }
-      engine.setGameStats(gameStats)
-      
-      // 设置胜利状态
-      engine.setVictory(state.wave >= 8)
-      
+    if (state.gameEnded) {
       cleanup()
-      onEnd()
+      setTimeout(onEnd, 2000)
     }
   }
   
@@ -621,7 +576,9 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     
     // 绘制炮台
     for (const turret of state.turrets) {
-      drawTurret(ctx, turret, false)
+      // ✅ 检查是否是选中的炮台
+      const isSelected = selectedTurretForUpgrade === turret
+      drawTurret(ctx, turret, isSelected)
     }
     
     // 绘制敌人
@@ -637,9 +594,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     
     // 绘制玩家
     drawPlayer(ctx, state)
-    
-    // 绘制建造预览（选中炮台后显示）
-    drawBuildPreview(ctx, state)
     
     // 绘制粒子
     for (const particle of state.particles) {
@@ -814,6 +768,11 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     const GAP = 8       // 面板间距
     const TOP_Y = 12    // 顶部起始Y
     
+    // 只在游戏进行中显示UI面板
+    if (!state.gameStarted || state.gameEnded) {
+      return
+    }
+    
     // ========== 左上面板：资源 + 击杀 ==========
     const resPanelW = 120
     drawPanel(12, TOP_Y, resPanelW, 75)
@@ -926,60 +885,173 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       ctx.restore()
     }
     
-    // ========== 炮台选择面板（支持拖拽放置）==========
+    // ========== 升级弹窗 ==========
+    if (selectedTurretForUpgrade && state.gameStarted && !state.gameEnded) {
+      const turret = selectedTurretForUpgrade
+      const config = TURRET_CONFIGS[turret.type]
+      const nextUpgrade = config.upgradePath.find(u => u.level === turret.level + 1)
+      
+      // ✅ 计算弹窗位置（确保不超出屏幕）- 缩小尺寸
+      const dialogW = 160  // 从 200 缩小到 160
+      const dialogH = nextUpgrade ? 75 : 50  // 从 95/60 缩小到 75/50
+      let dialogX = upgradeDialogPos.x - dialogW / 2
+      let dialogY = upgradeDialogPos.y
+      
+      // 边界检查
+      if (dialogX < 10) dialogX = 10
+      if (dialogX + dialogW > CANVAS_WIDTH - 10) dialogX = CANVAS_WIDTH - dialogW - 10
+      if (dialogY < 10) dialogY = 10
+      if (dialogY + dialogH > CANVAS_HEIGHT - 10) dialogY = CANVAS_HEIGHT - dialogH - 10
+      
+      // 更新实际位置
+      upgradeDialogPos = { x: dialogX + dialogW / 2, y: dialogY }
+      
+      // 弹窗背景
+      ctx.fillStyle = 'rgba(15, 25, 45, 0.98)'
+      drawRoundedRect(dialogX, dialogY, dialogW, dialogH, 8)  // 圆角从 12 改为 8
+      ctx.fill()
+      ctx.strokeStyle = '#4ECDC4'
+      ctx.lineWidth = 2
+      ctx.stroke()
+      
+      // 炮台信息
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 11px sans-serif'  // 字体从 13 改为 11
+      ctx.textAlign = 'center'
+      const typeNames: Record<string, string> = { laser: '激光', missile: '导弹', frost: '冰冻', lightning: '闪电' }
+      ctx.fillText(`${typeNames[turret.type]} Lv.${turret.level}`, dialogX + dialogW / 2, dialogY + 18)
+      
+      if (nextUpgrade) {
+        // 升级信息
+        ctx.fillStyle = '#FBBF24'
+        ctx.font = '10px sans-serif'  // 字体从 11 改为 10
+        ctx.fillText(`💎 ${nextUpgrade.cost}`, dialogX + dialogW / 2, dialogY + 35)
+        
+        // ✅ 升级按钮 - 缩小
+        const btnW = 60  // 从 70 改为 60
+        const btnH = 24  // 从 28 改为 24
+        const btnX = dialogX + 12
+        const btnY = dialogY + 45
+        
+        const canAfford = state.resources.crystals >= nextUpgrade.cost
+        ctx.fillStyle = canAfford ? '#4ECDC4' : '#6B7280'
+        drawRoundedRect(btnX, btnY, btnW, btnH, 5)
+        ctx.fill()
+        
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 10px sans-serif'  // 字体从 11 改为 10
+        ctx.fillText('⬆️升级', btnX + btnW / 2, btnY + 16)
+        
+        // ✅ 出售按钮 - 缩小
+        const sellBtnX = dialogX + dialogW - 72  // 调整位置
+        const sellValue = Math.floor(config.cost * 0.5)
+        ctx.fillStyle = '#EF4444'
+        drawRoundedRect(sellBtnX, btnY, btnW, btnH, 5)
+        ctx.fill()
+        
+        ctx.fillStyle = '#fff'
+        ctx.fillText('💰出售', sellBtnX + btnW / 2, btnY + 16)
+        
+        // 保存按钮区域用于点击检测
+        if (!mobileButtons) mobileButtons = { turretButtons: [], buildButton: null }
+        mobileButtons.upgradeButton = { x: btnX, y: btnY, w: btnW, h: btnH, turret, type: 'upgrade' }
+        mobileButtons.sellButton = { x: sellBtnX, y: btnY, w: btnW, h: btnH, turret, type: 'sell', value: sellValue }
+      } else {
+        // 已满级提示
+        ctx.fillStyle = '#FFD700'
+        ctx.font = 'bold 11px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('⭐ 已满级', dialogX + dialogW / 2, dialogY + 30)
+        
+        // 只显示出售按钮
+        const btnW = 60
+        const btnH = 24
+        const btnX = dialogX + (dialogW - btnW) / 2
+        const btnY = dialogY + 36
+        const sellValue = Math.floor(config.cost * 0.5)
+        
+        ctx.fillStyle = '#EF4444'
+        drawRoundedRect(btnX, btnY, btnW, btnH, 5)
+        ctx.fill()
+        
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 10px sans-serif'
+        ctx.fillText('💰出售', btnX + btnW / 2, btnY + 16)
+        
+        // 保存按钮区域
+        if (!mobileButtons) mobileButtons = { turretButtons: [], buildButton: null }
+        mobileButtons.sellButton = { x: btnX, y: btnY, w: btnW, h: btnH, turret, type: 'sell', value: sellValue }
+      }
+    }
+    
+    // ========== 手机端建造按钮面板 ==========
     const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window)
-    const turretTypes = ['laser', 'missile', 'frost', 'lightning']
-    const btnW = 58, btnH = 38, btnGap = 6
     
     if (state.gameStarted && !state.gameEnded) {
+      // 炮台类型和按钮配置（手机端和PC端共用）
+      const turretTypes = ['laser', 'missile', 'frost', 'lightning']
+      // ✅ 使用更独特的图标
+      const turretIcons: Record<string, string> = { 
+        laser: '🔵',      // 蓝色圆圈 - 激光
+        missile: '🚀',    // 火箭 - 导弹
+        frost: '❄️',      // 雪花 - 冰冻
+        lightning: '⚡'   // 闪电 - 闪电
+      }
+      const turretNames: Record<string, string> = { laser: '激光', missile: '导弹', frost: '冰冻', lightning: '闪电' }
+      // ✅ 每种炮台的按钮颜色
+      const turretColors: Record<string, string> = {
+        laser: '#00D9FF',
+        missile: '#FF6B6B',
+        frost: '#7FDBFF',
+        lightning: '#FFD700'
+      }
+      const btnW = 58, btnH = 38, btnGap = 6
+      
       if (isMobile) {
         // 手机端：底部炮台选择面板
-        const btnPanelW = 300
-        const btnPanelH = 60
+        const btnPanelW = 340
+        const btnPanelH = 55
         const btnPanelX = (CANVAS_WIDTH - btnPanelW) / 2
-        const btnPanelY = CANVAS_HEIGHT - btnPanelH - 35
+        const btnPanelY = CANVAS_HEIGHT - btnPanelH - 40
         
         drawPanel(btnPanelX, btnPanelY, btnPanelW, btnPanelH, 'rgba(10, 20, 35, 0.92)')
-        
-        const turretIcons: Record<string, string> = { laser: '⚡', missile: '🚀', frost: '❄️', lightning: '⚡' }
-        const turretNames: Record<string, string> = { laser: '激光', missile: '导弹', frost: '冰冻', lightning: '闪电' }
         
         const startX = btnPanelX + 8
         const btnY = btnPanelY + (btnPanelH - btnH) / 2
         
         turretTypes.forEach((type, i) => {
           const bx = startX + i * (btnW + btnGap)
-          const config = TURRET_CONFIGS[type]
-          const canAfford = state.resources.crystals >= config.cost
           const isSelected = state.buildMode.selectedTurret === type
           
-          ctx.fillStyle = canAfford ? (isSelected ? 'rgba(74, 222, 128, 0.85)' : 'rgba(255, 255, 255, 0.08)') : 'rgba(50, 50, 50, 0.5)'
+          // ✅ 使用炮台对应的颜色
+          const baseColor = turretColors[type]
+          ctx.fillStyle = isSelected ? `${baseColor}CC` : 'rgba(255, 255, 255, 0.08)'  // CC = 80% 透明度
           ctx.beginPath()
           ctx.roundRect(bx, btnY, btnW, btnH, 8)
           ctx.fill()
           
-          ctx.strokeStyle = canAfford ? (isSelected ? '#4ADE80' : 'rgba(255,255,255,0.2)') : 'rgba(100, 100, 100, 0.3)'
-          ctx.lineWidth = isSelected ? 2 : 1
+          ctx.strokeStyle = isSelected ? baseColor : 'rgba(255,255,255,0.2)'
+          ctx.lineWidth = isSelected ? 3 : 1
           ctx.stroke()
           
-          // 图标
-          ctx.fillStyle = canAfford ? (isSelected ? '#fff' : '#9CA3AF') : '#666'
-          ctx.font = '12px sans-serif'
+          // ✅ 图标使用对应颜色
+          ctx.fillStyle = isSelected ? '#fff' : baseColor
+          ctx.font = '14px sans-serif'
           ctx.textAlign = 'center'
-          ctx.fillText(turretIcons[type], bx + btnW / 2, btnY + 12)
+          ctx.fillText(turretIcons[type], bx + btnW / 2, btnY + 15)
           
-          // 名称
-          ctx.font = '7px sans-serif'
-          ctx.fillText(turretNames[type], bx + btnW / 2, btnY + 24)
+          ctx.fillStyle = isSelected ? '#fff' : '#9CA3AF'
+          ctx.font = '8px sans-serif'
+          ctx.fillText(turretNames[type], bx + btnW / 2, btnY + 28)
           
-          // 消耗钻石数量
-          ctx.font = 'bold 8px sans-serif'
-          const crystalColor = canAfford ? '#00D4FF' : '#666'
-          ctx.fillStyle = crystalColor
-          ctx.fillText(`${config.cost} 💎`, bx + btnW / 2, btnY + 35)
+          // 显示水晶消耗
+          const costs: Record<string, number> = { laser: 40, missile: 80, frost: 50, lightning: 120 }
+          ctx.fillStyle = isSelected ? '#fff' : '#FBBF24'
+          ctx.font = 'bold 7px sans-serif'
+          ctx.fillText(`💎${costs[type]}`, bx + btnW / 2, btnY + 38)
         })
         
-        // 保存按钮区域用于触摸检测（移除建造按钮）
+        // 保存按钮区域用于触摸检测
         mobileButtons = {
           turretButtons: turretTypes.map((type, i) => ({
             type,
@@ -992,9 +1064,9 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         }
       } else {
         // PC端：显示炮台选择面板
-        const pcPanelW = turretTypes.length * (btnW + btnGap) + btnGap + 20
+        const pcPanelW = turretTypes.length * (btnW + btnGap) + btnGap * 2 + 20
         const pcPanelX = (CANVAS_WIDTH - pcPanelW) / 2
-        const pcPanelY = CANVAS_HEIGHT - btnH - 25
+        const pcPanelY = CANVAS_HEIGHT - btnH - 20
         
         // PC端面板（始终显示，让PC用户也能点击选择）
         drawPanel(pcPanelX, pcPanelY, pcPanelW, btnH + 16, 'rgba(15, 25, 45, 0.85)')
@@ -1002,68 +1074,90 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         // 炮台选择按钮
         turretTypes.forEach((type, i) => {
           const bx = pcPanelX + btnGap + i * (btnW + btnGap)
-          const config = TURRET_CONFIGS[type]
-          const canAfford = state.resources.crystals >= config.cost
           const selected = state.buildMode.selectedTurret === type
-          const colors: Record<string, string> = { laser: '#60A5FA', missile: '#F97316', frost: '#22D3EE', lightning: '#A78BFA' }
-          const icons: Record<string, string> = { laser: '⚡', missile: '🚀', frost: '❄️', lightning: '⚡' }
           
-          // 按钮背景（根据是否能负担改变颜色）
-          const bgColor = canAfford ? (selected ? colors[type] : 'rgba(255,255,255,0.1)') : 'rgba(50, 50, 50, 0.5)'
-          ctx.fillStyle = bgColor
+          // ✅ 使用统一的炮台颜色
+          const baseColor = turretColors[type]
+          const icons: Record<string, string> = { laser: '🔵', missile: '🚀', frost: '❄️', lightning: '⚡' }
+          
+          // 按钮背景
+          ctx.fillStyle = selected ? `${baseColor}CC` : 'rgba(255,255,255,0.1)'
           drawRoundedRect(bx, pcPanelY + 8, btnW, btnH, 6)
           ctx.fill()
           if (selected) {
-            ctx.strokeStyle = '#fff'
-            ctx.lineWidth = 2
+            ctx.strokeStyle = baseColor
+            ctx.lineWidth = 3
             ctx.stroke()
           }
           
-          // 按钮内容
-          const textColor = canAfford ? (selected ? '#fff' : '#9CA3AF') : '#666'
-          ctx.fillStyle = textColor
-          ctx.font = '10px sans-serif'
+          // 按钮内容 - 图标使用对应颜色
+          ctx.fillStyle = selected ? '#fff' : baseColor
+          ctx.font = '11px sans-serif'
           ctx.textAlign = 'center'
           ctx.fillText(icons[type], bx + btnW / 2, pcPanelY + 22)
+          
+          ctx.fillStyle = selected ? '#fff' : '#9CA3AF'
           ctx.font = '8px sans-serif'
           const names: Record<string, string> = { laser: '激光', missile: '导弹', frost: '冰冻', lightning: '闪电' }
-          ctx.fillText(names[type], bx + btnW / 2, pcPanelY + 32)
+          ctx.fillText(names[type], bx + btnW / 2, pcPanelY + 36)
           
-          // 消耗钻石数量
-          const crystalColor = canAfford ? '#00D4FF' : '#666'
-          ctx.fillStyle = crystalColor
+          // 显示水晶消耗
+          const costs: Record<string, number> = { laser: 40, missile: 80, frost: 50, lightning: 120 }
+          ctx.fillStyle = selected ? '#fff' : '#FBBF24'
           ctx.font = 'bold 7px sans-serif'
-          ctx.fillText(`${config.cost} 💎`, bx + btnW / 2, pcPanelY + 44)
+          ctx.fillText(`💎${costs[type]}`, bx + btnW / 2, pcPanelY + 48)
           
           // 保存PC按钮区域
           if (!mobileButtons) mobileButtons = { turretButtons: [], buildButton: null }
           mobileButtons.turretButtons.push({ type, x: bx, y: pcPanelY + 8, w: btnW, h: btnH })
         })
         
-        // PC端提示（选择炮台后显示）
+        // PC端提示
         if (state.buildMode.selectedTurret) {
           ctx.fillStyle = '#4ECDC4'
           ctx.font = '9px sans-serif'
           ctx.textAlign = 'center'
-          const sel = TURRET_DISPLAY[state.buildMode.selectedTurret]?.name || '激光炮台'
+          const sel = state.buildMode.selectedTurret || '激光'
           ctx.fillText(`已选: ${sel} | 点击地图放置 | ESC取消`, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 8)
+        } else {
+          ctx.fillStyle = 'rgba(255,255,255,0.5)'
+          ctx.font = '9px sans-serif'
+          ctx.textAlign = 'center'
+          ctx.fillText('点击底部按钮选择炮台类型', CANVAS_WIDTH / 2, CANVAS_HEIGHT - 8)
         }
       }
     }
     
-    // 游戏未开始时显示等待画面
+    // 开始/结束界面
     if (!state.gameStarted) {
-      ctx.fillStyle = '#1a1a2e'
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
       
       ctx.fillStyle = '#fff'
-      ctx.font = 'bold 24px sans-serif'
+      ctx.font = 'bold 32px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('🏰 RPG塔防射击', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20)
+      ctx.fillText('🏰 RPG塔防射击', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 60)
       
-      ctx.font = '14px sans-serif'
-      ctx.fillStyle = '#9CA3AF'
-      ctx.fillText('准备开始...', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 15)
+      ctx.font = '16px sans-serif'
+      ctx.fillText('建造炮台防御敌人，同时控制角色射击！', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20)
+      
+      ctx.fillStyle = '#00E676'
+      ctx.font = 'bold 18px sans-serif'
+      ctx.fillText('点击屏幕开始游戏', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30)
+    }
+    
+    if (state.gameEnded) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+      
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 32px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('游戏结束', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40)
+      
+      ctx.font = '18px sans-serif'
+      ctx.fillText(`到达波次: ${state.wave}/8`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2)
+      ctx.fillText(`最终得分: ${state.resources.score}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30)
     }
     
     // 虚拟摇杆（仅在游戏进行中显示）
@@ -1111,17 +1205,29 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     canvas.removeEventListener('touchend', handleTouchEnd)
   }
   
-  // 键盘事件 - 游戏控制
+  // 键盘事件 - 开始游戏和建造模式
   const handleKeyDown = (e: KeyboardEvent) => {
     const key = e.key.toLowerCase()
     
     // 保存按键状态（支持WASD移动）
     state.keys[key] = true
     
+    if (e.key === ' ' || e.key === 'Enter') {
+      if (!state.gameStarted) {
+        state.gameStarted = true
+        console.log('游戏开始！')
+      }
+    }
+    
+    // ✅ ESC键：取消选中（包括建造模式和升级弹窗）
     if (e.key === 'Escape') {
       state.buildMode.selectedTurret = null
       state.buildMode.selectedTrap = null
+      selectedTurretForUpgrade = null  // ✅ 关闭升级弹窗
+      console.log('已取消选中')
     }
+    
+    // 注意：PC端现在通过点击底部按钮选择炮台类型，不再使用数字键
   }
   
   const handleKeyUp = (e: KeyboardEvent) => {
@@ -1131,11 +1237,9 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
   
-  // 等待引导界面开始（由统一模板控制游戏流程）
-  state.gameStarted = false
-  state.gameEndProcessed = false
+  // ✅ 点击事件已整合到 handleClick 中，无需单独的 handleStartClick
   
-  // 初始渲染 - 显示等待画面
+  // 初始渲染 - 立即显示开始界面
   render(ctx, state)
   console.log('初始渲染完成')
   
@@ -1146,7 +1250,8 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   console.log('✅ RPG塔防射击游戏已启动！')
   console.log('📝 操作说明：')
   console.log('  - 鼠标移动：控制角色')
-  console.log('  - 点击底部炮台按钮：选择炮台')
-  console.log('  - 点击地图：放置已选炮台')
-  console.log('  - ESC键：取消选中')
+  console.log('  - 按B键：进入/退出建造模式')
+  console.log('  - 建造模式下点击：放置炮台')
+  console.log('  - ESC键：取消建造')
+  console.log('  - 空格/回车：开始游戏')
 }

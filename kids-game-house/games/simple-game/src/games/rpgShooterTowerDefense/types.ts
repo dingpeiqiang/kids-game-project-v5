@@ -5,6 +5,7 @@ export interface Resources {
   crystals: number    // 能量水晶 - 建造炮台
   energy: number      // 能量值 - 释放技能
   score: number       // 分数
+  kills: number       // 击杀数
 }
 
 // 炮台类型枚举

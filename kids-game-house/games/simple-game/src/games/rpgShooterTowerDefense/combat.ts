@@ -162,7 +162,10 @@ export function updateAutoAim(state: GameState, dt: number): void {
     }
   }
 
-  if (!nearest) return
+  if (!nearest) {
+    // 没有敌人在射程内，不射击（正常情况）
+    return
+  }
 
   _lastShootTime = now
 
@@ -205,9 +208,8 @@ export function updateAutoAim(state: GameState, dt: number): void {
 
 // 兼容旧接口
 export function playerShoot(state: GameState, now: number): void {
-  if (!state.buildMode.active) {
-    updateAutoAim(state, 0)
-  }
+  // ✅ 移除建造模式限制，玩家始终可以自动射击
+  updateAutoAim(state, 0)
 }
 
 // 玩家键盘/摇杆状态

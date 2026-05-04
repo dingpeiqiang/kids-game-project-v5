@@ -190,7 +190,8 @@ export function upgradeTurret(state: GameState, turret: Turret): boolean {
     return false
   }
   
-  // 应用升级
+  // ✅ 应用升级
+  const oldLevel = turret.level
   turret.level = upgrade.level
   if (upgrade.damage) turret.damage = upgrade.damage
   if (upgrade.fireRate) turret.fireRate = upgrade.fireRate
@@ -200,31 +201,80 @@ export function upgradeTurret(state: GameState, turret: Turret): boolean {
     turret.hp = upgrade.hp  // 升级回满血
   }
   
-  // 升级特效
-  for (let i = 0; i < 20; i++) {
-    const angle = (Math.PI * 2 / 20) * i
-    const speed = 2 + Math.random() * 4
+  // ✅ 升级特效 - 多层粒子爆发
+  // 第一层：金色光环粒子
+  for (let i = 0; i < 30; i++) {
+    const angle = (Math.PI * 2 / 30) * i
+    const speed = 3 + Math.random() * 5
     state.particles.push({
       x: turret.x,
       y: turret.y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      life: 1.2,
-      maxLife: 1.2,
+      life: 1.5,
+      maxLife: 1.5,
       color: '#FFD700',
-      size: 4
+      size: 5 + Math.random() * 3
     })
   }
   
+  // 第二层：白色闪光粒子
+  for (let i = 0; i < 15; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const speed = 1 + Math.random() * 3
+    state.particles.push({
+      x: turret.x,
+      y: turret.y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0,
+      maxLife: 1.0,
+      color: '#FFFFFF',
+      size: 3
+    })
+  }
+  
+  // ✅ 添加升级光晕效果（持续闪烁）
   state.floatTexts.push({
-    text: `⬆️ Lv.${turret.level}!`,
+    text: `✨`,
     x: turret.x,
-    y: turret.y - 30,
-    life: 2,
+    y: turret.y,
+    life: 0.8,
     color: '#FFD700',
-    size: 18,
-    vy: -0.5
+    size: 40,
+    vy: 0
   })
+  
+  // ✅ 显示等级提升提示（更大更醒目）
+  state.floatTexts.push({
+    text: `⬆️ Lv.${oldLevel} → ${turret.level}!`,
+    x: turret.x,
+    y: turret.y - 40,
+    life: 2.5,
+    color: '#FFD700',
+    size: 20,
+    vy: -0.6
+  })
+  
+  // ✅ 显示属性提升提示
+  const upgrades: string[] = []
+  if (upgrade.damage) upgrades.push(`攻击+${upgrade.damage}`)
+  if (upgrade.fireRate) upgrades.push(`射速+${(upgrade.fireRate * 100).toFixed(0)}%`)
+  if (upgrade.range) upgrades.push(`范围+${upgrade.range}`)
+  
+  if (upgrades.length > 0) {
+    setTimeout(() => {
+      state.floatTexts.push({
+        text: upgrades.join(' | '),
+        x: turret.x,
+        y: turret.y - 60,
+        life: 2.0,
+        color: '#4ECDC4',
+        size: 12,
+        vy: -0.4
+      })
+    }, 300)
+  }
   
   return true
 }
@@ -528,7 +578,12 @@ export function drawTurret(
   }
   
   const color = colors[turret.type]
-  const r = 14 * SCALE_RATIO
+  // ✅ 根据等级调整大小和光效
+  const levelScale = 1 + (turret.level - 1) * 0.15  // 每级增加15%大小
+  const r = 14 * SCALE_RATIO * levelScale
+  
+  // ✅ 高等级炮台增强发光效果
+  const glowIntensity = 15 + (turret.level - 1) * 8  // 每级增加8像素光晕
   
   // 选中光环
   if (isSelected) {
@@ -543,7 +598,7 @@ export function drawTurret(
   
   // 外发光
   ctx.shadowColor = color.glow
-  ctx.shadowBlur = 15
+  ctx.shadowBlur = glowIntensity
   
   // 六边形底座
   ctx.fillStyle = '#1a2530'
@@ -573,35 +628,101 @@ export function drawTurret(
   
   ctx.shadowBlur = 0
   
-  // 内部装饰
-  ctx.fillStyle = color.secondary
-  ctx.beginPath()
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 3) * i - Math.PI / 6
-    const px = Math.cos(angle) * (r * 0.5)
-    const py = Math.sin(angle) * (r * 0.5)
-    if (i === 0) ctx.moveTo(px, py)
-    else ctx.lineTo(px, py)
+  // ✅ 根据炮台类型绘制不同的内部装饰
+  if (turret.type === 'laser') {
+    // 激光炮台：圆形核心 + 十字准星
+    ctx.fillStyle = color.secondary
+    ctx.beginPath()
+    ctx.arc(0, 0, r * 0.5, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 十字准星
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(-r * 0.3, 0)
+    ctx.lineTo(r * 0.3, 0)
+    ctx.moveTo(0, -r * 0.3)
+    ctx.lineTo(0, r * 0.3)
+    ctx.stroke()
+    
+  } else if (turret.type === 'missile') {
+    // 导弹炮台：三角形指向
+    ctx.fillStyle = color.secondary
+    ctx.beginPath()
+    ctx.moveTo(0, -r * 0.6)
+    ctx.lineTo(-r * 0.5, r * 0.4)
+    ctx.lineTo(r * 0.5, r * 0.4)
+    ctx.closePath()
+    ctx.fill()
+    
+    // 导弹尖端
+    ctx.fillStyle = '#fff'
+    ctx.beginPath()
+    ctx.arc(0, -r * 0.3, 3 * SCALE_RATIO, 0, Math.PI * 2)
+    ctx.fill()
+    
+  } else if (turret.type === 'frost') {
+    // 冰冻炮台：雪花图案
+    ctx.fillStyle = color.secondary
+    ctx.beginPath()
+    ctx.arc(0, 0, r * 0.45, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 雪花六角
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i
+      ctx.beginPath()
+      ctx.moveTo(0, 0)
+      ctx.lineTo(Math.cos(angle) * r * 0.5, Math.sin(angle) * r * 0.5)
+      ctx.stroke()
+    }
+    
+  } else if (turret.type === 'lightning') {
+    // 闪电炮台：Z字形闪电图案
+    ctx.fillStyle = color.secondary
+    ctx.beginPath()
+    ctx.arc(0, 0, r * 0.5, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 闪电符号
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 3
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(-r * 0.2, -r * 0.4)
+    ctx.lineTo(r * 0.1, 0)
+    ctx.lineTo(-r * 0.1, 0)
+    ctx.lineTo(r * 0.2, r * 0.4)
+    ctx.stroke()
   }
-  ctx.closePath()
-  ctx.fill()
   
-  // 中心圆点
+  // 中心圆点（所有炮台都有）
   ctx.fillStyle = '#fff'
   ctx.beginPath()
   ctx.arc(0, 0, 3 * SCALE_RATIO, 0, Math.PI * 2)
   ctx.fill()
   
-  // 等级标识（外围）
+  // ✅ 等级标识（外围）- 增强显示
   if (turret.level > 1) {
     ctx.fillStyle = '#FFD700'
     ctx.strokeStyle = '#000'
     ctx.lineWidth = 2
-    ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
+    const fontSize = (9 + (turret.level - 1) * 2) * SCALE_RATIO  // 等级越高字体越大
+    ctx.font = `bold ${fontSize}px sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.strokeText(`★${turret.level}`, 0, -(r + 10))
-    ctx.fillText(`★${turret.level}`, 0, -(r + 10))
+    
+    // 添加金色光晕
+    ctx.shadowColor = '#FFD700'
+    ctx.shadowBlur = 10
+    
+    ctx.strokeText(`★${turret.level}`, 0, -(r + 12))
+    ctx.fillText(`★${turret.level}`, 0, -(r + 12))
+    
+    ctx.shadowBlur = 0
     ctx.textBaseline = 'alphabetic'
   }
   

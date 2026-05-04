@@ -292,6 +292,9 @@ export function enemyHit(
 
 // 敌人死亡处理
 function enemyDeath(state: GameState, enemy: Enemy): void {
+  // ✅ 增加击杀数
+  state.resources.kills++
+  
   // 增加连击
   state.combo.count++
   state.combo.timer = 2.0
