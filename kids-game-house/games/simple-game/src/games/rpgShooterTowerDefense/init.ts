@@ -236,10 +236,17 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       // 检查炮台按钮
       for (const btn of mobileButtons.turretButtons) {
         if (btnX >= btn.x && btnX <= btn.x + btn.w && btnY >= btn.y && btnY <= btn.y + btn.h) {
-          state.buildMode.selectedTurret = btn.type
-          state.buildMode.selectedTrap = null
-          playSound('select')
-          console.log(`选择炮台: ${btn.type}`)
+          // ✅ 如果点击的是已选中的炮台，取消选择；否则选择该炮台
+          if (state.buildMode.selectedTurret === btn.type) {
+            state.buildMode.selectedTurret = null
+            playSound('select')
+            console.log(`❌ 取消选择炮台: ${btn.type}`)
+          } else {
+            state.buildMode.selectedTurret = btn.type
+            state.buildMode.selectedTrap = null
+            playSound('select')
+            console.log(`✅ 选择炮台: ${btn.type}`)
+          }
           return
         }
       }
@@ -400,9 +407,16 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       // 检查炮台按钮
       for (const btn of mobileButtons.turretButtons) {
         if (clickX >= btn.x && clickX <= btn.x + btn.w && clickY >= btn.y && clickY <= btn.y + btn.h) {
-          state.buildMode.selectedTurret = btn.type
-          playSound('select')
-          console.log(`选择炮台: ${btn.type}`)
+          // ✅ 如果点击的是已选中的炮台，取消选择；否则选择该炮台
+          if (state.buildMode.selectedTurret === btn.type) {
+            state.buildMode.selectedTurret = null
+            playSound('select')
+            console.log(`❌ 取消选择炮台: ${btn.type}`)
+          } else {
+            state.buildMode.selectedTurret = btn.type
+            playSound('select')
+            console.log(`✅ 选择炮台: ${btn.type}`)
+          }
           return
         }
       }
