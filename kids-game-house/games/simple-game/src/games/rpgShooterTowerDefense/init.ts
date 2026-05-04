@@ -379,11 +379,11 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       })
       
       if (clickedTurret) {
-        // ✅ 如果点击的是已选中的炮台，关闭弹窗；否则显示新弹窗
+        // ✅ 如果点击的是已选中的炮台，保持弹窗打开（不关闭）
+        // 用户可以通过点击空白处、按ESC或点击其他炮台来关闭弹窗
         if (selectedTurretForUpgrade === clickedTurret) {
-          // 点击同一个炮台，关闭弹窗
-          selectedTurretForUpgrade = null
-          console.log(`❌ 再次点击同一炮台，关闭弹窗`)
+          // 点击同一个炮台，保持选中状态，不执行任何操作
+          console.log(`ℹ️ 炮台已选中，弹窗保持打开`)
         } else {
           // 点击新炮台，显示新弹窗
           selectedTurretForUpgrade = clickedTurret
