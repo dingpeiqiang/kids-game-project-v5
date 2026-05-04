@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPG Shooter 测试页面</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a1e;
+      color: #fff;
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      text-align: center;
+      color: #FFD700;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+
+    .test-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    .test-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .test-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .test-card h2 {
+      color: #00E5FF;
+      margin-bottom: 15px;
+      font-size: 1.3em;
+    }
+
+    .test-list {
+      list-style: none;
+    }
+
+    .test-list li {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+    }
+
+    .test-list li:before {
+      content: "☐";
+      margin-right: 10px;
+      color: #FFD700;
+      font-size: 1.2em;
+    }
+
+    .test-list li.checked:before {
+      content: "✓";
+      color: #00E676;
+    }
+
+    .status {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(0, 230, 118, 0.1);
+      border: 2px solid #00E676;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .status h3 {
+      color: #00E676;
+      margin-bottom: 10px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .info {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(255, 215, 0, 0.1);
+      border-left: 4px solid #FFD700;
+      border-radius: 5px;
+      max-width: 800px;
+    }
+
+    .info code {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #00E5FF;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 RPG Shooter 测试清单</h1>
+
+  <div class="test-container">
+    <!-- 核心功能测试 -->
+    <div class="test-card">
+      <h2>✅ 核心功能</h2>
+      <ul class="test-list">
+        <li>游戏能够正常启动</li>
+        <li>点击屏幕开始游戏</li>
+        <li>玩家角色显示正常</li>
+        <li>自动射击功能正常</li>
+        <li>敌人从四周生成</li>
+        <li>击杀敌人获得分数</li>
+        <li>经验条正常增长</li>
+        <li>升级特效华丽</li>
+      </ul>
+    </div>
+
+    <!-- 弹幕系统测试 -->
+    <div class="test-card">
+      <h2>🔫 弹幕系统</h2>
+      <ul class="test-list">
+        <li>Boss发射环形弹幕</li>
+        <li>Hex敌人发射追踪弹</li>
+        <li>敌人子弹有颜色区分</li>
+        <li>躲避弹幕有挑战性</li>
+        <li>被子弹击中会受伤</li>
+        <li>无敌时间闪烁效果</li>
+      </ul>
+    </div>
+
+    <!-- 敌人系统测试 -->
+    <div class="test-card">
+      <h2>👾 敌人系统</h2>
+      <ul class="test-list">
+        <li>Circle敌人（红色圆形）</li>
+        <li>Diamond敌人（橙色菱形）</li>
+        <li>Hex敌人（粉色六边形）</li>
+        <li>Boss敌人（紫色三角形）</li>
+        <li>Fast敌人（蓝色流线型）</li>
+        <li>Tank敌人（黄色方形）</li>
+        <li>敌人正确追踪玩家</li>
+        <li>难度随时间增加</li>
+      </ul>
+    </div>
+
+    <!-- 道具系统测试 -->
+    <div class="test-card">
+      <h2>🎁 道具系统</h2>
+      <ul class="test-list">
+        <li>掉落物正常生成</li>
+        <li>HP恢复道具（💚）</li>
+        <li>EXP获取道具（✨）</li>
+        <li>道具箱（📦）</li>
+        <li>☢️ 核弹清屏</li>
+        <li>⚡ 激光弹幕</li>
+        <li>❄️ 时间冻结</li>
+        <li>🛡️ 护盾叠加</li>
+        <li>✨ 双倍分数</li>
+        <li>👾 分身弹</li>
+      </ul>
+    </div>
+
+    <!-- 连击系统测试 -->
+    <div class="test-card">
+      <h2>🔥 连击系统</h2>
+      <ul class="test-list">
+        <li>连击数显示在顶部</li>
+        <li>分数倍率随连击增加</li>
+        <li>5连击触发特效</li>
+        <li>10连击触发奖励</li>
+        <li>连击计时器正常</li>
+        <li>断连后重置为0</li>
+      </ul>
+    </div>
+
+    <!-- 能量系统测试 -->
+    <div class="test-card">
+      <h2>⚡ 能量系统</h2>
+      <ul class="test-list">
+        <li>能量条显示在右下角</li>
+        <li>击杀敌人积累能量</li>
+        <li>满能量显示紫色光环</li>
+        <li>收集范围扩大</li>
+        <li>能量自然衰减</li>
+        <li>自动收集功能正常</li>
+      </ul>
+    </div>
+
+    <!-- 视觉效果测试 -->
+    <div class="test-card">
+      <h2>✨ 视觉效果</h2>
+      <ul class="test-list">
+        <li>星空背景动画</li>
+        <li>科技网格线</li>
+        <li>子弹拖尾效果</li>
+        <li>爆炸粒子特效</li>
+        <li>升级放射粒子</li>
+        <li>屏幕震动反馈</li>
+        <li>受伤闪屏效果</li>
+        <li>浮动文字动画</li>
+      </ul>
+    </div>
+
+    <!-- UI界面测试 -->
+    <div class="test-card">
+      <h2>🎨 UI界面</h2>
+      <ul class="test-list">
+        <li>时间显示（左上）</li>
+        <li>分数显示（右上）</li>
+        <li>经验条（顶部中央）</li>
+        <li>血条（左下）</li>
+        <li>能量条（右下）</li>
+        <li>属性加成显示</li>
+        <li>道具效果指示器</li>
+        <li>游戏结束统计</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="status">
+    <h3>📊 测试进度</h3>
+    <p>已完成: <span id="completed">0</span> / <span id="total">0</span> 项</p>
+    <button onclick="resetTests()">重置测试</button>
+    <button onclick="exportResults()">导出结果</button>
+  </div>
+
+  <div class="info">
+    <h3>💡 测试提示</h3>
+    <p>1. 点击列表项标记为完成（会出现 ✓）</p>
+    <p>2. 使用浏览器开发者工具查看控制台日志</p>
+    <p>3. 检查性能面板监控FPS</p>
+    <p>4. 测试不同场景和边界情况</p>
+    <p>5. 记录发现的问题并修复</p>
+  </div>
+
+  <script>
+    // 测试清单交互
+    document.querySelectorAll('.test-list li').forEach(item => {
+      item.addEventListener('click', function() {
+        this.classList.toggle('checked');
+        updateProgress();
+      });
+    });
+
+    // 更新进度
+    function updateProgress() {
+      const total = document.querySelectorAll('.test-list li').length;
+      const completed = document.querySelectorAll('.test-list li.checked').length;
+      
+      document.getElementById('total').textContent = total;
+      document.getElementById('completed').textContent = completed;
+    }
+
+    // 重置测试
+    function resetTests() {
+      document.querySelectorAll('.test-list li').forEach(item => {
+        item.classList.remove('checked');
+      });
+      updateProgress();
+    }
+
+    // 导出结果
+    function exportResults() {
+      const results = [];
+      document.querySelectorAll('.test-card').forEach(card => {
+        const category = card.querySelector('h2').textContent;
+        const items = [];
+        card.querySelectorAll('.test-list li').forEach(item => {
+          items.push({
+            test: item.textContent,
+            passed: item.classList.contains('checked')
+          });
+        });
+        results.push({ category, items });
+      });
+
+      const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'test-results.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // 初始化
+    updateProgress();
+
+    console.log('🎮 RPG Shooter 测试页面已加载');
+    console.log('💡 点击测试项标记完成状态');
+    console.log('📊 进度会自动更新');
+  </script>
+</body>
+</html>

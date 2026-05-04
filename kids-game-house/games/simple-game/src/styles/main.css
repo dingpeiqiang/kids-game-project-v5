@@ -106,16 +106,6 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0ede8;o
 #phaser-space-shooter{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;overflow:hidden}
 #phaser-space-shooter canvas{touch-action:none}
 
-/* 道具栏 */
-.item-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:300;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);padding:10px 12px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.3);max-width:90vw;overflow-x:auto;scrollbar-width:none}
-.item-bar::-webkit-scrollbar{display:none}
-.item-slot{min-width:48px;width:48px;height:48px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s;position:relative;overflow:hidden;flex-shrink:0}
-.item-slot:hover{background:rgba(255,255,255,0.2);transform:translateY(-4px);box-shadow:0 4px 12px rgba(0,0,0,0.3)}
-.item-slot:active{transform:translateY(-2px)}
-.item-slot.disabled{opacity:0.4;cursor:not-allowed}
-.item-slot .item-icon{font-size:22px;line-height:1;z-index:2}
-.item-slot .item-count{position:absolute;bottom:-4px;right:-4px;background:#ff6b6b;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #1a1a2e;z-index:2}
-
 /* 结束界面 */
 #result-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:300;display:none;align-items:center;justify-content:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #result-overlay.show{display:flex}
@@ -289,13 +279,6 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0ede8;o
 .achievement-icon{font-size:28px;margin-bottom:6px}
 .achievement-name{font-size:12px;font-weight:600;color:#333;margin-bottom:2px}
 .achievement-desc{font-size:10px;color:#888}
-
-/* 道具网格 */
-.item-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
-.item-slot{aspect-ratio:1;background:#f8f9fa;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;border:2px solid #e0e0e0;transition:all 0.2s}
-.item-slot.has-item{border-color:#5b9bd5;background:rgba(91,155,213,0.05)}
-.item-icon{font-size:24px;margin-bottom:4px}
-.item-count{position:absolute;bottom:-4px;right:-4px;background:#ff6b6b;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
 
 /* 设置列表 */
 .setting-list{background:#f8f9fa;border-radius:12px;overflow:hidden;margin-bottom:24px}

@@ -71,6 +71,7 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
   { id: 'spaceShooter',  visible: true,  order: 1,  badge: '新' },
   { id: 'dragonShooter', visible: true,  order: 2,  badge: '新' },
   { id: 'rpgShooter',    visible: true,  order: 3,  badge: '推荐' },
+  { id: 'rpgShooterTD',  visible: true,  order: 4,  badge: '新' },
 
   // // ── 策略塔防 ──
   // { id: 'towerDefense',  visible: true,  order: 1,  badge: '新' },

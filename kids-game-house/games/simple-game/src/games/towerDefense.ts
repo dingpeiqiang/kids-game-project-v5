@@ -17,7 +17,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
   const HUD_H = 60         // 顶部操作栏高度
   const PATH_COLOR = 'rgba(100, 100, 130, 0.25)'
   const MAX_COMBO_DISPLAY = 20 // 最大连击显示
-  const WAVE_INTERVAL_BASE = 300 // 基础波次间隔（帧）
+  const WAVE_INTERVAL_BASE = 300 // 基础波次间隔（帧数）
   
   // 无尽关卡配置 - 平衡优化版（敌人速度再提升一倍）
   const INFINITE_WAVE_CONFIG = {
@@ -25,11 +25,11 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     enemyGrowthRate: 0.6,     // 敌人数量增长率 - 适度提高
     maxEnemyCount: 28,        // 最大敌人数量上限 - 略微提高
     
-    baseHp: 10,               // 基础血量 - 从12降到10，更合理
-    hpGrowthRate: 0.08,       // 血量增长率 - 从0.10降到0.08，减缓增长
+    baseHp: 10,               // 基础血量 - 12降到10，更合理
+    hpGrowthRate: 0.08,       // 血量增长率 - 0.10降到0.08，减缓增长
     
-    baseSpeed: 0.08575,       // 基础速度 - 从0.042875提升一倍到0.08575
-    speedGrowthRate: 0.001715, // 速度增长率 - 从0.0008575提升一倍到0.001715
+    baseSpeed: 0.08575,       // 基础速度 - 0.042875提升一倍到0.08575
+    speedGrowthRate: 0.001715, // 速度增长率 - 0.0008575提升一倍到0.001715
     maxSpeedMultiplier: 1.8,  // 最大速度倍数
     
     bossInterval: 5,          // Boss出现间隔
@@ -67,7 +67,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
   let gold = 150 // 降低初始金币，增加经济压力
   let lives = 40 // 大幅增加生命值，降低挫败感
   let wave = 0
-  let waveTimer = 240 // 首波延迟（帧）- 增加初始准备时间到4秒
+  let waveTimer = 240 // 首波延迟（帧数） 增加初始准备时间
   let enemiesToSpawn = 0
   let spawnCounter = 0
   let score = 0
@@ -102,8 +102,8 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
   // 道具图标映射 - 更强大的道具
   const powerupIcons: Record<string, string> = {
     'gold': '💰',        // 金币 - 立即获得150金币
-    'freeze': '❄️',      // 冻结 - 停止所有敌人8秒
-    'damage_boost': '⚔️', // 伤害提升 - 所有塔伤害×3，持续20秒
+    'freeze': '❄️',      // 冻结 - 停止所有敌人
+    'damage_boost': '⚔️', // 伤害提升 - 所有塔伤害×3，持续10秒
     'nuke': '☢️'         // 核弹 - 消灭屏幕上所有敌人
   }
   
@@ -115,12 +115,13 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       name: id
     }))
     
-    app.setupCustomPowerupBar('towerDefense', powerups, inventory, (powerupId) => {
-      if (usePowerup(powerupId)) {
-        audioService.collect()
-        updateHTMLPowerupBar()
-      }
-    })
+    // TODO: 重置 - 每次游戏结束后重新获取
+    //     app.setupCustomPowerupBar('towerDefense', powerups, inventory, (powerupId) => {
+    //       if (usePowerup(powerupId)) {
+    //         audioService.collect()
+    //         updateHTMLPowerupBar()
+    //       }
+    //     })
   }
   
   // 使用道具
@@ -141,25 +142,25 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
         break
         
       case 'freeze':
-        // 冻结 - 停止所有敌人8秒
+        // 冻结 - 停止所有敌人
         enemies.forEach(e => {
-          e.slowTimer = 480 // 8秒 = 480帧（假设60fps）
+          e.slowTimer = 480 // 8秒= 480帧（假设60fps）
           e.speed = 0 // 完全停止
         })
         screenShake = 5
         flashEffect = 0.3
-        floatingTexts.push({ x: W / 2, y: H / 2, text: '❄️ 冻结8秒!', color: '#00CED1', life: 2.5 })
+        floatingTexts.push({ x: W / 2, y: H / 2, text: '❄️ 冻结8秒', color: '#00CED1', life: 2.5 })
         audioService.win()
-        console.log('[道具] 冻结所有敌人8秒')
+        console.log('[道具] 冻结所有敌人')
         break
         
       case 'damage_boost':
-        // 伤害提升 - 所有塔伤害×3，持续20秒
+        // 伤害提升 - 所有塔伤害×3，持续10秒
         ;(window as any).tdDamageBoost = Date.now() + 20000
         floatingTexts.push({ x: W / 2, y: HUD_H + 30, text: '⚔️ 伤害×3!', color: '#FF6B6B', life: 2.5 })
         screenShake = 3
         audioService.win()
-        console.log('[道具] 伤害提升生效，持续20秒')
+        console.log('[道具] 伤害提升生效，持续10秒')
         break
         
       case 'nuke':
@@ -208,7 +209,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       const gy = entryPoint.gy + dy
       if (gx >= 0 && gx < GRID && gy >= 0 && gy < GRID) {
         // 使用距离检查，只标记圆形区域
-        if (dx * dx + dy * dy <= 5) {  // 半径约2.2格
+        if (dx * dx + dy * dy <= 5) {  // 半径2.2
           grid[gy][gx] = 1  // 标记为不可建造
         }
       }
@@ -223,7 +224,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       const gy = exitPoint.gy + dy
       if (gx >= 0 && gx < GRID && gy >= 0 && gy < GRID) {
         // 使用距离检查，只标记圆形区域
-        if (dx * dx + dy * dy <= 5) {  // 半径约2.2格
+        if (dx * dx + dy * dy <= 5) {  // 半径2.2
           grid[gy][gx] = 1  // 标记为不可建造
         }
       }
@@ -233,7 +234,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
   const towers: {
     gx: number; gy: number; x: number; y: number
     type: typeof TOWER_TYPES[0]; fireTimer: number; angle: number
-    level: number;  // 塔等级 (1-3)
+    level: number;  // 塔等级(1-3)
     totalInvestment: number;  // 总投入金币
   }[] = []
   const enemies: {
@@ -318,7 +319,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       return 'elite' // 15%概率出现精英敌人
     }
     if (waveNum >= INFINITE_WAVE_CONFIG.specialEnemyUnlock && Math.random() < 0.2) {
-      return Math.random() < 0.5 ? 'fast' : 'tank' // 快速或坦克型
+      return Math.random() < 0.5 ? 'fast' : 'tank' // 快速或坦克
     }
     return 'normal'
   }
@@ -328,7 +329,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     const isBoss = wave > 0 && wave % INFINITE_WAVE_CONFIG.bossInterval === 0 && enemiesToSpawn === 1
     const enemyType = isBoss ? 'normal' : getEnemyType(wave)
     
-    // 根据敌人类型调整属性 - 简化的血量公式（只用指数增长）
+    // 根据敌人类型调整属性- 简化的血量公式（只用指数增长）
     let hpBase = INFINITE_WAVE_CONFIG.baseHp  // 基础血量
     let speedBase = INFINITE_WAVE_CONFIG.baseSpeed + Math.random() * 0.15  // 使用配置的基础速度
     let rewardBase = 5 + wave * 0.6  // 再次降低金币奖励，从6+0.8降到5+0.6
@@ -360,7 +361,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     
     if (isBoss) {
       hpBase = 35 * cfg.hpMul  // Boss血量从40降到35，更合理
-      speedBase = INFINITE_WAVE_CONFIG.baseSpeed * 0.8 * cfg.spdMul  // Boss速度为基础速度的80%
+      speedBase = INFINITE_WAVE_CONFIG.baseSpeed * 0.8 * cfg.spdMul  // Boss速度为基础速度80%
       rewardBase = 25 + wave * 2  // 再次降低Boss奖励，从30+3降到25+2
       size = 16
       color = '#FF4757'
@@ -437,7 +438,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       ctx.save()
       ctx.translate(mx, my)
       ctx.rotate(angle)
-      ctx.fillText('▸', 0, 4)
+      ctx.fillText('→', 0, 4)
       ctx.restore()
     }
 
@@ -447,13 +448,13 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     ctx.textAlign = 'center'
     ctx.fillText('入口 →', 25, pathPixels[0].y + 4)
     ctx.fillStyle = '#E74C3C'
-    ctx.fillText('→ 终点', W - 25, pathPixels[pathPixels.length - 1].y + 4)
+    ctx.fillText('← 终点', W - 25, pathPixels[pathPixels.length - 1].y + 4)
     
     // 绘制入口保护区域（橙色半透明圆形）
     const entryPoint = PATH_POINTS[0]
     const entryPixelX = Math.max(CELL / 2, entryPoint.gx * CELL + CELL / 2)  // 确保在屏幕内
     const entryPixelY = entryPoint.gy * CELL + HUD_H + CELL / 2
-    const entryProtectionRadius = Math.sqrt(5) * CELL  // 约2.2格半径
+    const entryProtectionRadius = Math.sqrt(5) * CELL  // 2.2格半径
     
     // 入口保护区域背景
     ctx.fillStyle = 'rgba(255, 165, 2, 0.15)'  // 橙色半透明
@@ -480,7 +481,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     const exitPoint = PATH_POINTS[PATH_POINTS.length - 1]
     const exitPixelX = exitPoint.gx * CELL + CELL / 2
     const exitPixelY = exitPoint.gy * CELL + HUD_H + CELL / 2
-    const exitProtectionRadius = Math.sqrt(5) * CELL  // 约2.2格半径
+    const exitProtectionRadius = Math.sqrt(5) * CELL  // 2.2格半径
     
     // 出口保护区域背景
     ctx.fillStyle = 'rgba(231, 76, 60, 0.15)'  // 红色半透明
@@ -534,7 +535,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
 
       // 发光底圈 - 根据等级增强
       const glowSize = 22 + t.level * 3  // 等级越高光环越大
-      const glowIntensity = Math.min(1.0, 0.4 + t.level * 0.15)  // 等级越高越亮，最大1.0
+      const glowIntensity = Math.min(1.0, 0.4 + t.level * 0.15)  // 等级越高越亮，最多1.0
       const alphaHex = Math.floor(glowIntensity * 255).toString(16).padStart(2, '0')
       const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, glowSize)
       glow.addColorStop(0, type.color + alphaHex)
@@ -544,7 +545,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       ctx.arc(0, 0, glowSize, 0, Math.PI * 2)
       ctx.fill()
       
-      // 高等级额外光环
+      // 高等级额外光圈
       if (t.level >= 2) {
         const outerGlow = ctx.createRadialGradient(0, 0, glowSize - 5, 0, 0, glowSize + 8)
         outerGlow.addColorStop(0, '#FFD700' + (t.level === 3 ? '40' : '20'))
@@ -825,13 +826,13 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     ctx.fillStyle = '#ddd'
     ctx.textAlign = 'center'
     ctx.font = 'bold 14px sans-serif'
-    ctx.fillText(`第 ${wave + 1} 波`, W / 2, 20)
+    ctx.fillText(`第${wave + 1} 波`, W / 2, 20)
     
     // 显示最高波次记录
     if (highestWave > 0) {
       ctx.font = '10px sans-serif'
       ctx.fillStyle = '#FFD700'
-      ctx.fillText(`最高: ${highestWave + 1}`, W / 2, 35)
+      ctx.fillText(`最高 ${highestWave + 1}`, W / 2, 35)
     }
 
     // 击杀连击 - 更醒目的显示
@@ -855,7 +856,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       if (maxCombo > 0) {
         ctx.font = '10px sans-serif'
         ctx.fillStyle = '#AAA'
-        ctx.fillText(`最高: ${maxCombo}`, W/2, 62)
+        ctx.fillText(`最高 ${maxCombo}`, W/2, 62)
       }
     }
 
@@ -955,7 +956,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       spawnCounter--
       if (spawnCounter <= 0) {
         spawnEnemy()
-        spawnCounter = Math.max(25, 45 - Math.min(wave * 0.5, 15)) // 减缓生成速度，最低25帧间隔
+        spawnCounter = Math.max(25, 45 - Math.min(wave * 0.5, 15)) // 减缓生成速度，最多5帧间隔
       }
     } else if (enemies.length === 0) {
       waveTimer--
@@ -969,11 +970,11 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
         spawnCounter = 0
         waveTimer = Math.max(180, WAVE_INTERVAL_BASE - wave * 2) // 随波次缩短间隔，但保持较慢节奏
         
-        addFloat(W / 2, H / 2, `第 ${wave + 1} 波!`, '#FFD700')
+        addFloat(W / 2, H / 2, `第${wave + 1} 波`, '#FFD700')
         
         // 里程碑提示
         if (wave === INFINITE_WAVE_CONFIG.specialEnemyUnlock) {
-          setTimeout(() => addFloat(W / 2, H / 2 - 40, '⚡ 快速/坦克敌人出现!', '#00E5FF'), 500)
+          setTimeout(() => addFloat(W / 2, H / 2 - 40, '快/坦克敌人出现!', '#00E5FF'), 500)
         }
         if (wave === INFINITE_WAVE_CONFIG.eliteEnemyUnlock) {
           setTimeout(() => addFloat(W / 2, H / 2 - 40, '👑 精英敌人出现!', '#FFD700'), 500)
@@ -1069,7 +1070,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     // 移动子弹 - 直接追踪目标
     for (let i = bullets.length - 1; i >= 0; i--) {
       const b = bullets[i]
-      // 目标已死亡
+      // 目标已死
       if (!enemies.includes(b.target)) {
         bullets.splice(i, 1)
         continue
@@ -1199,7 +1200,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     
     // 连击系统增强 - 更激进的连击奖励
     const now = Date.now()
-    if (now - lastKillTime < 3000) { // 延长连击时间窗口到3秒
+    if (now - lastKillTime < 3000) { // 延长连击时间窗口
       combo++
       if (combo > maxCombo) maxCombo = combo
       
@@ -1208,7 +1209,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
         engine.addScore(combo * 10, W/2, H/2) // 提高连击分数
         
         // 连击奖励 - 更频繁的奖励
-        if (combo % 2 === 0) { // 每2连击就给予奖励
+        if (combo % 2 === 0) { // 2连击就给予奖励
           addFloat(W/2, H/2, `${combo} 连击!`, combo >= 10 ? '#FF4757' : combo >= 5 ? '#FFA502' : '#FFD700')
           screenShake = Math.min(combo * 1.2, 15) // 增强震动
           flashEffect = Math.min(combo * 0.08, 0.6) // 增强闪光
@@ -1230,7 +1231,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       }
       if (combo >= 8 && combo % 8 === 0) {
         engine.triggerRandomBuff()
-        addFloat(W/2, H/2-30, '✨ 获得增益!', '#00E5FF')
+        addFloat(W/2, H/2-30, '获得增益!', '#00E5FF')
         screenShake = 12
         flashEffect = 0.5
         audioService.win()
@@ -1274,7 +1275,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
   async function endGame() {
     cancelAnimationFrame(animId)
     
-    // 计算游戏时长（秒）
+    // 计算游戏时长（秒数）
     const duration = Math.floor((Date.now() - gameStartTime) / 1000)
     
     // 如果用户已登录且有有效的session，提交分数到后端
@@ -1347,7 +1348,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       ctx.fillStyle = 'rgba(255,255,255,0.3)'
       ctx.font = '14px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(`下一波: ${sec}s`, W / 2, H - 20)
+      ctx.fillText(`下一波 ${sec}s`, W / 2, H - 20)
     }
     
     // 游戏说明（前8秒显示）
@@ -1363,17 +1364,17 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       ctx.textAlign = 'left'
       ctx.fillText('🎮 解压塔防:', 20, H - 85)
       ctx.font = '11px sans-serif'
-      ctx.fillText('• 点击选择塔类型，再点击地图放置', 20, H - 70)
-      ctx.fillText('• 点击已建造的塔可以升级 (最高Lv.5)', 20, H - 57)
-      ctx.fillText('• 连续击杀获得连击奖励和特效', 20, H - 44)
-      ctx.fillText('• 充能满后点击💥释放全屏爆炸', 20, H - 31)
-      ctx.fillText('• 道具助你轻松通关，尽情享受!', 20, H - 18)
+      ctx.fillText('1.点击选择塔类型，再点击地图放置', 20, H - 70)
+      ctx.fillText('2.点击已建造的塔可以升级(最高Lv.5)', 20, H - 57)
+      ctx.fillText('3.连续击杀获得连击奖励和道具', 20, H - 44)
+      ctx.fillText('4.充能满后点击💥释放全屏爆炸', 20, H - 31)
+      ctx.fillText('5.道具助你轻松通关，尽情享受', 20, H - 18)
     }
 
     ctx.restore()
   }
   
-  // 初始化 HTML 道具栏
+  // 初始HTML 道具栏
   updateHTMLPowerupBar()
 
   // === 输入处理 ===
@@ -1416,7 +1417,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     
     // 检查是否是路径格子
     if (grid[gy][gx] !== 0) {
-      addFloat(px, py, '不能在此建造!', '#E74C3C')
+      addFloat(px, py, '不能在此建造', '#E74C3C')
       return
     }
 
@@ -1448,7 +1449,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     sfx.place()
   }
   
-  // 升级塔 - 无限等级系统（纯视觉特效）
+  // 升级 - 无限等级系统（纯视觉特效）
   function upgradeTower(tower: typeof towers[0]) {
     // 计算升级费用 - 随等级线性增长
     const upgradeCost = Math.floor(tower.type.cost * (0.4 + tower.level * 0.4))
@@ -1465,14 +1466,14 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     tower.level++
     tower.totalInvestment += upgradeCost
       
-    // 提升属性 - 每次升级都增强
+    // 提升属性- 每次升级都增长
     tower.type.damage *= 1.15  // 伤害+15%（适中增长）
     tower.type.range *= 1.05   // 范围+5%（小幅增长）
-    tower.type.fireRate = Math.max(5, tower.type.fireRate * 0.92)  // 射速+8%（持续加快）
+    tower.type.fireRate = Math.max(5, tower.type.fireRate * 0.92)  // 射速8%（持续加快）
     
     // === 超华丽升级特效（无文字）===
     
-    // 1. 多层粒子爆炸 - 彩虹色爆发
+    // 1. 多层粒子爆炸 - 彩虹色爆炸
     const particleColors = ['#FFD700', '#FF6B6B', '#00E5FF', '#9C27B0', '#FFFFFF']
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
@@ -1487,26 +1488,26 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       }, i * 50)
     }
     
-    // 2. 环形冲击波效果 - 扩散光环
-    const ringCount = Math.min(3 + Math.floor(tower.level / 10), 6)  // 每10级增加1环，最多6环
+    // 2. 环形冲击波特效 - 扩散光环
+    const ringCount = Math.min(3 + Math.floor(tower.level / 10), 6)  // 10级增1环，最多6
     for (let ring = 0; ring < ringCount; ring++) {
       setTimeout(() => {
         addParticles(tower.x, tower.y, tower.type.color, 15 + tower.level, 6 + ring * 3, 'spark')
       }, ring * 80)
     }
     
-    // 3. 金色火花雨 - 从上方洒落
+    // 3. 金色火花 - 从上方洒落
     const sparkCount = 30 + tower.level * 2
     addParticles(tower.x, tower.y - 20, '#FFD700', sparkCount, 5 + tower.level * 0.2, 'spark')
     
     // 4. 强烈的屏幕震动 - 随等级增强但有上限
-    screenShake = Math.min(6 + tower.level * 0.5, 25)  // 最高25
+    screenShake = Math.min(6 + tower.level * 0.5, 25)  // 最大25
     
     // 5. 闪光效果 - 随等级增强但有上限
-    flashEffect = Math.min(0.3 + tower.level * 0.02, 0.8)  // 最高0.8
+    flashEffect = Math.min(0.3 + tower.level * 0.02, 0.8)  // 最大0.8
     
-    // 6. 慢动作瞬间 - 高等级更长
-    slowMotion = Math.min(6 + tower.level * 0.3, 20)  // 最高20帧
+    // 6. 慢动作瞬间 - 高等级更明显
+    slowMotion = Math.min(6 + tower.level * 0.3, 20)  // 最大20
     
     // 7. 里程碑等级庆祝特效（无文字，纯视觉）
     if (tower.level === 5) {
@@ -1567,7 +1568,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
         setTimeout(() => audioService.combo(), 300)
       }, 400)
     } else if (tower.level % 10 === 0 && tower.level > 50) {
-      // 每10级一次的庆祝（50级以上）
+      // 10级一次的庆祝（50级以上）
       setTimeout(() => {
         const celebrationIntensity = Math.min(tower.level / 100, 1.5)
         addParticles(tower.x, tower.y, '#FFD700', 50 * celebrationIntensity, 8, 'explosion')
@@ -1636,7 +1637,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
     // 如果用户已登录，创建后端游戏会话
     if (userService.isLoggedIn && userService.current) {
       try {
-        // simple-game的塔防游戏ID为1（需要根据实际情况调整）
+        // simple-game的塔防游戏ID（需要根据实际情况调整）
         const GAME_ID = 1
         
         console.log('[塔防] 创建游戏会话...')

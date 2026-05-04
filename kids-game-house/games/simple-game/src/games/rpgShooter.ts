@@ -12,39 +12,41 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   ctx.imageSmoothingEnabled = false
 
   // === 配置 ===
-  const BULLET_SPEED = 7
-  const PLAYER_SPEED = 4
-  const ENEMY_BASE_SPEED = 1.0
-  const STAR_COUNT = 50
-  const GAME_DURATION = 90
+  const BULLET_SPEED = 8
+  const PLAYER_SPEED = 4.5
+  const ENEMY_BASE_SPEED = 1.2
+  const STAR_COUNT = 80
+  const GAME_DURATION = 120
 
-  // 玩家等级属性表
+  // 玩家等级属性表（更平滑的成长曲线）
   const LEVEL_STATS = [
-    { hp: 5, atk: 1, speed: 4 },   // Lv1
-    { hp: 6, atk: 1, speed: 4 },   // Lv2
-    { hp: 7, atk: 2, speed: 4 },   // Lv3
-    { hp: 8, atk: 2, speed: 5 },   // Lv4
-    { hp: 9, atk: 3, speed: 5 },   // Lv5
-    { hp: 10, atk: 3, speed: 5 },  // Lv6
-    { hp: 12, atk: 4, speed: 6 }, // Lv7
-    { hp: 14, atk: 4, speed: 6 }, // Lv8
-    { hp: 16, atk: 5, speed: 6 }, // Lv9
-    { hp: 20, atk: 6, speed: 7 }, // Lv10 Max
+    { hp: 6, atk: 1, speed: 4.5 },   // Lv1
+    { hp: 7, atk: 2, speed: 4.5 },   // Lv2
+    { hp: 9, atk: 2, speed: 5 },     // Lv3
+    { hp: 11, atk: 3, speed: 5 },    // Lv4
+    { hp: 13, atk: 4, speed: 5.5 },  // Lv5
+    { hp: 16, atk: 5, speed: 5.5 },  // Lv6
+    { hp: 19, atk: 6, speed: 6 },    // Lv7
+    { hp: 23, atk: 7, speed: 6 },    // Lv8
+    { hp: 27, atk: 9, speed: 6.5 },  // Lv9
+    { hp: 32, atk: 11, speed: 7 },   // Lv10 Max
   ]
 
-  // 敌人类型
+  // 敌人类型（增强多样性和挑战性）
   const ENEMY_TYPES = [
-    { w: 24, h: 24, hp: 1, score: 10, exp: 5, color: '#FF6B6B', shape: 'circle', speedMult: 1.0 },
-    { w: 28, h: 26, hp: 2, score: 20, exp: 12, color: '#FFA502', shape: 'diamond', speedMult: 0.9 },
-    { w: 32, h: 30, hp: 4, score: 50, exp: 30, color: '#FF4757', shape: 'hex', speedMult: 0.7 },
-    { w: 40, h: 36, hp: 8, score: 120, exp: 80, color: '#9B59B6', shape: 'boss', speedMult: 0.5 },
+    { w: 22, h: 22, hp: 1, score: 10, exp: 8, color: '#FF6B6B', shape: 'circle', speedMult: 1.2 },
+    { w: 26, h: 26, hp: 3, score: 25, exp: 15, color: '#FFA502', shape: 'diamond', speedMult: 1.0 },
+    { w: 30, h: 30, hp: 6, score: 60, exp: 35, color: '#FF4757', shape: 'hex', speedMult: 0.8 },
+    { w: 38, h: 38, hp: 12, score: 150, exp: 100, color: '#9B59B6', shape: 'boss', speedMult: 0.6 },
+    { w: 28, h: 28, hp: 4, score: 40, exp: 25, color: '#00E5FF', shape: 'fast', speedMult: 1.8 }, // 快速型
+    { w: 34, h: 34, hp: 8, score: 80, exp: 50, color: '#FFD93D', shape: 'tank', speedMult: 0.5 }, // 坦克
   ]
 
-  // 掉落物类型（地面拾取：hp/exp/powerup箱）
+  // 掉落物类型（提高掉落率和多样性）
   const DROP_TYPES = [
-    { type: 'hp',      icon: '💚', color: '#00E676', chance: 0.18 },
-    { type: 'exp',     icon: '✨', color: '#FFD700', chance: 0.22 },
-    { type: 'powerup', icon: '📦', color: '#A855F7', chance: 0.20 }, // 道具箱
+    { type: 'hp',      icon: '💚', color: '#00E676', chance: 0.25 },
+    { type: 'exp',     icon: '⭐', color: '#FFD700', chance: 0.30 },
+    { type: 'powerup', icon: '📦', color: '#A855F7', chance: 0.28 }, // 道具
   ]
 
   // === 状态 ===
@@ -56,7 +58,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   let invincible = 0
   let shootAngle = -Math.PI / 2
   let lastShot = 0
-  const SHOOT_CD = 250
+  const SHOOT_CD = 200 // 更快的射击速度
 
   let bullets: { x: number; y: number; vx: number; vy: number; atk: number; color: string; tracking: boolean }[] = []
   let enemies: { x: number; y: number; w: number; h: number; hp: number; maxHp: number; score: number; exp: number; color: string; shape: string; speed: number; vx: number; vy: number; type: number }[] = []
@@ -78,7 +80,12 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   let combo = 0
   let comboTimer = 0
   
-  // ====== HTML道具栏（库存模式）======
+  // 新增：能量系统和自动收集
+  let energy = 0 // 能量值（击杀敌人积累）
+  let maxEnergy = 100
+  let autoCollectRadius = 60 // 自动收集范围
+  
+  // ====== HTML道具栏（库存模式）=====
   let inventory: string[] = [] // 道具库存（存放道具id字符串）
   // 更新 HTML 道具栏
   function updateHTMLPowerupBar() {
@@ -88,15 +95,16 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       name: p.name
     }))
     
-    app.setupCustomPowerupBar('rpgShooter', powerups, inventory, (powerupId) => {
-      if (usePowerup(powerupId)) {
-        audioService.collect()
-        updateHTMLPowerupBar()
-      }
-    })
+    // 道具栏已删除 - 每个游戏有自己的道具拾取机制
+    // app.setupCustomPowerupBar('rpgShooter', powerups, inventory, (powerupId) => {
+    //   if (usePowerup(powerupId)) {
+    //     audioService.collect()
+    //     updateHTMLPowerupBar()
+    //   }
+    // })
   }
   
-  // 使用道具
+  // 使用道具（增强效果和反馈）
   function usePowerup(type: string): boolean {
     const index = inventory.indexOf(type)
     if (index === -1) return false
@@ -107,51 +115,51 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       case 'nuke':
         // ☢️ 核弹：全屏爆炸，消灭所有敌人，每个给分
         enemies.forEach(e => {
-          for (let i = 0; i < 12; i++) {
+          for (let i = 0; i < 15; i++) {
             const angle = Math.random() * Math.PI * 2
-            const spd = Math.random() * 7 + 2
-            particles.push({ x: e.x, y: e.y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd, life: 1, color: e.color, size: 3 + Math.random() * 4 })
+            const spd = Math.random() * 8 + 3
+            particles.push({ x: e.x, y: e.y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd, life: 1.2, color: e.color, size: 4 + Math.random() * 5 })
           }
           const bonus = e.score * 2
           score += bonus
           engine.addScore(bonus, e.x, e.y)
-          floatTexts.push({ text: `💥+${bonus}`, x: e.x, y: e.y - 10, life: 1, color: '#FF4757', size: 14 })
+          floatTexts.push({ text: `💥+${bonus}`, x: e.x, y: e.y - 10, life: 1.2, color: '#FF4757', size: 16 })
         })
         enemies.length = 0
-        shakeAmt = 20
-        screenFlash = 0.5
-        floatTexts.push({ text: '☢️ 核弹清场!', x: W / 2, y: H / 2, life: 2, color: '#FF4757', size: 26 })
+        shakeAmt = 25
+        screenFlash = 0.6
+        floatTexts.push({ text: '☢️ 核弹清场!', x: W / 2, y: H / 2, life: 2.5, color: '#FF4757', size: 32 })
         break
 
       case 'laser':
-        // ⚡ 激光弹幕：持续 3 秒，每帧在 update 里额外射击
-        laserTimer = 3
-        floatTexts.push({ text: '⚡ 激光弹幕!', x: playerX, y: playerY - 40, life: 1.5, color: '#FFD700', size: 20 })
+        // 🔥激光弹幕：持续 4 秒，每帧update 里额外射出
+        laserTimer = 4
+        floatTexts.push({ text: '🔥激光弹幕', x: playerX, y: playerY - 40, life: 2, color: '#FFD700', size: 24 })
         break
 
       case 'freeze':
-        // ❄️ 时间冻结：敌人静止 4 秒
-        freezeTimer = 4
-        floatTexts.push({ text: '❄️ 时间冻结!', x: W / 2, y: H / 2, life: 1.5, color: '#74B9FF', size: 22 })
-        screenFlash = 0.15
+        // ❄️ 时间冻结：敌人静止5 秒
+        freezeTimer = 5
+        floatTexts.push({ text: '❄️ 时间冻结!', x: W / 2, y: H / 2, life: 2, color: '#74B9FF', size: 26 })
+        screenFlash = 0.2
         break
 
       case 'shield':
-        // 🛡️ 护盾：叠加 3 层
-        shieldCount += 3
-        floatTexts.push({ text: `🛡️ 护盾×${shieldCount}`, x: playerX, y: playerY - 40, life: 1.5, color: '#4D96FF', size: 18 })
+        // 🛡️护盾：叠加4 层
+        shieldCount += 4
+        floatTexts.push({ text: `🛡️护盾×${shieldCount}`, x: playerX, y: playerY - 40, life: 2, color: '#4D96FF', size: 22 })
         break
 
       case 'score2x':
-        // ✨ 双倍分数：10 秒
-        score2xTimer = 10
-        floatTexts.push({ text: '✨ 双倍分数!', x: W / 2, y: H / 2 - 20, life: 1.5, color: '#FFD93D', size: 22 })
+        // ⚡双倍分数：15 秒
+        score2xTimer = 15
+        floatTexts.push({ text: '⚡双倍分', x: W / 2, y: H / 2 - 20, life: 2, color: '#FFD93D', size: 26 })
         break
 
       case 'clone':
-        // 👾 分身弹：持续 5 秒，子弹击中时额外分裂
-        cloneTimer = 5
-        floatTexts.push({ text: '👾 分身弹!', x: playerX, y: playerY - 40, life: 1.5, color: '#A855F7', size: 18 })
+        // 👾 分身弹：持续 6 秒，子弹击中时额外分出一颗散射子弹
+        cloneTimer = 6
+        floatTexts.push({ text: '👾 分身弹', x: playerX, y: playerY - 40, life: 2, color: '#A855F7', size: 22 })
         break
     }
     
@@ -163,14 +171,14 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   let speedBoost = 0
   let atkBoost = 0
 
-  // ====== 道具效果状态 ======
+  // ====== 道具效果状态======
   let laserTimer = 0      // 激光弹幕剩余秒数
   let freezeTimer = 0     // 时间冻结剩余秒数
   let cloneTimer = 0      // 分身弹剩余秒数
   let score2xTimer = 0    // 双倍分数剩余秒数
   let shieldCount = 0     // 护盾层数（可叠加）
 
-  // 星空背景初始化
+  // 星空背景初始值
   for (let i = 0; i < STAR_COUNT; i++) {
     stars.push({
       x: Math.random() * W,
@@ -193,10 +201,10 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  // 升级
+  // 升级（增强特效和反馈）
   function levelUp() {
     playerLevel++
-    expToLevel = Math.floor(20 * Math.pow(1.5, playerLevel - 1))
+    expToLevel = Math.floor(25 * Math.pow(1.4, playerLevel - 1)) // 更平缓的经验曲线
     const stats = LEVEL_STATS[Math.min(playerLevel - 1, LEVEL_STATS.length - 1)]
     playerMaxHP = stats.hp
     playerHP = playerMaxHP
@@ -205,21 +213,23 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     floatTexts.push({
       text: `🎉 Lv.${playerLevel}!`,
       x: playerX, y: playerY - 30,
-      life: 1.5, color: '#FFD700', size: 24
+      life: 2, color: '#FFD700', size: 28
     })
 
-    // 升级特效
-    for (let i = 0; i < 20; i++) {
-      const angle = (Math.PI * 2 / 20) * i
+    // 升级特效（更华丽）
+    for (let i = 0; i < 30; i++) {
+      const angle = (Math.PI * 2 / 30) * i
+      const speed = 3 + Math.random() * 5
       particles.push({
         x: playerX, y: playerY,
-        vx: Math.cos(angle) * 4,
-        vy: Math.sin(angle) * 4,
-        life: 1, color: '#FFD700', size: 4
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1.5, color: i % 2 === 0 ? '#FFD700' : '#FF6B6B', size: 5 + Math.random() * 3
       })
     }
 
-    shakeAmt = 3
+    shakeAmt = 8
+    screenFlash = 0.3
     audioService.win()
   }
 
@@ -228,7 +238,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     const side = Math.floor(Math.random() * 4)
     let x, y, vx, vy
 
-    if (side === 0) { // 从上方
+    if (side === 0) { // 从上
       x = Math.random() * W
       y = -30
       vx = (playerX - x) * 0.01 + (Math.random() - 0.5) * 1
@@ -243,19 +253,22 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       y = Math.random() * H * 0.6
       vx = -(ENEMY_BASE_SPEED + Math.random() * difficulty * 0.3)
       vy = (playerY - y) * 0.01 + (Math.random() - 0.5) * 0.5
-    } else { // 从下方
+    } else { // 从下
       x = Math.random() * W
       y = H + 30
       vx = (playerX - x) * 0.01 + (Math.random() - 0.5) * 1
       vy = -(ENEMY_BASE_SPEED + Math.random() * difficulty * 0.3)
     }
 
-    // 根据难度选择敌人类型
+    // 根据难度选择敌人类型（更丰富的组合）
     let typeIdx = 0
     const r = Math.random()
-    if (difficulty >= 4 && r < 0.1) typeIdx = 3      // Boss
-    else if (difficulty >= 3 && r < 0.25) typeIdx = 2 // 重型
-    else if (difficulty >= 2 && r < 0.5) typeIdx = 1  // 中型
+    if (difficulty >= 5 && r < 0.08) typeIdx = 3      // Boss (8%)
+    else if (difficulty >= 4 && r < 0.20) typeIdx = 5 // Tank (12%)
+    else if (difficulty >= 3 && r < 0.35) typeIdx = 4 // Fast (15%)
+    else if (difficulty >= 2 && r < 0.55) typeIdx = 2 // Hex (20%)
+    else if (r < 0.75) typeIdx = 1                     // Diamond (20%)
+    // else typeIdx = 0                                // Circle (25%)
 
     const type = ENEMY_TYPES[typeIdx]
     enemies.push({
@@ -283,7 +296,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
           life: 1,
           vy: 0.5 + Math.random() * 0.5
         }
-        // 道具箱随机绑定一种 rpgShooter 道具
+        // 道具箱随机绑定一个rpgShooter 道具
         if (dropDef.type === 'powerup') {
           const p = RPG_SHOOTER_POWERUPS[Math.floor(Math.random() * RPG_SHOOTER_POWERUPS.length)]
           drop.powerupType = p.id
@@ -343,19 +356,34 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     audioService.click()
   }
 
-  // 爆炸粒子
+  // 爆炸粒子（更华丽的效果）
   function explode(x: number, y: number, color: string, count: number, force: number = 5) {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2
-      const speed = Math.random() * force + 1
+      const speed = Math.random() * force + 2
+      const size = 2 + Math.random() * 4
       particles.push({
         x, y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        life: 1,
+        life: 1.2,
         color,
-        size: 1.5 + Math.random() * 3,
+        size,
       })
+    }
+    // 添加环形冲击波
+    if (count > 8) {
+      for (let i = 0; i < 8; i++) {
+        const angle = (Math.PI * 2 / 8) * i
+        particles.push({
+          x, y,
+          vx: Math.cos(angle) * (force * 1.5),
+          vy: Math.sin(angle) * (force * 1.5),
+          life: 0.8,
+          color: '#fff',
+          size: 2,
+        })
+      }
     }
   }
 
@@ -384,6 +412,10 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     if (!gameStarted) {
       gameStarted = true
       startTime = Date.now()
+    } else if (gameEnded) {
+      // 重新开始游戏
+      location.reload()
+      return
     }
     handleMove(e)
   }
@@ -638,6 +670,50 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       ctx.arc(-5, 0, 2, 0, Math.PI * 2)
       ctx.arc(5, 0, 2, 0, Math.PI * 2)
       ctx.fill()
+    } else if (e.shape === 'fast') {
+      // 快速型 - 流线型
+      ctx.fillStyle = e.color
+      ctx.shadowColor = e.color
+      ctx.shadowBlur = 12
+      ctx.beginPath()
+      ctx.moveTo(0, -size)
+      ctx.lineTo(size * 0.6, 0)
+      ctx.lineTo(0, size)
+      ctx.lineTo(-size * 0.6, 0)
+      ctx.closePath()
+      ctx.fill()
+      ctx.shadowBlur = 0
+
+      // 速度线
+      ctx.strokeStyle = e.color + '88'
+      ctx.lineWidth = 2
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath()
+        ctx.moveTo(-size - i * 5, -size * 0.3 + i * 5)
+        ctx.lineTo(-size - 10 - i * 5, -size * 0.3 + i * 5)
+        ctx.stroke()
+      }
+    } else if (e.shape === 'tank') {
+      // 坦克型 - 方形带装甲
+      ctx.fillStyle = e.color
+      ctx.shadowColor = e.color
+      ctx.shadowBlur = 10
+      ctx.fillRect(-size, -size, size * 2, size * 2)
+      ctx.shadowBlur = 0
+
+      // 装甲装饰
+      ctx.strokeStyle = '#fff'
+      ctx.lineWidth = 2
+      ctx.strokeRect(-size + 4, -size + 4, size * 2 - 8, size * 2 - 8)
+
+      // 血量条
+      if (e.hp < e.maxHp) {
+        const barW = e.w
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'
+        ctx.fillRect(-barW / 2, -size - 8, barW, 4)
+        ctx.fillStyle = '#00E676'
+        ctx.fillRect(-barW / 2, -size - 8, barW * (e.hp / e.maxHp), 4)
+      }
     }
 
     ctx.restore()
@@ -689,14 +765,14 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     ctx.textAlign = 'left'
     ctx.shadowColor = 'rgba(0,0,0,0.5)'
     ctx.shadowBlur = 3
-    ctx.fillText(`⏱ ${Math.ceil(timeLeft)}s`, 12, 28)
+    ctx.fillText(`⏰${Math.ceil(timeLeft)}s`, 12, 28)
     ctx.shadowBlur = 0
 
     // 分数
     ctx.fillStyle = '#FFD700'
     ctx.font = 'bold 20px sans-serif'
     ctx.textAlign = 'right'
-    ctx.fillText(`★ ${score}`, W - 12, 28)
+    ctx.fillText(`⭐${score}`, W - 12, 28)
 
     // 等级和经验条
     const expBarW = 120, expBarH = 10
@@ -714,7 +790,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     ctx.textAlign = 'center'
     ctx.fillText(`Lv.${playerLevel}`, W / 2, expY - 4)
 
-    // 生命值
+    // 生命条
     const hpBarW = 80, hpBarH = 8
     const hpX = 12, hpY = H - 15
     ctx.fillStyle = 'rgba(255,255,255,0.2)'
@@ -742,8 +818,24 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       ctx.fillStyle = '#00E5FF'
       ctx.font = '12px sans-serif'
       ctx.textAlign = 'right'
-      ctx.fillText(`⚡ SPD+${speedBoost.toFixed(1)}`, W - 12, H - 35)
+      ctx.fillText(`⚡SPD+${speedBoost.toFixed(1)}`, W - 12, H - 35)
     }
+
+    // 能量条（右下角）
+    const energyBarW = 80, energyBarH = 6
+    const energyX = W - 12 - energyBarW, energyY = H - 50
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'
+    ctx.fillRect(energyX, energyY, energyBarW, energyBarH)
+    ctx.fillStyle = '#A855F7'
+    ctx.fillRect(energyX, energyY, energyBarW * (energy / maxEnergy), energyBarH)
+    ctx.strokeStyle = '#A855F7'
+    ctx.lineWidth = 1
+    ctx.strokeRect(energyX, energyY, energyBarW, energyBarH)
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'
+    ctx.font = '10px sans-serif'
+    ctx.textAlign = 'right'
+    ctx.fillText(`⚡${Math.floor(energy)}/${maxEnergy}`, W - 12, energyY - 3)
 
     // 道具效果状态指示器（左下角）
     let effectY = H - 50
@@ -756,7 +848,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     }
     if (laserTimer > 0) {
       ctx.fillStyle = '#FFD700'
-      ctx.fillText(`⚡ 激光 ${laserTimer.toFixed(1)}s`, 12, effectY)
+      ctx.fillText(`🔥激�?${laserTimer.toFixed(1)}s`, 12, effectY)
       effectY -= 18
     }
     if (cloneTimer > 0) {
@@ -766,12 +858,12 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     }
     if (score2xTimer > 0) {
       ctx.fillStyle = '#FFD93D'
-      ctx.fillText(`✨ 2x ${score2xTimer.toFixed(1)}s`, 12, effectY)
+      ctx.fillText(`⚡2x ${score2xTimer.toFixed(1)}s`, 12, effectY)
       effectY -= 18
     }
     if (shieldCount > 0) {
       ctx.fillStyle = '#4D96FF'
-      ctx.fillText(`🛡️ ×${shieldCount}`, 12, effectY)
+      ctx.fillText(`🛡️×${shieldCount}`, 12, effectY)
     }
 
     // 连击
@@ -813,18 +905,25 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       shoot()
     }
 
-    // 生成敌人
+    // 生成敌人（更激进的难度曲线）
     if (gameStarted) {
-      const spawnInterval = Math.max(300, 1000 - difficulty * 60)
+      const spawnInterval = Math.max(200, 800 - difficulty * 50) // 更快的生成速度
       spawnTimer -= dt
       if (spawnTimer <= 0) {
-        spawnEnemy()
+        // 根据难度决定生成数量
+        const spawnCount = difficulty >= 4 ? (Math.random() < 0.3 ? 2 : 1) : 1
+        
+        for (let i = 0; i < spawnCount; i++) {
+          setTimeout(() => { if (!gameEnded) spawnEnemy() }, i * 150)
+        }
+        
         spawnTimer = spawnInterval
         waveCount++
 
-        // Boss波次
-        if (waveCount % 20 === 0) {
+        // Boss波次（更频繁）
+        if (waveCount % 15 === 0 && difficulty >= 3) {
           setTimeout(() => { if (!gameEnded) spawnEnemy() }, 300)
+          setTimeout(() => { if (!gameEnded) spawnEnemy() }, 600)
         }
       }
     }
@@ -879,7 +978,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
           e.hp -= b.atk
           explode(b.x, b.y, '#FFD700', 3, 2)
 
-          // 分身弹：子弹命中时额外产生2颗散射子弹
+          // 分身弹：子弹命中时额外产生一颗散射子弹
           if (cloneTimer > 0) {
             for (let c = 0; c < 2; c++) {
               const spreadAngle = Math.atan2(b.vy, b.vx) + (c === 0 ? 0.4 : -0.4)
@@ -897,17 +996,32 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
           if (e.hp <= 0) {
             // 击杀
             combo++
-            comboTimer = 2
-            const baseScore = e.score * Math.min(combo, 8)
+            comboTimer = 3
+            const baseScore = e.score * Math.min(combo, 10)
             const scoreBonus = score2xTimer > 0 ? baseScore * 2 : baseScore
             score += scoreBonus
             engine.addScore(scoreBonus, e.x, e.y)
 
+            // 更炫的分数显示
+            let scoreText = `+${scoreBonus}`
+            let scoreColor = '#FFD700'
+            let scoreSize = 16
+            
+            if (combo >= 10) {
+              scoreText = `🔥 ${combo}x +${scoreBonus}`
+              scoreColor = '#FF4757'
+              scoreSize = 24
+            } else if (combo >= 5) {
+              scoreText = `${combo}x +${scoreBonus}`
+              scoreColor = '#FF6B6B'
+              scoreSize = 20
+            }
+            
             floatTexts.push({
-              text: combo >= 5 ? `${combo}x +${scoreBonus}` : `+${scoreBonus}`,
-              x: e.x, y: e.y, life: 1,
-              color: score2xTimer > 0 ? '#FFD93D' : (combo >= 5 ? '#FF6B6B' : '#FFD700'),
-              size: combo >= 5 ? 18 : 14
+              text: scoreText,
+              x: e.x, y: e.y, life: 1.5,
+              color: scoreColor,
+              size: scoreSize
             })
 
             // 经验
@@ -917,14 +1031,31 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
               levelUp()
             }
 
-            explode(e.x, e.y, e.color, 12 + e.type * 5, 4)
+            // 更华丽的爆炸效果
+            explode(e.x, e.y, e.color, 15 + e.type * 6, 5)
 
+            // 高连击触发特殊效果
             if (combo >= 5) {
-              shakeAmt = 2
+              shakeAmt = 4 + Math.min(combo * 0.5, 10)
+              screenFlash = 0.15
               engine.triggerRandomBuff()
+              
+              // 连击光环
+              for (let i = 0; i < 12; i++) {
+                const angle = (Math.PI * 2 / 12) * i
+                particles.push({
+                  x: playerX, y: playerY,
+                  vx: Math.cos(angle) * 3,
+                  vy: Math.sin(angle) * 3,
+                  life: 1, color: '#FFD700', size: 3
+                })
+              }
             }
 
             spawnDrop(e.x, e.y)
+
+            // 积累能量
+            energy = Math.min(maxEnergy, energy + 5 + e.type * 2)
 
             audioService.win()
             enemies.splice(j, 1)
@@ -977,25 +1108,28 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
         if (shieldCount > 0) {
           // 护盾吸收
           shieldCount--
-          floatTexts.push({ text: `🛡️ 护盾抵挡! (${shieldCount}剩余)`, x: playerX, y: playerY - 30, life: 1, color: '#4D96FF', size: 14 })
+          floatTexts.push({ text: `🛡️护盾抵挡! (${shieldCount}剩余)`, x: playerX, y: playerY - 30, life: 1.5, color: '#4D96FF', size: 18 })
           invincible = 1.0
-          shakeAmt = 3
-          explode(playerX, playerY, '#4D96FF', 10, 3)
+          shakeAmt = 5
+          explode(playerX, playerY, '#4D96FF', 15, 4)
         } else {
           playerHP--
-          invincible = 1.5
-          shakeAmt = 5
-          screenFlash = 0.25
+          invincible = 2.0
+          shakeAmt = 10
+          screenFlash = 0.4
           combo = 0
-          explode(playerX, playerY, '#FF4757', 15, 4)
+          explode(playerX, playerY, '#FF4757', 20, 5)
           audioService.pop()
+          
+          // 受伤警告文字
+          floatTexts.push({ text: '⚠️ 受伤!', x: playerX, y: playerY - 40, life: 1.5, color: '#FF4757', size: 20 })
         }
 
         enemies.splice(i, 1)
         if (playerHP <= 0) {
           gameEnded = true
           engine.endGame()
-          explode(playerX, playerY, '#FF4757', 30, 6)
+          explode(playerX, playerY, '#FF4757', 40, 8)
           setTimeout(() => onEnd(), 800)
           return
         }
@@ -1013,6 +1147,19 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
         continue
       }
 
+      // 自动收集（能量满时扩大范围）
+      const collectRadius = energy >= maxEnergy ? autoCollectRadius * 2 : autoCollectRadius
+      const dx = playerX - d.x
+      const dy = playerY - d.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      // 如果在收集范围内，自动吸向玩家
+      if (dist < collectRadius) {
+        const pullStrength = 3
+        d.x += (dx / dist) * pullStrength
+        d.y += (dy / dist) * pullStrength
+      }
+
       // 拾取检测
       if (rectCollide(
         playerX - 18, playerY - 18, 36, 36,
@@ -1027,7 +1174,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
             playerExp -= expToLevel
             levelUp()
           }
-          floatTexts.push({ text: '✨+8 EXP', x: d.x, y: d.y, life: 1, color: '#FFD700', size: 14 })
+          floatTexts.push({ text: '⭐8 EXP', x: d.x, y: d.y, life: 1, color: '#FFD700', size: 14 })
         } else if (d.type === 'powerup' && d.powerupType) {
           // 道具箱：加入库存
           inventory.push(d.powerupType)
@@ -1056,6 +1203,12 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     if (shakeAmt < 0.1) shakeAmt = 0
     if (screenFlash > 0) screenFlash -= dt / 1000 * 2
 
+    // 能量自然衰减（鼓励积极游戏）
+    if (energy > 0) {
+      energy -= dt / 1000 * 2 // 每秒衰减2点
+      if (energy < 0) energy = 0
+    }
+
     // 道具计时器递减
     const dtSec = dt / 1000
     if (laserTimer > 0) laserTimer -= dtSec
@@ -1063,15 +1216,15 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     if (cloneTimer > 0) cloneTimer -= dtSec
     if (score2xTimer > 0) score2xTimer -= dtSec
 
-    // 激光弹幕：每帧向8方向发射子弹
+    // 激光弹幕：每帧12方向发射子弹（更密集）
     if (laserTimer > 0 && gameStarted) {
       const effectiveATK = playerATK + Math.floor(atkBoost)
-      for (let dir = 0; dir < 8; dir++) {
-        const angle = (Math.PI * 2 / 8) * dir
+      for (let dir = 0; dir < 12; dir++) {
+        const angle = (Math.PI * 2 / 12) * dir + Date.now() * 0.002 // 旋转效果
         bullets.push({
           x: playerX, y: playerY,
-          vx: Math.cos(angle) * BULLET_SPEED * 1.2,
-          vy: Math.sin(angle) * BULLET_SPEED * 1.2,
+          vx: Math.cos(angle) * BULLET_SPEED * 1.3,
+          vy: Math.sin(angle) * BULLET_SPEED * 1.3,
           atk: effectiveATK,
           color: '#FFD700',
           tracking: false
@@ -1116,32 +1269,49 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     // 敌人
     for (const e of enemies) drawEnemy(e)
 
-    // 玩家子弹
+    // 玩家子弹（更炫的效果）
     for (const b of bullets) {
       const bulletColor = b.tracking ? '#00FF88' : b.color
       ctx.fillStyle = bulletColor
       ctx.shadowColor = bulletColor
-      ctx.shadowBlur = b.tracking ? 14 : 8
+      ctx.shadowBlur = b.tracking ? 16 : 12
+      
+      // 子弹主体
       ctx.beginPath()
-      ctx.arc(b.x, b.y, b.tracking ? 5 : 4, 0, Math.PI * 2)
+      ctx.arc(b.x, b.y, b.tracking ? 6 : 5, 0, Math.PI * 2)
       ctx.fill()
 
-      // 拖尾
+      // 拖尾效果（更长更亮）
       ctx.shadowBlur = 0
-      const grad = ctx.createLinearGradient(b.x, b.y, b.x - b.vx * 2, b.y - b.vy * 2)
-      grad.addColorStop(0, bulletColor + '88')
-      grad.addColorStop(1, 'transparent')
-      ctx.strokeStyle = grad
-      ctx.lineWidth = b.tracking ? 4 : 3
-      ctx.beginPath()
-      ctx.moveTo(b.x, b.y)
-      ctx.lineTo(b.x - b.vx * 2, b.y - b.vy * 2)
-      ctx.stroke()
+      const trailLength = b.tracking ? 4 : 3
+      for (let t = 1; t <= trailLength; t++) {
+        const alpha = 1 - (t / trailLength)
+        ctx.globalAlpha = alpha * 0.6
+        ctx.fillStyle = bulletColor
+        ctx.beginPath()
+        ctx.arc(b.x - b.vx * t * 0.8, b.y - b.vy * t * 0.8, (b.tracking ? 6 : 5) * (1 - t * 0.2), 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.globalAlpha = 1
     }
     ctx.shadowBlur = 0
 
     // 玩家
     if (!gameEnded || invincible > 0) drawPlayer()
+
+    // 能量满时显示光环效果
+    if (energy >= maxEnergy) {
+      ctx.save()
+      ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.005) * 0.2
+      ctx.strokeStyle = '#A855F7'
+      ctx.lineWidth = 3
+      ctx.shadowColor = '#A855F7'
+      ctx.shadowBlur = 15
+      ctx.beginPath()
+      ctx.arc(playerX, playerY, autoCollectRadius * 2, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.restore()
+    }
 
     // 粒子
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -1200,6 +1370,30 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       ctx.fillText('自动射击 · 击杀敌人获得经验升级!', W / 2, H / 2 + 28)
     }
 
+    // 游戏结束提示
+    if (gameEnded) {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'
+      ctx.fillRect(0, H / 2 - 80, W, 160)
+      
+      ctx.fillStyle = '#FFD700'
+      ctx.font = 'bold 28px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.shadowColor = '#FFD700'
+      ctx.shadowBlur = 10
+      ctx.fillText('🏆 游戏结束', W / 2, H / 2 - 40)
+      ctx.shadowBlur = 0
+      
+      ctx.fillStyle = '#fff'
+      ctx.font = '18px sans-serif'
+      ctx.fillText(`最终得分 ${score}`, W / 2, H / 2 - 5)
+      ctx.fillText(`达到等级: Lv.${playerLevel}`, W / 2, H / 2 + 20)
+      ctx.fillText(`最高连击 ${combo}x`, W / 2, H / 2 + 45)
+      
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'
+      ctx.font = '14px sans-serif'
+      ctx.fillText('点击重新开始', W / 2, H / 2 + 70)
+    }
+
     ctx.restore()
   }
 
@@ -1215,7 +1409,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   engine.start()
   render()
   
-  // 初始化 HTML 道具栏
+  // 初始化HTML 道具栏
   updateHTMLPowerupBar()
   
   loop()

@@ -33,6 +33,7 @@ import { initSnake } from './games/snake'
 import { initWhackMole } from './games/whackMole'
 import { initRacingRun } from './games/racingRun'
 import { initRpgShooter } from './games/rpgShooter'
+import { initRpgShooterTD } from './games/rpgShooterTowerDefense/init'
 import { initDragonShooter } from './games/dragonShooter'
 
 class App {
@@ -166,55 +167,7 @@ class App {
       </div>
 
       <!-- 游戏画布层 -->
-      <div id="game-layer"><div id="gameCanvas"></div>
-        <!-- 道具栏 -->
-        <div class="item-bar" id="itemBar" style="display:none">
-          <div class="item-slot" data-item="bomb" title="炸弹">
-            <div class="item-icon">💣</div>
-            <div class="item-count" id="itemCount_bomb">0</div>
-          </div>
-          <div class="item-slot" data-item="line_h" title="横排消除">
-            <div class="item-icon">➡️</div>
-            <div class="item-count" id="itemCount_line_h">0</div>
-          </div>
-          <div class="item-slot" data-item="line_v" title="竖排消除">
-            <div class="item-icon">⬇️</div>
-            <div class="item-count" id="itemCount_line_v">0</div>
-          </div>
-          <div class="item-slot" data-item="color_bomb" title="颜色炸弹">
-            <div class="item-icon">🎨</div>
-            <div class="item-count" id="itemCount_color_bomb">0</div>
-          </div>
-          <div class="item-slot" data-item="hammer" title="锤子">
-            <div class="item-icon">🔨</div>
-            <div class="item-count" id="itemCount_hammer">0</div>
-          </div>
-          <div class="item-slot" data-item="shuffle" title="洗牌">
-            <div class="item-icon">🔄</div>
-            <div class="item-count" id="itemCount_shuffle">0</div>
-          </div>
-          <div class="item-slot" data-item="rainbow" title="彩虹球">
-            <div class="item-icon">🌈</div>
-            <div class="item-count" id="itemCount_rainbow">0</div>
-          </div>
-          <div class="item-slot" data-item="freeze" title="冰冻">
-            <div class="item-icon">❄️</div>
-            <div class="item-count" id="itemCount_freeze">0</div>
-          </div>
-          <div class="item-slot" data-item="mega_bomb" title="超级炸弹">
-            <div class="item-icon">☢️</div>
-            <div class="item-count" id="itemCount_mega_bomb">0</div>
-          </div>
-          <div class="item-slot" data-item="time_plus" title="时间延长">
-            <div class="item-icon">⏰</div>
-            <div class="item-count" id="itemCount_time_plus">0</div>
-          </div>
-          <div class="item-slot" data-item="double_score" title="双倍分数">
-            <div class="item-icon">✨</div>
-            <div class="item-count" id="itemCount_double_score">0</div>
-          </div>
-        </div>
-      </div>
+      <div id="game-layer"><div id="gameCanvas"></div></div>
 
       <!-- 结果弹窗 -->
       <div id="result-overlay">
@@ -652,17 +605,6 @@ class App {
         this.authModal.open(() => this.onUserChange())
       }
     })
-    
-    // 道具栏点击
-    document.querySelectorAll('.item-slot').forEach(slot => {
-      slot.addEventListener('click', () => {
-        const itemId = slot.getAttribute('data-item')
-        if (itemId && (window as any).useGameItem) {
-          (window as any).useGameItem(itemId)
-          setTimeout(() => this.updateItemCounts(), 100)
-        }
-      })
-    })
   }
 
   private bindGameCallbacks() {
@@ -790,15 +732,6 @@ class App {
     document.getElementById('topBar')!.style.display = 'none'
     document.getElementById('bottomNav')!.style.display = 'none'
     document.getElementById('mainView')!.style.display = 'none'
-    
-    // 显示 HTML 道具栏（仅2D游戏，排除 spaceShooter 和 dragonShooter）
-    if (this.currentGame.type === '2d' && this.currentGame.id !== 'spaceShooter' && this.currentGame.id !== 'dragonShooter') {
-      document.getElementById('itemBar')!.style.display = 'flex'
-      this.updateItemCounts()
-    } else {
-      // 隐藏道具栏
-      document.getElementById('itemBar')!.style.display = 'none'
-    }
 
     const hasDoubleCard = userService.isLoggedIn
       ? userService.current?.hasDoubleCard
@@ -862,6 +795,7 @@ class App {
       case 'whackMole': initWhackMole(gameEngine, () => this.endGame()); break
       case 'racingRun': initRacingRun(gameEngine, () => this.endGame()); break
       case 'rpgShooter': initRpgShooter(gameEngine, () => this.endGame()); break
+      case 'rpgShooterTD': initRpgShooterTD(gameEngine, () => this.endGame()); break
       case 'dragonShooter': initDragonShooter(gameEngine, () => this.endGame()); break
     }
   }
@@ -1166,8 +1100,6 @@ class App {
     document.getElementById('topBar')!.style.display = 'flex'
     document.getElementById('bottomNav')!.style.display = 'flex'
     document.getElementById('mainView')!.style.display = 'block'
-    // 隐藏道具栏
-    document.getElementById('itemBar')!.style.display = 'none'
     this.currentGame = null
 
     // 刷新卡片上的最高分
@@ -1458,103 +1390,6 @@ class App {
   }
   
   // 更新道具数量显示
-  private updateItemCounts() {
-    const items = ['bomb', 'hammer', 'shuffle', 'time']
-    items.forEach(itemId => {
-      const countEl = document.getElementById(`itemCount_${itemId}`)
-      if (countEl) {
-        const count = storageService.getItem(itemId)
-        countEl.textContent = String(count)
-        
-        // 如果数量为0，添加禁用样式
-        const slot = countEl.parentElement
-        if (slot) {
-          if (count === 0) {
-            slot.classList.add('disabled')
-          } else {
-            slot.classList.remove('disabled')
-          }
-        }
-      }
-    })
-  }
-  
-  /**
-   * 为特定游戏设置自定义道具栏
-   * @param gameId 游戏ID
-   * @param powerups 道具列表 [{id, icon, name}]
-   * @param inventory 当前库存数组
-   * @param onUse 使用道具回调
-   */
-  public setupCustomPowerupBar(
-    gameId: string,
-    powerups: Array<{id: string, icon: string, name: string}>,
-    inventory: string[],
-    onUse: (powerupId: string) => void
-  ) {
-    const itemBar = document.getElementById('itemBar')
-    if (!itemBar) return
-    
-    // 清空现有内容
-    itemBar.innerHTML = ''
-    
-    // 为每个道具创建槽位
-    powerups.forEach(powerup => {
-      const count = inventory.filter(id => id === powerup.id).length
-      
-      const slot = document.createElement('div')
-      slot.className = 'item-slot'
-      slot.setAttribute('data-item', powerup.id)
-      slot.title = powerup.name
-      
-      slot.innerHTML = `
-        <div class="item-icon">${powerup.icon}</div>
-        <div class="item-count" id="itemCount_${powerup.id}">${count}</div>
-      `
-      
-      // 点击事件
-      slot.addEventListener('click', () => {
-        if (inventory.includes(powerup.id)) {
-          onUse(powerup.id)
-          // 更新显示
-          this.updateCustomPowerupBar(gameId, powerups, inventory, onUse)
-        }
-      })
-      
-      itemBar.appendChild(slot)
-    })
-    
-    // 显示道具栏
-    itemBar.style.display = 'flex'
-  }
-  
-  /**
-   * 更新自定义道具栏的计数
-   */
-  public updateCustomPowerupBar(
-    gameId: string,
-    powerups: Array<{id: string, icon: string, name: string}>,
-    inventory: string[],
-    onUse: (powerupId: string) => void
-  ) {
-    powerups.forEach(powerup => {
-      const countEl = document.getElementById(`itemCount_${powerup.id}`)
-      if (countEl) {
-        const count = inventory.filter(id => id === powerup.id).length
-        countEl.textContent = String(count)
-        
-        // 更新禁用状态
-        const slot = countEl.parentElement
-        if (slot) {
-          if (count === 0) {
-            slot.classList.add('disabled')
-          } else {
-            slot.classList.remove('disabled')
-          }
-        }
-      }
-    })
-  }
 }
 
 export const app = new App()
