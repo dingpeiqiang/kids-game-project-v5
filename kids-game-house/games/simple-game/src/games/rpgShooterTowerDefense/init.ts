@@ -350,7 +350,8 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
             if (success) {
               playSound('upgrade')
               console.log(`✅ 炮台升级到 Lv.${btn.turret.level}`)
-              // 升级后保持选中状态，可以继续查看
+              // ✅ 升级成功后关闭弹窗
+              selectedTurretForUpgrade = null
             }
             return  // ✅ 重要：升级后直接返回，不再执行后续逻辑
           }
@@ -386,7 +387,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         } else {
           // 点击新炮台，显示新弹窗
           selectedTurretForUpgrade = clickedTurret
-          upgradeDialogPos = { x: clickedTurret.x, y: clickedTurret.y - 60 }
           playSound('select')
           console.log(`🔍 选中新炮台，显示升级弹窗`)
         }
@@ -905,20 +905,29 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       const config = TURRET_CONFIGS[turret.type]
       const nextUpgrade = config.upgradePath.find(u => u.level === turret.level + 1)
       
-      // ✅ 计算弹窗位置（确保不超出屏幕）- 缩小尺寸
-      const dialogW = 160  // 从 200 缩小到 160
-      const dialogH = nextUpgrade ? 75 : 50  // 从 95/60 缩小到 75/50
-      let dialogX = upgradeDialogPos.x - dialogW / 2
-      let dialogY = upgradeDialogPos.y
+      // ✅ 计算弹窗位置（确保不超出屏幕，且不遮挡炮台）
+      const dialogW = 160
+      const dialogH = nextUpgrade ? 75 : 50
       
-      // 边界检查
+      // ✅ 智能定位：优先显示在炮台右上方，如果空间不够则显示在左上方
+      let dialogX = turret.x + 30  // 默认右侧偏移30像素
+      let dialogY = turret.y - dialogH - 20  // 炮台上方20像素
+      
+      // 如果右侧空间不够，切换到左侧
+      if (dialogX + dialogW > CANVAS_WIDTH - 10) {
+        dialogX = turret.x - dialogW - 30  // 左侧偏移30像素
+      }
+      
+      // 如果上方空间不够，显示在下方
+      if (dialogY < 10) {
+        dialogY = turret.y + 40  // 炮台下方40像素
+      }
+      
+      // 边界检查（确保完全在屏幕内）
       if (dialogX < 10) dialogX = 10
       if (dialogX + dialogW > CANVAS_WIDTH - 10) dialogX = CANVAS_WIDTH - dialogW - 10
       if (dialogY < 10) dialogY = 10
       if (dialogY + dialogH > CANVAS_HEIGHT - 10) dialogY = CANVAS_HEIGHT - dialogH - 10
-      
-      // 更新实际位置
-      upgradeDialogPos = { x: dialogX + dialogW / 2, y: dialogY }
       
       // 弹窗背景
       ctx.fillStyle = 'rgba(15, 25, 45, 0.98)'
