@@ -227,6 +227,12 @@ export function createInitialState(): GameState {
       intensity: 0,
       duration: 0,
       cooldown: 0  // 🎯 初始无冷却
+    },
+    // 🎯 道具加持特效初始化
+    powerupEffects: {
+      flashAlpha: 0,
+      flashColor: '#FFFFFF',
+      rings: []
     }
   }
 }
@@ -424,6 +430,9 @@ export function updateActiveBuffs(state: GameState, dt: number) {
     // 从数组中移除
     state.activeBuffs.splice(toRemove[i], 1)
   }
+  
+  // 🎯 更新道具加持特效
+  updatePowerupEffects(state, dt)
 }
 
 /** 🎯 清除buff效果的函数 */
@@ -624,6 +633,81 @@ function addOrRefreshBuff(state: GameState, type: string, name: string, icon: st
     if (stacks !== undefined) existing.stacks = (existing.stacks || 1) + stacks
   } else {
     state.activeBuffs.push({ type, name, icon, color, duration, remaining: duration, stacks })
+  }
+  
+  // 🎯 触发道具加持特效
+  triggerPowerupEffect(state, color)
+}
+
+/**
+ * 🎯 触发道具加持特效（屏幕闪光 + 光环扩散）
+ */
+function triggerPowerupEffect(state: GameState, color: string) {
+  // 1. 屏幕闪光
+  state.powerupEffects.flashAlpha = 0.3  // 30%透明度
+  state.powerupEffects.flashColor = color
+  
+  // 2. 创建扩散光环（从玩家位置）
+  const ring = {
+    x: state.playerX,
+    y: state.playerY,
+    radius: 20,
+    maxRadius: 150,
+    color: color,
+    alpha: 1.0,
+    lineWidth: 4
+  }
+  state.powerupEffects.rings.push(ring)
+  
+  // 3. 创建第二层光环（延迟一点，更大）
+  setTimeout(() => {
+    const ring2 = {
+      x: state.playerX,
+      y: state.playerY,
+      radius: 20,
+      maxRadius: 200,
+      color: color,
+      alpha: 0.8,
+      lineWidth: 3
+    }
+    state.powerupEffects.rings.push(ring2)
+  }, 100)
+}
+
+/**
+ * 🎯 更新道具加持特效（每帧调用）
+ */
+function updatePowerupEffects(state: GameState, dt: number) {
+  // 1. 衰减屏幕闪光
+  if (state.powerupEffects.flashAlpha > 0) {
+    state.powerupEffects.flashAlpha -= dt * 2  // 0.5秒内消失
+    if (state.powerupEffects.flashAlpha < 0) {
+      state.powerupEffects.flashAlpha = 0
+    }
+  }
+  
+  // 2. 更新光环扩散
+  const toRemove: number[] = []
+  for (let i = 0; i < state.powerupEffects.rings.length; i++) {
+    const ring = state.powerupEffects.rings[i]
+    
+    // 扩大半径
+    const expandSpeed = (ring.maxRadius - ring.radius) * 3 * dt
+    ring.radius += expandSpeed
+    
+    // 衰减透明度和线宽
+    ring.alpha -= dt * 1.5  // 约0.67秒消失
+    ring.lineWidth = Math.max(0.5, 4 * (ring.alpha))
+    
+    // 标记删除
+    if (ring.alpha <= 0 || ring.radius >= ring.maxRadius) {
+      toRemove.push(i)
+    }
+  }
+  
+  // 倒序删除
+  for (let i = toRemove.length - 1; i >= 0; i--) {
+    state.powerupEffects.rings.splice(toRemove[i], 1)
   }
 }
 

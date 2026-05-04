@@ -355,6 +355,17 @@ export interface TouchState {
   startTime: number
 }
 
+// 🎯 道具加持光环特效
+export interface PowerupRing {
+  x: number
+  y: number
+  radius: number
+  maxRadius: number
+  color: string
+  alpha: number
+  lineWidth: number
+}
+
 // 游戏状态
 export interface GameState {
   mode: 'challenge'
@@ -450,6 +461,12 @@ export interface GameState {
     intensity: number  // 震动强度
     duration: number   // 剩余持续时间
     cooldown: number   // 🎯 冷却时间（秒），防止频繁触发
+  }
+  // 🎯 道具加持特效
+  powerupEffects: {
+    flashAlpha: number      // 屏幕闪光透明度
+    flashColor: string      // 闪光颜色
+    rings: PowerupRing[]    // 扩散光环列表
   }
 }
 

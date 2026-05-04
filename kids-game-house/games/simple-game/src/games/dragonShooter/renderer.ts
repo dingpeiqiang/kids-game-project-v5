@@ -938,6 +938,42 @@ export function createRenderer(
     }
   }
 
+  // ========== 🎯 道具加持特效 ==========
+  function drawPowerupEffects() {
+    // 绘制扩散光环
+    for (const ring of state.powerupEffects.rings) {
+      ctx.save()
+      ctx.globalAlpha = ring.alpha
+      ctx.strokeStyle = ring.color
+      ctx.lineWidth = ring.lineWidth
+      ctx.shadowColor = ring.color
+      ctx.shadowBlur = 15
+      
+      ctx.beginPath()
+      ctx.arc(ring.x, ring.y, ring.radius, 0, Math.PI * 2)
+      ctx.stroke()
+      
+      // 内层光晕
+      ctx.globalAlpha = ring.alpha * 0.3
+      ctx.fillStyle = ring.color
+      ctx.beginPath()
+      ctx.arc(ring.x, ring.y, ring.radius * 0.9, 0, Math.PI * 2)
+      ctx.fill()
+      
+      ctx.restore()
+    }
+  }
+  
+  function drawScreenFlash() {
+    if (state.powerupEffects.flashAlpha > 0) {
+      ctx.save()
+      ctx.globalAlpha = state.powerupEffects.flashAlpha
+      ctx.fillStyle = state.powerupEffects.flashColor
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
+      ctx.restore()
+    }
+  }
+
   // ========== 粒子 ==========
   function drawParticles() {
     for (const p of state.particles) {
@@ -1568,9 +1604,15 @@ export function createRenderer(
       if (state.phase === 'levelComplete') {
         drawLevelComplete()
       }
+      
+      // 🎯 绘制道具加持特效（光环扩散）
+      drawPowerupEffects()
     }
 
     ctx.restore()
+    
+    // 🎯 绘制屏幕闪光（在全屏层面，不受裁剪影响）
+    drawScreenFlash()
   }
 
   // ========== 缓动函数 ==========
