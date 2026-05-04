@@ -736,8 +736,13 @@ export function shoot(state: GameState) {
     }
 
     const bullet = getBulletFromPool()
-    bullet.x = state.playerX
-    bullet.y = state.playerY - 25  // 从玩家位置上方发射
+    
+    //  关键修复：子弹从箭头尖端发射，而不是固定偏移
+    // 箭头尖端距离玩家中心约 42 像素（与 renderer.ts 中的箭头位置一致）
+    const arrowTipDistance = 42
+    bullet.x = state.playerX + Math.cos(angle) * arrowTipDistance
+    bullet.y = state.playerY + Math.sin(angle) * arrowTipDistance
+    
     bullet.vx = Math.cos(angle) * actualSpeed
     bullet.vy = Math.sin(angle) * actualSpeed
     bullet.damage = state.bulletDamage
