@@ -24,8 +24,8 @@ export function createInitialState(): GameState {
     breakTime: 0,
     timeLeft: 0,
     resources: {
-      crystals: 200,
-      energy: 60,
+      crystals: 60,   // 降低 80→60，前期更紧张
+      energy: 50,     // 降低 60→50
       score: 0,
       kills: 0
     },

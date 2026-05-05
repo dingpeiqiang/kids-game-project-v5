@@ -57,50 +57,50 @@ export const TOTAL_WAVES = 8
 export const WAVE_DURATIONS = [40, 50, 60, 70, 80, 90, 100, 120] // 每波持续时间（略增加）
 export const BREAK_TIMES = [15, 20, 20, 25, 25, 30, 30, 30]     // 休息时间（前期增加）
 
-// 炮台配置（优化性价比）
+// 炮台配置（降低伤害，增加策略性）
 export const TURRET_CONFIGS: Record<string, TurretConfig> = {
   laser: {
     cost: 40,
-    damage: 12,
-    fireRate: 180,
+    damage: 8,      // 降低 12→8
+    fireRate: 200,  // 降低射速 180→200
     range: 130,
     hp: 50,
     targetPriority: 'nearest',
     upgradePath: [
-      { level: 2, cost: 60, damage: 20, fireRate: 160 },
-      { level: 3, cost: 120, damage: 32, fireRate: 130, special: '穿透' }
+      { level: 2, cost: 60, damage: 14, fireRate: 170 },   // 降低 20→14
+      { level: 3, cost: 120, damage: 24, fireRate: 140, special: '穿透' }  // 降低 32→24
     ]
   },
   missile: {
     cost: 80,
-    damage: 35,
-    fireRate: 1200,
+    damage: 25,     // 降低 35→25
+    fireRate: 1400, // 降低射速 1200→1400
     range: 160,
     hp: 80,
     targetPriority: 'strongest',
     special: '范围爆炸',
     upgradePath: [
-      { level: 2, cost: 120, damage: 55, fireRate: 1000 },
-      { level: 3, cost: 240, damage: 90, fireRate: 800, special: '追踪导弹' }
+      { level: 2, cost: 120, damage: 42, fireRate: 1100 },  // 降低 55→42
+      { level: 3, cost: 240, damage: 70, fireRate: 900, special: '追踪导弹' }  // 降低 90→70
     ]
   },
   frost: {
     cost: 50,
-    damage: 8,
-    fireRate: 400,
+    damage: 5,      // 降低 8→5
+    fireRate: 450,  // 降低射速 400→450
     range: 120,
     hp: 60,
     targetPriority: 'first',
     special: '减速50%',
     upgradePath: [
-      { level: 2, cost: 80, damage: 12, fireRate: 350 },
-      { level: 3, cost: 160, damage: 18, fireRate: 280, special: '短暂冻结' }
+      { level: 2, cost: 80, damage: 9, fireRate: 380 },   // 降低 12→9
+      { level: 3, cost: 160, damage: 14, fireRate: 300, special: '短暂冻结' }  // 降低 18→14
     ]
   },
   lightning: {
     cost: 120,
-    damage: 25,
-    fireRate: 700,
+    damage: 18,     // 降低 25→18
+    fireRate: 800,  // 降低射速 700→800
     range: 140,
     hp: 70,
     targetPriority: 'nearest',
@@ -143,7 +143,7 @@ export function getPlayerStatsAtLevel(level: number) {
   }
 }
 
-// 波次配置（降低前期难度，增加资源奖励）
+// 波次配置（逐级提升难度）
 export function getWaveConfig(waveNumber: number): WaveInfo {
   const configs: WaveInfo[] = [
     // 第1波: 轻松入门
@@ -152,7 +152,7 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
       duration: WAVE_DURATIONS[0],
       breakTime: BREAK_TIMES[0],
       enemies: [
-        { type: 'basic', count: 10, spawnInterval: 2500 }
+        { type: 'basic', count: 15, spawnInterval: 2200 }  // 12→15，加快节奏
       ]
     },
     // 第2波: 稍加挑战
@@ -161,8 +161,8 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
       duration: WAVE_DURATIONS[1],
       breakTime: BREAK_TIMES[1],
       enemies: [
-        { type: 'basic', count: 15, spawnInterval: 2200 },
-        { type: 'fast', count: 6, spawnInterval: 3000 }
+        { type: 'basic', count: 22, spawnInterval: 2000 },  // 18→22
+        { type: 'fast', count: 10, spawnInterval: 2800 }     // 8→10
       ]
     },
     // 第3波: 引入坦克+Boss
@@ -171,9 +171,9 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
       duration: WAVE_DURATIONS[2],
       breakTime: BREAK_TIMES[2],
       enemies: [
-        { type: 'basic', count: 18, spawnInterval: 2000 },
-        { type: 'fast', count: 8, spawnInterval: 2500 },
-        { type: 'tank', count: 3, spawnInterval: 5000 }
+        { type: 'basic', count: 25, spawnInterval: 1800 },  // 22→25，加快
+        { type: 'fast', count: 12, spawnInterval: 2200 },   // 10→12
+        { type: 'tank', count: 6, spawnInterval: 4500 }     // 5→6
       ],
       boss: true
     },
@@ -183,9 +183,9 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
       duration: WAVE_DURATIONS[3],
       breakTime: BREAK_TIMES[3],
       enemies: [
-        { type: 'basic', count: 15, spawnInterval: 2000 },
-        { type: 'fast', count: 10, spawnInterval: 2500 },
-        { type: 'exploder', count: 5, spawnInterval: 4000 }
+        { type: 'basic', count: 25, spawnInterval: 1600 },   // 20→25，更快
+        { type: 'fast', count: 15, spawnInterval: 2000 },    // 12→15
+        { type: 'exploder', count: 8, spawnInterval: 3200 }  // 7→8
       ]
     },
     // 第5波: 分裂怪
@@ -194,9 +194,9 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
       duration: WAVE_DURATIONS[4],
       breakTime: BREAK_TIMES[4],
       enemies: [
-        { type: 'splitter', count: 6, spawnInterval: 4000 },
-        { type: 'basic', count: 20, spawnInterval: 1800 },
-        { type: 'tank', count: 5, spawnInterval: 4000 }
+        { type: 'splitter', count: 10, spawnInterval: 3200 },  // 8→10
+        { type: 'basic', count: 30, spawnInterval: 1400 },    // 25→30，更快
+        { type: 'tank', count: 8, spawnInterval: 3200 }       // 7→8
       ]
     },
     // 第6波: 飞行怪
@@ -205,9 +205,9 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
       duration: WAVE_DURATIONS[5],
       breakTime: BREAK_TIMES[5],
       enemies: [
-        { type: 'flyer', count: 10, spawnInterval: 3000 },
-        { type: 'fast', count: 15, spawnInterval: 2000 },
-        { type: 'exploder', count: 6, spawnInterval: 3500 }
+        { type: 'flyer', count: 16, spawnInterval: 2200 },    // 14→16
+        { type: 'fast', count: 20, spawnInterval: 1600 },     // 18→20，更快
+        { type: 'exploder', count: 10, spawnInterval: 2800 }   // 9→10
       ]
     },
     // 第7波: 高强度混合
@@ -216,10 +216,10 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
       duration: WAVE_DURATIONS[6],
       breakTime: BREAK_TIMES[6],
       enemies: [
-        { type: 'tank', count: 8, spawnInterval: 3500 },
-        { type: 'splitter', count: 10, spawnInterval: 3500 },
-        { type: 'flyer', count: 15, spawnInterval: 2500 },
-        { type: 'exploder', count: 8, spawnInterval: 3000 }
+        { type: 'tank', count: 14, spawnInterval: 2800 },     // 12→14
+        { type: 'splitter', count: 16, spawnInterval: 2800 }, // 14→16
+        { type: 'flyer', count: 22, spawnInterval: 2000 },    // 20→22，更快
+        { type: 'exploder', count: 14, spawnInterval: 2200 }  // 12→14
       ]
     },
     // 第8波: 最终Boss
@@ -228,9 +228,9 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
       duration: WAVE_DURATIONS[7],
       breakTime: 0,
       enemies: [
-        { type: 'basic', count: 25, spawnInterval: 1500 },
-        { type: 'fast', count: 15, spawnInterval: 2000 },
-        { type: 'tank', count: 10, spawnInterval: 3000 }
+        { type: 'basic', count: 40, spawnInterval: 1000 },    // 35→40，极快
+        { type: 'fast', count: 25, spawnInterval: 1400 },     // 22→25
+        { type: 'tank', count: 18, spawnInterval: 2200 }      // 15→18
       ],
       boss: true
     }
@@ -239,15 +239,15 @@ export function getWaveConfig(waveNumber: number): WaveInfo {
   return configs[waveNumber - 1] || configs[configs.length - 1]
 }
 
-// 敌人基础属性（增加HP平衡）
+// 敌人基础属性（增加HP，提高挑战性）
 export const ENEMY_BASE_STATS = {
-  basic:   { hp: 50,  speed: 1.0, damage: 10, score: 10,  crystals: 3,  color: '#FF6B6B' },
-  fast:    { hp: 35,  speed: 2.0, damage: 8,  score: 15,  crystals: 4,  color: '#00E5FF' },
-  tank:    { hp: 200, speed: 0.5, damage: 20, score: 30,  crystals: 8,  color: '#FFD93D' },
-  exploder:{ hp: 25,  speed: 2.5, damage: 50, score: 20,  crystals: 5,  color: '#FF4757' },
-  splitter:{ hp: 60,  speed: 0.8, damage: 12, score: 25,  crystals: 6,  color: '#9B59B6' },
-  flyer:   { hp: 35,  speed: 1.5, damage: 10, score: 20,  crystals: 5,  color: '#87CEEB' },
-  boss:    { hp: 1200, speed: 0.3, damage: 50, score: 500, crystals: 100, color: '#FF0000' }
+  basic:   { hp: 100, speed: 1.0, damage: 12, score: 10,  crystals: 3,  color: '#FF6B6B' },  // 80→100
+  fast:    { hp: 70,  speed: 2.0, damage: 10, score: 15,  crystals: 4,  color: '#00E5FF' },  // 55→70
+  tank:    { hp: 450, speed: 0.5, damage: 25, score: 30,  crystals: 8,  color: '#FFD93D' },  // 350→450
+  exploder:{ hp: 50,  speed: 2.5, damage: 60, score: 20,  crystals: 5,  color: '#FF4757' },  // 40→50
+  splitter:{ hp: 130, speed: 0.8, damage: 15, score: 25,  crystals: 6,  color: '#9B59B6' },  // 100→130
+  flyer:   { hp: 80,  speed: 1.5, damage: 12, score: 20,  crystals: 5,  color: '#87CEEB' },  // 60→80
+  boss:    { hp: 3000, speed: 0.3, damage: 60, score: 500, crystals: 100, color: '#FF0000' }  // 2000→3000
 }
 
 // 敌人射击配置（波次解锁）
