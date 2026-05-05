@@ -381,8 +381,9 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     
     // ✅ 检查是否点击了左下角区域（启动虚拟摇杆）
     // 只有在非建造模式下才启用摇杆，避免与放置炮台冲突
-    if (!state.buildMode.selectedTurret && touchX < CANVAS_WIDTH * 0.25 && touchY > CANVAS_HEIGHT * 0.75) {
-      // 启动虚拟摇杆（更小的触发区域：左下角 25% x 25% = 6.25% 屏幕面积）
+          // ✅ 缩小摇杆触发区域，避免与塔防栏冲突
+      // 新区域：左下角 15% x 20%（更小的区域，且位置更低）
+      if (!state.buildMode.selectedTurret && touchX < CANVAS_WIDTH * 0.15 && touchY > CANVAS_HEIGHT * 0.80) {
       joystick.active = true
       joystick.startX = touchX
       joystick.startY = touchY
@@ -1189,11 +1190,11 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       const btnW = 58, btnH = 38, btnGap = 6
       
       if (isMobile) {
-        // 手机端：底部炮台选择面板
+        // ✅ 手机端：底部炮台选择面板（上移，避免与摇杆冲突）
         const btnPanelW = 340
         const btnPanelH = 55
         const btnPanelX = (CANVAS_WIDTH - btnPanelW) / 2
-        const btnPanelY = CANVAS_HEIGHT - btnPanelH - 40
+        const btnPanelY = CANVAS_HEIGHT - btnPanelH - 80  // ✅ 从40改为80，上移40像素
         
         // ✅ 增加不透明度，避免底部出现颜色痕迹
         drawPanel(btnPanelX, btnPanelY, btnPanelW, btnPanelH, 'rgba(10, 20, 35, 0.98)')
