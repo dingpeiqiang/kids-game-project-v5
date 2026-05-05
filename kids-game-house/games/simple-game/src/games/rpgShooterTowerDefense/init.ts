@@ -705,8 +705,13 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     ctx.fillStyle = '#1a1a2e'
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
     
-    // 应用屏幕震动
+    // ✅ 设置裁剪区域，防止游戏元素绘制到边界外留下残影
     ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+    ctx.clip()
+    
+    // 应用屏幕震动
     if (state.shakeAmt > 0) {
       const shakeX = (Math.random() - 0.5) * state.shakeAmt
       const shakeY = (Math.random() - 0.5) * state.shakeAmt
@@ -773,6 +778,7 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     // 绘制UI
     drawUI(ctx, state)
     
+    // ✅ 恢复裁剪和震动状态
     ctx.restore()
   }
   
