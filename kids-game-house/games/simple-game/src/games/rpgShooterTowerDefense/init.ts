@@ -821,47 +821,47 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         
         if (joystick.active) {
           // ✅ 摇杆底座（固定位置 - 增强视觉效果）
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'  // ✅ 从0.4提高到0.6
           ctx.lineWidth = 3
           ctx.beginPath()
           ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
           ctx.stroke()
           
           // ✅ 底座填充（半透明）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'  // ✅ 从0.08提高到0.15
           ctx.fill()
           
           // ✅ 摇杆钮（增强颜色）
-          ctx.fillStyle = 'rgba(78, 205, 196, 0.8)'
+          ctx.fillStyle = 'rgba(78, 205, 196, 0.9)'  // ✅ 从0.8提高到0.9
           ctx.beginPath()
           ctx.arc(joystick.currentX, joystick.currentY, joystick.knobRadius, 0, Math.PI * 2)
           ctx.fill()
           
           // ✅ 摇杆钮边框
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'  // ✅ 从0.6提高到0.8
           ctx.lineWidth = 2
           ctx.stroke()
           
           // ✅ 摇杆提示文字（简化）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
-          ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'  // ✅ 从0.6提高到0.8
+          ctx.font = `bold ${10 * SCALE_RATIO}px sans-serif`  // ✅ 从9增加到10
           ctx.textAlign = 'center'
-          ctx.fillText('移动', joystick.baseX, joystick.baseY + joystick.radius + 12)
+          ctx.fillText('移动', joystick.baseX, joystick.baseY + joystick.radius + 15)  // ✅ 调整位置
         } else {
-          // ✅ 未激活时显示提示（更明显）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
+          // ✅ 未激活时显示提示（大幅提高可见度）
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'  // ✅ 从0.15提高到0.3
           ctx.beginPath()
           ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
           ctx.fill()
           
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'
-          ctx.lineWidth = 2
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'  // ✅ 从0.25提高到0.5
+          ctx.lineWidth = 3  // ✅ 从2增加到3
           ctx.stroke()
           
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
-          ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'  // ✅ 从0.4提高到0.7
+          ctx.font = `bold ${10 * SCALE_RATIO}px sans-serif`  // ✅ 从9增加到10
           ctx.textAlign = 'center'
-          ctx.fillText('👆 触摸此处移动', joystick.baseX, joystick.baseY + joystick.radius + 12)
+          ctx.fillText('👆 触摸此处移动', joystick.baseX, joystick.baseY + joystick.radius + 15)  // ✅ 调整位置
         }
       })
     }
