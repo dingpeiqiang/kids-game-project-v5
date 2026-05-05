@@ -1336,22 +1336,39 @@ export function updateDragons(state: GameState, dt: number) {
   const energyR     = 80 + energyFieldStacks * 15  // 范围随叠加层数扩大
   const energyRSquared = energyR * energyR
 
-  // ringWave 定时触发
+  // 🎯 范围伤害中心：随机选一条存活的龙的位置（多个龙时随机）
+  let rangeCenterX = state.playerX
+  let rangeCenterY = state.playerY || BASE_H - 55
+  {
+    const aliveHeads = state.dragons
+      .filter(d => d.segments.some(s => s.isHead && s.hp > 0))
+      .map(d => ({ x: d.segments.find(s => s.isHead)!.x, y: d.segments.find(s => s.isHead)!.y }))
+    if (aliveHeads.length > 0) {
+      const pick = aliveHeads[Math.floor(Math.random() * aliveHeads.length)]
+      rangeCenterX = pick.x
+      rangeCenterY = pick.y
+    }
+  }
+
+  // 范围爆发类持续伤害（每秒触发）
+  const blastStacks = S.blastStacks || 0
+  const slashStacks = S.slashStacks || 0
+  const splashStacks = S.splashStacks || 0
+  const ringWaveStacks = S.ringWaveStacks || 0
+  const chainBlastStacks = S.chainBlastStacks || 0
+
+  // ringWave 定时触发（以随机存活龙为中心）
   if ((S._ringWaveTimer || 0) > 0) {
     S._ringWaveTimer -= dt
     if (S._ringWaveTimer <= 0) {
       S._ringWaveTimer = 2  // 每2秒触发一次
-      // 以玩家为中心生成环形冲击波
       audioService.explosion()
       for (const dragon of state.dragons) {
         for (let si = dragon.segments.length - 1; si >= 0; si--) {
           const seg = dragon.segments[si]
-          
-          // 🎯 关键修复：跳过已死亡的节段
           if (seg.hp <= 0) continue
-          
-          const distX = seg.x - state.playerX
-          const distY = seg.y - (BASE_H - 55)
+          const distX = seg.x - rangeCenterX
+          const distY = seg.y - rangeCenterY
           if (distX * distX + distY * distY < 22500) { // 150*150
             const dmg = state.bulletDamage * 0.3
             seg.hp -= dmg
@@ -1370,6 +1387,12 @@ export function updateDragons(state: GameState, dt: number) {
       }
     }
   }
+
+  // 范围爆发持续伤害（每秒对龙造成范围伤害）
+  const blastRadiusSquared = (50 + blastStacks * 10) * (50 + blastStacks * 10)  // 爆炸范围随层数扩大
+  const slashWidthSquared = (BASE_W * (0.4 + slashStacks * 0.05)) * (BASE_W * (0.4 + slashStacks * 0.05))  // 横扫宽度扩大
+  const splashRadiusSquared = (30 + splashStacks * 5) * (30 + splashStacks * 5)  // 溅射范围
+  const chainRadiusSquared = (40 + chainBlastStacks * 5) * (40 + chainBlastStacks * 5)  // 连锁爆破范围
 
   for (let i = state.dragons.length - 1; i >= 0; i--) {
     const dragon = state.dragons[i]
@@ -1406,21 +1429,87 @@ export function updateDragons(state: GameState, dt: number) {
       }
     }
 
-    // energyField：玩家周围持续伤害圈
+    // energyField：能量涌动持续伤害（以随机存活龙为中心）
     if (energyFieldStacks > 0) {
-      const playerY = BASE_H - 55
       for (let si = dragon.segments.length - 1; si >= 0; si--) {
         const seg = dragon.segments[si]
-        
-        // 🎯 关键修复：跳过已死亡的节段
         if (seg.hp <= 0) continue
-        
-        const distX = seg.x - state.playerX
-        const distY = seg.y - playerY
+        const distX = seg.x - rangeCenterX
+        const distY = seg.y - rangeCenterY
         if (distX * distX + distY * distY < energyRSquared) {
           const efDmg = (state.bulletDamage * 0.08 * energyFieldStacks) * dt
           if (efDmg > 0) {
             seg.hp -= efDmg
+            if (seg.hp <= 0) handleSegmentDeath(state, dragon, si)
+          }
+        }
+      }
+    }
+
+    // blast：爆裂冲击（以随机存活龙为中心）
+    if (blastStacks > 0) {
+      for (let si = dragon.segments.length - 1; si >= 0; si--) {
+        const seg = dragon.segments[si]
+        if (seg.hp <= 0) continue
+        const dx = seg.x - rangeCenterX
+        const dy = seg.y - rangeCenterY
+        if (dx * dx + dy * dy < blastRadiusSquared) {
+          const dmg = state.bulletDamage * 0.15 * blastStacks * dt  // 每秒伤害
+          if (dmg > 0) {
+            seg.hp -= dmg
+            if (seg.hp <= 0) handleSegmentDeath(state, dragon, si)
+          }
+        }
+      }
+    }
+
+    // slash：横向横扫（以随机存活龙为中心）
+    if (slashStacks > 0) {
+      const slashHalfH = 60 + slashStacks * 10  // 横扫高度范围
+      for (let si = dragon.segments.length - 1; si >= 0; si--) {
+        const seg = dragon.segments[si]
+        if (seg.hp <= 0) continue
+        const dx = seg.x - rangeCenterX
+        const dy = seg.y - rangeCenterY
+        // 以龙为中心，横扫宽度范围内，高度范围内
+        if (Math.abs(dx) < BASE_W * (0.4 + slashStacks * 0.05) && Math.abs(dy) < slashHalfH) {
+          const dmg = state.bulletDamage * 0.12 * slashStacks * dt
+          if (dmg > 0) {
+            seg.hp -= dmg
+            if (seg.hp <= 0) handleSegmentDeath(state, dragon, si)
+          }
+        }
+      }
+    }
+
+    // splash：范围溅射（以随机存活龙为中心）
+    if (splashStacks > 0) {
+      for (let si = dragon.segments.length - 1; si >= 0; si--) {
+        const seg = dragon.segments[si]
+        if (seg.hp <= 0) continue
+        const dx = seg.x - rangeCenterX
+        const dy = seg.y - rangeCenterY
+        if (dx * dx + dy * dy < splashRadiusSquared) {
+          const dmg = state.bulletDamage * 0.1 * splashStacks * dt
+          if (dmg > 0) {
+            seg.hp -= dmg
+            if (seg.hp <= 0) handleSegmentDeath(state, dragon, si)
+          }
+        }
+      }
+    }
+
+    // chainBlast：连锁爆破（以随机存活龙为中心）
+    if (chainBlastStacks > 0) {
+      for (let si = dragon.segments.length - 1; si >= 0; si--) {
+        const seg = dragon.segments[si]
+        if (seg.hp <= 0) continue
+        const dx = seg.x - rangeCenterX
+        const dy = seg.y - rangeCenterY
+        if (dx * dx + dy * dy < chainRadiusSquared) {
+          const dmg = state.bulletDamage * 0.12 * chainBlastStacks * dt
+          if (dmg > 0) {
+            seg.hp -= dmg
             if (seg.hp <= 0) handleSegmentDeath(state, dragon, si)
           }
         }
@@ -1623,6 +1712,23 @@ export function startNextLevel(state: GameState) {
     state.dragonsSpawnedInLevel = 0
     state.levelTarget = nextRoutes.length > 0 ? nextRoutes.length : 3
     state.maxDragons = state.levelTarget
+
+    // 🎯 玩家伤害随关卡提升：每关 +12%
+    const levelBonus = Math.pow(1.12, state.level - 1)  // 第1关1.0, 第2关1.12, 第3关1.25...
+    const newDamage = Math.floor(15 * levelBonus)
+    state.bulletDamage = newDamage
+    console.log(`⚔️ 第${state.level}关 玩家伤害: ${state.bulletDamage} (倍率: ${levelBonus.toFixed(2)}x)`)
+
+    // 🎯 显示伤害升级飘字反馈
+    const ftDmg = getFloatTextFromPool()
+    ftDmg.x = state.playerX
+    ftDmg.y = state.playerY - 50
+    ftDmg.text = `⚔️ 伤害 +${newDamage}`
+    ftDmg.color = '#FFD700'
+    ftDmg.life = 2.0
+    ftDmg.vy = -0.8
+    ftDmg.size = 18
+    state.floatTexts.push(ftDmg)
 
     // 玩家位置重置
     const firstRoute = nextRoutes[0]

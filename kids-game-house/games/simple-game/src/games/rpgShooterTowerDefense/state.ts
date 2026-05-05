@@ -284,9 +284,9 @@ export function resetCombo(state: GameState): void {
 export function startWave(state: GameState, waveNumber: number): void {
   state.wave = waveNumber
   state.waveInProgress = true
-  state.timeLeft = getWaveDuration(waveNumber)
+  state.timeLeft = Infinity  // ✅ 无时间限制（波次持续到清完所有敌人）
   state.difficulty = 1 + (waveNumber - 1) * 0.3
-  
+
   state.floatTexts.push({
     text: `⚔️ 第${waveNumber}波!`,
     x: CANVAS_WIDTH / 2,

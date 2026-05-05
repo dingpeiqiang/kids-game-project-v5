@@ -136,23 +136,10 @@ function buildSpawnQueue(
   }
 }
 
-// 更新波次进度
+// 更新波次进度（无时间限制，波次持续到清完所有敌人）
 function updateWaveProgress(state: GameState, dt: number): void {
-  state.timeLeft -= dt
-  
-  // 时间警告
-  if (state.timeLeft <= 10 && state.timeLeft > 0 && 
-      Math.floor(state.timeLeft) !== Math.floor(state.timeLeft + dt)) {
-    state.floatTexts.push({
-      text: `⚠️ ${Math.ceil(state.timeLeft)}秒!`,
-      x: 200,
-      y: 100,
-      life: 1,
-      color: '#FF4757',
-      size: 18,
-      vy: -0.3
-    })
-  }
+  // 波次无时间限制，timeLeft 仅用于 UI 显示（设为 Infinity 表示不限时）
+  // 不再递减 timeLeft，不再触发时间警告
 }
 
 // 更新敌人生成
@@ -175,15 +162,10 @@ function updateEnemySpawning(state: GameState, dt: number): void {
   }
 }
 
-// 检查波次结束
+// 检查波次结束（无时间限制：敌人全部消灭 → 波次结束）
 function checkWaveEnd(state: GameState): void {
-  // 时间到且没有剩余敌人
-  if (state.timeLeft <= 0 && state.enemySpawnQueue.length === 0 && state.enemies.length === 0) {
-    endWave(state)
-  }
-  
-  // 时间到但还有敌人，继续直到清完
-  if (state.timeLeft <= 0 && state.enemies.length === 0 && state.enemySpawnQueue.length === 0) {
+  // 生成队列清空 + 场上无敌人 → 波次结束
+  if (state.enemySpawnQueue.length === 0 && state.enemies.length === 0) {
     endWave(state)
   }
 }
@@ -191,11 +173,9 @@ function checkWaveEnd(state: GameState): void {
 // 结束当前波次
 function endWave(state: GameState): void {
   state.waveInProgress = false
-  
-  const waveConfig = getWaveConfig(state.wave)
-  const breakTime = waveConfig.breakTime
-  
-  startBreak(state, breakTime)
+
+  // ✅ 固定 15 秒休息时间（清完敌人后等待 15s 再开始下一波）
+  startBreak(state, 15)
   
   // 波次完成奖励
   const bonusCrystals = 50 + state.wave * 20

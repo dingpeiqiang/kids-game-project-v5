@@ -411,7 +411,7 @@ export function createRenderer(
     const canvasStyle = window.getComputedStyle(canvasElement)
     const transform = canvasStyle.transform
     let currentScale = 1
-    
+
     if (transform && transform !== 'none') {
       const match = transform.match(/matrix\(([^)]+)\)/)
       if (match) {
@@ -419,14 +419,25 @@ export function createRenderer(
         currentScale = values[0] || 1  // matrix(a, b, c, d, e, f) 中的 a 值
       }
     }
-    
-    // 🎯 关键修复：当缩放比例 > 1.5 时，缩小玩家绘制尺寸
-    // 这样在移动端（通常 scale > 2）玩家不会显得过大
-    const sizeMultiplier = currentScale > 1.5 ? (1.5 / currentScale) : 1
+
+    // 🎯 玩家等级成长系统：尺寸和颜色随关卡提升
+    const level = state.level || 1
+    const levelScale = 1 + (level - 1) * 0.05  // 每关 +5% 尺寸
+    const sizeMultiplier = (currentScale > 1.5 ? (1.5 / currentScale) : 1) * levelScale
     const playerSize = 20 * sizeMultiplier  // 基础半径20
     const helmetSize = 15 * sizeMultiplier
     const capeWidth = 18 * sizeMultiplier
     const capeLength = 38 * sizeMultiplier
+
+    // 🎯 等级颜色：从银色→金色→红色（随等级变化）
+    const levelColorIndex = Math.min(Math.floor((level - 1) / 3), 3)  // 0~3
+    const levelColors = [
+      '#FFD700',  // Lv1-3: 金色
+      '#FF69B4',  // Lv4-6: 粉金
+      '#9370DB',  // Lv7-9: 紫金
+      '#00CED1',  // Lv10+: 钻石色
+    ]
+    const levelAccent = levelColors[levelColorIndex]
 
     // 🎯 增强版：无敌状态护盾特效
     if (state.invincibleTimer > 0) {
@@ -492,13 +503,14 @@ export function createRenderer(
     const capeWave = Math.sin(Date.now() / 150) * 4
     ctx.save()
     
-    // 披风渐变
+    // 披风渐变（颜色随等级变化）
     const capeGrad = ctx.createLinearGradient(0, 5 * sizeMultiplier, 0, capeLength)
-    capeGrad.addColorStop(0, 'rgba(139, 0, 0, 0.8)')
-    capeGrad.addColorStop(0.5, 'rgba(178, 34, 34, 0.6)')
-    capeGrad.addColorStop(1, 'rgba(220, 20, 60, 0.4)')
+    const capeBaseColor = levelColorIndex % 2 === 0 ? '139, 0, 0' : '0, 100, 139'  // 红色系/蓝色系交替
+    capeGrad.addColorStop(0, `rgba(${capeBaseColor}, 0.8)`)
+    capeGrad.addColorStop(0.5, `rgba(${capeBaseColor}, 0.6)`)
+    capeGrad.addColorStop(1, `rgba(${capeBaseColor}, 0.4)`)
     ctx.fillStyle = capeGrad
-    
+
     ctx.beginPath()
     ctx.moveTo(-capeWidth, 5 * sizeMultiplier)
     ctx.quadraticCurveTo(-24 * sizeMultiplier + capeWave * sizeMultiplier, 25 * sizeMultiplier, -16 * sizeMultiplier + capeWave * 1.8 * sizeMultiplier, capeLength)
@@ -506,9 +518,9 @@ export function createRenderer(
     ctx.quadraticCurveTo(24 * sizeMultiplier - capeWave * sizeMultiplier, 25 * sizeMultiplier, capeWidth, 5 * sizeMultiplier)
     ctx.closePath()
     ctx.fill()
-    
-    // 披风边缘装饰
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'
+
+    // 披风边缘装饰（等级颜色）
+    ctx.strokeStyle = `${levelAccent}80`  // 50% alpha
     ctx.lineWidth = 1.5 * sizeMultiplier
     ctx.stroke()
     ctx.restore()
@@ -524,23 +536,31 @@ export function createRenderer(
     ctx.arc(0, 0, playerSize, 0, Math.PI * 2)
     ctx.fill()
 
-    // 盔甲边缘装饰（发光效果）
-    ctx.strokeStyle = '#FFD700'  // 金色边框
+    // 盔甲边缘装饰（发光效果 - 等级颜色）
+    ctx.strokeStyle = levelAccent
     ctx.lineWidth = 2.5 * sizeMultiplier
-    ctx.shadowColor = '#FFD700'
+    ctx.shadowColor = levelAccent
     ctx.shadowBlur = 12 * sizeMultiplier
     ctx.beginPath()
     ctx.arc(0, 0, playerSize, 0, Math.PI * 2)
     ctx.stroke()
     ctx.shadowBlur = 0
-    
-    // 盔甲中心徽章
-    ctx.fillStyle = '#FFD700'
-    ctx.shadowColor = '#FFD700'
+
+    // 盔甲中心徽章（等级数字）
+    ctx.fillStyle = levelAccent
+    ctx.shadowColor = levelAccent
     ctx.shadowBlur = 8 * sizeMultiplier
     ctx.beginPath()
     ctx.arc(0, 0, 5 * sizeMultiplier, 0, Math.PI * 2)
     ctx.fill()
+
+    // 显示等级数字
+    ctx.shadowBlur = 0
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `bold ${6 * sizeMultiplier}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(String(Math.min(level, 99)), 0, 1)
     ctx.shadowBlur = 0
 
     // 3. 头盔/头饰（更立体的设计）
@@ -560,11 +580,11 @@ export function createRenderer(
     ctx.arc(0, -8 * sizeMultiplier, helmetSize, 0, Math.PI * 2)
     ctx.stroke()
 
-    // 头盔顶部装饰（羽饰 - 更大更醒目）
+    // 头盔顶部装饰（羽饰 - 更大更醒目 - 等级颜色）
     ctx.save()
     const featherWave = Math.sin(Date.now() / 180) * 2 * sizeMultiplier
-    ctx.fillStyle = '#DC143C'  // 深红色羽毛
-    ctx.shadowColor = '#DC143C'
+    ctx.fillStyle = levelAccent
+    ctx.shadowColor = levelAccent
     ctx.shadowBlur = 6 * sizeMultiplier
     ctx.beginPath()
     ctx.moveTo(-10 * sizeMultiplier + featherWave, -20 * sizeMultiplier)

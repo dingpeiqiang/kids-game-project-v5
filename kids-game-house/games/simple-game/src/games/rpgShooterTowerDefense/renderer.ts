@@ -148,8 +148,10 @@ function drawWavePanel(ctx: CanvasRenderingContext2D, state: GameState) {
     ctx.fillStyle = '#FBBF24'
     ctx.fillText(`⏱ ${Math.ceil(state.breakTime)}秒后开始`, CANVAS_WIDTH / 2, TOP_Y + 44)
   } else if (state.waveInProgress) {
-    ctx.fillStyle = '#4ADE80'
-    ctx.fillText(`⚔ ${Math.ceil(state.timeLeft)}s`, CANVAS_WIDTH / 2, TOP_Y + 44)
+    const remaining = state.enemies.length + state.enemySpawnQueue.length
+    ctx.fillStyle = remaining > 0 ? '#4ADE80' : '#00E676'  // 绿色=有敌，亮绿=清完
+    const label = remaining > 0 ? `👾 剩余 ${remaining}` : `✅ 清空!`
+    ctx.fillText(label, CANVAS_WIDTH / 2, TOP_Y + 44)
   } else {
     ctx.fillText('等待中...', CANVAS_WIDTH / 2, TOP_Y + 44)
   }
