@@ -4,8 +4,8 @@
 // ⚠️ 这是唯一的输入文件。init.ts 不再包含任何输入逻辑。
 
 import type { GameState } from './types'
-import { CANVAS_WIDTH, CANVAS_HEIGHT, TURRET_CONFIGS } from './config'
-import { placeTurret, upgradeTurret, sellTurret } from './turrets'
+import { CANVAS_WIDTH, CANVAS_HEIGHT, TURRET_CONFIGS, WALL_CONFIGS } from './config'
+import { placeTurret, placeWall, upgradeTurret, sellTurret, canPlaceWall } from './turrets'
 import type { JoystickState, MobileButtons } from './renderer'
 
 // ==================== 类型定义 ====================
@@ -99,7 +99,28 @@ function handleMapClick(
       }
     }
 
-    // ====== 3. PC端炮台选择按钮（MouseEvent 时检查） ======
+    // ====== 3. PC端标签页切换（MouseEvent 时检查） ======
+    if (isFromMouseEvent && canvas && mobileButtonsRef.current?.tabButtons) {
+      const rect = canvas.getBoundingClientRect()
+      const clickX = (e!.clientX - rect.left) * (CANVAS_WIDTH / rect.width)
+      const clickY = (e!.clientY - rect.top) * (CANVAS_HEIGHT / rect.height)
+
+      for (const btn of mobileButtonsRef.current.tabButtons) {
+        if (clickX >= btn.x && clickX <= btn.x + btn.w && clickY >= btn.y && clickY <= btn.y + btn.h) {
+          if (btn.type === 'turret-tab') {
+            state.buildMode.buildTab = 'turret'
+            state.buildMode.selectedTurret = null
+          } else if (btn.type === 'wall-tab') {
+            state.buildMode.buildTab = 'wall'
+            state.buildMode.selectedTurret = null
+          }
+          playSound('select')
+          return
+        }
+      }
+    }
+
+    // ====== 4. PC端炮台/城墙选择按钮（MouseEvent 时检查） ======
     if (isFromMouseEvent && canvas && mobileButtonsRef.current) {
       const rect = canvas.getBoundingClientRect()
       const clickX = (e!.clientX - rect.left) * (CANVAS_WIDTH / rect.width)
@@ -114,16 +135,20 @@ function handleMapClick(
             state.buildMode.selectedTrap = null
           }
           playSound('select')
-          console.log(`${state.buildMode.selectedTurret ? '✅ 选择' : '❌ 取消'} 炮台: ${btn.type}`)
+          console.log(`${state.buildMode.selectedTurret ? '✅ 选择' : '❌ 取消'}: ${btn.type}`)
           return
         }
       }
     }
   }
 
-  // ====== 4. 放置炮台（有选中类型时） ======
+  // ====== 5. 放置（有选中类型时） ======
   if (state.buildMode.selectedTurret) {
-    tryPlaceTurret(state, mousePos, playSound)
+    if (state.buildMode.buildTab === 'wall') {
+      tryPlaceWall(state, mousePos, playSound)
+    } else {
+      tryPlaceTurret(state, mousePos, playSound)
+    }
   }
 }
 
@@ -158,6 +183,41 @@ function tryPlaceTurret(
     console.log(`炮台放置成功，消耗 ${config.cost} 水晶`)
   } else {
     console.log('炮台放置失败')
+  }
+}
+
+/**
+ * 尝试放置城墙
+ */
+function tryPlaceWall(
+  state: GameState,
+  mousePos: { x: number; y: number },
+  playSound: PlaySoundFn
+): void {
+  const config = WALL_CONFIGS[state.buildMode.selectedTurret!]
+  if (!config) {
+    console.error('城墙配置不存在')
+    return
+  }
+
+  const wall = placeWall(state, mousePos.x, mousePos.y, state.buildMode.selectedTurret! as any)
+
+  if (wall) {
+    playSound('build')
+    state.floatTexts.push({
+      text: `💎 -${config.cost}`,
+      x: mousePos.x,
+      y: mousePos.y - 20,
+      life: 1.0,
+      color: '#FBBF24',
+      size: 12,
+      vy: -0.8
+    })
+    state.buildMode.selectedTurret = null
+    console.log(`城墙放置成功，消耗 ${config.cost} 水晶`)
+  } else {
+    const reason = canPlaceWall(state, mousePos.x, mousePos.y, state.buildMode.selectedTurret! as any).reason
+    console.log(`城墙放置失败: ${reason || '未知原因'}`)
   }
 }
 

@@ -744,6 +744,339 @@ export function drawTurret(
   ctx.beginPath()
   ctx.roundRect(hpX, hpY, barWidth * hpRatio, barHeight, 2)
   ctx.fill()
-  
+
+  ctx.restore()
+}
+
+// ==========================================
+// 城墙系统
+// ==========================================
+
+let wallIdCounter = 0
+function generateWallId(): string {
+  return `wall_${++wallIdCounter}`
+}
+
+// 城墙配置导入
+import { WALL_CONFIGS, MAX_TURRETS, GRID_SIZE, CANVAS_WIDTH, CANVAS_HEIGHT, SCALE_RATIO } from './config'
+import type { Wall, WallType, GameState } from './types'
+
+// 检查是否可以建造城墙
+export function canPlaceWall(
+  state: GameState,
+  x: number,
+  y: number,
+  wallType: WallType
+): { canPlace: boolean; reason?: string } {
+  const config = WALL_CONFIGS[wallType]
+
+  // 检查资源
+  if (state.resources.crystals < config.cost) {
+    return { canPlace: false, reason: '水晶不足' }
+  }
+
+  // 检查最大数量（城墙和炮台共享数量限制）
+  if (state.turrets.length + state.walls.length >= MAX_TURRETS) {
+    return { canPlace: false, reason: '已达最大数量' }
+  }
+
+  // 检查边界
+  const halfW = config.width / 2
+  const halfH = config.height / 2
+  const margin = 10
+  if (x - halfW < margin || x + halfW > CANVAS_WIDTH - margin ||
+      y - halfH < margin || y + halfH > CANVAS_HEIGHT - margin) {
+    return { canPlace: false, reason: '超出边界' }
+  }
+
+  // 检查是否与其他城墙重叠
+  for (const wall of state.walls) {
+    const dx = Math.abs(wall.x - x)
+    const dy = Math.abs(wall.y - y)
+    if (dx < (wall.width + config.width) / 2 && dy < (wall.height + config.height) / 2) {
+      return { canPlace: false, reason: '与城墙重叠' }
+    }
+  }
+
+  // 检查是否与炮台重叠
+  for (const turret of state.turrets) {
+    const dist = Math.sqrt((turret.x - x) ** 2 + (turret.y - y) ** 2)
+    if (dist < 30) {
+      return { canPlace: false, reason: '与炮台重叠' }
+    }
+  }
+
+  return { canPlace: true }
+}
+
+// 建造城墙
+export function placeWall(
+  state: GameState,
+  x: number,
+  y: number,
+  wallType: WallType
+): Wall | null {
+  if (!canPlaceWall(state, x, y, wallType).canPlace) return null
+
+  const config = WALL_CONFIGS[wallType]
+  if (!spendCrystals(state, config.cost)) return null
+
+  const wall: Wall = {
+    id: generateWallId(),
+    type: wallType,
+    x,
+    y,
+    width: config.width,
+    height: config.height,
+    hp: config.hp,
+    maxHp: config.hp,
+    level: 1,
+    lastHit: 0,
+    flashTimer: 0
+  }
+
+  state.walls.push(wall)
+  playSound('turretPlace')
+
+  // 建造特效
+  for (let i = 0; i < 15; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const speed = 2 + Math.random() * 3
+    state.particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1,
+      maxLife: 1,
+      color: config.color,
+      size: 4
+    })
+  }
+
+  return wall
+}
+
+// 城墙受伤
+export function wallHit(wall: Wall, damage: number, state: GameState): void {
+  wall.hp -= damage
+  wall.lastHit = Date.now()
+  wall.flashTimer = 0.2
+
+  // 伤害特效
+  for (let i = 0; i < 5; i++) {
+    state.particles.push({
+      x: wall.x + (Math.random() - 0.5) * wall.width,
+      y: wall.y + (Math.random() - 0.5) * wall.height,
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2,
+      life: 0.5,
+      maxLife: 0.5,
+      color: '#FF6B6B',
+      size: 3
+    })
+  }
+
+  // 城墙被摧毁
+  if (wall.hp <= 0) {
+    destroyWall(state, wall)
+  }
+}
+
+// 城墙摧毁
+export function destroyWall(state: GameState, wall: Wall): void {
+  const idx = state.walls.indexOf(wall)
+  if (idx >= 0) {
+    state.walls.splice(idx, 1)
+
+    // 摧毁特效
+    for (let i = 0; i < 20; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = 2 + Math.random() * 4
+      state.particles.push({
+        x: wall.x,
+        y: wall.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        maxLife: 1,
+        color: wall.type === 'stone' ? '#8B7355' : wall.type === 'reinforced' ? '#5A5A6E' : '#3D3D5C',
+        size: 5 + Math.random() * 3
+      })
+    }
+  }
+}
+
+// 修复城墙
+export function repairWall(state: GameState, wall: Wall): boolean {
+  if (wall.hp >= wall.maxHp) return false
+
+  const repairCost = Math.floor((wall.maxHp - wall.hp) * 0.5)
+  if (!spendCrystals(state, repairCost)) return false
+
+  wall.hp = wall.maxHp
+
+  // 修复特效
+  for (let i = 0; i < 10; i++) {
+    state.particles.push({
+      x: wall.x + (Math.random() - 0.5) * wall.width,
+      y: wall.y + (Math.random() - 0.5) * wall.height,
+      vx: 0,
+      vy: -2,
+      life: 1,
+      maxLife: 1,
+      color: '#4ADE80',
+      size: 4
+    })
+  }
+
+  return true
+}
+
+// 升级城墙
+export function upgradeWall(state: GameState, wall: Wall): boolean {
+  if (wall.level >= 3) return false
+
+  const config = WALL_CONFIGS[wall.type]
+  const upgradeCost = config.upgradePath[wall.level - 1]?.cost
+  if (!upgradeCost || !spendCrystals(state, upgradeCost)) return false
+
+  wall.level++
+
+  // 应用升级属性
+  const upgradeHp = config.upgradePath[wall.level - 2]?.hp
+  if (upgradeHp) {
+    const hpRatio = wall.hp / wall.maxHp  // 保持血量比例
+    wall.maxHp = upgradeHp
+    wall.hp = Math.floor(wall.maxHp * hpRatio)
+  }
+
+  // 升级特效
+  state.shakeAmt = 5
+  for (let i = 0; i < 20; i++) {
+    const angle = (Math.PI * 2 / 20) * i
+    state.particles.push({
+      x: wall.x,
+      y: wall.y,
+      vx: Math.cos(angle) * 3,
+      vy: Math.sin(angle) * 3,
+      life: 1,
+      maxLife: 1,
+      color: '#FFD700',
+      size: 5
+    })
+  }
+
+  return true
+}
+
+// 更新城墙（闪烁效果）
+export function updateWalls(state: GameState, dt: number): void {
+  for (const wall of state.walls) {
+    if (wall.flashTimer > 0) {
+      wall.flashTimer -= dt
+    }
+  }
+}
+
+// 绘制城墙
+export function drawWall(ctx: CanvasRenderingContext2D, wall: Wall): void {
+  ctx.save()
+  ctx.translate(wall.x, wall.y)
+
+  const w = wall.width
+  const h = wall.height
+
+  // 受伤闪烁效果
+  const flash = wall.flashTimer > 0
+
+  // 城墙底色
+  let baseColor = WALL_CONFIGS[wall.type].color
+  if (flash) {
+    baseColor = '#FFFFFF'
+  }
+
+  // 根据等级增加细节
+  const levelDetail = wall.level
+
+  // 绘制城墙主体
+  ctx.fillStyle = baseColor
+  ctx.shadowColor = 'rgba(0,0,0,0.5)'
+  ctx.shadowBlur = 5
+  ctx.shadowOffsetY = 3
+
+  // 石墙纹理
+  if (wall.type === 'stone') {
+    ctx.beginPath()
+    ctx.roundRect(-w/2, -h/2, w, h, 4)
+    ctx.fill()
+
+    // 砖块纹理线
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(-w/2 + w/3, -h/2)
+    ctx.lineTo(-w/2 + w/3, h/2)
+    ctx.moveTo(-w/2 + w*2/3, -h/2)
+    ctx.lineTo(-w/2 + w*2/3, h/2)
+    ctx.moveTo(-w/2, 0)
+    ctx.lineTo(w/2, 0)
+    ctx.stroke()
+  } else if (wall.type === 'reinforced') {
+    // 金属加固纹理
+    ctx.beginPath()
+    ctx.roundRect(-w/2, -h/2, w, h, 3)
+    ctx.fill()
+
+    // 金属条
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'
+    ctx.fillRect(-w/2, -h/4, w, h/2)
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(-w/2, -h/2, w, h)
+  } else {
+    // 堡垒 - 更有质感
+    ctx.beginPath()
+    ctx.roundRect(-w/2, -h/2, w, h, 5)
+    ctx.fill()
+
+    // 城门细节
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'
+    ctx.beginPath()
+    ctx.arc(0, 0, Math.min(w, h) / 4, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetY = 0
+
+  // 等级标识
+  if (wall.level > 1) {
+    ctx.fillStyle = '#FFD700'
+    ctx.font = `bold ${10 + wall.level * 2}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.shadowColor = '#000'
+    ctx.shadowBlur = 3
+    ctx.fillText(`★${wall.level}`, 0, 0)
+    ctx.shadowBlur = 0
+  }
+
+  // 血条
+  const barWidth = w - 10
+  const barHeight = 4
+  const barY = h/2 + 5
+
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'
+  ctx.beginPath()
+  ctx.roundRect(-barWidth/2, barY, barWidth, barHeight, 2)
+  ctx.fill()
+
+  const hpRatio = wall.hp / wall.maxHp
+  const hpColor = hpRatio > 0.6 ? '#4ADE80' : hpRatio > 0.3 ? '#FBBF24' : '#EF4444'
+  ctx.fillStyle = hpColor
+  ctx.beginPath()
+  ctx.roundRect(-barWidth/2, barY, barWidth * hpRatio, barHeight, 2)
+  ctx.fill()
+
   ctx.restore()
 }

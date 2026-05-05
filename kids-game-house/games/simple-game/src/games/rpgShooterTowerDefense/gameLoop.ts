@@ -4,7 +4,7 @@
 import type { GameState } from './types'
 import { updateWaveSystem } from './waves'
 import { updatePlayer, playerShoot, drawProjectiles } from './combat'
-import { updateTurrets, canPlaceTurret, placeTurret, upgradeTurret, sellTurret } from './turrets'
+import { updateTurrets, canPlaceTurret, placeTurret, upgradeTurret, sellTurret, updateWalls } from './turrets'
 import { updateEnemies, drawEnemy } from './enemies'
 import { updateEnemyBullets, drawEnemyBullets } from './enemyBullets'
 import { updateProjectiles } from './combat'
@@ -63,6 +63,7 @@ export function updateGame(
 
   // 更新各系统
   updateTurrets(state, now)
+  updateWalls(state, dt)
   updateEnemies(state, dt)
   updateEnemyBullets(state, dt)
   updateProjectiles(state, dt)

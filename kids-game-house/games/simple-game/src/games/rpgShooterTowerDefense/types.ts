@@ -11,6 +11,9 @@ export interface Resources {
 // 炮台类型枚举
 export type TurretType = 'laser' | 'missile' | 'frost' | 'lightning'
 
+// 城墙类型
+export type WallType = 'stone' | 'reinforced' | 'fortress'
+
 // 炮台接口
 export interface Turret {
   id: string
@@ -26,6 +29,21 @@ export interface Turret {
   lastShot: number      // 上次射击时间戳
   target: Enemy | null
   angle: number         // 炮台朝向角度
+}
+
+// 城墙接口
+export interface Wall {
+  id: string
+  type: WallType
+  x: number
+  y: number
+  width: number
+  height: number
+  hp: number
+  maxHp: number
+  level: number
+  lastHit: number       // 上次被攻击时间
+  flashTimer: number    // 受伤闪烁计时器
 }
 
 // 炮台配置
@@ -218,6 +236,7 @@ export interface GameState {
   // 塔防系统
   turrets: Turret[]
   traps: Trap[]
+  walls: Wall[]  // 城墙数组
   projectiles: Projectile[]
   enemyBullets: EnemyBullet[]  // 敌人子弹
 

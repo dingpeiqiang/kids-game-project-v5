@@ -51,6 +51,7 @@ export function createInitialState(): GameState {
     // 塔防系统
     turrets: [],
     traps: [],
+    walls: [],
     projectiles: [],
     enemyBullets: [],  // 敌人子弹数组
 

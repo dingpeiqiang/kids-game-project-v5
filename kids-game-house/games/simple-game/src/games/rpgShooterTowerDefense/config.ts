@@ -99,6 +99,60 @@ export const TURRET_DISPLAY = {
   lightning: { name: '闪电', icon: '⚡', description: '连锁攻击多个敌人' }
 }
 
+// 城墙配置
+export const WALL_CONFIGS: Record<string, {
+  cost: number
+  hp: number
+  width: number
+  height: number
+  color: string
+  upgradePath: { level: number; cost: number; hp?: number }[]
+}> = {
+  stone: {
+    cost: 30,
+    hp: 200,
+    width: 60,
+    height: 20,
+    color: '#8B7355',
+    upgradePath: [
+      { level: 2, cost: 50, hp: 350 },
+      { level: 3, cost: 100, hp: 550 }
+    ]
+  },
+  reinforced: {
+    cost: 60,
+    hp: 450,
+    width: 70,
+    height: 24,
+    color: '#5A5A6E',
+    upgradePath: [
+      { level: 2, cost: 90, hp: 700 },
+      { level: 3, cost: 180, hp: 1000 }
+    ]
+  },
+  fortress: {
+    cost: 120,
+    hp: 900,
+    width: 80,
+    height: 28,
+    color: '#3D3D5C',
+    upgradePath: [
+      { level: 2, cost: 180, hp: 1400 },
+      { level: 3, cost: 300, hp: 2000 }
+    ]
+  }
+}
+
+// 城墙显示信息
+export const WALL_DISPLAY = {
+  stone: { name: '石墙', icon: '🧱', description: '基础城墙，抵挡敌人' },
+  reinforced: { name: '强化墙', icon: '🔩', description: '更高耐久' },
+  fortress: { name: '堡垒', icon: '🏰', description: '终极防御' }
+}
+
+// 城墙碰撞箱大小（用于敌人寻路）
+export const WALL_BLOCK_SIZE = 20
+
 // 玩家初始属性
 export const PLAYER_INITIAL = {
   hp: 100,

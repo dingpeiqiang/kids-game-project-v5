@@ -1,9 +1,10 @@
 // RPG Shooter 塔防融合版 - 敌人系统
 
-import { GameState, Enemy, EnemyType, Turret } from './types'
+import { GameState, Enemy, EnemyType, Turret, Wall } from './types'
 import { ENEMY_BASE_STATS, ENEMY_SHOOT_CONFIGS, CANVAS_WIDTH, CANVAS_HEIGHT } from './config'
 import { addCrystals, addExp, addCombo, resetCombo, playerHit } from './state'
 import { playSound } from './sounds'
+import { wallHit } from './turrets'
 
 // 生成唯一ID
 let enemyIdCounter = 0
@@ -174,7 +175,15 @@ export function updateEnemies(state: GameState, dt: number): void {
 // 移动敌人
 function moveEnemy(state: GameState, enemy: Enemy, dt: number): void {
   let targetX: number, targetY: number
-  
+
+  // 检查前方是否有城墙阻挡（优先攻击城墙）
+  const blockingWall = findBlockingWall(state, enemy)
+  if (blockingWall) {
+    // 停下来攻击城墙
+    attackWall(enemy, blockingWall, state, dt)
+    return
+  }
+
   // 自爆虫追踪炮台
   if (enemy.type === 'exploder' && enemy.targetTurret) {
     const turret = state.turrets.find(t => t.id === enemy.targetTurret!.id)
@@ -191,22 +200,126 @@ function moveEnemy(state: GameState, enemy: Enemy, dt: number): void {
     targetX = state.player.x
     targetY = state.player.y
   }
-  
+
   // 计算移动方向
   const dx = targetX - enemy.x
   const dy = targetY - enemy.y
   const dist = Math.sqrt(dx * dx + dy * dy)
-  
+
   if (dist > 0) {
     // 应用减速效果
     const currentSpeed = enemy.slowed ? enemy.speed * 0.5 : enemy.speed
-    
+
     enemy.x += (dx / dist) * currentSpeed * 60 * dt
     enemy.y += (dy / dist) * currentSpeed * 60 * dt
   }
-  
+
   // 更新路径索引（用于first优先级）
   enemy.pathIndex++
+}
+
+// 寻找挡路的城墙
+function findBlockingWall(state: GameState, enemy: Enemy): any {
+  const attackRange = 25  // 攻击距离
+
+  for (const wall of state.walls) {
+    const halfW = wall.width / 2 + 10  // 加上敌人大小
+    const halfH = wall.height / 2 + 10
+
+    // 检查敌人是否在城墙附近
+    if (enemy.x >= wall.x - halfW - attackRange &&
+        enemy.x <= wall.x + halfW + attackRange &&
+        enemy.y >= wall.y - halfH - attackRange &&
+        enemy.y <= wall.y + halfH + attackRange) {
+      return wall
+    }
+  }
+  return null
+}
+
+// 攻击城墙
+function attackWall(enemy: Enemy, wall: any, state: GameState, dt: number): void {
+  // 敌人对城墙造成伤害（基于敌人大小的攻击间隔）
+  const attackInterval = 1.0  // 每秒攻击一次
+
+  // 简化的攻击计时（使用 elapsed 累计）
+  if (!enemy.lastShot) enemy.lastShot = 0
+  const now = Date.now()
+
+  if (now - enemy.lastShot >= attackInterval * 1000) {
+    enemy.lastShot = now
+
+    // 造成伤害
+    wall.hp -= enemy.damage
+    wall.lastHit = now
+    wall.flashTimer = 0.2
+
+    // 伤害数字
+    state.floatTexts.push({
+      text: `-${enemy.damage}`,
+      x: wall.x + (Math.random() - 0.5) * 20,
+      y: wall.y - 15,
+      life: 1.0,
+      color: '#FF4757',
+      size: 14,
+      vy: -1.2
+    })
+
+    // 攻击特效
+    for (let i = 0; i < 5; i++) {
+      state.particles.push({
+        x: wall.x + (Math.random() - 0.5) * wall.width,
+        y: wall.y + (Math.random() - 0.5) * wall.height,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 2,
+        life: 0.5,
+        maxLife: 0.5,
+        color: '#FF6B6B',
+        size: 3
+      })
+    }
+
+    // 检查城墙是否被摧毁
+    if (wall.hp <= 0) {
+      const idx = state.walls.indexOf(wall)
+      if (idx >= 0) {
+        state.walls.splice(idx, 1)
+
+        // 摧毁特效
+        for (let i = 0; i < 20; i++) {
+          const angle = Math.random() * Math.PI * 2
+          const speed = 2 + Math.random() * 4
+          state.particles.push({
+            x: wall.x,
+            y: wall.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1,
+            maxLife: 1,
+            color: WALL_COLORS[wall.type],
+            size: 5 + Math.random() * 3
+          })
+        }
+
+        state.floatTexts.push({
+          text: '城墙摧毁!',
+          x: wall.x,
+          y: wall.y,
+          life: 1.5,
+          color: '#FF6B6B',
+          size: 18,
+          vy: -1.0
+        })
+      }
+    }
+  }
+}
+
+// 城墙颜色映射（用于特效）
+const WALL_COLORS: Record<string, string> = {
+  stone: '#8B7355',
+  reinforced: '#5A5A6E',
+  fortress: '#3D3D5C'
 }
 
 // 寻找最近的炮台

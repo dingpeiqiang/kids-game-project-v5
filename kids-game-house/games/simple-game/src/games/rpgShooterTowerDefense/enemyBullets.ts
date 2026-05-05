@@ -3,6 +3,7 @@
 import { GameState, EnemyBullet } from './types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, SCALE_RATIO } from './config'
 import { playerHit } from './state'
+import { wallHit } from './turrets'
 
 // 生成唯一ID
 let bulletIdCounter = 0
@@ -120,6 +121,60 @@ export function updateEnemyBullets(state: GameState, dt: number): void {
 
     if (hitTurret) {
       state.enemyBullets.splice(i, 1)
+      continue
+    }
+
+    // 检查与城墙的碰撞
+    let hitWall = false
+    for (const wall of state.walls) {
+      // 简单的 AABB 碰撞检测
+      const halfW = wall.width / 2
+      const halfH = wall.height / 2
+      if (bullet.x >= wall.x - halfW - bullet.size &&
+          bullet.x <= wall.x + halfW + bullet.size &&
+          bullet.y >= wall.y - halfH - bullet.size &&
+          bullet.y <= wall.y + halfH + bullet.size) {
+
+        // 范围伤害
+        if (bullet.aoeRadius) {
+          applyAoeDamage(state, bullet.x, bullet.y, bullet.damage, bullet.aoeRadius, bullet.color)
+        } else {
+          wallHit(wall, bullet.damage, state)
+
+          state.floatTexts.push({
+            text: `-${bullet.damage}`,
+            x: wall.x + (Math.random() - 0.5) * 20,
+            y: wall.y - 15,
+            life: 1.0,
+            color: '#FF4757',
+            size: 14,
+            vy: -1.2
+          })
+        }
+
+        // 击中特效
+        for (let j = 0; j < 3; j++) {
+          const angle = Math.random() * Math.PI * 2
+          const speed = 1 + Math.random() * 2
+          state.particles.push({
+            x: bullet.x,
+            y: bullet.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0.3 + Math.random() * 0.2,
+            maxLife: 0.5,
+            color: '#A0A0A0',
+            size: 2 + Math.random() * 2
+          })
+        }
+
+        hitWall = true
+        break
+      }
+    }
+
+    if (hitWall) {
+      state.enemyBullets.splice(i, 1)
     }
   }
 }
@@ -159,6 +214,15 @@ function applyAoeDamage(
       if (turret.hp <= 0) {
         state.turrets.splice(i, 1)
       }
+    }
+  }
+
+  // 对范围内的城墙造成伤害
+  for (let i = state.walls.length - 1; i >= 0; i--) {
+    const wall = state.walls[i]
+    const dist = Math.sqrt((wall.x - x) ** 2 + (wall.y - y) ** 2)
+    if (dist <= radius + Math.max(wall.width, wall.height) / 2) {
+      wallHit(wall, damage, state)
     }
   }
 
