@@ -1170,7 +1170,8 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         const btnPanelX = (CANVAS_WIDTH - btnPanelW) / 2
         const btnPanelY = CANVAS_HEIGHT - btnPanelH - 40
         
-        drawPanel(btnPanelX, btnPanelY, btnPanelW, btnPanelH, 'rgba(10, 20, 35, 0.92)')
+        // ✅ 增加不透明度，避免底部出现颜色痕迹
+        drawPanel(btnPanelX, btnPanelY, btnPanelW, btnPanelH, 'rgba(10, 20, 35, 0.98)')
         
         const startX = btnPanelX + 8
         const btnY = btnPanelY + (btnPanelH - btnH) / 2
@@ -1225,7 +1226,8 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         const pcPanelY = CANVAS_HEIGHT - btnH - 20
         
         // PC端面板（始终显示，让PC用户也能点击选择）
-        drawPanel(pcPanelX, pcPanelY, pcPanelW, btnH + 16, 'rgba(15, 25, 45, 0.85)')
+        // ✅ 增加不透明度，避免底部出现颜色痕迹
+        drawPanel(pcPanelX, pcPanelY, pcPanelW, btnH + 16, 'rgba(15, 25, 45, 0.95)')
         
         // 炮台选择按钮
         turretTypes.forEach((type, i) => {
