@@ -807,8 +807,18 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     ctx.restore()
     
     // ✅ 虚拟摇杆（在裁剪区域外绘制，确保始终可见）
-    if (state.gameStarted && !state.gameEnded) {
+    // 检查是否为手机端
+    const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window)
+    
+    if (isMobile && state.gameStarted && !state.gameEnded) {
       import('./config').then(({ SCALE_RATIO }) => {
+        console.log('🕹️ 绘制摇杆:', {
+          baseX: joystick.baseX,
+          baseY: joystick.baseY,
+          radius: joystick.radius,
+          active: joystick.active
+        })
+        
         if (joystick.active) {
           // ✅ 摇杆底座（固定位置 - 增强视觉效果）
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
