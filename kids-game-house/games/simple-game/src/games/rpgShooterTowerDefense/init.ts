@@ -805,6 +805,56 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     
     // ✅ 恢复裁剪和震动状态
     ctx.restore()
+    
+    // ✅ 虚拟摇杆（在裁剪区域外绘制，确保始终可见）
+    if (state.gameStarted && !state.gameEnded) {
+      import('./config').then(({ SCALE_RATIO }) => {
+        if (joystick.active) {
+          // ✅ 摇杆底座（固定位置 - 增强视觉效果）
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+          ctx.lineWidth = 3
+          ctx.beginPath()
+          ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
+          ctx.stroke()
+          
+          // ✅ 底座填充（半透明）
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
+          ctx.fill()
+          
+          // ✅ 摇杆钮（增强颜色）
+          ctx.fillStyle = 'rgba(78, 205, 196, 0.8)'
+          ctx.beginPath()
+          ctx.arc(joystick.currentX, joystick.currentY, joystick.knobRadius, 0, Math.PI * 2)
+          ctx.fill()
+          
+          // ✅ 摇杆钮边框
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
+          ctx.lineWidth = 2
+          ctx.stroke()
+          
+          // ✅ 摇杆提示文字（简化）
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
+          ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.fillText('移动', joystick.baseX, joystick.baseY + joystick.radius + 12)
+        } else {
+          // ✅ 未激活时显示提示（更明显）
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
+          ctx.beginPath()
+          ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
+          ctx.fill()
+          
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'
+          ctx.lineWidth = 2
+          ctx.stroke()
+          
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
+          ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.fillText('👆 触摸此处移动', joystick.baseX, joystick.baseY + joystick.radius + 12)
+        }
+      })
+    }
   }
   
   // 绘制网格
@@ -1349,56 +1399,7 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       ctx.fillText(`最终得分: ${state.resources.score}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30)
     }
     
-    // 虚拟摇杆（仅在游戏进行中显示）
-    if (state.gameStarted && !state.gameEnded) {
-      // 根据屏幕尺寸调整
-      import('./config').then(({ SCALE_RATIO }) => {
-        if (joystick.active) {
-          // ✅ 摇杆底座（固定位置 - 增强视觉效果）
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'  // ✅ 提高透明度
-          ctx.lineWidth = 3
-          ctx.beginPath()
-          ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
-          ctx.stroke()
-          
-          // ✅ 底座填充（半透明）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
-          ctx.fill()
-          
-          // ✅ 摇杆钮（增强颜色）
-          ctx.fillStyle = 'rgba(78, 205, 196, 0.8)'  // ✅ 提高不透明度
-          ctx.beginPath()
-          ctx.arc(joystick.currentX, joystick.currentY, joystick.knobRadius, 0, Math.PI * 2)
-          ctx.fill()
-          
-          // ✅ 摇杆钮边框
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
-          ctx.lineWidth = 2
-          ctx.stroke()
-          
-          // ✅ 摇杆提示文字（简化）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
-          ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
-          ctx.textAlign = 'center'
-          ctx.fillText('移动', joystick.baseX, joystick.baseY + joystick.radius + 12)
-        } else {
-          // ✅ 未激活时显示提示（更明显）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
-          ctx.beginPath()
-          ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
-          ctx.fill()
-          
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'
-          ctx.lineWidth = 2
-          ctx.stroke()
-          
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
-          ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
-          ctx.textAlign = 'center'
-          ctx.fillText('👆 触摸此处移动', joystick.baseX, joystick.baseY + joystick.radius + 12)
-        }
-      })
-    }
+    // ✅ 虚拟摇杆已移至 render 函数末尾（裁剪区域外绘制）
   }
   
   // 清理函数
