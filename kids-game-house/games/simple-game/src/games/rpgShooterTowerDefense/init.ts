@@ -807,63 +807,96 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     ctx.restore()
     
     // ✅ 虚拟摇杆（在裁剪区域外绘制，确保始终可见）
-    // 检查是否为手机端
     const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window)
     
     if (isMobile && state.gameStarted && !state.gameEnded) {
-      import('./config').then(({ SCALE_RATIO }) => {
-        console.log('🕹️ 绘制摇杆:', {
-          baseX: joystick.baseX,
-          baseY: joystick.baseY,
-          radius: joystick.radius,
-          active: joystick.active
-        })
+      // 直接用同步方式绘制（不再异步import）
+      if (joystick.active) {
+        // === 摇杆激活状态 ===
+        // 底座圆环
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
+        ctx.stroke()
+
+        // 底座填充
+        ctx.fillStyle = 'rgba(78, 205, 196, 0.25)'
+        ctx.beginPath()
+        ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
+        ctx.fill()
+
+        // 摇杆钮（实心高亮）
+        ctx.fillStyle = '#4ECDC4'
+        ctx.beginPath()
+        ctx.arc(joystick.currentX, joystick.currentY, joystick.knobRadius, 0, Math.PI * 2)
+        ctx.fill()
+
+        // 摇杆钮白色边框
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        // 连接线（底座到摇杆钮）
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(joystick.baseX, joystick.baseY)
+        ctx.lineTo(joystick.currentX, joystick.currentY)
+        ctx.stroke()
+      } else {
+        // === 未激活状态：醒目的静态提示 ===
+        const bx = joystick.baseX
+        const by = joystick.baseY
+        const r = joystick.radius
         
-        if (joystick.active) {
-          // ✅ 摇杆底座（固定位置 - 增强视觉效果）
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'  // ✅ 从0.4提高到0.6
-          ctx.lineWidth = 3
-          ctx.beginPath()
-          ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
-          ctx.stroke()
-          
-          // ✅ 底座填充（半透明）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'  // ✅ 从0.08提高到0.15
-          ctx.fill()
-          
-          // ✅ 摇杆钮（增强颜色）
-          ctx.fillStyle = 'rgba(78, 205, 196, 0.9)'  // ✅ 从0.8提高到0.9
-          ctx.beginPath()
-          ctx.arc(joystick.currentX, joystick.currentY, joystick.knobRadius, 0, Math.PI * 2)
-          ctx.fill()
-          
-          // ✅ 摇杆钮边框
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'  // ✅ 从0.6提高到0.8
-          ctx.lineWidth = 2
-          ctx.stroke()
-          
-          // ✅ 摇杆提示文字（简化）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'  // ✅ 从0.6提高到0.8
-          ctx.font = `bold ${10 * SCALE_RATIO}px sans-serif`  // ✅ 从9增加到10
-          ctx.textAlign = 'center'
-          ctx.fillText('移动', joystick.baseX, joystick.baseY + joystick.radius + 15)  // ✅ 调整位置
-        } else {
-          // ✅ 未激活时显示提示（大幅提高可见度）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'  // ✅ 从0.15提高到0.3
-          ctx.beginPath()
-          ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
-          ctx.fill()
-          
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'  // ✅ 从0.25提高到0.5
-          ctx.lineWidth = 3  // ✅ 从2增加到3
-          ctx.stroke()
-          
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'  // ✅ 从0.4提高到0.7
-          ctx.font = `bold ${10 * SCALE_RATIO}px sans-serif`  // ✅ 从9增加到10
-          ctx.textAlign = 'center'
-          ctx.fillText('👆 触摸此处移动', joystick.baseX, joystick.baseY + joystick.radius + 15)  // ✅ 调整位置
-        }
-      })
+        // 外圈虚线（醒目青色）
+        ctx.save()
+        ctx.strokeStyle = '#4ECDC4'
+        ctx.lineWidth = 2.5
+        ctx.setLineDash([6, 4])
+        ctx.beginPath()
+        ctx.arc(bx, by, r, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.setLineDash([])
+        
+        // 内圈淡色填充
+        ctx.fillStyle = 'rgba(78, 205, 196, 0.12)'
+        ctx.beginPath()
+        ctx.arc(bx, by, r - 2, 0, Math.PI * 2)
+        ctx.fill()
+        
+        // 中心点
+        ctx.fillStyle = 'rgba(78, 205, 196, 0.5)'
+        ctx.beginPath()
+        ctx.arc(bx, by, 6, 0, Math.PI * 2)
+        ctx.fill()
+
+        // 方向箭头指示（上/左/右/下）
+        ctx.strokeStyle = 'rgba(78, 205, 196, 0.4)'
+        ctx.lineWidth = 1.5
+        const arrowLen = 10
+        const arrowGap = r - 8
+        // 上箭头
+        ctx.beginPath(); ctx.moveTo(bx, by - arrowGap); ctx.lineTo(bx, by - arrowGap - arrowLen); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(bx - 3, by - arrowGap - arrowLen + 4); ctx.lineTo(bx, by - arrowGap - arrowLen); ctx.lineTo(bx + 3, by - arrowGap - arrowLen + 4); ctx.stroke()
+        // 下箭头
+        ctx.beginPath(); ctx.moveTo(bx, by + arrowGap); ctx.lineTo(bx, by + arrowGap + arrowLen); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(bx - 3, by + arrowGap + arrowLen - 4); ctx.lineTo(bx, by + arrowGap + arrowLen); ctx.lineTo(bx + 3, by + arrowGap + arrowLen - 4); ctx.stroke()
+        // 左箭头
+        ctx.beginPath(); ctx.moveTo(bx - arrowGap, by); ctx.lineTo(bx - arrowGap - arrowLen, by); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(bx - arrowGap - arrowLen + 4, by - 3); ctx.lineTo(bx - arrowGap - arrowLen, by); ctx.lineTo(bx - arrowGap - arrowLen + 4, by + 3); ctx.stroke()
+        // 右箭头
+        ctx.beginPath(); ctx.moveTo(bx + arrowGap, by); ctx.lineTo(bx + arrowGap + arrowLen, by); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(bx + arrowGap + arrowLen - 4, by - 3); ctx.lineTo(bx + arrowGap + arrowLen, by); ctx.lineTo(bx + arrowGap + arrowLen - 4, by + 3); ctx.stroke()
+
+        // 文字标签（醒目）
+        ctx.fillStyle = '#4ECDC4'
+        ctx.font = 'bold 11px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('🎮 移动', bx, by + r + 18)
+        ctx.restore()
+      }
     }
   }
   

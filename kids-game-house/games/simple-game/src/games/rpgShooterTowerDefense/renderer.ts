@@ -467,6 +467,9 @@ export function render(
   // 清空画布
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
   
+  // 提前判断是否为手机端（摇杆提示等UI依赖此变量）
+  const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window)
+  
   // 绘制网格背景
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'
   ctx.lineWidth = 1
@@ -510,38 +513,55 @@ export function render(
     // 绘制玩家子弹
     drawProjectiles(ctx, state)
     
-    // 绘制虚拟摇杆区域提示（手机端静态指示）
-    if (isMobile && state.gameStarted && !state.gameEnded) {
-      // 摇杆区域：左侧30%宽度 + 底部50%高度
-      const joystickZoneX = 10
-      const joystickZoneY = CANVAS_HEIGHT * 0.5
-      const joystickZoneW = CANVAS_WIDTH * 0.3 - 20
-      const joystickZoneH = CANVAS_HEIGHT * 0.5 - 20
-      
-      // 半透明背景
-      ctx.fillStyle = 'rgba(78, 205, 196, 0.08)'
-      ctx.beginPath()
-      ctx.roundRect(joystickZoneX, joystickZoneY, joystickZoneW, joystickZoneH, 12)
-      ctx.fill()
-      
-      // 边框
-      ctx.strokeStyle = 'rgba(78, 205, 196, 0.25)'
-      ctx.lineWidth = 2
-      ctx.setLineDash([6, 4])
-      ctx.stroke()
-      ctx.setLineDash([])
-      
-      // 中心指示点
-      ctx.fillStyle = 'rgba(78, 205, 196, 0.4)'
-      ctx.beginPath()
-      ctx.arc(joystickZoneX + joystickZoneW / 2, joystickZoneY + joystickZoneH / 2, 8, 0, Math.PI * 2)
-      ctx.fill()
-      
-      // 文字提示
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
-      ctx.font = '10px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('← 移动遥感 →', joystickZoneX + joystickZoneW / 2, joystickZoneY + joystickZoneH / 2 + 24)
+    // 绘制虚拟摇杆区域提示（静态指示 — PC/手机都显示）
+    {
+      const isJoystickVisible = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window)
+      if (isJoystickVisible && state.gameStarted && !state.gameEnded) {
+        const jx = 10
+        const jy = CANVAS_HEIGHT * 0.48
+        const jw = CANVAS_WIDTH * 0.28
+        const jh = CANVAS_HEIGHT * 0.46
+        
+        // 半透明背景（使用辅助函数保证兼容）
+        ctx.save()
+        ctx.fillStyle = 'rgba(78, 205, 196, 0.15)'
+        drawRoundedRect(ctx, jx, jy, jw, jh, 16)
+        ctx.fill()
+        
+        // 虚线边框
+        ctx.strokeStyle = 'rgba(78, 205, 196, 0.55)'
+        ctx.lineWidth = 2
+        ctx.setLineDash([8, 5])
+        drawRoundedRect(ctx, jx, jy, jw, jh, 16)
+        ctx.stroke()
+        ctx.setLineDash([])
+        
+        // 外圈指示
+        ctx.strokeStyle = 'rgba(78, 205, 196, 0.4)'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(jx + jw / 2, jy + jh / 2, 30, 0, Math.PI * 2)
+        ctx.stroke()
+        
+        // 中心点
+        ctx.fillStyle = 'rgba(78, 205, 196, 0.6)'
+        ctx.beginPath()
+        ctx.arc(jx + jw / 2, jy + jh / 2, 10, 0, Math.PI * 2)
+        ctx.fill()
+        
+        // 文字提示
+        ctx.fillStyle = 'rgba(200, 230, 255, 0.75)'
+        ctx.font = 'bold 13px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('🕹 移动', jx + jw / 2, jy + jh / 2 + 32)
+        
+        // 方向箭头提示
+        ctx.fillStyle = 'rgba(78, 205, 196, 0.5)'
+        ctx.font = '18px sans-serif'
+        ctx.fillText('↖ ↗', jx + jw / 2, jy + 22)
+        ctx.fillText('↙ ↘', jx + jw / 2, jy + jh - 14)
+        ctx.restore()
+      }
     }
     
     // 绘制虚拟摇杆（激活状态）
@@ -570,8 +590,7 @@ export function render(
       drawUpgradeDialog(ctx, state, selectedTurretForUpgrade, upgradeDialogPos, mobileButtonsRef)
     }
     
-    // 绘制底部按钮
-    const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window)
+    // 绘制底部按钮（isMobile 已在函数开头定义）
     drawTurretButtons(ctx, state, mobileButtonsRef, isMobile)
   }
   
