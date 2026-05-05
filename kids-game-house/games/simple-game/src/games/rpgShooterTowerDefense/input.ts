@@ -142,8 +142,12 @@ export function initInputSystem(
       }
     }
     
-    // 检查是否点击了左下角区域（启动虚拟摇杆）
-    if (touchX < CANVAS_WIDTH * 0.4 && touchY > CANVAS_HEIGHT * 0.6) {
+    // 检查是否点击了左下角区域（启动虚拟摇杆，排除右下角按钮区域）
+    // 摇杆区域：左侧30%宽度 + 底部50%高度（避开右下角炮台按钮）
+    const inJoystickZone = touchX < CANVAS_WIDTH * 0.3 && touchY > CANVAS_HEIGHT * 0.5
+    // 炮台按钮区域：右下角
+    const inTurretZone = touchX > CANVAS_WIDTH * 0.7 && touchY > CANVAS_HEIGHT * 0.5
+    if (inJoystickZone && !inTurretZone) {
       // 启动虚拟摇杆
       joystick.active = true
       joystick.startX = touchX

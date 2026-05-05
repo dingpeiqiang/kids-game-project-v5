@@ -331,55 +331,56 @@ export function drawTurretButtons(
   const btnW = 58, btnH = 38, btnGap = 6
   
   if (isMobile) {
-    // 手机端：底部炮台选择面板
-    const btnPanelW = 340
-    const btnPanelH = 55
-    const btnPanelX = (CANVAS_WIDTH - btnPanelW) / 2
-    const btnPanelY = CANVAS_HEIGHT - btnPanelH - 40
+    // 手机端：右下角紧凑2x2炮台按钮网格（避免与左侧摇杆重叠）
+    const btnPanelW = 88
+    const btnPanelH = 88
+    const btnPanelX = CANVAS_WIDTH - btnPanelW - 10
+    const btnPanelY = CANVAS_HEIGHT - btnPanelH - 10
+    const smallBtnW = 38, smallBtnH = 38, smallGap = 6
     
     drawPanel(ctx, btnPanelX, btnPanelY, btnPanelW, btnPanelH, 'rgba(10, 20, 35, 0.92)')
     
-    const startX = btnPanelX + 8
-    const btnY = btnPanelY + (btnPanelH - btnH) / 2
-    
     turretTypes.forEach((type, i) => {
-      const bx = startX + i * (btnW + btnGap)
+      const col = i % 2
+      const row = Math.floor(i / 2)
+      const bx = btnPanelX + 6 + col * (smallBtnW + smallGap)
+      const by = btnPanelY + 6 + row * (smallBtnH + smallGap)
       const isSelected = state.buildMode.selectedTurret === type
       
       const baseColor = turretColors[type]
       ctx.fillStyle = isSelected ? `${baseColor}CC` : 'rgba(255, 255, 255, 0.08)'
       ctx.beginPath()
-      ctx.roundRect(bx, btnY, btnW, btnH, 8)
+      ctx.roundRect(bx, by, smallBtnW, smallBtnH, 6)
       ctx.fill()
       
       ctx.strokeStyle = isSelected ? baseColor : 'rgba(255,255,255,0.2)'
-      ctx.lineWidth = isSelected ? 3 : 1
+      ctx.lineWidth = isSelected ? 2 : 1
       ctx.stroke()
       
       ctx.fillStyle = isSelected ? '#fff' : baseColor
-      ctx.font = '14px sans-serif'
+      ctx.font = '16px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(turretIcons[type], bx + btnW / 2, btnY + 15)
-      
-      ctx.fillStyle = isSelected ? '#fff' : '#9CA3AF'
-      ctx.font = '8px sans-serif'
-      ctx.fillText(turretNames[type], bx + btnW / 2, btnY + 28)
+      ctx.fillText(turretIcons[type], bx + smallBtnW / 2, by + 16)
       
       const costs: Record<string, number> = { laser: 40, missile: 80, frost: 50, lightning: 120 }
       ctx.fillStyle = isSelected ? '#fff' : '#FBBF24'
       ctx.font = 'bold 7px sans-serif'
-      ctx.fillText(`💎${costs[type]}`, bx + btnW / 2, btnY + 38)
+      ctx.fillText(`💎${costs[type]}`, bx + smallBtnW / 2, by + 32)
     })
     
     // 保存按钮区域
     mobileButtonsRef.current = {
-      turretButtons: turretTypes.map((type, i) => ({
-        type,
-        x: startX + i * (btnW + btnGap),
-        y: btnY,
-        w: btnW,
-        h: btnH
-      })),
+      turretButtons: turretTypes.map((type, i) => {
+        const col = i % 2
+        const row = Math.floor(i / 2)
+        return {
+          type,
+          x: btnPanelX + 6 + col * (smallBtnW + smallGap),
+          y: btnPanelY + 6 + row * (smallBtnH + smallGap),
+          w: smallBtnW,
+          h: smallBtnH
+        }
+      }),
       buildButton: null
     }
   } else {
@@ -509,7 +510,41 @@ export function render(
     // 绘制玩家子弹
     drawProjectiles(ctx, state)
     
-    // 绘制虚拟摇杆
+    // 绘制虚拟摇杆区域提示（手机端静态指示）
+    if (isMobile && state.gameStarted && !state.gameEnded) {
+      // 摇杆区域：左侧30%宽度 + 底部50%高度
+      const joystickZoneX = 10
+      const joystickZoneY = CANVAS_HEIGHT * 0.5
+      const joystickZoneW = CANVAS_WIDTH * 0.3 - 20
+      const joystickZoneH = CANVAS_HEIGHT * 0.5 - 20
+      
+      // 半透明背景
+      ctx.fillStyle = 'rgba(78, 205, 196, 0.08)'
+      ctx.beginPath()
+      ctx.roundRect(joystickZoneX, joystickZoneY, joystickZoneW, joystickZoneH, 12)
+      ctx.fill()
+      
+      // 边框
+      ctx.strokeStyle = 'rgba(78, 205, 196, 0.25)'
+      ctx.lineWidth = 2
+      ctx.setLineDash([6, 4])
+      ctx.stroke()
+      ctx.setLineDash([])
+      
+      // 中心指示点
+      ctx.fillStyle = 'rgba(78, 205, 196, 0.4)'
+      ctx.beginPath()
+      ctx.arc(joystickZoneX + joystickZoneW / 2, joystickZoneY + joystickZoneH / 2, 8, 0, Math.PI * 2)
+      ctx.fill()
+      
+      // 文字提示
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
+      ctx.font = '10px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('← 移动遥感 →', joystickZoneX + joystickZoneW / 2, joystickZoneY + joystickZoneH / 2 + 24)
+    }
+    
+    // 绘制虚拟摇杆（激活状态）
     if (joystick.active) {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
       ctx.lineWidth = 3
