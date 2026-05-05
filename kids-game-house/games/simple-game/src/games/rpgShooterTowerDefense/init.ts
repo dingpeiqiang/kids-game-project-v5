@@ -130,9 +130,9 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   const joystick: JoystickState = {
     active: false,
     baseX: CANVAS_WIDTH * 0.16,
-    baseY: CANVAS_HEIGHT * 0.88,
+    baseY: CANVAS_HEIGHT * 0.80,  // 调整到 80% 避免与底部UI重叠
     currentX: CANVAS_WIDTH * 0.16,
-    currentY: CANVAS_HEIGHT * 0.88,
+    currentY: CANVAS_HEIGHT * 0.80,
     radius: 65,        // ↑ 50→65：更大拖拽范围
     knobRadius: 30,    // ↑ 22→30：更大的触摸目标
     touchId: null

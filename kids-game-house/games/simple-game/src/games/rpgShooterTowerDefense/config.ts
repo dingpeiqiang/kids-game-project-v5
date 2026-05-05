@@ -7,7 +7,7 @@ import { TurretConfig, WaveInfo } from './types'
 // 游戏内容以此为基准绘制，Canvas 会通过 transform scale 适配屏幕
 // ============================================
 export const BASE_W = 400
-export const BASE_H = 600
+export const BASE_H = 700
 
 // 实际 Canvas 尺寸 = 设计尺寸（固定）
 export const CANVAS_WIDTH = BASE_W
@@ -15,7 +15,7 @@ export const CANVAS_HEIGHT = BASE_H
 
 // Canvas 总尺寸（可能大于游戏内容区）
 export const CANVAS_W = 400
-export const CANVAS_H = 600
+export const CANVAS_H = 700
 
 // 游戏区域偏移（如果 Canvas > BASE_W/BASE_H，用于居中游戏内容）
 export const CANVAS_OFFSET_X = (CANVAS_W - BASE_W) / 2
