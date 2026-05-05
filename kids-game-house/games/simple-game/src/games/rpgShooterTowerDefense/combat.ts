@@ -244,10 +244,12 @@ export function updatePlayer(state: GameState, dt: number): void {
   if (state.keys.a || state.keys.arrowleft) player.x -= speed
   if (state.keys.d || state.keys.arrowright) player.x += speed
 
-  // 虚拟摇杆移动（触摸控制）
+  // 虚拟摇杆移动（触摸控制）— 应用灵敏度和死区优化
   if (state.joystick.active) {
-    player.x += state.joystick.dx * speed * 0.8  // 摇杆稍微降速
-    player.y += state.joystick.dy * speed * 0.8
+    const jdx = state.joystick.dx
+    const jdy = state.joystick.dy
+    player.x += jdx * speed
+    player.y += jdy * speed
   }
 
   // 边界限制

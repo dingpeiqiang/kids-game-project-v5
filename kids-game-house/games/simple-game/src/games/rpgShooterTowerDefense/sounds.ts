@@ -485,7 +485,7 @@ export class BGMManager {
     }
   }
 
-  isPlaying(): boolean {
+  getIsPlaying(): boolean {
     return this.isPlaying
   }
 }
