@@ -231,32 +231,64 @@ export const ENEMY_BASE_STATS = {
 
 // 敌人射击配置（波次解锁）
 export const ENEMY_SHOOT_CONFIGS = {
-  // 第5波开始：射手型敌人（tank）可以射击
+  // 第3波开始：basic 可以射击
+  basic: {
+    minWave: 3,
+    shootCooldown: 2500,  // 2.5秒冷却
+    shootRange: 150,
+    bulletDamage: 8,
+    bulletSpeed: 2.5,
+    bulletColor: '#FF6B6B',
+    bulletSize: 3
+  },
+  // 第5波开始：fast 可以射击
+  fast: {
+    minWave: 5,
+    shootCooldown: 2000,  // 2秒冷却
+    shootRange: 120,
+    bulletDamage: 6,
+    bulletSpeed: 4,
+    bulletColor: '#00E5FF',
+    bulletSize: 2
+  },
+  // 第5波开始：tank 可以射击（单体高伤害）
   tank: {
     minWave: 5,
-    shootCooldown: 3000,  // 3秒冷却
+    shootCooldown: 3500,  // 3.5秒冷却
     shootRange: 200,
-    bulletDamage: 15,
+    bulletDamage: 20,
     bulletSpeed: 3,
     bulletColor: '#FFD93D',
-    bulletSize: 4
+    bulletSize: 5
   },
-  // 第8波开始：Boss可以射击
+  // 第6波开始：splitter 可以射击（范围伤害）
+  splitter: {
+    minWave: 6,
+    shootCooldown: 3000,  // 3秒冷却
+    shootRange: 160,
+    bulletDamage: 12,
+    bulletSpeed: 2.5,
+    bulletColor: '#9B59B6',
+    bulletSize: 4,
+    aoeRadius: 40  // 范围伤害半径
+  },
+  // 第8波开始：Boss可以射击（范围伤害）
   boss: {
     minWave: 8,
     shootCooldown: 2000,  // 2秒冷却
     shootRange: 250,
-    bulletDamage: 25,
+    bulletDamage: 35,
     bulletSpeed: 4,
     bulletColor: '#FF0000',
-    bulletSize: 6
+    bulletSize: 8,
+    aoeRadius: 50  // 范围伤害半径
   },
-  // 第12波开始：飞行者可以射击
+  // 第10波开始：flyer可以射击
   flyer: {
-    minWave: 12,
+    minWave: 10,
     shootCooldown: 2500,  // 2.5秒冷却
     shootRange: 180,
-    bulletDamage: 12,
+    bulletDamage: 10,
     bulletSpeed: 3.5,
     bulletColor: '#87CEEB',
     bulletSize: 3

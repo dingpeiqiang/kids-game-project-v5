@@ -29,6 +29,10 @@ export function createEnemy(
   const speedMultiplier = Math.pow(1.05, wave - 1)
   const finalSpeed = base.speed * speedMultiplier
   
+  // 伤害随波次提升：每波+8%（基础伤害 * 难度 * 波次系数）
+  const waveDamageMultiplier = Math.pow(1.08, wave - 1)
+  const finalDamage = Math.floor(base.damage * difficultyMultiplier * waveDamageMultiplier)
+  
   return {
     id: generateEnemyId(),
     type,
@@ -38,7 +42,7 @@ export function createEnemy(
     maxHp: Math.floor(base.hp * difficultyMultiplier),
     speed: finalSpeed,
     baseSpeed: finalSpeed,
-    damage: Math.floor(base.damage * difficultyMultiplier),
+    damage: finalDamage,
     score: base.score,
     crystals: base.crystals,
     color: base.color,
@@ -688,7 +692,8 @@ function updateEnemyShooting(
     speed: shootConfig.bulletSpeed,
     color: shootConfig.bulletColor,
     size: shootConfig.bulletSize,
-    owner: enemy.id
+    owner: enemy.id,
+    aoeRadius: shootConfig.aoeRadius
   })
   
   // 更新最后射击时间
