@@ -363,254 +363,79 @@ export function drawTurretButtons(
     return
   }
 
-  if (isMobile) {
-    // === 手机端：底部中央面板（标签 + 按钮独立行，不与左侧摇杆重叠） ===
-    const btnW = 48, btnH = 40, btnGap = 5
-    const cols = 4  // 4个炮台横排
-    const tabH = 18, tabGap = 6, panelPadding = 6
-    const panelH = tabH + tabGap + btnH + panelPadding * 2
-    const panelW = cols * btnW + (cols - 1) * btnGap + panelPadding * 2
-    const panelX = (CANVAS_WIDTH - panelW) / 2  // 水平居中
-    const panelY = CANVAS_HEIGHT - panelH - 8  // 底部留8px边距
+  // === 手机端：底部中央面板，炮台+城墙全部平铺显示（无tab） ===
+  const btnW = 44, btnH = 38, btnGap = 4
+  const cols = 7  // 4炮台 + 3城墙 = 7个按钮
+  const panelPadding = 5
+  const panelW = cols * btnW + (cols - 1) * btnGap + panelPadding * 2
+  const panelH = btnH + panelPadding * 2
+  const panelX = (CANVAS_WIDTH - panelW) / 2
+  const panelY = CANVAS_HEIGHT - panelH - 8
 
-    // 面板背景
-    drawPanel(ctx, panelX, panelY, panelW, panelH, 'rgba(10, 20, 35, 0.95)')
+  drawPanel(ctx, panelX, panelY, panelW, panelH, 'rgba(10, 20, 35, 0.95)')
 
-    // 标签页（紧贴面板顶部）
-    const tabY = panelY + panelPadding
-    const tabW = 36
-    const tabTotalW = tabW * 2 + 6  // 两个标签 + 间距
-    const tabStartX = panelX + (panelW - tabTotalW) / 2
+  const btnStartX = panelX + panelPadding
+  const btnY = panelY + panelPadding
 
-    const turretTabX = tabStartX
-    const wallTabX = tabStartX + tabW + 6
+  const btnList: { type: string; x: number; y: number; w: number; h: number }[] = []
 
-    // 炮台标签
-    ctx.fillStyle = state.buildMode.buildTab === 'turret' ? '#4ECDC4' : 'rgba(255,255,255,0.2)'
-    drawRoundedRectPath(ctx, turretTabX, tabY, tabW, tabH, 4)
+  // 全部7个按钮：炮台4个 + 城墙3个
+  const allTypes = ['laser', 'missile', 'frost', 'lightning', 'stone', 'reinforced', 'fortress']
+  const allIcons: Record<string, string> = {
+    laser: '🔵', missile: '🚀', frost: '❄️', lightning: '⚡',
+    stone: '🧱', reinforced: '🔩', fortress: '🏰'
+  }
+  const allNames: Record<string, string> = {
+    laser: '激光', missile: '导弹', frost: '冰冻', lightning: '闪电',
+    stone: '石墙', reinforced: '强化', fortress: '堡垒'
+  }
+  const allColors: Record<string, string> = {
+    laser: '#00D9FF', missile: '#FF6B6B', frost: '#7FDBFF', lightning: '#FFD700',
+    stone: '#8B7355', reinforced: '#5A5A6E', fortress: '#3D3D5C'
+  }
+  const allCosts: Record<string, number> = {
+    laser: 40, missile: 80, frost: 50, lightning: 120,
+    stone: 30, reinforced: 60, fortress: 120
+  }
+
+  for (let i = 0; i < allTypes.length; i++) {
+    const type = allTypes[i]
+    const bx = btnStartX + i * (btnW + btnGap)
+    const isSelected = state.buildMode.selectedTurret === type
+    const baseColor = allColors[type]
+
+    ctx.fillStyle = isSelected ? baseColor + 'DD' : 'rgba(255, 255, 255, 0.08)'
+    drawRoundedRectPath(ctx, bx, btnY, btnW, btnH, 6)
     ctx.fill()
-    ctx.fillStyle = '#fff'
-    ctx.font = '8px sans-serif'
+    ctx.strokeStyle = isSelected ? baseColor : 'rgba(255,255,255,0.1)'
+    ctx.lineWidth = isSelected ? 2 : 1
+    ctx.stroke()
+
+    ctx.fillStyle = isSelected ? '#fff' : baseColor
+    ctx.font = '13px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('炮台', turretTabX + tabW / 2, tabY + 12)
+    ctx.fillText(allIcons[type], bx + btnW / 2, btnY + 14)
 
-    // 城墙标签
-    ctx.fillStyle = state.buildMode.buildTab === 'wall' ? '#4ECDC4' : 'rgba(255,255,255,0.2)'
-    drawRoundedRectPath(ctx, wallTabX, tabY, tabW, tabH, 4)
-    ctx.fill()
-    ctx.fillStyle = '#fff'
-    ctx.fillText('城墙', wallTabX + tabW / 2, tabY + 12)
+    ctx.fillStyle = isSelected ? '#fff' : '#9CA3AF'
+    ctx.font = '6px sans-serif'
+    ctx.fillText(allNames[type], bx + btnW / 2, btnY + 24)
 
-    const tabButtons = [
-      { type: 'turret-tab', x: turretTabX, y: tabY, w: tabW, h: tabH },
-      { type: 'wall-tab', x: wallTabX, y: tabY, w: tabW, h: tabH }
-    ]
+    ctx.fillStyle = isSelected ? '#fff' : '#FBBF24'
+    ctx.font = 'bold 6px sans-serif'
+    ctx.fillText(`💎${allCosts[type]}`, bx + btnW / 2, btnY + 33)
 
-    // 按钮行（标签下方）
-    const btnY = tabY + tabH + tabGap
-    const btnStartX = panelX + panelPadding
+    btnList.push({ type, x: bx, y: btnY, w: btnW, h: btnH })
+  }
 
-    // 构建按钮列表
-    const btnList: { type: string; x: number; y: number; w: number; h: number }[] = []
-
-    if (state.buildMode.buildTab === 'wall') {
-      // 3个城墙横排（扩展到右侧）
-      const wallTypes = ['stone', 'reinforced', 'fortress']
-      const wallIcons: Record<string, string> = { stone: '🧱', reinforced: '🔩', fortress: '🏰' }
-      const wallNames: Record<string, string> = { stone: '石墙', reinforced: '强化', fortress: '堡垒' }
-      const wallColors: Record<string, string> = { stone: '#8B7355', reinforced: '#5A5A6E', fortress: '#3D3D5C' }
-      const wallCosts: Record<string, number> = { stone: 30, reinforced: 60, fortress: 120 }
-
-      for (let i = 0; i < wallTypes.length; i++) {
-        const type = wallTypes[i]
-        const bx = btnStartX + i * (btnW + btnGap)
-        const isSelected = state.buildMode.selectedTurret === type
-        const baseColor = wallColors[type]
-
-        ctx.fillStyle = isSelected ? baseColor + 'DD' : 'rgba(255, 255, 255, 0.08)'
-        drawRoundedRectPath(ctx, bx, btnY, btnW, btnH, 6)
-        ctx.fill()
-        ctx.strokeStyle = isSelected ? baseColor : 'rgba(255,255,255,0.12)'
-        ctx.lineWidth = isSelected ? 2 : 1
-        ctx.stroke()
-
-        ctx.fillStyle = isSelected ? '#fff' : baseColor
-        ctx.font = '14px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText(wallIcons[type], bx + btnW / 2, btnY + 15)
-
-        ctx.fillStyle = isSelected ? '#fff' : '#9CA3AF'
-        ctx.font = '7px sans-serif'
-        ctx.fillText(wallNames[type], bx + btnW / 2, btnY + 26)
-
-        ctx.fillStyle = isSelected ? '#fff' : '#FBBF24'
-        ctx.font = 'bold 7px sans-serif'
-        ctx.fillText(`💎${wallCosts[type]}`, bx + btnW / 2, btnY + 36)
-
-        btnList.push({ type, x: bx, y: btnY, w: btnW, h: btnH })
-      }
-    } else {
-      // 4个炮台横排
-      const costs: Record<string, number> = { laser: 40, missile: 80, frost: 50, lightning: 120 }
-
-      for (let i = 0; i < turretTypes.length; i++) {
-        const type = turretTypes[i]
-        const bx = btnStartX + i * (btnW + btnGap)
-        const isSelected = state.buildMode.selectedTurret === type
-        const baseColor = turretColors[type]
-
-        ctx.fillStyle = isSelected ? baseColor + 'DD' : 'rgba(255, 255, 255, 0.08)'
-        drawRoundedRectPath(ctx, bx, btnY, btnW, btnH, 6)
-        ctx.fill()
-        ctx.strokeStyle = isSelected ? baseColor : 'rgba(255,255,255,0.12)'
-        ctx.lineWidth = isSelected ? 2 : 1
-        ctx.stroke()
-
-        ctx.fillStyle = isSelected ? '#fff' : baseColor
-        ctx.font = '14px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText(turretIcons[type], bx + btnW / 2, btnY + 15)
-
-        ctx.fillStyle = isSelected ? '#fff' : '#9CA3AF'
-        ctx.font = '7px sans-serif'
-        ctx.fillText(turretNames[type], bx + btnW / 2, btnY + 26)
-
-        ctx.fillStyle = isSelected ? '#fff' : '#FBBF24'
-        ctx.font = 'bold 7px sans-serif'
-        ctx.fillText(`💎${costs[type]}`, bx + btnW / 2, btnY + 36)
-
-        btnList.push({ type, x: bx, y: btnY, w: btnW, h: btnH })
-      }
-    }
-
-    // ✅ 保留 drawUpgradeDialog 设置的 upgradeButton / sellButton（不被覆盖）
-    const prevUpg = mobileButtonsRef.current?.upgradeButton
-    const prevSell = mobileButtonsRef.current?.sellButton
-    mobileButtonsRef.current = {
-      turretButtons: btnList,
-      buildButton: null,
-      upgradeButton: prevUpg,
-      sellButton: prevSell,
-      tabButtons
-    }
-  } else {
-    // === PC端：居中横排 ===
-    const btnW = 52, btnH = 34, btnGap = 5
-
-    // 标签页
-    const tabW = 36, tabH = 16
-    const tabY = CANVAS_HEIGHT - 68
-    const pcPanelW = turretTypes.length * (btnW + btnGap) + btnGap * 2 + 20 + tabW * 2 + 10
-    const pcPanelX = (CANVAS_WIDTH - pcPanelW) / 2
-    const pcPanelY = CANVAS_HEIGHT - btnH - 20
-
-    drawPanel(ctx, pcPanelX, pcPanelY, pcPanelW, btnH + 16 + tabH + 8, 'rgba(15, 25, 45, 0.95)')
-
-    // 标签页按钮
-    const turretTabX = pcPanelX + btnGap
-    const wallTabX = pcPanelX + btnGap + tabW + 8
-
-    ctx.fillStyle = state.buildMode.buildTab === 'turret' ? '#4ECDC4' : 'rgba(255,255,255,0.2)'
-    drawRoundedRectPath(ctx, turretTabX, tabY, tabW, tabH, 4)
-    ctx.fill()
-    ctx.fillStyle = '#fff'
-    ctx.font = '9px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('炮台', turretTabX + tabW/2, tabY + 11)
-
-    ctx.fillStyle = state.buildMode.buildTab === 'wall' ? '#4ECDC4' : 'rgba(255,255,255,0.2)'
-    drawRoundedRectPath(ctx, wallTabX, tabY, tabW, tabH, 4)
-    ctx.fill()
-    ctx.fillText('城墙', wallTabX + tabW/2, tabY + 11)
-
-    if (!mobileButtonsRef.current) mobileButtonsRef.current = { turretButtons: [], buildButton: null }
-    mobileButtonsRef.current.turretButtons = []
-
-    // 根据当前标签显示内容
-    const currentTypes = state.buildMode.buildTab === 'wall'
-      ? ['stone', 'reinforced', 'fortress']
-      : turretTypes
-
-    if (state.buildMode.buildTab === 'wall') {
-      const wallIcons: Record<string, string> = { stone: '🧱', reinforced: '🔩', fortress: '🏰' }
-      const wallNames: Record<string, string> = { stone: '石墙', reinforced: '强化', fortress: '堡垒' }
-      const wallColors: Record<string, string> = { stone: '#8B7355', reinforced: '#5A5A6E', fortress: '#3D3D5C' }
-      const wallCosts: Record<string, number> = { stone: 30, reinforced: 60, fortress: 120 }
-
-      currentTypes.forEach((type, i) => {
-        const bx = pcPanelX + btnGap + tabW * 2 + 18 + i * (btnW + btnGap)
-        const selected = state.buildMode.selectedTurret === type
-        const baseColor = wallColors[type]
-
-        ctx.fillStyle = selected ? `${baseColor}CC` : 'rgba(255,255,255,0.1)'
-        drawRoundedRectPath(ctx, bx, pcPanelY + 8 + tabH + 8, btnW, btnH, 6)
-        ctx.fill()
-        if (selected) {
-          ctx.strokeStyle = baseColor
-          ctx.lineWidth = 3
-          ctx.stroke()
-        }
-
-        ctx.fillStyle = selected ? '#fff' : baseColor
-        ctx.font = '11px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText(wallIcons[type], bx + btnW / 2, pcPanelY + 22 + tabH + 8)
-
-        ctx.fillStyle = selected ? '#fff' : '#9CA3AF'
-        ctx.font = '8px sans-serif'
-        ctx.fillText(wallNames[type], bx + btnW / 2, pcPanelY + 36 + tabH + 8)
-
-        ctx.fillStyle = selected ? '#fff' : '#FBBF24'
-        ctx.font = 'bold 7px sans-serif'
-        ctx.fillText(`💎${wallCosts[type]}`, bx + btnW / 2, pcPanelY + 48 + tabH + 8)
-
-        mobileButtonsRef.current!.turretButtons.push({ type, x: bx, y: pcPanelY + 8 + tabH + 8, w: btnW, h: btnH })
-      })
-    } else {
-      currentTypes.forEach((type, i) => {
-        const bx = pcPanelX + btnGap + tabW * 2 + 18 + i * (btnW + btnGap)
-        const selected = state.buildMode.selectedTurret === type
-        const baseColor = turretColors[type]
-
-        ctx.fillStyle = selected ? `${baseColor}CC` : 'rgba(255,255,255,0.1)'
-        drawRoundedRectPath(ctx, bx, pcPanelY + 8 + tabH + 8, btnW, btnH, 6)
-        ctx.fill()
-        if (selected) {
-          ctx.strokeStyle = baseColor
-          ctx.lineWidth = 3
-          ctx.stroke()
-        }
-
-        ctx.fillStyle = selected ? '#fff' : baseColor
-        ctx.font = '11px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText(turretIcons[type], bx + btnW / 2, pcPanelY + 22 + tabH + 8)
-
-        ctx.fillStyle = selected ? '#fff' : '#9CA3AF'
-        ctx.font = '8px sans-serif'
-        ctx.fillText(turretNames[type], bx + btnW / 2, pcPanelY + 36 + tabH + 8)
-
-        const costs: Record<string, number> = { laser: 40, missile: 80, frost: 50, lightning: 120 }
-        ctx.fillStyle = selected ? '#fff' : '#FBBF24'
-        ctx.font = 'bold 7px sans-serif'
-        ctx.fillText(`💎${costs[type]}`, bx + btnW / 2, pcPanelY + 48 + tabH + 8)
-
-        mobileButtonsRef.current!.turretButtons.push({ type, x: bx, y: pcPanelY + 8 + tabH + 8, w: btnW, h: btnH })
-      })
-    }
-
-    // PC端提示
-    if (state.buildMode.selectedTurret) {
-      ctx.fillStyle = '#4ECDC4'
-      ctx.font = '9px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(`已选: ${state.buildMode.selectedTurret} | 点击地图放置 | ESC取消`, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 8)
-    } else {
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'
-      ctx.font = '9px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('点击底部按钮选择炮台/城墙类型', CANVAS_WIDTH / 2, CANVAS_HEIGHT - 8)
-    }
+  // ✅ 保留 drawUpgradeDialog 设置的 upgradeButton / sellButton
+  const prevUpg = mobileButtonsRef.current?.upgradeButton
+  const prevSell = mobileButtonsRef.current?.sellButton
+  mobileButtonsRef.current = {
+    turretButtons: btnList,
+    buildButton: null,
+    upgradeButton: prevUpg,
+    sellButton: prevSell,
+    tabButtons: []
   }
 }
 
