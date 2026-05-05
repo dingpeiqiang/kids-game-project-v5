@@ -259,6 +259,20 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         joystick.currentY = joystick.startY + dy * ratio
       }
       
+      // ✅ 计算归一化的方向向量（-1 到 1）
+      const normalizedDx = (joystick.currentX - joystick.startX) / joystick.radius
+      const normalizedDy = (joystick.currentY - joystick.startY) / joystick.radius
+      
+      // ✅ 更新 state.joystick，用于玩家移动
+      state.joystick = {
+        active: true,
+        dx: normalizedDx,
+        dy: normalizedDy,
+        baseX: joystick.startX,
+        baseY: joystick.startY,
+        touchId: null
+      }
+      
       // 计算缩放比例
       const scaleX = CANVAS_WIDTH / rect.width
       const scaleY = CANVAS_HEIGHT / rect.height
@@ -276,6 +290,9 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       mousePos.y = (touch.clientY - rect.top) * scaleY
       state.buildMode.previewX = mousePos.x
       state.buildMode.previewY = mousePos.y
+      
+      // ✅ 清除摇杆状态
+      state.joystick = { active: false, dx: 0, dy: 0, baseX: 0, baseY: 0, touchId: null }
     }
   }
   
@@ -390,6 +407,8 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     // 停止虚拟摇杆
     if (joystick.active) {
       joystick.active = false
+      // ✅ 清除 state.joystick 状态
+      state.joystick = { active: false, dx: 0, dy: 0, baseX: 0, baseY: 0, touchId: null }
     }
     
     // 检测手机按钮点击
