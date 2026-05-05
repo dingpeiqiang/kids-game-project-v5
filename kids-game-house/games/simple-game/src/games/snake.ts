@@ -886,21 +886,26 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
 
     // 游戏结束覆盖
     if (!alive) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
-      ctx.fillRect(0, 0, W, H)
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+      ctx.fillRect(0, H / 2 - 80, W, 160)
 
-      ctx.fillStyle = '#FF4757'
+      ctx.fillStyle = '#FFD700'
       ctx.font = 'bold 28px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('💀 游戏结束', W / 2, H / 2 - 30)
+      ctx.shadowColor = '#FFD700'
+      ctx.shadowBlur = 10
+      ctx.fillText('🏆 游戏结束', W / 2, H / 2 - 40)
+      ctx.shadowBlur = 0
 
       ctx.fillStyle = '#fff'
-      ctx.font = '16px sans-serif'
-      ctx.fillText(`最终长度: ${snake.length}  得分: ${score}`, W / 2, H / 2 + 10)
+      ctx.font = '18px sans-serif'
+      ctx.fillText(`最终得分 ${score}`, W / 2, H / 2 - 5)
+      ctx.fillText(`蛇长度: ${snake.length}`, W / 2, H / 2 + 20)
+      ctx.fillText(`最高连击 ${combo}x`, W / 2, H / 2 + 45)
 
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'
-      ctx.font = '13px sans-serif'
-      ctx.fillText('即将返回...', W / 2, H / 2 + 40)
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'
+      ctx.font = '14px sans-serif'
+      ctx.fillText('点击重新开始', W / 2, H / 2 + 70)
     }
 
     ctx.restore()

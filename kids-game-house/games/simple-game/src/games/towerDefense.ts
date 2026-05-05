@@ -81,6 +81,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
   let floatingTexts: { x: number; y: number; text: string; color: string; life: number }[] = []
   let flashEffect = 0 // 闪光效果
   let slowMotion = 0 // 慢动作效果
+  let isGameOver = false // 游戏结束标志
   
   // 游戏会话管理
   let gameStartTime = Date.now() // 游戏开始时间
@@ -934,6 +935,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
 
   // === 更新逻辑 ===
   function update() {
+    if (isGameOver) return // 游戏结束后停止更新
     frameCount++
     
     // 慢动作效果处理
@@ -1272,6 +1274,7 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
 
   // === 游戏结束 ===
   async function endGame() {
+    isGameOver = true // 设置游戏结束标志
     cancelAnimationFrame(animId)
     
     // 计算游戏时长（秒数）
@@ -1368,6 +1371,27 @@ export function initTowerDefense(engine: GameEngine, onEnd: () => void) {
       ctx.fillText('3.连续击杀获得连击奖励和道具', 20, H - 44)
       ctx.fillText('4.充能满后点击💥释放全屏爆炸', 20, H - 31)
       ctx.fillText('5.道具助你轻松通关，尽情享受', 20, H - 18)
+    }
+
+    // === 游戏结束界面（Canvas绘制，与 dragonShooter 统一风格）===
+    if (isGameOver) {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'
+      ctx.fillRect(0, H / 2 - 80, W, 160)
+      ctx.fillStyle = '#FFD700'
+      ctx.font = 'bold 28px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.shadowColor = '#FFD700'
+      ctx.shadowBlur = 10
+      ctx.fillText('🏆 游戏结束', W / 2, H / 2 - 40)
+      ctx.shadowBlur = 0
+      ctx.fillStyle = '#fff'
+      ctx.font = '18px sans-serif'
+      ctx.fillText(`最终得分 ${score}`, W / 2, H / 2 - 5)
+      ctx.fillText(`到达波次: ${wave + 1}`, W / 2, H / 2 + 20)
+      ctx.fillText(`最高连击 ${maxCombo}x`, W / 2, H / 2 + 45)
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'
+      ctx.font = '14px sans-serif'
+      ctx.fillText('点击重新开始', W / 2, H / 2 + 70)
     }
 
     ctx.restore()

@@ -588,14 +588,13 @@ function recalculateBaseDamage(state: GameState) {
   }
   
   state.bulletDamage = Math.floor(damage)
-  console.log(`🎯 重新计算伤害: ${state.bulletDamage} (heavyHit=${S.heavyHitStacks || 0}, defDown=${S.defDownStacks || 0}, crit=${S.critStacks || 0})`)
 }
 
 /** 🎯 重新计算基础冷却（考虑所有冷却相关buff） */
 function recalculateBaseCooldown(state: GameState) {
   const S = state as any
   let cooldown = 350  // 基础冷却
-  
+
   // 应用所有活跃的冷却buff
   if (S.rapidFireStacks > 0) {
     cooldown *= Math.pow(0.6, S.rapidFireStacks)
@@ -603,9 +602,8 @@ function recalculateBaseCooldown(state: GameState) {
   if (S.rapidBurstStacks > 0) {
     cooldown *= Math.pow(0.3, S.rapidBurstStacks)
   }
-  
+
   state.shootCooldown = Math.max(30, cooldown)
-  console.log(`🎯 重新计算冷却: ${state.shootCooldown}ms (rapidFire=${S.rapidFireStacks || 0}, rapidBurst=${S.rapidBurstStacks || 0})`)
 }
 
 /** 🎯 重新计算基础穿透（考虑所有穿透相关buff） */
@@ -1244,7 +1242,7 @@ export function spawnDragons(state: GameState) {
     const dragon = _createDragon(0, type, route, state.level, routeIdx)
     dragon.id = ++state.lastDragonId
     state.dragons.push(dragon)
-    console.log(`🐉 生成 ${type} 龙 #${dragon.id}，路线 #${routeIdx}「${route.name}」，节数: ${dragon.segments.length}`)
+    // 生成龙
   }
 
   state.dragonsSpawnedInLevel = allRoutes.length

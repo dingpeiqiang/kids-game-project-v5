@@ -126,25 +126,14 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
 
   // 注册游戏结束回调（3秒后返回主界面）
   setGameOverCallback(async () => {
-    //  关键修复：游戏结束时打印最终分数，确保分数已累积
-    console.log('[打龙] 游戏结束，最终分数:', {
-      score: state.score,
-      level: state.level,
-      totalKills: state.totalKills,
-      phase: state.phase,
-    })
+    // 关键修复：游戏结束时打印最终分数，确保分数已累积
+    // 游戏结束，不打 log
     
     // 🎯 提交游戏积分到后台
     if (userService.isLoggedIn && userService.current && sessionId && sessionToken) {
       try {
         const duration = Math.floor((Date.now() - gameStartTime) / 1000)  // 秒
-        console.log('[打龙] 准备提交分数:', {
-          sessionId,
-          score: state.score,
-          level: state.level,
-          duration,
-          kills: state.totalKills,
-        })
+        // 准备提交分数
         
         const result = await apiSubmitGameResult({
           sessionId: sessionId,
@@ -166,7 +155,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
           console.warn('[打龙] 分数提交失败:', result.msg)
         }
       } catch (error) {
-        console.error('[打龙] 提交分数异常:', error)
+        // 提交分数异常
       }
     }
     

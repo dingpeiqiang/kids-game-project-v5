@@ -218,19 +218,23 @@ export function updateClouds(state: GameState, BASE_W: number, BASE_H: number) {
   }
 }
 
-// 颜色变亮/变暗
+// 颜色变亮/变暗（带缓存，避免每帧重复解析 hex）
+const _lightenCache = new Map<string, string>()
 export function lightenColor(color: string, percent: number): string {
+  const key = `${color}_${percent}`
+  const cached = _lightenCache.get(key)
+  if (cached) return cached
   let hex = color.replace('#', '')
-  // 展开 3 位 hex → 6 位
-  if (hex.length === 3) {
-    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
-  }
+  if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
   const num = parseInt(hex, 16)
   const amt = Math.round(2.55 * percent)
   const R = Math.max(0, Math.min(255, (num >> 16) + amt))
   const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt))
   const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt))
-  return `#${(1 << 24 | R << 16 | G << 8 | B).toString(16).slice(1).padStart(6, '0')}`
+  const result = `#${(1 << 24 | R << 16 | G << 8 | B).toString(16).slice(1).padStart(6, '0')}`
+  if (_lightenCache.size > 500) _lightenCache.clear()
+  _lightenCache.set(key, result)
+  return result
 }
 
 /** 生成爆炸粒子（别名，兼容 gameState.ts 调用） */

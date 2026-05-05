@@ -37,6 +37,29 @@ export function createRenderer(
     ctx.restore()
   }
 
+  // ========== 龙鳞纹理 offscreen canvas 缓存 ==========
+  const _scalePatternCache = new Map<string, HTMLCanvasElement>()
+
+  function getScalePatternCanvas(size: number, color: string): HTMLCanvasElement {
+    const key = `${Math.round(size)}_${color}`
+    let cached = _scalePatternCache.get(key)
+    if (!cached) {
+      cached = document.createElement('canvas')
+      cached.width = Math.ceil(size * 2.4)
+      cached.height = Math.ceil(size * 2.4)
+      const cc = cached.getContext('2d')!
+      const cx = cached.width / 2, cy = cached.height / 2
+      cc.strokeStyle = 'rgba(255,255,255,0.2)'; cc.lineWidth = 1
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+        cc.beginPath()
+        cc.arc(Math.cos(a) * size * 0.65, Math.sin(a) * size * 0.65, size * 0.18, 0, Math.PI * 2)
+        cc.stroke()
+      }
+      _scalePatternCache.set(key, cached)
+    }
+    return cached
+  }
+
   // ========== 路线轨迹（offscreen canvas 缓存，避免每帧重绘所有点） ==========
   const _routeCache = new Map<string, HTMLCanvasElement>()
 
@@ -152,10 +175,10 @@ export function createRenderer(
         ctx.globalAlpha = 1; ctx.shadowBlur = 0
       }
 
-      // 龙纹
+      // 龙纹（已缓存到 offscreen canvas，直接 drawImage）
       if (seg.hasPattern && !seg.attachedPowerUp) {
-        ctx.strokeStyle = `rgba(255,255,255,0.25)`; ctx.lineWidth = 1.5
-        for (let r = 0.4; r < 0.95; r += 0.2) { ctx.beginPath(); ctx.arc(0, 0, s * r, 0, Math.PI * 2); ctx.stroke() }
+        const pc = getScalePatternCanvas(s, seg.color)
+        ctx.drawImage(pc, -pc.width / 2, -pc.height / 2)
       }
 
       // 减速冰霜
@@ -218,10 +241,10 @@ export function createRenderer(
       ctx.beginPath(); ctx.arc(-s2 * 0.3, -s2 * 0.35, s2 * 0.35, 0, Math.PI * 2); ctx.fill()
       ctx.globalAlpha = 1
 
-      // 龙鳞纹理
-      ctx.strokeStyle = `rgba(255,255,255,0.2)`; ctx.lineWidth = 1
-      for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
-        ctx.beginPath(); ctx.arc(Math.cos(a) * s2 * 0.65, Math.sin(a) * s2 * 0.65, s2 * 0.18, 0, Math.PI * 2); ctx.stroke()
+      // 龙鳞纹理（已缓存 offscreen canvas）
+      {
+        const pc = getScalePatternCanvas(s2, seg.color)
+        ctx.drawImage(pc, -pc.width / 2, -pc.height / 2)
       }
 
       // 眼睛
@@ -229,13 +252,18 @@ export function createRenderer(
       ctx.beginPath(); ctx.arc(-s2 * 0.28, -s2 * 0.08, s2 * 0.22, 0, Math.PI * 2); ctx.fill()
       ctx.beginPath(); ctx.arc(s2 * 0.28, -s2 * 0.08, s2 * 0.22, 0, Math.PI * 2); ctx.fill()
 
-      // 眼珠（竖瞳，去掉嵌套save）
+      // 眼珠（竖瞳，省掉不必要的 save/restore）
       const blink = Math.sin(t * 0.0015) > 0.97 ? 0.1 : 1
       ctx.fillStyle = '#111111'
-      ctx.save(); ctx.scale(1, blink)
-      ctx.beginPath(); ctx.ellipse(-s2 * 0.28, -s2 * 0.08, s2 * 0.08, s2 * 0.16, 0, 0, Math.PI * 2); ctx.fill()
-      ctx.beginPath(); ctx.ellipse(s2 * 0.28, -s2 * 0.08, s2 * 0.08, s2 * 0.16, 0, 0, Math.PI * 2); ctx.fill()
-      ctx.restore()
+      if (blink < 1) {
+        ctx.save(); ctx.scale(1, blink)
+        ctx.beginPath(); ctx.ellipse(-s2 * 0.28, -s2 * 0.08, s2 * 0.08, s2 * 0.16, 0, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.ellipse(s2 * 0.28, -s2 * 0.08, s2 * 0.08, s2 * 0.16, 0, 0, Math.PI * 2); ctx.fill()
+        ctx.restore()
+      } else {
+        ctx.beginPath(); ctx.ellipse(-s2 * 0.28, -s2 * 0.08, s2 * 0.08, s2 * 0.16, 0, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.ellipse(s2 * 0.28, -s2 * 0.08, s2 * 0.08, s2 * 0.16, 0, 0, Math.PI * 2); ctx.fill()
+      }
 
       // 眼神光
       ctx.fillStyle = 'rgba(255,255,255,0.9)'
@@ -1181,36 +1209,17 @@ export function createRenderer(
     ctx.shadowBlur = 0
   }
 
-  // ========== 开始界面 ==========
+  // ========== 开始界面（与 spaceShooter/rpgShooter 同一模板风格） ==========
   function drawStartScreen() {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
-    ctx.fillRect(0, BASE_H / 2 - 180, BASE_W, 360)
-
-    ctx.fillStyle = COLORS.gold
-    ctx.shadowColor = COLORS.gold
-    ctx.shadowBlur = 20
-    ctx.font = 'bold 30px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('🐉 打龙小游戏', BASE_W / 2, BASE_H / 2 - 100)
-
-    ctx.shadowBlur = 0
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = '14px sans-serif'
-    ctx.fillText('国风卡通·休闲割草', BASE_W / 2, BASE_H / 2 - 70)
-    ctx.fillText('滑动控制·自动射击', BASE_W / 2, BASE_H / 2 - 50)
-    ctx.fillText('龙体分裂·越打越爽', BASE_W / 2, BASE_H / 2 - 30)
-
-    ctx.fillStyle = COLORS.accent
-    ctx.font = 'bold 16px sans-serif'
-    ctx.fillText('🎮 开始闯关', BASE_W / 2, BASE_H / 2 + 10)
-
-    ctx.fillStyle = '#9370DB'
-    ctx.font = 'bold 14px sans-serif'
-    ctx.fillText('✏️ 绘制路线', BASE_W / 2, BASE_H / 2 + 45)
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
-    ctx.font = '12px sans-serif'
-    ctx.fillText('点击对应按钮', BASE_W / 2, BASE_H / 2 + 75)
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(0, BASE_H / 2 - 65, BASE_W, 130)
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center'
+    ctx.fillText('🐉 打龙小游戏', BASE_W / 2, BASE_H / 2 - 20)
+    ctx.font = '14px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.7)'
+    ctx.fillText('滑动控制飞船，自动射击消灭神龙！', BASE_W / 2, BASE_H / 2 + 8)
+    ctx.fillStyle = '#00E5FF'; ctx.font = 'bold 15px sans-serif'
+    ctx.fillText('🤖 自动射击！只需移动飞船！', BASE_W / 2, BASE_H / 2 + 30)
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '12px sans-serif'
+    ctx.fillText('点击屏幕开始 · 连击越多越爽！', BASE_W / 2, BASE_H / 2 + 50)
   }
 
   // ========== 路线编辑界面 ==========
@@ -1385,26 +1394,26 @@ export function createRenderer(
 
   // ========== 游戏结束 ==========
   function drawGameOver(victory: boolean) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-    ctx.fillRect(0, 0, BASE_W, BASE_H)
-
-    ctx.fillStyle = victory ? '#90EE90' : COLORS.accent
-    ctx.font = 'bold 30px sans-serif'
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+    ctx.fillRect(0, BASE_H / 2 - 80, BASE_W, 160)
+    
+    ctx.fillStyle = '#FFD700'
+    ctx.font = 'bold 28px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(victory ? '🎉 通关!' : '💀 失败', BASE_W / 2, BASE_H / 2 - 80)
-
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = '16px sans-serif'
-    ctx.fillText(`最高连击: ${state.maxCombo}`, BASE_W / 2, BASE_H / 2 - 45)
-    ctx.fillText(`总击杀: ${state.totalKills}`, BASE_W / 2, BASE_H / 2 - 22)
-    ctx.fillText(`到达关卡: ${state.level}`, BASE_W / 2, BASE_H / 2 + 1)
-    ctx.fillText(`金币: ${state.coins}`, BASE_W / 2, BASE_H / 2 + 24)
-    ctx.fillStyle = COLORS.gold
-    ctx.fillText(`得分: ${state.score}`, BASE_W / 2, BASE_H / 2 + 52)
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+    ctx.shadowColor = '#FFD700'
+    ctx.shadowBlur = 10
+    ctx.fillText('🏆 游戏结束', BASE_W / 2, BASE_H / 2 - 40)
+    ctx.shadowBlur = 0
+    
+    ctx.fillStyle = '#fff'
+    ctx.font = '18px sans-serif'
+    ctx.fillText(`最终得分 ${state.score}`, BASE_W / 2, BASE_H / 2 - 5)
+    ctx.fillText(`到达关卡: ${state.level}`, BASE_W / 2, BASE_H / 2 + 20)
+    ctx.fillText(`最高连击 ${state.maxCombo}x`, BASE_W / 2, BASE_H / 2 + 45)
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
     ctx.font = '14px sans-serif'
-    ctx.fillText('正在返回...', BASE_W / 2, BASE_H / 2 + 85)
+    ctx.fillText('点击重新开始', BASE_W / 2, BASE_H / 2 + 70)
   }
 
   // ========== 关卡完成界面 ==========
