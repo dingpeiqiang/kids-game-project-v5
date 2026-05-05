@@ -208,15 +208,15 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   let selectedTurretForUpgrade: any = null
   let upgradeDialogPos = { x: 0, y: 0 }  // 升级弹窗位置
   
-  // ✅ 手机端虚拟摇杆（固定位置）
+  // ✅ 手机端虚拟摇杆（优化位置 - 左下角）
   const joystick = {
     active: false,
-    baseX: CANVAS_WIDTH * 0.15,  // ✅ 固定在左侧15%位置
-    baseY: CANVAS_HEIGHT * 0.85, // ✅ 固定在底部85%位置
-    currentX: CANVAS_WIDTH * 0.15,
-    currentY: CANVAS_HEIGHT * 0.85,
-    radius: 50,   // 摇杆半径
-    knobRadius: 22, // 摇杆钮半径
+    baseX: CANVAS_WIDTH * 0.12,   // ✅ 固定在左侧12%位置（更靠左）
+    baseY: CANVAS_HEIGHT * 0.82,  // ✅ 固定在底部82%位置（避开塔防栏）
+    currentX: CANVAS_WIDTH * 0.12,
+    currentY: CANVAS_HEIGHT * 0.82,
+    radius: 45,      // ✅ 缩小半径，更紧凑
+    knobRadius: 20,  // ✅ 缩小钮半径
     touchId: null as number | null  // 跟踪触摸ID
   }
   
@@ -381,14 +381,14 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     }
     
     // ✅ 检查是否点击了虚拟摇杆区域（以固定位置为中心）
-    // 只有在非建造模式下才启用摇杆，避免与放置炮台冲突
+    // ✅ 只有在非建造模式下才启用摇杆，避免与放置炮台冲突
     if (!state.buildMode.selectedTurret) {
       const dx = touchX - joystick.baseX
       const dy = touchY - joystick.baseY
       const distance = Math.sqrt(dx * dx + dy * dy)
       
-      // ✅ 如果触摸点在摇杆范围内（半径+20px容差），激活摇杆
-      if (distance < joystick.radius + 20) {
+      // ✅ 如果触摸点在摇杆范围内（半径+25px容差），激活摇杆
+      if (distance < joystick.radius + 25) {
         joystick.active = true
         joystick.touchId = touch.identifier
         joystick.currentX = touchX
@@ -1192,14 +1192,14 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
         frost: '#7FDBFF',
         lightning: '#FFD700'
       }
-      const btnW = 58, btnH = 38, btnGap = 6
+      const btnW = 52, btnH = 34, btnGap = 5  // ✅ 缩小按钮尺寸，更紧凑
       
       if (isMobile) {
-        // ✅ 手机端：底部炮台选择面板（上移，避免与摇杆冲突）
-        const btnPanelW = 340
-        const btnPanelH = 55
+        // ✅ 手机端：底部炮台选择面板（优化布局）
+        const btnPanelW = 300  // ✅ 缩小宽度
+        const btnPanelH = 48   // ✅ 缩小高度
         const btnPanelX = (CANVAS_WIDTH - btnPanelW) / 2
-        const btnPanelY = CANVAS_HEIGHT - btnPanelH - 80  // ✅ 从40改为80，上移40像素
+        const btnPanelY = CANVAS_HEIGHT - btnPanelH - 12  // ✅ 紧贴底部（只留12px边距）
         
         // ✅ 增加不透明度，避免底部出现颜色痕迹
         drawPanel(btnPanelX, btnPanelY, btnPanelW, btnPanelH, 'rgba(10, 20, 35, 0.98)')
@@ -1222,21 +1222,21 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
           ctx.lineWidth = isSelected ? 3 : 1
           ctx.stroke()
           
-          // ✅ 图标使用对应颜色
+          // ✅ 图标使用对应颜色（缩小字体）
           ctx.fillStyle = isSelected ? '#fff' : baseColor
-          ctx.font = '14px sans-serif'
+          ctx.font = '12px sans-serif'  // ✅ 从14改为12
           ctx.textAlign = 'center'
-          ctx.fillText(turretIcons[type], bx + btnW / 2, btnY + 15)
+          ctx.fillText(turretIcons[type], bx + btnW / 2, btnY + 13)  // ✅ 调整位置
           
           ctx.fillStyle = isSelected ? '#fff' : '#9CA3AF'
-          ctx.font = '8px sans-serif'
-          ctx.fillText(turretNames[type], bx + btnW / 2, btnY + 28)
+          ctx.font = '7px sans-serif'  // ✅ 从8改为7
+          ctx.fillText(turretNames[type], bx + btnW / 2, btnY + 24)  // ✅ 调整位置
           
-          // 显示水晶消耗
+          // ✅ 显示水晶消耗（简化显示）
           const costs: Record<string, number> = { laser: 40, missile: 80, frost: 50, lightning: 120 }
           ctx.fillStyle = isSelected ? '#fff' : '#FBBF24'
-          ctx.font = 'bold 7px sans-serif'
-          ctx.fillText(`💎${costs[type]}`, bx + btnW / 2, btnY + 38)
+          ctx.font = 'bold 6px sans-serif'  // ✅ 从7改为6
+          ctx.fillText(`${costs[type]}`, bx + btnW / 2, btnY + 32)  // ✅ 移除💎图标，节省空间
         })
         
         // 保存按钮区域用于触摸检测
@@ -1354,30 +1354,48 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       // 根据屏幕尺寸调整
       import('./config').then(({ SCALE_RATIO }) => {
         if (joystick.active) {
-          // ✅ 摇杆底座（固定位置）
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
+          // ✅ 摇杆底座（固定位置 - 增强视觉效果）
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'  // ✅ 提高透明度
           ctx.lineWidth = 3
           ctx.beginPath()
           ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
           ctx.stroke()
           
-          // ✅ 摇杆钮
-          ctx.fillStyle = 'rgba(78, 205, 196, 0.6)'
+          // ✅ 底座填充（半透明）
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
+          ctx.fill()
+          
+          // ✅ 摇杆钮（增强颜色）
+          ctx.fillStyle = 'rgba(78, 205, 196, 0.8)'  // ✅ 提高不透明度
           ctx.beginPath()
           ctx.arc(joystick.currentX, joystick.currentY, joystick.knobRadius, 0, Math.PI * 2)
           ctx.fill()
           
-          // ✅ 摇杆提示文字
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'
-          ctx.font = `${10 * SCALE_RATIO}px sans-serif`
+          // ✅ 摇杆钮边框
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
+          ctx.lineWidth = 2
+          ctx.stroke()
+          
+          // ✅ 摇杆提示文字（简化）
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
+          ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
           ctx.textAlign = 'center'
-          ctx.fillText('移动', joystick.baseX, joystick.baseY + joystick.radius + 15)
+          ctx.fillText('移动', joystick.baseX, joystick.baseY + joystick.radius + 12)
         } else {
-          // ✅ 未激活时显示提示（固定位置）
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'
-          ctx.font = `${10 * SCALE_RATIO}px sans-serif`
+          // ✅ 未激活时显示提示（更明显）
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
+          ctx.beginPath()
+          ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
+          ctx.fill()
+          
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'
+          ctx.lineWidth = 2
+          ctx.stroke()
+          
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
+          ctx.font = `bold ${9 * SCALE_RATIO}px sans-serif`
           ctx.textAlign = 'center'
-          ctx.fillText('👆 触摸此处移动', joystick.baseX, joystick.baseY + joystick.radius + 15)
+          ctx.fillText('👆 触摸此处移动', joystick.baseX, joystick.baseY + joystick.radius + 12)
         }
       })
     }
