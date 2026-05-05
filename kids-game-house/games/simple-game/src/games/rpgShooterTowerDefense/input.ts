@@ -153,36 +153,57 @@ function handleMapClick(
 }
 
 /**
- * 尝试放置炮台
+ * 尝试放置炮台或城墙（根据 selectedTurret 类型判断）
  */
 function tryPlaceTurret(
   state: GameState,
   mousePos: { x: number; y: number },
   playSound: PlaySoundFn
 ): void {
-  const config = TURRET_CONFIGS[state.buildMode.selectedTurret!]
-  if (!config) {
-    console.error('炮台配置不存在')
-    return
-  }
+  const selectedType = state.buildMode.selectedTurret!
+  const turretConfig = TURRET_CONFIGS[selectedType]
+  const wallConfig = WALL_CONFIGS[selectedType]
 
-  const success = placeTurret(state, mousePos.x, mousePos.y, state.buildMode.selectedTurret!, 1)
-
-  if (success) {
-    playSound('build')
-    state.floatTexts.push({
-      text: `💎 -${config.cost}`,
-      x: mousePos.x,
-      y: mousePos.y - 20,
-      life: 1.0,
-      color: '#FBBF24',
-      size: 12,
-      vy: -0.8
-    })
-    state.buildMode.selectedTurret = null
-    console.log(`炮台放置成功，消耗 ${config.cost} 水晶`)
+  if (turretConfig) {
+    // 放置炮台
+    const success = placeTurret(state, mousePos.x, mousePos.y, selectedType, 1)
+    if (success) {
+      playSound('build')
+      state.floatTexts.push({
+        text: `💎 -${turretConfig.cost}`,
+        x: mousePos.x,
+        y: mousePos.y - 20,
+        life: 1.0,
+        color: '#FBBF24',
+        size: 12,
+        vy: -0.8
+      })
+      state.buildMode.selectedTurret = null
+      console.log(`✅ 炮台放置成功，消耗 ${turretConfig.cost} 水晶`)
+    } else {
+      console.log('❌ 炮台放置失败')
+    }
+  } else if (wallConfig) {
+    // 放置城墙
+    const wall = placeWall(state, mousePos.x, mousePos.y, selectedType as any)
+    if (wall) {
+      playSound('build')
+      state.floatTexts.push({
+        text: `💎 -${wallConfig.cost}`,
+        x: mousePos.x,
+        y: mousePos.y - 20,
+        life: 1.0,
+        color: '#FBBF24',
+        size: 12,
+        vy: -0.8
+      })
+      state.buildMode.selectedTurret = null
+      console.log(`✅ 城墙放置成功，消耗 ${wallConfig.cost} 水晶`)
+    } else {
+      console.log('❌ 城墙放置失败')
+    }
   } else {
-    console.log('炮台放置失败')
+    console.error(`❌ 配置不存在: ${selectedType}`)
   }
 }
 
