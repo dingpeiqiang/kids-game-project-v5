@@ -113,15 +113,80 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     return
   }
   
-  // 设置Canvas尺寸
-  canvas.width = CANVAS_WIDTH
-  canvas.height = CANVAS_HEIGHT
+  // ✅ 移动端全屏适配（参考 dragonShooter）
+  const isMobile = window.innerWidth < 768 || 'ontouchstart' in window
   
-  // ✅ 设置Canvas的CSS样式，确保显示尺寸与逻辑尺寸一致
-  canvas.style.width = `${CANVAS_WIDTH}px`
-  canvas.style.height = `${CANVAS_HEIGHT}px`
-  canvas.style.display = 'block'
-  canvas.style.margin = '0 auto'  // 居中显示
+  if (isMobile) {
+    // 创建 wrapper 容器
+    const wrapper = document.createElement('div')
+    wrapper.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      touch-action: none;
+      margin: 0;
+      padding: 0;
+      z-index: 1;
+    `
+    
+    // Canvas 绝对定位，通过 transform scale 实现 FIT 模式
+    canvas.style.position = 'absolute'
+    canvas.style.top = '0px'
+    canvas.style.left = '0px'
+    
+    const updateCanvasScale = () => {
+      const windowWidth = window.visualViewport?.width ?? window.innerWidth
+      const windowHeight = window.visualViewport?.height ?? window.innerHeight
+      
+      // 以游戏内容区为基准计算缩放（类似 Phaser Scale.FIT）
+      const scaleX = windowWidth / CANVAS_WIDTH
+      const scaleY = windowHeight / CANVAS_HEIGHT
+      const scale = Math.min(scaleX, scaleY)
+      
+      const scaledW = CANVAS_WIDTH * scale
+      const scaledH = CANVAS_HEIGHT * scale
+      
+      // 居中显示
+      canvas.style.left = ((windowWidth - scaledW) / 2) + 'px'
+      canvas.style.top = ((windowHeight - scaledH) / 2) + 'px'
+      canvas.style.transform = `scale(${scale})`
+      canvas.style.transformOrigin = '0 0'
+    }
+    
+    updateCanvasScale()
+    window.visualViewport?.addEventListener('resize', updateCanvasScale)
+    window.addEventListener('resize', updateCanvasScale)
+    
+    // 将 Canvas 移动到 wrapper 中
+    const parent = canvas.parentNode
+    if (parent) {
+      parent.removeChild(canvas)
+      wrapper.appendChild(canvas)
+      parent.appendChild(wrapper)
+    }
+    
+    // 防止移动端滚动和缩放
+    document.body.style.overflow = 'hidden'
+    document.body.style.touchAction = 'none'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+    document.body.style.height = '100%'
+    
+    // 保存清理函数
+    ;(window as any)._rpgTowerDefenseResizeHandler = () => {
+      window.visualViewport?.removeEventListener('resize', updateCanvasScale)
+      window.removeEventListener('resize', updateCanvasScale)
+    }
+  } else {
+    // 桌面端：设置Canvas的CSS样式，确保显示尺寸与逻辑尺寸一致
+    canvas.style.width = `${CANVAS_WIDTH}px`
+    canvas.style.height = `${CANVAS_HEIGHT}px`
+    canvas.style.display = 'block'
+    canvas.style.margin = '0 auto'  // 居中显示
+  }
   
   console.log(`Canvas 尺寸: ${CANVAS_WIDTH}x${CANVAS_HEIGHT}`)
   
@@ -1290,6 +1355,22 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     canvas.removeEventListener('touchmove', handleTouchMove)
     canvas.removeEventListener('touchstart', handleTouchStart)
     canvas.removeEventListener('touchend', handleTouchEnd)
+    
+    // ✅ 移动端：恢复 body 样式和移除 resize 监听器
+    if (isMobile) {
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.height = ''
+      
+      const resizeHandler = (window as any)._rpgTowerDefenseResizeHandler
+      if (resizeHandler) {
+        window.visualViewport?.removeEventListener('resize', resizeHandler)
+        window.removeEventListener('resize', resizeHandler)
+        delete (window as any)._rpgTowerDefenseResizeHandler
+      }
+    }
   }
   
   // 键盘事件 - 开始游戏和建造模式
