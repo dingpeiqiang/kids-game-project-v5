@@ -314,10 +314,14 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     const touchY = touch.clientY - rect.top
     
     // ✅ 更新 mousePos（用于放置炮台等逻辑）
+    // ⚠️ 重要：全屏模式下，Canvas 通过 transform scale 缩放并居中
+    // rect.left/top 包含了偏移量，必须减去
     const scaleX = CANVAS_WIDTH / rect.width
     const scaleY = CANVAS_HEIGHT / rect.height
     mousePos.x = touchX * scaleX
     mousePos.y = touchY * scaleY
+    
+    console.log(`📱 触摸调试: client=(${touch.clientX.toFixed(0)}, ${touch.clientY.toFixed(0)}), rect=(${rect.left.toFixed(0)}, ${rect.top.toFixed(0)}, ${rect.width.toFixed(0)}x${rect.height.toFixed(0)}), canvas=(${mousePos.x.toFixed(0)}, ${mousePos.y.toFixed(0)})`)
     
     // 先检查是否点击了手机按钮区域（炮台选择、建造按钮）
     if (mobileButtons) {
