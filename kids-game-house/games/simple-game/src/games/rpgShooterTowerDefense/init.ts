@@ -208,15 +208,16 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   let selectedTurretForUpgrade: any = null
   let upgradeDialogPos = { x: 0, y: 0 }  // 升级弹窗位置
   
-  // 虚拟摇杆状态（手机端）
+  // ✅ 手机端虚拟摇杆（固定位置）
   const joystick = {
     active: false,
-    startX: 0,
-    startY: 0,
-    currentX: 0,
-    currentY: 0,
-    radius: 60,  // 摇杆半径
-    knobRadius: 25  // 摇杆钮半径
+    baseX: CANVAS_WIDTH * 0.15,  // ✅ 固定在左侧15%位置
+    baseY: CANVAS_HEIGHT * 0.85, // ✅ 固定在底部85%位置
+    currentX: CANVAS_WIDTH * 0.15,
+    currentY: CANVAS_HEIGHT * 0.85,
+    radius: 50,   // 摇杆半径
+    knobRadius: 22, // 摇杆钮半径
+    touchId: null as number | null  // 跟踪触摸ID
   }
   
   // 建造模式状态扩展
@@ -247,30 +248,30 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       joystick.currentX = touch.clientX - rect.left
       joystick.currentY = touch.clientY - rect.top
       
-      // 计算摇杆偏移量
-      const dx = joystick.currentX - joystick.startX
-      const dy = joystick.currentY - joystick.startY
+      // ✅ 计算摇杆偏移量（相对于固定基点）
+      const dx = joystick.currentX - joystick.baseX
+      const dy = joystick.currentY - joystick.baseY
       const distance = Math.sqrt(dx * dx + dy * dy)
       
       // 限制在摇杆半径内
       if (distance > joystick.radius) {
         const ratio = joystick.radius / distance
-        joystick.currentX = joystick.startX + dx * ratio
-        joystick.currentY = joystick.startY + dy * ratio
+        joystick.currentX = joystick.baseX + dx * ratio
+        joystick.currentY = joystick.baseY + dy * ratio
       }
       
       // ✅ 计算归一化的方向向量（-1 到 1）
-      const normalizedDx = (joystick.currentX - joystick.startX) / joystick.radius
-      const normalizedDy = (joystick.currentY - joystick.startY) / joystick.radius
+      const normalizedDx = (joystick.currentX - joystick.baseX) / joystick.radius
+      const normalizedDy = (joystick.currentY - joystick.baseY) / joystick.radius
       
       // ✅ 更新 state.joystick，用于玩家移动
       state.joystick = {
         active: true,
         dx: normalizedDx,
         dy: normalizedDy,
-        baseX: joystick.startX,
-        baseY: joystick.startY,
-        touchId: null
+        baseX: joystick.baseX,
+        baseY: joystick.baseY,
+        touchId: joystick.touchId
       }
       
       // 计算缩放比例
@@ -379,18 +380,22 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       // }
     }
     
-    // ✅ 检查是否点击了左下角区域（启动虚拟摇杆）
+    // ✅ 检查是否点击了虚拟摇杆区域（以固定位置为中心）
     // 只有在非建造模式下才启用摇杆，避免与放置炮台冲突
-          // ✅ 缩小摇杆触发区域，避免与塔防栏冲突
-      // 新区域：左下角 15% x 20%（更小的区域，且位置更低）
-      if (!state.buildMode.selectedTurret && touchX < CANVAS_WIDTH * 0.15 && touchY > CANVAS_HEIGHT * 0.80) {
-      joystick.active = true
-      joystick.startX = touchX
-      joystick.startY = touchY
-      joystick.currentX = touchX
-      joystick.currentY = touchY
-      console.log('🕹️ 虚拟摇杆已激活')
-      return
+    if (!state.buildMode.selectedTurret) {
+      const dx = touchX - joystick.baseX
+      const dy = touchY - joystick.baseY
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      // ✅ 如果触摸点在摇杆范围内（半径+20px容差），激活摇杆
+      if (distance < joystick.radius + 20) {
+        joystick.active = true
+        joystick.touchId = touch.identifier
+        joystick.currentX = touchX
+        joystick.currentY = touchY
+        console.log('🕹️ 虚拟摇杆已激活')
+        return
+      }
     }
     
     // 其他区域的触摸视为点击
@@ -1349,30 +1354,30 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       // 根据屏幕尺寸调整
       import('./config').then(({ SCALE_RATIO }) => {
         if (joystick.active) {
-          // 摇杆底座
+          // ✅ 摇杆底座（固定位置）
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
           ctx.lineWidth = 3
           ctx.beginPath()
-          ctx.arc(joystick.startX, joystick.startY, joystick.radius, 0, Math.PI * 2)
+          ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2)
           ctx.stroke()
           
-          // 摇杆钮
+          // ✅ 摇杆钮
           ctx.fillStyle = 'rgba(78, 205, 196, 0.6)'
           ctx.beginPath()
           ctx.arc(joystick.currentX, joystick.currentY, joystick.knobRadius, 0, Math.PI * 2)
           ctx.fill()
           
-          // 摇杆提示文字
+          // ✅ 摇杆提示文字
           ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'
           ctx.font = `${10 * SCALE_RATIO}px sans-serif`
           ctx.textAlign = 'center'
-          ctx.fillText('移动', joystick.startX, joystick.startY + joystick.radius + 15)
+          ctx.fillText('移动', joystick.baseX, joystick.baseY + joystick.radius + 15)
         } else {
-          // 未激活时显示提示
+          // ✅ 未激活时显示提示（固定位置）
           ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'
           ctx.font = `${10 * SCALE_RATIO}px sans-serif`
           ctx.textAlign = 'center'
-          ctx.fillText('👆 触摸此处移动', CANVAS_WIDTH * 0.2, CANVAS_HEIGHT * 0.85)
+          ctx.fillText('👆 触摸此处移动', joystick.baseX, joystick.baseY + joystick.radius + 15)
         }
       })
     }
