@@ -364,6 +364,7 @@ export interface PowerupRing {
   color: string
   alpha: number
   lineWidth: number
+  delay: number  // 延迟启动时间（秒），0表示立即开始
 }
 
 // 游戏状态
@@ -462,11 +463,24 @@ export interface GameState {
     duration: number   // 剩余持续时间
     cooldown: number   // 🎯 冷却时间（秒），防止频繁触发
   }
+  // 🎯 屏幕闪烁效果
+  screenFlash: {
+    color: string
+    alpha: number
+    duration: number
+  }
   // 🎯 道具加持特效
   powerupEffects: {
     flashAlpha: number      // 屏幕闪光透明度
     flashColor: string      // 闪光颜色
     rings: PowerupRing[]    // 扩散光环列表
+    screenWave?: {          // 全屏冲击波
+      color: string
+      alpha: number
+      radius: number
+      maxRadius: number
+      speed: number
+    }
   }
 }
 

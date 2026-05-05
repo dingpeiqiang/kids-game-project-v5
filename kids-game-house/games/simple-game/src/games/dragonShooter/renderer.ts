@@ -13,6 +13,25 @@ import {
 } from './constants'
 import { lightenColor } from './effects'
 
+// ============================================
+// 道具卡片几何缓存（模块级常量，避免重复计算）
+// ============================================
+const _CARD_W = 90
+const _CARD_H = 120
+const _CARD_GAP = 20
+const _CARD_TOTAL_W = _CARD_W * 3 + _CARD_GAP * 2
+const _CARD_START_X = (BASE_W - _CARD_TOTAL_W) / 2
+const _CARD_Y = BASE_H / 2 - _CARD_H / 2
+const _CARD_RADIUS = 12
+
+/** 预创建的圆角矩形路径（用于碰撞检测和绘制） */
+interface CardRect { x: number; y: number; w: number; h: number; r: number }
+const _cardRects: CardRect[] = [
+  { x: _CARD_START_X, y: _CARD_Y, w: _CARD_W, h: _CARD_H, r: _CARD_RADIUS },
+  { x: _CARD_START_X + _CARD_W + _CARD_GAP, y: _CARD_Y, w: _CARD_W, h: _CARD_H, r: _CARD_RADIUS },
+  { x: _CARD_START_X + (_CARD_W + _CARD_GAP) * 2, y: _CARD_Y, w: _CARD_W, h: _CARD_H, r: _CARD_RADIUS }
+]
+
 /**
  * 创建渲染器实例 - 封装所有绘制函数和 render 主循环
  * 通过闭包共享 ctx、state 等上下文
@@ -139,27 +158,22 @@ export function createRenderer(
 
     // --- 身体节段（非龙头） ---
     if (!seg.isHead) {
+      // 🎯 性能：受伤时才闪烁，减少不必要的计算
       const damagedFlash = hpRatio < 0.3 ? (Math.sin(t * 0.008) * 0.5 + 0.5) * 0.6 : 0
 
       // 🎯 性能：仅龙头/BOSS/受伤时使用 shadowBlur
       const needShadow = type === 'boss' || hpRatio < 0.3
       if (needShadow) { ctx.shadowColor = seg.color; ctx.shadowBlur = type === 'boss' ? 18 : 8 }
 
-      // 径向渐变（保留3D效果但减少一次 save/restore）
-      const grad = ctx.createRadialGradient(-s * 0.25, -s * 0.25, s * 0.05, 0, 0, s)
-      if (damagedFlash > 0) {
-        grad.addColorStop(0, '#FFFFFF'); grad.addColorStop(0.5, lightenColor(seg.color, 30)); grad.addColorStop(1, lightenColor(seg.color, -20))
-      } else {
-        grad.addColorStop(0, lightenColor(seg.color, 50)); grad.addColorStop(0.45, seg.color); grad.addColorStop(1, lightenColor(seg.color, -30))
-      }
-      ctx.fillStyle = grad
+      // 🎯 性能：用简单填充替代 createRadialGradient（省 GPU）
+      ctx.fillStyle = damagedFlash > 0 ? '#FFFFFF' : seg.color
       ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill()
 
-      // 🎯 性能：高光用简单白色半透明圆代替渐变（省掉 createRadialGradient + nested save/restore）
+      // 🎯 简化高光：不用渐变
       ctx.shadowBlur = 0
-      ctx.globalAlpha = 0.35
+      ctx.globalAlpha = 0.3
       ctx.fillStyle = '#FFFFFF'
-      ctx.beginPath(); ctx.arc(-s * 0.3, -s * 0.3, s * 0.35, 0, Math.PI * 2); ctx.fill()
+      ctx.beginPath(); ctx.arc(-s * 0.25, -s * 0.25, s * 0.4, 0, Math.PI * 2); ctx.fill()
       ctx.globalAlpha = 1
 
       // 道具节段专属光环（去掉嵌套 save/restore，手动恢复状态）
@@ -188,17 +202,15 @@ export function createRenderer(
         ctx.setLineDash([])
       }
 
-      // 加速火焰拖尾（去掉嵌套 save/restore）
+      // 加速火焰拖尾（性能优化版：去掉每帧 createRadialGradient）
       if (isBoosting) {
         const bp = Math.sin(t * 0.015) * 0.3 + 0.7
-        const bg = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 2)
-        bg.addColorStop(0, `rgba(255, 100, 0, ${bp * 0.6})`); bg.addColorStop(0.5, `rgba(255, 50, 0, ${bp * 0.3})`); bg.addColorStop(1, 'rgba(255, 0, 0, 0)')
-        ctx.fillStyle = bg
-        ctx.beginPath(); ctx.arc(0, 0, s * 1.8, 0, Math.PI * 2); ctx.fill()
-        ctx.strokeStyle = `rgba(255, 150, 0, ${bp * 0.9})`; ctx.lineWidth = 3
-        ctx.shadowColor = '#FF6600'; ctx.shadowBlur = 12
-        ctx.beginPath(); ctx.arc(0, 0, s + 5, 0, Math.PI * 2); ctx.stroke()
-        ctx.shadowBlur = 0
+        // 用简单的圆形替代昂贵的 radial gradient
+        ctx.fillStyle = `rgba(255, 80, 0, ${bp * 0.5})`
+        ctx.beginPath(); ctx.arc(0, 0, s * 1.3, 0, Math.PI * 2); ctx.fill()
+        ctx.strokeStyle = `rgba(255, 150, 0, ${bp * 0.8})`
+        ctx.lineWidth = 2
+        ctx.beginPath(); ctx.arc(0, 0, s + 4, 0, Math.PI * 2); ctx.stroke()
       }
 
       // 血量数字
@@ -816,151 +828,36 @@ export function createRenderer(
   }
 
   // ========== 子弹 ==========
+  // 简化的子弹渲染（性能优化版）
   function drawBullets() {
     for (const b of state.bullets) {
+      const angle = Math.atan2(b.vy || 0, b.vx || 0)
       ctx.save()
       ctx.translate(b.x, b.y)
-      
-      // 🎯 计算子弹飞行方向（根据速度向量）
-      const angle = Math.atan2(b.vy || 0, b.vx || 0)
-      ctx.rotate(angle + Math.PI / 2)  // 旋转使剑尖朝前
+      ctx.rotate(angle + Math.PI / 2)
 
-      // ========== 1. 剑气光晕（最外层）==========
-      ctx.save()
+      // 剑形子弹（简化版）
+      ctx.fillStyle = '#00FFFF'
       ctx.shadowColor = '#00FFFF'
-      ctx.shadowBlur = 20
-      ctx.fillStyle = 'rgba(0, 255, 255, 0.15)'
-      ctx.beginPath()
-      ctx.ellipse(0, 0, 6, 28, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
-
-      // ========== 2. 剑身主体（银白色金属质感）==========
-      const bladeGrad = ctx.createLinearGradient(-3, -25, 3, -25)
-      bladeGrad.addColorStop(0, '#E0E0E0')     // 左侧高光
-      bladeGrad.addColorStop(0.3, '#FFFFFF')   // 中心亮白
-      bladeGrad.addColorStop(0.7, '#C0C0C0')   // 右侧阴影
-      bladeGrad.addColorStop(1, '#A0A0A0')     // 边缘暗部
-      
-      ctx.fillStyle = bladeGrad
-      ctx.shadowColor = '#FFFFFF'
-      ctx.shadowBlur = 10
-      
-      // 绘制剑身（细长的菱形）
-      ctx.beginPath()
-      ctx.moveTo(0, -28)        // 剑尖
-      ctx.lineTo(3, -15)        // 剑身右侧
-      ctx.lineTo(2, 0)          // 剑身中部
-      ctx.lineTo(3, 15)         // 剑身下部右侧
-      ctx.lineTo(0, 20)         // 剑柄顶部
-      ctx.lineTo(-3, 15)        // 剑身下部左侧
-      ctx.lineTo(-2, 0)         // 剑身中部左侧
-      ctx.lineTo(-3, -15)       // 剑身左侧
-      ctx.closePath()
-      ctx.fill()
-      
-      // 剑身中线（增加立体感）
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(0, -26)
-      ctx.lineTo(0, 18)
-      ctx.stroke()
-
-      // ========== 3. 护手（十字形金色装饰）==========
-      ctx.fillStyle = '#FFD700'  // 金色
-      ctx.shadowColor = '#FFD700'
-      ctx.shadowBlur = 8
-      
-      // 横向护手
-      ctx.fillRect(-8, 18, 16, 3)
-      
-      // 纵向装饰
-      ctx.fillRect(-2, 16, 4, 7)
-      
-      // 护手边缘高光
-      ctx.strokeStyle = '#FFF8DC'
-      ctx.lineWidth = 1
-      ctx.strokeRect(-8, 18, 16, 3)
-
-      // ========== 4. 剑柄（深棕色皮革包裹）==========
-      const handleGrad = ctx.createLinearGradient(-2, 21, 2, 21)
-      handleGrad.addColorStop(0, '#8B4513')  // 深棕色
-      handleGrad.addColorStop(0.5, '#A0522D')  // 中棕色
-      handleGrad.addColorStop(1, '#654321')  // 暗棕色
-      
-      ctx.fillStyle = handleGrad
-      ctx.shadowBlur = 0
-      ctx.fillRect(-2.5, 21, 5, 12)
-      
-      // 剑柄纹理（缠绕的绳索）
-      ctx.strokeStyle = '#D2691E'
-      ctx.lineWidth = 1
-      for (let i = 0; i < 4; i++) {
-        const y = 22 + i * 3
-        ctx.beginPath()
-        ctx.moveTo(-2.5, y)
-        ctx.lineTo(2.5, y + 1.5)
-        ctx.stroke()
-      }
-
-      // ========== 5. 剑首（金色圆球）==========
-      ctx.fillStyle = '#FFD700'
-      ctx.shadowColor = '#FFD700'
       ctx.shadowBlur = 6
       ctx.beginPath()
-      ctx.arc(0, 35, 3, 0, Math.PI * 2)
-      ctx.fill()
-      
-      // 剑首高光
-      ctx.fillStyle = '#FFF8DC'
-      ctx.beginPath()
-      ctx.arc(-1, 34, 1.5, 0, Math.PI * 2)
-      ctx.fill()
-
-      // ========== 6. 剑气粒子特效（围绕剑身）==========
-      const time = Date.now() / 200
-      for (let i = 0; i < 3; i++) {
-        const offset = (time + i * 0.5) % 3
-        const particleY = -20 + offset * 15
-        const alpha = 1 - offset / 3
-        
-        ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.6})`
-        ctx.shadowColor = '#00FFFF'
-        ctx.shadowBlur = 8
-        ctx.beginPath()
-        ctx.arc(Math.sin(time + i) * 2, particleY, 2, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
-      // ========== 7. 流光尾迹（动态拖尾）==========
-      const trailLength = 35
-      const trailGrad = ctx.createLinearGradient(0, 20, 0, 20 + trailLength)
-      trailGrad.addColorStop(0, 'rgba(0, 255, 255, 0.6)')
-      trailGrad.addColorStop(0.3, 'rgba(135, 206, 250, 0.4)')
-      trailGrad.addColorStop(0.7, 'rgba(255, 215, 0, 0.2)')
-      trailGrad.addColorStop(1, 'transparent')
-      
-      ctx.fillStyle = trailGrad
-      ctx.shadowBlur = 12
-      ctx.shadowColor = '#00FFFF'
-      
-      // 主尾迹
-      ctx.beginPath()
-      ctx.moveTo(-3, 20)
-      ctx.quadraticCurveTo(-2, 35, 0, 20 + trailLength)
-      ctx.quadraticCurveTo(2, 35, 3, 20)
+      ctx.moveTo(0, -22)
+      ctx.lineTo(3, -10)
+      ctx.lineTo(2, 8)
+      ctx.lineTo(0, 12)
+      ctx.lineTo(-2, 8)
+      ctx.lineTo(-3, -10)
       ctx.closePath()
       ctx.fill()
-      
-      // 侧边光效
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
+
+      // 剑身高光
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'
+      ctx.lineWidth = 1
+      ctx.shadowBlur = 0
       ctx.beginPath()
-      ctx.moveTo(-1.5, 22)
-      ctx.quadraticCurveTo(-1, 32, 0, 20 + trailLength * 0.8)
-      ctx.quadraticCurveTo(1, 32, 1.5, 22)
-      ctx.closePath()
-      ctx.fill()
+      ctx.moveTo(0, -18)
+      ctx.lineTo(0, 10)
+      ctx.stroke()
 
       ctx.restore()
     }
@@ -991,8 +888,17 @@ export function createRenderer(
       ctx.restore()
     }
   }
-  
+
   function drawScreenFlash() {
+    // 新增screenFlash闪烁效果
+    if (state.screenFlash && state.screenFlash.alpha > 0) {
+      ctx.save()
+      ctx.globalAlpha = state.screenFlash.alpha
+      ctx.fillStyle = state.screenFlash.color
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
+      ctx.restore()
+    }
+    // 原有flashAlpha效果
     if (state.powerupEffects.flashAlpha > 0) {
       ctx.save()
       ctx.globalAlpha = state.powerupEffects.flashAlpha
@@ -1015,6 +921,37 @@ export function createRenderer(
       ctx.fill()
       ctx.restore()
     }
+    // 绘制环形粒子（光环，不填充）
+    for (const p of state.particles) {
+      if ((p as any).ring) {
+        ctx.save()
+        ctx.globalAlpha = (p.life / p.maxLife) * 0.6
+        ctx.strokeStyle = p.color
+        ctx.lineWidth = 3
+        ctx.shadowColor = p.color
+        ctx.shadowBlur = 10
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.restore()
+      }
+    }
+  }
+
+  // ========== 全屏冲击波 ==========
+  function drawScreenWave() {
+    const sw = state.powerupEffects.screenWave
+    if (!sw || sw.alpha <= 0) return
+    ctx.save()
+    ctx.globalAlpha = sw.alpha
+    ctx.strokeStyle = sw.color
+    ctx.lineWidth = 8
+    ctx.shadowColor = sw.color
+    ctx.shadowBlur = 20
+    ctx.beginPath()
+    ctx.arc(state.playerX, state.playerY, sw.radius, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
   }
 
   // ========== 道具 ==========
@@ -1525,17 +1462,27 @@ export function createRenderer(
 
     // 游戏模式：居中+裁剪
     ctx.save()
-    
+
+    // 🎯 更新并应用屏幕闪烁效果
+    if (state.screenFlash && state.screenFlash.duration > 0) {
+      const dt = 1 / 60
+      state.screenFlash.duration -= dt
+      state.screenFlash.alpha = Math.max(0, state.screenFlash.alpha - dt * 2)
+      if (state.screenFlash.duration <= 0) {
+        state.screenFlash.alpha = 0
+      }
+    }
+
     // 🎯 应用屏幕震动效果
     if (state.screenShake.duration > 0) {
       const shakeX = (Math.random() - 0.5) * state.screenShake.intensity * 2
       const shakeY = (Math.random() - 0.5) * state.screenShake.intensity * 2
       ctx.translate(shakeX, shakeY)
-      
+
       // 更新震动状态
       const deltaTime = 1 / 60  // 假设60FPS
       state.screenShake.duration -= deltaTime
-      
+
       // 🎯 同时减少冷却时间
       if (state.screenShake.cooldown > 0) {
         state.screenShake.cooldown -= deltaTime
@@ -1543,13 +1490,13 @@ export function createRenderer(
           state.screenShake.cooldown = 0
         }
       }
-      
+
       if (state.screenShake.duration <= 0) {
         state.screenShake.intensity = 0
         state.screenShake.duration = 0
       }
     }
-    
+
     ctx.translate(CANVAS_OFFSET_X, CANVAS_OFFSET_Y)
 
     ctx.beginPath()
@@ -1616,10 +1563,12 @@ export function createRenderer(
       
       // 🎯 绘制道具加持特效（光环扩散）
       drawPowerupEffects()
+      // 🎯 绘制全屏冲击波
+      drawScreenWave()
     }
 
     ctx.restore()
-    
+
     // 🎯 绘制屏幕闪光（在全屏层面，不受裁剪影响）
     drawScreenFlash()
   }
@@ -1677,50 +1626,34 @@ export function createRenderer(
     ctx.fillText('✨ 选择你的仙术 ✨', BASE_W / 2, BASE_H / 2 - 110)
     ctx.restore()
 
-    // 三张卡片
-    const cardW = 90
-    const cardH = 120
-    const cardGap = 20
-    const totalW = cardW * 3 + cardGap * 2
-    const startX = (BASE_W - totalW) / 2
-    const cardY = BASE_H / 2 - cardH / 2
+    // 三张卡片（使用预计算几何）
+    for (let i = 0; i < ps.cards.length; i++) {
+      const card = ps.cards[i]
+      const cr = _cardRects[i]
+      const cx = cr.x + cr.w / 2
+      const cy = cr.y + cr.h / 2
 
-    ps.cards.forEach((card, i) => {
-      const cx = startX + i * (cardW + cardGap) + cardW / 2
-      const cy = cardY + cardH / 2
       const isRevealed = ps.revealedIdx === i
       const isOtherRevealed = ps.revealedIdx !== null && ps.revealedIdx !== i
       const flipT = isRevealed ? ps.revealProgress : (isOtherRevealed ? 1 : 0)
       const closeScale = ps.closing ? Math.max(0.01, 1 - ps.closeProgress * 0.3) : 1
-      // 悬浮动画
       const floatY = isRevealed ? 0 : Math.sin(t / 400 + i * 1.2) * 4
-
-      ctx.save()
-      ctx.translate(cx, cy + floatY)
-      ctx.scale(closeScale, closeScale)
-
-      // 绕卡片中心翻转：scaleX 从 1(背面) → 0 → -1(正面)
-      // 翻到一半(flipT=0.5)时 scaleX=0，之后显示正面
-      const flipScaleX = Math.max(-1, 1 - flipT * 2)  // 1→0→-1
+      const flipScaleX = Math.max(-1, 1 - flipT * 2)
       const showingFront = flipT > 0.5
 
-      if (showingFront) {
-        // 🎯 修复：正面显示时，使用正常坐标系（不翻转）
-        // 因为 flipScaleX 是负数，取绝对值后恢复正常方向
-        ctx.scale(Math.abs(flipScaleX), 1)
-      } else {
-        // 背面：正常翻转
-        ctx.scale(flipScaleX, 1)
-      }
+      // 整体变换：位移 + 关闭缩放 + 翻转
+      ctx.save()
+      ctx.translate(cx, cy + floatY)
+      ctx.scale(closeScale * (showingFront ? Math.abs(flipScaleX) : flipScaleX), closeScale)
 
       if (showingFront) {
-        // === 正面（坐标系已翻正）===
-        const faceGrad = ctx.createLinearGradient(-cardW / 2, -cardH / 2, cardW / 2, cardH / 2)
-        faceGrad.addColorStop(0, '#2a2a4a')
-        faceGrad.addColorStop(1, '#1a1a2e')
-        const radius = 12
-        roundRect(ctx, -cardW / 2, -cardH / 2, cardW, cardH, radius)
-        ctx.fillStyle = faceGrad
+        // === 正面：渐变填充 + 描边 ===
+        const grad = ctx.createLinearGradient(-_CARD_W / 2, -_CARD_H / 2, _CARD_W / 2, _CARD_H / 2)
+        grad.addColorStop(0, '#2a2a4a')
+        grad.addColorStop(1, '#1a1a2e')
+        ctx.beginPath()
+        roundRect(ctx, -_CARD_W / 2, -_CARD_H / 2, _CARD_W, _CARD_H, _CARD_RADIUS)
+        ctx.fillStyle = grad
         ctx.fill()
         ctx.strokeStyle = card.color
         ctx.lineWidth = 2.5
@@ -1728,40 +1661,33 @@ export function createRenderer(
         ctx.shadowBlur = 15
         ctx.stroke()
 
-        // 选中高亮（仅选中卡有金边）
+        // 金色选中边框
         ctx.strokeStyle = '#FFD700'
         ctx.lineWidth = 3
         ctx.shadowColor = '#FFD700'
         ctx.shadowBlur = 20
-        roundRect(ctx, -cardW / 2 - 3, -cardH / 2 - 3, cardW + 6, cardH + 6, radius + 2)
+        ctx.beginPath()
+        roundRect(ctx, -_CARD_W / 2 - 3, -_CARD_H / 2 - 3, _CARD_W + 6, _CARD_H + 6, _CARD_RADIUS + 2)
         ctx.stroke()
 
-        // 🎯 修复：道具图标（正常绘制，不需要额外翻转）
-        ctx.save()
+        // 图标
         ctx.shadowBlur = 20
         ctx.shadowColor = card.color
         ctx.fillStyle = card.color
         ctx.font = '36px sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(card.icon, 0, -cardH / 4 + 10)
-        ctx.restore()
+        ctx.fillText(card.icon, 0, -_CARD_H / 4 + 10)
 
-        // 🎯 修复：名称（正常绘制）
-        ctx.save()
+        // 名称
         ctx.shadowBlur = 0
         ctx.fillStyle = '#FFFFFF'
         ctx.font = 'bold 11px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
         ctx.fillText(card.name || '', 0, 8)
-        ctx.restore()
 
-        // 🎯 修复：描述（多行截断，正常绘制）
-        ctx.save()
+        // 描述（最多24字分两行）
         ctx.fillStyle = 'rgba(255,255,255,0.7)'
         ctx.font = '9px sans-serif'
-        ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         const descText = card.desc || ''
         if (descText.length > 12) {
@@ -1770,25 +1696,25 @@ export function createRenderer(
         } else {
           ctx.fillText(descText, 0, 24)
         }
-        ctx.restore()
       } else {
         // === 背面 ===
-        const backGrad = ctx.createLinearGradient(-cardW / 2, -cardH / 2, cardW / 2, cardH / 2)
-        backGrad.addColorStop(0, '#3a2a5a')
-        backGrad.addColorStop(1, '#2a1a4a')
-        const radius = 12
-        roundRect(ctx, -cardW / 2, -cardH / 2, cardW, cardH, radius)
-        ctx.fillStyle = backGrad
+        const grad = ctx.createLinearGradient(-_CARD_W / 2, -_CARD_H / 2, _CARD_W / 2, _CARD_H / 2)
+        grad.addColorStop(0, '#3a2a5a')
+        grad.addColorStop(1, '#2a1a4a')
+        ctx.beginPath()
+        roundRect(ctx, -_CARD_W / 2, -_CARD_H / 2, _CARD_W, _CARD_H, _CARD_RADIUS)
+        ctx.fillStyle = grad
         ctx.fill()
 
         ctx.strokeStyle = isOtherRevealed ? 'rgba(255,255,255,0.15)' : 'rgba(180, 120, 255, 0.8)'
         ctx.lineWidth = isOtherRevealed ? 1 : 2
         ctx.shadowColor = '#9B59B6'
         ctx.shadowBlur = isOtherRevealed ? 4 : 10
-        roundRect(ctx, -cardW / 2, -cardH / 2, cardW, cardH, radius)
+        ctx.beginPath()
+        roundRect(ctx, -_CARD_W / 2, -_CARD_H / 2, _CARD_W, _CARD_H, _CARD_RADIUS)
         ctx.stroke()
 
-        // 问号符文
+        // 问号
         ctx.shadowBlur = 8
         ctx.shadowColor = '#BB77FF'
         ctx.fillStyle = 'rgba(180, 120, 255, 0.9)'
@@ -1797,20 +1723,20 @@ export function createRenderer(
         ctx.textBaseline = 'middle'
         ctx.fillText('?', 0, -8)
 
-        // 装饰线
+        // 装饰文字
         ctx.strokeStyle = 'rgba(180, 120, 255, 0.5)'
         ctx.lineWidth = 1.5
         ctx.beginPath()
-        ctx.moveTo(-cardW * 0.3, cardH * 0.25)
-        ctx.lineTo(cardW * 0.3, cardH * 0.25)
+        ctx.moveTo(-_CARD_W * 0.3, _CARD_H * 0.25)
+        ctx.lineTo(_CARD_W * 0.3, _CARD_H * 0.25)
         ctx.stroke()
         ctx.fillStyle = 'rgba(180, 120, 255, 0.7)'
         ctx.font = '9px sans-serif'
-        ctx.fillText('点击选择', 0, cardH * 0.25 + 14)
+        ctx.fillText('点击选择', 0, _CARD_H * 0.25 + 14)
       }
 
       ctx.restore()
-    })
+    }
   }
 
   return { render }

@@ -3,7 +3,7 @@
 // ============================================
 
 import type { Particle, FloatText, HitFlash, DragonSegment, PowerUp, CoinDrop, Dragon } from './types'
-import { MAX_PARTICLES, MAX_POWERUPS, MAX_COIN_DROPS, MAX_FLOAT_TEXTS, POWERUP_ICONS, BASE_H, COLORS } from './constants'
+import { MAX_PARTICLES, MAX_POWERUPS, MAX_COIN_DROPS, MAX_FLOAT_TEXTS, POWERUP_ICONS, BASE_H, BASE_W, COLORS } from './constants'
 import type { GameState } from './types'
 
 // 缓动函数：easeOutCubic
@@ -89,6 +89,165 @@ export function createHitEffect(state: GameState, x: number, y: number, color: s
       vy: -2,
       size: 14
     })
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🎯 道具视觉特效（让玩家明显感知使用效果）
+// ═══════════════════════════════════════════════════════════
+
+/** 触发全屏冲击波特效 */
+export function triggerScreenWave(state: GameState, color: string) {
+  // 同时触发屏幕闪烁（背景色淡入淡出）
+  state.screenFlash = { color, alpha: 0.5, duration: 0.3 }
+  state.powerupEffects.screenWave = {
+    color,
+    alpha: 0.8,
+    radius: 0,
+    maxRadius: Math.max(BASE_W, BASE_H) * 1.5,
+    speed: 1200  // 加速让波纹更明显
+  }
+}
+
+/** 创建环形冲击波（向外扩散的环） */
+export function createRingWave(state: GameState, x: number, y: number, color: string) {
+  for (let i = 0; i < 4; i++) {  // 增加环数量
+    state.particles.push({
+      x, y,
+      vx: 0, vy: 0,
+      life: 1.0,  // 延长持续时间
+      maxLife: 1.0,
+      size: 35 + i * 25,  // 增大尺寸
+      color,
+      ring: true
+    } as Particle & { ring: boolean })
+  }
+}
+
+/** 创建能量爆发（向四周扩散的能量球） */
+export function createEnergyBurst(state: GameState, x: number, y: number, color: string, count: number = 12) {
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2
+    const speed = 6 + Math.random() * 6  // 加快速度
+    state.particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.8,
+      maxLife: 0.8,
+      size: 10 + Math.random() * 6,  // 增大尺寸
+      color
+    })
+  }
+}
+
+/** 创建火焰/灼烧粒子 */
+export function createFireEffect(state: GameState, x: number, y: number, color: string = '#FF4500') {
+  for (let i = 0; i < 30; i++) {  // 增加粒子数
+    const angle = Math.random() * Math.PI * 2
+    const speed = 2 + Math.random() * 4
+    state.particles.push({
+      x: x + (Math.random() - 0.5) * 50,
+      y: y + (Math.random() - 0.5) * 50,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 3,
+      life: 0.8 + Math.random() * 0.5,
+      maxLife: 1.3,
+      size: 5 + Math.random() * 7,  // 增大尺寸
+      color: i % 3 === 0 ? '#FFD700' : color
+    })
+  }
+}
+
+/** 创建冰冻效果 */
+export function createFreezeEffect(state: GameState, x: number, y: number) {
+  for (let i = 0; i < 25; i++) {  // 增加粒子数
+    const angle = Math.random() * Math.PI * 2
+    const dist = 20 + Math.random() * 70
+    state.particles.push({
+      x: x + Math.cos(angle) * dist,
+      y: y + Math.sin(angle) * dist,
+      vx: Math.cos(angle) * 0.8,
+      vy: Math.sin(angle) * 0.8 - 1.5,
+      life: 1.0,
+      maxLife: 1.0,
+      size: 6 + Math.random() * 6,
+      color: '#00CED1'
+    })
+  }
+}
+
+/** 创建毒素云雾 */
+export function createToxinCloud(state: GameState, x: number, y: number) {
+  for (let i = 0; i < 10; i++) {
+    state.particles.push({
+      x: x + (Math.random() - 0.5) * 100,
+      y: y + (Math.random() - 0.5) * 100,
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2,
+      life: 1.5,
+      maxLife: 1.5,
+      size: 15 + Math.random() * 15,
+      color: '#6C5CE7'
+    })
+  }
+}
+
+/** 创建剑气效果（长条形冲击） */
+export function createSlashWave(state: GameState, x: number, y: number, width: number, height: number, color: string) {
+  for (let i = 0; i < 8; i++) {
+    state.particles.push({
+      x: x + (Math.random() - 0.5) * width,
+      y: y + (Math.random() - 0.5) * height,
+      vx: (Math.random() - 0.5) * 2,
+      vy: -5 - Math.random() * 5,
+      life: 0.3,
+      maxLife: 0.3,
+      size: 8 + Math.random() * 8,
+      color
+    })
+  }
+}
+
+/** 创建暴击光效 */
+export function createCritEffect(state: GameState, x: number, y: number) {
+  for (let i = 0; i < 4; i++) {
+    const angle = (i / 4) * Math.PI * 2
+    for (let j = 0; j < 6; j++) {
+      state.particles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * (3 + j * 0.5),
+        vy: Math.sin(angle) * (3 + j * 0.5),
+        life: 0.4,
+        maxLife: 0.4,
+        size: 4 + j,
+        color: '#FF1493'
+      })
+    }
+  }
+}
+
+/** 创建防御降低标记（红色下降箭头） */
+export function createDefDownEffect(state: GameState, dragons: Dragon[]) {
+  for (const dragon of dragons) {
+    if (dragon.alive) {
+      const head = dragon.segments[0]
+      if (head) {
+        for (let i = 0; i < 5; i++) {
+          state.particles.push({
+            x: head.x + (Math.random() - 0.5) * 20,
+            y: head.y - 10,
+            vx: 0,
+            vy: 2 + Math.random() * 2,
+            life: 0.6,
+            maxLife: 0.6,
+            size: 6,
+            color: '#636E72'
+          })
+        }
+      }
+    }
   }
 }
 

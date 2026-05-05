@@ -131,7 +131,7 @@ export function createInputHandler(
 
     if (state.phase === 'gameOver') return
 
-    // 道具选择弹窗：检测点击了哪张卡（game 坐标，与渲染器一致）
+    // 道具选择弹窗：检测点击了哪张卡（使用与渲染器一致的几何常量）
     if (state.phase === 'powerup_select' && state.powerupSelect) {
       const ps = state.powerupSelect
       if (ps.revealedIdx === null && !ps.closing) {

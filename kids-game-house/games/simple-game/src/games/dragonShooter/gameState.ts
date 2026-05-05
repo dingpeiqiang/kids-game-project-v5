@@ -15,7 +15,7 @@ import {
   MAX_PARTICLES, MAX_POWERUPS, MAX_COIN_DROPS, MAX_FLOAT_TEXTS, MAX_BULLETS,
   STORAGE_KEY
 } from './constants'
-import { lightenColor } from './effects'
+import { lightenColor, triggerScreenWave, createRingWave, createEnergyBurst, createFireEffect, createFreezeEffect, createToxinCloud, createSlashWave, createCritEffect, createDefDownEffect } from './effects'
 import {
   createDragon as _createDragon,
   updateDragon,
@@ -227,6 +227,11 @@ export function createInitialState(): GameState {
       intensity: 0,
       duration: 0,
       cooldown: 0  // 🎯 初始无冷却
+    },
+    screenFlash: {
+      color: '#FFFFFF',
+      alpha: 0,
+      duration: 0
     },
     // 🎯 道具加持特效初始化
     powerupEffects: {
@@ -644,7 +649,7 @@ function triggerPowerupEffect(state: GameState, color: string) {
   // 1. 屏幕闪光
   state.powerupEffects.flashAlpha = 0.3  // 30%透明度
   state.powerupEffects.flashColor = color
-  
+
   // 2. 创建扩散光环（从玩家位置）
   const ring = {
     x: state.playerX,
@@ -653,23 +658,23 @@ function triggerPowerupEffect(state: GameState, color: string) {
     maxRadius: 150,
     color: color,
     alpha: 1.0,
-    lineWidth: 4
+    lineWidth: 4,
+    delay: 0     // 立即开始
   }
   state.powerupEffects.rings.push(ring)
-  
-  // 3. 创建第二层光环（延迟一点，更大）
-  setTimeout(() => {
-    const ring2 = {
-      x: state.playerX,
-      y: state.playerY,
-      radius: 20,
-      maxRadius: 200,
-      color: color,
-      alpha: 0.8,
-      lineWidth: 3
-    }
-    state.powerupEffects.rings.push(ring2)
-  }, 100)
+
+  // 3. 创建第二层光环（延迟0.1秒，更大）
+  const ring2 = {
+    x: state.playerX,
+    y: state.playerY,
+    radius: 20,
+    maxRadius: 200,
+    color: color,
+    alpha: 0.8,
+    lineWidth: 3,
+    delay: 0.1  // 延迟0.1秒
+  }
+  state.powerupEffects.rings.push(ring2)
 }
 
 /**
@@ -678,34 +683,54 @@ function triggerPowerupEffect(state: GameState, color: string) {
 function updatePowerupEffects(state: GameState, dt: number) {
   // 1. 衰减屏幕闪光
   if (state.powerupEffects.flashAlpha > 0) {
-    state.powerupEffects.flashAlpha -= dt * 2  // 0.5秒内消失
-    if (state.powerupEffects.flashAlpha < 0) {
-      state.powerupEffects.flashAlpha = 0
+    state.powerupEffects.flashAlpha -= dt * 2
+    if (state.powerupEffects.flashAlpha < 0) state.powerupEffects.flashAlpha = 0
+  }
+
+  // 2. 更新光环扩散（双指针原地过滤）
+  const rings = state.powerupEffects.rings
+  let writeIdx = 0
+  for (let i = 0; i < rings.length; i++) {
+    const ring = rings[i]
+
+    // 延迟光环：未到时间则跳过
+    if (ring.delay > 0) {
+      ring.delay -= dt
+      if (ring.delay > 0) {
+        rings[writeIdx++] = ring
+        continue
+      }
+      // delay 耗尽，重置为立即开始
+      ring.delay = 0
+    }
+
+    // 扩大半径（使用剩余距离的比例，确保匀速）
+    const remaining = ring.maxRadius - ring.radius
+    if (remaining > 0.5) {
+      const expandSpeed = remaining * 3  // 约0.33秒到达
+      ring.radius += expandSpeed * dt
+      if (ring.radius > ring.maxRadius) ring.radius = ring.maxRadius
+    }
+
+    // 衰减透明度（基于时间而非帧，保证一致性）
+    ring.alpha -= dt * 1.5
+    ring.lineWidth = Math.max(0.5, 4 * ring.alpha)
+
+    // 保留未消亡的光环
+    if (ring.alpha > 0 && ring.radius < ring.maxRadius) {
+      rings[writeIdx++] = ring
     }
   }
-  
-  // 2. 更新光环扩散
-  const toRemove: number[] = []
-  for (let i = 0; i < state.powerupEffects.rings.length; i++) {
-    const ring = state.powerupEffects.rings[i]
-    
-    // 扩大半径
-    const expandSpeed = (ring.maxRadius - ring.radius) * 3 * dt
-    ring.radius += expandSpeed
-    
-    // 衰减透明度和线宽
-    ring.alpha -= dt * 1.5  // 约0.67秒消失
-    ring.lineWidth = Math.max(0.5, 4 * (ring.alpha))
-    
-    // 标记删除
-    if (ring.alpha <= 0 || ring.radius >= ring.maxRadius) {
-      toRemove.push(i)
+  rings.length = writeIdx
+
+  // 3. 更新全屏冲击波
+  const sw = state.powerupEffects.screenWave
+  if (sw) {
+    sw.radius += sw.speed * dt
+    sw.alpha -= dt * 1.5
+    if (sw.alpha <= 0 || sw.radius >= sw.maxRadius) {
+      state.powerupEffects.screenWave = undefined
     }
-  }
-  
-  // 倒序删除
-  for (let i = toRemove.length - 1; i >= 0; i--) {
-    state.powerupEffects.rings.splice(toRemove[i], 1)
   }
 }
 
@@ -1017,17 +1042,18 @@ export function updatePowerUpSelect(state: GameState, dt: number) {
   const ps = state.powerupSelect
   if (!ps) return
 
-  // 翻开动画
+  // 翻开动画（只在翻牌过程中设置一次 setTimeout）
   if (ps.revealedIdx !== null && ps.revealProgress < 1) {
     ps.revealProgress = Math.min(1, ps.revealProgress + dt * 4)
     if (ps.revealProgress >= 1) {
       ps.revealProgress = 1
-      console.log('🃏 翻牌动画完成')
-      // 🎯 修复：添加持续时间（2秒），让玩家有时间看清道具信息
+      // setTimeout 只设置一次（翻牌完成的第1帧）
       setTimeout(() => {
-        console.log('🃏 开始关闭动画')
-        if (state.powerupSelect) state.powerupSelect.closing = true
-      }, 2000)  // 从500ms改为2000ms，给玩家足够时间阅读
+        // 保护：确认弹窗仍存在且未关闭
+        if (state.powerupSelect && !state.powerupSelect.closing) {
+          state.powerupSelect.closing = true
+        }
+      }, 2000)
     }
   }
 
@@ -1035,7 +1061,6 @@ export function updatePowerUpSelect(state: GameState, dt: number) {
   if (ps.closing && ps.closeProgress < 1) {
     ps.closeProgress = Math.min(1, ps.closeProgress + dt * 3)
     if (ps.closeProgress >= 1) {
-      console.log('🃏 关闭动画完成，应用道具:', ps.cards[ps.revealedIdx!].name)
       applySelectedPowerUp(state, ps.cards[ps.revealedIdx!])
       state.powerupSelect = null
       state.phase = 'playing'
@@ -1067,36 +1092,45 @@ function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
       S.rapidFireStacks = (S.rapidFireStacks || 0) + 1
       state.shootCooldown = Math.max(60, state.shootCooldown * 0.6)  // 🎯 更强的射速提升（原0.7）
       addOrRefreshBuff(state, 'rapidFire', '迅击弹', '⚡', '#FFD700', 20)
+      createEnergyBurst(state, state.playerX, state.playerY, '#FF6B6B', 8)
+      triggerScreenWave(state, '#FFD700')
       pushText('⚡ 迅击弹！')
       break
     case 'multiShot':     // 多重弹：额外弹道
       S.multiShotStacks = (S.multiShotStacks || 0) + 1
       state.bulletCount = Math.min(10, state.bulletCount + 2)  // 🎯 每次+2发（原+1），最多10发
       addOrRefreshBuff(state, 'multiShot', '多重弹', '🔫', '#FF6B6B', 20)
+      createRingWave(state, state.playerX, state.playerY, '#2ED573')
       pushText('🔫 多重弹！')
       break
     case 'armorPierce':   // 破甲弹：无视部分龙防御（穿透+1）
       S.armorPierceStacks = (S.armorPierceStacks || 0) + 1
       state.bulletPierce += 3  // 🎯 更强的穿透（原+2）
       addOrRefreshBuff(state, 'armorPierce', '破甲弹', '🔪', '#B0C4DE', 20)
+      createCritEffect(state, state.playerX, state.playerY)
       pushText('🔪 破甲弹！')
       break
     case 'heavyHit':    // 重击弹：单发伤害大幅提高
       S.heavyHitStacks = (S.heavyHitStacks || 0) + 1
       state.bulletDamage = Math.floor(state.bulletDamage * 2.0)  // 🎯 双倍伤害（原1.8）
       addOrRefreshBuff(state, 'heavyHit', '重击弹', '💪', '#FF4500', 20)
+      createEnergyBurst(state, state.playerX, state.playerY, '#FF9F43', 16)
+      triggerScreenWave(state, '#FF4500')
       pushText('💪 重击弹！')
       break
     case 'rapidBurst':    // 连射增幅：短时间极速连射（临时极短冷却）
       S.rapidBurstStacks = (S.rapidBurstStacks || 0) + 1
       state.shootCooldown = Math.max(30, state.shootCooldown * 0.3)  // 🎯 更快的连射（原0.4）
       addOrRefreshBuff(state, 'rapidBurst', '连射增幅', '🔥', '#FF4500', 20)
+      createFireEffect(state, state.playerX, state.playerY, '#EE5A24')
       pushText('🔥 连射增幅！')
       break
     case 'autoAim':       // 精准锁定：子弹自动吸附龙身
       S.autoAimStacks = (S.autoAimStacks || 0) + 1
       state.bulletPierce += 1
       addOrRefreshBuff(state, 'autoAim', '精准锁定', '🎯', '#00CED1', 20)
+      createCritEffect(state, state.playerX, state.playerY)
+      triggerScreenWave(state, '#00CED1')
       pushText('🎯 精准锁定！')
       break
 
@@ -1105,33 +1139,47 @@ function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
       S.blastStacks = (S.blastStacks || 0) + 1
       addOrRefreshBuff(state, 'blast', '爆裂冲击', '💥', '#FF6347', 20)
       audioService.explosion()
+      createExplosion(state, state.playerX, state.playerY, '#FF4757', 50)
+      triggerScreenWave(state, '#FF4757')
       pushText('💥 爆裂冲击！')
       break
     case 'slash':         // 横向横扫：横向范围伤害（持续60秒）
       S.slashStacks = (S.slashStacks || 0) + 1
       addOrRefreshBuff(state, 'slash', '横向横扫', '⚔️', '#DDA0DD', 20)
+      createSlashWave(state, state.playerX, state.playerY, BASE_W, 60, '#7F8C8D')
+      triggerScreenWave(state, '#DDA0DD')
       pushText('⚔️ 横向横扫！')
       break
     case 'ringWave':      // 环形震荡：定时释放环形冲击波（叠加 timer）
       S.ringWaveStacks = (S.ringWaveStacks || 0) + 1
       S._ringWaveTimer = (S._ringWaveTimer || 0) + 3
       addOrRefreshBuff(state, 'ringWave', '环形震荡', '🌊', '#00CED1', 20)
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          createRingWave(state, state.playerX, state.playerY, '#3498DB')
+        }, i * 150)
+      }
       pushText('🌊 环形震荡！')
       break
     case 'windPressure':  // 全屏风压：大范围减速龙
       S.windPressureStacks = (S.windPressureStacks || 0) + 1
       state.slowAllTimer = Math.max(state.slowAllTimer, (state.slowAllTimer || 0) + 60)
       addOrRefreshBuff(state, 'windPressure', '全屏风压', '🌪️', '#87CEEB', 20)
+      createFreezeEffect(state, BASE_W / 2, BASE_H / 2)
+      triggerScreenWave(state, '#87CEEB')
       pushText('🌪️ 全屏风压！')
       break
     case 'chainBlast':    // 分段爆破：命中后连锁爆破（持续60秒）
       S.chainBlastStacks = (S.chainBlastStacks || 0) + 1
       addOrRefreshBuff(state, 'chainBlast', '分段爆破', '⛓️', '#808080', 20)
+      createEnergyBurst(state, state.playerX, state.playerY, '#E67E22', 10)
+      triggerScreenWave(state, '#E67E22')
       pushText('⛓️ 分段爆破！')
       break
     case 'splash':        // 范围溅射：伤害小幅溅射周围（持续60秒）
       S.splashStacks = (S.splashStacks || 0) + 1
       addOrRefreshBuff(state, 'splash', '范围溅射', '💦', '#1E90FF', 20)
+      createRingWave(state, state.playerX, state.playerY, '#1ABC9C')
       pushText('💦 范围溅射！')
       break
 
@@ -1139,28 +1187,38 @@ function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
     case 'burn':          // 持续灼烧：每帧对所有龙附加灼烧层数（持续60秒）
       S.burnStacks = (S.burnStacks || 0) + 1
       addOrRefreshBuff(state, 'burn', '持续灼烧', '🔥', '#FF4500', 20)
+      createFireEffect(state, state.playerX, state.playerY, '#E74C3C')
+      triggerScreenWave(state, '#E74C3C')
       pushText('🔥 持续灼烧！')
       break
     case 'slowField':     // 迟缓领域：降低整条龙移动速度
       S.slowFieldStacks = (S.slowFieldStacks || 0) + 1
       state.slowAllTimer = Math.max(state.slowAllTimer || 0, 60)
       addOrRefreshBuff(state, 'slowField', '迟缓领域', '❄️', '#87CEFA', 20)
+      createFreezeEffect(state, state.playerX, state.playerY)
+      triggerScreenWave(state, '#00CEC9')
       pushText('❄️ 迟缓领域！')
       break
     case 'toxin':         // 毒素侵蚀：持续叠加毒素掉血
       S.toxinStacks = (S.toxinStacks || 0) + 3
       addOrRefreshBuff(state, 'toxin', '毒素侵蚀', '☠️', '#9ACD32', 20)
+      createToxinCloud(state, state.playerX, state.playerY)
+      triggerScreenWave(state, '#6C5CE7')
       pushText('☠️ 毒素侵蚀！')
       break
     case 'energyField':   // 能量涌动：角色周围持续生成伤害圈（叠加）
       S.energyFieldStacks = (S.energyFieldStacks || 0) + 1
       addOrRefreshBuff(state, 'energyField', '能量涌动', '⚡', '#FFD700', 20)
+      createEnergyBurst(state, state.playerX, state.playerY, '#FDCB6E', 8)
+      triggerScreenWave(state, '#FDCB6E')
       pushText('⚡ 能量涌动！')
       break
     case 'defDown':       // 减防光环：降低全场巨龙防御（持续60秒）
       S.defDownStacks = (S.defDownStacks || 0) + 1
       state.bulletDamage = Math.floor(state.bulletDamage * 1.15)
       addOrRefreshBuff(state, 'defDown', '减防光环', '🛡️', '#B0C4DE', 20)
+      createDefDownEffect(state, state.dragons)
+      triggerScreenWave(state, '#636E72')
       pushText('🛡️ 减防光环！')
       break
 
@@ -1172,21 +1230,27 @@ function applySelectedPowerUp(state: GameState, card: PowerUpCard) {
       for (const dragon of state.dragons) {
         if (dragon.alive && dragon.segments.length > 3) {
           killDragonSegment(dragon, Math.floor(dragon.segments.length / 2))
+          createSlashWave(state, dragon.segments[0].x, dragon.segments[0].y, 80, 80, '#D63031')
           break
         }
       }
+      triggerScreenWave(state, '#D63031')
       pushText('🗡️ 断龙利刃！')
       break
     case 'executeWave':   // 斩杀剑气：纵向长剑气贯穿路线（持续60秒）
       S.executeWaveStacks = (S.executeWaveStacks || 0) + 1
       addOrRefreshBuff(state, 'executeWave', '斩杀剑气', '⚡', '#9370DB', 20)
       audioService.lightning()
+      createSlashWave(state, state.playerX, 0, 40, BASE_H, '#0984E3')
+      triggerScreenWave(state, '#0984E3')
       pushText('⚡ 斩杀剑气！')
       break
     case 'crit':          // 极限暴击：大幅提升暴击概率（持续60秒）
       S.critStacks = (S.critStacks || 0) + 1
       state.bulletDamage = Math.floor(state.bulletDamage * 1.5)
       addOrRefreshBuff(state, 'crit', '极限暴击', '💢', '#FF1493', 20)
+      createCritEffect(state, state.playerX, state.playerY)
+      triggerScreenWave(state, '#E84393')
       pushText('💢 极限暴击！')
       break
   }
