@@ -429,7 +429,7 @@ export function createRenderer(
     const capeWidth = 18 * sizeMultiplier
     const capeLength = 38 * sizeMultiplier
 
-    // 🎯 等级颜色：从银色→金色→红色（随等级变化）
+    // 🎯 等级颜色：从金色→粉金→紫金→钻石（每3关一阶段）
     const levelColorIndex = Math.min(Math.floor((level - 1) / 3), 3)  // 0~3
     const levelColors = [
       '#FFD700',  // Lv1-3: 金色
@@ -438,6 +438,12 @@ export function createRenderer(
       '#00CED1',  // Lv10+: 钻石色
     ]
     const levelAccent = levelColors[levelColorIndex]
+
+    // 🎯 武器等级外观（随等级变化）
+    const weaponLevel = Math.min(Math.floor((level - 1) / 2), 5)  // 每2关升一级，最高5级
+    const weaponColors = ['#A0522D', '#CD853F', '#FFD700', '#FF4500', '#9400D3', '#00FFFF']
+    const weaponColor = weaponColors[weaponLevel]
+    const weaponGlowIntensity = 8 + weaponLevel * 4  // 光晕强度递增
 
     // 🎯 增强版：无敌状态护盾特效
     if (state.invincibleTimer > 0) {
@@ -627,33 +633,33 @@ export function createRenderer(
     // 旋转坐标系到射击方向
     ctx.rotate(state.shootAngle)
 
-    // 弓身（更粗更有质感）
+    // 弓身（更粗更有质感，颜色随等级变化）
     const bowGrad = ctx.createLinearGradient(-2, -22, 2, 22)
-    bowGrad.addColorStop(0, '#A0522D')
-    bowGrad.addColorStop(0.5, '#8B4513')
-    bowGrad.addColorStop(1, '#654321')
+    bowGrad.addColorStop(0, levelAccent)
+    bowGrad.addColorStop(0.5, weaponColor)
+    bowGrad.addColorStop(1, weaponColor)
     ctx.strokeStyle = bowGrad
-    ctx.lineWidth = 4
+    ctx.lineWidth = 4 + weaponLevel * 0.5  // 弓身加粗
     ctx.lineCap = 'round'
-    ctx.shadowColor = '#8B4513'
-    ctx.shadowBlur = 8
+    ctx.shadowColor = weaponColor
+    ctx.shadowBlur = weaponGlowIntensity
     ctx.beginPath()
     ctx.arc(0, 0, 24, -Math.PI / 2.5, Math.PI / 2.5)
     ctx.stroke()
     ctx.shadowBlur = 0
-    
-    // 弓身装饰纹路
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)'
-    ctx.lineWidth = 1
+
+    // 弓身装饰纹路（颜色随等级变化）
+    ctx.strokeStyle = `${levelAccent}66`  // 40% alpha
+    ctx.lineWidth = 1.5
     ctx.beginPath()
     ctx.arc(0, 0, 22, -Math.PI / 3, Math.PI / 3)
     ctx.stroke()
 
-    // 弓弦（发光效果）
-    ctx.strokeStyle = '#E0E0E0'
+    // 弓弦（发光效果，颜色随等级变化）
+    ctx.strokeStyle = levelAccent
     ctx.lineWidth = 2
-    ctx.shadowColor = '#FFFFFF'
-    ctx.shadowBlur = 4
+    ctx.shadowColor = levelAccent
+    ctx.shadowBlur = weaponGlowIntensity * 0.8
     ctx.beginPath()
     const bowTopX = 24 * Math.cos(-Math.PI / 2.5)
     const bowTopY = 24 * Math.sin(-Math.PI / 2.5)
@@ -664,22 +670,22 @@ export function createRenderer(
     ctx.stroke()
     ctx.shadowBlur = 0
 
-    // 箭矢（金色发光箭杆）
+    // 箭矢（颜色和光效随等级变化）
     const arrowGlow = 0.7 + Math.sin(Date.now() / 150) * 0.3
-    ctx.strokeStyle = `rgba(255, 215, 0, ${arrowGlow})`
-    ctx.lineWidth = 3
-    ctx.shadowColor = '#FFD700'
-    ctx.shadowBlur = 10
+    ctx.strokeStyle = `${levelAccent}${Math.round(arrowGlow * 255).toString(16).padStart(2, '0')}`
+    ctx.lineWidth = 3 + weaponLevel * 0.3
+    ctx.shadowColor = levelAccent
+    ctx.shadowBlur = weaponGlowIntensity + 2
     ctx.beginPath()
     ctx.moveTo(-6, 0)
     ctx.lineTo(38, 0)
     ctx.stroke()
     ctx.shadowBlur = 0
 
-    // 箭头（更尖锐的设计）
-    ctx.fillStyle = '#FF4500'
-    ctx.shadowColor = '#FF4500'
-    ctx.shadowBlur = 8
+    // 箭头（颜色随等级变化）
+    ctx.fillStyle = levelAccent
+    ctx.shadowColor = levelAccent
+    ctx.shadowBlur = weaponGlowIntensity
     ctx.beginPath()
     ctx.moveTo(42, 0)
     ctx.lineTo(32, -5)
@@ -688,9 +694,9 @@ export function createRenderer(
     ctx.closePath()
     ctx.fill()
     ctx.shadowBlur = 0
-    
+
     // 箭头高光
-    ctx.fillStyle = '#FFA500'
+    ctx.fillStyle = '#FFFFFF'
     ctx.beginPath()
     ctx.moveTo(40, 0)
     ctx.lineTo(34, -2)
@@ -699,12 +705,12 @@ export function createRenderer(
     ctx.closePath()
     ctx.fill()
 
-    // 箭羽（更大的羽毛，动态效果）
+    // 箭羽（颜色随等级变化）
     ctx.save()
     const fletchWave = Math.sin(Date.now() / 120) * 1.5
-    ctx.fillStyle = '#DC143C'
-    ctx.shadowColor = '#DC143C'
-    ctx.shadowBlur = 4
+    ctx.fillStyle = levelAccent
+    ctx.shadowColor = levelAccent
+    ctx.shadowBlur = weaponGlowIntensity * 0.5
     ctx.beginPath()
     ctx.moveTo(-6, 0)
     ctx.lineTo(-12, -4 + fletchWave)
@@ -1081,6 +1087,11 @@ export function createRenderer(
     ctx.shadowColor = 'rgba(0,0,0,0.5)'
     ctx.shadowBlur = 3
     ctx.fillText(`${state.score}`, BASE_W - 12, 42)
+
+    // 🎯 显示当前伤害值（让玩家看到升级效果）
+    ctx.fillStyle = '#FF6B6B'
+    ctx.font = 'bold 11px sans-serif'
+    ctx.fillText(`⚔️${state.bulletDamage}`, BASE_W - 12, 58)
 
     ctx.fillStyle = '#888'
     ctx.font = '14px sans-serif'
