@@ -562,11 +562,44 @@ export function createRenderer(
 
     // 显示等级数字
     ctx.shadowBlur = 0
+    // 显示等级数字
+    ctx.shadowBlur = 0
     ctx.fillStyle = '#FFFFFF'
     ctx.font = `bold ${6 * sizeMultiplier}px sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(String(Math.min(level, 99)), 0, 1)
+    ctx.shadowBlur = 0
+
+    // ═══════════════════════════════════════
+    // 🎯 等级星级指示器（头顶更直观显示）
+    // ═══════════════════════════════════════
+    const starCount = Math.min(Math.ceil(level / 3), 5)  // 每3关一个星，最多5星
+    const starY = -52 * sizeMultiplier
+    const starSpacing = 8 * sizeMultiplier
+    const starSize = 5 * sizeMultiplier
+
+    for (let i = 0; i < starCount; i++) {
+      const starX = (i - (starCount - 1) / 2) * starSpacing
+      const starPulse = 1 + Math.sin(Date.now() / 200 + i * 0.5) * 0.1
+
+      ctx.fillStyle = levelAccent
+      ctx.shadowColor = levelAccent
+      ctx.shadowBlur = 8 * sizeMultiplier
+
+      // 绘制五角星
+      ctx.beginPath()
+      for (let j = 0; j < 5; j++) {
+        const angle = (j * 4 * Math.PI / 5) - Math.PI / 2
+        const r = j % 2 === 0 ? starSize * starPulse : starSize * starPulse * 0.4
+        const sx = starX + Math.cos(angle) * r
+        const sy = starY + Math.sin(angle) * r
+        if (j === 0) ctx.moveTo(sx, sy)
+        else ctx.lineTo(sx, sy)
+      }
+      ctx.closePath()
+      ctx.fill()
+    }
     ctx.shadowBlur = 0
 
     // 3. 头盔/头饰（更立体的设计）
