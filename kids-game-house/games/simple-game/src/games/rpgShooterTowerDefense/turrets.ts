@@ -122,7 +122,10 @@ export function placeTurret(
     range: levelStats.range,
     lastShot: 0,
     target: null,
-    angle: 0
+    angle: 0,
+    // ✅ 初始化倒计时
+    placedAt: performance.now() / 1000,  // 当前时间（秒）
+    lifetime: 90  // 90秒生命周期
   }
   
   state.turrets.push(turret)
@@ -200,6 +203,10 @@ export function upgradeTurret(state: GameState, turret: Turret): boolean {
     turret.maxHp = upgrade.hp
     turret.hp = upgrade.hp  // 升级回满血
   }
+  
+  // ✅ 升级后重置倒计时
+  turret.placedAt = performance.now() / 1000
+  turret.lifetime = 90  // 重新计算90秒
   
   // ✅ 升级特效 - 多层粒子爆发
   // 第一层：金色光环粒子
@@ -541,6 +548,22 @@ function findChainTarget(
 
 // 更新所有炮台
 export function updateTurrets(state: GameState, now: number): void {
+  const currentTime = now / 1000  // 转换为秒
+  
+  // ✅ 过滤掉超时的炮台
+  const beforeCount = state.turrets.length
+  state.turrets = state.turrets.filter(turret => {
+    const elapsed = currentTime - turret.placedAt
+    return elapsed < turret.lifetime
+  })
+  
+  // ✅ 如果有炮台被删除，添加特效
+  const removedCount = beforeCount - state.turrets.length
+  if (removedCount > 0) {
+    console.log(`⏰ ${removedCount} 个炮台已超时删除`)
+  }
+  
+  // 更新剩余炮台
   for (const turret of state.turrets) {
     turretShoot(state, turret, now)
   }
@@ -743,6 +766,37 @@ export function drawTurret(
   ctx.beginPath()
   ctx.roundRect(hpX, hpY, barWidth * hpRatio, barHeight, 2)
   ctx.fill()
+  
+  // ✅ 倒计时显示
+  const currentTime = performance.now() / 1000
+  const elapsed = currentTime - turret.placedAt
+  const remaining = Math.max(0, turret.lifetime - elapsed)
+  
+  if (remaining > 0) {
+    // 倒计时数字
+    ctx.fillStyle = remaining < 10 ? '#FF4757' : 'rgba(255, 255, 255, 0.8)'
+    ctx.font = `bold ${8 * SCALE_RATIO}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.fillText(`${Math.ceil(remaining)}s`, 0, hpY + barHeight + 2)
+    
+    // 倒计时条
+    const timeRatio = remaining / turret.lifetime
+    const timeBarY = hpY + barHeight + 12
+    const timeBarW = barWidth
+    const timeBarH = 2
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
+    ctx.beginPath()
+    ctx.roundRect(hpX, timeBarY, timeBarW, timeBarH, 1)
+    ctx.fill()
+    
+    const timeColor = timeRatio > 0.5 ? '#4ECDC4' : timeRatio > 0.2 ? '#FBBF24' : '#FF4757'
+    ctx.fillStyle = timeColor
+    ctx.beginPath()
+    ctx.roundRect(hpX, timeBarY, timeBarW * timeRatio, timeBarH, 1)
+    ctx.fill()
+  }
   
   ctx.restore()
 }

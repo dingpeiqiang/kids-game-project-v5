@@ -26,6 +26,9 @@ export interface Turret {
   lastShot: number      // 上次射击时间戳
   target: Enemy | null
   angle: number         // 炮台朝向角度
+  // ✅ 新增：倒计时相关
+  placedAt: number      // 放置时间戳（秒）
+  lifetime: number      // 生命周期（秒，默认90秒）
 }
 
 // 炮台配置
