@@ -67,8 +67,11 @@ public class LeaderboardController {
      */
     @Data
     public static class SubmitScoreRequest {
+        @com.fasterxml.jackson.annotation.JsonProperty("gameId")
         private Long gameId;         // 游戏ID
+        @com.fasterxml.jackson.annotation.JsonProperty("score")
         private Integer score;       // 分数
+        @com.fasterxml.jackson.annotation.JsonProperty("accessToken")
         private String accessToken;  // 访问令牌
     }
 
@@ -201,8 +204,15 @@ public class LeaderboardController {
     @PostMapping("/submit")
     public Result<SubmitScoreResponse> submitScore(@RequestBody SubmitScoreRequest request) {
         try {
+            // 添加调试日志
+            log.info("[Leaderboard] 收到提交分数请求: gameId={}, score={}, accessTokenLength={}", 
+                    request.getGameId(), 
+                    request.getScore(), 
+                    request.getAccessToken() != null ? request.getAccessToken().length() : 0);
+            
             // 验证请求参数
             if (request.getGameId() == null) {
+                log.error("[Leaderboard] 游戏ID为空！原始请求对象: {}", request);
                 return Result.error("游戏ID不能为空");
             }
             if (request.getScore() == null) {

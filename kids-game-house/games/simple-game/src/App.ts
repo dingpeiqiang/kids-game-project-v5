@@ -7,14 +7,13 @@ import { audioService } from './services/audio'
 import { gameEngine } from './services/gameEngine'
 import { userService } from './services/userService'
 import { AuthModal, MePanel, showToast, injectUserStyles } from './services/userUI'
-import { apiGetBatchUserRank } from './services/apiClient'
+import { apiGetBatchUserRank, apiSubmitComment, apiGetComments } from './services/apiClient'
 import { getTopList, type LeaderboardEntry } from './services/leaderboardService'
 import { initEliminate } from './games/eliminate'
 import { initDodge } from './games/dodge'
 import { initSort } from './games/sort'
 import { initPop } from './games/pop'
 import { initStack3D } from './games/stack3d'
-import { initTower3D } from './games/tower3d'
 import { initFruitSlice } from './games/fruitSlice'
 import { initJewelMatch } from './games/jewelMatch'
 import { initBouncePath } from './games/bouncePath'
@@ -22,7 +21,7 @@ import { initNeonRun } from './games/neonRun'
 import { initTetris } from './games/tetris'
 import { initCookieCut } from './games/cookieCut/index'
 import { initStarCatcher } from './games/starCatcher'
-import { initBubbleShooter } from './games/bubbleShooter'
+import { initBubbleShooter } from './games/bubbleShooter/index'
 import { initSlimeJump } from './games/slimeJump'
 import { initColorTap } from './games/colorTap'
 import { initStack } from './games/stack'
@@ -270,6 +269,32 @@ class App {
           
           <!-- 开始按钮 -->
           <button class="guide-btn" id="btnStartGame">开始游戏</button>
+          
+          <!-- 游戏评论区 -->
+          <div class="comment-section" id="commentSection">
+            <div class="comment-header">
+              <div class="comment-title">📝 游戏评论</div>
+              <div class="comment-stats" id="commentStats"></div>
+            </div>
+            
+            <!-- 评论输入区 -->
+            <div class="comment-input-area">
+              <div class="rating-stars" id="ratingStars">
+                <span class="star" data-rating="1">★</span>
+                <span class="star" data-rating="2">★</span>
+                <span class="star" data-rating="3">★</span>
+                <span class="star" data-rating="4">★</span>
+                <span class="star" data-rating="5">★</span>
+              </div>
+              <textarea id="commentInput" placeholder="分享你的游戏感受..." maxlength="200"></textarea>
+              <button class="btn btn-comment" id="btnSubmitComment">发布评论</button>
+            </div>
+            
+            <!-- 评论列表 -->
+            <div class="comment-list" id="commentList">
+              <div class="no-comments" id="noComments">暂无评论，快来发表第一条吧！</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -605,6 +630,213 @@ class App {
         this.authModal.open(() => this.onUserChange())
       }
     })
+
+    // 评论区评分星星点击
+    document.querySelectorAll('.rating-stars .star').forEach(star => {
+      star.addEventListener('click', (e) => {
+        const rating = parseInt((e.target as HTMLElement).getAttribute('data-rating') || '0')
+        this.setRating(rating)
+      })
+    })
+
+    // 发布评论按钮
+    document.getElementById('btnSubmitComment')?.addEventListener('click', () => {
+      this.submitComment()
+    })
+
+    // 评论输入框回车提交
+    document.getElementById('commentInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        this.submitComment()
+      }
+    })
+  }
+
+  private selectedRating: number = 0
+
+  private setRating(rating: number) {
+    this.selectedRating = rating
+    document.querySelectorAll('.rating-stars .star').forEach((star, index) => {
+      if (index < rating) {
+        star.classList.add('selected')
+      } else {
+        star.classList.remove('selected')
+      }
+    })
+  }
+
+  private async submitComment() {
+    if (!this.currentGame) return
+    
+    const input = document.getElementById('commentInput') as HTMLTextAreaElement
+    const content = input.value.trim()
+    
+    if (!content) {
+      showToast('请输入评论内容')
+      return
+    }
+    
+    if (this.selectedRating === 0) {
+      showToast('请先选择评分')
+      return
+    }
+
+    // 检查用户是否登录
+    if (!userService.isLoggedIn) {
+      showToast('请先登录或注册后才能发表评论')
+      // 打开登录框
+      this.authModal.open(() => this.onUserChange())
+      return
+    }
+
+    const playerName = userService.current?.username || '玩家'
+
+    const submitBtn = document.getElementById('btnSubmitComment') as HTMLButtonElement
+    submitBtn.disabled = true
+    submitBtn.textContent = '发布中...'
+
+    try {
+      // 已登录用户：提交到后端
+      const numericGameId = this.convertGameIdToNumber(this.currentGame.id)
+      console.log('[App] 准备提交评论到后端', { 
+        gameId: numericGameId, 
+        originalGameId: this.currentGame.id,
+        content: content.substring(0, 20) + '...',
+        score: this.selectedRating,
+        userId: userService.current?.id
+      })
+      
+      const result = await apiSubmitComment(numericGameId, content, this.selectedRating)
+      console.log('[App] 后端评论提交结果:', result)
+      
+      if (result.ok) {
+        console.log('[App] 评论成功提交到后端')
+        // 同时保存到本地作为缓存
+        storageService.addComment(this.currentGame.id, content, this.selectedRating, playerName)
+      } else {
+        // 后端失败，降级到本地存储
+        console.warn('[App] 后端评论提交失败，使用本地存储:', result.msg)
+        storageService.addComment(this.currentGame.id, content, this.selectedRating, playerName)
+      }
+      
+      // 清空输入
+      input.value = ''
+      this.setRating(0)
+      
+      // 刷新评论列表
+      await this.renderComments()
+      
+      showToast('评论发布成功！')
+    } catch (error) {
+      console.error('[App] 提交评论失败:', error)
+      showToast('发布失败，请稍后重试')
+    } finally {
+      submitBtn.disabled = false
+      submitBtn.textContent = '发布评论'
+    }
+  }
+
+  private async renderComments() {
+    if (!this.currentGame) return
+    
+    const listEl = document.getElementById('commentList')!
+    
+    // 显示加载状态
+    listEl.innerHTML = '<div class="loading-comments">加载评论中...</div>'
+    
+    let comments: Array<{ id: string; playerName: string; content: string; score: number; createdAt: number }> = []
+    
+    try {
+      if (userService.isLoggedIn) {
+        // 已登录用户：优先从后端获取评论
+        const numericGameId = this.convertGameIdToNumber(this.currentGame.id)
+        const result = await apiGetComments(numericGameId, 0, 20)
+        
+        if (result.ok && result.data && result.data.length > 0) {
+          // 使用后端评论
+          comments = result.data.map(c => ({
+            id: c.id,
+            playerName: c.nickname || c.username,
+            content: c.content,
+            score: c.score,
+            createdAt: c.createdAt
+          }))
+        } else {
+          // 后端无数据，使用本地缓存
+          comments = storageService.getComments(this.currentGame.id)
+        }
+      } else {
+        // 游客用户：使用本地评论
+        comments = storageService.getComments(this.currentGame.id)
+      }
+    } catch (error) {
+      console.error('[App] 获取评论失败:', error)
+      // 失败时使用本地缓存
+      comments = storageService.getComments(this.currentGame.id)
+    }
+    
+    if (comments.length === 0) {
+      listEl.innerHTML = '<div class="no-comments" id="noComments">暂无评论，快来发表第一条吧！</div>'
+    } else {
+      listEl.innerHTML = comments.map(comment => `
+        <div class="comment-item">
+          <div class="comment-header">
+            <div class="comment-avatar">${comment.playerName[0]}</div>
+            <div class="comment-info">
+              <div class="comment-name">${comment.playerName}</div>
+              <div class="comment-time">${this.formatTime(comment.createdAt)}</div>
+            </div>
+            <div class="comment-rating">
+              ${'★'.repeat(comment.score)}${'☆'.repeat(5 - comment.score)}
+            </div>
+          </div>
+          <div class="comment-content">${comment.content}</div>
+        </div>
+      `).join('')
+    }
+    
+    // 更新评论统计
+    this.updateCommentStats(comments.length > 0 ? comments : undefined)
+  }
+
+  private updateCommentStats(comments?: Array<{ score: number }>) {
+    if (!this.currentGame) return
+    
+    const statsEl = document.getElementById('commentStats')!
+    
+    let total: number, avgScore: number
+    
+    if (comments && comments.length > 0) {
+      // 使用传入的评论数据（后端数据）
+      total = comments.length
+      avgScore = Math.round(comments.reduce((sum, c) => sum + c.score, 0) / total * 10) / 10
+    } else {
+      // 使用本地存储数据
+      total = storageService.getTotalComments(this.currentGame.id)
+      avgScore = storageService.getAverageScore(this.currentGame.id)
+    }
+    
+    statsEl.innerHTML = `
+      <span>${total} 条评论</span>
+      <span class="avg-score">${avgScore > 0 ? avgScore.toFixed(1) : '-'} 分</span>
+    `
+  }
+
+  private formatTime(timestamp: number): string {
+    const now = Date.now()
+    const diff = now - timestamp
+    
+    if (diff < 60000) {
+      return '刚刚'
+    } else if (diff < 3600000) {
+      return `${Math.floor(diff / 60000)} 分钟前`
+    } else if (diff < 86400000) {
+      return `${Math.floor(diff / 3600000)} 小时前`
+    } else {
+      const date = new Date(timestamp)
+      return `${date.getMonth() + 1}/${date.getDate()}`
+    }
   }
 
   private bindGameCallbacks() {
@@ -690,6 +922,11 @@ class App {
     `
 
     ;(document.getElementById('guideSkipCheck') as HTMLInputElement).checked = false
+    
+    // 初始化评论区
+    this.setRating(0)
+    this.renderComments()
+    
     document.getElementById('guide-overlay')!.classList.add('show')
     
     // 添加点击背景关闭功能（关闭引导但不进入游戏）
@@ -748,7 +985,8 @@ class App {
     // 根据屏幕计算缩放比例（spaceShooter 使用全屏，其他游戏保留边距）
     const isSpaceShooter = this.currentGame.id === 'spaceShooter'
     
-    let displayW: number, displayH: number
+    let displayW: number = W
+    let displayH: number = H
     
     if (isSpaceShooter) {
       // 太空射击游戏：使用 Phaser ScaleManager ENVELOP 模式
@@ -762,6 +1000,15 @@ class App {
       const scale = Math.min(widthRatio, heightRatio)
       displayW = W * scale
       displayH = H * scale
+      
+      // 移动端额外优化：确保Canvas居中显示
+      if (window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        canvas.style.display = 'flex'
+        canvas.style.alignItems = 'center'
+        canvas.style.justifyContent = 'center'
+        canvas.style.width = '100%'
+        canvas.style.height = '100%'
+      }
     }
     
     // 非 spaceShooter 游戏的 Canvas 创建
@@ -776,7 +1023,6 @@ class App {
       case 'sort':      initSort(gameEngine, () => this.endGame()); break
       case 'pop':       initPop(gameEngine, () => this.endGame()); break
       case 'stack3d':   initStack3D(gameEngine, () => this.endGame()); break
-      case 'tower3d':    initTower3D(gameEngine, () => this.endGame()); break
       case 'fruitSlice': initFruitSlice(gameEngine, () => this.endGame()); break
       case 'jewelMatch': initJewelMatch(gameEngine, () => this.endGame()); break
       case 'bouncePath': initBouncePath(gameEngine, () => this.endGame()); break

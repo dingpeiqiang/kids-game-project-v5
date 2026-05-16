@@ -138,7 +138,21 @@ export async function submitScore(
   accessToken: string
 ): Promise<SubmitScoreResponse> {
   const url = `${apiClient.baseUrl}/leaderboard/submit`
-  console.log('[leaderboardService] submitScore 被调用', { url, gameId, score })
+  
+  // 构建请求体
+  const requestBody = {
+    gameId,
+    score,
+    accessToken
+  }
+  
+  console.log('[leaderboardService] submitScore 被调用', { 
+    url, 
+    requestBody: JSON.stringify(requestBody),
+    gameId,
+    score,
+    accessTokenLength: accessToken?.length
+  })
   
   const res = await fetch(url, {
     method: 'POST',
@@ -146,11 +160,7 @@ export async function submitScore(
       ...apiClient.getHeaders(),
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      gameId,
-      score,
-      accessToken
-    })
+    body: JSON.stringify(requestBody)
   })
 
   console.log('[leaderboardService] fetch 响应状态:', res.status)
