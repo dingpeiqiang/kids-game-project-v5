@@ -103,11 +103,11 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
     cookies.push({
       x,
       y: H + size,
-      vx: (Math.random() - 0.5) * 3,
-      vy: -(5 + Math.random() * 3),
+      vx: (Math.random() - 0.5) * 1.5,  // 减小水平速度，从3降到1.5
+      vy: -(3 + Math.random() * 2),     // 减小垂直速度，从5-8降到3-5
       size,
       rotation: 0,
-      rotSpeed: (Math.random() - 0.5) * 0.15,
+      rotSpeed: (Math.random() - 0.5) * 0.08,  // 减小旋转速度，从0.15降到0.08
       ...template,
       sliced: false
     })
@@ -235,7 +235,7 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
     }
 
     const now = Date.now()
-    if (now - lastSpawn > 900 && cookies.length < 3) {
+    if (now - lastSpawn > 1500 && cookies.length < 3) {  // 增加生成间隔，从900ms增加到1500ms
       spawnCookie()
       lastSpawn = now
     }

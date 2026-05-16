@@ -46,7 +46,7 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
 
   // // ── 切割爽感 ──
   // { id: 'fruitSlice',    visible: true,  order: 1,  badge: '' },
-  // { id: 'cookieCut',     visible: true,  order: 2,  badge: '' },
+  { id: 'cookieCut',     visible: true,  order: 2,  badge: '' },
 
   // // ── 动作闯关 ──
   // { id: 'dodge',         visible: true,  order: 1,  badge: '' },
@@ -61,11 +61,11 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
   // { id: 'starCatcher',   visible: true,  order: 3,  badge: '' },
 
   // // ── 3D沉浸 ──
-  // { id: 'stack3d',       visible: true,  order: 1,  badge: '' },
+  { id: 'stack3d',       visible: true,  order: 1,  badge: '' },
   // { id: 'tower3d',       visible: true,  order: 2,  badge: '' },
 
   // // ── 堆叠建造 ──
-  // { id: 'stack',         visible: true,  order: 1,  badge: '' },
+  { id: 'stack',         visible: true,  order: 1,  badge: '' },
 
   // ── 射击枪战 ──
   { id: 'spaceShooter',  visible: true,  order: 1,  badge: '新' },

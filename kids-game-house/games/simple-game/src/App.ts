@@ -20,7 +20,7 @@ import { initJewelMatch } from './games/jewelMatch'
 import { initBouncePath } from './games/bouncePath'
 import { initNeonRun } from './games/neonRun'
 import { initTetris } from './games/tetris'
-import { initCookieCut } from './games/cookieCut'
+import { initCookieCut } from './games/cookieCut/index'
 import { initStarCatcher } from './games/starCatcher'
 import { initBubbleShooter } from './games/bubbleShooter'
 import { initSlimeJump } from './games/slimeJump'
@@ -782,7 +782,7 @@ class App {
       case 'bouncePath': initBouncePath(gameEngine, () => this.endGame()); break
       case 'neonRun': initNeonRun(gameEngine, () => this.endGame()); break
       case 'tetris': initTetris(gameEngine, () => this.endGame()); break
-      case 'cookieCut': initCookieCut(gameEngine, () => this.endGame()); break
+            case 'cookieCut': initCookieCut(gameEngine, () => this.endGame(), 1); break
       case 'starCatcher': initStarCatcher(gameEngine, () => this.endGame()); break
       case 'bubbleShooter': initBubbleShooter(gameEngine, () => this.endGame()); break
       case 'slimeJump': initSlimeJump(gameEngine, () => this.endGame()); break

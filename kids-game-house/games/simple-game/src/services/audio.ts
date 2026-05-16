@@ -123,6 +123,21 @@ export class AudioService {
     setTimeout(() => this.playTone(400, 0.15, 'triangle', 0.1), 50)
     this.playNoise(0.15, 0.12)
   }
+  
+  slice = () => {
+    // 切割音：清脆的撕裂声
+    this.playTone(1200, 0.06, 'sawtooth', 0.1)
+    setTimeout(() => this.playTone(1500, 0.05, 'sawtooth', 0.08), 30)
+    this.playNoise(0.04, 0.08)
+  }
+  
+  sliceCombo = (combo: number) => {
+    // 连击切割音：音调随连击数升高
+    const baseFreq = 1000 + (combo * 100)
+    this.playTone(baseFreq, 0.08, 'sawtooth', 0.12)
+    setTimeout(() => this.playTone(baseFreq + 300, 0.06, 'triangle', 0.1), 40)
+    this.playNoise(0.05, 0.1)
+  }
   pop = () => {
     this.playTone(1400, 0.08, 'sine', 0.1)
     setTimeout(() => this.playTone(1800, 0.06, 'sine', 0.08), 40)
