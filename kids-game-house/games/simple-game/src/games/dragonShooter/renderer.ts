@@ -1393,28 +1393,55 @@ export function createRenderer(
     ctx.fillText('点击继续', BASE_W / 2, BASE_H / 2 + 20)
   }
 
-  // ========== 游戏结束 ==========
+  // ========== 游戏结束（区分通关/死亡） ==========
   function drawGameOver(victory: boolean) {
+    // 背景遮罩
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
     ctx.fillRect(0, BASE_H / 2 - 80, BASE_W, 160)
     
-    ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 28px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.shadowColor = '#FFD700'
-    ctx.shadowBlur = 10
-    ctx.fillText('🏆 游戏结束', BASE_W / 2, BASE_H / 2 - 40)
-    ctx.shadowBlur = 0
-    
-    ctx.fillStyle = '#fff'
-    ctx.font = '18px sans-serif'
-    ctx.fillText(`最终得分 ${state.score}`, BASE_W / 2, BASE_H / 2 - 5)
-    ctx.fillText(`到达关卡: ${state.level}`, BASE_W / 2, BASE_H / 2 + 20)
-    ctx.fillText(`最高连击 ${state.maxCombo}x`, BASE_W / 2, BASE_H / 2 + 45)
-    
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'
-    ctx.font = '14px sans-serif'
-    ctx.fillText('点击重新开始', BASE_W / 2, BASE_H / 2 + 70)
+    if (victory) {
+      // 🎉 通关特效：金色主题 + 庆祝
+      ctx.fillStyle = '#FFD700'
+      ctx.font = 'bold 32px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.shadowColor = '#FFD700'
+      ctx.shadowBlur = 15
+      ctx.fillText('🎉 恭喜通关!', BASE_W / 2, BASE_H / 2 - 45)
+      ctx.shadowBlur = 0
+      
+      // 通关统计信息
+      ctx.fillStyle = '#FFFFFF'
+      ctx.font = '18px sans-serif'
+      ctx.fillText(`最终得分: ${state.score}`, BASE_W / 2, BASE_H / 2 - 10)
+      ctx.fillText(`到达关卡: ${state.level}`, BASE_W / 2, BASE_H / 2 + 15)
+      ctx.fillText(`最高连击: ${state.maxCombo}x`, BASE_W / 2, BASE_H / 2 + 40)
+      
+      // 通关提示
+      ctx.fillStyle = '#4CAF50'
+      ctx.font = 'bold 14px sans-serif'
+      ctx.fillText('✨ 太棒了！点击重新开始 ✨', BASE_W / 2, BASE_H / 2 + 68)
+    } else {
+      // 💀 死亡特效：红色主题
+      ctx.fillStyle = '#FF4757'
+      ctx.font = 'bold 28px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.shadowColor = '#FF4757'
+      ctx.shadowBlur = 10
+      ctx.fillText('💀 游戏结束', BASE_W / 2, BASE_H / 2 - 40)
+      ctx.shadowBlur = 0
+      
+      // 死亡统计信息
+      ctx.fillStyle = '#fff'
+      ctx.font = '18px sans-serif'
+      ctx.fillText(`最终得分: ${state.score}`, BASE_W / 2, BASE_H / 2 - 5)
+      ctx.fillText(`到达关卡: ${state.level}`, BASE_W / 2, BASE_H / 2 + 20)
+      ctx.fillText(`最高连击: ${state.maxCombo}x`, BASE_W / 2, BASE_H / 2 + 45)
+      
+      // 重试提示
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'
+      ctx.font = '14px sans-serif'
+      ctx.fillText('点击重新开始', BASE_W / 2, BASE_H / 2 + 70)
+    }
   }
 
   // ========== 关卡完成界面 ==========
@@ -1614,7 +1641,9 @@ export function createRenderer(
       }
 
       if (state.phase === 'gameOver') {
-        drawGameOver(false)
+        // 判断是否通关（到达最终关卡或时间到）
+        const isVictory = state.level >= 10 || state.timeLeft <= 0
+        drawGameOver(isVictory)
       }
 
       if (state.phase === 'powerup_select') {

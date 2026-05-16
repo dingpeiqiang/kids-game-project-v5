@@ -566,17 +566,55 @@ export function drawStartScreen(ctx: CanvasRenderingContext2D): void {
 
 /** 结束界面 */
 export function drawEndScreen(ctx: CanvasRenderingContext2D, state: GameState): void {
+  // 背景遮罩
   ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-
-  ctx.fillStyle = '#fff'
-  ctx.font = 'bold 32px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText('游戏结束', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40)
-
-  ctx.font = '18px sans-serif'
-  ctx.fillText(`到达波次: ${state.wave}/8`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2)
-  ctx.fillText(`最终得分: ${state.resources.score}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30)
+  
+  // 判断是否通关（到达第8波）
+  const isVictory = state.wave >= 8
+  
+  if (isVictory) {
+    // 🎉 通关特效：金色主题
+    ctx.fillStyle = '#FFD700'
+    ctx.font = 'bold 36px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.shadowColor = '#FFD700'
+    ctx.shadowBlur = 15
+    ctx.fillText('🎉 恭喜通关!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50)
+    ctx.shadowBlur = 0
+    
+    // 通关统计信息
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = '20px sans-serif'
+    ctx.fillText(`最终得分: ${state.resources.score}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 10)
+    ctx.fillText(`到达波次: ${state.wave}/8`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20)
+    ctx.fillText(`击杀敌人: ${state.resources.kills}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50)
+    
+    // 通关提示
+    ctx.fillStyle = '#4CAF50'
+    ctx.font = 'bold 16px sans-serif'
+    ctx.fillText('✨ 太棒了！点击重新开始 ✨', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 90)
+  } else {
+    // 💀 死亡特效：红色主题
+    ctx.fillStyle = '#FF4757'
+    ctx.font = 'bold 32px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.shadowColor = '#FF4757'
+    ctx.shadowBlur = 10
+    ctx.fillText('💀 游戏结束', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40)
+    ctx.shadowBlur = 0
+    
+    // 死亡统计信息
+    ctx.fillStyle = '#fff'
+    ctx.font = '18px sans-serif'
+    ctx.fillText(`到达波次: ${state.wave}/8`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2)
+    ctx.fillText(`最终得分: ${state.resources.score}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30)
+    
+    // 重试提示
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.font = '14px sans-serif'
+    ctx.fillText('点击重新开始', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 70)
+  }
 }
 
 // ==================== 主渲染函数 ====================

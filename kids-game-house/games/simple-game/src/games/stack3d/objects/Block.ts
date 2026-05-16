@@ -16,7 +16,7 @@ export class Block {
   public state: BlockState
   private originalColor: number
   private width: number
-  private shape: BlockShape
+  public shape: BlockShape
 
   constructor(colorIndex: number, startY: number, blockWidth: number = GAME_CONFIG.blockSize.width, shape: BlockShape = 'cube') {
     this.originalColor = STACK_COLORS[colorIndex % STACK_COLORS.length]
@@ -25,16 +25,10 @@ export class Block {
     
     const geometry = this.createGeometry(shape, blockWidth)
     
-    const material = new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshBasicMaterial({
       color: this.originalColor,
-      emissive: this.originalColor,
-      emissiveIntensity: 0.15,
-      roughness: 0.4,
-      metalness: 0.5,
       transparent: true,
-      opacity: 0.98,
-      envMapIntensity: 1.8,
-      side: THREE.DoubleSide
+      opacity: 0.95
     })
     
     this.mesh = new THREE.Mesh(geometry, material)
@@ -61,19 +55,19 @@ export class Block {
       case 'cube':
         return new THREE.BoxGeometry(width, height, depth)
       case 'cylinder':
-        return new THREE.CylinderGeometry(width * 0.4, width * 0.4, height, 16)
+        return new THREE.CylinderGeometry(width * 0.4, width * 0.4, height, 8)
       case 'pyramid':
         return new THREE.ConeGeometry(width * 0.4, height, 4)
       case 'octahedron':
-        return new THREE.OctahedronGeometry(size * 0.5)
+        return new THREE.OctahedronGeometry(size * 0.5, 0)
       case 'sphere':
-        return new THREE.SphereGeometry(size * 0.45, 16, 16)
+        return new THREE.SphereGeometry(size * 0.45, 8, 8)
       case 'torus':
-        return new THREE.TorusGeometry(size * 0.25, size * 0.12, 8, 16)
+        return new THREE.TorusGeometry(size * 0.25, size * 0.12, 6, 12)
       case 'cone':
-        return new THREE.ConeGeometry(width * 0.35, height * 0.9, 12)
+        return new THREE.ConeGeometry(width * 0.35, height * 0.9, 8)
       case 'dodecahedron':
-        return new THREE.DodecahedronGeometry(size * 0.35)
+        return new THREE.DodecahedronGeometry(size * 0.35, 0)
       default:
         return new THREE.BoxGeometry(width, height, depth)
     }
@@ -157,10 +151,6 @@ export class Block {
     const oldGeometry = this.mesh.geometry
     this.mesh.geometry = geometry
     oldGeometry.dispose()
-  }
-
-  getTopY(): number {
-    return this.mesh.position.y + GAME_CONFIG.blockSize.height / 2
   }
 
   dispose() {

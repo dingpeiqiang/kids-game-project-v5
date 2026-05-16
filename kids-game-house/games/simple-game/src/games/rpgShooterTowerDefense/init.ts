@@ -10,6 +10,8 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { createInitialState, resetCombo } from './state'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, TURRET_CONFIGS, initCanvasSize } from './config'
+import { apiSubmitGameResult, apiStartGameSession } from '../../services/apiClient'
+import { userService } from '../../services/userService'
 
 // 重构后的模块
 import { render } from './renderer'
@@ -20,6 +22,11 @@ import type { JoystickState, MobileButtons } from './renderer'
 export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   console.log('🏰 启动RPG塔防射击游戏...')
   console.log('GameEngine:', engine)
+
+  // 🎯 游戏会话管理
+  let sessionId: number | null = null
+  let sessionToken: string | null = null
+  let gameStartTime = Date.now()
 
   // ==================== Canvas 初始化 ====================
   initCanvasSize()
@@ -191,13 +198,54 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     }
   }
 
+  // 🎯 游戏结束回调 - 提交分数
+  const handleGameOver = async () => {
+    // 关键修复：游戏结束时打印最终分数，确保分数已累积
+    console.log('[RPG塔防] 游戏结束，最终分数:', state.resources.score)
+    
+    // 🎯 提交游戏积分到后台
+    if (userService.isLoggedIn && userService.current && sessionId && sessionToken) {
+      try {
+        const duration = Math.floor((Date.now() - gameStartTime) / 1000)  // 秒
+        
+        const result = await apiSubmitGameResult({
+          sessionId: sessionId,
+          sessionToken: sessionToken,
+          score: state.resources.score,
+          duration: duration,
+          level: state.wave,
+          isWin: state.wave >= 8,  // 如果到达第8波则胜利
+          details: {
+            kills: state.resources.kills,
+            maxCombo: state.combo.maxCombo,
+            crystals: state.resources.crystals,
+            playerLevel: state.player.level,
+          }
+        })
+        
+        if (result.ok) {
+          console.log('[RPG塔防] 分数提交成功')
+        } else {
+          console.warn('[RPG塔防] 分数提交失败:', result.msg)
+        }
+      } catch (error) {
+        console.error('[RPG塔防] 提交分数异常:', error)
+      }
+    } else {
+      console.log('[RPG塔防] 未登录或无session，跳过分数提交')
+    }
+    
+    // 调用原有的onEnd回调
+    onEnd()
+  }
+
   const gameLoop = (currentTime: number) => {
     const dt = Math.min((currentTime - lastTime) / 1000, 0.1)
     lastTime = currentTime
 
     // 更新逻辑
     if (state.gameStarted && !state.gameEnded) {
-      updateGame(state, dt, currentTime, playSound, onEnd, cleanup)
+      updateGame(state, dt, currentTime, playSound, handleGameOver, cleanup)
     }
 
     // 渲染（调用 renderer.ts 的 render 函数）
@@ -211,6 +259,29 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
 
     animationId = requestAnimationFrame(gameLoop)
   }
+
+  // 🎯 初始化游戏会话
+  const initGameSession = async () => {
+    if (userService.isLoggedIn && userService.current) {
+      try {
+        const GAME_ID = 1  // RPG塔防射击的游戏ID
+        const result = await apiStartGameSession(GAME_ID)
+
+        if (result.ok && result.data) {
+          sessionId = result.data.sessionId
+          sessionToken = result.data.sessionToken
+          console.log('[RPG塔防] 游戏会话创建成功:', sessionId)
+        } else {
+          console.warn('[RPG塔防] 创建游戏会话失败:', result.msg)
+        }
+      } catch (error) {
+        console.error('[RPG塔防] 创建游戏会话异常:', error)
+      }
+    }
+  }
+
+  // 启动会话初始化
+  initGameSession()
 
   // 启动循环
   animationId = requestAnimationFrame(gameLoop)

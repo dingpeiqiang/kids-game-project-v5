@@ -9,12 +9,12 @@ export class Background {
   }
 
   private createStars() {
-    for (let i = 0; i < 50; i++) {
-      const starGeo = new THREE.OctahedronGeometry(0.1 + Math.random() * 0.1, 0)
+    for (let i = 0; i < 25; i++) {
+      const starGeo = new THREE.SphereGeometry(0.08, 6, 6)
       const starMat = new THREE.MeshBasicMaterial({
         color: COLORS.star,
         transparent: true,
-        opacity: 0.2 + Math.random() * 0.6
+        opacity: 0.3 + Math.random() * 0.4
       })
       const star = new THREE.Mesh(starGeo, starMat)
       star.position.set(
@@ -24,8 +24,7 @@ export class Background {
       )
       star.userData = {
         baseY: star.position.y,
-        speed: 0.001 + Math.random() * 0.002,
-        twinkle: Math.random() * Math.PI * 2
+        speed: 0.001 + Math.random() * 0.002
       }
       this.stars.push(star)
       this.scene.add(star)
@@ -34,10 +33,7 @@ export class Background {
 
   update() {
     this.stars.forEach(star => {
-      star.userData.twinkle += 0.03
-      ;(star.material as THREE.MeshBasicMaterial).opacity = 0.2 + Math.sin(star.userData.twinkle) * 0.4
       star.position.y += star.userData.speed
-      star.rotation.y += 0.015
       if (star.position.y > star.userData.baseY + 3) {
         star.position.y = star.userData.baseY - 3
       }

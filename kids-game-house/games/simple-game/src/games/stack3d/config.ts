@@ -15,7 +15,10 @@ export const GAME_CONFIG = {
   normalScore: 12,
   comboMultiplier: 60,
   comboThreshold: 3,
-  maxHeight: 10
+  maxHeight: 10,
+  maxStackHeight: 25, // 最大堆叠层数限制
+  stabilityThreshold: 0.15, // 稳定性阈值，低于此值会倒塌
+  tiltSensitivity: 0.08 // 倾斜敏感度，越高越容易倒
 }
 
 export const COLORS = {

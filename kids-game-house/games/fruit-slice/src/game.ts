@@ -15,6 +15,7 @@ interface Fruit {
   emoji: string
   sliced: boolean
   color?: string
+  isBomb?: boolean
 }
 
 interface Particle {
@@ -67,18 +68,18 @@ export class FruitSliceGame {
   private transitionAlpha = 0
   private transitionText = ''
   
-  // 关卡配置
+  // 关卡配置（包含炸弹）
   private readonly LEVEL_CONFIG = [
-    { level: 1, duration: 15000, spawnRate: 1800, maxFruits: 2, speed: 1.0, gravity: 0.04, targetScore: 100 },
-    { level: 2, duration: 18000, spawnRate: 1500, maxFruits: 3, speed: 1.2, gravity: 0.05, targetScore: 200 },
-    { level: 3, duration: 20000, spawnRate: 1200, maxFruits: 3, speed: 1.4, gravity: 0.06, targetScore: 350 },
-    { level: 4, duration: 22000, spawnRate: 1000, maxFruits: 4, speed: 1.6, gravity: 0.07, targetScore: 500 },
-    { level: 5, duration: 25000, spawnRate: 900, maxFruits: 4, speed: 1.8, gravity: 0.08, targetScore: 700 },
-    { level: 6, duration: 25000, spawnRate: 800, maxFruits: 5, speed: 2.0, gravity: 0.09, targetScore: 900 },
-    { level: 7, duration: 28000, spawnRate: 700, maxFruits: 5, speed: 2.2, gravity: 0.10, targetScore: 1200 },
-    { level: 8, duration: 30000, spawnRate: 600, maxFruits: 6, speed: 2.5, gravity: 0.11, targetScore: 1500 },
-    { level: 9, duration: 30000, spawnRate: 500, maxFruits: 6, speed: 2.8, gravity: 0.12, targetScore: 1800 },
-    { level: 10, duration: 35000, spawnRate: 400, maxFruits: 8, speed: 3.0, gravity: 0.13, targetScore: 2500 }
+    { level: 1, duration: 15000, spawnRate: 1800, maxFruits: 2, speed: 1.0, gravity: 0.04, targetScore: 100, bombChance: 0 },
+    { level: 2, duration: 18000, spawnRate: 1500, maxFruits: 3, speed: 1.2, gravity: 0.05, targetScore: 200, bombChance: 0.05 },
+    { level: 3, duration: 20000, spawnRate: 1200, maxFruits: 3, speed: 1.4, gravity: 0.06, targetScore: 350, bombChance: 0.1 },
+    { level: 4, duration: 22000, spawnRate: 1000, maxFruits: 4, speed: 1.6, gravity: 0.07, targetScore: 500, bombChance: 0.15 },
+    { level: 5, duration: 25000, spawnRate: 900, maxFruits: 4, speed: 1.8, gravity: 0.08, targetScore: 700, bombChance: 0.2 },
+    { level: 6, duration: 25000, spawnRate: 800, maxFruits: 5, speed: 2.0, gravity: 0.09, targetScore: 900, bombChance: 0.25 },
+    { level: 7, duration: 28000, spawnRate: 700, maxFruits: 5, speed: 2.2, gravity: 0.10, targetScore: 1200, bombChance: 0.3 },
+    { level: 8, duration: 30000, spawnRate: 600, maxFruits: 6, speed: 2.5, gravity: 0.11, targetScore: 1500, bombChance: 0.35 },
+    { level: 9, duration: 30000, spawnRate: 500, maxFruits: 6, speed: 2.8, gravity: 0.12, targetScore: 1800, bombChance: 0.4 },
+    { level: 10, duration: 35000, spawnRate: 400, maxFruits: 8, speed: 3.0, gravity: 0.13, targetScore: 2500, bombChance: 0.45 }
   ]
   
   // 道具系统
@@ -100,6 +101,8 @@ export class FruitSliceGame {
     { emoji: '🍒', color: '#DC143C' },
     { emoji: '🥝', color: '#8FBC8F' }
   ]
+  
+  private BOMB = { emoji: '💣', color: '#333333' }
   
   constructor(canvasId: string = 'mainGameCanvas') {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement
@@ -232,21 +235,44 @@ export class FruitSliceGame {
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.3
     const speed = (5 + Math.random() * 2) * config.speed
     
-    const fruitData = this.FRUITS[Math.floor(Math.random() * this.FRUITS.length)]
+    // 决定是否生成炸弹
+    const isBomb = Math.random() < config.bombChance
     
-    this.fruits.push({
-      x,
-      y: this.H + size,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      gravity: config.gravity,
-      size,
-      rotation: 0,
-      rotSpeed: (Math.random() - 0.5) * 0.08,
-      emoji: fruitData.emoji,
-      color: fruitData.color,
-      sliced: false
-    })
+    if (isBomb) {
+      // 生成炸弹
+      this.fruits.push({
+        x,
+        y: this.H + size,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        gravity: config.gravity,
+        size,
+        rotation: 0,
+        rotSpeed: (Math.random() - 0.5) * 0.08,
+        emoji: this.BOMB.emoji,
+        color: this.BOMB.color,
+        sliced: false,
+        isBomb: true
+      })
+    } else {
+      // 生成普通水果
+      const fruitData = this.FRUITS[Math.floor(Math.random() * this.FRUITS.length)]
+      
+      this.fruits.push({
+        x,
+        y: this.H + size,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        gravity: config.gravity,
+        size,
+        rotation: 0,
+        rotSpeed: (Math.random() - 0.5) * 0.08,
+        emoji: fruitData.emoji,
+        color: fruitData.color,
+        sliced: false,
+        isBomb: false
+      })
+    }
   }
   
   private createJuiceParticles(x: number, y: number, color: string, count: number = 25) {
@@ -316,6 +342,23 @@ export class FruitSliceGame {
       if (dist < f.size / 2 + 25) {
         f.sliced = true
         slicedCount++
+        
+        // 检查是否是炸弹
+        if (f.isBomb) {
+          // 炸弹爆炸效果
+          this.createBombExplosion(f.x, f.y)
+          audioService.explosion()
+          
+          // 炸弹惩罚：扣分并重置连击
+          this.score = Math.max(0, this.score - 50)
+          this.combo = 0
+          this.showFloatingText('-50', f.x, f.y)
+          
+          this.fruits.splice(i, 1)
+          continue
+        }
+        
+        // 普通水果处理
         this.combo++
         if (this.combo > this.maxCombo) this.maxCombo = this.combo
         
@@ -353,6 +396,28 @@ export class FruitSliceGame {
     
     // 检查关卡完成
     this.checkLevelComplete()
+  }
+  
+  private createBombExplosion(x: number, y: number) {
+    // 炸弹爆炸粒子效果
+    for (let i = 0; i < 40; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = 6 + Math.random() * 12
+      
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 5,
+        life: 1,
+        color: i % 3 === 0 ? '#FF4444' : i % 3 === 1 ? '#FFAA00' : '#333333',
+        size: 4 + Math.random() * 8,
+        type: 'juice'
+      })
+    }
+    
+    // 强烈的屏幕震动
+    this.screenShake = 15
   }
   
   private showFloatingText(text: string, x: number, y: number) {
@@ -758,7 +823,8 @@ export class FruitSliceGame {
     this.ctx.fillStyle = 'rgba(255,255,255,0.4)'
     this.ctx.font = '16px sans-serif'
     this.ctx.textAlign = 'center'
-    this.ctx.fillText('👆 快速滑动切割水果!', this.W / 2, this.H - 25)
+    const hintText = this.currentLevel >= 2 ? '👆 快速滑动切割水果！避开💣炸弹！' : '👆 快速滑动切割水果！'
+    this.ctx.fillText(hintText, this.W / 2, this.H - 25)
     
     // 道具栏
     if (this.inventory.length > 0) {

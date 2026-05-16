@@ -40,6 +40,7 @@ export class GameEngine {
   private animationId: number = 0
   private currentDir = 1
   private moveSpeed = 0.02
+  private isMobile = false
   private prevBlockWidth = GAME_CONFIG.blockSize.width
   private fallingBlock: Block | null = null
   private fallbackProgress = 0
@@ -47,27 +48,36 @@ export class GameEngine {
   private debrisAudioPlayed: Set<THREE.Mesh> = new Set()
   private instabilityWarning = 0
   private scorePanel: HTMLDivElement | null = null
+  private lastFrameTime = 0
+  private frameCount = 0
+  private fps = 60
 
   constructor(private config: GameConfig) {
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color(COLORS.background)
     this.scene.fog = new THREE.FogExp2(COLORS.background, 0.03)
     
+    // 检测是否为移动设备
+    this.isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+      || (window.visualViewport ? window.visualViewport.width < 768 : window.innerWidth < 768)
+    
+    // 移动端使用更快的移动速度
+    if (this.isMobile) {
+      this.moveSpeed = 0.08  // 移动端速度提升4倍
+    }
+    
     this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000)
     this.camera.position.set(0, 8, 12)
     this.camera.lookAt(0, 3, 0)
     
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
+    this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' })
     this.renderer.setSize(window.innerWidth, window.innerHeight)
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    this.renderer.shadowMap.autoUpdate = true
+    this.renderer.shadowMap.type = THREE.PCFShadowMap
+    this.renderer.shadowMap.autoUpdate = false
     this.renderer.setClearColor(COLORS.background)
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.4
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace
-    this.renderer.localClippingEnabled = true
+    this.renderer.toneMapping = THREE.NoToneMapping
     
     this.background = new Background(this.scene)
     this.particleSystem = new ParticleSystem(this.scene)
@@ -92,24 +102,23 @@ export class GameEngine {
     const ambientLight = new THREE.AmbientLight(0x555566, 0.6)
     this.scene.add(ambientLight)
 
-    const mainLight = new THREE.DirectionalLight(0xffffff, 2.2)
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.8)
     mainLight.position.set(12, 30, 15)
     mainLight.castShadow = true
-    mainLight.shadow.mapSize.set(4096, 4096)
+    mainLight.shadow.mapSize.set(1024, 1024)
     mainLight.shadow.camera.near = 0.1
-    mainLight.shadow.camera.far = 150
-    mainLight.shadow.camera.left = -25
-    mainLight.shadow.camera.right = 25
-    mainLight.shadow.camera.top = 25
-    mainLight.shadow.camera.bottom = -25
-    mainLight.shadow.bias = -0.0005
-    mainLight.shadow.radius = 3
+    mainLight.shadow.camera.far = 80
+    mainLight.shadow.camera.left = -20
+    mainLight.shadow.camera.right = 20
+    mainLight.shadow.camera.top = 20
+    mainLight.shadow.camera.bottom = -20
+    mainLight.shadow.bias = -0.001
+    mainLight.shadow.radius = 1
     this.scene.add(mainLight)
 
-    const fillLight = new THREE.DirectionalLight(0x66CCFF, 0.5)
+    const fillLight = new THREE.DirectionalLight(0x66CCFF, 0.3)
     fillLight.position.set(-15, 20, -18)
-    fillLight.castShadow = true
-    fillLight.shadow.mapSize.set(2048, 2048)
+    fillLight.castShadow = false
     this.scene.add(fillLight)
 
     const rimLight = new THREE.DirectionalLight(0xFF9966, 0.6)
@@ -120,16 +129,14 @@ export class GameEngine {
     bottomLight.position.set(0, -8, 5)
     this.scene.add(bottomLight)
 
-    const pointLight1 = new THREE.PointLight(0x88DDFF, 3.0, 50)
+    const pointLight1 = new THREE.PointLight(0x88DDFF, 1.5, 30)
     pointLight1.position.set(-10, 12, 12)
-    pointLight1.castShadow = true
-    pointLight1.shadow.mapSize.set(2048, 2048)
+    pointLight1.castShadow = false
     this.scene.add(pointLight1)
     
-    const pointLight2 = new THREE.PointLight(0xFFAA88, 3.0, 50)
+    const pointLight2 = new THREE.PointLight(0xFFAA88, 1.5, 30)
     pointLight2.position.set(10, 12, -12)
-    pointLight2.castShadow = true
-    pointLight2.shadow.mapSize.set(2048, 2048)
+    pointLight2.castShadow = false
     this.scene.add(pointLight2)
 
     const hemisphereLight = new THREE.HemisphereLight(0x7799CC, 0x334466, 0.5)
@@ -196,6 +203,17 @@ export class GameEngine {
   private spawnNextBlock() {
     if (this.gameOver) return
     
+    // 检查是否达到最大堆叠高度
+    if (this.blocks.length >= GAME_CONFIG.maxStackHeight) {
+      this.gameOver = true
+      audioService.win()
+      setTimeout(() => {
+        this.config.externalEngine.endGame()
+        this.config.onEnd()
+      }, 1000)
+      return
+    }
+    
     const lastBlock = this.blocks[this.blocks.length - 1]
     const baseY = lastBlock.mesh.position.y + GAME_CONFIG.blockSize.height / 2 + GAME_CONFIG.blockSize.height / 2
     
@@ -206,6 +224,10 @@ export class GameEngine {
     this.scene.add(block.mesh)
     this.currentBlock = block
     this.colorIdx++
+    
+    // 根据高度增加难度 - 移动速度逐渐加快
+    const heightFactor = Math.min(this.blocks.length * 0.05, 0.5) // 最多增加50%速度
+    this.moveSpeed = GAME_CONFIG.moveSpeed * (1 + heightFactor)
   }
 
   private getRandomShape(): BlockShape {
@@ -245,7 +267,7 @@ export class GameEngine {
         this.particleSystem.createMagicParticles(
           block.mesh.position.clone(),
           this.getBlockColor(this.colorIdx - 1),
-          30
+          15
         )
         
         this.currentDir *= -1
@@ -285,7 +307,8 @@ export class GameEngine {
       
       const stability = this.calculateStability(block, lastBlock, overlapWidth, currentWidth)
       
-      if (stability <= 0) {
+      // 使用配置的稳定性阈值
+      if (stability <= GAME_CONFIG.stabilityThreshold) {
         this.triggerCollapse(block)
         return
       }
@@ -306,7 +329,7 @@ export class GameEngine {
       this.particleSystem.createMagicParticles(
         block.mesh.position.clone(),
         this.getBlockColor(this.colorIdx - 2),
-        30
+        15
       )
       
       if (this.totalHeight > 3) {
@@ -319,25 +342,75 @@ export class GameEngine {
   }
 
   private calculateStability(block: Block, lastBlock: Block, overlapWidth: number, currentWidth: number): number {
-    const lastBlockWidth = lastBlock.mesh.geometry.parameters?.width || GAME_CONFIG.blockSize.width
+    const lastBlockWidth = (lastBlock.mesh.geometry as THREE.BoxGeometry).parameters?.width || GAME_CONFIG.blockSize.width
+    
+    // 1. 基础支撑比例（重叠面积占比）
     const supportRatio = overlapWidth / Math.max(currentWidth, lastBlockWidth)
     
+    // 2. 重心偏移检测 - 更真实的物理模拟
     const centerOffset = Math.abs(block.mesh.position.x - lastBlock.mesh.position.x)
-    const maxAllowedOffset = lastBlockWidth * 0.45
+    const maxAllowedOffset = lastBlockWidth * 0.5 // 最大允许偏移为宽度的一半
+    const offsetRatio = centerOffset / maxAllowedOffset
     
-    const offsetPenalty = Math.min(centerOffset / maxAllowedOffset, 1)
-    
-    let stability = supportRatio * (1 - offsetPenalty * 0.4)
-    
-    const prevBlock = this.blocks[this.blocks.length - 2]
-    if (prevBlock) {
-      const prevCenter = prevBlock.mesh.position.x
-      const cumulativeOffset = Math.abs(lastBlock.mesh.position.x - prevCenter) + centerOffset
-      const cumulativePenalty = Math.min(cumulativeOffset / (maxAllowedOffset * 2), 0.15)
-      stability -= cumulativePenalty
+    // 如果重心超出支撑面，立即倒塌
+    if (offsetRatio > 1) {
+      return 0
     }
     
-    return Math.max(0, stability)
+    // 3. 力矩计算 - 考虑杠杆效应
+    // 偏移越大，力矩越大，越不稳定
+    const torqueFactor = Math.pow(offsetRatio, 2) // 平方关系，非线性增长
+    
+    // 4. 高度惩罚 - 越高越不稳定
+    const heightPenalty = Math.min(this.blocks.length * 0.02, 0.3) // 每层增加2%不稳定性，最多30%
+    
+    // 5. 累积倾斜检测 - 检查整体塔的倾斜程度
+    const tiltPenalty = this.calculateTiltPenalty()
+    
+    // 6. 形状稳定性因子
+    const shapeStability = this.getShapeStabilityFactor(block)
+    
+    // 综合稳定性计算
+    let stability = supportRatio * (1 - torqueFactor * 0.6) * shapeStability
+    stability -= heightPenalty
+    stability -= tiltPenalty
+    
+    // 确保稳定性在0-1之间
+    return Math.max(0, Math.min(1, stability))
+  }
+  
+  private calculateTiltPenalty(): number {
+    if (this.blocks.length < 3) return 0
+    
+    // 计算最近5层的平均偏移
+    const recentBlocks = this.blocks.slice(-5)
+    let totalOffset = 0
+    
+    for (let i = 1; i < recentBlocks.length; i++) {
+      const offset = Math.abs(recentBlocks[i].mesh.position.x - recentBlocks[i-1].mesh.position.x)
+      totalOffset += offset
+    }
+    
+    const avgOffset = totalOffset / (recentBlocks.length - 1)
+    const tiltPenalty = avgOffset * GAME_CONFIG.tiltSensitivity
+    
+    return Math.min(tiltPenalty, 0.25) // 最大25%的倾斜惩罚
+  }
+  
+  private getShapeStabilityFactor(block: Block): number {
+    // 不同形状的稳定性系数
+    const shapeFactors: Record<string, number> = {
+      'cube': 1.0,
+      'cylinder': 0.9,
+      'pyramid': 0.75,
+      'octahedron': 0.7,
+      'sphere': 0.5,
+      'torus': 0.8,
+      'cone': 0.65,
+      'dodecahedron': 0.75
+    }
+    
+    return shapeFactors[block.shape] || 0.85
   }
 
   private triggerCollapse(block: Block) {
@@ -370,7 +443,7 @@ export class GameEngine {
     const height = geo.parameters.height
     const depth = geo.parameters.depth
     
-    const pieceCount = Math.floor(width * 4) + 3
+    const pieceCount = Math.floor(width * 2) + 2
     
     for (let i = 0; i < pieceCount; i++) {
       const pieceWidth = (width / pieceCount) * (0.8 + Math.random() * 0.4)
@@ -378,14 +451,10 @@ export class GameEngine {
       const pieceDepth = depth * (0.5 + Math.random() * 0.7)
       
       const debrisGeo = new THREE.BoxGeometry(pieceWidth, pieceHeight, pieceDepth)
-      const debrisMat = new THREE.MeshStandardMaterial({
+      const debrisMat = new THREE.MeshBasicMaterial({
         color: this.getBlockColor(this.colorIdx - 2) + Math.floor((Math.random() - 0.5) * 0x333333),
-        emissive: this.getBlockColor(this.colorIdx - 2),
-        emissiveIntensity: 0.2,
         transparent: true,
-        opacity: 0.9,
-        metalness: 0.4,
-        roughness: 0.6
+        opacity: 0.8
       })
       const debris = new THREE.Mesh(debrisGeo, debrisMat)
       
@@ -523,6 +592,47 @@ export class GameEngine {
     heightDiv.appendChild(heightLabel)
     heightDiv.appendChild(heightValue)
     
+    // 添加进度条显示剩余层数
+    const progressDiv = document.createElement('div')
+    progressDiv.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    `
+    
+    const progressLabel = document.createElement('span')
+    progressLabel.textContent = '进度'
+    progressLabel.style.cssText = `
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    `
+    
+    const progressBar = document.createElement('div')
+    progressBar.style.cssText = `
+      width: 80px;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+    `
+    
+    const progressFill = document.createElement('div')
+    progressFill.id = 'stack3d-progress-fill'
+    progressFill.style.cssText = `
+      height: 100%;
+      background: linear-gradient(90deg, #4ECDC4, #FFD93D);
+      border-radius: 6px;
+      transition: width 0.3s ease;
+      width: 0%;
+    `
+    
+    progressBar.appendChild(progressFill)
+    progressDiv.appendChild(progressLabel)
+    progressDiv.appendChild(progressBar)
+    
     const stabilityDiv = document.createElement('div')
     stabilityDiv.style.cssText = `
       display: flex;
@@ -566,6 +676,7 @@ export class GameEngine {
     
     this.scorePanel.appendChild(scoreDiv)
     this.scorePanel.appendChild(heightDiv)
+    this.scorePanel.appendChild(progressDiv)
     this.scorePanel.appendChild(stabilityDiv)
     
     container.appendChild(this.scorePanel)
@@ -577,6 +688,7 @@ export class GameEngine {
     const scoreEl = document.getElementById('stack3d-score')
     const heightEl = document.getElementById('stack3d-height')
     const stabilityFill = document.getElementById('stack3d-stability-fill')
+    const progressFill = document.getElementById('stack3d-progress-fill')
     
     if (scoreEl) {
       scoreEl.textContent = this.score.toString()
@@ -584,6 +696,11 @@ export class GameEngine {
     
     if (heightEl) {
       heightEl.textContent = this.blocks.length.toString()
+    }
+    
+    if (progressFill) {
+      const progress = (this.blocks.length / GAME_CONFIG.maxStackHeight) * 100
+      progressFill.style.width = `${Math.min(progress, 100)}%`
     }
     
     if (stabilityFill) {
@@ -619,6 +736,19 @@ export class GameEngine {
 
   private animate() {
     this.animationId = requestAnimationFrame(() => this.animate())
+    
+    const currentTime = performance.now()
+    this.frameCount++
+    
+    if (currentTime - this.lastFrameTime >= 1000) {
+      this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastFrameTime))
+      this.frameCount = 0
+      this.lastFrameTime = currentTime
+      
+      if (this.renderer.shadowMap.autoUpdate === false) {
+        this.renderer.shadowMap.needsUpdate = true
+      }
+    }
     
     const time = Date.now() * 0.001
 
@@ -738,6 +868,13 @@ export class GameEngine {
 
     this.background.update()
     this.particleSystem.update()
+    
+    if (this.fps < 30) {
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1))
+    } else if (this.fps > 50) {
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    }
+    
     this.renderer.render(this.scene, this.camera)
   }
 

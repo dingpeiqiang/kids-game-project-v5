@@ -7,6 +7,7 @@ export class Block {
   private exploding: boolean = false
   private rainbow: boolean = false
   private item: string | null = null
+  private hasStarFlag: boolean = false // 是否有星星
   
   constructor(r: number, c: number, color: string, scale: number = 1) {
     this.r = r
@@ -24,6 +25,7 @@ export class Block {
   isExploding(): boolean { return this.exploding }
   isRainbow(): boolean { return this.rainbow }
   getItem(): string | null { return this.item }
+  hasStar(): boolean { return this.hasStarFlag }
   
   // Setters
   setR(r: number) { this.r = r }
@@ -34,6 +36,7 @@ export class Block {
   setExploding(exploding: boolean) { this.exploding = exploding }
   setRainbow(rainbow: boolean) { this.rainbow = rainbow }
   setItem(item: string | null) { this.item = item }
+  setStar(hasStar: boolean) { this.hasStarFlag = hasStar }
   
   // 方块抖动动画
   shake() {

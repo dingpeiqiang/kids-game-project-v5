@@ -3,10 +3,12 @@
 export interface LevelConfig {
   level: number
   name: string
-  targetScore: number // 目标分数
+  targetScore: number // 目标分数（次要目标）
+  targetStars: number // 目标星星数量（主要目标）
   timeLimit: number // 时间限制（毫秒）
   colorCount: number // 颜色数量（影响难度）
   itemSpawnRate: number // 道具生成概率 (0-1)
+  starSpawnRate: number // 星星生成概率 (0-1)
   minComboForBonus: number // 最小连击数获得奖励
   description: string
 }
@@ -15,102 +17,122 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
   {
     level: 1,
     name: '新手入门',
-    targetScore: 1200,
-    timeLimit: 22000, // 22秒
-    colorCount: 4, // 4种颜色，容易匹配
-    itemSpawnRate: 0.15, // 15%道具生成率
+    targetScore: 2000,
+    targetStars: 10, // 提高目标
+    timeLimit: 45000, // 45秒
+    colorCount: 3, // 3种颜色，非常容易匹配
+    itemSpawnRate: 0.08, // 降低道具生成率
+    starSpawnRate: 0.05, // 降低星星生成率
     minComboForBonus: 6,
-    description: '消除相同颜色的方块，达到1200分！'
+    description: '消除方块收集10颗星星！'
   },
   {
     level: 2,
     name: '初露锋芒',
-    targetScore: 2000,
-    timeLimit: 20000, // 20秒
+    targetScore: 3500,
+    targetStars: 13,
+    timeLimit: 40000, // 减少时间
     colorCount: 4,
-    itemSpawnRate: 0.13,
+    itemSpawnRate: 0.06,
+    starSpawnRate: 0.045,
     minComboForBonus: 6,
-    description: '时间更紧了，加油！'
+    description: '收集13颗星星，时间更紧了！'
   },
   {
     level: 3,
     name: '渐入佳境',
-    targetScore: 3200,
-    timeLimit: 19000, // 19秒
-    colorCount: 5, // 增加到5种颜色
-    itemSpawnRate: 0.12,
+    targetScore: 5500,
+    targetStars: 16,
+    timeLimit: 38000, // 38秒
+    colorCount: 4, // 保持4种颜色
+    itemSpawnRate: 0.05,
+    starSpawnRate: 0.04,
     minComboForBonus: 7,
-    description: '颜色变多了，需要更仔细！'
+    description: '颜色变多了，收集16颗星星！'
   },
   {
     level: 4,
     name: '小试牛刀',
-    targetScore: 4800,
-    timeLimit: 18000, // 18秒
-    colorCount: 5,
-    itemSpawnRate: 0.10,
+    targetScore: 8000,
+    targetStars: 20,
+    timeLimit: 35000, // 35秒
+    colorCount: 5, // 增加到5种颜色
+    itemSpawnRate: 0.04,
+    starSpawnRate: 0.035,
     minComboForBonus: 7,
-    description: '继续保持连击！'
+    description: '继续保持连击，收集20颗星星！'
   },
   {
     level: 5,
     name: '游刃有余',
-    targetScore: 6800,
-    timeLimit: 17000, // 17秒
+    targetScore: 11500,
+    targetStars: 25,
+    timeLimit: 32000, // 32秒
     colorCount: 5,
-    itemSpawnRate: 0.10,
+    itemSpawnRate: 0.04,
+    starSpawnRate: 0.03,
     minComboForBonus: 7,
-    description: '一半的征程，坚持住！'
+    description: '一半的征程，收集25颗星星！'
   },
   {
     level: 6,
     name: '高手进阶',
-    targetScore: 9500,
-    timeLimit: 16000, // 16秒
-    colorCount: 6, // 增加到6种颜色（全部）
-    itemSpawnRate: 0.08,
+    targetScore: 16000,
+    targetStars: 30,
+    timeLimit: 30000, // 30秒
+    colorCount: 5,
+    itemSpawnRate: 0.03,
+    starSpawnRate: 0.025,
     minComboForBonus: 8,
-    description: '所有颜色都出现了，挑战升级！'
+    description: '挑战升级，收集30颗星星！'
   },
   {
     level: 7,
     name: '炉火纯青',
-    targetScore: 13000,
-    timeLimit: 15000, // 15秒
-    colorCount: 6,
-    itemSpawnRate: 0.07,
+    targetScore: 22000,
+    targetStars: 35,
+    timeLimit: 28000, // 28秒
+    colorCount: 6, // 增加到6种颜色（全部）
+    itemSpawnRate: 0.02,
+    starSpawnRate: 0.02,
     minComboForBonus: 8,
-    description: '时间越来越紧张了！'
+    description: '所有颜色都出现了，收集35颗星星！'
   },
   {
     level: 8,
     name: '登峰造极',
-    targetScore: 18000,
-    timeLimit: 13000, // 13秒
+    targetScore: 30000,
+    targetStars: 42,
+    timeLimit: 25000, // 25秒
     colorCount: 6,
-    itemSpawnRate: 0.05,
+    itemSpawnRate: 0.02,
+    starSpawnRate: 0.015,
     minComboForBonus: 9,
-    description: '高手的对决，速度与激情！'
+    description: '高手的对决，收集42颗星星！'
   },
   {
     level: 9,
     name: '超凡脱俗',
-    targetScore: 25000,
-    timeLimit: 11000, // 11秒
+    targetScore: 42000,
+    targetStars: 50,
+    timeLimit: 22000, // 22秒
     colorCount: 6,
-    itemSpawnRate: 0.04,
+    itemSpawnRate: 0.01,
+    starSpawnRate: 0.01,
     minComboForBonus: 10,
-    description: '接近巅峰，最后冲刺！'
+    description: '接近巅峰，收集50颗星星！'
   },
   {
     level: 10,
     name: '至尊王者',
-    targetScore: 35000,
-    timeLimit: 9000, // 9秒
+    targetScore: 60000,
+    targetStars: 60, // 极高难度
+    timeLimit: 20000, // 20秒（极具挑战性）
     colorCount: 6,
-    itemSpawnRate: 0.03, // 极低道具率
+    itemSpawnRate: 0.01, // 极低道具率
+    starSpawnRate: 0.008, // 极低星星生成率，极具挑战性
     minComboForBonus: 12,
-    description: '最终挑战，证明你的实力！'
+    description: '最终挑战，收集60颗星星证明实力！'
   }
 ]
 
@@ -129,9 +151,9 @@ export function getNextLevel(currentLevel: number): LevelConfig | null {
   return ELIMINATE_LEVELS.find(l => l.level === nextLevel) || null
 }
 
-// 检查是否通关
-export function isLevelCompleted(currentLevel: number, score: number): boolean {
+// 检查是否通关（基于星星收集）
+export function isLevelCompleted(currentLevel: number, collectedStars: number): boolean {
   const config = ELIMINATE_LEVELS.find(l => l.level === currentLevel)
   if (!config) return false
-  return score >= config.targetScore
+  return collectedStars >= config.targetStars
 }

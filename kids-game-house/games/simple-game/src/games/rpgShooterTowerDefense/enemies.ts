@@ -5,6 +5,7 @@ import { ENEMY_BASE_STATS, ENEMY_SHOOT_CONFIGS, CANVAS_WIDTH, CANVAS_HEIGHT } fr
 import { addCrystals, addExp, addCombo, resetCombo, playerHit } from './state'
 import { playSound } from './sounds'
 import { wallHit } from './turrets'
+import { forceEndWave } from './waves'
 
 // 生成唯一ID
 let enemyIdCounter = 0
@@ -153,7 +154,13 @@ export function updateEnemies(state: GameState, dt: number): void {
     
     if (distToPlayer < 20) {
       // 对玩家造成伤害
+      const prevHp = state.player.hp
       playerHit(state, enemy.damage)
+      
+      // 如果玩家死亡，调用强制结束波次
+      if (prevHp > 0 && state.player.hp <= 0) {
+        forceEndWave(state)
+      }
       
       // 自爆虫爆炸
       if (enemy.type === 'exploder') {

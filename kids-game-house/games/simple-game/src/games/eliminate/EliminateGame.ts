@@ -30,6 +30,9 @@ export class EliminateGame {
   private levelConfig: LevelConfig | null = null
   private COLORS: string[] = []
   
+  // 星星收集系统
+  private collectedStars: number = 0 // 已收集的星星数量
+  
   // 游戏状态
   private blocks: Block[] = []
   private particleSystem: ParticleSystem
@@ -53,10 +56,13 @@ export class EliminateGame {
   // 视觉效果
   private screenShake = 0
   private doubleScoreActive = false
+  private doubleScoreEndTime = 0 // 双倍分数结束时间
   private flashEffect = 0 // 闪光效果强度
   private comboMultiplier = 1 // 连击倍数
   private powerupFlashColor: string | null = null // 道具闪光颜色
   private powerupFlashIntensity = 0 // 道具闪光强度
+  private hintActive = false // 提示高亮激活状态
+  private hintBlocks: number[] = [] // 需要高亮的方块索引
   
   // 道具系统
   private inventory: string[] = []
@@ -90,9 +96,10 @@ export class EliminateGame {
     this.levelStartTime = Date.now()
     this.lastActionTime = Date.now()
     this.isGameOver = false // 重置游戏结束标志
+    this.collectedStars = 0 // 重置星星收集
     
     console.log(`[关卡] 进入第 ${level} 关: ${this.levelConfig.name}`)
-    console.log(`[关卡] 目标分数: ${this.levelConfig.targetScore}, 时间限制: ${this.levelConfig.timeLimit / 1000}秒`)
+    console.log(`[关卡] 目标星星: ${this.levelConfig.targetStars}, 时间限制: ${this.levelConfig.timeLimit / 1000}秒`)
     
     // 重新初始化方块
     this.initBlocks()
@@ -166,12 +173,9 @@ export class EliminateGame {
   private checkLevelComplete() {
     if (!this.levelConfig) return false
     
-    const score = this.engine.getScore()
-    if (isLevelCompleted(this.currentLevel, score)) {
-      console.log(`[关卡] 第 ${this.currentLevel} 关完成！分数: ${score}`)
-      
-      // 显示通关提示
-      this.showLevelCompleteHint()
+    // ⭐ 基于星星收集数量判断是否通关
+    if (isLevelCompleted(this.currentLevel, this.collectedStars)) {
+      console.log(`[关卡] 第 ${this.currentLevel} 关完成！星星: ${this.collectedStars}/${this.levelConfig.targetStars}`)
       
       // 尝试进入下一关
       const nextLevel = getNextLevel(this.currentLevel)
@@ -198,40 +202,7 @@ export class EliminateGame {
     return false
   }
   
-  // 显示通关提示
-  private showLevelCompleteHint() {
-    const hint = document.createElement('div')
-    hint.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      color: #fff;
-      padding: 25px 35px;
-      border-radius: 15px;
-      font-size: 18px;
-      z-index: 1000;
-      text-align: center;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      animation: fadeInScale 0.5s ease-out;
-    `
-    
-    hint.innerHTML = `
-      <div style="font-size: 48px; margin-bottom: 10px;">✨</div>
-      <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">关卡完成！</div>
-      <div style="font-size: 16px;">准备进入下一关...</div>
-    `
-    
-    document.body.appendChild(hint)
-    setTimeout(() => {
-      hint.style.transition = 'opacity 0.5s'
-      hint.style.opacity = '0'
-      setTimeout(() => hint.remove(), 500)
-    }, 1500)
-  }
-  
-  // 显示游戏全部完成提示
+  // 显示游戏全部完成提示（仅在全部通关时显示）
   private showGameCompleteHint() {
     const hint = document.createElement('div')
     hint.style.cssText = `
@@ -259,7 +230,7 @@ export class EliminateGame {
     
     document.body.appendChild(hint)
     
-    // 5秒后结束游戏
+    // 3秒后结束游戏（缩短时间，让游戏结束弹窗更快显示）
     setTimeout(() => {
       // 关闭 AudioContext 以停止所有音效，避免杂音
       try {
@@ -277,7 +248,7 @@ export class EliminateGame {
         this.engine.endGame()
         this.onEnd()
       }
-    }, 5000)
+    }, 3000)
   }
   
   update(deltaTime: number) {
@@ -295,6 +266,12 @@ export class EliminateGame {
     
     // 更新方块动画
     this.updateBlockAnimations()
+    
+    // 检查双倍分数是否过期
+    if (this.doubleScoreActive && Date.now() > this.doubleScoreEndTime) {
+      this.doubleScoreActive = false
+      this.comboSystem.addText('双倍分数结束', this.W / 2, this.H / 2 - 50)
+    }
     
     // 检查超时
     const now = Date.now()
@@ -392,6 +369,9 @@ export class EliminateGame {
     
     // 随机在一些方块上放置道具
     this.spawnItemBlocks()
+    
+    // 随机在一些方块上放置星星
+    this.spawnStarBlocks()
   }
   
   private spawnItemBlocks() {
@@ -435,6 +415,22 @@ export class EliminateGame {
         }
         
         block.setItem(selectedItem)
+      }
+    })
+  }
+  
+  // 生成带星星的方块
+  private spawnStarBlocks() {
+    if (!this.levelConfig) return
+    
+    const starSpawnRate = this.levelConfig.starSpawnRate || 0.10
+    
+    // 为每个方块有概率生成星星
+    this.blocks.forEach((block) => {
+      if (!block || block.getItem() || block.hasStar()) return
+      
+      if (Math.random() < starSpawnRate) {
+        block.setStar(true)
       }
     })
   }
@@ -511,10 +507,9 @@ export class EliminateGame {
     const comboMultiplier = 1 + (same.length - 3) * 0.5
     let pts = Math.round(basePoints * comboMultiplier * this.comboMultiplier)
     
-    // 双倍分数效果
+    // 双倍分数效果（道具）
     if (this.doubleScoreActive) {
       pts *= 2
-      this.doubleScoreActive = false
     }
     
     // 增加连击倍数
@@ -536,30 +531,38 @@ export class EliminateGame {
       audioService.collect() // 小量消除播放收集音效
     }
     
-    // 收集道具
+    // 收集道具 - 立即自动生效
     const collectedItems: string[] = []
     same.forEach(i => {
       if (this.blocks[i] && this.blocks[i].getItem()) {
         const itemId = this.blocks[i].getItem()!
         if (!collectedItems.includes(itemId)) {
           collectedItems.push(itemId)
-          this.itemCharge[itemId] = (this.itemCharge[itemId] || 0) + 1
           
           // 显示收集提示
           const itemData = GAME_ITEMS.find(item => item.id === itemId)
           if (itemData) {
-            this.comboSystem.addText(`+1 ${itemData.icon}`, mx, my - 50 - collectedItems.length * 30)
+            this.comboSystem.addText(`${itemData.icon} ${itemData.name}!`, mx, my - 50 - collectedItems.length * 30)
           }
           
           // 触发道具收集特效（光环 + 闪光）
           this.triggerPowerupCollectEffect(itemId, mx, my)
+          
+          // ⭐ 立即使用道具效果（自动生效）
+          this.usePowerupImmediately(itemId, mx, my)
         }
+      }
+      
+      // 收集宝石
+      if (this.blocks[i] && this.blocks[i].hasStar()) {
+        this.collectedStars++
+        this.comboSystem.addText(`💎 +1 (${this.collectedStars}/${this.levelConfig?.targetStars})`, mx, my - 80)
+        audioService.collect()
       }
     })
     
-    // 更新道具栏显示
+    // 更新道具栏显示（仅用于视觉反馈）
     if (collectedItems.length > 0) {
-      this.updateItemBar()
       audioService.buff()
     }
     
@@ -667,6 +670,9 @@ export class EliminateGame {
     
     // 重新生成道具方块
     this.spawnItemBlocks()
+    
+    // 重新生成星星方块
+    this.spawnStarBlocks()
   }
   
   private hasValidMove(): boolean {
@@ -814,6 +820,12 @@ export class EliminateGame {
       this.ctx.font = 'bold 14px sans-serif'
       this.ctx.fillText(`x${this.comboMultiplier.toFixed(1)} 连击加成`, this.W / 2, 88)
     }
+    
+    // ⭐ 绘制星星收集进度
+    this.drawStarProgress()
+    
+    // 绘制道具持续时间提示
+    this.drawPowerupTimers(now)
   }
   
   private drawBlocks() {
@@ -825,6 +837,9 @@ export class EliminateGame {
       
       this.ctx.globalAlpha = b.getAlpha()
       
+      // 检查是否是提示高亮的方块
+      const isHinted = this.hintActive && this.hintBlocks.includes(i)
+      
       if (b.isRainbow()) {
         const grad = this.ctx.createLinearGradient(x - size, y - size, x + size, y + size)
         this.COLORS.forEach((c, idx) => grad.addColorStop(idx / this.COLORS.length, c))
@@ -833,9 +848,20 @@ export class EliminateGame {
         this.ctx.fillStyle = b.getColor()
       }
       
+      // 如果是提示高亮，添加脉冲光晕效果
+      if (isHinted) {
+        const pulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
+        this.ctx.shadowColor = '#FFD700'
+        this.ctx.shadowBlur = 15 * pulse
+      }
+      
       this.ctx.beginPath()
       this.ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
       this.ctx.fill()
+      
+      // 重置阴影
+      this.ctx.shadowColor = 'transparent'
+      this.ctx.shadowBlur = 0
       
       // 添加高光效果
       this.ctx.fillStyle = 'rgba(255,255,255,0.4)'
@@ -844,8 +870,8 @@ export class EliminateGame {
       this.ctx.fill()
       
       // 添加边框效果
-      this.ctx.strokeStyle = 'rgba(255,255,255,0.6)'
-      this.ctx.lineWidth = 2
+      this.ctx.strokeStyle = isHinted ? '#FFD700' : 'rgba(255,255,255,0.6)'
+      this.ctx.lineWidth = isHinted ? 3 : 2
       this.ctx.beginPath()
       this.ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
       this.ctx.stroke()
@@ -861,6 +887,48 @@ export class EliminateGame {
         }
       }
       
+      // 💎 如果方块有宝石，显示华丽的彩色宝石标记
+      if (b.hasStar()) {
+        // 绘制彩虹色光晕背景
+        const gemPulse = Math.sin(Date.now() * 0.01 + i) * 0.3 + 0.7
+        const hue = (Date.now() * 0.1 + i * 60) % 360
+        this.ctx.shadowColor = `hsl(${hue}, 100%, 60%)`
+        this.ctx.shadowBlur = 20 * gemPulse
+        
+        // 绘制白色背景圆（增强对比度）
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+        this.ctx.beginPath()
+        this.ctx.arc(x, y, size * 0.65, 0, Math.PI * 2)
+        this.ctx.fill()
+        
+        // 绘制彩虹色边框
+        this.ctx.strokeStyle = `hsl(${hue}, 100%, 70%)`
+        this.ctx.lineWidth = 2
+        this.ctx.beginPath()
+        this.ctx.arc(x, y, size * 0.65, 0, Math.PI * 2)
+        this.ctx.stroke()
+        
+        // 绘制彩色宝石图标（适中尺寸）
+        this.ctx.font = `bold ${Math.floor(size * 1.6)}px sans-serif`
+        this.ctx.textAlign = 'center'
+        this.ctx.textBaseline = 'middle'
+        
+        // 添加宝石轻微旋转和缩放效果
+        const rotation = Math.sin(Date.now() * 0.004 + i) * 0.15
+        const scale = 1 + Math.sin(Date.now() * 0.006 + i) * 0.08
+        
+        this.ctx.save()
+        this.ctx.translate(x, y)
+        this.ctx.rotate(rotation)
+        this.ctx.scale(scale, scale)
+        this.ctx.fillText('💎', 0, 0)
+        this.ctx.restore()
+        
+        // 重置阴影
+        this.ctx.shadowColor = 'transparent'
+        this.ctx.shadowBlur = 0
+      }
+      
       this.ctx.globalAlpha = 1
     })
   }
@@ -868,10 +936,10 @@ export class EliminateGame {
   private updateHTMLPowerupBar() {
     // 简化道具栏更新逻辑
     const powerupIcons: Record<string, string> = {
-      'bomb': '💣',
-      'shuffle': '🔀',
-      'hammer': '🔨',
-      'freeze': '❄️'
+      'time_extend': '⏰',
+      'hint': '🔍',
+      'double_score': '✨',
+      'bomb': '💣'
     }
     
     // 这里可以添加自定义的道具栏更新逻辑
@@ -889,40 +957,83 @@ export class EliminateGame {
     this.triggerPowerupUseEffect(type, this.W / 2, this.H / 2)
     
     switch (type) {
+      case 'time_extend':
+        // 时间延长 - 立即增加10秒
+        this.lastActionTime = Date.now() + 10000
+        audioService.win()
+        this.comboSystem.addText('⏰ +10秒!', this.W / 2, this.H / 2 - 50)
+        console.log('[道具] 时间延长生效，增加10秒')
+        break
+        
+      case 'hint':
+        // 提示高亮 - 显示可消除的组合
+        this.activateHint()
+        audioService.buff()
+        console.log('[道具] 提示高亮已激活')
+        break
+        
+      case 'double_score':
+        // 分数加倍 - 20秒内得分翻倍
+        this.doubleScoreActive = true
+        this.doubleScoreEndTime = Date.now() + 20000
+        audioService.win()
+        this.comboSystem.addText('✨ 双倍分数 20秒!', this.W / 2, this.H / 2 - 50)
+        console.log('[道具] 双倍分数已激活，持续20秒')
+        break
+        
       case 'bomb':
         // 炸弹 - 消除最多颜色的所有方块
         this.useBomb()
         audioService.win()
         console.log('[道具] 炸弹已使用')
         break
-        
-      case 'shuffle':
-        // 重排 - 重新排列所有方块
-        this.useShuffle()
-        audioService.collect()
-        console.log('[道具] 重排已使用')
-        break
-        
-      case 'hammer':
-        // 锤子 - 下次点击消除单个方块
-        ;(window as any).eliminateHammer = true
-        audioService.win()
-        console.log('[道具] 锤子已准备，请点击方块')
-        break
-        
-      case 'freeze':
-        // 冻结 - 暂停计时10秒
-        this.lastActionTime = Date.now() + 10000
-        audioService.win()
-        console.log('[道具] 冻结生效，增加10秒')
-        break
     }
     
     return true
   }
   
+  // ⭐ 立即使用道具效果（消除道具方块时自动触发）
+  private usePowerupImmediately(type: string, x: number, y: number) {
+    console.log('[道具] 自动生效:', type)
+    
+    // 触发华丽的收集特效
+    this.triggerPowerupCollectEffect(type, x, y)
+    
+    switch (type) {
+      case 'time_extend':
+        // 时间延长 - 立即增加10秒
+        this.lastActionTime = Date.now() + 10000
+        audioService.win()
+        this.comboSystem.addText('⏰ +10秒!', x, y - 30)
+        break
+        
+      case 'hint':
+        // 提示高亮 - 显示可消除的组合
+        this.activateHint()
+        audioService.buff()
+        this.comboSystem.addText('🔍 提示已激活!', x, y - 30)
+        break
+        
+      case 'double_score':
+        // 分数加倍 - 20秒内得分翻倍
+        this.doubleScoreActive = true
+        this.doubleScoreEndTime = Date.now() + 20000
+        audioService.win()
+        this.comboSystem.addText('✨ 双倍分数 20秒!', x, y - 30)
+        break
+        
+      case 'bomb':
+        // 炸弹 - 消除最多颜色的所有方块
+        setTimeout(() => {
+          this.useBomb()
+        }, 200) // 稍微延迟，让当前消除先完成
+        audioService.win()
+        break
+    }
+  }
+  
   private updateItemBar() {
-    const items = ['bomb', 'line_h', 'line_v', 'color_bomb', 'hammer', 'shuffle', 'rainbow', 'freeze', 'magnet', 'mega_bomb', 'time_plus', 'double_score']
+    const items = ['time_extend', 'hint', 'double_score', 'bomb']
     items.forEach(itemId => {
       const countEl = document.getElementById(`itemCount_${itemId}`)
       if (countEl) {
@@ -951,17 +1062,10 @@ export class EliminateGame {
     
     // 设置闪光颜色（不同道具有不同颜色）
     const colorMap: Record<string, string> = {
-      'bomb': 'rgba(255, 107, 107, 0.4)',        // 红色
-      'shuffle': 'rgba(155, 89, 182, 0.4)',      // 紫色
-      'hammer': 'rgba(255, 142, 83, 0.4)',       // 橙色
-      'freeze': 'rgba(78, 205, 196, 0.4)',       // 青色
-      'color_bomb': 'rgba(255, 217, 61, 0.4)',   // 黄色
-      'line_h': 'rgba(77, 150, 255, 0.4)',       // 蓝色
-      'line_v': 'rgba(107, 203, 119, 0.4)',      // 绿色
-      'rainbow': 'rgba(255, 105, 180, 0.4)',     // 粉色
-      'mega_bomb': 'rgba(255, 0, 0, 0.5)',       // 深红（更强）
-      'time_plus': 'rgba(0, 255, 255, 0.4)',     // cyan
-      'double_score': 'rgba(255, 215, 0, 0.4)'   // 金色
+      'time_extend': 'rgba(0, 255, 255, 0.4)',     // 青色
+      'hint': 'rgba(255, 215, 0, 0.4)',            // 金色
+      'double_score': 'rgba(255, 105, 180, 0.4)',  // 粉色
+      'bomb': 'rgba(255, 107, 107, 0.4)'           // 红色
     }
     
     this.powerupFlashColor = colorMap[itemId] || 'rgba(255, 255, 255, 0.4)'
@@ -985,17 +1089,10 @@ export class EliminateGame {
     
     // 设置更强的闪光效果
     const colorMap: Record<string, string> = {
-      'bomb': 'rgba(255, 107, 107, 0.6)',        // 红色
-      'shuffle': 'rgba(155, 89, 182, 0.6)',      // 紫色
-      'hammer': 'rgba(255, 142, 83, 0.6)',       // 橙色
-      'freeze': 'rgba(78, 205, 196, 0.6)',       // 青色
-      'color_bomb': 'rgba(255, 217, 61, 0.6)',   // 黄色
-      'line_h': 'rgba(77, 150, 255, 0.6)',       // 蓝色
-      'line_v': 'rgba(107, 203, 119, 0.6)',      // 绿色
-      'rainbow': 'rgba(255, 105, 180, 0.6)',     // 粉色
-      'mega_bomb': 'rgba(255, 0, 0, 0.7)',       // 深红（最强）
-      'time_plus': 'rgba(0, 255, 255, 0.6)',     // cyan
-      'double_score': 'rgba(255, 215, 0, 0.6)'   // 金色
+      'time_extend': 'rgba(0, 255, 255, 0.6)',     // 青色
+      'hint': 'rgba(255, 215, 0, 0.6)',            // 金色
+      'double_score': 'rgba(255, 105, 180, 0.6)',  // 粉色
+      'bomb': 'rgba(255, 107, 107, 0.6)'           // 红色
     }
     
     this.powerupFlashColor = colorMap[type] || 'rgba(255, 255, 255, 0.6)'
@@ -1098,5 +1195,141 @@ export class EliminateGame {
       )
       ;(this.particleSystem as any).particles.push(p)
     }
+  }
+  
+  // 提示高亮 - 查找并高亮显示可消除的方块组合
+  private activateHint() {
+    this.hintActive = true
+    this.hintBlocks = []
+    
+    // 查找第一个可消除的组合（至少3个相连的同色方块）
+    for (let i = 0; i < this.blocks.length; i++) {
+      if (!this.blocks[i]) continue
+      
+      const color = this.blocks[i].getColor()
+      const connected = this.findConnectedBlocks(i, color)
+      
+      if (connected.length >= 3) {
+        this.hintBlocks = connected
+        break
+      }
+    }
+    
+    // 5秒后取消高亮
+    setTimeout(() => {
+      this.hintActive = false
+      this.hintBlocks = []
+    }, 5000)
+  }
+  
+  // 查找连通的同色方块
+  private findConnectedBlocks(startIndex: number, targetColor: string): number[] {
+    const connected: number[] = []
+    const visited = new Set<number>()
+    const queue: number[] = [startIndex]
+    visited.add(startIndex)
+    
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      connected.push(current)
+      
+      const r = Math.floor(current / this.COLS)
+      const c = current % this.COLS
+      
+      // 检查四个方向
+      const directions = [
+        { r: r - 1, c }, // 上
+        { r: r + 1, c }, // 下
+        { r, c: c - 1 }, // 左
+        { r, c: c + 1 }  // 右
+      ]
+      
+      for (const dir of directions) {
+        if (dir.r >= 0 && dir.r < this.GRID && dir.c >= 0 && dir.c < this.COLS) {
+          const idx = dir.r * this.COLS + dir.c
+          if (!visited.has(idx) && this.blocks[idx] && this.blocks[idx].getColor() === targetColor) {
+            visited.add(idx)
+            queue.push(idx)
+          }
+        }
+      }
+    }
+    
+    return connected
+  }
+  
+  // 绘制道具持续时间提示
+  private drawPowerupTimers(now: number) {
+    let yPos = this.H - 30
+    
+    // 双倍分数倒计时
+    if (this.doubleScoreActive) {
+      const remaining = Math.max(0, this.doubleScoreEndTime - now)
+      const seconds = Math.ceil(remaining / 1000)
+      
+      this.ctx.fillStyle = 'rgba(255, 105, 180, 0.9)'
+      this.ctx.font = 'bold 14px sans-serif'
+      this.ctx.textAlign = 'center'
+      this.ctx.fillText(`✨ 双倍分数 ${seconds}s`, this.W / 2, yPos)
+      yPos -= 25
+    }
+    
+    // 提示高亮倒计时（5秒）
+    if (this.hintActive) {
+      this.ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
+      this.ctx.font = 'bold 14px sans-serif'
+      this.ctx.textAlign = 'center'
+      this.ctx.fillText('🔍 提示中...', this.W / 2, yPos)
+    }
+  }
+  
+  // 💎 绘制宝石收集进度（简洁版）
+  private drawStarProgress() {
+    if (!this.levelConfig) return
+    
+    const targetStars = this.levelConfig.targetStars
+    const isCompleted = this.collectedStars >= targetStars
+    
+    // 在屏幕右上角显示宝石数量
+    const displayX = this.W - 20
+    const displayY = 65
+    
+    // 背景圆角矩形
+    this.ctx.fillStyle = isCompleted ? 'rgba(138, 43, 226, 0.3)' : 'rgba(0, 0, 0, 0.4)'
+    this.ctx.beginPath()
+    this.ctx.roundRect(displayX - 90, displayY - 18, 90, 32, 8)
+    this.ctx.fill()
+    
+    // 边框
+    this.ctx.strokeStyle = isCompleted ? '#8A2BE2' : 'rgba(255, 255, 255, 0.3)'
+    this.ctx.lineWidth = 2
+    this.ctx.beginPath()
+    this.ctx.roundRect(displayX - 90, displayY - 18, 90, 32, 8)
+    this.ctx.stroke()
+    
+    // 宝石图标和数量
+    this.ctx.fillStyle = '#fff'
+    this.ctx.font = 'bold 16px sans-serif'
+    this.ctx.textAlign = 'center'
+    this.ctx.textBaseline = 'middle'
+    this.ctx.fillText(`💎${this.collectedStars}/${targetStars}`, displayX - 45, displayY - 2)
+    
+    // 如果完成，添加闪烁效果
+    if (isCompleted) {
+      const pulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
+      const hue = (Date.now() * 0.2) % 360
+      this.ctx.fillStyle = `hsla(${hue}, 100%, 60%, ${pulse * 0.2})`
+      this.ctx.beginPath()
+      this.ctx.roundRect(displayX - 90, displayY - 18, 90, 32, 8)
+      this.ctx.fill()
+      
+      // 完成标记
+      this.ctx.fillStyle = '#8A2BE2'
+      this.ctx.font = 'bold 12px sans-serif'
+      this.ctx.fillText('✓', displayX - 15, displayY - 2)
+    }
+    
+    // 重置 textBaseline
+    this.ctx.textBaseline = 'alphabetic'
   }
 }

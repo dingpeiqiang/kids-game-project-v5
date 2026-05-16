@@ -14,7 +14,7 @@ export class ParticleSystem {
 
   constructor(private scene: THREE.Scene) {}
 
-  createMagicParticles(pos: THREE.Vector3, color: number, count: number = 40) {
+  createMagicParticles(pos: THREE.Vector3, color: number, count: number = 20) {
     const geometry = new THREE.BufferGeometry()
     const positions = new Float32Array(count * 3)
     const velocities = new Float32Array(count * 3)
@@ -100,11 +100,10 @@ export class ParticleSystem {
   }
 
   private createCutPointParticles(x: number, y: number, width: number, color: number, cutFromLeft: boolean = true) {
-    const count = Math.floor(width * 25)
+    const count = Math.floor(width * 12)
     const geometry = new THREE.BufferGeometry()
     const positions = new Float32Array(count * 3)
     const velocities = new Float32Array(count * 3)
-    const sizes = new Float32Array(count)
     
     const direction = cutFromLeft ? -1 : 1
     
@@ -120,40 +119,17 @@ export class ParticleSystem {
       velocities[i * 3] = Math.cos(angle) * radius * direction
       velocities[i * 3 + 1] = Math.random() * 0.35 + 0.1
       velocities[i * 3 + 2] = (Math.random() - 0.5) * velocity * 1.2
-      
-      sizes[i] = 0.03 + Math.random() * 0.12
     }
     
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3))
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
     
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        color: { value: new THREE.Color(color) },
-        size: { value: 1.0 }
-      },
-      vertexShader: `
-        attribute float size;
-        varying vec3 vColor;
-        void main() {
-          vColor = color;
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * 30.0 * (300.0 / -mvPosition.z);
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColor;
-        void main() {
-          float dist = length(gl_PointCoord - vec2(0.5));
-          if (dist > 0.5) discard;
-          float alpha = 1.0 - smoothstep(0.0, 0.5, dist);
-          gl_FragColor = vec4(vColor, alpha);
-        }
-      `,
+    const material = new THREE.PointsMaterial({
+      color,
+      size: 0.08,
       transparent: true,
-      blending: THREE.AdditiveBlending
+      opacity: 0.8,
+      sizeAttenuation: true
     })
     
     const particles = new THREE.Points(geometry, material)
@@ -162,34 +138,16 @@ export class ParticleSystem {
   }
 
   private createCutBlockParticles(x: number, y: number, width: number, color: number, cutFromLeft: boolean = true) {
-    const blockCount = Math.floor(width * 6) + 4
+    const blockCount = Math.floor(width * 3) + 2
     const direction = cutFromLeft ? -1 : 1
     
     for (let i = 0; i < blockCount; i++) {
-      const sizeVariation = Math.random()
-      const blockWidth = 0.06 + sizeVariation * 0.15
-      const blockHeight = 0.04 + Math.random() * 0.12
-      const blockDepth = 0.05 + Math.random() * 0.1
+      const blockGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08)
       
-      const shapes = [
-        () => new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth),
-        () => new THREE.CylinderGeometry(blockWidth * 0.4, blockWidth * 0.4, blockHeight, 6),
-        () => new THREE.OctahedronGeometry(blockWidth * 0.5, 0),
-        () => new THREE.TetrahedronGeometry(blockWidth * 0.5),
-        () => new THREE.SphereGeometry(blockWidth * 0.4, 8, 8)
-      ]
-      
-      const shapeIndex = Math.floor(Math.random() * shapes.length)
-      const blockGeo = shapes[shapeIndex]()
-      
-      const blockMat = new THREE.MeshStandardMaterial({
+      const blockMat = new THREE.MeshBasicMaterial({
         color: color + Math.floor((Math.random() - 0.5) * 0x333333),
-        emissive: color,
-        emissiveIntensity: 0.4 + Math.random() * 0.4,
         transparent: true,
-        opacity: 0.75 + Math.random() * 0.2,
-        metalness: 0.5 + Math.random() * 0.3,
-        roughness: 0.3 + Math.random() * 0.4
+        opacity: 0.7
       })
       const block = new THREE.Mesh(blockGeo, blockMat)
       
@@ -209,9 +167,9 @@ export class ParticleSystem {
           (Math.random() - 0.5) * velocity * 1.5
         ),
         rotationSpeed: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.5,
-          (Math.random() - 0.5) * 0.5,
-          (Math.random() - 0.5) * 0.5
+          (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.3
         ),
         life: 1,
         gravity: 0.015 + Math.random() * 0.02
@@ -223,14 +181,14 @@ export class ParticleSystem {
   }
 
   private createCutSparkles(x: number, y: number, color: number) {
-    const sparkleCount = 12
+    const sparkleCount = 6
     
     for (let i = 0; i < sparkleCount; i++) {
-      const sparkleGeo = new THREE.OctahedronGeometry(0.06 + Math.random() * 0.04, 0)
+      const sparkleGeo = new THREE.SphereGeometry(0.04, 6, 6)
       const sparkleMat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
-        opacity: 1
+        opacity: 0.8
       })
       const sparkle = new THREE.Mesh(sparkleGeo, sparkleMat)
       
@@ -249,8 +207,7 @@ export class ParticleSystem {
           Math.random() * 0.3 + 0.2,
           Math.sin(angle) * velocity
         ),
-        life: 1,
-        twinkle: Math.random() * Math.PI * 2
+        life: 1
       }
       
       this.scene.add(sparkle)
@@ -325,24 +282,16 @@ export class ParticleSystem {
   }
 
   private createCutDebris(x: number, y: number, width: number, color: number, cutFromLeft: boolean) {
-    const debrisCount = Math.floor(width * 10) + 5
+    const debrisCount = Math.floor(width * 5) + 3
     const direction = cutFromLeft ? -1 : 1
     
     for (let i = 0; i < debrisCount; i++) {
-      const debrisSize = 0.04 + Math.random() * 0.08
-      const debrisGeo = new THREE.BoxGeometry(
-        debrisSize * (0.7 + Math.random() * 0.6),
-        debrisSize * (0.5 + Math.random() * 0.8),
-        debrisSize * (0.6 + Math.random() * 0.6)
-      )
-      const debrisMat = new THREE.MeshStandardMaterial({
+      const debrisSize = 0.05 + Math.random() * 0.06
+      const debrisGeo = new THREE.BoxGeometry(debrisSize, debrisSize, debrisSize)
+      const debrisMat = new THREE.MeshBasicMaterial({
         color: color + Math.floor((Math.random() - 0.5) * 0x555555),
-        emissive: color,
-        emissiveIntensity: 0.3 + Math.random() * 0.5,
         transparent: true,
-        opacity: 0.7 + Math.random() * 0.3,
-        metalness: 0.4 + Math.random() * 0.4,
-        roughness: 0.4 + Math.random() * 0.4
+        opacity: 0.6
       })
       const debris = new THREE.Mesh(debrisGeo, debrisMat)
       
@@ -362,9 +311,9 @@ export class ParticleSystem {
           (Math.random() - 0.5) * velocity * 1.8
         ),
         rotationSpeed: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.6,
-          (Math.random() - 0.5) * 0.6,
-          (Math.random() - 0.5) * 0.6
+          (Math.random() - 0.5) * 0.4,
+          (Math.random() - 0.5) * 0.4,
+          (Math.random() - 0.5) * 0.4
         ),
         life: 1,
         gravity: 0.018 + Math.random() * 0.022,
@@ -377,16 +326,16 @@ export class ParticleSystem {
   }
 
   private createCutTrails(x: number, y: number, width: number, color: number, cutFromLeft: boolean) {
-    const trailCount = Math.floor(width * 3) + 2
+    const trailCount = Math.floor(width * 2) + 1
     const direction = cutFromLeft ? -1 : 1
     
     for (let i = 0; i < trailCount; i++) {
-      const trailLength = 0.3 + Math.random() * 0.5
-      const trailGeo = new THREE.CylinderGeometry(0.015, 0.005, trailLength, 8)
+      const trailLength = 0.3 + Math.random() * 0.4
+      const trailGeo = new THREE.CylinderGeometry(0.01, 0.005, trailLength, 6)
       const trailMat = new THREE.MeshBasicMaterial({
         color: color,
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.5,
         side: THREE.DoubleSide
       })
       const trail = new THREE.Mesh(trailGeo, trailMat)

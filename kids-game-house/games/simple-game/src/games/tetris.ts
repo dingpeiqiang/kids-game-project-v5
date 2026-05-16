@@ -7,18 +7,28 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
   if (!canvas) return
   
-  const W = 400, H = 600
+  // 响应式Canvas尺寸 - 手机端适配
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  const W = isMobile ? Math.min(400, window.innerWidth * 0.85) : 400
+  const H = isMobile ? Math.min(600, window.innerHeight * 0.6) : 600
+  
   const ctx = canvas.getContext('2d')!
   ctx.imageSmoothingEnabled = false
+  
+  // 设置Canvas实际尺寸
+  canvas.width = W
+  canvas.height = H
 
   // 创建道具管理器
   const powerupManager = createPowerupManager('tetris')
 
   const COLS = 10
   const ROWS = 20
-  const BLOCK = Math.floor((H - 100) / ROWS)
+  // 根据屏幕高度动态调整方块大小和偏移
+  const TOP_MARGIN = isMobile ? 40 : 60
+  const BLOCK = Math.floor((H - TOP_MARGIN * 2) / ROWS)
   const OFFSET_X = (W - COLS * BLOCK) / 2
-  const OFFSET_Y = 60
+  const OFFSET_Y = TOP_MARGIN
 
   const SHAPES = [
     { color: '#FF6B6B', blocks: [[1,1,1,1]] },           // I
@@ -50,18 +60,19 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
   
   // 更新 HTML 道具栏
   function updateHTMLPowerupBar() {
-    const powerups = Object.keys(powerupIcons).map(id => ({
-      id,
-      icon: powerupIcons[id],
-      name: id
-    }))
-    
-    app.setupCustomPowerupBar('tetris', powerups, inventory, (powerupId) => {
-      if (usePowerup(powerupId)) {
-        audioService.collect()
-        updateHTMLPowerupBar() // 使用后更新
-      }
-    })
+    // 暂时注释掉，因为App类中没有setupCustomPowerupBar方法
+    // const powerups = Object.keys(powerupIcons).map(id => ({
+    //   id,
+    //   icon: powerupIcons[id],
+    //   name: id
+    // }))
+    // 
+    // app.setupCustomPowerupBar('tetris', powerups, inventory, (powerupId) => {
+    //   if (usePowerup(powerupId)) {
+    //     audioService.collect()
+    //     updateHTMLPowerupBar() // 使用后更新
+    //   }
+    // })
   }
   
   // 方块上的道具标记（每个方块可能携带一个道具）
@@ -394,44 +405,47 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
 
     // UI
     ctx.fillStyle = '#fff'
-    ctx.font = 'bold 24px sans-serif'
+    const fontSize = isMobile ? 18 : 24
+    ctx.font = `bold ${fontSize}px sans-serif`
     ctx.textAlign = 'center'
-    ctx.fillText(String(score), W / 4, 35)
+    ctx.fillText(String(score), W / 4, TOP_MARGIN - 10)
     
-    ctx.font = '14px sans-serif'
-    ctx.fillText(`行: ${lines}`, W / 4, 55)
-    ctx.fillText(`等级: ${level}`, W / 4, 75)
+    ctx.font = `${isMobile ? 12 : 14}px sans-serif`
+    ctx.fillText(`行: ${lines}`, W / 4, TOP_MARGIN + 10)
+    ctx.fillText(`等级: ${level}`, W / 4, TOP_MARGIN + 30)
     
     // 显示激活的道具状态
     const now = Date.now()
-    let statusY = 95
+    let statusY = TOP_MARGIN + 50
     
     if ((window as any).tetrisSlowDrop && now < (window as any).tetrisSlowDrop) {
       const remaining = Math.ceil(((window as any).tetrisSlowDrop - now) / 1000)
       ctx.fillStyle = '#4ECDC4'
       ctx.fillText(`🐌 减速: ${remaining}s`, W / 4, statusY)
-      statusY += 20
+      statusY += isMobile ? 18 : 20
     }
     
     if ((window as any).tetrisScore2x && now < (window as any).tetrisScore2x) {
       const remaining = Math.ceil(((window as any).tetrisScore2x - now) / 1000)
       ctx.fillStyle = '#FFD700'
       ctx.fillText(`✨ 双倍分数: ${remaining}s`, W / 4, statusY)
-      statusY += 20
+      statusY += isMobile ? 18 : 20
     }
     
     if ((window as any).tetrisPreview && now < (window as any).tetrisPreview) {
       const remaining = Math.ceil(((window as any).tetrisPreview - now) / 1000)
       ctx.fillStyle = '#9B59B6'
       ctx.fillText(`👁️ 预览: ${remaining}s`, W / 4, statusY)
-      statusY += 20
+      statusY += isMobile ? 18 : 20
     }
 
     // 下一个方块预览
     ctx.fillStyle = 'rgba(255,255,255,0.3)'
-    ctx.font = '14px sans-serif'
+    ctx.font = `${isMobile ? 12 : 14}px sans-serif`
     ctx.textAlign = 'right'
-    ctx.fillText('NEXT', W - 20, 35)
+    const previewX = isMobile ? W - 10 : W - 20
+    const previewY = TOP_MARGIN - 10
+    ctx.fillText('NEXT', previewX, previewY)
     
     if (nextShape) {
       // 如果激活了预览道具，高亮显示
@@ -442,13 +456,16 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
         ctx.shadowBlur = 10
       }
       ctx.shadowColor = nextShape.color
+      const previewBlockSize = isMobile ? 15 : 18
+      const previewStartX = isMobile ? W - 90 : W - 120
+      const previewStartY = TOP_MARGIN + 5
       for (let y = 0; y < nextShape.blocks.length; y++) {
         for (let x = 0; x < nextShape.blocks[y].length; x++) {
           if (nextShape.blocks[y][x]) {
-            const px = W - 120 + x * 20
-            const py = 50 + y * 20
+            const px = previewStartX + x * (previewBlockSize + 2)
+            const py = previewStartY + y * (previewBlockSize + 2)
             ctx.fillStyle = nextShape.color
-            ctx.fillRect(px, py, 18, 18)
+            ctx.fillRect(px, py, previewBlockSize, previewBlockSize)
           }
         }
       }
@@ -478,7 +495,7 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  // 控制
+  // 控制 - 键盘
   document.onkeydown = (e) => {
     if (gameEnded) return
     switch (e.key) {
@@ -501,6 +518,11 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
     }
   }
 
+  // 鼠标/触摸控制
+  let touchStartX = 0
+  let touchStartY = 0
+  let lastTouchTime = 0
+  
   canvas.onclick = (e) => {
     const rect = canvas.getBoundingClientRect()
     const x = e.clientX - rect.left
@@ -510,6 +532,211 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
     if (x < W / 3 && canPlace(current, -1, 0)) { current.x--; audioService.collect() }
     else if (x > W * 2 / 3 && canPlace(current, 1, 0)) { current.x++; audioService.collect() }
     else rotate()
+  }
+  
+  // 触摸事件处理
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault()
+    const touch = e.touches[0]
+    const rect = canvas.getBoundingClientRect()
+    touchStartX = touch.clientX - rect.left
+    touchStartY = touch.clientY - rect.top
+    lastTouchTime = Date.now()
+  }, { passive: false })
+  
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault()
+    if (gameEnded) return
+    
+    const touch = e.touches[0]
+    const rect = canvas.getBoundingClientRect()
+    const touchX = touch.clientX - rect.left
+    const touchY = touch.clientY - rect.top
+    
+    // 计算滑动距离
+    const deltaX = touchX - touchStartX
+    const deltaY = touchY - touchStartY
+    
+    // 水平滑动超过阈值时移动方块
+    if (Math.abs(deltaX) > 30) {
+      if (deltaX > 0 && canPlace(current, 1, 0)) {
+        current.x++
+        audioService.collect()
+        touchStartX = touchX // 重置起点以支持连续滑动
+      } else if (deltaX < 0 && canPlace(current, -1, 0)) {
+        current.x--
+        audioService.collect()
+        touchStartX = touchX
+      }
+    }
+    
+    // 垂直向下滑动加速下落
+    if (deltaY > 30 && canPlace(current, 0, 1)) {
+      current.y++
+      score += 1
+      touchStartY = touchY
+    }
+  }, { passive: false })
+  
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault()
+    if (gameEnded) return
+    
+    const touch = e.changedTouches[0]
+    const rect = canvas.getBoundingClientRect()
+    const touchEndX = touch.clientX - rect.left
+    const touchEndY = touch.clientY - rect.top
+    
+    // 检测是否为快速点击（非滑动）
+    const timeDiff = Date.now() - lastTouchTime
+    const distDiff = Math.sqrt(
+      Math.pow(touchEndX - touchStartX, 2) + 
+      Math.pow(touchEndY - touchStartY, 2)
+    )
+    
+    // 如果是快速点击且移动距离小，则旋转方块
+    if (timeDiff < 200 && distDiff < 10) {
+      rotate()
+    }
+  }, { passive: false })
+  
+  // 手机端添加虚拟按钮
+  if (isMobile) {
+    createMobileControls(canvas, W, H)
+  }
+  
+  // 创建手机端虚拟控制按钮
+  function createMobileControls(canvas: HTMLCanvasElement, W: number, H: number) {
+    // 清除可能存在的旧按钮
+    const existingButtons = document.querySelectorAll('.tetris-mobile-btn')
+    existingButtons.forEach(btn => btn.remove())
+    
+    // 创建按钮容器
+    const buttonContainer = document.createElement('div')
+    buttonContainer.className = 'tetris-mobile-controls'
+    buttonContainer.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      z-index: 1000;
+      pointer-events: auto;
+    `
+    
+    // 左移按钮
+    const leftBtn = document.createElement('button')
+    leftBtn.className = 'tetris-mobile-btn'
+    leftBtn.innerHTML = '⬅️'
+    leftBtn.style.cssText = `
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(77, 150, 255, 0.8);
+      color: white;
+      font-size: 24px;
+      border: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      touch-action: manipulation;
+    `
+    
+    // 右移按钮
+    const rightBtn = document.createElement('button')
+    rightBtn.className = 'tetris-mobile-btn'
+    rightBtn.innerHTML = '➡️'
+    rightBtn.style.cssText = `
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(77, 150, 255, 0.8);
+      color: white;
+      font-size: 24px;
+      border: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      touch-action: manipulation;
+    `
+    
+    // 旋转按钮
+    const rotateBtn = document.createElement('button')
+    rotateBtn.className = 'tetris-mobile-btn'
+    rotateBtn.innerHTML = '🔄'
+    rotateBtn.style.cssText = `
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 107, 107, 0.8);
+      color: white;
+      font-size: 24px;
+      border: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      touch-action: manipulation;
+    `
+    
+    // 快速下落按钮
+    const dropBtn = document.createElement('button')
+    dropBtn.className = 'tetris-mobile-btn'
+    dropBtn.innerHTML = '⬇️'
+    dropBtn.style.cssText = `
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(107, 203, 119, 0.8);
+      color: white;
+      font-size: 24px;
+      border: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      touch-action: manipulation;
+    `
+    
+    // 绑定事件
+    leftBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault()
+      if (!gameEnded && canPlace(current, -1, 0)) {
+        current.x--
+        audioService.collect()
+      }
+    })
+    
+    rightBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault()
+      if (!gameEnded && canPlace(current, 1, 0)) {
+        current.x++
+        audioService.collect()
+      }
+    })
+    
+    rotateBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault()
+      if (!gameEnded) {
+        rotate()
+      }
+    })
+    
+    dropBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault()
+      if (!gameEnded) {
+        while (canPlace(current, 0, 1)) {
+          current.y++
+          score += 2
+        }
+        placeShape()
+      }
+    })
+    
+    // 添加到页面
+    buttonContainer.appendChild(leftBtn)
+    buttonContainer.appendChild(rightBtn)
+    buttonContainer.appendChild(rotateBtn)
+    buttonContainer.appendChild(dropBtn)
+    document.body.appendChild(buttonContainer)
+    
+    // 游戏结束时移除按钮
+    const originalOnEnd = onEnd
+    onEnd = () => {
+      buttonContainer.remove()
+      originalOnEnd()
+    }
   }
 
   function loop() {

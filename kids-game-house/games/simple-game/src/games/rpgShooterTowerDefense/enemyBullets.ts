@@ -4,6 +4,7 @@ import { GameState, EnemyBullet } from './types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, SCALE_RATIO } from './config'
 import { playerHit } from './state'
 import { wallHit } from './turrets'
+import { forceEndWave } from './waves'
 
 // 生成唯一ID
 let bulletIdCounter = 0
@@ -34,11 +35,19 @@ export function updateEnemyBullets(state: GameState, dt: number): void {
     )
 
     if (distToPlayer < 8 * SCALE_RATIO + bullet.size) {
+      // 记录之前的HP
+      const prevHp = state.player.hp
+      
       // 范围伤害
       if (bullet.aoeRadius) {
         applyAoeDamage(state, bullet.x, bullet.y, bullet.damage, bullet.aoeRadius, bullet.color)
       } else {
         playerHit(state, bullet.damage)
+      }
+      
+      // 如果玩家死亡，调用强制结束波次
+      if (prevHp > 0 && state.player.hp <= 0) {
+        forceEndWave(state)
       }
 
       // 击中特效
@@ -193,7 +202,12 @@ function applyAoeDamage(
     (x - state.player.x) ** 2 + (y - state.player.y) ** 2
   )
   if (distToPlayer <= radius) {
+    const prevHp = state.player.hp
     playerHit(state, damage)
+    // 如果玩家死亡，调用强制结束波次
+    if (prevHp > 0 && state.player.hp <= 0) {
+      forceEndWave(state)
+    }
   }
 
   // 对范围内的炮台造成伤害
