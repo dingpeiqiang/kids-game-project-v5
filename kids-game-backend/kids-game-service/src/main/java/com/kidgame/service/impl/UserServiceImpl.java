@@ -112,6 +112,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public BaseUser register(UserRegisterDTO dto) {
+        log.info("用户注册请求: username={}, userType={}, nickname={}", 
+            dto.getUsername(), dto.getUserType(), dto.getNickname());
+        
         // 检查用户名是否已存在
         BaseUser existUser = baseUserMapper.selectOne(
                 new QueryWrapper<BaseUser>().eq("username", dto.getUsername())
@@ -125,7 +128,9 @@ public class UserServiceImpl implements UserService {
         user.setUsername(dto.getUsername());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setNickname(dto.getNickname() != null ? dto.getNickname() : dto.getUsername());
-        user.setUserType(convertUserTypeToInt(dto.getUserType()));
+        Integer userTypeInt = convertUserTypeToInt(dto.getUserType());
+        log.info("转换用户类型: {} -> {}", dto.getUserType(), userTypeInt);
+        user.setUserType(userTypeInt);
         user.setStatus(1);
         user.setCreateTime(System.currentTimeMillis());
         user.setUpdateTime(System.currentTimeMillis());
@@ -443,7 +448,10 @@ public class UserServiceImpl implements UserService {
         // 1. 查询用户
         LambdaQueryWrapper<BaseUser> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BaseUser::getUsername, request.getUsername());
-        wrapper.eq(BaseUser::getUserType, request.getUserType());
+        // 如果前端传递了 userType，则加上类型过滤；否则只根据用户名查询
+        if (request.getUserType() != null) {
+            wrapper.eq(BaseUser::getUserType, request.getUserType());
+        }
         wrapper.eq(BaseUser::getStatus, 1);
         
         BaseUser user = baseUserMapper.selectOne(wrapper);

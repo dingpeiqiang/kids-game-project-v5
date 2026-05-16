@@ -300,6 +300,23 @@ CREATE TABLE `t_game_record` (
 ) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏记录表';
 
 
+-- kidgame.t_game_comment definition
+
+CREATE TABLE `t_game_comment` (
+                                  `comment_id` bigint NOT NULL AUTO_INCREMENT COMMENT '评论 ID',
+                                  `user_id` bigint NOT NULL COMMENT '儿童用户 ID',
+                                  `game_id` bigint NOT NULL COMMENT '游戏 ID',
+                                  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '评论内容',
+                                  `score` int NOT NULL COMMENT '评分（1-5）',
+                                  `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间（毫秒时间戳）',
+                                  `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除：0-未删除，1-已删除',
+                                  PRIMARY KEY (`comment_id`),
+                                  KEY `idx_user_id` (`user_id`),
+                                  KEY `idx_game_id` (`game_id`),
+                                  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏评论表';
+
+
 -- kidgame.t_game_resource_config definition
 
 CREATE TABLE `t_game_resource_config` (

@@ -141,6 +141,39 @@ export class AuthModal {
           }
         })
       }
+      
+      // 用户类型选择
+      let selectedUserType = 'KID' // 默认选择儿童
+      const kidOption = document.getElementById('userTypeKid')
+      const parentOption = document.getElementById('userTypeParent')
+      
+      console.log('[AuthModal] 初始化用户类型选择器', { kidOption: !!kidOption, parentOption: !!parentOption })
+      
+      if (kidOption) {
+        kidOption.classList.add('selected')
+        kidOption.addEventListener('click', () => {
+          selectedUserType = 'KID'
+          kidOption.classList.add('selected')
+          parentOption?.classList.remove('selected')
+          console.log('[AuthModal] 用户类型切换为:', selectedUserType)
+        })
+      }
+      
+      if (parentOption) {
+        parentOption.addEventListener('click', () => {
+          selectedUserType = 'PARENT'
+          parentOption.classList.add('selected')
+          kidOption?.classList.remove('selected')
+          console.log('[AuthModal] 用户类型切换为:', selectedUserType)
+        })
+      }
+      
+      // 将选中的用户类型保存到实例变量，供 doRegister 使用
+      ;(this as any)._selectedUserType = selectedUserType
+      ;(this as any)._getUserType = () => {
+        console.log('[AuthModal] _getUserType 返回:', selectedUserType)
+        return selectedUserType
+      }
     }
   }
 
@@ -205,6 +238,21 @@ export class AuthModal {
         <label>确认密码</label>
         <input id="ugp-reg-pass2" class="ugp-input" type="password" placeholder="再次输入密码" maxlength="16" autocomplete="new-password" />
       </div>
+      <div class="ugp-field">
+        <label>用户类型 <span class="ugp-hint">请选择您的身份</span></label>
+        <div class="ugp-user-type-selector">
+          <div class="ugp-user-type-option" data-type="KID" id="userTypeKid">
+            <div class="ugp-type-icon">👶</div>
+            <div class="ugp-type-name">儿童</div>
+            <div class="ugp-type-desc">玩游戏、赚积分</div>
+          </div>
+          <div class="ugp-user-type-option" data-type="PARENT" id="userTypeParent">
+            <div class="ugp-type-icon">👨‍👩‍👧</div>
+            <div class="ugp-type-name">家长</div>
+            <div class="ugp-type-desc">管理孩子游戏时间</div>
+          </div>
+        </div>
+      </div>
       <div class="ugp-reg-gift">🎁 注册即送新手双倍积分卡 x1</div>
       <div class="ugp-error" id="authError"></div>
       <button class="ugp-btn ugp-btn-primary" id="btnDoRegister">立即注册</button>
@@ -262,6 +310,16 @@ export class AuthModal {
     const pass2 = (document.getElementById('ugp-reg-pass2') as HTMLInputElement)?.value || ''
     const errorEl = document.getElementById('authError')
     const btn = document.getElementById('btnDoRegister') as HTMLButtonElement | null
+    
+    // 获取用户类型（默认为 KID）
+    const userType = (this as any)._getUserType ? (this as any)._getUserType() : 'KID'
+    console.log('[AuthModal] 注册信息:', { username, nickname, userType })
+    
+    // 验证用户类型
+    if (!userType || (userType !== 'KID' && userType !== 'PARENT')) {
+      if (errorEl) { errorEl.textContent = '请选择用户类型'; errorEl.style.display = 'block' }
+      return
+    }
 
     // 验证账号格式
     const usernameValidation = this.validateUsername(username)
@@ -295,7 +353,9 @@ export class AuthModal {
     if (btn) { btn.disabled = true; btn.textContent = '注册中...' }
 
     try {
-      const res = await userService.register(username, pass, nickname)
+      console.log('[AuthModal] 调用 userService.register', { username, userType })
+      const res = await userService.register(username, pass, nickname, userType)
+      console.log('[AuthModal] 注册结果:', res)
       if (res.ok) {
         this.close()
         this.onSuccess?.()
@@ -530,8 +590,8 @@ export class MePanel {
   private bindMeEvents() {
     document.getElementById('btnCloseMe2')?.addEventListener('click', () => this.close())
 
-    document.getElementById('btnSignIn')?.addEventListener('click', () => {
-      const res = userService.collectDailyReward()
+    document.getElementById('btnSignIn')?.addEventListener('click', async () => {
+      const res = await userService.collectDailyReward()
       if (res.ok) {
         showToast(res.msg!, 'success')
         this.render()
@@ -630,6 +690,15 @@ export function injectUserStyles() {
 .ugp-divider::before{left:0}.ugp-divider::after{right:0}
 .ugp-reg-gift{background:#fff8e7;border:1px solid #f5c842;border-radius:10px;
   padding:10px 14px;font-size:13px;color:#c8860a;text-align:center}
+/* 用户类型选择器 */
+.ugp-user-type-selector{display:flex;gap:10px;margin-top:6px}
+.ugp-user-type-option{flex:1;padding:12px;border:2px solid #e8e8e8;border-radius:12px;
+  cursor:pointer;transition:all 0.2s;text-align:center;background:#fafafa}
+.ugp-user-type-option:hover{border-color:#5b9bd5;background:#f0f6ff}
+.ugp-user-type-option.selected{border-color:#5b9bd5;background:#e8f0fe;box-shadow:0 0 0 3px rgba(91,155,213,0.1)}
+.ugp-type-icon{font-size:28px;margin-bottom:6px}
+.ugp-type-name{font-size:14px;font-weight:600;color:#333;margin-bottom:4px}
+.ugp-type-desc{font-size:11px;color:#888}
 .ugp-guest-notice{display:flex;gap:10px;padding:12px;background:#fff3e0;border:1px solid #ffcc80;
   border-radius:10px;margin-top:4px}
 .ugp-guest-icon{font-size:20px;flex-shrink:0}

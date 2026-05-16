@@ -47,6 +47,14 @@
       "port": 3006,
       "enabled": false,
       "description": "经典马里奥游戏"
+    },
+    {
+      "id": "jewelMatch",
+      "name": "宝石消消乐",
+      "directory": "jewelMatch",
+      "port": 5200,
+      "enabled": true,
+      "description": "解压三消游戏，华丽特效，爽快消除体验"
     }
   ],
   "settings": {

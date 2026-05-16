@@ -34,10 +34,10 @@ export interface GameConfig {
  */
 export const GAME_DISPLAY_CONFIG: GameConfig[] = [
   // // ── 热门消除 ──
-  // { id: 'eliminate',     visible: true,  order: 1,  badge: '热门' },
-  // { id: 'tetris',        visible: true,  order: 2,  badge: '' },
-  // { id: 'jewelMatch',    visible: true,  order: 3,  badge: '' },
-  // { id: 'bubbleShooter', visible: true,  order: 4,  badge: '' },
+  { id: 'eliminate',     visible: true,  order: 1,  badge: '热门' },
+  { id: 'tetris',        visible: true,  order: 2,  badge: '' },
+  { id: 'jewelMatch',    visible: true,  order: 3,  badge: '' },
+  { id: 'bubbleShooter', visible: true,  order: 4,  badge: '' },
 
   // // ── 反应力 ──
   // { id: 'pop',           visible: true,  order: 1,  badge: '' },
@@ -45,7 +45,7 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
   // { id: 'colorTap',      visible: true,  order: 3,  badge: '' },
 
   // // ── 切割爽感 ──
-  // { id: 'fruitSlice',    visible: true,  order: 1,  badge: '' },
+  { id: 'fruitSlice',    visible: true,  order: 1,  badge: '' },
   { id: 'cookieCut',     visible: true,  order: 2,  badge: '' },
 
   // // ── 动作闯关 ──
@@ -62,7 +62,6 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
 
   // // ── 3D沉浸 ──
   { id: 'stack3d',       visible: true,  order: 1,  badge: '' },
-  // { id: 'tower3d',       visible: true,  order: 2,  badge: '' },
 
   // // ── 堆叠建造 ──
   { id: 'stack',         visible: true,  order: 1,  badge: '' },
@@ -74,7 +73,7 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
   { id: 'rpgShooterTD',  visible: true,  order: 4,  badge: '新' },
 
   // // ── 策略塔防 ──
-  // { id: 'towerDefense',  visible: true,  order: 1,  badge: '新' },
+  { id: 'towerDefense',  visible: true,  order: 1,  badge: '新' },
 
   // // ── 卡牌记忆 ──
   // { id: 'memoryMatch',   visible: true,  order: 1,  badge: '' },

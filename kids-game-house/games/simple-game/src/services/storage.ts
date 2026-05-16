@@ -1,4 +1,4 @@
-import type { PlayerData } from '../types'
+import type { PlayerData, GameComment, GameComments } from '../types'
 
 const KEYS = {
   coins: 'platform_coins',
@@ -11,6 +11,7 @@ const KEYS = {
   lastLogin: 'platform_last_login',
   guideSkipped: 'platform_guide_skipped',
   items: 'platform_items', // 道具数据
+  comments: 'platform_comments', // 游戏评论
 }
 
 export class StorageService {
@@ -115,6 +116,48 @@ export class StorageService {
       return true
     }
     return false
+  }
+
+  // 评论相关方法
+  getComments(gameId: string): GameComment[] {
+    const allComments: GameComments = JSON.parse(localStorage.getItem(KEYS.comments) || '{}')
+    return allComments[gameId] || []
+  }
+
+  addComment(gameId: string, content: string, score: number, playerName: string): GameComment {
+    const allComments: GameComments = JSON.parse(localStorage.getItem(KEYS.comments) || '{}')
+    if (!allComments[gameId]) {
+      allComments[gameId] = []
+    }
+    
+    const comment: GameComment = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      gameId,
+      content,
+      score,
+      playerName,
+      createdAt: Date.now()
+    }
+    
+    allComments[gameId].unshift(comment)
+    // 最多保留50条评论
+    if (allComments[gameId].length > 50) {
+      allComments[gameId] = allComments[gameId].slice(0, 50)
+    }
+    
+    localStorage.setItem(KEYS.comments, JSON.stringify(allComments))
+    return comment
+  }
+
+  getTotalComments(gameId: string): number {
+    return this.getComments(gameId).length
+  }
+
+  getAverageScore(gameId: string): number {
+    const comments = this.getComments(gameId)
+    if (comments.length === 0) return 0
+    const total = comments.reduce((sum, c) => sum + c.score, 0)
+    return Math.round(total / comments.length * 10) / 10
   }
 }
 

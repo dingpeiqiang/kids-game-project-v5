@@ -83,3 +83,18 @@ export interface GameState {
   crits: number
   sessionCoins: number
 }
+
+// 游戏评论
+export interface GameComment {
+  id: string
+  gameId: string
+  content: string
+  score: number // 1-5分评分
+  playerName: string
+  createdAt: number // 时间戳
+}
+
+// 游戏评论数据
+export interface GameComments {
+  [gameId: string]: GameComment[]
+}

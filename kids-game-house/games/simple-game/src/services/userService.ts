@@ -21,6 +21,13 @@ import {
   type LeaderboardEntry,
   type UserRankInfo
 } from './leaderboardService'
+import {
+  apiCollectDailyReward,
+  apiGetSignInInfo,
+  apiHasSignedInToday,
+  type SignInResponseData,
+  type SignInInfoData
+} from './apiClient'
 
 // ─────────────────────────────────────────────
 // 本地游戏数据存储 key（与认证无关，纯前端）
@@ -196,7 +203,7 @@ class UserService {
   get isLoggedIn(): boolean { return this._current !== null && !!tokenStore.getAccess() }
 
   // ── 注册 ──────────────────────────────────────────────────────
-  async register(username: string, password: string, nickname?: string): Promise<{ ok: boolean; msg: string }> {
+  async register(username: string, password: string, nickname?: string, userType: 'KID' | 'PARENT' = 'KID'): Promise<{ ok: boolean; msg: string }> {
     username = username.trim()
     if (!username || username.length < 4 || username.length > 12) {
       return { ok: false, msg: '账号长度4-12个字符' }
@@ -205,8 +212,8 @@ class UserService {
       return { ok: false, msg: '密码长度4-16个字符' }
     }
 
-    // 调用后端注册
-    const res = await apiClient.register(username, password, nickname)
+    // 调用后端注册（传递用户类型）
+    const res = await apiClient.register(username, password, nickname, userType)
     if (!res.ok) return { ok: false, msg: res.msg }
 
     // 注册成功后自动登录
@@ -291,11 +298,54 @@ class UserService {
   }
 
   // ── 手动签到领奖 ──────────────────────────────────────────────
-  collectDailyReward(): { ok: boolean; msg: string; coins?: number } {
+  async collectDailyReward(): Promise<{ ok: boolean; msg: string; coins?: number }> {
     if (!this._current) return { ok: false, msg: '请先登录' }
+    
     const today = new Date().toDateString()
     if (this._current.dailyRewardCollected === today) return { ok: false, msg: '今日已领取' }
 
+    // 尝试同步到后端
+    if (this.isLoggedIn) {
+      try {
+        console.log('[UserService] 尝试同步签到到后端...')
+        const result = await apiCollectDailyReward()
+        
+        if (result.ok && result.data) {
+          const backendData = result.data
+          
+          if (backendData.alreadySignedIn) {
+            // 后端返回已签到，更新本地状态
+            this._current.dailyRewardCollected = today
+            this.saveUser(this._current)
+            return { ok: false, msg: '今日已签到' }
+          }
+          
+          // 使用后端返回的奖励数据
+          const coins = backendData.coinsReward || 50
+          const exp = backendData.expReward || 0
+          const consecutiveDays = backendData.consecutiveDays || this._current.consecutiveLoginDays
+          
+          // 更新本地数据
+          this._current.dailyRewardCollected = today
+          this._current.coins += coins
+          if (exp > 0) this._current.exp += exp
+          this._current.consecutiveLoginDays = consecutiveDays
+          
+          this.saveUser(this._current)
+          
+          console.log('[UserService] 签到成功同步到后端', { coins, exp, consecutiveDays })
+          return { ok: true, msg: backendData.message || `签到成功！获得 ${coins} 金币`, coins }
+        } else {
+          console.warn('[UserService] 后端签到失败，使用本地模式:', result.msg)
+          // 降级到本地模式
+        }
+      } catch (error) {
+        console.error('[UserService] 后端签到异常，使用本地模式:', error)
+        // 降级到本地模式
+      }
+    }
+
+    // 本地模式（兼容游客或后端不可用时）
     const days = this._current.consecutiveLoginDays
     const baseCoins = 50
     const bonus = Math.min(days - 1, 6) * 10

@@ -118,6 +118,21 @@ CREATE TABLE t_game_record (
     INDEX idx_play_date (play_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='游戏记录表';
 
+-- 游戏评论表
+DROP TABLE IF EXISTS t_game_comment;
+CREATE TABLE t_game_comment (
+    comment_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '评论 ID',
+    user_id BIGINT NOT NULL COMMENT '儿童用户 ID',
+    game_id BIGINT NOT NULL COMMENT '游戏 ID',
+    content TEXT NOT NULL COMMENT '评论内容',
+    score INT NOT NULL COMMENT '评分（1-5）',
+    create_time BIGINT DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP) * 1000) COMMENT '创建时间',
+    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除',
+    INDEX idx_user_id (user_id),
+    INDEX idx_game_id (game_id),
+    INDEX idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='游戏评论表';
+
 -- ================================================
 -- 3. 初始化数据
 -- ================================================

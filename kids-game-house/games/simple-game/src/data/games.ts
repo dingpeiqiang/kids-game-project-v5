@@ -20,7 +20,6 @@ export const GAMES: Game[] = [
   { id: 'stack3d',   name: '3D堆叠乐园', desc: '3D模型堆叠挑战，不倒塌就得分', type: '3d', category: '3d', tag: '3D', color: '#A8E6CF,#88D8B0', players: 1893, best: 0, preview: 'stack3d' },
   { id: 'sort',      name: '色彩排序', desc: '滑动排序彩色液体，超治愈！', type: '2d', category: 'puzzle', tag: '益智', color: '#DDA0DD,#BA55D3', players: 1532, best: 0, preview: 'sort' },
   { id: 'pop',       name: '气球砰砰', desc: '疯狂点击气球，炸出高分！', type: '2d', category: 'reaction', tag: '点击', color: '#FF69B4,#FF1493', players: 2108, best: 0, preview: 'pop' },
-  { id: 'tower3d',   name: '3D光影匹配', desc: '旋转视角找匹配，超有成就感', type: '3d', category: '3d', tag: '3D', color: '#87CEEB,#4682B4', players: 1247, best: 0, preview: 'tower3d' },
   { id: 'fruitSlice',name: '水果切切', desc: '划动切割水果，果汁飞溅超解压！', type: '2d', category: 'slice', tag: '切割', color: '#FF6B6B,#FFD93D', players: 1654, best: 0, preview: 'fruitSlice' },
   { id: 'bouncePath',name: '弹珠迷宫', desc: '控制弹珠收集星星，弹跳乐趣多！', type: '2d', category: 'puzzle', tag: '益智', color: '#4ECDC4,#FFD93D', players: 1432, best: 0, preview: 'bouncePath' },
   { id: 'neonRun',   name: '霓虹跑酷', desc: '躲避障碍收集金币，无尽奔跑！', type: '2d', category: 'action', tag: '跑酷', color: '#9B59B6,#FF69B4', players: 1987, best: 0, preview: 'neonRun' },
@@ -93,16 +92,6 @@ export const GAME_GUIDES: Record<string, GameGuide> = {
     tipsTitle: '💡 小技巧',
     tips: '大气球飘得慢但分高，小气球飘得快但分低，看准时机快速点击！',
     bg: '#FF69B4'
-  },
-  tower3d: {
-    icon: '🧩', name: '3D光影匹配', desc: '3D模型在空中旋转，点击尝试匹配下方的轮廓形状，匹配正确得分！',
-    ops: [
-      { icon: '👆', text: '<b>观察</b>空中模型与底部轮廓' },
-      { icon: '👆', text: '<b>点击</b>尝试匹配当前形状' },
-    ],
-    tipsTitle: '💡 小技巧',
-    tips: '形状有正方体、球体、圆柱体三种！匹配正确会切换下一个，错误会中断连击。',
-    bg: '#87CEEB'
   },
   fruitSlice: {
     icon: '🍉', name: '水果切切', desc: '滑动手指切割飞起的水果，果汁四溅超解压！',

@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import { GAME_CONFIG, STACK_COLORS } from '../config'
 
+export type BlockShape = 'cube' | 'cylinder' | 'pyramid' | 'octahedron' | 'sphere' | 'torus' | 'cone' | 'dodecahedron'
+
 export interface BlockState {
   isFalling: boolean
   fallProgress: number
@@ -14,32 +16,31 @@ export class Block {
   public state: BlockState
   private originalColor: number
   private width: number
+  private shape: BlockShape
 
-  constructor(colorIndex: number, startY: number, blockWidth: number = GAME_CONFIG.blockSize.width) {
+  constructor(colorIndex: number, startY: number, blockWidth: number = GAME_CONFIG.blockSize.width, shape: BlockShape = 'cube') {
     this.originalColor = STACK_COLORS[colorIndex % STACK_COLORS.length]
     this.width = blockWidth
+    this.shape = shape
     
-    const geometry = new THREE.BoxGeometry(
-      this.width, 
-      GAME_CONFIG.blockSize.height, 
-      GAME_CONFIG.blockSize.depth
-    )
+    const geometry = this.createGeometry(shape, blockWidth)
     
     const material = new THREE.MeshStandardMaterial({
       color: this.originalColor,
       emissive: this.originalColor,
-      emissiveIntensity: 0.4,
-      roughness: 0.35,
-      metalness: 0.65,
+      emissiveIntensity: 0.15,
+      roughness: 0.4,
+      metalness: 0.5,
       transparent: true,
-      opacity: 0.95,
-      envMapIntensity: 1.3
+      opacity: 0.98,
+      envMapIntensity: 1.8,
+      side: THREE.DoubleSide
     })
     
     this.mesh = new THREE.Mesh(geometry, material)
     this.mesh.castShadow = true
     this.mesh.receiveShadow = true
-    
+
     this.state = {
       isFalling: false,
       fallProgress: 0,
@@ -51,35 +52,71 @@ export class Block {
     this.mesh.position.set(0, startY + GAME_CONFIG.fallHeight, 0)
   }
 
+  private createGeometry(shape: BlockShape, width: number): THREE.BufferGeometry {
+    const height = GAME_CONFIG.blockSize.height
+    const depth = GAME_CONFIG.blockSize.depth
+    const size = Math.min(width, height, depth) * 0.8
+    
+    switch (shape) {
+      case 'cube':
+        return new THREE.BoxGeometry(width, height, depth)
+      case 'cylinder':
+        return new THREE.CylinderGeometry(width * 0.4, width * 0.4, height, 16)
+      case 'pyramid':
+        return new THREE.ConeGeometry(width * 0.4, height, 4)
+      case 'octahedron':
+        return new THREE.OctahedronGeometry(size * 0.5)
+      case 'sphere':
+        return new THREE.SphereGeometry(size * 0.45, 16, 16)
+      case 'torus':
+        return new THREE.TorusGeometry(size * 0.25, size * 0.12, 8, 16)
+      case 'cone':
+        return new THREE.ConeGeometry(width * 0.35, height * 0.9, 12)
+      case 'dodecahedron':
+        return new THREE.DodecahedronGeometry(size * 0.35)
+      default:
+        return new THREE.BoxGeometry(width, height, depth)
+    }
+  }
+
   update(time: number) {
     if (!this.state.isFalling && !this.state.settled) {
-      this.mesh.rotation.y += 0.015
-      const floatOffset = Math.sin(time * 3) * 0.03
+      this.mesh.rotation.y += 0.02
+      const floatOffset = Math.sin(time * 3) * 0.05
       this.mesh.position.y = this.state.targetY + GAME_CONFIG.fallHeight + floatOffset
     } else if (this.state.isFalling) {
-      this.state.fallProgress += 0.25
+      this.state.fallProgress += 0.15
       
       if (this.state.fallProgress < 1) {
-        const eased = 1 - Math.pow(1 - this.state.fallProgress, 4)
+        const eased = 1 - Math.pow(1 - this.state.fallProgress, 3)
         const currentY = this.mesh.position.y
         const delta = currentY - this.state.targetY
         
         this.mesh.position.y = currentY - delta * eased
         
-        const compression = Math.min(eased * 1.5, 1)
-        const scaleY = 0.9 - compression * 0.1
-        const scaleXZ = 0.95 + compression * 0.05
+        const compression = Math.min(eased * 2, 1)
+        const scaleY = 0.75 - compression * 0.2
+        const scaleXZ = 1.1 + compression * 0.15
         this.mesh.scale.set(scaleXZ, scaleY, scaleXZ)
+        
+        this.mesh.rotation.x += 0.03
+        this.mesh.rotation.z += 0.02
       } else {
-        this.state.bounceProgress += 0.5
+        this.state.bounceProgress += 0.3
         if (this.state.bounceProgress < 1) {
-          const bounce = Math.sin(this.state.bounceProgress * Math.PI) * 0.04
+          const bounce = Math.sin(this.state.bounceProgress * Math.PI) * 0.12
           this.mesh.position.y = this.state.targetY + bounce
-          const scaleY = 1 + bounce * 0.3
-          this.mesh.scale.set(1, scaleY, 1)
+          const scaleY = 1 + bounce * 0.8
+          const scaleXZ = 1 - bounce * 0.2
+          this.mesh.scale.set(scaleXZ, scaleY, scaleXZ)
+          
+          this.mesh.rotation.x *= 0.95
+          this.mesh.rotation.z *= 0.95
         } else {
           this.mesh.position.y = this.state.targetY
           this.mesh.scale.set(1, 1, 1)
+          this.mesh.rotation.x = 0
+          this.mesh.rotation.z = 0
           this.state.settled = true
         }
       }

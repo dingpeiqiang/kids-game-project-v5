@@ -1,5 +1,7 @@
 package com.kidgame.service.dto;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +17,7 @@ import java.util.List;
 @Data
 @Builder
 @Schema(description = "认证响应对象")
+@JsonNaming(PropertyNamingStrategies.LowerCamelCaseStrategy.class)  // 使用小驼峰命名，与前端保持一致
 public class AuthResponseDTO {
 
     @Schema(description = "访问 Token")

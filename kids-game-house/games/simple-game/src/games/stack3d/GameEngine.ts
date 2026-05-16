@@ -1,10 +1,22 @@
 import * as THREE from 'three'
 import type { GameEngine as ExternalEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
-import { Block } from './objects/Block'
+import { Block, type BlockShape } from './objects/Block'
 import { Background } from './objects/Background'
 import { ParticleSystem } from './effects/ParticleSystem'
 import { GAME_CONFIG, COLORS } from './config'
+
+const SHAPES: BlockShape[] = ['cube', 'cylinder', 'pyramid', 'octahedron', 'sphere', 'torus', 'cone', 'dodecahedron']
+const SHAPE_STABILITY_FACTORS: Record<BlockShape, number> = {
+  cube: 1.0,
+  cylinder: 0.85,
+  pyramid: 0.7,
+  octahedron: 0.65,
+  sphere: 0.5,
+  torus: 0.75,
+  cone: 0.6,
+  dodecahedron: 0.7
+}
 
 export interface GameConfig {
   containerId: string
@@ -27,8 +39,14 @@ export class GameEngine {
   private cameraShake = 0
   private animationId: number = 0
   private currentDir = 1
-  private moveSpeed = 0.045
+  private moveSpeed = 0.02
   private prevBlockWidth = GAME_CONFIG.blockSize.width
+  private fallingBlock: Block | null = null
+  private fallbackProgress = 0
+  private fallingDebris: THREE.Mesh[] = []
+  private debrisAudioPlayed: Set<THREE.Mesh> = new Set()
+  private instabilityWarning = 0
+  private scorePanel: HTMLDivElement | null = null
 
   constructor(private config: GameConfig) {
     this.scene = new THREE.Scene()
@@ -39,17 +57,17 @@ export class GameEngine {
     this.camera.position.set(0, 8, 12)
     this.camera.lookAt(0, 3, 0)
     
-    this.renderer = new THREE.WebGLRenderer({ antialias: true })
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
     this.renderer.setSize(window.innerWidth, window.innerHeight)
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    if (this.renderer.shadowMap.mapSize) {
-      this.renderer.shadowMap.mapSize.set(2048, 2048)
-    }
+    this.renderer.shadowMap.autoUpdate = true
     this.renderer.setClearColor(COLORS.background)
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.1
+    this.renderer.toneMappingExposure = 1.4
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    this.renderer.localClippingEnabled = true
     
     this.background = new Background(this.scene)
     this.particleSystem = new ParticleSystem(this.scene)
@@ -61,6 +79,7 @@ export class GameEngine {
     const container = document.getElementById(config.containerId)
     if (container) {
       container.appendChild(this.renderer.domElement)
+      this.createScorePanel(container)
     }
     
     this.spawnFirstBlock()
@@ -70,39 +89,51 @@ export class GameEngine {
   }
 
   private setupLighting() {
-    const ambientLight = new THREE.AmbientLight(0x2a2a4e, 0.5)
+    const ambientLight = new THREE.AmbientLight(0x555566, 0.6)
     this.scene.add(ambientLight)
-    
-    const mainLight = new THREE.DirectionalLight(0xffffff, 2.0)
-    mainLight.position.set(10, 25, 12)
+
+    const mainLight = new THREE.DirectionalLight(0xffffff, 2.2)
+    mainLight.position.set(12, 30, 15)
     mainLight.castShadow = true
-    mainLight.shadow.mapSize.set(2048, 2048)
-    mainLight.shadow.camera.near = 0.5
-    mainLight.shadow.camera.far = 100
-    mainLight.shadow.camera.left = -15
-    mainLight.shadow.camera.right = 15
-    mainLight.shadow.camera.top = 15
-    mainLight.shadow.camera.bottom = -15
-    mainLight.shadow.bias = -0.001
+    mainLight.shadow.mapSize.set(4096, 4096)
+    mainLight.shadow.camera.near = 0.1
+    mainLight.shadow.camera.far = 150
+    mainLight.shadow.camera.left = -25
+    mainLight.shadow.camera.right = 25
+    mainLight.shadow.camera.top = 25
+    mainLight.shadow.camera.bottom = -25
+    mainLight.shadow.bias = -0.0005
+    mainLight.shadow.radius = 3
     this.scene.add(mainLight)
 
-    const fillLight = new THREE.DirectionalLight(0x4ECDC4, 0.5)
-    fillLight.position.set(-8, 15, -10)
+    const fillLight = new THREE.DirectionalLight(0x66CCFF, 0.5)
+    fillLight.position.set(-15, 20, -18)
+    fillLight.castShadow = true
+    fillLight.shadow.mapSize.set(2048, 2048)
     this.scene.add(fillLight)
 
-    const rimLight = new THREE.DirectionalLight(0xFF6B6B, 0.35)
-    rimLight.position.set(-6, 20, 8)
+    const rimLight = new THREE.DirectionalLight(0xFF9966, 0.6)
+    rimLight.position.set(-12, 30, 20)
     this.scene.add(rimLight)
 
-    const pointLight1 = new THREE.PointLight(0x4ECDC4, 1.5, 30)
-    pointLight1.position.set(-6, 10, 8)
+    const bottomLight = new THREE.DirectionalLight(0x4488FF, 0.4)
+    bottomLight.position.set(0, -8, 5)
+    this.scene.add(bottomLight)
+
+    const pointLight1 = new THREE.PointLight(0x88DDFF, 3.0, 50)
+    pointLight1.position.set(-10, 12, 12)
     pointLight1.castShadow = true
+    pointLight1.shadow.mapSize.set(2048, 2048)
     this.scene.add(pointLight1)
     
-    const pointLight2 = new THREE.PointLight(0xFF6B6B, 1.5, 30)
-    pointLight2.position.set(6, 10, -8)
+    const pointLight2 = new THREE.PointLight(0xFFAA88, 3.0, 50)
+    pointLight2.position.set(10, 12, -12)
     pointLight2.castShadow = true
+    pointLight2.shadow.mapSize.set(2048, 2048)
     this.scene.add(pointLight2)
+
+    const hemisphereLight = new THREE.HemisphereLight(0x7799CC, 0x334466, 0.5)
+    this.scene.add(hemisphereLight)
   }
 
   private setupBase() {
@@ -154,7 +185,7 @@ export class GameEngine {
 
   private spawnFirstBlock() {
     const baseY = GAME_CONFIG.blockSize.height / 2 + 0.3
-    const block = new Block(this.colorIdx, baseY, GAME_CONFIG.blockSize.width)
+    const block = new Block(this.colorIdx, baseY, GAME_CONFIG.blockSize.width, 'cube')
     block.mesh.position.x = 0
     block.mesh.position.y = baseY + GAME_CONFIG.fallHeight
     this.scene.add(block.mesh)
@@ -168,12 +199,28 @@ export class GameEngine {
     const lastBlock = this.blocks[this.blocks.length - 1]
     const baseY = lastBlock.mesh.position.y + GAME_CONFIG.blockSize.height / 2 + GAME_CONFIG.blockSize.height / 2
     
-    const block = new Block(this.colorIdx, baseY, this.prevBlockWidth)
+    const shape = this.getRandomShape()
+    const block = new Block(this.colorIdx, baseY, this.prevBlockWidth, shape)
     block.mesh.position.x = this.currentDir > 0 ? -4 : 4
     block.mesh.position.y = baseY + GAME_CONFIG.fallHeight
     this.scene.add(block.mesh)
     this.currentBlock = block
     this.colorIdx++
+  }
+
+  private getRandomShape(): BlockShape {
+    const weights = [30, 15, 12, 10, 8, 12, 10, 3]
+    const totalWeight = weights.reduce((a, b) => a + b, 0)
+    let random = Math.random() * totalWeight
+    
+    for (let i = 0; i < SHAPES.length; i++) {
+      random -= weights[i]
+      if (random <= 0) {
+        return SHAPES[i]
+      }
+    }
+    
+    return 'cube'
   }
 
   private placeBlock() {
@@ -226,39 +273,27 @@ export class GameEngine {
       if (overlapWidth <= 0.1) {
         this.gameOver = true
         audioService.explosion()
-        block.mesh.position.y -= 15
-        block.mesh.rotation.x = Math.PI / 4
+        this.fallingBlock = block
+        this.fallbackProgress = 0
         
         setTimeout(() => {
           this.config.externalEngine.endGame()
           this.config.onEnd()
-        }, 1500)
+        }, 2000)
         return
       }
       
-      let finalX = currentX
-      if (overlapWidth < currentWidth - 0.1) {
-        const cutWidth = currentWidth - overlapWidth
-        const cutFromLeft = currentX - currentWidth / 2 < lastX - lastWidth / 2
-        
-        block.resizeWidth(overlapWidth)
-        
-        if (cutFromLeft) {
-          finalX = lastX - lastWidth / 2 + overlapWidth / 2
-        } else {
-          finalX = lastX + lastWidth / 2 - overlapWidth / 2
-        }
-        block.mesh.position.x = finalX
-        
-        this.particleSystem.createCutParticles(
-          cutFromLeft ? currentX - currentWidth / 2 : currentX + currentWidth / 2,
-          block.mesh.position.y,
-          cutWidth,
-          this.getBlockColor(this.colorIdx - 2)
-        )
+      const stability = this.calculateStability(block, lastBlock, overlapWidth, currentWidth)
+      
+      if (stability <= 0) {
+        this.triggerCollapse(block)
+        return
       }
       
-      this.prevBlockWidth = overlapWidth
+      this.instabilityWarning = 1 - stability
+      
+      block.mesh.position.x = currentX
+      this.prevBlockWidth = currentWidth
       
       this.blocks.push(block)
       this.currentBlock = null
@@ -283,6 +318,117 @@ export class GameEngine {
     }, 600)
   }
 
+  private calculateStability(block: Block, lastBlock: Block, overlapWidth: number, currentWidth: number): number {
+    const lastBlockWidth = lastBlock.mesh.geometry.parameters?.width || GAME_CONFIG.blockSize.width
+    const supportRatio = overlapWidth / Math.max(currentWidth, lastBlockWidth)
+    
+    const centerOffset = Math.abs(block.mesh.position.x - lastBlock.mesh.position.x)
+    const maxAllowedOffset = lastBlockWidth * 0.45
+    
+    const offsetPenalty = Math.min(centerOffset / maxAllowedOffset, 1)
+    
+    let stability = supportRatio * (1 - offsetPenalty * 0.4)
+    
+    const prevBlock = this.blocks[this.blocks.length - 2]
+    if (prevBlock) {
+      const prevCenter = prevBlock.mesh.position.x
+      const cumulativeOffset = Math.abs(lastBlock.mesh.position.x - prevCenter) + centerOffset
+      const cumulativePenalty = Math.min(cumulativeOffset / (maxAllowedOffset * 2), 0.15)
+      stability -= cumulativePenalty
+    }
+    
+    return Math.max(0, stability)
+  }
+
+  private triggerCollapse(block: Block) {
+    this.gameOver = true
+    this.fallingBlock = block
+    
+    this.blocks.forEach((b, index) => {
+      if (index < this.blocks.length - 1) {
+        const delay = index * 0.08
+        setTimeout(() => {
+          this.createFallingDebris(b)
+        }, delay * 1000)
+      }
+    })
+    
+    setTimeout(() => {
+      this.createFallingDebris(block)
+      audioService.lose()
+    }, 200)
+    
+    setTimeout(() => {
+      this.config.externalEngine.endGame()
+      this.config.onEnd()
+    }, 2000)
+  }
+
+  private createFallingDebris(block: Block) {
+    const geo = block.mesh.geometry as THREE.BoxGeometry
+    const width = geo.parameters.width
+    const height = geo.parameters.height
+    const depth = geo.parameters.depth
+    
+    const pieceCount = Math.floor(width * 4) + 3
+    
+    for (let i = 0; i < pieceCount; i++) {
+      const pieceWidth = (width / pieceCount) * (0.8 + Math.random() * 0.4)
+      const pieceHeight = height * (0.6 + Math.random() * 0.6)
+      const pieceDepth = depth * (0.5 + Math.random() * 0.7)
+      
+      const debrisGeo = new THREE.BoxGeometry(pieceWidth, pieceHeight, pieceDepth)
+      const debrisMat = new THREE.MeshStandardMaterial({
+        color: this.getBlockColor(this.colorIdx - 2) + Math.floor((Math.random() - 0.5) * 0x333333),
+        emissive: this.getBlockColor(this.colorIdx - 2),
+        emissiveIntensity: 0.2,
+        transparent: true,
+        opacity: 0.9,
+        metalness: 0.4,
+        roughness: 0.6
+      })
+      const debris = new THREE.Mesh(debrisGeo, debrisMat)
+      
+      const offsetX = (i / pieceCount - 0.5) * width * 0.8
+      debris.position.set(
+        block.mesh.position.x + offsetX,
+        block.mesh.position.y + (Math.random() - 0.5) * height,
+        block.mesh.position.z + (Math.random() - 0.5) * depth
+      )
+      debris.castShadow = true
+      this.scene.add(debris)
+      
+      const velocity = 0.2 + Math.random() * 0.3
+      const angle = Math.PI * (0.25 + Math.random() * 0.5) * (Math.random() > 0.5 ? 1 : -1)
+      
+      debris.userData = {
+        velocity: new THREE.Vector3(
+          Math.cos(angle) * velocity,
+          Math.random() * 0.2 + 0.1,
+          Math.sin(angle) * velocity * 0.8
+        ),
+        rotationSpeed: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.8,
+          (Math.random() - 0.5) * 0.8,
+          (Math.random() - 0.5) * 0.8
+        ),
+        life: 1,
+        gravity: 0.03 + Math.random() * 0.02,
+        friction: 0.985 + Math.random() * 0.01,
+        restitution: 0.2 + Math.random() * 0.2,
+        isDebris: true
+      }
+      
+      this.fallingDebris.push(debris)
+    }
+    
+    this.scene.remove(block.mesh)
+  }
+
+  private noise(x: number): number {
+    return Math.sin(x * 2.1) * 0.4 + Math.sin(x * 3.7) * 0.3 + Math.sin(x * 5.3) * 0.2 + Math.sin(x * 7.9) * 0.1
+  }
+
   private getBlockColor(index: number): number {
     const colors = [
       0xFF6B6B, 0x4ECDC4, 0xFFD93D, 0x9B59B6, 
@@ -296,6 +442,175 @@ export class GameEngine {
   private addScore(points: number) {
     this.score += points
     this.config.externalEngine.addScore(points, window.innerWidth / 2, window.innerHeight / 2)
+    this.updateScorePanel()
+  }
+
+  private createScorePanel(container: HTMLElement) {
+    this.scorePanel = document.createElement('div')
+    this.scorePanel.style.cssText = `
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 40px;
+      z-index: 100;
+      padding: 12px 30px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    `
+    
+    const scoreDiv = document.createElement('div')
+    scoreDiv.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    `
+    
+    const scoreLabel = document.createElement('span')
+    scoreLabel.textContent = '分数'
+    scoreLabel.style.cssText = `
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    `
+    
+    const scoreValue = document.createElement('span')
+    scoreValue.id = 'stack3d-score'
+    scoreValue.textContent = '0'
+    scoreValue.style.cssText = `
+      font-size: 28px;
+      font-weight: bold;
+      color: #4ECDC4;
+      text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+    `
+    
+    scoreDiv.appendChild(scoreLabel)
+    scoreDiv.appendChild(scoreValue)
+    
+    const heightDiv = document.createElement('div')
+    heightDiv.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    `
+    
+    const heightLabel = document.createElement('span')
+    heightLabel.textContent = '高度'
+    heightLabel.style.cssText = `
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    `
+    
+    const heightValue = document.createElement('span')
+    heightValue.id = 'stack3d-height'
+    heightValue.textContent = '0'
+    heightValue.style.cssText = `
+      font-size: 28px;
+      font-weight: bold;
+      color: #FFD93D;
+      text-shadow: 0 0 10px rgba(255, 217, 61, 0.5);
+    `
+    
+    heightDiv.appendChild(heightLabel)
+    heightDiv.appendChild(heightValue)
+    
+    const stabilityDiv = document.createElement('div')
+    stabilityDiv.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    `
+    
+    const stabilityLabel = document.createElement('span')
+    stabilityLabel.textContent = '稳定性'
+    stabilityLabel.style.cssText = `
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    `
+    
+    const stabilityBar = document.createElement('div')
+    stabilityBar.id = 'stack3d-stability-bar'
+    stabilityBar.style.cssText = `
+      width: 80px;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+    `
+    
+    const stabilityFill = document.createElement('div')
+    stabilityFill.id = 'stack3d-stability-fill'
+    stabilityFill.style.cssText = `
+      height: 100%;
+      background: linear-gradient(90deg, #2ED573, #FFD93D, #FF4757);
+      border-radius: 6px;
+      transition: width 0.3s ease, background 0.3s ease;
+      width: 100%;
+    `
+    
+    stabilityBar.appendChild(stabilityFill)
+    stabilityDiv.appendChild(stabilityLabel)
+    stabilityDiv.appendChild(stabilityBar)
+    
+    this.scorePanel.appendChild(scoreDiv)
+    this.scorePanel.appendChild(heightDiv)
+    this.scorePanel.appendChild(stabilityDiv)
+    
+    container.appendChild(this.scorePanel)
+  }
+
+  private updateScorePanel() {
+    if (!this.scorePanel) return
+    
+    const scoreEl = document.getElementById('stack3d-score')
+    const heightEl = document.getElementById('stack3d-height')
+    const stabilityFill = document.getElementById('stack3d-stability-fill')
+    
+    if (scoreEl) {
+      scoreEl.textContent = this.score.toString()
+    }
+    
+    if (heightEl) {
+      heightEl.textContent = this.blocks.length.toString()
+    }
+    
+    if (stabilityFill) {
+      const stability = this.blocks.length >= 2 ? this.calculateCurrentStability() : 1
+      stabilityFill.style.width = `${stability * 100}%`
+    }
+  }
+
+  private calculateCurrentStability(): number {
+    if (this.blocks.length < 2) return 1
+    
+    const block = this.blocks[this.blocks.length - 1]
+    const lastBlock = this.blocks[this.blocks.length - 2]
+    
+    const blockWidth = block.mesh.geometry.parameters?.width || GAME_CONFIG.blockSize.width
+    const lastBlockWidth = lastBlock.mesh.geometry.parameters?.width || GAME_CONFIG.blockSize.width
+    
+    const blockLeft = block.mesh.position.x - blockWidth / 2
+    const blockRight = block.mesh.position.x + blockWidth / 2
+    const lastLeft = lastBlock.mesh.position.x - lastBlockWidth / 2
+    const lastRight = lastBlock.mesh.position.x + lastBlockWidth / 2
+    
+    const overlapLeft = Math.max(blockLeft, lastLeft)
+    const overlapRight = Math.min(blockRight, lastRight)
+    const overlapWidth = Math.max(0, overlapRight - overlapLeft)
+    
+    return this.calculateStability(block, lastBlock, overlapWidth, blockWidth)
   }
 
   private animateCameraShake(intensity: number) {
@@ -313,11 +628,11 @@ export class GameEngine {
       if (this.currentBlock.mesh.position.x > 4 || this.currentBlock.mesh.position.x < -4) {
         this.currentDir *= -1
       }
-      
-      const floatOffset = Math.sin(time * 3) * 0.03
-      this.currentBlock.mesh.position.y = this.currentBlock.state.targetY + GAME_CONFIG.fallHeight + floatOffset
-      
-      this.currentBlock.mesh.rotation.y += 0.02
+    }
+
+    this.blocks.forEach(block => block.update(time))
+    if (this.currentBlock) {
+      this.currentBlock.update(time)
     }
 
     if (this.cameraShake > 0) {
@@ -334,6 +649,92 @@ export class GameEngine {
       const targetY = 6 + (this.totalHeight - 5) * 0.3
       this.camera.position.y += (targetY - this.camera.position.y) * 0.05
     }
+
+    if (this.instabilityWarning > 0) {
+      const warningIntensity = this.instabilityWarning
+      this.blocks.forEach((block, index) => {
+        const wobbleAmount = warningIntensity * 0.3 * (1 - index / this.blocks.length)
+        const wobbleSpeed = 15
+        block.mesh.position.x += Math.sin(time * wobbleSpeed + index) * wobbleAmount * 0.1
+        block.mesh.position.y += Math.sin(time * wobbleSpeed * 1.5 + index * 2) * wobbleAmount * 0.05
+        
+        const mat = block.mesh.material as THREE.MeshStandardMaterial
+        mat.emissiveIntensity = 0.15 + warningIntensity * 0.3
+      })
+      this.instabilityWarning *= 0.95
+    }
+
+    if (this.fallingBlock && this.gameOver) {
+      this.fallbackProgress += 0.02
+      
+      const eased = 1 - Math.pow(1 - this.fallbackProgress, 3)
+      
+      this.fallingBlock.mesh.position.y -= eased * 0.8
+      
+      this.fallingBlock.mesh.rotation.x += 0.08
+      this.fallingBlock.mesh.rotation.z += 0.05
+      
+      this.fallingBlock.mesh.position.x += Math.sin(this.fallbackProgress * Math.PI) * 0.1
+      
+      const scale = 1 - eased * 0.3
+      this.fallingBlock.mesh.scale.set(scale, scale * 0.7, scale)
+    }
+
+    this.fallingDebris = this.fallingDebris.filter(debris => {
+      const velocity = debris.userData.velocity as THREE.Vector3
+      const rotationSpeed = debris.userData.rotationSpeed as THREE.Vector3
+      const friction = debris.userData.friction as number || 0.98
+      const gravity = debris.userData.gravity as number || 0.03
+      const restitution = debris.userData.restitution as number || 0.35
+      const groundLevel = -0.5
+      
+      debris.userData.life -= 0.006
+      if (debris.userData.life <= 0 || debris.position.y < -30) {
+        this.scene.remove(debris)
+        debris.geometry.dispose()
+        ;(debris.material as THREE.Material).dispose()
+        this.debrisAudioPlayed.delete(debris)
+        return false
+      }
+      
+      if (velocity) {
+        velocity.y -= gravity
+        
+        const halfHeight = (debris.geometry as THREE.BoxGeometry).parameters.height / 2
+        const groundY = groundLevel + halfHeight
+        
+        if (debris.position.y <= groundY && velocity.y < 0) {
+          debris.position.y = groundY
+          velocity.y = -velocity.y * restitution
+          
+          if (!this.debrisAudioPlayed.has(debris)) {
+            this.debrisAudioPlayed.add(debris)
+            audioService.click()
+          }
+          
+          if (Math.abs(velocity.y) < 0.05) {
+            velocity.y = 0
+            velocity.x *= 0.95
+            velocity.z *= 0.95
+          }
+        }
+        
+        debris.position.add(velocity)
+        velocity.x *= friction
+        velocity.z *= friction
+      }
+      
+      if (rotationSpeed) {
+        debris.rotation.x += rotationSpeed.x
+        debris.rotation.y += rotationSpeed.y
+        debris.rotation.z += rotationSpeed.z
+      }
+      
+      const mat = debris.material as THREE.MeshStandardMaterial
+      mat.opacity = debris.userData.life
+      
+      return true
+    })
 
     this.background.update()
     this.particleSystem.update()

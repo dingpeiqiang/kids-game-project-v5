@@ -52,16 +52,6 @@ export const STACK3D_POWERUPS = [
   { id: 'align', icon: '💣', name: '对齐', desc: '自动对齐方块', color: '#FFD700', duration: 0 },
 ]
 
-// ==================== 3D光影匹配 道具 ====================
-export const TOWER3D_POWERUPS = [
-  { id: 'rotate', icon: '🔄', name: '旋转', desc: '自动旋转视角', color: '#5352ED', duration: 5 },
-  { id: 'pause', icon: '⏸️', name: '暂停', desc: '暂停计时', color: '#4D96FF', duration: 0 },
-  { id: 'double', icon: '⭐', name: '双倍', desc: '得分翻倍', color: '#FFD700', duration: 8 },
-  { id: 'hint', icon: '👁️', name: '提示', desc: '高亮正确答案', color: '#2ED573', duration: 0 },
-  { id: 'simplify', icon: '🧩', name: '简化', desc: '减少选项', color: '#FF6B81', duration: 0 },
-  { id: 'zoom', icon: '💡', name: '放大', desc: '放大形状细节', color: '#FFD700', duration: 8 },
-]
-
 // ==================== 贪吃蛇 道具 ====================
 export const SNAKE_POWERUPS = [
   { id: 'speed', icon: '⚡', name: '加速', desc: '移动速度提升', color: '#FFD700', duration: 5 },
@@ -229,7 +219,6 @@ export const GAME_POWERUPS_MAP: Record<string, any[]> = {
   sort: SORT_POWERUPS,
   pop: POP_POWERUPS,
   stack3d: STACK3D_POWERUPS,
-  tower3d: TOWER3D_POWERUPS,
   snake: SNAKE_POWERUPS,
   tetris: TETRIS_POWERUPS,
   jewelMatch: JEWEL_MATCH_POWERUPS,

@@ -1,6 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { app } from '../App'
+import { resizeCanvasForMobile } from '../utils/mobileHelper'
 
 export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -536,6 +537,9 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
   // 开始游戏
   initLevel(0)
   gameStartTime = Date.now()
+  
+  // 初始化Canvas尺寸（移动端适配）
+  resizeCanvasForMobile(canvas)
   
   // 首次绘制
   draw()

@@ -1,6 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { app } from '../App'
+import { bindCanvasEvents, getPointerPos, resizeCanvasForMobile } from '../utils/mobileHelper'
 
 export function initBouncePath(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -289,19 +290,32 @@ export function initBouncePath(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  canvas.onmousemove = canvas.ontouchmove = (e) => {
-    const rect = canvas.getBoundingClientRect()
-    const sx = W / rect.width
-    targetX = (e.clientX - rect.left) * sx
+  // 初始化Canvas尺寸（移动端适配）
+  resizeCanvasForMobile(canvas)
+  
+  // 统一的事件处理函数
+  const handleMove = (e: MouseEvent | TouchEvent) => {
+    const pos = getPointerPos(e, canvas)
+    targetX = pos.x
   }
-
-  canvas.onclick = (e) => {
-    const rect = canvas.getBoundingClientRect()
-    const sx = W / rect.width
-    targetX = (e.clientX - rect.left) * sx
+  
+  const handleClick = (e: MouseEvent | TouchEvent) => {
+    const pos = getPointerPos(e, canvas)
+    targetX = pos.x
     ball.vy = -8 // 点击给一个向上的力
     audioService.collect()
   }
+  
+  // 清除旧的事件监听器
+  canvas.onmousemove = null
+  canvas.ontouchmove = null
+  canvas.onclick = null
+  
+  // 绑定事件
+  canvas.addEventListener('mousemove', handleMove)
+  canvas.addEventListener('touchmove', handleMove, { passive: false })
+  canvas.addEventListener('click', handleClick)
+  canvas.addEventListener('touchstart', handleClick, { passive: false })
 
   function loop() {
     if (!document.getElementById('mainGameCanvas') || gameEnded) return

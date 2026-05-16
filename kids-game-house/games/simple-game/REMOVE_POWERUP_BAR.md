@@ -73,7 +73,6 @@
 | stack3d.ts | ✅ 已注释 |
 | starCatcher.ts | ✅ 已注释 |
 | tetris.ts | ✅ 已注释 |
-| tower3d.ts | ✅ 已注释 |
 | towerDefense.ts | ✅ 已注释 |
 | whackMole.ts | ✅ 已注释 |
 

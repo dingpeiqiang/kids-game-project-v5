@@ -2,6 +2,7 @@ import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../data/items'
 import { app } from '../App'
+import { bindCanvasEvents, getPointerPos, resizeCanvasForMobile } from '../utils/mobileHelper'
 
 export function initSort(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -358,13 +359,14 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
     }
   }
   
-  // 点击处理
-  canvas.onclick = (e) => {
-    const rect = canvas.getBoundingClientRect()
-    const sx = W / rect.width
-    const sy = H / rect.height
-    const mx = (e.clientX - rect.left) * sx
-    const my = (e.clientY - rect.top) * sy
+  // 初始化Canvas尺寸（移动端适配）
+  resizeCanvasForMobile(canvas)
+  
+  // 点击处理（兼容鼠标和触摸）
+  const handleClick = (e: MouseEvent | TouchEvent) => {
+    const pos = getPointerPos(e, canvas)
+    const mx = pos.x
+    const my = pos.y
     
     const tubeSpacing = (W - 60) / (tubes.length - 1)
     
@@ -482,6 +484,12 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
   
   initLevel()
   
+  // 清除旧的事件监听器
+  canvas.onclick = null
+  canvas.onmousedown = null
+  
+  // 绑定鼠标和触摸事件
+  bindCanvasEvents(canvas, handleClick)
       
   loop()
 }

@@ -1,6 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { app } from '../App'
+import { bindCanvasEvents, getPointerPos, resizeCanvasForMobile } from '../utils/mobileHelper'
 
 export function initColorTap(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -311,28 +312,21 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
     })
   }
 
-  function getPos(e: MouseEvent | TouchEvent) {
-    const rect = canvas.getBoundingClientRect()
-    return {
-      x: (e.clientX - rect.left) * (W / rect.width),
-      y: (e.clientY - rect.top) * (H / rect.height)
-    }
-  }
-
-  canvas.onclick = (e) => {
-    const pos = getPos(e)
+  // 初始化Canvas尺寸（移动端适配）
+  resizeCanvasForMobile(canvas)
+  
+  // 统一的事件处理函数
+  const handleGameClick = (e: MouseEvent | TouchEvent) => {
+    const pos = getPointerPos(e, canvas)
     handleClick(pos.x, pos.y)
   }
-
-  canvas.ontouchend = (e) => {
-    e.preventDefault()
-    if (e.changedTouches.length > 0) {
-      const rect = canvas.getBoundingClientRect()
-      const x = (e.changedTouches[0].clientX - rect.left) * (W / rect.width)
-      const y = (e.changedTouches[0].clientY - rect.top) * (H / rect.height)
-      handleClick(x, y)
-    }
-  }
+  
+  // 清除旧的事件监听器
+  canvas.onclick = null
+  canvas.ontouchend = null
+  
+  // 绑定事件
+  bindCanvasEvents(canvas, handleGameClick as any)
 
   function loop() {
     if (!document.getElementById('mainGameCanvas') || gameEnded) return
@@ -352,6 +346,5 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
   engine.start()
   spawnChallenge()
   
-      
   loop()
 }

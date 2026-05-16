@@ -92,9 +92,12 @@ public class SecurityConfig {
                     "/api/game/report",
                     "/api/game/verify",
                     "/api/question/random",
-
+                    
                     // 排行榜公开接口
-                    "/api/leaderboard/top"
+                    "/api/leaderboard/top",
+                    
+                    // 套餐查询公开接口（AI表单系统调用）
+                    "/tariff/**"
                 ).permitAll()
                 
                 // 需要认证的端点

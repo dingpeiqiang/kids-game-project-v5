@@ -7,9 +7,12 @@
  *   POST /api/auth/refresh    — 刷新 Token
  *   POST /api/auth/logout     — 登出
  *   GET  /api/user/{userId}   — 获取用户信息
+ *   POST /api/signin/collect  — 用户签到领奖
+ *   GET  /api/signin/info     — 获取用户签到信息
+ *   GET  /api/signin/today    — 检查用户今天是否已签到
  *
  * 不走后端的数据（保留本地 localStorage）：
- *   游戏分数、签到、道具、成就、战绩 —— 后端对应接口尚未完全实现
+ *   游戏分数、道具、成就、战绩 —— 后端对应接口尚未完全实现
  */
 
 // 后端基地址：通过 .env 注入，默认指向 kids-game-backend
@@ -63,6 +66,42 @@ export interface UserRankData {
   rank: number | null
   score: number
   hasRecord: boolean
+}
+
+// 游戏评论数据 DTO
+export interface GameCommentData {
+  id: string
+  gameId: number
+  userId: number
+  username: string
+  nickname: string
+  content: string
+  score: number
+  createdAt: number
+}
+
+// 提交评论请求 DTO
+export interface SubmitCommentRequest {
+  gameId: number
+  content: string
+  score: number
+}
+
+// 签到响应数据 DTO
+export interface SignInResponseData {
+  success: boolean
+  message: string
+  coinsReward?: number
+  expReward?: number
+  consecutiveDays?: number
+  alreadySignedIn?: boolean
+}
+
+// 签到信息数据 DTO
+export interface SignInInfoData {
+  consecutiveDays: number
+  hasSignedInToday: boolean
+  recentSignIns?: any[]
 }
 
 // ─────────────────────────────────────────────
@@ -127,41 +166,50 @@ async function request<T = any>(
 /**
  * 注册
  * POST /api/user/register
- * userType 固定为 KID（simple-game 场景）
+ * userType: 'KID' | 'PARENT'
  */
 export async function apiRegister(
   username: string,
   password: string,
-  nickname?: string
+  nickname?: string,
+  userType: 'KID' | 'PARENT' = 'KID'
 ): Promise<{ ok: boolean; msg: string; userId?: number }> {
+  const requestBody = {
+    username,
+    password,
+    userType,   // 用户选择的类型：KID 或 PARENT
+    nickname: nickname || username, // 如果未提供昵称，使用账号作为昵称
+  }
+  console.log('[API] 准备调用注册接口', requestBody)
+  console.log('[API] JSON.stringify:', JSON.stringify(requestBody))
+  
   const res = await request<UserInfoData>(
     '/user/register',
     {
       method: 'POST',
-      body: JSON.stringify({
-        username,
-        password,
-        userType: 'KID',   // simple-game 用户均为 KID 类型
-        nickname: nickname || username, // 如果未提供昵称，使用账号作为昵称
-      }),
+      body: JSON.stringify(requestBody),
     },
     false // 注册不需要 Token
   )
 
+  console.log('[API] 注册接口返回:', res)
   if (res.code === 200 && res.data) {
     return { ok: true, msg: '注册成功！已获得新手双倍卡 x1', userId: res.data.userId }
   }
+  console.error('[API] 注册失败:', res)
   return { ok: false, msg: res.msg || '注册失败' }
 }
 
 /**
  * 登录（统一认证接口）
  * POST /api/auth/login
+ * 注意：登录时不需要传递 userType，后端会根据用户名自动识别用户类型
  */
 export async function apiLogin(
   username: string,
   password: string
 ): Promise<{ ok: boolean; msg: string; data?: AuthResponseData }> {
+  console.log('[API] 准备调用登录接口', { username })
   const res = await request<AuthResponseData>(
     '/auth/login',
     {
@@ -169,12 +217,13 @@ export async function apiLogin(
       body: JSON.stringify({
         username,
         password,
-        userType: 0, // 0 = KID
+        // 不传递 userType，后端会根据用户名自动识别
       }),
     },
     false
   )
 
+  console.log('[API] 登录接口返回:', res)
   if (res.code === 200 && res.data) {
     const d = res.data
     tokenStore.save(d.accessToken, d.refreshToken, d.userId)
@@ -351,6 +400,122 @@ export async function apiSubmitGameResult(submitData: SubmitGameResultRequest): 
   }
 }
 
+/**
+ * 提交游戏评论
+ * POST /api/game/{gameId}/comment
+ */
+export async function apiSubmitComment(
+  gameId: number,
+  content: string,
+  score: number
+): Promise<{ ok: boolean; data?: GameCommentData; msg?: string }> {
+  try {
+    const res = await request<GameCommentData>(
+      `/game/${gameId}/comment`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ content, score }),
+      }
+    )
+    
+    if (res.code === 200 && res.data) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 提交评论失败:', error)
+    return { ok: false, msg: String(error) }
+  }
+}
+
+/**
+ * 获取游戏评论列表
+ * GET /api/game/{gameId}/comments?page=0&size=20
+ */
+export async function apiGetComments(
+  gameId: number,
+  page: number = 0,
+  size: number = 20
+): Promise<{ ok: boolean; data?: GameCommentData[]; msg?: string }> {
+  try {
+    const res = await request<GameCommentData[]>(
+      `/game/${gameId}/comments?page=${page}&size=${size}`,
+      { method: 'GET' }
+    )
+    
+    if (res.code === 200) {
+      return { ok: true, data: res.data || [] }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 获取评论列表失败:', error)
+    return { ok: false, msg: String(error) }
+  }
+}
+
+/**
+ * 用户签到领奖
+ * POST /api/signin/collect
+ */
+export async function apiCollectDailyReward(): Promise<{ ok: boolean; data?: SignInResponseData; msg?: string }> {
+  try {
+    const res = await request<SignInResponseData>(
+      '/signin/collect',
+      { method: 'POST' }
+    )
+    
+    if (res.code === 200 && res.data) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 签到失败:', error)
+    return { ok: false, msg: String(error) }
+  }
+}
+
+/**
+ * 获取用户签到信息
+ * GET /api/signin/info
+ */
+export async function apiGetSignInInfo(): Promise<{ ok: boolean; data?: SignInInfoData; msg?: string }> {
+  try {
+    const res = await request<SignInInfoData>(
+      '/signin/info',
+      { method: 'GET' }
+    )
+    
+    if (res.code === 200 && res.data) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 获取签到信息失败:', error)
+    return { ok: false, msg: String(error) }
+  }
+}
+
+/**
+ * 检查用户今天是否已签到
+ * GET /api/signin/today
+ */
+export async function apiHasSignedInToday(): Promise<{ ok: boolean; data?: boolean; msg?: string }> {
+  try {
+    const res = await request<boolean>(
+      '/signin/today',
+      { method: 'GET' }
+    )
+    
+    if (res.code === 200) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 检查签到状态失败:', error)
+    return { ok: false, msg: String(error) }
+  }
+}
+
 // ─────────────────────────────────────────────
 // 兼容旧版 apiClient 接口（供 userService 调用）
 // ─────────────────────────────────────────────
@@ -375,8 +540,8 @@ class ApiClient {
     return headers
   }
 
-  async register(username: string, password: string, nickname?: string) {
-    return apiRegister(username, password, nickname)
+  async register(username: string, password: string, nickname?: string, userType: 'KID' | 'PARENT' = 'KID') {
+    return apiRegister(username, password, nickname, userType)
   }
 
   async login(username: string, password: string) {
