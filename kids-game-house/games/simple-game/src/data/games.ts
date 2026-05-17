@@ -18,9 +18,9 @@ export const GAMES: Game[] = [
   // 🧠 逻辑思维 - 分析推理、因果判断
   { id: 'eliminate', name: '极速消除', desc: '点击同色方块，触发连锁爆炸！', type: '2d', category: 'logic', tag: '消除', color: '#FF6B6B,#FF8E53', players: 2847, best: 0, preview: 'eliminate' },
   { id: 'tetris', name: '方块消除', desc: '经典俄罗斯方块，益智又上瘾！', type: '2d', category: 'logic', tag: '消除', color: '#4D96FF,#FF8E53', players: 2341, best: 0, preview: 'tetris' },
-  { id: 'jewelMatch', name: '宝石消消乐', desc: '交换宝石消除，3个以上连成一线！', type: '2d', category: 'logic', tag: '消除', color: '#FFD700,#9B59B6', players: 1876, best: 0, preview: 'jewelMatch' },
+  { id: 'jewelMatch', name: '宠物消消乐', desc: '交换宠物消除，3个以上连成一线！', type: '2d', category: 'logic', tag: '消除', color: '#FFD700,#9B59B6', players: 1876, best: 0, preview: 'jewelMatch' },
   { id: 'bubbleShooter', name: '泡泡龙', desc: '经典泡泡龙射击，3个以上相同颜色消除！', type: '2d', category: 'logic', tag: '消除', color: '#4ECDC4,#FF69B4', players: 2134, best: 0, preview: 'bubbleShooter' },
-  { id: 'sort', name: '色彩排序', desc: '滑动排序彩色液体，超治愈！', type: '2d', category: 'logic', tag: '益智', color: '#DDA0DD,#BA55D3', players: 1532, best: 0, preview: 'sort' },
+  { id: 'sort', name: '色彩排序', desc: '10关卡渐进难度，液体排序超治愈！', type: '2d', category: 'logic', tag: '益智', color: '#DDA0DD,#BA55D3', players: 1532, best: 0, preview: 'sort' },
 
   // 🃏 记忆训练 - 短期记忆、模式识别
   { id: 'memoryMatch', name: '翻牌配对', desc: '翻开卡牌找到相同图案，考验你的记忆力！', type: '2d', category: 'memory', tag: '记忆', color: '#0f0c29,#A29BFE', players: 1800, best: 0, preview: 'memoryMatch' },
@@ -157,10 +157,10 @@ export const GAME_GUIDES: Record<string, GameGuide> = {
     bg: '#4D96FF'
   },
   jewelMatch: {
-    icon: '💎', name: '宝石消消乐', desc: '点击交换相邻宝石，3个以上相同宝石连线消除！',
+    icon: '🐾', name: '宠物消消乐', desc: '点击交换相邻宠物，3个以上相同宠物连线消除！',
     ops: [
-      { icon: '👆', text: '<b>点击</b>一个宝石选中' },
-      { icon: '🔄', text: '<b>点击</b>相邻宝石交换' },
+      { icon: '👆', text: '<b>点击</b>一个宠物选中' },
+      { icon: '🔄', text: '<b>点击</b>相邻宠物交换' },
     ],
     tipsTitle: '💡 小技巧',
     tips: '创造更多匹配可以触发连锁反应，得分翻倍！30秒内没有移动会游戏结束！',

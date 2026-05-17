@@ -22,6 +22,7 @@ export class Particle {
 
 export class ParticleSystem {
   private particles: Particle[] = []
+  private readonly MAX_PARTICLES = 150 // ⭐ 限制最大粒子数量，防止卡顿
   
   update() {
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -35,6 +36,11 @@ export class ParticleSystem {
       if (p.life <= 0) {
         this.particles.splice(i, 1)
       }
+    }
+    
+    // ⭐ 如果粒子数量超过限制，移除最早的粒子
+    if (this.particles.length > this.MAX_PARTICLES) {
+      this.particles.splice(0, this.particles.length - this.MAX_PARTICLES)
     }
   }
   
@@ -91,75 +97,75 @@ export class ParticleSystem {
   }
   
   createExplosion(x: number, y: number, color: string, intensity: number) {
-    // 主爆炸粒子（更多数量）
-    const particleCount = Math.min(12 + intensity * 3, 40)
+    // ⭐ 优化：减少粒子数量，提升性能
+    const particleCount = Math.min(8 + intensity * 2, 25) // 从40降到25
     for (let j = 0; j < particleCount; j++) {
       const angle = (Math.PI * 2 * j) / particleCount
-      const speed = 4 + Math.random() * 8
+      const speed = 3 + Math.random() * 6 // 降低速度
       this.particles.push(new Particle(
         x, y,
         Math.cos(angle) * speed,
         Math.sin(angle) * speed,
         1,
         color,
-        4 + Math.random() * 6,
+        3 + Math.random() * 4, // 减小尺寸
         'normal'
       ))
     }
     
-    // 闪光粒子效果
-    for (let j = 0; j < 8; j++) {
+    // ⭐ 优化：减少闪光粒子数量
+    for (let j = 0; j < 4; j++) { // 从8降到4
       this.particles.push(new Particle(
         x + (Math.random() - 0.5) * 20,
         y + (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10 - 2,
-        0.9,
+        (Math.random() - 0.5) * 8, // 降低速度
+        (Math.random() - 0.5) * 8 - 2,
+        0.8, // 缩短生命周期
         '#FFD93D',
-        3 + Math.random() * 3,
+        2 + Math.random() * 2, // 减小尺寸
         'sparkle'
       ))
     }
     
-    // 小颗粒飞溅效果
-    for (let j = 0; j < 12; j++) {
+    // ⭐ 优化：减少小颗粒飞溅
+    for (let j = 0; j < 6; j++) { // 从12降到6
       this.particles.push(new Particle(
         x + (Math.random() - 0.5) * 15,
         y + (Math.random() - 0.5) * 15,
-        (Math.random() - 0.5) * 15,
-        (Math.random() - 0.5) * 15 - 3,
-        0.8,
+        (Math.random() - 0.5) * 10, // 降低速度
+        (Math.random() - 0.5) * 10 - 2,
+        0.7, // 缩短生命周期
         '#FFF',
-        2 + Math.random() * 3,
+        2 + Math.random() * 2, // 减小尺寸
         'normal'
       ))
     }
     
-    // 彩色光晕效果
-    for (let j = 0; j < 8; j++) {
+    // ⭐ 优化：减少彩色光晕
+    for (let j = 0; j < 4; j++) { // 从8降到4
       this.particles.push(new Particle(
         x, y,
-        (Math.random() - 0.5) * 4,
-        (Math.random() - 0.5) * 4,
-        0.6,
+        (Math.random() - 0.5) * 3, // 降低速度
+        (Math.random() - 0.5) * 3,
+        0.5, // 缩短生命周期
         color,
-        20 + Math.random() * 15,
+        15 + Math.random() * 10, // 减小尺寸
         'normal'
       ))
     }
     
-    // 添加环形冲击波效果
-    if (intensity >= 4) {
-      for (let j = 0; j < 6; j++) {
-        const angle = (Math.PI * 2 * j) / 6
-        const speed = 8 + Math.random() * 4
+    // ⭐ 优化：只在高强度时添加环形冲击波，且数量减半
+    if (intensity >= 6) { // 提高触发阈值
+      for (let j = 0; j < 3; j++) { // 从6降到3
+        const angle = (Math.PI * 2 * j) / 3
+        const speed = 6 + Math.random() * 3 // 降低速度
         this.particles.push(new Particle(
           x, y,
           Math.cos(angle) * speed,
           Math.sin(angle) * speed,
-          0.7,
+          0.6, // 缩短生命周期
           '#FFD93D',
-          8 + Math.random() * 4,
+          6 + Math.random() * 3, // 减小尺寸
           'ring'
         ))
       }
@@ -167,15 +173,16 @@ export class ParticleSystem {
   }
   
   createFullScreenExplosion(width: number, height: number, colors: string[]) {
-    for (let i = 0; i < 100; i++) {
+    // ⭐ 优化：减少全屏爆炸粒子数量
+    for (let i = 0; i < 40; i++) { // 从100降到40
       this.particles.push(new Particle(
         Math.random() * width,
         Math.random() * height,
-        (Math.random() - 0.5) * 15,
-        (Math.random() - 0.5) * 15,
-        1,
+        (Math.random() - 0.5) * 10, // 降低速度
+        (Math.random() - 0.5) * 10,
+        0.8, // 缩短生命周期
         colors[Math.floor(Math.random() * colors.length)],
-        5 + Math.random() * 8
+        4 + Math.random() * 5 // 减小尺寸
       ))
     }
   }

@@ -1,6 +1,5 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
-import { storageService } from '../../services/storage'
 import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../../data/items'
 import { app } from '../../App'
 import { Block } from './Block'
@@ -28,6 +27,30 @@ export class EliminateGame {
   private PADDING = 15 // 统一的边距值
   private readonly ALL_COLORS = ['#FF6B6B', '#FF8E53', '#FFD93D', '#6BCB77', '#4D96FF', '#9B59B6']
   
+  // 道具颜色配置
+  private readonly ITEM_COLORS: Record<string, string> = {
+    'time_extend': '#FFD700',    // 金色 - 时间延长
+    'hint': '#00BFFF',           // 天蓝色 - 提示
+    'double_score': '#FF69B4',   // 粉色 - 双倍分数
+    'bomb': '#FF4500'            // 橙红色 - 炸弹
+  }
+  
+  // 道具闪光颜色配置（收集时）
+  private readonly ITEM_FLASH_COLORS_COLLECT: Record<string, string> = {
+    'time_extend': 'rgba(0, 255, 255, 0.5)',     // 青色
+    'hint': 'rgba(255, 215, 0, 0.5)',            // 金色
+    'double_score': 'rgba(255, 105, 180, 0.5)',  // 粉色
+    'bomb': 'rgba(255, 107, 107, 0.5)'           // 红色
+  }
+  
+  // 道具闪光颜色配置（使用时）
+  private readonly ITEM_FLASH_COLORS_USE: Record<string, string> = {
+    'time_extend': 'rgba(0, 255, 255, 0.7)',     // 青色
+    'hint': 'rgba(255, 215, 0, 0.7)',            // 金色
+    'double_score': 'rgba(255, 105, 180, 0.7)',  // 粉色
+    'bomb': 'rgba(255, 107, 107, 0.7)'           // 红色
+  }
+  
   // 关卡系统
   private currentLevel: number = 1
   private levelConfig: LevelConfig | null = null
@@ -40,7 +63,6 @@ export class EliminateGame {
   private blocks: Block[] = []
   private particleSystem: ParticleSystem
   private comboSystem: ComboSystem
-  private powerupSystem: PowerupSystem
   private powerupEffectSystem: PowerupEffectSystem
   
   // 游戏结束标志 - 防止重复调用 endGame
@@ -67,7 +89,8 @@ export class EliminateGame {
   // 触摸滑动检测
   private touchStartX = 0
   private touchStartY = 0
-  private readonly SWIPE_THRESHOLD = 10 // 滑动阈值（像素）
+  private readonly SWIPE_THRESHOLD = 30 // 滑动阈值（像素）- 增加到30避免误触
+  private hasSwiped = false // 标记是否已经执行过滑动交换
   
   // 获取当前关卡的时间限制
   private get timeLimit(): number {
@@ -85,10 +108,7 @@ export class EliminateGame {
   private hintActive = false // 提示高亮激活状态
   private hintBlocks: number[] = [] // 需要高亮的方块索引
   
-  // 道具系统
-  private inventory: string[] = []
-  private itemCharge: Record<string, number> = {}
-  private unlockedItems: string[] = []
+
   
   constructor(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, engine: GameEngine, onEnd: () => void) {
     this.canvas = canvas
@@ -98,7 +118,6 @@ export class EliminateGame {
     
     this.particleSystem = new ParticleSystem()
     this.comboSystem = new ComboSystem()
-    this.powerupSystem = new PowerupSystem()
     this.powerupEffectSystem = new PowerupEffectSystem()
   }
   
@@ -146,7 +165,6 @@ export class EliminateGame {
     
     this.initLevel(1) // 从第1关开始
     this.setupEventListeners()
-    this.updateHTMLPowerupBar()
   }
   
   // 确保 Canvas 尺寸正确 - 解决移动端适配问题
@@ -196,8 +214,8 @@ export class EliminateGame {
     // 重新初始化方块
     this.initBlocks()
     
-    // 显示关卡提示
-    this.showLevelStartHint()
+    // ⭐ 移除关卡提示弹窗，直接进入游戏
+    // this.showLevelStartHint()
   }
   
   // 显示关卡开始提示
@@ -350,9 +368,6 @@ export class EliminateGame {
     // 更新连击系统
     this.comboSystem.update()
     
-    // 更新道具系统
-    this.powerupSystem.update()
-    
     // 更新道具特效系统
     this.powerupEffectSystem.update()
     
@@ -470,16 +485,16 @@ export class EliminateGame {
     const now = Date.now()
     const elapsed = now - this.gameStartTime
     
-    // 更新已解锁道具列表
-    this.unlockedItems = GAME_ITEMS
+    // 获取已解锁的道具列表
+    const unlockedItems = GAME_ITEMS
       .filter(item => ITEM_UNLOCK_TIMES[item.id as keyof typeof ITEM_UNLOCK_TIMES] <= elapsed)
       .map(item => item.id)
     
-    if (this.unlockedItems.length === 0) return
+    if (unlockedItems.length === 0) return
     
     // 计算总权重
     let totalWeight = 0
-    this.unlockedItems.forEach(itemId => {
+    unlockedItems.forEach((itemId: string) => {
       totalWeight += ITEM_SPAWN_WEIGHTS[itemId as keyof typeof ITEM_SPAWN_WEIGHTS] || 10
     })
     
@@ -495,9 +510,9 @@ export class EliminateGame {
       if (Math.random() < spawnRate) {
         // 根据权重随机选择道具
         let random = Math.random() * totalWeight
-        let selectedItem = this.unlockedItems[0]
+        let selectedItem = unlockedItems[0]
         
-        for (const itemId of this.unlockedItems) {
+        for (const itemId of unlockedItems) {
           const weight = ITEM_SPAWN_WEIGHTS[itemId as keyof typeof ITEM_SPAWN_WEIGHTS] || 10
           random -= weight
           if (random <= 0) {
@@ -561,6 +576,7 @@ export class EliminateGame {
     const touch = e.touches[0]
     this.touchStartX = touch.clientX
     this.touchStartY = touch.clientY
+    this.hasSwiped = false // 重置滑动标记
     
     // 如果没有选中任何宝石，尝试选中触摸位置的宝石
     if (!this.selectedBlock && !this.isAnimating) {
@@ -589,8 +605,8 @@ export class EliminateGame {
   private handleTouchMove = (e: TouchEvent) => {
     e.preventDefault()
     
-    // 如果没有选中宝石或正在动画，不处理
-    if (this.selectedBlock === null || this.isAnimating) {
+    // 如果没有选中宝石、正在动画或已经执行过滑动，不处理
+    if (this.selectedBlock === null || this.isAnimating || this.hasSwiped) {
       return
     }
     
@@ -601,42 +617,48 @@ export class EliminateGame {
     const dy = touch.clientY - this.touchStartY
     
     // 判断滑动方向和距离
-    const threshold = 20 // 滑动阈值
+    const threshold = this.SWIPE_THRESHOLD
     
     const selectedRow = Math.floor(this.selectedBlock / this.COLS)
     const selectedCol = this.selectedBlock % this.COLS
     
     let targetIdx: number | null = null
     
-    // 检测滑动方向
-    if (Math.abs(dx) > threshold) {
-      // 水平滑动
-      const direction = dx > 0 ? 1 : -1
-      const targetCol = selectedCol + direction
-      if (targetCol >= 0 && targetCol < this.COLS) {
-        targetIdx = selectedRow * this.COLS + targetCol
+    // 检测滑动方向（只触发一次）
+    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+      // 判断是水平还是垂直滑动
+      if (Math.abs(dx) > Math.abs(dy)) {
+        // 水平滑动
+        const direction = dx > 0 ? 1 : -1
+        const targetCol = selectedCol + direction
+        if (targetCol >= 0 && targetCol < this.COLS) {
+          targetIdx = selectedRow * this.COLS + targetCol
+        }
+      } else {
+        // 垂直滑动
+        const direction = dy > 0 ? 1 : -1
+        const targetRow = selectedRow + direction
+        if (targetRow >= 0 && targetRow < this.GRID) {
+          targetIdx = targetRow * this.COLS + selectedCol
+        }
       }
-    } else if (Math.abs(dy) > threshold) {
-      // 垂直滑动
-      const direction = dy > 0 ? 1 : -1
-      const targetRow = selectedRow + direction
-      if (targetRow >= 0 && targetRow < this.GRID) {
-        targetIdx = targetRow * this.COLS + selectedCol
-      }
-    }
-    
-    // 如果检测到有效的拖拽交换
-    if (targetIdx !== null && this.blocks[targetIdx]) {
-      // 获取触摸位置用于显示特效
-      const rect = this.canvas.getBoundingClientRect()
-      const scaleX = this.canvas.width / rect.width
-      const scaleY = this.canvas.height / rect.height
-      const mx = (touch.clientX - rect.left) * scaleX
-      const my = (touch.clientY - rect.top) * scaleY
       
-      // 执行交换
-      this.trySwap(this.selectedBlock, targetIdx, mx, my)
-      this.selectedBlock = null // 重置选中状态
+      // 如果检测到有效的拖拽交换
+      if (targetIdx !== null && this.blocks[targetIdx]) {
+        // 获取触摸位置用于显示特效
+        const rect = this.canvas.getBoundingClientRect()
+        const scaleX = this.canvas.width / rect.width
+        const scaleY = this.canvas.height / rect.height
+        const mx = (touch.clientX - rect.left) * scaleX
+        const my = (touch.clientY - rect.top) * scaleY
+        
+        // 标记已执行滑动
+        this.hasSwiped = true
+        
+        // 执行交换
+        this.trySwap(this.selectedBlock, targetIdx, mx, my)
+        this.selectedBlock = null // 重置选中状态
+      }
     }
   }
   
@@ -647,7 +669,9 @@ export class EliminateGame {
     const touch = e.changedTouches[0]
     
     // 如果已经通过拖拽处理了交换，不再处理点击
-    if (!this.selectedBlock) {
+    if (this.hasSwiped || !this.selectedBlock) {
+      this.selectedBlock = null
+      this.hasSwiped = false
       return
     }
     
@@ -665,10 +689,11 @@ export class EliminateGame {
       const my = (touch.clientY - rect.top) * scaleY
       
       this.handleClick(mx, my)
-    } else {
-      // 滑动结束，重置选中状态
-      this.selectedBlock = null
     }
+    
+    // 重置状态
+    this.selectedBlock = null
+    this.hasSwiped = false
   }
   
   private handleClick(mx: number, my: number) {
@@ -688,18 +713,15 @@ export class EliminateGame {
     
     // 边界检查
     if (row < 0 || row >= this.GRID || col < 0 || col >= this.COLS) {
-      // 点击空白处取消选中
-      this.selectedBlock = null
       return
     }
     
     if (idx < 0 || idx >= this.blocks.length || !this.blocks[idx]) {
-      this.selectedBlock = null
       return
     }
     
-    // 处理选中和交换逻辑
-    this.handleGemSelect(idx, mx, my)
+    // ⭐ 恢复连通块消除玩法：点击即消除相连的同色方块
+    this.eliminate(idx, mx, my)
   }
   
   // 处理宝石选中和交换逻辑
@@ -1068,14 +1090,7 @@ export class EliminateGame {
     if (collectedItems.length > 0) {
       audioService.buff()
     }
-    
-    // 检查是否有特殊道具效果激活
-    if (this.powerupSystem.isEffectActive('double_score')) {
-      pts *= 2
-    }
-    if (this.powerupSystem.isEffectActive('time_freeze')) {
-      this.lastActionTime = Date.now() + 5000 // 额外增加5秒
-    }
+
     
     // 根据消除数量设置震动强度
     this.screenShake = Math.min(same.length * 1.5, 15)
@@ -1109,7 +1124,7 @@ export class EliminateGame {
     same.forEach(i => {
       const b = this.blocks[i]
       if (!b) return
-      const x = 20 + b.getC() * this.CELL + this.CELL / 2
+      const x = this.PADDING + b.getC() * this.CELL + this.CELL / 2
       const y = this.TOP + b.getR() * this.CELL + this.CELL / 2
       
       this.particleSystem.createExplosion(x, y, b.getColor(), same.length)
@@ -1121,7 +1136,7 @@ export class EliminateGame {
         this.particleSystem.createFullScreenExplosion(this.W, this.H, this.COLORS)
         
         this.blocks.forEach((b, i) => {
-          if (b) this.engine.addScore(10, 20 + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
+          if (b) this.engine.addScore(10, this.PADDING + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
         })
         this.blocks.forEach((_, i) => this.blocks[i] = null as any)
         audioService.win()
@@ -1171,15 +1186,15 @@ export class EliminateGame {
       }
     }
     
-    // 重新生成道具方块
+    // ⭐ 修复：重新生成道具方块（仅对新生成的方块）
     this.spawnItemBlocks()
     
-    // 重新生成星星方块
+    // ⭐ 修复：重新生成星星方块（仅对新生成的方块）
     this.spawnStarBlocks()
   }
   
   private hasValidMove(): boolean {
-    // 检查每个方块是否能形成3个或以上的连接
+    // ⭐ 恢复：检查是否存在3个或以上相连的同色方块
     for (let i = 0; i < this.blocks.length; i++) {
       if (!this.blocks[i]) continue
       
@@ -1409,14 +1424,57 @@ export class EliminateGame {
       this.ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
       this.ctx.stroke()
       
-      // 如果方块有道具，显示道具图标
+      // 🎁 如果方块有道具，显示华丽的道具特效
       if (b.getItem()) {
         const itemData = GAME_ITEMS.find(item => item.id === b.getItem())
         if (itemData) {
-          this.ctx.font = `${Math.floor(size * 1.2)}px sans-serif`
+          const itemId = b.getItem()!
+          const itemColor = this.ITEM_COLORS[itemId] || '#FFFFFF'
+          
+          // 脉冲光晕效果（比宝石更强烈）
+          const itemPulse = Math.sin(Date.now() * 0.012 + i * 0.5) * 0.4 + 0.8
+          this.ctx.shadowColor = itemColor
+          this.ctx.shadowBlur = 25 * itemPulse
+          
+          // 绘制彩色光晕背景圆
+          const glowRadius = size * 0.7
+          const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, glowRadius)
+          gradient.addColorStop(0, itemColor.replace(')', ', 0.4)').replace('rgb', 'rgba'))
+          gradient.addColorStop(0.6, itemColor.replace(')', ', 0.2)').replace('rgb', 'rgba'))
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+          
+          this.ctx.fillStyle = gradient
+          this.ctx.beginPath()
+          this.ctx.arc(x, y, glowRadius, 0, Math.PI * 2)
+          this.ctx.fill()
+          
+          // 绘制白色边框圆（增强对比度）
+          this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + itemPulse * 0.3})`
+          this.ctx.lineWidth = 2.5
+          this.ctx.beginPath()
+          this.ctx.arc(x, y, size * 0.6, 0, Math.PI * 2)
+          this.ctx.stroke()
+          
+          // 绘制道具图标（带旋转和缩放动画）
+          this.ctx.font = `bold ${Math.floor(size * 1.5)}px sans-serif`
           this.ctx.textAlign = 'center'
           this.ctx.textBaseline = 'middle'
-          this.ctx.fillText(itemData.icon, x, y)
+          
+          // 旋转动画（不同道具旋转速度不同）
+          const rotationSpeed = b.getItem() === 'bomb' ? 0.008 : 0.005
+          const rotation = Math.sin(Date.now() * rotationSpeed + i) * 0.2
+          const scale = 1 + Math.sin(Date.now() * 0.007 + i * 0.8) * 0.1
+          
+          this.ctx.save()
+          this.ctx.translate(x, y)
+          this.ctx.rotate(rotation)
+          this.ctx.scale(scale, scale)
+          this.ctx.fillText(itemData.icon, 0, 0)
+          this.ctx.restore()
+          
+          // 重置阴影
+          this.ctx.shadowColor = 'transparent'
+          this.ctx.shadowBlur = 0
         }
       }
       
@@ -1466,67 +1524,10 @@ export class EliminateGame {
     })
   }
   
-  private updateHTMLPowerupBar() {
-    // 简化道具栏更新逻辑
-    const powerupIcons: Record<string, string> = {
-      'time_extend': '⏰',
-      'hint': '🔍',
-      'double_score': '✨',
-      'bomb': '💣'
-    }
-    
-    // 这里可以添加自定义的道具栏更新逻辑
-    console.log('道具栏更新:', this.inventory)
-  }
-  
-  private usePowerup(type: string): boolean {
-    const index = this.inventory.indexOf(type)
-    if (index === -1) return false
-    
-    this.inventory.splice(index, 1)
-    console.log('[道具] 使用道具:', type)
-    
-    // 触发使用道具的华丽特效（屏幕中心）
-    this.triggerPowerupUseEffect(type, this.W / 2, this.H / 2)
-    
-    switch (type) {
-      case 'time_extend':
-        // 时间延长 - 立即增加10秒
-        this.lastActionTime = Date.now() + 10000
-        audioService.win()
-        this.comboSystem.addText('⏰ +10秒!', this.W / 2, this.H / 2 - 50)
-        console.log('[道具] 时间延长生效，增加10秒')
-        break
-        
-      case 'hint':
-        // 提示高亮 - 显示可消除的组合
-        this.activateHint()
-        audioService.buff()
-        console.log('[道具] 提示高亮已激活')
-        break
-        
-      case 'double_score':
-        // 分数加倍 - 20秒内得分翻倍
-        this.doubleScoreActive = true
-        this.doubleScoreEndTime = Date.now() + 20000
-        audioService.win()
-        this.comboSystem.addText('✨ 双倍分数 20秒!', this.W / 2, this.H / 2 - 50)
-        console.log('[道具] 双倍分数已激活，持续20秒')
-        break
-        
-      case 'bomb':
-        // 炸弹 - 消除最多颜色的所有方块
-        this.useBomb()
-        audioService.win()
-        console.log('[道具] 炸弹已使用')
-        break
-    }
-    
-    return true
-  }
+
   
   // ⭐ 立即使用道具效果（消除道具方块时自动触发）
-  private usePowerupImmediately(type: string, x: number, y: number) {
+  private async usePowerupImmediately(type: string, x: number, y: number) {
     console.log('[道具] 自动生效:', type)
     
     // 触发华丽的收集特效
@@ -1557,55 +1558,33 @@ export class EliminateGame {
         
       case 'bomb':
         // 炸弹 - 消除最多颜色的所有方块
-        setTimeout(() => {
-          this.useBomb()
-        }, 200) // 稍微延迟，让当前消除先完成
-        audioService.win()
+        await this.wait(200) // 等待当前消除完成
+        await this.useBomb() // ⭐ 必须await，确保填充完成
+        // ⭐ 修复：炸弹使用后不需要额外调用 audioService.win()，因为 useBomb 内部已经处理
         break
     }
   }
   
-  private updateItemBar() {
-    const items = ['time_extend', 'hint', 'double_score', 'bomb']
-    items.forEach(itemId => {
-      const countEl = document.getElementById(`itemCount_${itemId}`)
-      if (countEl) {
-        const count = this.itemCharge[itemId] || 0
-        countEl.textContent = String(count)
-        
-        // 根据数量改变样式
-        const slot = countEl.parentElement
-        if (slot) {
-          if (count > 0) {
-            slot.style.borderColor = '#FFD93D'
-            slot.style.boxShadow = '0 0 15px rgba(255,217,61,0.5)'
-          } else {
-            slot.style.borderColor = 'rgba(255,255,255,0.2)'
-            slot.style.boxShadow = 'none'
-          }
-        }
-      }
-    })
-  }
+
   
   // 触发道具收集特效
   private triggerPowerupCollectEffect(itemId: string, x: number, y: number) {
-    // 创建光环特效
-    this.powerupEffectSystem.createEffect(itemId, x, y)
-    
-    // 设置闪光颜色（不同道具有不同颜色）
-    const colorMap: Record<string, string> = {
-      'time_extend': 'rgba(0, 255, 255, 0.4)',     // 青色
-      'hint': 'rgba(255, 215, 0, 0.4)',            // 金色
-      'double_score': 'rgba(255, 105, 180, 0.4)',  // 粉色
-      'bomb': 'rgba(255, 107, 107, 0.4)'           // 红色
+    // ⭐ 优化：减少光环特效数量
+    for (let i = 0; i < 2; i++) { // 从3降到2
+      setTimeout(() => {
+        this.powerupEffectSystem.createEffect(itemId, x, y)
+      }, i * 100) // 增加间隔
     }
     
-    this.powerupFlashColor = colorMap[itemId] || 'rgba(255, 255, 255, 0.4)'
+    this.powerupFlashColor = this.ITEM_FLASH_COLORS_COLLECT[itemId] || 'rgba(255, 255, 255, 0.5)'
     this.powerupFlashIntensity = 1.0
     
     // 增强屏幕震动
-    this.screenShake = Math.max(this.screenShake, 10)
+    this.screenShake = Math.max(this.screenShake, 12)
+    
+    // ⭐ 优化：减少额外的粒子爆炸强度
+    const particleColor = this.ITEM_COLORS[itemId] || '#FFD700'
+    this.particleSystem.createExplosion(x, y, particleColor, 8) // 从15降到8
     
     // 播放特殊音效
     audioService.win()
@@ -1613,81 +1592,124 @@ export class EliminateGame {
   
   // 触发道具使用特效（更华丽）
   private triggerPowerupUseEffect(type: string, x: number, y: number) {
-    // 创建多个光环特效（更强烈）
-    for (let i = 0; i < 3; i++) {
+    // ⭐ 优化：减少光环特效数量
+    for (let i = 0; i < 3; i++) { // 从5降到3
       setTimeout(() => {
         this.powerupEffectSystem.createEffect(type, x, y)
-      }, i * 100)
+      }, i * 80) // 增加间隔
     }
     
-    // 设置更强的闪光效果
-    const colorMap: Record<string, string> = {
-      'time_extend': 'rgba(0, 255, 255, 0.6)',     // 青色
-      'hint': 'rgba(255, 215, 0, 0.6)',            // 金色
-      'double_score': 'rgba(255, 105, 180, 0.6)',  // 粉色
-      'bomb': 'rgba(255, 107, 107, 0.6)'           // 红色
-    }
-    
-    this.powerupFlashColor = colorMap[type] || 'rgba(255, 255, 255, 0.6)'
+    this.powerupFlashColor = this.ITEM_FLASH_COLORS_USE[type] || 'rgba(255, 255, 255, 0.7)'
     this.powerupFlashIntensity = 1.0
     
     // 强烈屏幕震动
-    this.screenShake = 20
+    this.screenShake = 25
     
-    // 创建额外的粒子爆炸效果
+    // ⭐ 优化：只触发一次全屏爆炸，而不是三次
     this.particleSystem.createFullScreenExplosion(this.W, this.H, this.COLORS)
     
     // 播放胜利音效
     audioService.win()
     
-    // 显示浮动文字
+    // 显示浮动文字（更大更醒目）
     const itemData = GAME_ITEMS.find(item => item.id === type)
     if (itemData) {
       this.comboSystem.addText(`${itemData.icon} ${itemData.name}!`, x, y - 50)
+      setTimeout(() => {
+        this.comboSystem.addText('✨ 激活！ ✨', x, y - 80)
+      }, 200)
     }
   }
   
   // 炸弹效果 - 消除最多颜色的所有方块
-  private useBomb() {
-    // 找到数量最多的颜色
-    const colorCount: Record<string, number[]> = {}
-    this.blocks.forEach((b, i) => {
-      if (b && !b.isRainbow()) {
-        if (!colorCount[b.getColor()]) colorCount[b.getColor()] = []
-        colorCount[b.getColor()].push(i)
-      }
-    })
+  private async useBomb() {
+    // 设置动画状态，防止其他操作干扰
+    this.isAnimating = true
     
-    let maxColor = ''
-    let maxCount = 0
-    for (const [color, indices] of Object.entries(colorCount)) {
-      if (indices.length > maxCount) {
-        maxCount = indices.length
-        maxColor = color
-      }
-    }
-    
-    if (maxColor && maxCount >= 3) {
-      // 消除所有该颜色的方块
-      colorCount[maxColor].forEach(idx => {
-        if (this.blocks[idx]) {
-          const x = 20 + (idx % this.COLS) * this.CELL + this.CELL / 2
-          const y = this.TOP + Math.floor(idx / this.COLS) * this.CELL + this.CELL / 2
-          
-          // 爆炸粒子
-          this.particleSystem.createExplosion(x, y, maxColor, 15)
-          
-          this.blocks[idx] = null as any
+    try {
+      // 找到数量最多的颜色
+      const colorCount: Record<string, number[]> = {}
+      this.blocks.forEach((b, i) => {
+        if (b && !b.isRainbow()) {
+          if (!colorCount[b.getColor()]) colorCount[b.getColor()] = []
+          colorCount[b.getColor()].push(i)
         }
       })
       
-      this.screenShake = 20
-      this.engine.addScore(maxCount * 15, this.W / 2, this.H / 2)
+      let maxColor = ''
+      let maxCount = 0
+      for (const [color, indices] of Object.entries(colorCount)) {
+        if (indices.length > maxCount) {
+          maxCount = indices.length
+          maxColor = color
+        }
+      }
       
-      // 下落填充
-      setTimeout(() => {
+      // 道具消除应该始终执行填充，不受数量限制
+      if (maxColor && maxCount > 0) {
+        // 消除所有该颜色的方块
+        const bombIndices: number[] = []
+        colorCount[maxColor].forEach(idx => {
+          if (this.blocks[idx]) {
+            bombIndices.push(idx)
+            const x = this.PADDING + (idx % this.COLS) * this.CELL + this.CELL / 2
+            const y = this.TOP + Math.floor(idx / this.COLS) * this.CELL + this.CELL / 2
+            
+            // 爆炸粒子（增强版）
+            this.particleSystem.createExplosion(x, y, maxColor, 20)
+            
+            this.blocks[idx] = null as any
+          }
+        })
+        
+        // 强烈屏幕震动
+        this.screenShake = 30
+        this.engine.addScore(maxCount * 15, this.W / 2, this.H / 2)
+        
+        // 显示连击文字（更大更醒目）
+        if (bombIndices.length >= 4) {
+          this.comboSystem.addText(`${bombIndices.length} 连消!`, this.W / 2, this.H / 2 - 30)
+          setTimeout(() => {
+            this.comboSystem.addText(' 炸弹爆发！ 💥', this.W / 2, this.H / 2 - 60)
+          }, 150)
+        }
+        
+        // 创建全屏闪光效果
+        this.powerupFlashColor = 'rgba(255, 100, 100, 0.8)'
+        this.powerupFlashIntensity = 1.0
+        
+        // 等待爆炸动画
+        await this.wait(150)
+        
+        // 应用重力填充（道具消除必须填充）
         this.applyGravity()
-      }, 200)
+        
+        // 等待重力动画
+        await this.wait(300)
+        
+        // 检查新的匹配（连锁反应）
+        const newMatches = this.findMatches()
+        if (newMatches.length >= 3) {
+          // 递归处理连锁消除
+          const centerX = this.W / 2
+          const centerY = this.H / 2
+          await this.processMatches(newMatches, centerX, centerY)
+        } else {
+          // 检查是否有有效移动
+          if (!this.hasValidMove()) {
+            this.resetBoard()
+          }
+          
+          // 检查是否通关
+          this.checkLevelComplete()
+        }
+      } else if (!maxColor || maxCount === 0) {
+        // 如果没有找到任何可消除的方块，直接重置棋盘
+        this.resetBoard()
+      }
+    } finally {
+      // 确保动画状态被重置
+      this.isAnimating = false
     }
   }
   

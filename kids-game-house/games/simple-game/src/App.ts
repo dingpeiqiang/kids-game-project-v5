@@ -11,7 +11,8 @@ import { apiGetBatchUserRank, apiSubmitComment, apiGetComments } from './service
 import { getTopList, type LeaderboardEntry } from './services/leaderboardService'
 import { initEliminate } from './games/eliminate'
 import { initDodge } from './games/dodge'
-import { initSort } from './games/sort'
+import { initColorSort } from './games/colorSort'  // 新版色彩排序（10关卡系统）
+// import { initSort } from './games/sort'  // 旧版已废弃
 import { initPop } from './games/pop'
 import { initStack3D } from './games/stack3d'
 import { initFruitSlice } from './games/fruitSlice'
@@ -1369,9 +1370,9 @@ class App {
     }
 
     switch (this.currentGame.id) {
-      case 'eliminate': initAnimalMatch(gameEngine, () => this.endGame()); break
+      case 'eliminate': initEliminate(gameEngine, () => this.endGame()); break
       case 'dodge':     initDodge(gameEngine, () => this.endGame()); break
-      case 'sort':      initSort(gameEngine, () => this.endGame()); break
+      case 'sort':      initColorSort(gameEngine, () => this.endGame()); break  // 使用新版色彩排序
       case 'pop':       initPop(gameEngine, () => this.endGame()); break
       case 'stack3d':   initStack3D(gameEngine, () => this.endGame()); break
       case 'fruitSlice': initFruitSlice(gameEngine, () => this.endGame()); break

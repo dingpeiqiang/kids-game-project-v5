@@ -1,6 +1,7 @@
 export { initEliminate } from './eliminate/index'
 export { initDodge } from './dodge'
-export { initSort } from './sort'
+export { initColorSort } from './colorSort/index'  // 新版色彩排序（10关卡系统）
+// export { initSort } from './sort'  // 旧版已废弃，使用 initColorSort
 export { initPop } from './pop'
 export { initStack3D } from './stack3d'
 export { initFruitSlice } from './fruitSlice'

@@ -44,12 +44,12 @@ export const GAME_ITEMS: GameItem[] = [
   }
 ]
 
-// 道具解锁时间（毫秒）
+// 道具解锁时间（毫秒）- 调整为更合理的解锁时间
 export const ITEM_UNLOCK_TIMES = {
   time_extend: 0,     // 立即解锁
   hint: 0,            // 立即解锁
-  double_score: 20000, // 20秒后解锁
-  bomb: 20000         // 20秒后解锁
+  double_score: 10000, // 10秒后解锁（适配短关卡）
+  bomb: 10000         // 10秒后解锁（适配短关卡）
 }
 
 // 道具出现概率（权重）- 平衡各道具的出现频率

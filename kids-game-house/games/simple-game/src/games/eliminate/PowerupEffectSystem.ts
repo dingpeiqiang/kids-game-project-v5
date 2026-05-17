@@ -5,7 +5,10 @@ export class PowerupEffect {
   life: number
   maxLife: number
   color: string
-  rings: Array<{ radius: number; speed: number; alpha: number }>
+  rings: Array<{ radius: number; speed: number; alpha: number; lineWidth: number }>
+  particles: Array<{ x: number; y: number; vx: number; vy: number; size: number; alpha: number; color: string }>
+  scale: number
+  rotation: number
   
   constructor(type: string, x: number, y: number, color: string) {
     this.type = type
@@ -14,21 +17,73 @@ export class PowerupEffect {
     this.life = 1.0
     this.maxLife = 1.0
     this.color = color
+    this.scale = 0
+    this.rotation = 0
     
-    // 创建双层光环
+    // 创建多层光环（3-4层）
     this.rings = [
-      { radius: 10, speed: 8, alpha: 1.0 },   // 内层快速扩散
-      { radius: 5, speed: 5, alpha: 0.8 }     // 外层慢速扩散
+      { radius: 5, speed: 6, alpha: 1.0, lineWidth: 5 },     // 内层快速
+      { radius: 3, speed: 4, alpha: 0.9, lineWidth: 4 },     // 中层
+      { radius: 2, speed: 3, alpha: 0.7, lineWidth: 3 },     // 外层慢速
+      { radius: 1, speed: 2, alpha: 0.5, lineWidth: 2 }      // 最外层
     ]
+    
+    // 创建爆炸粒子
+    this.particles = []
+    const particleCount = type === 'bomb' || type === 'mega_bomb' ? 30 : 20
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount
+      const speed = 3 + Math.random() * 5
+      this.particles.push({
+        x: 0,
+        y: 0,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 2 + Math.random() * 4,
+        alpha: 1.0,
+        color: this.getRandomColor(color)
+      })
+    }
+  }
+  
+  private getRandomColor(baseColor: string): string {
+    // 生成相近颜色的变体
+    const colors = [baseColor]
+    if (baseColor.includes('255')) {
+      colors.push('rgb(255, 200, 100)', 'rgb(255, 150, 150)')
+    } else if (baseColor.includes('100')) {
+      colors.push('rgb(150, 200, 255)', 'rgb(100, 255, 200)')
+    }
+    return colors[Math.floor(Math.random() * colors.length)]
   }
   
   update() {
-    this.life -= 0.02 // 约0.7秒持续时间
+    this.life -= 0.018 // 约0.9秒持续时间
+    
+    // 缩放动画（从小到大再到正常）
+    if (this.scale < 1.0) {
+      this.scale += 0.15
+      if (this.scale > 1.0) this.scale = 1.0
+    }
+    
+    // 旋转动画
+    this.rotation += 0.1
     
     // 更新光环
     this.rings.forEach(ring => {
       ring.radius += ring.speed
-      ring.alpha *= 0.95
+      ring.alpha *= 0.93
+      ring.lineWidth *= 0.98
+    })
+    
+    // 更新粒子
+    this.particles.forEach(p => {
+      p.x += p.vx
+      p.y += p.vy
+      p.vx *= 0.95 // 阻力
+      p.vy *= 0.95
+      p.alpha *= 0.92
+      p.size *= 0.97
     })
     
     return this.life > 0
@@ -36,6 +91,19 @@ export class PowerupEffect {
   
   render(ctx: CanvasRenderingContext2D) {
     ctx.save()
+    ctx.translate(this.x, this.y)
+    ctx.scale(this.scale, this.scale)
+    ctx.rotate(this.rotation)
+    
+    // 绘制中心光晕
+    const centerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 30)
+    centerGlow.addColorStop(0, this.color.replace('rgb', 'rgba').replace(')', ', 0.8)'))
+    centerGlow.addColorStop(0.5, this.color.replace('rgb', 'rgba').replace(')', ', 0.3)'))
+    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = centerGlow
+    ctx.beginPath()
+    ctx.arc(0, 0, 30, 0, Math.PI * 2)
+    ctx.fill()
     
     // 绘制光环
     this.rings.forEach((ring, index) => {
@@ -43,15 +111,34 @@ export class PowerupEffect {
       
       ctx.globalAlpha = ring.alpha * this.life
       ctx.strokeStyle = this.color
-      ctx.lineWidth = index === 0 ? 4 : 3
+      ctx.lineWidth = ring.lineWidth
+      ctx.shadowColor = this.color
+      ctx.shadowBlur = 20
       ctx.beginPath()
-      ctx.arc(this.x, this.y, ring.radius, 0, Math.PI * 2)
+      ctx.arc(0, 0, ring.radius, 0, Math.PI * 2)
       ctx.stroke()
       
-      // 添加发光效果
-      ctx.shadowColor = this.color
-      ctx.shadowBlur = 15
+      // 添加第二层描边（更亮）
+      ctx.globalAlpha = ring.alpha * this.life * 0.5
+      ctx.lineWidth = ring.lineWidth * 0.5
+      ctx.strokeStyle = '#FFFFFF'
+      ctx.beginPath()
+      ctx.arc(0, 0, ring.radius, 0, Math.PI * 2)
       ctx.stroke()
+    })
+    
+    // 绘制粒子
+    ctx.rotate(-this.rotation) // 粒子不跟随旋转
+    this.particles.forEach(p => {
+      if (p.alpha <= 0.01) return
+      
+      ctx.globalAlpha = p.alpha * this.life
+      ctx.fillStyle = p.color
+      ctx.shadowColor = p.color
+      ctx.shadowBlur = 10
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+      ctx.fill()
     })
     
     ctx.restore()

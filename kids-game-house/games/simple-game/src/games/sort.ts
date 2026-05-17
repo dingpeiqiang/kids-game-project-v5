@@ -13,6 +13,7 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
   const TUBE_W = 50
   const TUBE_H = 180
   const BALL_R = 18
+  const LIQUID_HEIGHT = BALL_R * 2 // 每个液体单元的高度
   const COLORS = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#9B59B6', '#FF69B4', '#6BCB77']
   
   // 游戏状态
@@ -29,6 +30,9 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
   let gameStartTime = Date.now()
   let unlockedItems: string[] = []
   let itemCharge: Record<string, number> = {}
+  let lastClickTime = 0 // 防止快速连击
+  let clickEffect: { tube: number; time: number } | null = null // 点击特效
+  let winAnimation = false // 胜利动画状态
   
   // ====== HTML道具栏（库存模式）======
   let inventory: string[] = [] // 道具库存
@@ -58,6 +62,11 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
   
   // 使用道具
   function usePowerup(type: string): boolean {
+    // 动画进行中，禁止使用道具
+    if (animatingBall) {
+      return false
+    }
+    
     const index = inventory.indexOf(type)
     if (index === -1) return false
     
@@ -181,83 +190,175 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
       const y = H - 220
       
       // 管子背景
+      const isSelected = selectedTube === idx
+      
       ctx.fillStyle = 'rgba(255,255,255,0.1)'
-      ctx.strokeStyle = selectedTube === idx ? '#FFD93D' : 'rgba(255,255,255,0.3)'
-      ctx.lineWidth = selectedTube === idx ? 3 : 2
+      
+      // 根据状态设置边框样式
+      if (isSelected) {
+        // 选中：黄色粗边框 + 光晕
+        ctx.strokeStyle = '#FFD93D'
+        ctx.lineWidth = 4
+        ctx.shadowBlur = 20
+        ctx.shadowColor = '#FFD93D'
+      } else {
+        // 普通：淡色边框
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+        ctx.lineWidth = 2
+        ctx.shadowBlur = 0
+      }
+      
       ctx.beginPath()
       ctx.roundRect(x - TUBE_W / 2, y, TUBE_W, TUBE_H, 8)
       ctx.fill()
       ctx.stroke()
       
-      // 绘制球
-      tube.forEach((color, ballIdx) => {
-        const ballY = y + TUBE_H - BALL_R - ballIdx * (BALL_R * 2)
+      // 点击特效（扩散圆环）
+      if (clickEffect && clickEffect.tube === idx && clickEffect.time > 0) {
+        const progress = 1 - clickEffect.time / 20
+        const radius = TUBE_W / 2 + progress * 15
+        const alpha = 1 - progress
         
-        // 如果是动画中的球
-        if (animatingBall && animatingBall.fromTube === idx && ballIdx === tube.length - 1) {
+        ctx.strokeStyle = `rgba(255, 217, 61, ${alpha})`
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(x, y + TUBE_H / 2, radius, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+      
+      ctx.shadowBlur = 0
+      
+      // 绘制液体
+      tube.forEach((color, liquidIdx) => {
+        const liquidBottom = y + TUBE_H
+        const liquidTop = liquidBottom - (liquidIdx + 1) * LIQUID_HEIGHT
+        const liquidHeight = LIQUID_HEIGHT
+        
+        // 如果是动画中的液体
+        if (animatingBall && animatingBall.fromTube === idx && liquidIdx === tube.length - 1) {
           return // 跳过，由动画绘制
         }
         
-        // 球体渐变
-        const ballGrad = ctx.createRadialGradient(
-          x - BALL_R * 0.3, ballY - BALL_R * 0.3, BALL_R * 0.1,
-          x, ballY, BALL_R
-        )
-        ballGrad.addColorStop(0, '#fff')
-        ballGrad.addColorStop(0.3, color)
-        ballGrad.addColorStop(1, color)
+        // 液体主体（矩形）
+        const liquidGrad = ctx.createLinearGradient(x - TUBE_W / 2 + 4, liquidTop, x - TUBE_W / 2 + 4, liquidBottom)
+        liquidGrad.addColorStop(0, lightenColor(color, 30))
+        liquidGrad.addColorStop(0.5, color)
+        liquidGrad.addColorStop(1, darkenColor(color, 20))
         
-        ctx.fillStyle = ballGrad
-        ctx.shadowBlur = 10
+        ctx.fillStyle = liquidGrad
+        ctx.shadowBlur = 8
         ctx.shadowColor = color
-        ctx.beginPath()
-        ctx.arc(x, ballY, BALL_R, 0, Math.PI * 2)
-        ctx.fill()
+        
+        // 绘制液体矩形（留出试管边缘）
+        const margin = 4
+        ctx.fillRect(
+          x - TUBE_W / 2 + margin,
+          liquidTop,
+          TUBE_W - margin * 2,
+          liquidHeight - 1 // 留一点缝隙
+        )
         ctx.shadowBlur = 0
         
-        // 高光
-        ctx.fillStyle = 'rgba(255,255,255,0.6)'
-        ctx.beginPath()
-        ctx.arc(x - BALL_R * 0.3, ballY - BALL_R * 0.3, BALL_R * 0.25, 0, Math.PI * 2)
-        ctx.fill()
+        // 液体表面张力效果（顶部弧形）
+        if (liquidIdx === tube.length - 1) {
+          ctx.fillStyle = lightenColor(color, 40)
+          ctx.beginPath()
+          ctx.ellipse(
+            x,
+            liquidTop,
+            TUBE_W / 2 - margin,
+            4,
+            0,
+            0,
+            Math.PI * 2
+          )
+          ctx.fill()
+        }
+        
+        // 液体高光效果
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'
+        ctx.fillRect(
+          x - TUBE_W / 2 + margin + 3,
+          liquidTop + 2,
+          4,
+          liquidHeight - 4
+        )
       })
     })
     
-    // 绘制动画中的球
+    // 绘制动画中的液体流动
     if (animatingBall) {
       const progress = animatingBall.progress
       const fromX = 30 + animatingBall.fromTube * tubeSpacing
       const toX = 30 + animatingBall.toTube * tubeSpacing
-      const fromY = H - 220 + TUBE_H - BALL_R - (animatingBall.fromIndex) * (BALL_R * 2)
-      const toY = H - 220 + TUBE_H - BALL_R - (animatingBall.targetIndex) * (BALL_R * 2)
+      const fromY = H - 220 + TUBE_H - LIQUID_HEIGHT - (animatingBall.fromIndex) * LIQUID_HEIGHT
+      const toY = H - 220 + TUBE_H - LIQUID_HEIGHT - (animatingBall.targetIndex) * LIQUID_HEIGHT
       
-      // 抛物线路径
+      // 抛物线路径（更像液体倾倒）
       const currentX = fromX + (toX - fromX) * progress
-      const arcHeight = -80
+      const arcHeight = -100 // 更高的弧线，模拟倾倒
       const currentY = fromY + (toY - fromY) * progress + Math.sin(progress * Math.PI) * arcHeight
       
-      // 球体
-      const ballGrad = ctx.createRadialGradient(
-        currentX - BALL_R * 0.3, currentY - BALL_R * 0.3, BALL_R * 0.1,
-        currentX, currentY, BALL_R
-      )
-      ballGrad.addColorStop(0, '#fff')
-      ballGrad.addColorStop(0.3, animatingBall.color)
-      ballGrad.addColorStop(1, animatingBall.color)
+      // 液体流动效果（拉伸的椭圆形）
+      const stretch = 1 + Math.sin(progress * Math.PI) * 0.5 // 中间拉伸
+      const liquidWidth = (TUBE_W - 8) * stretch
+      const liquidHeight = LIQUID_HEIGHT / stretch
       
-      ctx.fillStyle = ballGrad
+      // 液体渐变
+      const liquidGrad = ctx.createLinearGradient(
+        currentX - liquidWidth / 2,
+        currentY - liquidHeight / 2,
+        currentX - liquidWidth / 2,
+        currentY + liquidHeight / 2
+      )
+      liquidGrad.addColorStop(0, lightenColor(animatingBall.color, 30))
+      liquidGrad.addColorStop(0.5, animatingBall.color)
+      liquidGrad.addColorStop(1, darkenColor(animatingBall.color, 20))
+      
+      ctx.fillStyle = liquidGrad
       ctx.shadowBlur = 15
       ctx.shadowColor = animatingBall.color
+      
+      // 绘制流动的液体（圆角矩形）
       ctx.beginPath()
-      ctx.arc(currentX, currentY, BALL_R, 0, Math.PI * 2)
+      ctx.roundRect(
+        currentX - liquidWidth / 2,
+        currentY - liquidHeight / 2,
+        liquidWidth,
+        liquidHeight,
+        5
+      )
       ctx.fill()
       ctx.shadowBlur = 0
       
-      // 高光
-      ctx.fillStyle = 'rgba(255,255,255,0.6)'
-      ctx.beginPath()
-      ctx.arc(currentX - BALL_R * 0.3, currentY - BALL_R * 0.3, BALL_R * 0.25, 0, Math.PI * 2)
-      ctx.fill()
+      // 液体高光
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'
+      ctx.fillRect(
+        currentX - liquidWidth / 2 + 3,
+        currentY - liquidHeight / 2 + 2,
+        4,
+        liquidHeight - 4
+      )
+      
+      // 液滴效果（在流动路径上）
+      if (progress > 0.2 && progress < 0.8) {
+        const dropCount = 3
+        for (let i = 0; i < dropCount; i++) {
+          const dropProgress = progress + (i - 1) * 0.1
+          if (dropProgress > 0 && dropProgress < 1) {
+            const dropX = fromX + (toX - fromX) * dropProgress
+            const dropY = fromY + (toY - fromY) * dropProgress + Math.sin(dropProgress * Math.PI) * arcHeight + 15
+            const dropSize = 3 + Math.random() * 2
+            
+            ctx.fillStyle = animatingBall.color
+            ctx.globalAlpha = 0.6
+            ctx.beginPath()
+            ctx.arc(dropX, dropY, dropSize, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.globalAlpha = 1
+          }
+        }
+      }
     }
     
     // 粒子效果
@@ -266,11 +367,18 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
       p.y += p.vy
       p.vy += 0.15
       p.life--
-      ctx.globalAlpha = p.life / 60
+      
+      // 根据生命周期调整透明度和大小
+      const lifeRatio = p.life / 60
+      ctx.globalAlpha = Math.max(0, lifeRatio)
       ctx.fillStyle = p.color
+      
+      // 胜利粒子更大更明显，普通粒子保持原样
+      const currentSize = p.size * lifeRatio
       ctx.beginPath()
-      ctx.arc(p.x, p.y, Math.max(0.1, p.size * (p.life / 60)), 0, Math.PI * 2)
+      ctx.arc(p.x, p.y, Math.max(0.1, currentSize), 0, Math.PI * 2)
       ctx.fill()
+      
       ctx.globalAlpha = 1
       if (p.life <= 0) particles.splice(i, 1)
     })
@@ -303,6 +411,19 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
     ctx.font = '14px sans-serif'
     ctx.fillText(`步数: ${moves}`, W / 2, 55)
     
+    // 操作提示（胜利动画时不显示）
+    if (!winAnimation) {
+      if (selectedTube !== -1) {
+        ctx.fillStyle = '#FFD93D'
+        ctx.font = 'bold 16px sans-serif'
+        ctx.fillText('👆 点击其他管子移动液体', W / 2, H - 20)
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.5)'
+        ctx.font = '14px sans-serif'
+        ctx.fillText('💡 点击有液体的管子开始', W / 2, H - 20)
+      }
+    }
+    
     // 倒计时
     const now = Date.now()
     const remaining = Math.max(0, 120000 - (now - gameStartTime))
@@ -326,6 +447,14 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
     // 屏幕震动衰减
     if (screenShake > 0) screenShake *= 0.9
     
+    // 点击特效衰减
+    if (clickEffect) {
+      clickEffect.time--
+      if (clickEffect.time <= 0) {
+        clickEffect = null
+      }
+    }
+    
     // 检查超时
     if (now - gameStartTime > 120000) {
       engine.endGame()
@@ -336,19 +465,49 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
     
     // 检查胜利
     if (checkWin()) {
+      winAnimation = true
       engine.addScore(score + 100, W / 2, H / 2)
       audioService.win()
       
-      // 胜利特效
-      for (let i = 0; i < 100; i++) {
+      // 添加胜利文字
+      floatingTexts.push({
+        text: '🎉 完成！',
+        x: W / 2,
+        y: H / 2 - 50,
+        life: 80,
+        color: '#FFD93D',
+        size: 36
+      })
+      
+      // 胜利特效 - 优化版（更简洁优雅）
+      const centerX = W / 2
+      const centerY = H / 2
+      
+      // 从中心向外爆发的粒子（数量减少，速度降低）
+      for (let i = 0; i < 30; i++) {
+        const angle = (Math.PI * 2 / 30) * i
+        const speed = 2 + Math.random() * 3
+        particles.push({
+          x: centerX,
+          y: centerY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          color: COLORS[i % COLORS.length],
+          life: 40 + Math.random() * 20,
+          size: 3 + Math.random() * 3
+        })
+      }
+      
+      // 添加一些上升的彩带粒子
+      for (let i = 0; i < 15; i++) {
         particles.push({
           x: Math.random() * W,
-          y: Math.random() * H,
-          vx: (Math.random() - 0.5) * 10,
-          vy: (Math.random() - 0.5) * 10,
+          y: H + 10,
+          vx: (Math.random() - 0.5) * 2,
+          vy: -3 - Math.random() * 2,
           color: COLORS[Math.floor(Math.random() * COLORS.length)],
-          life: 60 + Math.random() * 30,
-          size: 4 + Math.random() * 6
+          life: 50 + Math.random() * 20,
+          size: 2 + Math.random() * 2
         })
       }
       
@@ -364,45 +523,80 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
   
   // 点击处理（兼容鼠标和触摸）
   const handleClick = (e: MouseEvent | TouchEvent) => {
+    // 动画进行中，禁止操作
+    if (animatingBall) {
+      return
+    }
+    
+    // 防抖：300ms内不响应重复点击
+    const now = Date.now()
+    if (now - lastClickTime < 300) {
+      return
+    }
+    lastClickTime = now
+    
     const pos = getPointerPos(e, canvas)
     const mx = pos.x
     const my = pos.y
     
     const tubeSpacing = (W - 60) / (tubes.length - 1)
     
-    // 找到点击的管子
+    // 找到点击的管子（精确检测）
     let clickedTube = -1
     for (let i = 0; i < tubes.length; i++) {
       const x = 30 + i * tubeSpacing
-      if (Math.abs(mx - x) < TUBE_W / 2 + 10 && my > H - 220 && my < H - 40) {
+      const y = H - 220
+      // 精确点击区域：管子的宽度和高度范围内
+      if (mx >= x - TUBE_W / 2 && mx <= x + TUBE_W / 2 && 
+          my >= y && my <= y + TUBE_H) {
         clickedTube = i
         break
       }
     }
     
-    if (clickedTube === -1) return
+    if (clickedTube === -1) {
+      // 点击空白区域，取消选择
+      if (selectedTube !== -1) {
+        selectedTube = -1
+        audioService.click()
+      }
+      return
+    }
     
-    // 第一次点击：选择管子
+    // 第一次点击：选择有液体的管子
     if (selectedTube === -1) {
       if (tubes[clickedTube].length > 0) {
         selectedTube = clickedTube
+        // 触发点击特效
+        clickEffect = { tube: clickedTube, time: 20 }
         audioService.click()
       }
     } else {
-      // 第二次点击：移动球
+      // 已选中管子，再次点击
       if (clickedTube === selectedTube) {
-        // 取消选择
+        // 点击同一个管子：取消选择
         selectedTube = -1
+        // 触发点击特效
+        clickEffect = { tube: clickedTube, time: 20 }
         audioService.click()
       } else {
-        // 尝试移动
+        // 点击不同管子：尝试移动液体
         const fromTube = tubes[selectedTube]
         const toTube = tubes[clickedTube]
         
-        if (fromTube.length > 0 && toTube.length < 4) {
+        // 检查移动条件
+        if (fromTube.length === 0) {
+          // 源管子为空，取消选择
+          selectedTube = -1
+          audioService.click()
+        } else if (toTube.length >= 4) {
+          // 目标管子已满，提示错误（可选：添加视觉反馈）
+          selectedTube = -1
+          audioService.click()
+        } else {
           const ballColor = fromTube[fromTube.length - 1]
           
-          // 检查是否可以放置（空管或同色）
+          // 检查颜色是否匹配（空管或同色）
           if (toTube.length === 0 || toTube[toTube.length - 1] === ballColor) {
             // 开始动画
             animatingBall = {
@@ -462,13 +656,10 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
             }
             animateMove()
           } else {
-            // 不能放置
+            // 颜色不匹配，取消选择
             selectedTube = -1
             audioService.click()
           }
-        } else {
-          selectedTube = -1
-          audioService.click()
         }
       }
     }
@@ -482,14 +673,40 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
     requestAnimationFrame(loop)
   }
   
+  // 颜色辅助函数
+  function lightenColor(hex: string, percent: number): string {
+    const num = parseInt(hex.replace('#', ''), 16)
+    const r = Math.min(255, (num >> 16) + Math.round(255 * percent / 100))
+    const g = Math.min(255, ((num >> 8) & 0xFF) + Math.round(255 * percent / 100))
+    const b = Math.min(255, (num & 0xFF) + Math.round(255 * percent / 100))
+    return `rgb(${r},${g},${b})`
+  }
+  
+  function darkenColor(hex: string, percent: number): string {
+    const num = parseInt(hex.replace('#', ''), 16)
+    const r = Math.max(0, (num >> 16) - Math.round(255 * percent / 100))
+    const g = Math.max(0, ((num >> 8) & 0xFF) - Math.round(255 * percent / 100))
+    const b = Math.max(0, (num & 0xFF) - Math.round(255 * percent / 100))
+    return `rgb(${r},${g},${b})`
+  }
+  
   initLevel()
   
   // 清除旧的事件监听器
   canvas.onclick = null
   canvas.onmousedown = null
+  canvas.onmousemove = null
+  canvas.ontouchstart = null
+  canvas.ontouchmove = null
   
-  // 绑定鼠标和触摸事件
-  bindCanvasEvents(canvas, handleClick)
+  // 只绑定点击事件（不绑定移动事件，避免状态混乱）
+  const handleInteraction = (e: MouseEvent | TouchEvent) => {
+    e.preventDefault()
+    handleClick(e)
+  }
+  
+  canvas.addEventListener('click', handleInteraction)
+  canvas.addEventListener('touchstart', handleInteraction, { passive: false })
       
   loop()
 }
