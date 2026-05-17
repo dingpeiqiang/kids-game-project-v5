@@ -124,7 +124,7 @@ export function handleCookieSlice(
   createParticles: (x: number, y: number) => Particle[]
 ): void {
   state.combo++
-  const score = 15 * state.combo
+  const score = 30 * state.combo // 翻倍分数，更爽！
   engine.addScore(score, cookieX, cookieY)
   
   // 播放切割音效（根据连击数）
@@ -134,18 +134,31 @@ export function handleCookieSlice(
     audioService.slice()
   }
   
-  // 屏幕震动（连击越高，震动越强）
-  state.shakeIntensity = Math.min(15, 4 + state.combo * 1)
+  // 屏幕震动（平衡版）
+  state.shakeIntensity = Math.min(25, 6 + state.combo * 2)
   
-  // 添加冲击波效果
+  // 优化冲击波：减少数量但保持视觉效果
+  const SHOCKWAVE_COLORS = ['#FF6B6B', '#FFD700', '#FF9F43']
   state.shockwaves.push({
     x: cookieX,
     y: cookieY,
     radius: 0,
-    maxRadius: 80 + state.combo * 15,
+    maxRadius: 100 + state.combo * 20,
     life: 1,
-    color: state.combo >= 5 ? '#FF6B6B' : state.combo >= 3 ? '#FFD700' : '#FFA500'
+    color: SHOCKWAVE_COLORS[Math.floor(Math.random() * SHOCKWAVE_COLORS.length)]
   })
+  
+  // 连击高时只加1个额外冲击波
+  if (state.combo >= 5) {
+    state.shockwaves.push({
+      x: cookieX,
+      y: cookieY,
+      radius: 0,
+      maxRadius: 150 + state.combo * 25,
+      life: 1,
+      color: state.combo >= 10 ? '#FF0000' : '#FFD700'
+    })
+  }
   
   // 添加分数飘字
   state.scorePopups.push({

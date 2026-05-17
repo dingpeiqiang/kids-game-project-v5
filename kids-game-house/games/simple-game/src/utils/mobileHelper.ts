@@ -61,18 +61,22 @@ export function getPointerPos(
 ): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect()
   
+  // 计算 Canvas 的缩放比例（内部尺寸 / 显示尺寸）
+  const scaleX = canvas.width / rect.width
+  const scaleY = canvas.height / rect.height
+  
   if ('touches' in e && e.touches.length > 0) {
     // 触摸事件
     const touch = e.touches[0]
     return {
-      x: touch.clientX - rect.left,
-      y: touch.clientY - rect.top
+      x: (touch.clientX - rect.left) * scaleX,
+      y: (touch.clientY - rect.top) * scaleY
     }
   } else if ('clientX' in e) {
     // 鼠标事件
     return {
-      x: (e as MouseEvent).clientX - rect.left,
-      y: (e as MouseEvent).clientY - rect.top
+      x: ((e as MouseEvent).clientX - rect.left) * scaleX,
+      y: ((e as MouseEvent).clientY - rect.top) * scaleY
     }
   }
   

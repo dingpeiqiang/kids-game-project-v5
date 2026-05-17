@@ -3,9 +3,7 @@ import { audioService } from '../../services/audio'
 import { ParticleSystem } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
 import { Renderer } from './Renderer'
-import { Shooter, Projectile, MatchPosition } from './types'
-
-export type PowerupType = 'color_bomb' | 'clear_row' | 'extra_shot' | 'multishot' | null
+import { Shooter, Projectile, MatchPosition, PowerupType, SpecialBubbleType } from './types'
 
 interface LevelConfig {
   level: number
@@ -59,11 +57,18 @@ export class BubbleShooterGame {
   
   // 游戏状态
   private board: (number | null)[][] = []
+  private specialBoard: (SpecialBubbleType | null)[][] = []
   private shooter: Shooter
   private projectile: Projectile | null = null
   private mouseX: number = 0
-  private currentPowerup: PowerupType = null
-  private nextPowerup: PowerupType = null
+  private currentPowerup: PowerupType | null = null
+  private nextPowerup: PowerupType | null = null
+  private isSlowMotion: boolean = false
+  private slowMotionTimer: number = 0
+  private isTimeFrozen: boolean = false
+  private timeFreezeTimer: number = 0
+  private isDoubleScore: boolean = false
+  private doubleScoreTimer: number = 0
   
   // 系统模块
   private particleSystem: ParticleSystem
@@ -124,11 +129,17 @@ export class BubbleShooterGame {
     this.levelTransitioning = false
     this.gameEnded = false
     
+    // 重置道具状态
+    this.isSlowMotion = false
+    this.isTimeFrozen = false
+    this.isDoubleScore = false
+    
     // 重置发射器和泡泡状态
     this.projectile = null
     this.shooter.color = this.getNextShooterColor()
-    this.currentPowerup = null
+    this.nextPowerup = null
     this.generatePowerup()
+    this.currentPowerup = this.nextPowerup
     
     this.initBoard()
     this.gameStartTime = Date.now()
@@ -143,8 +154,35 @@ export class BubbleShooterGame {
   }
 
   update() {
+    const now = Date.now()
+    
+    if (this.isSlowMotion) {
+      this.slowMotionTimer -= 16
+      if (this.slowMotionTimer <= 0) {
+        this.isSlowMotion = false
+        this.engine.setMessage('')
+      }
+    }
+    
+    if (this.isTimeFrozen) {
+      this.timeFreezeTimer -= 16
+      if (this.timeFreezeTimer <= 0) {
+        this.isTimeFrozen = false
+        this.engine.setMessage('')
+      }
+    }
+    
+    if (this.isDoubleScore) {
+      this.doubleScoreTimer -= 16
+      if (this.doubleScoreTimer <= 0) {
+        this.isDoubleScore = false
+        this.engine.setMessage('')
+      }
+    }
+    
     if (this.projectile) {
-      this.updateProjectile()
+      const speedMultiplier = this.isSlowMotion ? 0.3 : 1
+      this.updateProjectile(speedMultiplier)
     }
     
     this.particleSystem.update()
@@ -152,7 +190,7 @@ export class BubbleShooterGame {
     
     // 关卡过渡中不处理游戏逻辑
     if (this.levelTransitioning) {
-      const elapsed = Date.now() - this.levelCompleteTime
+      const elapsed = now - this.levelCompleteTime
       if (elapsed > 2500) {
         if (this.currentLevel < this.LEVELS.length) {
           this.loadLevel(this.currentLevel + 1)
@@ -175,14 +213,16 @@ export class BubbleShooterGame {
         return
       }
       
-      const elapsed = Date.now() - this.gameStartTime
-      if (elapsed > this.currentLevelConfig.timeLimit * 1000) {
-        this.gameEnded = true
-        this.engine.setMessage('⏰ 时间到！游戏结束')
-        setTimeout(() => {
-          this.engine.endGame()
-          this.onEnd()
-        }, 2000)
+      if (!this.isTimeFrozen) {
+        const elapsed = now - this.gameStartTime
+        if (elapsed > this.currentLevelConfig.timeLimit * 1000) {
+          this.gameEnded = true
+          this.engine.setMessage('⏰ 时间到！游戏结束')
+          setTimeout(() => {
+            this.engine.endGame()
+            this.onEnd()
+          }, 2000)
+        }
       }
     }
   }
@@ -190,6 +230,7 @@ export class BubbleShooterGame {
   render() {
     this.renderer.render(
       this.board,
+      this.specialBoard,
       this.shooter,
       this.projectile,
       this.mouseX,
@@ -233,21 +274,31 @@ export class BubbleShooterGame {
 
   private initBoard() {
     this.board = []
+    this.specialBoard = []
     const maxColor = Math.min(this.currentLevelConfig.bubbleColors, this.COLORS.length)
+    const specialChance = Math.min(0.1 + this.currentLevel * 0.02, 0.25)
+    
+    const filledRows = Math.min(this.currentLevelConfig.rows - 2, 6)
     
     for (let y = 0; y < this.ROWS; y++) {
       this.board[y] = []
+      this.specialBoard[y] = []
       for (let x = 0; x < this.COLS; x++) {
+        // 底部两行留空，让玩家有空间发射泡泡
+        if (y >= this.ROWS - 2) {
+          this.board[y][x] = null
+          this.specialBoard[y][x] = null
+          continue
+        }
+        
         let color = Math.floor(Math.random() * maxColor)
+        let specialType: SpecialBubbleType | null = null
         
         // 避免初始棋盘就有3个或更多相同颜色的泡泡连在一起
-        // 检查左边两个和上边两个
         const leftCount = this.countLeftMatches(y, x, color)
         const upCount = this.countUpMatches(y, x, color)
         
-        // 如果左边或上边已经有2个相同颜色，换一个颜色
         if (leftCount >= 2 || upCount >= 2) {
-          // 选择一个不同的颜色
           let newColor = Math.floor(Math.random() * maxColor)
           while (newColor === color && maxColor > 1) {
             newColor = Math.floor(Math.random() * maxColor)
@@ -255,13 +306,16 @@ export class BubbleShooterGame {
           color = newColor
         }
         
+        // 随机生成特殊泡泡
+        if (Math.random() < specialChance && y < filledRows - 2) {
+          const specials: SpecialBubbleType[] = ['bomb', 'rainbow', 'sticky']
+          specialType = specials[Math.floor(Math.random() * specials.length)]
+        }
+        
         this.board[y][x] = color
+        this.specialBoard[y][x] = specialType
       }
     }
-    
-    // 生成道具泡泡
-    this.generatePowerup()
-    this.shooter.color = Math.floor(Math.random() * maxColor)
   }
 
   private countLeftMatches(row: number, col: number, color: number): number {
@@ -291,7 +345,7 @@ export class BubbleShooterGame {
 
   private generatePowerup() {
     if (Math.random() < this.currentLevelConfig.powerupChance) {
-      const powerups: PowerupType[] = ['color_bomb', 'clear_row', 'extra_shot', 'multishot']
+      const powerups: PowerupType[] = ['color_bomb', 'clear_row', 'extra_shot', 'multishot', 'time_freeze', 'slow_motion', 'double_score']
       this.nextPowerup = powerups[Math.floor(Math.random() * powerups.length)]
     } else {
       this.nextPowerup = null
@@ -383,11 +437,11 @@ export class BubbleShooterGame {
     audioService.click()
   }
 
-  private updateProjectile() {
+  private updateProjectile(speedMultiplier: number = 1) {
     if (!this.projectile) return
 
-    this.projectile.x += this.projectile.vx
-    this.projectile.y += this.projectile.vy
+    this.projectile.x += this.projectile.vx * speedMultiplier
+    this.projectile.y += this.projectile.vy * speedMultiplier
 
     // 添加飞行轨迹粒子
     if (Math.random() > 0.6) {
@@ -410,23 +464,21 @@ export class BubbleShooterGame {
       this.playBounceEffect(this.projectile.x, this.projectile.y)
     }
 
-    // 顶部碰撞
+    // 顶部反弹
     if (this.projectile.y - this.BUBBLE_SIZE / 2 <= 30) {
       this.projectile.y = this.BUBBLE_SIZE / 2 + 30
+      this.projectile.vy *= -0.9
       this.playBounceEffect(this.projectile.x, this.projectile.y)
-      this.attachBubble()
-      return
     }
 
-    // 底部碰撞 - 不反弹，直接附着
+    // 底部反弹
     if (this.projectile.y + this.BUBBLE_SIZE / 2 >= this.SHOOTER_Y) {
       this.projectile.y = this.SHOOTER_Y - this.BUBBLE_SIZE / 2
+      this.projectile.vy *= -0.9
       this.playBounceEffect(this.projectile.x, this.projectile.y)
-      this.attachBubble()
-      return
     }
 
-    // 与已有的泡泡碰撞检测
+    // 与已有的泡泡碰撞检测（只有碰到泡泡才停止并附着）
     for (let r = 0; r < this.ROWS; r++) {
       for (let c = 0; c < this.COLS; c++) {
         if (this.board[r]?.[c] === null || this.board[r]?.[c] === undefined) continue
@@ -503,47 +555,51 @@ export class BubbleShooterGame {
   private attachBubble(hitRow?: number, hitCol?: number) {
     if (!this.projectile) return
     
+    const hasPowerup = this.projectile.powerup
+    const powerup = this.projectile.powerup
+    
     // 处理道具泡泡效果
-    if (this.projectile.powerup) {
-      this.usePowerup(this.projectile.powerup)
-      this.projectile = null
+    if (hasPowerup) {
+      const consumesBubble = ['color_bomb', 'clear_row', 'multishot'].includes(powerup!)
+      
+      this.usePowerup(powerup!)
       this.currentPowerup = null
       this.generatePowerup()
-      this.shooter.color = this.getNextShooterColor()
-      return
+      
+      if (consumesBubble) {
+        this.projectile = null
+        this.shooter.color = this.getNextShooterColor()
+        return
+      }
     }
     
-    // 没有碰撞位置时，找到最近的空位（优先底部）
-    this.findLowestEmptyPosition()
+    // 找到离泡泡最近的空位
+    this.findNearestEmptyPosition()
   }
 
   private findAttachPosition(hitRow: number, hitCol: number) {
     if (!this.projectile) return
     
+    const hasPowerup = this.projectile.powerup
+    const powerup = this.projectile.powerup
+    
     // 处理道具泡泡效果
-    if (this.projectile.powerup) {
-      this.usePowerup(this.projectile.powerup)
-      this.projectile = null
+    if (hasPowerup) {
+      const consumesBubble = ['color_bomb', 'clear_row', 'multishot'].includes(powerup!)
+      
+      this.usePowerup(powerup!)
       this.currentPowerup = null
       this.generatePowerup()
-      this.shooter.color = this.getNextShooterColor()
-      return
+      
+      if (consumesBubble) {
+        this.projectile = null
+        this.shooter.color = this.getNextShooterColor()
+        return
+      }
     }
     
-    // 获取碰撞点的相邻位置（六边形网格）
-    const neighbors = this.getHexNeighbors(hitRow, hitCol)
-    
-    // 根据泡泡运动方向找到最合适的附着位置
-    const bestPos = this.findBestAttachPosition(neighbors)
-    
-    if (bestPos) {
-      this.board[bestPos.r][bestPos.c] = this.projectile.color
-      this.processMatches(bestPos.r, bestPos.c)
-      return
-    }
-    
-    // 如果附近没有空位，找最低的空位
-    this.findLowestEmptyPosition()
+    // 找到离泡泡最近的空位
+    this.findNearestEmptyPosition()
   }
 
   private getHexNeighbors(row: number, col: number): Array<{r: number, c: number}> {
@@ -597,39 +653,46 @@ export class BubbleShooterGame {
     return bestPos
   }
 
-  private findLowestEmptyPosition() {
+  private findNearestEmptyPosition() {
     if (!this.projectile) return
     
-    // 找到最低的空位（最底部优先）
-    for (let r = this.ROWS - 1; r >= 0; r--) {
+    const px = this.projectile.x
+    const py = this.projectile.y
+    
+    let bestRow = -1
+    let bestCol = -1
+    let bestDist = Infinity
+    
+    // 遍历所有格子，找到离泡泡当前位置最近的空位
+    for (let r = 0; r < this.ROWS; r++) {
       for (let c = 0; c < this.COLS; c++) {
         if (this.board[r]?.[c] === null || this.board[r]?.[c] === undefined) {
-          // 检查这个位置是否有支撑（下方或相邻有泡泡）
-          if (this.hasSupport(r, c)) {
-            this.board[r][c] = this.projectile.color
-            this.processMatches(r, c)
-            return
+          const pos = this.renderer.getBubblePos(c, r)
+          const dist = Math.hypot(px - pos.bx, py - pos.by)
+          
+          if (dist < bestDist) {
+            bestDist = dist
+            bestRow = r
+            bestCol = c
           }
         }
       }
     }
     
-    // 如果没有支撑，找任意空位
-    for (let r = this.ROWS - 1; r >= 0; r--) {
-      for (let c = 0; c < this.COLS; c++) {
-        if (this.board[r]?.[c] === null || this.board[r]?.[c] === undefined) {
-          this.board[r][c] = this.projectile.color
-          this.processMatches(r, c)
-          return
-        }
-      }
+    // 如果找到了空位
+    if (bestRow >= 0 && bestCol >= 0) {
+      this.board[bestRow][bestCol] = this.projectile.color
+      this.processMatches(bestRow, bestCol)
+      return
     }
     
-    // 如果没有找到空位，重置游戏状态
-    this.projectile = null
-    this.currentPowerup = this.nextPowerup
-    this.generatePowerup()
-    this.shooter.color = this.getNextShooterColor()
+    // 如果棋盘已满，游戏结束
+    this.gameEnded = true
+    this.engine.setMessage('💥 棋盘已满！游戏结束')
+    setTimeout(() => {
+      this.engine.endGame()
+      this.onEnd()
+    }, 2000)
   }
 
   private hasSupport(row: number, col: number): boolean {
@@ -649,125 +712,75 @@ export class BubbleShooterGame {
   private attachBubbleAtPosition(hitRow: number, hitCol: number) {
     if (!this.projectile) return
     
+    const hasPowerup = this.projectile.powerup
+    const powerup = this.projectile.powerup
+    
     // 处理道具泡泡效果
-    if (this.projectile.powerup) {
-      this.usePowerup(this.projectile.powerup)
-      this.projectile = null
+    if (hasPowerup) {
+      const consumesBubble = ['color_bomb', 'clear_row', 'multishot'].includes(powerup!)
+      
+      this.usePowerup(powerup!)
       this.currentPowerup = null
       this.generatePowerup()
-      this.shooter.color = this.getNextShooterColor()
-      return
-    }
-    
-    // 获取泡泡的实际位置
-    const px = this.projectile.x
-    const py = this.projectile.y
-    
-    // 获取碰撞点的位置
-    const hitPos = this.renderer.getBubblePos(hitCol, hitRow)
-    
-    // 首先检查碰撞点周围的空位
-    const neighbors = this.getHexNeighbors(hitRow, hitCol)
-    
-    // 找到离泡泡实际位置最近的空位（必须与碰撞点相邻）
-    let bestRow = -1
-    let bestCol = -1
-    let bestDist = Infinity
-    
-    for (const n of neighbors) {
-      if (n.r < 0 || n.r >= this.ROWS || n.c < 0 || n.c >= this.COLS) continue
-      if (this.board[n.r]?.[n.c] !== null && this.board[n.r]?.[n.c] !== undefined) continue
       
-      const pos = this.renderer.getBubblePos(n.c, n.r)
-      const dist = Math.hypot(px - pos.bx, py - pos.by)
-      
-      if (dist < bestDist) {
-        bestDist = dist
-        bestRow = n.r
-        bestCol = n.c
+      if (consumesBubble) {
+        this.projectile = null
+        this.shooter.color = this.getNextShooterColor()
+        return
       }
     }
     
-    // 如果在碰撞点附近找到了空位
-    if (bestRow >= 0 && bestCol >= 0) {
-      this.board[bestRow][bestCol] = this.projectile.color
-      this.processMatches(bestRow, bestCol)
-      return
-    }
+    // 找到离泡泡最近的空位
+    this.findNearestEmptyPosition()
+  }
+
+  private processMatches(row: number, col: number) {
+    const projectileColor = this.projectile!.color
+    const projectileX = this.projectile!.x
+    const projectileY = this.projectile!.y
+    const specialType = this.specialBoard[row]?.[col]
     
-    // 如果附近没有空位，尝试将泡泡放置到碰撞点的正后方（根据运动方向）
-    const dx = px - hitPos.bx
-    const dy = py - hitPos.by
-    const angle = Math.atan2(dy, dx)
+    let effectiveColor = projectileColor
     
-    // 根据运动方向找到合适的位置
-    const directionRow = dy > 0 ? 1 : -1
-    const directionCol = dx > 0 ? 1 : -1
-    
-    // 在碰撞点周围更大范围内搜索
-    for (let dr = -2; dr <= 2; dr++) {
-      for (let dc = -2; dc <= 2; dc++) {
-        const newRow = hitRow + dr
-        const newCol = hitCol + dc
-        
-        if (newRow < 0 || newRow >= this.ROWS || newCol < 0 || newCol >= this.COLS) continue
-        if (this.board[newRow]?.[newCol] !== null && this.board[newRow]?.[newCol] !== undefined) continue
-        
-        const pos = this.renderer.getBubblePos(newCol, newRow)
-        const dist = Math.hypot(px - pos.bx, py - pos.by)
-        
-        if (dist < bestDist) {
-          bestDist = dist
-          bestRow = newRow
-          bestCol = newCol
+    if (specialType === 'rainbow') {
+      for (let c = 0; c < this.COLORS.length; c++) {
+        const rainbowMatches = this.findMatches(row, col, c)
+        if (rainbowMatches.length >= 2) {
+          effectiveColor = c
+          break
         }
       }
     }
     
-    // 如果找到了空位
-    if (bestRow >= 0 && bestCol >= 0) {
-      this.board[bestRow][bestCol] = this.projectile.color
-      this.processMatches(bestRow, bestCol)
-      return
-    }
-    
-    // 如果没有找到空位，重置游戏状态
-    this.projectile = null
-    this.currentPowerup = this.nextPowerup
-    this.generatePowerup()
-    this.shooter.color = this.getNextShooterColor()
-  }
-
-  private processMatches(row: number, col: number) {
-    // 在异步回调之前保存projectile的颜色值
-    const projectileColor = this.projectile!.color
-    const projectileX = this.projectile!.x
-    const projectileY = this.projectile!.y
-    
-    const matches = this.findMatches(row, col, projectileColor)
+    const matches = this.findMatches(row, col, effectiveColor)
       
     if (matches.length >= 3) {
-      const baseScore = matches.length * 20
+      let baseScore = matches.length * 20
       const totalScore = this.comboSystem.addCombo(baseScore, projectileX, projectileY)
       
-      this.engine.addScore(totalScore, projectileX, projectileY)
+      const finalScore = this.isDoubleScore ? totalScore * 2 : totalScore
+      this.engine.addScore(finalScore, projectileX, projectileY)
       audioService.win()
       
-      // 立即消除所有匹配的泡泡
       matches.forEach((m) => {
         const pos = this.renderer.getBubblePos(m.col, m.row)
-        // 更多粒子的爆炸效果
-        this.particleSystem.addExplosion(pos.bx, pos.by, this.COLORS[projectileColor], 20)
-        // 添加火花特效
-        this.particleSystem.addSparkle(pos.bx, pos.by, '#FFD700', 10)
+        const bubbleSpecial = this.specialBoard[m.row]?.[m.col]
+        
+        if (bubbleSpecial === 'bomb') {
+          this.triggerBombExplosion(m.row, m.col)
+        } else {
+          this.particleSystem.addExplosion(pos.bx, pos.by, this.COLORS[effectiveColor], 20)
+          this.particleSystem.addSparkle(pos.bx, pos.by, '#FFD700', 10)
+        }
+        
         this.board[m.row][m.col] = null
+        this.specialBoard[m.row][m.col] = null
       })
 
       if (this.comboSystem.getCombo() >= 3) {
         this.engine.triggerRandomBuff()
       }
 
-      // 检查浮动泡泡
       setTimeout(() => {
         this.checkFloatingBubbles()
       }, 100)
@@ -780,6 +793,37 @@ export class BubbleShooterGame {
     this.currentPowerup = this.nextPowerup
     this.generatePowerup()
     this.shooter.color = this.getNextShooterColor()
+  }
+
+  private triggerBombExplosion(row: number, col: number) {
+    const pos = this.renderer.getBubblePos(col, row)
+    this.particleSystem.addExplosion(pos.bx, pos.by, '#FF4444', 30)
+    
+    let bombScore = 0
+    const affected = []
+    
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = row + dr
+        const nc = col + dc
+        if (nr >= 0 && nr < this.ROWS && nc >= 0 && nc < this.COLS) {
+          if (this.board[nr][nc] !== null && this.board[nr][nc] !== undefined) {
+            affected.push({ r: nr, c: nc })
+            bombScore += 25
+          }
+        }
+      }
+    }
+    
+    affected.forEach(a => {
+      const aPos = this.renderer.getBubblePos(a.c, a.r)
+      this.particleSystem.addSparkle(aPos.bx, aPos.by, '#FFD700', 8)
+      this.board[a.r][a.c] = null
+      this.specialBoard[a.r][a.c] = null
+    })
+    
+    const finalScore = this.isDoubleScore ? bombScore * 2 : bombScore
+    this.engine.addScore(finalScore, pos.bx, pos.by)
   }
 
   private usePowerup(type: string) {
@@ -795,6 +839,15 @@ export class BubbleShooterGame {
         break
       case 'multishot':
         this.useMultishot()
+        break
+      case 'time_freeze':
+        this.useTimeFreeze()
+        break
+      case 'slow_motion':
+        this.useSlowMotion()
+        break
+      case 'double_score':
+        this.useDoubleScore()
         break
     }
   }
@@ -903,6 +956,30 @@ export class BubbleShooterGame {
     this.engine.addScore(100, this.W / 2, this.H / 2)
     this.engine.setMessage('🔫 三连射！')
     setTimeout(() => this.engine.setMessage(''), 1500)
+    audioService.win()
+  }
+
+  private useTimeFreeze() {
+    this.isTimeFrozen = true
+    this.timeFreezeTimer = 5000
+    this.engine.addScore(50, this.W / 2, this.H / 2)
+    this.engine.setMessage('⏸️ 时间冻结！')
+    audioService.win()
+  }
+
+  private useSlowMotion() {
+    this.isSlowMotion = true
+    this.slowMotionTimer = 4000
+    this.engine.addScore(50, this.W / 2, this.H / 2)
+    this.engine.setMessage('🐢 慢动作！')
+    audioService.win()
+  }
+
+  private useDoubleScore() {
+    this.isDoubleScore = true
+    this.doubleScoreTimer = 8000
+    this.engine.addScore(50, this.W / 2, this.H / 2)
+    this.engine.setMessage('💎 双倍分数！')
     audioService.win()
   }
 

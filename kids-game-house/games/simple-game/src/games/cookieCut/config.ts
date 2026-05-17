@@ -21,19 +21,19 @@ export const POWERUP_ICONS: Record<string, string> = {
   'magnet': '🧲'      // 磁铁 - 自动吸引附近饼干
 }
 
-// 游戏配置（适合小朋友的难度）
+// 游戏配置（解压版 - 快节奏爽快感）
 export const GAME_CONFIG: GameConfig = {
   canvasWidth: 400,
   canvasHeight: 600,
   gameDuration: 60000, // 60秒
-  spawnInterval: 1500, // 每1.5秒生成一个饼干
-  maxCookies: 3,
-  cookieSizeMin: 50,
-  cookieSizeMax: 70,
-  baseVerticalSpeed: 3,      // 基础垂直速度（较慢）
-  verticalSpeedRange: 2,     // 垂直速度随机范围
-  baseHorizontalSpeed: 1.5,  // 基础水平速度（较慢）
-  rotationSpeed: 0.08,       // 旋转速度（较缓）
+  spawnInterval: 600, // 每0.6秒生成一个饼干（更快）
+  maxCookies: 8, // 最多8个饼干同时存在（更多）
+  cookieSizeMin: 45,
+  cookieSizeMax: 75,
+  baseVerticalSpeed: 4.5,      // 基础垂直速度（更快）
+  verticalSpeedRange: 3,     // 垂直速度随机范围
+  baseHorizontalSpeed: 2.5,  // 基础水平速度（更快）
+  rotationSpeed: 0.15,       // 旋转速度（更带感）
 }
 
 // 粒子颜色

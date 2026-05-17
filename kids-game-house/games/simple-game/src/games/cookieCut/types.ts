@@ -33,6 +33,7 @@ export interface Particle {
   rotation?: number
   rotSpeed?: number
   isFalling?: boolean // 标记是否为掉落粒子
+  isSparkle?: boolean // 标记是否为闪光粒子
 }
 
 export interface Slice {

@@ -27,6 +27,14 @@ export class EliminateGame {
   private PADDING = 15 // 统一的边距值
   private readonly ALL_COLORS = ['#FF6B6B', '#FF8E53', '#FFD93D', '#6BCB77', '#4D96FF', '#9B59B6']
   
+  // 缓存的渐变对象
+  private rainbowGradient: CanvasGradient | null = null
+  private itemGlowGradients: Map<string, CanvasGradient> = new Map()
+  
+  // 性能优化：缓存常用值
+  private lastRenderTime = 0
+  private animationFrameId: number | null = null
+  
   // 道具颜色配置
   private readonly ITEM_COLORS: Record<string, string> = {
     'time_extend': '#FFD700',    // 金色 - 时间延长
@@ -991,144 +999,144 @@ export class EliminateGame {
     
     const color = block.getColor()
     const same: number[] = []
-    const vis = new Set<number>()
+    const blocks = this.blocks
+    const cols = this.COLS
+    const grid = this.GRID
     
-    // 洪水填充算法查找相同颜色的连通块
-    const flood = (i: number) => {
-      if (vis.has(i) || !this.blocks[i] || this.blocks[i].getColor() !== color) return
-      if (this.blocks[i].isRainbow() && color !== this.blocks[i].getColor()) return
+    // 使用迭代BFS替代递归DFS，避免栈溢出
+    const visited = new Uint8Array(blocks.length)
+    const stack = [idx]
+    visited[idx] = 1
+    
+    while (stack.length > 0 && same.length < 50) {
+      const i = stack.pop()!
       
-      vis.add(i)
+      if (!blocks[i] || blocks[i].getColor() !== color) continue
+      if (blocks[i].isRainbow() && color !== blocks[i].getColor()) continue
+      
       same.push(i)
       
-      const r = Math.floor(i / this.COLS), c = i % this.COLS
-      if (r > 0) flood(i - this.COLS)
-      if (r < this.GRID - 1) flood(i + this.COLS)
-      if (c > 0) flood(i - 1)
-      if (c < this.COLS - 1) flood(i + 1)
+      const r = i / cols | 0
+      const c = i % cols
+      
+      // 上
+      if (r > 0 && !visited[i - cols]) {
+        visited[i - cols] = 1
+        stack.push(i - cols)
+      }
+      // 下
+      if (r < grid - 1 && !visited[i + cols]) {
+        visited[i + cols] = 1
+        stack.push(i + cols)
+      }
+      // 左
+      if (c > 0 && !visited[i - 1]) {
+        visited[i - 1] = 1
+        stack.push(i - 1)
+      }
+      // 右
+      if (c < cols - 1 && !visited[i + 1]) {
+        visited[i + 1] = 1
+        stack.push(i + 1)
+      }
     }
-    
-    flood(idx)
     
     if (same.length < 3) {
       this.engine.breakCombo()
-      // 错误反馈动画
-      same.forEach(i => {
-        if (this.blocks[i]) {
-          this.blocks[i].shake()
-        }
-      })
-      audioService.lose() // 播放失败音效
+      for (let i = 0; i < same.length; i++) {
+        const b = blocks[same[i]]
+        if (b) b.shake()
+      }
+      audioService.lose()
       return
     }
     
     // 标记消除
-    same.forEach(i => {
-      if (this.blocks[i]) this.blocks[i].setExploding(true)
-    })
+    const sameLen = same.length
+    for (let i = 0; i < sameLen; i++) {
+      const b = blocks[same[i]]
+      if (b) b.setExploding(true)
+    }
     
-    // 计算分数和连击倍数
-    const basePoints = same.length * 10
-    const comboMultiplier = 1 + (same.length - 3) * 0.5
+    const basePoints = sameLen * 10
+    const comboMultiplier = 1 + (sameLen - 3) * 0.5
     let pts = Math.round(basePoints * comboMultiplier * this.comboMultiplier)
     
-    // 双倍分数效果（道具）
     if (this.doubleScoreActive) {
       pts *= 2
     }
     
-    // 增加连击倍数
     this.comboMultiplier += 0.1
     if (this.comboMultiplier > 3) this.comboMultiplier = 3
     
     this.engine.addScore(pts, mx, my)
     this.engine.triggerRandomBuff()
     
-    // 触发闪光效果
-    this.flashEffect = Math.min(same.length * 0.1, 0.8)
+    this.flashEffect = Math.min(sameLen * 0.08, 0.6)
     
-    // 根据消除数量播放不同的音效
-    if (same.length >= 8) {
-      audioService.win() // 大量消除播放胜利音效
-    } else if (same.length >= 5) {
-      audioService.buff() // 中等消除播放增益音效
+    if (sameLen >= 8) {
+      audioService.win()
+    } else if (sameLen >= 5) {
+      audioService.buff()
     } else {
-      audioService.collect() // 小量消除播放收集音效
+      audioService.collect()
     }
     
-    // 收集道具 - 立即自动生效
     const collectedItems: string[] = []
-    same.forEach(i => {
-      if (this.blocks[i] && this.blocks[i].getItem()) {
-        const itemId = this.blocks[i].getItem()!
-        if (!collectedItems.includes(itemId)) {
-          collectedItems.push(itemId)
-          
-          // 显示收集提示
-          const itemData = GAME_ITEMS.find(item => item.id === itemId)
-          if (itemData) {
-            this.comboSystem.addText(`${itemData.icon} ${itemData.name}!`, mx, my - 50 - collectedItems.length * 30)
-          }
-          
-          // 触发道具收集特效（光环 + 闪光）
-          this.triggerPowerupCollectEffect(itemId, mx, my)
-          
-          // ⭐ 立即使用道具效果（自动生效）
-          this.usePowerupImmediately(itemId, mx, my)
+    const itemSet = new Set<string>()
+    for (let i = 0; i < sameLen; i++) {
+      const idx = same[i]
+      const b = blocks[idx]
+      if (!b) continue
+      
+      const itemId = b.getItem()
+      if (itemId && !itemSet.has(itemId)) {
+        itemSet.add(itemId)
+        collectedItems.push(itemId)
+        
+        const itemData = GAME_ITEMS.find(item => item.id === itemId)
+        if (itemData) {
+          this.comboSystem.addText(`${itemData.icon} ${itemData.name}!`, mx, my - 50 - collectedItems.length * 30)
         }
+        
+        this.triggerPowerupCollectEffect(itemId, mx, my)
+        this.usePowerupImmediately(itemId, mx, my)
       }
       
-      // 收集宝石
-      if (this.blocks[i] && this.blocks[i].hasStar()) {
+      if (b.hasStar()) {
         this.collectedStars++
         this.comboSystem.addText(`💎 +1 (${this.collectedStars}/${this.levelConfig?.targetStars})`, mx, my - 80)
         audioService.collect()
       }
-    })
+    }
     
-    // 更新道具栏显示（仅用于视觉反馈）
     if (collectedItems.length > 0) {
       audioService.buff()
     }
-
     
-    // 根据消除数量设置震动强度
-    this.screenShake = Math.min(same.length * 1.5, 15)
+    this.screenShake = Math.min(sameLen * 1.2, 12)
     
-    // 添加连击文字特效
-    if (same.length >= 4) {
-      this.comboSystem.addText(`${same.length} 连消!`, mx, my - 30)
+    if (sameLen >= 4) {
+      this.comboSystem.addText(`${sameLen} 连消!`, mx, my - 30)
     }
-    if (same.length >= 6) {
-      setTimeout(() => {
-        this.comboSystem.addText('太棒了!', mx, my - 60)
-      }, 100)
+    if (sameLen >= 6) {
+      setTimeout(() => this.comboSystem.addText('太棒了!', mx, my - 60), 100)
     }
-    if (same.length >= 8) {
-      setTimeout(() => {
-        this.comboSystem.addText('完美!', mx, my - 90)
-      }, 200)
-    }
-    if (same.length >= 10) {
-      setTimeout(() => {
-        this.comboSystem.addText('超级连消!', mx, my - 120)
-      }, 300)
-    }
-    if (same.length >= 12) {
-      setTimeout(() => {
-        this.comboSystem.addText('无敌了!', mx, my - 150)
-      }, 400)
+    if (sameLen >= 8) {
+      setTimeout(() => this.comboSystem.addText('完美!', mx, my - 90), 200)
     }
     
-    // 创建华丽的爆炸粒子效果
-    same.forEach(i => {
-      const b = this.blocks[i]
-      if (!b) return
-      const x = this.PADDING + b.getC() * this.CELL + this.CELL / 2
-      const y = this.TOP + b.getR() * this.CELL + this.CELL / 2
-      
-      this.particleSystem.createExplosion(x, y, b.getColor(), same.length)
-    })
+    const padding = this.PADDING
+    const cell = this.CELL
+    const top = this.TOP
+    const particleSystem = this.particleSystem
+    for (let i = 0; i < sameLen; i += 2) {
+      const b = blocks[same[i]]
+      if (!b) continue
+      const x = padding + b.getC() * cell + cell / 2
+      const y = top + b.getR() * cell + cell / 2
+      particleSystem.createExplosion(x, y, b.getColor(), sameLen)
+    }
     
     // Mega buff - 全屏消除更震撼
     if (this.engine.hasBuff('mega')) {
@@ -1194,42 +1202,62 @@ export class EliminateGame {
   }
   
   private hasValidMove(): boolean {
-    // ⭐ 恢复：检查是否存在3个或以上相连的同色方块
-    for (let i = 0; i < this.blocks.length; i++) {
-      if (!this.blocks[i]) continue
+    const blocks = this.blocks
+    const grid = this.GRID
+    const cols = this.COLS
+    const visited = new Uint8Array(blocks.length)
+    
+    for (let i = 0; i < blocks.length; i++) {
+      if (!blocks[i]) continue
       
-      const color = this.blocks[i].getColor()
-      const r = Math.floor(i / this.COLS)
-      const c = i % this.COLS
+      const color = blocks[i].getColor()
+      if (!color) continue
       
-      // 使用BFS/DFS检查连通性
-      const visited = new Set<number>()
-      const queue: number[] = [i]
-      visited.add(i)
+      // 跳过已经访问过的方块
+      if (visited[i]) continue
+      
       let count = 0
+      let queueStart = 0
+      const queue = [i]
+      visited[i] = 1
       
-      while (queue.length > 0 && count < 3) {
-        const curr = queue.shift()!
+      while (queueStart < queue.length && count < 3) {
+        const curr = queue[queueStart++]
         count++
         
-        const cr = Math.floor(curr / this.COLS)
-        const cc = curr % this.COLS
+        const cr = curr / cols | 0
+        const cc = curr % cols
         
-        // 检查四个方向
-        const directions = [
-          { r: cr - 1, c: cc }, // 上
-          { r: cr + 1, c: cc }, // 下
-          { r: cr, c: cc - 1 }, // 左
-          { r: cr, c: cc + 1 }  // 右
-        ]
-        
-        for (const dir of directions) {
-          if (dir.r >= 0 && dir.r < this.GRID && dir.c >= 0 && dir.c < this.COLS) {
-            const idx = dir.r * this.COLS + dir.c
-            if (!visited.has(idx) && this.blocks[idx] && this.blocks[idx].getColor() === color) {
-              visited.add(idx)
-              queue.push(idx)
-            }
+        // 上
+        if (cr > 0) {
+          const idx = (cr - 1) * cols + cc
+          if (!visited[idx] && blocks[idx] && blocks[idx].getColor() === color) {
+            visited[idx] = 1
+            queue.push(idx)
+          }
+        }
+        // 下
+        if (cr < grid - 1) {
+          const idx = (cr + 1) * cols + cc
+          if (!visited[idx] && blocks[idx] && blocks[idx].getColor() === color) {
+            visited[idx] = 1
+            queue.push(idx)
+          }
+        }
+        // 左
+        if (cc > 0) {
+          const idx = cr * cols + cc - 1
+          if (!visited[idx] && blocks[idx] && blocks[idx].getColor() === color) {
+            visited[idx] = 1
+            queue.push(idx)
+          }
+        }
+        // 右
+        if (cc < cols - 1) {
+          const idx = cr * cols + cc + 1
+          if (!visited[idx] && blocks[idx] && blocks[idx].getColor() === color) {
+            visited[idx] = 1
+            queue.push(idx)
           }
         }
       }
@@ -1357,171 +1385,160 @@ export class EliminateGame {
   }
   
   private drawBlocks() {
+    const ctx = this.ctx
     const padding = 15
-    this.blocks.forEach((b, i) => {
-      if (!b) return
+    const now = Date.now()
+    const pulseBase = Math.sin(now * 0.008) * 0.3 + 0.7
+    
+    ctx.font = `bold ${Math.floor(this.CELL * 0.4)}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    
+    for (let i = 0; i < this.blocks.length; i++) {
+      const b = this.blocks[i]
+      if (!b) continue
+      
       const x = padding + b.getC() * this.CELL + this.CELL / 2
       const y = this.TOP + b.getR() * this.CELL + this.CELL / 2
       const size = this.CELL * 0.4 * b.getScale()
       
-      this.ctx.globalAlpha = b.getAlpha()
+      ctx.globalAlpha = b.getAlpha()
       
-      // 检查是否是提示高亮的方块
       const isHinted = this.hintActive && this.hintBlocks.includes(i)
       
       if (b.isRainbow()) {
-        const grad = this.ctx.createLinearGradient(x - size, y - size, x + size, y + size)
-        this.COLORS.forEach((c, idx) => grad.addColorStop(idx / this.COLORS.length, c))
-        this.ctx.fillStyle = grad
+        if (!this.rainbowGradient) {
+          this.rainbowGradient = ctx.createLinearGradient(0, 0, this.CELL, this.CELL)
+          this.COLORS.forEach((c, idx) => this.rainbowGradient!.addColorStop(idx / this.COLORS.length, c))
+        }
+        ctx.fillStyle = this.rainbowGradient
       } else {
-        this.ctx.fillStyle = b.getColor()
+        ctx.fillStyle = b.getColor()
       }
       
-      // 检查是否是选中的方块
       const isSelected = this.selectedBlock === i
       
-      // 如果是选中状态，添加金色脉冲光晕效果
       if (isSelected) {
-        const pulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
-        this.ctx.shadowColor = '#FFD700'
-        this.ctx.shadowBlur = 20 * pulse
+        ctx.shadowColor = '#FFD700'
+        ctx.shadowBlur = 20 * pulseBase
       } else if (isHinted) {
-        // 如果是提示高亮，添加脉冲光晕效果
-        const pulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
-        this.ctx.shadowColor = '#FFD700'
-        this.ctx.shadowBlur = 15 * pulse
+        ctx.shadowColor = '#FFD700'
+        ctx.shadowBlur = 15 * pulseBase
       }
       
-      this.ctx.beginPath()
-      this.ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
-      this.ctx.fill()
+      ctx.beginPath()
+      ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
+      ctx.fill()
       
-      // 重置阴影
-      this.ctx.shadowColor = 'transparent'
-      this.ctx.shadowBlur = 0
+      ctx.shadowColor = 'transparent'
+      ctx.shadowBlur = 0
       
-      // 添加高光效果
-      this.ctx.fillStyle = 'rgba(255,255,255,0.4)'
-      this.ctx.beginPath()
-      this.ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.35, 0, Math.PI * 2)
-      this.ctx.fill()
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'
+      ctx.beginPath()
+      ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.35, 0, Math.PI * 2)
+      ctx.fill()
       
-      // 添加边框效果
       if (isSelected) {
-        // 选中状态：金色粗边框
-        this.ctx.strokeStyle = '#FFD700'
-        this.ctx.lineWidth = 4
+        ctx.strokeStyle = '#FFD700'
+        ctx.lineWidth = 4
       } else if (isHinted) {
-        // 提示状态：金色边框
-        this.ctx.strokeStyle = '#FFD700'
-        this.ctx.lineWidth = 3
+        ctx.strokeStyle = '#FFD700'
+        ctx.lineWidth = 3
       } else {
-        // 默认状态：白色边框
-        this.ctx.strokeStyle = 'rgba(255,255,255,0.6)'
-        this.ctx.lineWidth = 2
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)'
+        ctx.lineWidth = 2
       }
-      this.ctx.beginPath()
-      this.ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
-      this.ctx.stroke()
+      ctx.beginPath()
+      ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
+      ctx.stroke()
       
-      // 🎁 如果方块有道具，显示华丽的道具特效
-      if (b.getItem()) {
-        const itemData = GAME_ITEMS.find(item => item.id === b.getItem())
-        if (itemData) {
-          const itemId = b.getItem()!
-          const itemColor = this.ITEM_COLORS[itemId] || '#FFFFFF'
-          
-          // 脉冲光晕效果（比宝石更强烈）
-          const itemPulse = Math.sin(Date.now() * 0.012 + i * 0.5) * 0.4 + 0.8
-          this.ctx.shadowColor = itemColor
-          this.ctx.shadowBlur = 25 * itemPulse
-          
-          // 绘制彩色光晕背景圆
-          const glowRadius = size * 0.7
-          const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, glowRadius)
-          gradient.addColorStop(0, itemColor.replace(')', ', 0.4)').replace('rgb', 'rgba'))
-          gradient.addColorStop(0.6, itemColor.replace(')', ', 0.2)').replace('rgb', 'rgba'))
+      const itemId = b.getItem()
+      if (itemId) {
+        const itemColor = this.ITEM_COLORS[itemId] || '#FFFFFF'
+        const itemPulse = Math.sin(now * 0.012 + i * 0.5) * 0.4 + 0.8
+        
+        ctx.shadowColor = itemColor
+        ctx.shadowBlur = 20 * itemPulse
+        
+        const glowRadius = size * 0.7
+        let gradient = this.itemGlowGradients.get(itemId)
+        if (!gradient) {
+          gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
+          const alpha4 = itemColor.startsWith('#') ? 
+            `rgba(${parseInt(itemColor.slice(1,3),16)}, ${parseInt(itemColor.slice(3,5),16)}, ${parseInt(itemColor.slice(5,7),16)}, 0.4)` :
+            itemColor.replace(')', ', 0.4)').replace('rgb', 'rgba')
+          const alpha2 = itemColor.startsWith('#') ?
+            `rgba(${parseInt(itemColor.slice(1,3),16)}, ${parseInt(itemColor.slice(3,5),16)}, ${parseInt(itemColor.slice(5,7),16)}, 0.2)` :
+            itemColor.replace(')', ', 0.2)').replace('rgb', 'rgba')
+          gradient.addColorStop(0, alpha4)
+          gradient.addColorStop(0.6, alpha2)
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
-          
-          this.ctx.fillStyle = gradient
-          this.ctx.beginPath()
-          this.ctx.arc(x, y, glowRadius, 0, Math.PI * 2)
-          this.ctx.fill()
-          
-          // 绘制白色边框圆（增强对比度）
-          this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + itemPulse * 0.3})`
-          this.ctx.lineWidth = 2.5
-          this.ctx.beginPath()
-          this.ctx.arc(x, y, size * 0.6, 0, Math.PI * 2)
-          this.ctx.stroke()
-          
-          // 绘制道具图标（带旋转和缩放动画）
-          this.ctx.font = `bold ${Math.floor(size * 1.5)}px sans-serif`
-          this.ctx.textAlign = 'center'
-          this.ctx.textBaseline = 'middle'
-          
-          // 旋转动画（不同道具旋转速度不同）
-          const rotationSpeed = b.getItem() === 'bomb' ? 0.008 : 0.005
-          const rotation = Math.sin(Date.now() * rotationSpeed + i) * 0.2
-          const scale = 1 + Math.sin(Date.now() * 0.007 + i * 0.8) * 0.1
-          
-          this.ctx.save()
-          this.ctx.translate(x, y)
-          this.ctx.rotate(rotation)
-          this.ctx.scale(scale, scale)
-          this.ctx.fillText(itemData.icon, 0, 0)
-          this.ctx.restore()
-          
-          // 重置阴影
-          this.ctx.shadowColor = 'transparent'
-          this.ctx.shadowBlur = 0
+          this.itemGlowGradients.set(itemId, gradient)
         }
+        
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.fillStyle = gradient
+        ctx.beginPath()
+        ctx.arc(0, 0, glowRadius, 0, Math.PI * 2)
+        ctx.fill()
+        
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + itemPulse * 0.3})`
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2)
+        ctx.stroke()
+        
+        const itemData = GAME_ITEMS.find(item => item.id === itemId)
+        if (itemData) {
+          ctx.font = `bold ${Math.floor(size * 1.4)}px sans-serif`
+          const rotationSpeed = itemId === 'bomb' ? 0.008 : 0.005
+          const rotation = Math.sin(now * rotationSpeed + i) * 0.15
+          const itemScale = 1 + Math.sin(now * 0.005 + i * 0.8) * 0.08
+          
+          ctx.save()
+          ctx.rotate(rotation)
+          ctx.scale(itemScale, itemScale)
+          ctx.fillText(itemData.icon, 0, 0)
+          ctx.restore()
+        }
+        
+        ctx.restore()
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur = 0
       }
       
-      // 💎 如果方块有宝石，显示华丽的彩色宝石标记
       if (b.hasStar()) {
-        // 绘制彩虹色光晕背景
-        const gemPulse = Math.sin(Date.now() * 0.01 + i) * 0.3 + 0.7
-        const hue = (Date.now() * 0.1 + i * 60) % 360
-        this.ctx.shadowColor = `hsl(${hue}, 100%, 60%)`
-        this.ctx.shadowBlur = 20 * gemPulse
+        const gemPulse = Math.sin(now * 0.008 + i) * 0.3 + 0.7
+        const hue = (now * 0.08 + i * 60) % 360
         
-        // 绘制白色背景圆（增强对比度）
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-        this.ctx.beginPath()
-        this.ctx.arc(x, y, size * 0.65, 0, Math.PI * 2)
-        this.ctx.fill()
+        ctx.shadowColor = `hsl(${hue}, 100%, 60%)`
+        ctx.shadowBlur = 15 * gemPulse
         
-        // 绘制彩虹色边框
-        this.ctx.strokeStyle = `hsl(${hue}, 100%, 70%)`
-        this.ctx.lineWidth = 2
-        this.ctx.beginPath()
-        this.ctx.arc(x, y, size * 0.65, 0, Math.PI * 2)
-        this.ctx.stroke()
+        ctx.save()
+        ctx.translate(x, y)
         
-        // 绘制彩色宝石图标（适中尺寸）
-        this.ctx.font = `bold ${Math.floor(size * 1.6)}px sans-serif`
-        this.ctx.textAlign = 'center'
-        this.ctx.textBaseline = 'middle'
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+        ctx.beginPath()
+        ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2)
+        ctx.fill()
         
-        // 添加宝石轻微旋转和缩放效果
-        const rotation = Math.sin(Date.now() * 0.004 + i) * 0.15
-        const scale = 1 + Math.sin(Date.now() * 0.006 + i) * 0.08
+        ctx.strokeStyle = `hsl(${hue}, 100%, 70%)`
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2)
+        ctx.stroke()
         
-        this.ctx.save()
-        this.ctx.translate(x, y)
-        this.ctx.rotate(rotation)
-        this.ctx.scale(scale, scale)
-        this.ctx.fillText('💎', 0, 0)
-        this.ctx.restore()
+        ctx.font = `bold ${Math.floor(size * 1.4)}px sans-serif`
+        ctx.fillText('💎', 0, 0)
         
-        // 重置阴影
-        this.ctx.shadowColor = 'transparent'
-        this.ctx.shadowBlur = 0
+        ctx.restore()
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur = 0
       }
-      
-      this.ctx.globalAlpha = 1
-    })
+    }
+    
+    ctx.globalAlpha = 1
   }
   
 

@@ -6,81 +6,86 @@ import type { Cookie, Particle, Slice, LevelConfig, Shockwave, ScorePopup, Level
 import { GAME_CONFIG } from './config'
 
 /**
- * 绘制切割轨迹（增强版 - 带发光和粒子效果）
+ * 绘制切割轨迹（性能优化版）
+ * - 减少图层数量
+ * - 优化shadowBlur
  */
 export function drawSlices(ctx: CanvasRenderingContext2D, slices: Slice[]): void {
-  slices.forEach((s, i) => {
-    s.life -= 0.03 // 减慢衰减，让轨迹更持久
+  const MAX_SLICES = 8 // 切割轨迹数量上限
+  if (slices.length > MAX_SLICES) {
+    slices.splice(0, slices.length - MAX_SLICES)
+  }
+  
+  for (let i = slices.length - 1; i >= 0; i--) {
+    const s = slices[i]
+    s.life -= 0.035 // 稍快的衰减
     if (s.life <= 0) {
       slices.splice(i, 1)
-      return
+      continue
     }
     
     const alpha = s.life
     
-    // 1. 外层光晕 - 大而柔和的发光效果
+    // 简化为两层：外层光晕 + 内层核心
     ctx.save()
-    ctx.shadowColor = `rgba(255, 180, 50, ${alpha * 0.8})`
-    ctx.shadowBlur = 30 * alpha
+    // 外层发光
+    ctx.shadowColor = `rgba(255, 150, 80, ${alpha * 0.8})`
+    ctx.shadowBlur = 25 * alpha
     ctx.lineCap = 'round'
-    ctx.lineWidth = 28 * alpha
-    ctx.strokeStyle = `rgba(255, 150, 50, ${alpha * 0.4})`
+    ctx.lineWidth = 25 * alpha
+    ctx.strokeStyle = `rgba(255, 150, 80, ${alpha * 0.4})`
     ctx.beginPath()
     ctx.moveTo(s.x1, s.y1)
     ctx.lineTo(s.x2, s.y2)
     ctx.stroke()
-    ctx.restore()
     
-    // 2. 中层渐变 - 橙红色过渡
+    // 内层渐变核心
     const gradient = ctx.createLinearGradient(s.x1, s.y1, s.x2, s.y2)
-    gradient.addColorStop(0, `rgba(255, 200, 100, ${alpha})`)
-    gradient.addColorStop(0.5, `rgba(255, 120, 50, ${alpha})`)
-    gradient.addColorStop(1, `rgba(200, 80, 30, ${alpha * 0.8})`)
+    gradient.addColorStop(0, `rgba(255, 230, 150, ${alpha})`)
+    gradient.addColorStop(0.5, `rgba(255, 150, 50, ${alpha})`)
+    gradient.addColorStop(1, `rgba(255, 230, 150, ${alpha})`)
     
-    ctx.lineCap = 'round'
-    ctx.lineWidth = 14 * alpha
+    ctx.lineWidth = 12 * alpha
     ctx.strokeStyle = gradient
-    ctx.beginPath()
-    ctx.moveTo(s.x1, s.y1)
-    ctx.lineTo(s.x2, s.y2)
-    ctx.stroke()
-    
-    // 3. 内层高亮 - 白色核心
-    ctx.save()
     ctx.shadowColor = `rgba(255, 255, 255, ${alpha})`
     ctx.shadowBlur = 15 * alpha
-    ctx.lineWidth = 4 * alpha
-    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`
     ctx.stroke()
     ctx.restore()
     
-    // 4. 绘制切割轨迹两端的光点
-    const endGlow = (x: number, y: number) => {
-      const glowRadius = 8 * alpha
+    // 简化的端点发光
+    const drawEndPoint = (x: number, y: number) => {
+      const radius = 8 * alpha
       ctx.save()
       ctx.shadowColor = `rgba(255, 220, 150, ${alpha})`
       ctx.shadowBlur = 15 * alpha
       ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
       ctx.beginPath()
-      ctx.arc(x, y, glowRadius, 0, Math.PI * 2)
+      ctx.arc(x, y, radius, 0, Math.PI * 2)
       ctx.fill()
       ctx.restore()
     }
     
-    endGlow(s.x1, s.y1)
-    endGlow(s.x2, s.y2)
-  })
+    drawEndPoint(s.x1, s.y1)
+    drawEndPoint(s.x2, s.y2)
+  }
 }
 
 /**
- * 绘制冲击波效果
+ * 绘制冲击波效果（性能优化版）
+ * - 简化为两层光环
+ * - 减少shadowBlur的使用
  */
 export function drawShockwaves(ctx: CanvasRenderingContext2D, shockwaves: Shockwave[]): void {
+  const MAX_SHOCKWAVES = 10 // 冲击波数量上限
+  if (shockwaves.length > MAX_SHOCKWAVES) {
+    shockwaves.splice(0, shockwaves.length - MAX_SHOCKWAVES)
+  }
+  
   for (let i = shockwaves.length - 1; i >= 0; i--) {
     const s = shockwaves[i]
     
-    s.radius += 8
-    s.life -= 0.05
+    s.radius += 12
+    s.life -= 0.045
     
     if (s.life <= 0 || s.radius >= s.maxRadius) {
       shockwaves.splice(i, 1)
@@ -90,19 +95,22 @@ export function drawShockwaves(ctx: CanvasRenderingContext2D, shockwaves: Shockw
     const alpha = s.life * (1 - s.radius / s.maxRadius)
     
     ctx.save()
+    
+    // 外层光环（主效果）
     ctx.strokeStyle = s.color
-    ctx.globalAlpha = alpha
-    ctx.lineWidth = 3
+    ctx.globalAlpha = alpha * 0.9
+    ctx.lineWidth = 6
     ctx.shadowColor = s.color
-    ctx.shadowBlur = 15
+    ctx.shadowBlur = 20
     
     ctx.beginPath()
     ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2)
     ctx.stroke()
     
-    // 内层光环
-    ctx.lineWidth = 1
-    ctx.globalAlpha = alpha * 0.6
+    // 内层简化光环
+    ctx.lineWidth = 3
+    ctx.globalAlpha = alpha * 0.5
+    ctx.shadowBlur = 10
     ctx.beginPath()
     ctx.arc(s.x, s.y, s.radius * 0.7, 0, Math.PI * 2)
     ctx.stroke()
@@ -112,13 +120,18 @@ export function drawShockwaves(ctx: CanvasRenderingContext2D, shockwaves: Shockw
 }
 
 /**
- * 绘制分数飘字
+ * 绘制分数飘字（性能优化版）
  */
 export function drawScorePopups(ctx: CanvasRenderingContext2D, popups: ScorePopup[]): void {
+  const MAX_POPUPS = 15 // 飘字数量上限
+  if (popups.length > MAX_POPUPS) {
+    popups.splice(0, popups.length - MAX_POPUPS)
+  }
+  
   for (let i = popups.length - 1; i >= 0; i--) {
     const p = popups[i]
     
-    p.y -= 2
+    p.y -= 2.8
     p.life -= 0.025
     
     if (p.life <= 0) {
@@ -134,24 +147,41 @@ export function drawScorePopups(ctx: CanvasRenderingContext2D, popups: ScorePopu
     ctx.translate(p.x, p.y)
     ctx.scale(scale, scale)
     
-    // 文字阴影
-    ctx.shadowColor = p.combo >= 5 ? '#FF0000' : p.combo >= 3 ? '#FFD700' : '#FFFFFF'
-    ctx.shadowBlur = 10
+    // 简化的颜色选择
+    let textColor, shadowColor, fontSize
+    if (p.combo >= 8) {
+      textColor = '#FF0000'
+      shadowColor = 'rgba(255, 0, 0, 0.7)'
+      fontSize = 36
+    } else if (p.combo >= 5) {
+      textColor = '#FFD700'
+      shadowColor = 'rgba(255, 215, 0, 0.6)'
+      fontSize = 30
+    } else if (p.combo >= 3) {
+      textColor = '#FF9F43'
+      shadowColor = 'rgba(255, 159, 67, 0.5)'
+      fontSize = 26
+    } else {
+      textColor = '#FFFFFF'
+      shadowColor = 'rgba(255, 255, 255, 0.4)'
+      fontSize = 22
+    }
     
-    // 分数文字
-    ctx.fillStyle = p.combo >= 5 ? '#FF6B6B' : p.combo >= 3 ? '#FFD700' : '#FFFFFF'
-    ctx.font = 'bold 24px sans-serif'
+    ctx.shadowColor = shadowColor
+    ctx.shadowBlur = 12 + p.combo * 1.5
+    
+    ctx.fillStyle = textColor
+    ctx.font = `bold ${fontSize}px sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     
-    const text = `+${p.score}`
-    ctx.fillText(text, 0, 0)
+    ctx.fillText(`+${p.score}`, 0, 0)
     
-    // 连击标记
     if (p.combo >= 2) {
-      ctx.font = 'bold 14px sans-serif'
-      ctx.fillStyle = '#FF9F43'
-      ctx.fillText(`${p.combo}x`, 25, -5)
+      ctx.font = `bold ${16 + p.combo}px sans-serif`
+      ctx.fillStyle = p.combo >= 5 ? '#FFD700' : '#FFE66D'
+      ctx.shadowBlur = 8
+      ctx.fillText(`${p.combo}x`, 0, -fontSize - 4)
     }
     
     ctx.restore()
@@ -182,57 +212,69 @@ export function drawCookies(ctx: CanvasRenderingContext2D, cookies: Cookie[]): v
 }
 
 /**
- * 绘制粒子（支持旋转和掉落效果）
+ * 绘制粒子（性能优化版）
+ * - 简化闪光效果
+ * - 减少shadowBlur使用
+ * - 合并相似粒子的渲染
  */
 export function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
+  // 先绘制普通粒子
   particles.forEach(p => {
-    // 确保透明度在有效范围内
+    if (p.isSparkle) return // 闪光粒子后面单独处理
+    
     const alpha = Math.max(0, Math.min(1, p.life))
+    if (alpha < 0.05) return // 跳过几乎看不见的粒子
+    
     ctx.globalAlpha = alpha
     ctx.fillStyle = p.color
     
-    // 如果粒子有旋转属性，使用旋转绘制
     if (p.rotation !== undefined && p.rotSpeed) {
       ctx.save()
       ctx.translate(p.x, p.y)
       ctx.rotate(p.rotation)
-      
-      // 绘制矩形碎片（更有碎片感）
-      const size = Math.max(0.5, p.size * alpha)  // 确保最小尺寸为0.5
-      ctx.fillRect(-size / 2, -size / 2, size, size)
-      
-      ctx.restore()
-    } else if (p.isFalling) {
-      // 掉落粒子：绘制为小圆点，带发光效果，像雪花/粉末
-      const radius = Math.max(0.5, p.size * alpha)  // 确保半径不为负
-      
-      // 添加柔和的光晕
+      const size = Math.max(0.5, p.size * alpha)
       ctx.shadowColor = p.color
-      ctx.shadowBlur = 4
-      
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
-      ctx.fill()
-      
-      ctx.shadowBlur = 0
+      ctx.shadowBlur = 3 // 减少shadowBlur
+      ctx.fillRect(-size / 2, -size / 2, size, size)
+      ctx.restore()
     } else {
-      // 圆形粉末/微尘
-      const radius = Math.max(0.5, p.size * alpha)  // 确保半径不为负
+      const radius = Math.max(0.5, p.size * alpha)
+      ctx.shadowColor = p.color
+      ctx.shadowBlur = 2 // 减少shadowBlur
       ctx.beginPath()
       ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
       ctx.fill()
-      
-      // 对于很小的粒子，添加发光效果
-      if (p.size < 2) {
-        ctx.shadowColor = p.color
-        ctx.shadowBlur = 3
-        ctx.fill()
-        ctx.shadowBlur = 0
-      }
     }
-    
-    ctx.globalAlpha = 1
   })
+  
+  // 单独绘制闪光粒子（数量少，效果好）
+  particles.forEach(p => {
+    if (!p.isSparkle) return
+    
+    const alpha = Math.max(0, Math.min(1, p.life))
+    if (alpha < 0.05) return
+    
+    ctx.globalAlpha = alpha
+    ctx.fillStyle = p.color
+    const radius = Math.max(0.5, p.size * alpha)
+    
+    ctx.shadowColor = p.color
+    ctx.shadowBlur = 8 // 闪光粒子保持一定的发光
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 简化的十字光芒
+    ctx.save()
+    ctx.translate(p.x, p.y)
+    ctx.rotate(Math.PI / 4)
+    ctx.shadowBlur = 4
+    ctx.fillRect(-radius * 2, -radius / 3, radius * 4, radius * 0.6)
+    ctx.restore()
+  })
+  
+  ctx.shadowBlur = 0
+  ctx.globalAlpha = 1
 }
 
 /**
@@ -271,52 +313,85 @@ export function drawUI(
   ctx.textAlign = 'center'
   ctx.fillText(String(score), W / 2, 55)
   
-  // 连击（增强版）
+  // 连击（解压爽快感版 - 超夸张）
   if (combo >= 2) {
     ctx.save()
     
-    // 根据连击数选择颜色
+    // 根据连击数选择颜色（更鲜艳）
     let comboColor: string
     let glowColor: string
-    if (combo >= 10) {
+    let comboScale: number
+    if (combo >= 20) {
       comboColor = '#FF0000'
-      glowColor = 'rgba(255, 0, 0, 0.8)'
-    } else if (combo >= 7) {
+      glowColor = 'rgba(255, 0, 0, 1)'
+      comboScale = 2.5
+    } else if (combo >= 15) {
+      comboColor = '#FF0000'
+      glowColor = 'rgba(255, 0, 0, 0.95)'
+      comboScale = 2.2
+    } else if (combo >= 10) {
       comboColor = '#FF6B6B'
-      glowColor = 'rgba(255, 107, 107, 0.7)'
-    } else if (combo >= 5) {
+      glowColor = 'rgba(255, 107, 107, 0.9)'
+      comboScale = 1.9
+    } else if (combo >= 7) {
       comboColor = '#FFD700'
-      glowColor = 'rgba(255, 215, 0, 0.7)'
+      glowColor = 'rgba(255, 215, 0, 0.85)'
+      comboScale = 1.6
+    } else if (combo >= 5) {
+      comboColor = '#FFE66D'
+      glowColor = 'rgba(255, 230, 109, 0.8)'
+      comboScale = 1.4
     } else if (combo >= 3) {
       comboColor = '#FF9F43'
-      glowColor = 'rgba(255, 159, 67, 0.6)'
+      glowColor = 'rgba(255, 159, 67, 0.7)'
+      comboScale = 1.2
     } else {
       comboColor = '#FFB84D'
-      glowColor = 'rgba(255, 184, 77, 0.5)'
+      glowColor = 'rgba(255, 184, 77, 0.6)'
+      comboScale = 1.1
     }
     
-    // 添加发光效果
+    // 超强发光效果
     ctx.shadowColor = glowColor
-    ctx.shadowBlur = 20 + combo * 2
+    ctx.shadowBlur = 35 + combo * 4
     
-    // 绘制连击数字
-    const comboScale = 1 + (combo >= 5 ? 0.3 : combo >= 3 ? 0.2 : 0.1)
-    ctx.font = `bold ${28 * comboScale}px sans-serif`
+    // 绘制超大连击数字
+    ctx.font = `bold ${36 * comboScale}px sans-serif`
     ctx.fillStyle = comboColor
-    ctx.fillText(`${combo}`, W / 2 - 30, 100)
+    ctx.fillText(`${combo}`, W / 2 - 40, 110)
     
-    // 绘制"连击!"文字
-    ctx.font = 'bold 20px sans-serif'
+    // 绘制"连击!"文字（更大）
+    ctx.font = 'bold 24px sans-serif'
     ctx.fillStyle = '#FFFFFF'
-    ctx.shadowBlur = 15
-    ctx.fillText('连击!', W / 2 + 15, 100)
+    ctx.shadowBlur = 20
+    ctx.fillText('连击!', W / 2 + 20, 110)
     
-    // 连击超过5时添加额外装饰
-    if (combo >= 5) {
+    // 超多彩的装饰
+    if (combo >= 20) {
+      ctx.font = 'bold 22px sans-serif'
+      ctx.fillStyle = '#FF0000'
+      ctx.fillText('🔥🔥🔥', W / 2 - 90, 110)
+      ctx.fillText('🔥🔥🔥', W / 2 + 60, 110)
+    } else if (combo >= 15) {
+      ctx.font = 'bold 20px sans-serif'
+      ctx.fillStyle = '#FF6B6B'
+      ctx.fillText('🔥🔥', W / 2 - 75, 110)
+      ctx.fillText('🔥🔥', W / 2 + 50, 110)
+    } else if (combo >= 10) {
+      ctx.font = 'bold 18px sans-serif'
+      ctx.fillStyle = '#FF6B6B'
+      ctx.fillText('🔥🔥', W / 2 - 70, 110)
+      ctx.fillText('🔥🔥', W / 2 + 45, 110)
+    } else if (combo >= 7) {
+      ctx.font = 'bold 18px sans-serif'
+      ctx.fillStyle = '#FFD700'
+      ctx.fillText('✨🔥', W / 2 - 65, 110)
+      ctx.fillText('🔥✨', W / 2 + 40, 110)
+    } else if (combo >= 5) {
       ctx.font = 'bold 16px sans-serif'
       ctx.fillStyle = '#FFD700'
-      ctx.fillText('🔥', W / 2 - 55, 100)
-      ctx.fillText('🔥', W / 2 + 45, 100)
+      ctx.fillText('✨', W / 2 - 55, 110)
+      ctx.fillText('✨', W / 2 + 35, 110)
     }
     
     ctx.restore()

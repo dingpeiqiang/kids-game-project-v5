@@ -107,14 +107,14 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
       for (let dx = -1; dx <= 1; dx++) {
         const nx = centerX + dx
         const ny = centerY + dy
-        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && board[ny]?.[nx]?.type >= 0) {
+        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && board[ny]?.[nx] && (board[ny][nx].type >= 0 || board[ny][nx].special)) {
           affected.push({ x: nx, y: ny })
         }
       }
     }
     
     affected.forEach(pos => {
-      const g = GEM_TYPES[board[pos.y][pos.x].type]
+      const g = board[pos.y][pos.x].type >= 0 ? GEM_TYPES[board[pos.y][pos.x].type] : GEM_TYPES[0]
       for (let i = 0; i < 15; i++) {
         const angle = (Math.PI * 2 * i) / 15 + Math.random() * 0.5
         particles.push({
@@ -127,13 +127,15 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
           size: 6 + Math.random() * 4
         })
       }
-      board[pos.y][pos.x].type = -1
+      board[pos.y][pos.x] = { type: -1, scale: 1 }
     })
     
     engine.addScore(affected.length * 30, OFFSET_X + centerX * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + centerY * (GEM_SIZE + GAP) + GEM_SIZE / 2)
     audioService.win()
     
     await new Promise(r => setTimeout(r, 300))
+    await applyGravityAndFill()
+    await new Promise(r => setTimeout(r, 150))
     await processMatches()
   }
 
@@ -142,20 +144,20 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
     
     if (direction === 'horizontal') {
       for (let cx = 0; cx < COLS; cx++) {
-        if (board[y]?.[cx]?.type >= 0) {
+        if (board[y]?.[cx] && (board[y][cx].type >= 0 || board[y][cx].special)) {
           affected.push({ x: cx, y })
         }
       }
     } else {
       for (let cy = 0; cy < ROWS; cy++) {
-        if (board[cy]?.[x]?.type >= 0) {
+        if (board[cy]?.[x] && (board[cy][x].type >= 0 || board[cy][x].special)) {
           affected.push({ x, y: cy })
         }
       }
     }
     
     affected.forEach(pos => {
-      const g = GEM_TYPES[board[pos.y][pos.x].type]
+      const g = board[pos.y][pos.x].type >= 0 ? GEM_TYPES[board[pos.y][pos.x].type] : GEM_TYPES[0]
       for (let i = 0; i < 8; i++) {
         const angle = direction === 'horizontal' ? (Math.random() > 0.5 ? 0 : Math.PI) : (Math.random() > 0.5 ? Math.PI/2 : -Math.PI/2)
         particles.push({
@@ -168,31 +170,51 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
           size: 5 + Math.random() * 3
         })
       }
-      board[pos.y][pos.x].type = -1
+      board[pos.y][pos.x] = { type: -1, scale: 1 }
     })
     
     engine.addScore(affected.length * 25, OFFSET_X + x * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + y * (GEM_SIZE + GAP) + GEM_SIZE / 2)
     audioService.win()
     
     await new Promise(r => setTimeout(r, 300))
+    await applyGravityAndFill()
+    await new Promise(r => setTimeout(r, 150))
     await processMatches()
   }
 
   async function triggerRainbowEffect(x: number, y: number) {
     const targetType = board[y]?.[x]?.type
-    if (targetType === undefined || targetType < 0) return
+    let foundTarget = false
     
     const affected: { x: number; y: number }[] = []
     
     for (let cy = 0; cy < ROWS; cy++) {
       for (let cx = 0; cx < COLS; cx++) {
-        if (board[cy]?.[cx]?.type === targetType) {
-          affected.push({ x: cx, y: cy })
+        const gem = board[cy]?.[cx]
+        if (gem) {
+          if (gem.type >= 0 && (targetType === undefined || targetType < 0 || gem.type === targetType)) {
+            affected.push({ x: cx, y: cy })
+            foundTarget = true
+          } else if (gem.special) {
+            affected.push({ x: cx, y: cy })
+          }
+        }
+      }
+    }
+    
+    if (!foundTarget && GEM_TYPES.length > 0) {
+      const randomType = Math.floor(Math.random() * GEM_TYPES.length)
+      for (let cy = 0; cy < ROWS; cy++) {
+        for (let cx = 0; cx < COLS; cx++) {
+          if (board[cy]?.[cx]?.type === randomType) {
+            affected.push({ x: cx, y: cy })
+          }
         }
       }
     }
     
     affected.forEach(pos => {
+      const g = board[pos.y][pos.x].type >= 0 ? GEM_TYPES[board[pos.y][pos.x].type] : GEM_TYPES[0]
       for (let i = 0; i < 12; i++) {
         const angle = (Math.PI * 2 * i) / 12 + Math.random() * 0.5
         particles.push({
@@ -205,13 +227,15 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
           size: 5 + Math.random() * 3
         })
       }
-      board[pos.y][pos.x].type = -1
+      board[pos.y][pos.x] = { type: -1, scale: 1 }
     })
     
     engine.addScore(affected.length * 40, OFFSET_X + x * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + y * (GEM_SIZE + GAP) + GEM_SIZE / 2)
     audioService.win()
     
     await new Promise(r => setTimeout(r, 300))
+    await applyGravityAndFill()
+    await new Promise(r => setTimeout(r, 150))
     await processMatches()
   }
 
@@ -784,6 +808,15 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
     return false
   }
 
+  function hasEmptySpaces(): boolean {
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        if (board[y][x]?.type === -1) return true
+      }
+    }
+    return false
+  }
+
   function findMatches(): { x: number; y: number }[] {
     const matches = new Set<string>()
 
@@ -811,108 +844,137 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
     })
   }
 
-  async function processMatches() {
-    const matches = findMatches()
-    if (matches.length === 0) return
-
-    checkAndCreateSpecialGem(matches, matches.length)
-
-    for (const m of matches) {
-      const gem = board[m.y]?.[m.x]
-      if (gem?.special) {
-        await triggerSpecialGem(m.x, m.y)
-        return
-      }
-    }
-
-    const points = matches.length * 20 * (combo + 1)
-    score += points
-    engine.addScore(points, W / 2, H / 2)
-    
-    if (score >= targetScore) {
-      level++
-      targetScore = Math.floor(targetScore * 1.5)
-      audioService.buff()
-    }
-
-    for (let i = 0; i < 10; i++) {
-      matches.forEach(m => {
-        const gem = board[m.y]?.[m.x]
-        if (gem && gem.scale > 0.1) {
-          gem.scale *= 0.85
-        }
-      })
-      await new Promise(r => setTimeout(r, 30))
-    }
-
-    matches.forEach(m => {
-      const gem = board[m.y]?.[m.x]
-      if (gem && gem.type >= 0) {
-        const g = GEM_TYPES[gem.type]
-        for (let i = 0; i < 10; i++) {
-          const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.5
-          particles.push({
-            x: OFFSET_X + m.x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
-            y: OFFSET_Y + m.y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
-            vx: Math.cos(angle) * (3 + Math.random() * 3),
-            vy: Math.sin(angle) * (3 + Math.random() * 3),
-            life: 1,
-            color: g.color,
-            size: 4 + Math.random() * 3
-          })
-        }
-        board[m.y][m.x] = { type: -1, scale: 1 }
-      }
-    })
-
-    if (combo >= 3) engine.triggerRandomBuff()
-
-    await new Promise(r => setTimeout(r, 200))
-
+  async function applyGravityAndFill() {
     for (let x = 0; x < COLS; x++) {
-      let emptySpaces = 0
+      let writeY = ROWS - 1
       
       for (let y = ROWS - 1; y >= 0; y--) {
-        if (board[y][x]?.type >= 0) {
-          if (emptySpaces > 0) {
-            const targetY = y + emptySpaces
-            board[targetY][x] = { ...board[y][x], offsetY: -emptySpaces * (GEM_SIZE + GAP) }
+        const gem = board[y][x]
+        if (gem && (gem.type >= 0 || gem.special)) {
+          if (writeY !== y) {
+            board[writeY][x] = { 
+              ...gem, 
+              offsetY: (y - writeY) * (GEM_SIZE + GAP)
+            }
             board[y][x] = { type: -1, scale: 1 }
           }
-        } else {
-          emptySpaces++
+          writeY--
         }
       }
       
-      for (let y = emptySpaces - 1; y >= 0; y--) {
+      for (let y = writeY; y >= 0; y--) {
         const newType = Math.floor(Math.random() * GEM_TYPES.length)
-        board[y][x] = { type: newType, scale: 1, offsetY: -emptySpaces * (GEM_SIZE + GAP) }
+        board[y][x] = { 
+          type: newType, 
+          scale: 1, 
+          offsetY: -(writeY - y + 1) * (GEM_SIZE + GAP)
+        }
       }
     }
 
-    let hasMovement = true
-    let frameCount = 0
-    while (hasMovement && frameCount < 20) {
-      hasMovement = false
+    for (let frame = 0; frame < 15; frame++) {
+      let hasMovement = false
       for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
           const gem = board[y][x]
-          if (gem && gem.offsetY) {
-            const moveAmount = gem.offsetY * 0.3
-            if (Math.abs(moveAmount) > 0.5) {
-              gem.offsetY -= moveAmount
-              hasMovement = true
-            } else {
+          if (gem && gem.offsetY && gem.offsetY !== 0) {
+            hasMovement = true
+            gem.offsetY *= 0.7
+            if (Math.abs(gem.offsetY) < 0.5) {
               gem.offsetY = 0
             }
           }
         }
       }
-      frameCount++
-      await new Promise(r => setTimeout(r, 10))
+      if (!hasMovement) break
+      await new Promise(r => setTimeout(r, 16))
     }
 
-    await processMatches()
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        if (board[y][x]) {
+          board[y][x].offsetY = 0
+        }
+      }
+    }
+  }
+
+  async function processMatches() {
+    const matches = findMatches()
+    const hasEmpty = hasEmptySpaces()
+    
+    if (matches.length === 0 && !hasEmpty) return
+
+    if (matches.length > 0) {
+      checkAndCreateSpecialGem(matches, matches.length)
+
+      let specialTriggered = false
+      for (const m of matches) {
+        const gem = board[m.y]?.[m.x]
+        if (gem?.special) {
+          await triggerSpecialGem(m.x, m.y)
+          specialTriggered = true
+          break
+        }
+      }
+      
+      if (specialTriggered) return
+
+      const points = matches.length * 20 * (combo + 1)
+      score += points
+      engine.addScore(points, W / 2, H / 2)
+      
+      if (score >= targetScore) {
+        level++
+        targetScore = Math.floor(targetScore * 1.5)
+        audioService.buff()
+      }
+
+      for (let i = 0; i < 10; i++) {
+        matches.forEach(m => {
+          const gem = board[m.y]?.[m.x]
+          if (gem && gem.scale > 0.1) {
+            gem.scale *= 0.85
+          }
+        })
+        await new Promise(r => setTimeout(r, 30))
+      }
+
+      matches.forEach(m => {
+        const gem = board[m.y]?.[m.x]
+        if (gem && (gem.type >= 0 || gem.special)) {
+          const g = gem.type >= 0 ? GEM_TYPES[gem.type] : GEM_TYPES[0]
+          for (let i = 0; i < 10; i++) {
+            const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.5
+            particles.push({
+              x: OFFSET_X + m.x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+              y: OFFSET_Y + m.y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+              vx: Math.cos(angle) * (3 + Math.random() * 3),
+              vy: Math.sin(angle) * (3 + Math.random() * 3),
+              life: 1,
+              color: g.color,
+              size: 4 + Math.random() * 3
+            })
+          }
+          board[m.y][m.x] = { type: -1, scale: 1 }
+        }
+      })
+
+      if (combo >= 3) engine.triggerRandomBuff()
+
+      await new Promise(r => setTimeout(r, 200))
+    }
+
+    await applyGravityAndFill()
+
+    await new Promise(r => setTimeout(r, 150))
+    
+    const newMatches = findMatches()
+    if (newMatches.length > 0) {
+      processMatches()
+    } else {
+      combo = 0
+    }
   }
 
   function gameLoop() {

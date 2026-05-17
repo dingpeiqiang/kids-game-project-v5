@@ -7,7 +7,7 @@ import { audioService } from './services/audio'
 import { gameEngine } from './services/gameEngine'
 import { userService } from './services/userService'
 import { AuthModal, MePanel, showToast, injectUserStyles } from './services/userUI'
-import { apiGetBatchUserRank, apiSubmitComment, apiGetComments } from './services/apiClient'
+import { apiGetBatchUserRank, apiSubmitComment, apiGetComments, tokenStore } from './services/apiClient'
 import { getTopList, type LeaderboardEntry } from './services/leaderboardService'
 import { initEliminate } from './games/eliminate'
 import { initDodge } from './games/dodge'
@@ -377,9 +377,11 @@ class App {
         // simple-game的游戏ID是字符串，需要转换为数字ID（只获取可见游戏的排名）
         const visibleGames = GAMES.filter(g => isGameVisible(g.id))
         const gameIds = visibleGames.map(g => this.convertGameIdToNumber(g.id))
-        const userId = parseInt(userService.current.id)
+        // 使用 tokenStore 中的后端用户ID，而不是前端本地ID
+        const userIdStr = tokenStore.getUserId()
+        const userId = userIdStr ? parseInt(userIdStr) : null
         
-        console.log('[App] 获取批量排名', { userId, gameCount: gameIds.length })
+        console.log('[App] 获取批量排名', { userId, userIdStr, gameCount: gameIds.length })
         
         if (gameIds.length > 0 && userId) {
           const res = await apiGetBatchUserRank(userId, gameIds)

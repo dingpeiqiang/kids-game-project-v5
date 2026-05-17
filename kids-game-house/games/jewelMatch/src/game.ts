@@ -51,6 +51,26 @@ export function initJewelMatch(engine: GameEngine, audioService: AudioService, o
     { emoji: '🟣', color: '#9932CC', glow: '#DA70D6', name: '紫宝石' },
     { emoji: '💎', color: '#00FFFF', glow: '#E0FFFF', name: '钻石' },
   ]
+  
+  // 道具类型定义
+  const POWERUP_TYPES = [
+    { id: 'bomb', emoji: '💣', color: '#FF4444', glow: '#FF6666', name: '炸弹', desc: '消除3x3范围' },
+    { id: 'rainbow', emoji: '🌈', color: '#FFD700', glow: '#FFEC8B', name: '彩虹', desc: '消除所有同色' },
+    { id: 'lightning', emoji: '⚡', color: '#00FFFF', glow: '#87CEEB', name: '闪电', desc: '消除整行整列' },
+    { id: 'shuffle', emoji: '🔄', color: '#9932CC', glow: '#DA70D6', name: '洗牌', desc: '重新排列' },
+  ]
+  
+  // 道具生成规则
+  const POWERUP_CHANCES = {
+    3: 0,       // 3连消：0%概率
+    4: 0.15,    // 4连消：15%概率
+    5: 0.25,    // 5连消：25%概率
+    6: 0.35,    // 6连消：35%概率
+    7: 0.45,    // 7连消：45%概率
+    8: 0.55,    // 8连消：55%概率
+    9: 0.65,    // 9连消：65%概率
+    10: 0.8,    // 10+连消：80%概率
+  }
 
   let board: any[][] = []
   let selected: { x: number; y: number } | null = null
@@ -62,76 +82,135 @@ export function initJewelMatch(engine: GameEngine, audioService: AudioService, o
   let gameEnded = false
   let hintGem: { x: number; y: number; time: number } | null = null
   
-  // ====== 道具系统 ======
-  let powerups: {
-    shuffle: number  // 洗牌
-    hammer: number   // 锤子（单个消除）
-    bomb: number     // 炸弹（范围消除）
-    rainbow: number  // 彩虹（清除所有同色）
-  } = {
-    shuffle: 3,
-    hammer: 2,
-    bomb: 1,
-    rainbow: 1
-  }
-  
-  const POWERUP_ICONS = {
-    shuffle: '🔄',
-    hammer: '🔨',
-    bomb: '💣',
-    rainbow: '🌈'
-  }
-  
-  let activePowerup: string | null = null  // 当前激活的道具
-  
-  // 使用道具
-  function usePowerup(type: string, x?: number, y?: number): boolean {
-    const powerupType = type as keyof typeof powerups
-    if (powerups[powerupType] <= 0) return false
-    
-    switch (type) {
-      case 'shuffle':
-        // 洗牌 - 重新排列所有宝石
-        shuffleBoard()
-        powerups.shuffle--
-        audioService.win()
-        createShuffleEffect()
-        return true
-        
-      case 'hammer':
-        // 锤子 - 消除单个宝石
-        if (x !== undefined && y !== undefined && board[y][x]) {
-          eliminateSingle(x, y)
-          powerups.hammer--
-          audioService.win()
-          return true
-        }
-        return false
-        
+  // ====== 道具系统（自动生成）======
+  // 触发道具效果
+  async function triggerPowerupEffect(powerupId: string, x: number, y: number) {
+    switch (powerupId) {
       case 'bomb':
         // 炸弹 - 消除3x3范围
-        if (x !== undefined && y !== undefined) {
-          eliminateArea(x, y, 1)
-          powerups.bomb--
-          audioService.win()
-          return true
-        }
-        return false
+        eliminateArea(x, y, 1)
+        createPowerupEffect(x, y, POWERUP_TYPES.find(p => p.id === 'bomb')!.color)
+        audioService.win()
+        break
         
       case 'rainbow':
         // 彩虹 - 清除所有同色宝石
-        if (x !== undefined && y !== undefined && board[y][x]) {
+        if (board[y][x]) {
           const targetType = board[y][x].type
           eliminateAllOfType(targetType)
-          powerups.rainbow--
+          createRainbowEffect(x, y)
           audioService.win()
-          return true
         }
-        return false
+        break
         
-      default:
-        return false
+      case 'lightning':
+        // 闪电 - 消除整行整列
+        eliminateRowAndColumn(x, y)
+        createLightningEffect(x, y)
+        audioService.win()
+        break
+        
+      case 'shuffle':
+        // 洗牌 - 重新排列所有宝石
+        shuffleBoard()
+        createShuffleEffect()
+        audioService.win()
+        break
     }
+    
+    setTimeout(() => processMatches(), 300)
+  }
+  
+  // 消除整行整列
+  function eliminateRowAndColumn(x: number, y: number) {
+    // 消除整行
+    for (let cx = 0; cx < COLS; cx++) {
+      if (board[y][cx] && board[y][cx].type >= 0) {
+        createExplosion(cx, y, board[y][cx].type)
+        board[y][cx] = { type: -1, scale: 1 }
+      }
+    }
+    
+    // 消除整列
+    for (let cy = 0; cy < ROWS; cy++) {
+      if (board[cy][x] && board[cy][x].type >= 0) {
+        createExplosion(x, cy, board[cy][x].type)
+        board[cy][x] = { type: -1, scale: 1 }
+      }
+    }
+    
+    engine.addScore(COLS + ROWS, OFFSET_X + x * (GEM_SIZE + GAP), OFFSET_Y + y * (GEM_SIZE + GAP))
+  }
+  
+  // 创建道具特效
+  function createPowerupEffect(x: number, y: number, color: string) {
+    for (let i = 0; i < 20; i++) {
+      const angle = (Math.PI * 2 * i) / 20
+      particles.push({
+        x: OFFSET_X + x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+        y: OFFSET_Y + y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+        vx: Math.cos(angle) * 6,
+        vy: Math.sin(angle) * 6,
+        life: 1,
+        color: color,
+        size: 6 + Math.random() * 4
+      })
+    }
+  }
+  
+  // 创建彩虹特效
+  function createRainbowEffect(x: number, y: number) {
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: OFFSET_X + x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+        y: OFFSET_Y + y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.5) * 8,
+        life: 1,
+        color: `hsl(${Math.random() * 360}, 100%, 70%)`,
+        size: 4 + Math.random() * 4
+      })
+    }
+  }
+  
+  // 创建闪电特效
+  function createLightningEffect(x: number, y: number) {
+    for (let cx = 0; cx < COLS; cx++) {
+      for (let i = 0; i < 5; i++) {
+        particles.push({
+          x: OFFSET_X + cx * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          y: OFFSET_Y + y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          vx: (Math.random() - 0.5) * 3,
+          vy: -5 - Math.random() * 5,
+          life: 1,
+          color: '#00FFFF',
+          size: 3 + Math.random() * 3
+        })
+      }
+    }
+    for (let cy = 0; cy < ROWS; cy++) {
+      for (let i = 0; i < 5; i++) {
+        particles.push({
+          x: OFFSET_X + x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          y: OFFSET_Y + cy * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          vx: -5 - Math.random() * 5,
+          vy: (Math.random() - 0.5) * 3,
+          life: 1,
+          color: '#00FFFF',
+          size: 3 + Math.random() * 3
+        })
+      }
+    }
+  }
+  
+  // 根据消除数量计算道具生成概率
+  function shouldSpawnPowerup(matchCount: number): string | null {
+    const key = Math.min(matchCount, 10) as keyof typeof POWERUP_CHANCES
+    const chance = POWERUP_CHANCES[key]
+    if (Math.random() < chance) {
+      return POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)].id
+    }
+    return null
   }
   
   // 洗牌效果
@@ -360,6 +439,61 @@ export function initJewelMatch(engine: GameEngine, audioService: AudioService, o
     ctx.stroke()
   }
 
+  function drawPowerupGem(x: number, y: number, powerupId: string, highlight: boolean) {
+    const gem = board[y]?.[x]
+    const powerup = POWERUP_TYPES.find(p => p.id === powerupId)
+    
+    if (!powerup) return
+    
+    const displayX = x + (gem?.offsetX ? gem.offsetX / (GEM_SIZE + GAP) : 0)
+    const displayY = y + (gem?.offsetY ? gem.offsetY / (GEM_SIZE + GAP) : 0)
+    
+    const finalGx = OFFSET_X + displayX * (GEM_SIZE + GAP) + GEM_SIZE / 2
+    const finalGy = OFFSET_Y + displayY * (GEM_SIZE + GAP) + GEM_SIZE / 2
+    
+    const pulse = 3 + Math.sin(Date.now() / 200) * 2
+    const size = (GEM_SIZE + pulse) * (gem?.scale || 1)
+
+    // 道具发光特效
+    ctx.shadowBlur = 25
+    ctx.shadowColor = powerup.glow
+    ctx.fillStyle = powerup.color
+    ctx.beginPath()
+    ctx.roundRect(finalGx - size * 0.42, finalGy - size * 0.42, size * 0.84, size * 0.84, 8)
+    ctx.fill()
+    ctx.shadowBlur = 0
+
+    // 边框
+    ctx.strokeStyle = '#FFD700'
+    ctx.lineWidth = highlight ? 4 : 2
+    ctx.stroke()
+
+    // 内部装饰线
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.roundRect(finalGx - size * 0.35, finalGy - size * 0.35, size * 0.7, size * 0.7, 6)
+    ctx.stroke()
+
+    // 道具图标
+    ctx.font = `${size * 0.5}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(powerup.emoji, finalGx, finalGy)
+
+    // 选中光环
+    if (highlight) {
+      ctx.shadowBlur = 25
+      ctx.shadowColor = 'rgba(255,215,0,0.8)'
+      ctx.strokeStyle = 'rgba(255,215,0,0.9)'
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.roundRect(finalGx - size * 0.48, finalGy - size * 0.48, size * 0.96, size * 0.96, 12)
+      ctx.stroke()
+      ctx.shadowBlur = 0
+    }
+  }
+
   function shadeColor(color: string, percent: number): string {
     const num = parseInt(color.replace('#', ''), 16)
     const amt = Math.round(2.55 * percent)
@@ -445,17 +579,21 @@ export function initJewelMatch(engine: GameEngine, audioService: AudioService, o
     ctx.lineWidth = 2
     ctx.stroke()
 
-    // 绘制宝石
+    // 绘制宝石和道具方块
     for (let y = 0; y < ROWS; y++) {
       for (let x = 0; x < COLS; x++) {
         const gem = board[y]?.[x]
-        if (!gem || gem.type < 0) continue
+        if (!gem) continue
 
         const isSelected = selected?.x === x && selected?.y === y
         const isHint = hintGem?.x === x && hintGem?.y === y
-        const pulse = isHint ? Math.sin(Date.now() / 150) * 6 : 0
 
-        drawGem(x, y, gem.type, isSelected, pulse)
+        if (gem.powerup) {
+          drawPowerupGem(x, y, gem.powerup, isSelected)
+        } else if (gem.type >= 0) {
+          const pulse = isHint ? Math.sin(Date.now() / 150) * 6 : 0
+          drawGem(x, y, gem.type, isSelected, pulse)
+        }
       }
     }
 
@@ -515,57 +653,19 @@ export function initJewelMatch(engine: GameEngine, audioService: AudioService, o
     ctx.textAlign = 'center'
     ctx.fillText(`${seconds}s`, W / 2, barY - 8)
 
-    // ====== 道具栏显示 ======
-    const powerupY = barY + 30
-    const powerupSize = 40
-    const powerupGap = 10
-    const totalPowerupWidth = 4 * powerupSize + 3 * powerupGap
-    const powerupStartX = (W - totalPowerupWidth) / 2
-    
-    const powerupTypes: Array<keyof typeof powerups> = ['shuffle', 'hammer', 'bomb', 'rainbow']
-    
-    powerupTypes.forEach((type, index) => {
-      const px = powerupStartX + index * (powerupSize + powerupGap)
-      const count = powerups[type]
-      const isActive = activePowerup === type
-      
-      // 道具背景
-      ctx.fillStyle = isActive ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.1)'
-      ctx.strokeStyle = isActive ? '#FFD700' : 'rgba(255,255,255,0.3)'
-      ctx.lineWidth = isActive ? 3 : 1
-      ctx.beginPath()
-      ctx.roundRect(px, powerupY, powerupSize, powerupSize, 8)
-      ctx.fill()
-      ctx.stroke()
-      
-      // 道具图标
-      ctx.font = '24px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(POWERUP_ICONS[type], px + powerupSize / 2, powerupY + powerupSize / 2)
-      
-      // 数量
-      ctx.fillStyle = count > 0 ? '#FFF' : '#666'
-      ctx.font = 'bold 12px sans-serif'
-      ctx.textBaseline = 'bottom'
-      ctx.fillText(String(count), px + powerupSize - 5, powerupY + powerupSize - 3)
-    })
-    
-    // 道具提示
-    if (activePowerup) {
-      ctx.fillStyle = '#FFD700'
-      ctx.font = '12px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
-      ctx.fillText('点击宝石使用道具', W / 2, powerupY + powerupSize + 5)
-    }
+    // 道具说明
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.font = '12px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.fillText('💣炸弹 💫彩虹 ⚡闪电 🔄洗牌', W / 2, barY + 20)
 
     // 底部提示
     ctx.fillStyle = 'rgba(255,255,255,0.5)'
     ctx.font = '14px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
-    ctx.fillText('💎 点击相邻宝石交换位置', W / 2, H - 25)
+    ctx.fillText('💎 点击相邻宝石交换位置 | 4连消以上可能生成道具', W / 2, H - 25)
   }
 
   async function trySwap(x1: number, y1: number, x2: number, y2: number): Promise<boolean> {
@@ -685,94 +785,160 @@ export function initJewelMatch(engine: GameEngine, audioService: AudioService, o
     })
   }
 
-  async function processMatches() {
-    const matches = findMatches()
-    if (matches.length === 0) return
-
-    const points = matches.length * 25 * combo  // 提高基础分数到25
-    engine.addScore(points, W / 2, H / 2)
-
-    // 消除动画
-    for (let i = 0; i < 12; i++) {
-      matches.forEach(m => {
-        const gem = board[m.y]?.[m.x]
-        if (gem && gem.scale > 0.1) {
-          gem.scale *= 0.8
-        }
-      })
-      await new Promise(r => setTimeout(r, 25))
-    }
-
-    // 爆炸粒子（增强）
-    matches.forEach(m => {
-      const gem = board[m.y]?.[m.x]
-      if (gem && gem.type >= 0) {
-        const g = GEM_TYPES[gem.type]
-        for (let i = 0; i < 12; i++) {
-          const angle = (Math.PI * 2 * i) / 12 + Math.random() * 0.5
-          particles.push({
-            x: OFFSET_X + m.x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
-            y: OFFSET_Y + m.y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
-            vx: Math.cos(angle) * (4 + Math.random() * 4),
-            vy: Math.sin(angle) * (4 + Math.random() * 4),
-            life: 1,
-            color: g.color,
-            size: 5 + Math.random() * 4
-          })
-        }
-        board[m.y][m.x] = { type: -1, scale: 1 }
+  function hasEmptySpaces(): boolean {
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        if (board[y][x]?.type === -1) return true
       }
-    })
+    }
+    return false
+  }
 
-    if (combo >= 3) engine.triggerRandomBuff()
-
-    await new Promise(r => setTimeout(r, 200))
-
-    // 下落填充
+  async function applyGravityAndFill(matchCount: number = 0, spawnPowerupAt: {x: number, y: number} | null = null): Promise<void> {
+    let needsFill = false
+    const powerupToSpawn = matchCount >= 4 ? shouldSpawnPowerup(matchCount) : null
+    
     for (let x = 0; x < COLS; x++) {
       let writeY = ROWS - 1
       for (let y = ROWS - 1; y >= 0; y--) {
-        if (board[y][x]?.type >= 0) {
+        if (board[y][x]?.type >= 0 || board[y][x]?.powerup) {
           if (writeY !== y) {
             board[writeY][x] = { ...board[y][x], offsetY: (y - writeY) * (GEM_SIZE + GAP) }
             board[y][x] = { type: -1, scale: 1 }
+            needsFill = true
           }
           writeY--
         }
       }
       for (let y = writeY; y >= 0; y--) {
-        board[y][x] = { 
-          type: Math.floor(Math.random() * GEM_TYPES.length),
-          offsetY: -60 - Math.random() * 120
+        const shouldPlacePowerup = powerupToSpawn && spawnPowerupAt?.x === x && spawnPowerupAt?.y === y
+        
+        if (shouldPlacePowerup) {
+          board[y][x] = {
+            type: -2,
+            powerup: powerupToSpawn,
+            offsetY: -60 - Math.random() * 120,
+            scale: 1,
+            pulse: 0
+          }
+        } else {
+          let newType: number
+          do {
+            newType = Math.floor(Math.random() * GEM_TYPES.length)
+          } while (wouldCreateMatch(x, y, newType))
+          board[y][x] = { 
+            type: newType,
+            offsetY: -60 - Math.random() * 120,
+            scale: 1
+          }
         }
+        needsFill = true
       }
     }
 
-    // 下落动画
-    for (let frame = 0; frame < 18; frame++) {
-      let hasOffset = false
+    if (needsFill) {
+      for (let frame = 0; frame < 20; frame++) {
+        let hasOffset = false
+        for (let y = 0; y < ROWS; y++) {
+          for (let x = 0; x < COLS; x++) {
+            const gem = board[y][x]
+            if (gem && gem.offsetY && gem.offsetY !== 0) {
+              hasOffset = true
+              gem.offsetY *= 0.7
+              if (Math.abs(gem.offsetY) < 0.5) gem.offsetY = 0
+            }
+          }
+        }
+        if (!hasOffset) break
+        await new Promise(r => setTimeout(r, 16))
+      }
+
       for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
-          const gem = board[y][x]
-          if (gem && gem.offsetY && gem.offsetY !== 0) {
-            hasOffset = true
-            gem.offsetY *= 0.75
-            if (Math.abs(gem.offsetY) < 1) gem.offsetY = 0
+          if (board[y][x]) {
+            board[y][x].offsetY = 0
+            board[y][x].offsetX = 0
           }
         }
       }
-      if (!hasOffset) break
-      await new Promise(r => setTimeout(r, 18))
+    }
+  }
+
+  function wouldCreateMatch(x: number, y: number, type: number): boolean {
+    if (x >= 2 && board[y]?.[x-1]?.type === type && board[y]?.[x-2]?.type === type) return true
+    if (y >= 2 && board[y-1]?.[x]?.type === type && board[y-2]?.[x]?.type === type) return true
+    if (x >= 1 && x < COLS - 1 && board[y]?.[x-1]?.type === type && board[y]?.[x+1]?.type === type) return true
+    if (y >= 1 && y < ROWS - 1 && board[y-1]?.[x]?.type === type && board[y+1]?.[x]?.type === type) return true
+    return false
+  }
+
+  async function processMatches() {
+    const matches = findMatches()
+    const hasEmpty = hasEmptySpaces()
+    
+    if (matches.length === 0 && !hasEmpty) return
+
+    const matchCount = matches.length
+    
+    if (matchCount > 0) {
+      const points = matchCount * 25 * combo
+      engine.addScore(points, W / 2, H / 2)
+
+      for (let i = 0; i < 12; i++) {
+        matches.forEach(m => {
+          const gem = board[m.y]?.[m.x]
+          if (gem && gem.scale > 0.1) {
+            gem.scale *= 0.8
+          }
+        })
+        await new Promise(r => setTimeout(r, 25))
+      }
+
+      let powerupSpawnPosition: {x: number, y: number} | null = null
+      
+      matches.forEach((m, index) => {
+        const gem = board[m.y]?.[m.x]
+        
+        if (gem && gem.powerup) {
+          triggerPowerupEffect(gem.powerup, m.x, m.y)
+          board[m.y][m.x] = { type: -1, scale: 1 }
+        } else if (gem && gem.type >= 0) {
+          const g = GEM_TYPES[gem.type]
+          for (let i = 0; i < 12; i++) {
+            const angle = (Math.PI * 2 * i) / 12 + Math.random() * 0.5
+            particles.push({
+              x: OFFSET_X + m.x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+              y: OFFSET_Y + m.y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+              vx: Math.cos(angle) * (4 + Math.random() * 4),
+              vy: Math.sin(angle) * (4 + Math.random() * 4),
+              life: 1,
+              color: g.color,
+              size: 5 + Math.random() * 4
+            })
+          }
+          board[m.y][m.x] = { type: -1, scale: 1 }
+          
+          if (matchCount >= 4 && index === Math.floor(matches.length / 2) && !powerupSpawnPosition) {
+            powerupSpawnPosition = { x: m.x, y: m.y }
+          }
+        }
+      })
+
+      if (combo >= 3) engine.triggerRandomBuff()
+
+      await new Promise(r => setTimeout(r, 200))
     }
 
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
-        if (board[y][x]) board[y][x].offsetY = 0
-      }
-    }
+    await applyGravityAndFill(matchCount, powerupSpawnPosition)
 
     await new Promise(r => setTimeout(r, 150))
-    processMatches()
+    
+    const newMatches = findMatches()
+    if (newMatches.length > 0) {
+      processMatches()
+    } else {
+      combo = 0
+    }
   }
 
   canvas.onclick = null
@@ -785,51 +951,6 @@ export function initJewelMatch(engine: GameEngine, audioService: AudioService, o
     const sy = H / rect.height
     const mx = (e.clientX - rect.left) * sx
     const my = (e.clientY - rect.top) * sy
-
-    // ====== 检测是否点击了道具按钮 ======
-    const powerupY = OFFSET_Y + ROWS * (GEM_SIZE + GAP) + 70  // barY + 30
-    const powerupSize = 40
-    const powerupGap = 10
-    const totalPowerupWidth = 4 * powerupSize + 3 * powerupGap
-    const powerupStartX = (W - totalPowerupWidth) / 2
-    
-    const powerupTypes: Array<keyof typeof powerups> = ['shuffle', 'hammer', 'bomb', 'rainbow']
-    
-    for (let i = 0; i < powerupTypes.length; i++) {
-      const type = powerupTypes[i]
-      const px = powerupStartX + i * (powerupSize + powerupGap)
-      
-      if (mx >= px && mx <= px + powerupSize && my >= powerupY && my <= powerupY + powerupSize) {
-        if (powerups[type] > 0) {
-          if (activePowerup === type) {
-            // 取消激活
-            activePowerup = null
-          } else {
-            // 激活血道具
-            activePowerup = type
-            selected = null
-            audioService.collect()
-          }
-          return
-        }
-      }
-    }
-    
-    // ====== 如果激活了道具，点击宝石使用道具 ======
-    if (activePowerup) {
-      const x = Math.floor((mx - OFFSET_X) / (GEM_SIZE + GAP))
-      const y = Math.floor((my - OFFSET_Y) / (GEM_SIZE + GAP))
-      
-      if (x >= 0 && x < COLS && y >= 0 && y < ROWS && board[y][x]) {
-        if (usePowerup(activePowerup, x, y)) {
-          // 彩虹道具使用后不取消，其他道具使用后取消
-          if (activePowerup !== 'rainbow') {
-            activePowerup = null
-          }
-        }
-      }
-      return
-    }
 
     // ====== 正常游戏逻辑 ======
     const x = Math.floor((mx - OFFSET_X) / (GEM_SIZE + GAP))

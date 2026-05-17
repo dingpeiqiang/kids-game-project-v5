@@ -6,75 +6,112 @@ import type { Particle } from './types'
 import { PARTICLE_COLORS } from './config'
 
 /**
- * 创建饼干碎屑粒子（性能优化版）
- * 包含：大碎片、中碎屑、小粉末、微尘四种类型，总数量控制在60个以内
+ * 创建饼干碎屑粒子（解压爽快感优化版）
+ * 优化：平衡视觉效果和性能，总数量约80个
  */
 export function createCookieParticles(x: number, y: number): Particle[] {
   const particles: Particle[] = []
+  const EXPLOSION_COLORS = [...PARTICLE_COLORS, '#FF6B6B', '#FFD700', '#FF9F43', '#FFE66D', '#FF8C00']
   
-  // 1. 大碎片 (5个) - 显眼的大碎片，慢速、大尺寸、长生命周期
+  // 1. 超大碎片 (5个) - 显眼但减少数量
   for (let i = 0; i < 5; i++) {
-    const angle = (Math.PI * 2 * i) / 5 + Math.random() * 0.3
-    const speed = 2 + Math.random() * 3
+    const angle = (Math.PI * 2 * i) / 5 + Math.random() * 0.4
+    const speed = 3 + Math.random() * 5
     particles.push({
-      x: x + (Math.random() - 0.5) * 12,
-      y: y + (Math.random() - 0.5) * 12,
+      x: x + (Math.random() - 0.5) * 20,
+      y: y + (Math.random() - 0.5) * 20,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 6,
+      life: 1,
+      color: EXPLOSION_COLORS[Math.floor(Math.random() * EXPLOSION_COLORS.length)],
+      size: 18 + Math.random() * 12,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.4
+    })
+  }
+  
+  // 2. 大碎片 (10个) - 减少数量
+  for (let i = 0; i < 10; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const speed = 5 + Math.random() * 7
+    particles.push({
+      x: x + (Math.random() - 0.5) * 25,
+      y: y + (Math.random() - 0.5) * 25,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 4,
       life: 1,
-      color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      size: 12 + Math.random() * 8,
+      color: EXPLOSION_COLORS[Math.floor(Math.random() * EXPLOSION_COLORS.length)],
+      size: 10 + Math.random() * 8,
       rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.2
+      rotSpeed: (Math.random() - 0.5) * 0.5
     })
   }
   
-  // 2. 中等碎屑 (12个) - 中速、中等尺寸
-  for (let i = 0; i < 12; i++) {
+  // 3. 中等彩色粒子 (20个) - 减少数量
+  for (let i = 0; i < 20; i++) {
     const angle = Math.random() * Math.PI * 2
-    const speed = 4 + Math.random() * 5
+    const speed = 7 + Math.random() * 10
     particles.push({
-      x: x + (Math.random() - 0.5) * 18,
-      y: y + (Math.random() - 0.5) * 18,
+      x: x + (Math.random() - 0.5) * 30,
+      y: y + (Math.random() - 0.5) * 30,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 3,
+      life: 1,
+      color: EXPLOSION_COLORS[Math.floor(Math.random() * EXPLOSION_COLORS.length)],
+      size: 5 + Math.random() * 5,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.6
+    })
+  }
+  
+  // 4. 小粉末 (25个) - 减少数量
+  for (let i = 0; i < 25; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const speed = 10 + Math.random() * 14
+    particles.push({
+      x: x + (Math.random() - 0.5) * 35,
+      y: y + (Math.random() - 0.5) * 35,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 2,
       life: 1,
-      color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      size: 4 + Math.random() * 3,
-      rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.3
-    })
-  }
-  
-  // 3. 小粉末 (20个) - 快速、小尺寸
-  for (let i = 0; i < 20; i++) {
-    const angle = Math.random() * Math.PI * 2
-    const speed = 6 + Math.random() * 9
-    particles.push({
-      x: x + (Math.random() - 0.5) * 22,
-      y: y + (Math.random() - 0.5) * 22,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 1,
-      life: 1,
-      color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      size: 1.5 + Math.random() * 2,
+      color: EXPLOSION_COLORS[Math.floor(Math.random() * EXPLOSION_COLORS.length)],
+      size: 2 + Math.random() * 3,
       rotation: 0,
       rotSpeed: 0
     })
   }
   
-  // 4. 微尘/面包屑 (15个) - 超快、极小
+  // 5. 闪光粒子 (15个) - 减少数量
+  const SPARKLE_COLORS = ['#FFFFFF', '#FFD700', '#FFFACD', '#FFFAF0']
   for (let i = 0; i < 15; i++) {
     const angle = Math.random() * Math.PI * 2
-    const speed = 10 + Math.random() * 12
+    const speed = 14 + Math.random() * 18
     particles.push({
-      x: x + (Math.random() - 0.5) * 25,
-      y: y + (Math.random() - 0.5) * 25,
+      x: x + (Math.random() - 0.5) * 40,
+      y: y + (Math.random() - 0.5) * 40,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1,
+      life: 1,
+      color: SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)],
+      size: 1 + Math.random() * 2,
+      rotation: 0,
+      rotSpeed: 0,
+      isSparkle: true
+    })
+  }
+  
+  // 6. 微尘爆炸 (15个) - 大幅减少数量
+  for (let i = 0; i < 15; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const speed = 16 + Math.random() * 20
+    particles.push({
+      x: x + (Math.random() - 0.5) * 45,
+      y: y + (Math.random() - 0.5) * 45,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 0.5,
       life: 1,
-      color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      size: 0.8 + Math.random() * 1.2,
+      color: EXPLOSION_COLORS[Math.floor(Math.random() * EXPLOSION_COLORS.length)],
+      size: 0.8 + Math.random() * 1.5,
       rotation: 0,
       rotSpeed: 0
     })
@@ -109,36 +146,41 @@ export function createFallingCrumbs(x: number, y: number, count: number = 12): P
 }
 
 /**
- * 更新粒子状态（支持旋转和更真实的物理）
+ * 更新粒子状态（性能优化版）
+ * - 更快的粒子衰减
+ * - 粒子数量上限限制
  */
 export function updateParticles(particles: Particle[]): void {
-  const canvasHeight = 600 // 画布高度
+  const canvasHeight = 600
+  const MAX_PARTICLES = 300 // 粒子数量上限
+  
+  // 如果超过上限，直接裁剪掉旧粒子
+  if (particles.length > MAX_PARTICLES) {
+    particles.splice(0, particles.length - MAX_PARTICLES)
+  }
   
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i]
     
-    // 对于掉落粒子，使用特殊的生命周期管理
+    // 更快的衰减速度
     if (p.isFalling) {
-      // 掉落粒子不随时间衰减，而是根据位置
-      // 只有当接近底部时才开始淡出
       const distanceToBottom = canvasHeight - p.y
       if (distanceToBottom < 100) {
-        // 距离底部100像素内开始淡出
         p.life = distanceToBottom / 100
       } else {
-        p.life = 1 // 保持完全不透明
+        p.life = 1
       }
     } else {
-      // 普通粒子根据大小调整衰减速度
+      // 更快的衰减
       let decayRate: number
       if (p.size > 8) {
-        decayRate = 0.012  // 大碎片：很慢
+        decayRate = 0.025  // 大碎片：更快消失
       } else if (p.size > 4) {
-        decayRate = 0.018  // 中碎屑：中等
+        decayRate = 0.035  // 中碎屑
       } else if (p.size > 2) {
-        decayRate = 0.025  // 小粉末：较快
+        decayRate = 0.045  // 小粉末
       } else {
-        decayRate = 0.035  // 微尘：很快
+        decayRate = 0.06   // 微尘：非常快
       }
       p.life -= decayRate
     }
@@ -146,29 +188,27 @@ export function updateParticles(particles: Particle[]): void {
     p.x += p.vx
     p.y += p.vy
     
-    // 增强的重力效果（不同大小的粒子受重力影响不同）
-    const gravity = p.size > 6 ? 0.35 : (p.size > 3 ? 0.3 : 0.25)
+    // 简化重力计算
+    const gravity = p.size > 4 ? 0.32 : 0.28
     p.vy += gravity
     
-    // 空气阻力（微尘阻力更大，飘得更久）
-    const drag = p.size < 2 ? 0.96 : 0.98
-    p.vx *= drag
-    p.vy *= drag
+    // 简化空气阻力
+    p.vx *= 0.975
+    p.vy *= 0.975
     
-    // 旋转（只有大碎片和中碎屑旋转）
+    // 旋转
     if (p.rotation !== undefined && p.rotSpeed) {
       p.rotation += p.rotSpeed
-      // 旋转也会逐渐减慢
-      p.rotSpeed *= 0.99
+      p.rotSpeed *= 0.985
     }
     
-    // 移除条件：
-    // 1. 普通粒子：life <= 0
-    // 2. 掉落粒子：超出底部边界
+    // 更早的移除条件
     if (!p.isFalling && p.life <= 0) {
       particles.splice(i, 1)
-    } else if (p.isFalling && p.y > canvasHeight + 20) {
-      // 掉落粒子掉出底部后才移除
+    } else if (p.isFalling && p.y > canvasHeight + 10) {
+      particles.splice(i, 1)
+    } else if (!p.isFalling && p.life < 0.1) {
+      // 提前移除快消失的粒子
       particles.splice(i, 1)
     }
   }

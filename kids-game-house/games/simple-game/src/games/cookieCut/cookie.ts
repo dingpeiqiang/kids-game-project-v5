@@ -96,7 +96,7 @@ export function checkSlice(
     const t = Math.max(0, Math.min(1, (fx * dx + fy * dy) / (sliceLen * sliceLen || 1)))
     const dist = Math.hypot(c.x - (x1 + t * dx), c.y - (y1 + t * dy))
     
-    if (dist < c.size / 2 + 25) {
+    if (dist < c.size / 2 + 50) { // 扩大切割范围，从25增加到50
       c.sliced = true
       slicedCount++
       onSlice(c, slicedCount)

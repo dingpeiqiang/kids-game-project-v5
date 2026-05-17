@@ -30,8 +30,13 @@ export interface Projectile {
   vx: number
   vy: number
   color: number
-  powerup?: 'color_bomb' | 'clear_row' | 'extra_shot' | 'multishot' | null
+  powerup?: PowerupType | null
+  specialType?: SpecialBubbleType | null
 }
+
+export type PowerupType = 'color_bomb' | 'clear_row' | 'extra_shot' | 'multishot' | 'time_freeze' | 'magnet' | 'slow_motion' | 'double_score'
+
+export type SpecialBubbleType = 'sticky' | 'bomb' | 'rainbow' | 'heavy'
 
 export interface Shooter {
   x: number

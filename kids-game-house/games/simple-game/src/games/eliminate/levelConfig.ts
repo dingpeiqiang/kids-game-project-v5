@@ -21,7 +21,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 8,
     timeLimit: 60000,
     colorCount: 3,
-    itemSpawnRate: 0.08, // 提高道具生成率
+    itemSpawnRate: 0.03, // 降低道具生成率
     starSpawnRate: 0.12,
     minComboForBonus: 6,
     description: '消除方块收集8颗星星！'
@@ -33,7 +33,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 10,
     timeLimit: 55000,
     colorCount: 4,
-    itemSpawnRate: 0.07,
+    itemSpawnRate: 0.025,
     starSpawnRate: 0.11,
     minComboForBonus: 6,
     description: '收集10颗星星，时间更紧了！'
@@ -45,7 +45,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 12,
     timeLimit: 50000,
     colorCount: 4,
-    itemSpawnRate: 0.06,
+    itemSpawnRate: 0.02,
     starSpawnRate: 0.10,
     minComboForBonus: 7,
     description: '颜色变多了，收集12颗星星！'
@@ -57,7 +57,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 15,
     timeLimit: 45000,
     colorCount: 5,
-    itemSpawnRate: 0.05,
+    itemSpawnRate: 0.015,
     starSpawnRate: 0.09,
     minComboForBonus: 7,
     description: '继续保持连击，收集15颗星星！'
@@ -69,7 +69,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 18,
     timeLimit: 40000,
     colorCount: 5,
-    itemSpawnRate: 0.04,
+    itemSpawnRate: 0.012,
     starSpawnRate: 0.08,
     minComboForBonus: 7,
     description: '一半的征程，收集18颗星星！'
@@ -81,7 +81,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 22,
     timeLimit: 35000,
     colorCount: 5,
-    itemSpawnRate: 0.03,
+    itemSpawnRate: 0.01,
     starSpawnRate: 0.07,
     minComboForBonus: 8,
     description: '挑战升级，收集22颗星星！'
@@ -93,7 +93,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 26,
     timeLimit: 30000,
     colorCount: 6,
-    itemSpawnRate: 0.02,
+    itemSpawnRate: 0.008,
     starSpawnRate: 0.06,
     minComboForBonus: 8,
     description: '所有颜色都出现了，收集26颗星星！'
@@ -105,7 +105,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 30,
     timeLimit: 25000,
     colorCount: 6,
-    itemSpawnRate: 0.01,
+    itemSpawnRate: 0.006,
     starSpawnRate: 0.05,
     minComboForBonus: 9,
     description: '高手的对决，收集30颗星星！'
@@ -117,7 +117,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 35,
     timeLimit: 20000,
     colorCount: 6,
-    itemSpawnRate: 0.005,
+    itemSpawnRate: 0.004,
     starSpawnRate: 0.04,
     minComboForBonus: 10,
     description: '接近巅峰，收集35颗星星！'
@@ -129,7 +129,7 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     targetStars: 40,
     timeLimit: 15000,
     colorCount: 6,
-    itemSpawnRate: 0.003,
+    itemSpawnRate: 0.002,
     starSpawnRate: 0.03,
     minComboForBonus: 12,
     description: '最终挑战，收集40颗星星证明实力！'

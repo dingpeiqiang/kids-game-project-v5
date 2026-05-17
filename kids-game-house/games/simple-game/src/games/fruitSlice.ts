@@ -18,6 +18,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   ctx.imageSmoothingEnabled = false
 
   const FRUITS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍑', '🍒', '🥝', '🍉', '🍌', '🥭', '🍍']
+  const TRAPS = ['💣', '💥'] // 陷阱：炸弹、爆炸
   const fruits: any[] = []
   const particles: any[] = []
   const slices: any[] = []
@@ -31,6 +32,21 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   let isSlicing = false
   let lastX = 0, lastY = 0
   let scorePopups: any[] = [] // 分数弹出效果
+  
+  // 性能优化 - 对象池
+  const particlePool: any[] = []
+  const sliceEffectPool: any[] = []
+  const scorePopupPool: any[] = []
+  const slicePool: any[] = []
+  
+  // 性能优化 - 背景缓存
+  let backgroundCanvas: HTMLCanvasElement | null = null
+  let backgroundCtx: CanvasRenderingContext2D | null = null
+  
+  // 性能优化 - 帧率监控
+  let frameCount = 0
+  let lastFpsUpdate = Date.now()
+  let currentFps = 60
   
   // ====== 道具系统 ======
   let inventory: string[] = [] // 道具库存
@@ -58,6 +74,35 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     })
   }
   
+  // ====== 对象池函数 ======
+  function getParticle(): any {
+    if (particlePool.length > 0) {
+      return particlePool.pop()
+    }
+    return {}
+  }
+
+  function getSliceEffect(): any {
+    if (sliceEffectPool.length > 0) {
+      return sliceEffectPool.pop()
+    }
+    return {}
+  }
+
+  function getScorePopup(): any {
+    if (scorePopupPool.length > 0) {
+      return scorePopupPool.pop()
+    }
+    return {}
+  }
+
+  function getSlice(): any {
+    if (slicePool.length > 0) {
+      return slicePool.pop()
+    }
+    return {}
+  }
+
   // 使用道具
   function usePowerup(type: string): boolean {
     const index = inventory.indexOf(type)
@@ -108,17 +153,18 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
           if (!f.sliced) {
             f.sliced = true
             bombCount++
-            // 创建爆炸粒子
-            for (let i = 0; i < 8; i++) {
-              particles.push({
-                x: f.x,
-                y: f.y,
-                vx: (Math.random() - 0.5) * 12,
-                vy: (Math.random() - 0.5) * 12,
-                life: 1,
-                color: '#FF4444',
-                size: 6
-              })
+            // 创建爆炸粒子 - 使用对象池，限制数量
+            const maxBombParticles = Math.min(8, 100 - particles.length)
+            for (let i = 0; i < maxBombParticles; i++) {
+              const p = getParticle()
+              p.x = f.x
+              p.y = f.y
+              p.vx = (Math.random() - 0.5) * 12
+              p.vy = (Math.random() - 0.5) * 12
+              p.life = 1
+              p.color = '#FF4444'
+              p.size = 6
+              particles.push(p)
             }
           }
         })
@@ -139,6 +185,12 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.4
     const speed = 7 + Math.random() * 3
     
+    // 20%概率生成陷阱水果
+    const isTrap = Math.random() < 0.2
+    const emoji = isTrap 
+      ? TRAPS[Math.floor(Math.random() * TRAPS.length)]
+      : FRUITS[Math.floor(Math.random() * FRUITS.length)]
+    
     fruits.push({
       x,
       y: H + size,
@@ -148,36 +200,55 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       size,
       rotation: 0,
       rotSpeed: (Math.random() - 0.5) * 0.1,
-      emoji: FRUITS[Math.floor(Math.random() * FRUITS.length)],
+      emoji,
       sliced: false,
       scale: 1,
-      alpha: 1
+      alpha: 1,
+      isTrap // 标记是否为陷阱
     })
   }
 
-  function draw() {
-    // 背景渐变
-    const gradient = ctx.createLinearGradient(0, 0, 0, H)
-    gradient.addColorStop(0, '#1a1a2e')
-    gradient.addColorStop(0.5, '#16213e')
-    gradient.addColorStop(1, '#0f3460')
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, W, H)
-
-    // 添加背景装饰线
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)'
-    ctx.lineWidth = 1
-    for (let i = 0; i < H; i += 50) {
-      ctx.beginPath()
-      ctx.moveTo(0, i)
-      ctx.lineTo(W, i)
-      ctx.stroke()
+  // 性能优化 - 绘制缓存背景
+  function drawBackground() {
+    if (!backgroundCanvas) {
+      backgroundCanvas = document.createElement('canvas')
+      backgroundCanvas.width = W
+      backgroundCanvas.height = H
+      backgroundCtx = backgroundCanvas.getContext('2d')!
+      
+      // 绘制背景到缓存
+      const gradient = backgroundCtx.createLinearGradient(0, 0, 0, H)
+      gradient.addColorStop(0, '#1a1a2e')
+      gradient.addColorStop(0.5, '#16213e')
+      gradient.addColorStop(1, '#0f3460')
+      backgroundCtx.fillStyle = gradient
+      backgroundCtx.fillRect(0, 0, W, H)
+      
+      // 添加背景装饰线
+      backgroundCtx.strokeStyle = 'rgba(255,255,255,0.05)'
+      backgroundCtx.lineWidth = 1
+      for (let i = 0; i < H; i += 50) {
+        backgroundCtx.beginPath()
+        backgroundCtx.moveTo(0, i)
+        backgroundCtx.lineTo(W, i)
+        backgroundCtx.stroke()
+      }
     }
+    ctx.drawImage(backgroundCanvas, 0, 0)
+  }
 
-    // 切割轨迹
-    slices.forEach((s, i) => {
+  function draw() {
+    // 绘制缓存背景
+    drawBackground()
+
+    // 切割轨迹 - 反向遍历避免索引问题
+    for (let i = slices.length - 1; i >= 0; i--) {
+      const s = slices[i]
       s.life -= 0.04
-      if (s.life <= 0) { slices.splice(i, 1); return }
+      if (s.life <= 0) {
+        slicePool.push(slices.splice(i, 1)[0])
+        continue
+      }
       
       ctx.lineCap = 'round'
       ctx.lineWidth = 18 * s.life
@@ -191,18 +262,21 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       ctx.strokeStyle = `rgba(255,255,255,${s.life * 0.9})`
       ctx.stroke()
       
-      // 切割轨迹发光效果
-      ctx.shadowColor = `rgba(255,150,150,${s.life})`
-      ctx.shadowBlur = 15 * s.life
-      ctx.lineWidth = 10 * s.life
-      ctx.strokeStyle = `rgba(255,200,200,${s.life * 0.3})`
-      ctx.stroke()
-      ctx.shadowBlur = 0
-    })
+      // 减少阴影效果仅在高帧率时启用
+      if (currentFps > 45) {
+        ctx.shadowColor = `rgba(255,150,150,${s.life})`
+        ctx.shadowBlur = 15 * s.life
+        ctx.lineWidth = 10 * s.life
+        ctx.strokeStyle = `rgba(255,200,200,${s.life * 0.3})`
+        ctx.stroke()
+        ctx.shadowBlur = 0
+      }
+    }
 
     // 水果
-    fruits.forEach(f => {
-      if (f.sliced && f.alpha <= 0) return
+    for (let i = 0; i < fruits.length; i++) {
+      const f = fruits[i]
+      if (f.sliced && f.alpha <= 0) continue
       
       ctx.save()
       ctx.translate(f.x, f.y)
@@ -210,10 +284,17 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       ctx.globalAlpha = f.alpha || 1
       ctx.scale(f.scale || 1, f.scale || 1)
       
-      // 水果发光效果
-      ctx.shadowColor = 'rgba(255,200,100,0.5)'
-      ctx.shadowBlur = 12
-      ctx.shadowOffsetY = 2
+      // 陷阱水果有特殊的红色警告发光效果
+      if (f.isTrap) {
+        ctx.shadowColor = 'rgba(255,50,50,0.95)'
+        ctx.shadowBlur = 25
+        ctx.shadowOffsetY = 3
+      } else {
+        // 普通水果的发光效果
+        ctx.shadowColor = 'rgba(255,220,100,0.8)'
+        ctx.shadowBlur = 15
+        ctx.shadowOffsetY = 2
+      }
       
       ctx.font = `${f.size}px sans-serif`
       ctx.textAlign = 'center'
@@ -221,33 +302,44 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       ctx.fillText(f.emoji, 0, 0)
       
       ctx.restore()
-    })
+    }
 
-    // 粒子
-    particles.forEach((p, i) => {
+    // 粒子 - 反向遍历避免索引问题
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i]
       p.life -= 0.02
       p.x += p.vx
       p.y += p.vy
       p.vy += 0.25
       p.vx *= 0.99
       
-      if (p.life <= 0) { particles.splice(i, 1); return }
+      if (p.life <= 0) {
+        particlePool.push(particles.splice(i, 1)[0])
+        continue
+      }
       
       ctx.globalAlpha = p.life
       ctx.fillStyle = p.color
-      ctx.shadowColor = p.color
-      ctx.shadowBlur = 10 * p.life
+      // 减少粒子阴影
+      if (currentFps > 45) {
+        ctx.shadowColor = p.color
+        ctx.shadowBlur = 5 * p.life
+      }
       ctx.beginPath()
       ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2)
       ctx.fill()
       ctx.shadowBlur = 0
       ctx.globalAlpha = 1
-    })
+    }
 
-    // 切割特效
-    sliceEffects.forEach((e, i) => {
+    // 切割特效 - 反向遍历避免索引问题
+    for (let i = sliceEffects.length - 1; i >= 0; i--) {
+      const e = sliceEffects[i]
       e.life -= 0.03
-      if (e.life <= 0) { sliceEffects.splice(i, 1); return }
+      if (e.life <= 0) {
+        sliceEffectPool.push(sliceEffects.splice(i, 1)[0])
+        continue
+      }
       
       ctx.save()
       ctx.globalAlpha = e.life
@@ -261,27 +353,33 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       ctx.fillText(e.emoji, 0, 0)
       
       ctx.restore()
-    })
+    }
 
-    // 分数弹出
-    scorePopups.forEach((popup, i) => {
+    // 分数弹出 - 反向遍历避免索引问题
+    for (let i = scorePopups.length - 1; i >= 0; i--) {
+      const popup = scorePopups[i]
       popup.life -= 0.025
       popup.y -= 1.5
       popup.x += (Math.random() - 0.5) * 2
       
-      if (popup.life <= 0) { scorePopups.splice(i, 1); return }
+      if (popup.life <= 0) {
+        scorePopupPool.push(scorePopups.splice(i, 1)[0])
+        continue
+      }
       
       ctx.save()
       ctx.globalAlpha = popup.life
       ctx.fillStyle = popup.color
       ctx.font = `${popup.size}px sans-serif`
       ctx.textAlign = 'center'
-      ctx.shadowColor = popup.color
-      ctx.shadowBlur = 10
+      if (currentFps > 45) {
+        ctx.shadowColor = popup.color
+        ctx.shadowBlur = 6
+      }
       ctx.fillText(popup.text, popup.x, popup.y)
       ctx.shadowBlur = 0
       ctx.restore()
-    })
+    }
 
     // 分数
     ctx.fillStyle = '#FFD700'
@@ -409,90 +507,139 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       
       if (dist < f.size / 2 + 25) {
         f.sliced = true
-        combo++
         
-        const score = 10 * combo
-        engine.addScore(score, f.x, f.y)
-        
-        // 根据连击数播放不同音效
-        if (combo >= 5) {
-          audioService.crit()
-        } else if (combo >= 3) {
-          audioService.sliceCombo(combo)
-        } else {
-          audioService.slice()
-        }
-        
-        // 增强粒子效果（更多粒子）
-        const particleCount = 30 + combo * 5
-        for (let j = 0; j < particleCount; j++) {
-          const angle = (Math.PI * 2 / particleCount) * j + Math.random() * 0.3
-          const speed = 3 + Math.random() * 8
-          particles.push({
-            x: f.x,
-            y: f.y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            life: 1,
-            color: ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF9F43', '#FF69B4', '#9932CC'][Math.floor(Math.random() * 7)],
-            size: 4 + Math.random() * 8
-          })
-        }
-        
-        // 添加水果切开特效（两半飞散）
-        sliceEffects.push({
-          x: f.x - f.size * 0.3,
-          y: f.y,
-          emoji: f.emoji,
-          size: f.size * 0.6,
-          rotation: -0.5,
-          life: 0.6,
-          vx: -3,
-          vy: -2
-        })
-        sliceEffects.push({
-          x: f.x + f.size * 0.3,
-          y: f.y,
-          emoji: f.emoji,
-          size: f.size * 0.6,
-          rotation: 0.5,
-          life: 0.6,
-          vx: 3,
-          vy: -2
-        })
-        
-        // 分数弹出效果
-        scorePopups.push({
-          x: f.x,
-          y: f.y,
-          text: `+${score}`,
-          color: combo >= 5 ? '#FFD700' : combo >= 3 ? '#FF6B6B' : '#6BCB77',
-          size: combo >= 5 ? 32 : combo >= 3 ? 28 : 24,
-          life: 1
-        })
-        
-        // 高连击时的特殊效果
-        if (combo >= 5) {
-          // 添加星星特效
-          for (let j = 0; j < 8; j++) {
-            const angle = (Math.PI * 2 / 8) * j
-            sliceEffects.push({
-              x: f.x,
-              y: f.y,
-              emoji: '⭐',
-              size: 25,
-              rotation: 0,
-              life: 0.8,
-              vx: Math.cos(angle) * 4,
-              vy: Math.sin(angle) * 4
-            })
+        // 检查是不是陷阱！
+        if (f.isTrap) {
+          // 切到陷阱的惩罚效果
+          combo = 0 // 清空连击
+          engine.addScore(-50, f.x, f.y) // 扣分50
+          
+          // 爆炸粒子特效
+          for (let j = 0; j < 40; j++) {
+            const p = getParticle()
+            p.x = f.x
+            p.y = f.y
+            const angle = Math.random() * Math.PI * 2
+            const speed = 3 + Math.random() * 10
+            p.vx = Math.cos(angle) * speed
+            p.vy = Math.sin(angle) * speed
+            p.life = 1
+            p.color = ['#FF0000', '#FF4400', '#FF8800', '#FFFF00'][Math.floor(Math.random() * 4)]
+            p.size = 5 + Math.random() * 10
+            particles.push(p)
           }
-          audioService.combo()
-        } else if (combo === 3) {
-          audioService.combo()
+          
+          audioService.crit() // 播放暴击音效
+          
+          // 显示陷阱惩罚提示
+          const popup = getScorePopup()
+          popup.x = f.x
+          popup.y = f.y
+          popup.text = '-50 陷阱!'
+          popup.color = '#FF0000'
+          popup.size = 30
+          popup.life = 1
+          scorePopups.push(popup)
+          
+        } else {
+          // 普通水果
+          combo++
+          
+          const score = 10 * combo
+          engine.addScore(score, f.x, f.y)
+          
+          // 根据连击数播放不同音效
+          if (combo >= 5) {
+            audioService.crit()
+          } else if (combo >= 3) {
+            audioService.sliceCombo(combo)
+          } else {
+            audioService.slice()
+          }
+          
+          // 优化粒子效果（限制数量，使用对象池）
+          const maxParticles = Math.min(20 + combo * 3, 150 - particles.length)
+          const particleCount = Math.max(8, maxParticles)
+          for (let j = 0; j < particleCount; j++) {
+            const angle = (Math.PI * 2 / particleCount) * j + Math.random() * 0.3
+            const speed = 3 + Math.random() * 8
+            const p = getParticle()
+            p.x = f.x
+            p.y = f.y
+            p.vx = Math.cos(angle) * speed
+            p.vy = Math.sin(angle) * speed
+            p.life = 1
+            p.color = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF9F43', '#FF69B4', '#9932CC'][Math.floor(Math.random() * 7)]
+            p.size = 4 + Math.random() * 8
+            particles.push(p)
+          }
+          
+          // 添加水果切开特效（两半飞散）- 使用对象池
+          const se1 = getSliceEffect()
+          se1.x = f.x - f.size * 0.3
+          se1.y = f.y
+          se1.emoji = f.emoji
+          se1.size = f.size * 0.6
+          se1.rotation = -0.5
+          se1.life = 0.6
+          se1.vx = -3
+          se1.vy = -2
+          sliceEffects.push(se1)
+          
+          const se2 = getSliceEffect()
+          se2.x = f.x + f.size * 0.3
+          se2.y = f.y
+          se2.emoji = f.emoji
+          se2.size = f.size * 0.6
+          se2.rotation = 0.5
+          se2.life = 0.6
+          se2.vx = 3
+          se2.vy = -2
+          sliceEffects.push(se2)
+          
+          // 分数弹出效果 - 使用对象池
+          const popup = getScorePopup()
+          popup.x = f.x
+          popup.y = f.y
+          popup.text = `+${score}`
+          popup.color = combo >= 5 ? '#FFD700' : combo >= 3 ? '#FF6B6B' : '#6BCB77'
+          popup.size = combo >= 5 ? 32 : combo >= 3 ? 28 : 24
+          popup.life = 1
+          scorePopups.push(popup)
+          
+          // 高连击时的特殊效果 - 限制星星数量
+          if (combo >= 5) {
+            // 添加星星特效，最多4个
+            const starCount = Math.min(4, 50 - sliceEffects.length)
+            for (let j = 0; j < starCount; j++) {
+              const angle = (Math.PI * 2 / starCount) * j
+              const se = getSliceEffect()
+              se.x = f.x
+              se.y = f.y
+              se.emoji = '⭐'
+              se.size = 25
+              se.rotation = 0
+              se.life = 0.8
+              se.vx = Math.cos(angle) * 4
+              se.vy = Math.sin(angle) * 4
+              sliceEffects.push(se)
+            }
+            audioService.combo()
+          } else if (combo === 3) {
+            audioService.combo()
+          }
+          
+          if (combo >= 3) engine.triggerRandomBuff()
+          
+          // 切水果时有概率获得道具
+          if (Math.random() < 0.15) { // 15%概率获得道具
+            const powerupTypes = ['bomb', 'slow', 'magnet', 'double']
+            const randomPowerup = powerupTypes[Math.floor(Math.random() * powerupTypes.length)]
+            inventory.push(randomPowerup)
+            updateHTMLPowerupBar()
+            console.log('[道具] 获得道具:', randomPowerup)
+          }
         }
-        
-        if (combo >= 3) engine.triggerRandomBuff()
         
         // 延迟移除水果，显示淡出效果
         f.alpha = 0.8
@@ -551,7 +698,13 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     e.preventDefault()
     
     const pos = getPos(e)
-    slices.push({ x1: lastX, y1: lastY, x2: pos.x, y2: pos.y, life: 1 })
+    const s = getSlice()
+    s.x1 = lastX
+    s.y1 = lastY
+    s.x2 = pos.x
+    s.y2 = pos.y
+    s.life = 1
+    slices.push(s)
     checkSlice(lastX, lastY, pos.x, pos.y)
     
     lastX = pos.x
@@ -563,7 +716,13 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     e.preventDefault()
     
     const pos = getPos(e)
-    slices.push({ x1: lastX, y1: lastY, x2: pos.x, y2: pos.y, life: 1 })
+    const s = getSlice()
+    s.x1 = lastX
+    s.y1 = lastY
+    s.x2 = pos.x
+    s.y2 = pos.y
+    s.life = 1
+    slices.push(s)
     checkSlice(lastX, lastY, pos.x, pos.y)
     
     lastX = pos.x
@@ -586,7 +745,13 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       y: (e.clientY - rect.top) * scaleY
     }
     
-    slices.push({ x1: lastX, y1: lastY, x2: pos.x, y2: pos.y, life: 1 })
+    const s = getSlice()
+    s.x1 = lastX
+    s.y1 = lastY
+    s.x2 = pos.x
+    s.y2 = pos.y
+    s.life = 1
+    slices.push(s)
     checkSlice(lastX, lastY, pos.x, pos.y)
     
     lastX = pos.x
@@ -603,8 +768,17 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   function loop() {
     if (!document.getElementById('mainGameCanvas') || gameEnded) return
     
+    // 性能优化 - 帧率监控
+    frameCount++
     const now = Date.now()
+    if (now - lastFpsUpdate >= 1000) {
+      currentFps = frameCount
+      frameCount = 0
+      lastFpsUpdate = now
+    }
+    
     if (now - gameStartTime > GAME_DURATION) {
+      cleanup()
       gameEnded = true
       engine.endGame()
       onEnd()
@@ -616,8 +790,25 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     requestAnimationFrame(loop)
   }
 
+  // 性能优化 - 游戏结束时清理资源
+  function cleanup() {
+    document.removeEventListener('mousemove', handleGlobalMove)
+    document.removeEventListener('mouseup', handleGlobalUp)
+    // 清空数组释放内存
+    fruits.length = 0
+    particles.length = 0
+    slices.length = 0
+    sliceEffects.length = 0
+    scorePopups.length = 0
+    // 保留对象池以便复用
+  }
+
   // 初始化游戏
   engine.start()
+  
+  // 初始化道具库存 - 添加一些初始道具
+  inventory = ['bomb', 'slow', 'double'] // 炸弹、减速、双倍分数各一个
+  updateHTMLPowerupBar()
   
   // 生成初始水果
   spawnFruit()

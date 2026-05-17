@@ -1,4 +1,4 @@
-import { Shooter, Projectile, BubblePosition } from './types'
+import { Shooter, Projectile, BubblePosition, SpecialBubbleType } from './types'
 import { ParticleSystem } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
 
@@ -74,6 +74,7 @@ export class Renderer {
   // 绘制游戏画面
   render(
     board: (number | null)[][],
+    specialBoard: (SpecialBubbleType | null)[][] = [],
     shooter: Shooter,
     projectile: Projectile | null,
     mouseX: number,
@@ -105,7 +106,7 @@ export class Renderer {
     ctx.fillRect(0, 30, this.W, this.ROWS * this.BUBBLE_SIZE + 10)
 
     // 绘制棋盘上的泡泡
-    this.drawBubbles(ctx, board)
+    this.drawBubbles(ctx, board, specialBoard)
 
     // 飞行中的泡泡（在发射器之前绘制）
     if (projectile) {
@@ -146,52 +147,149 @@ export class Renderer {
   }
 
   // 绘制泡泡
-  private drawBubbles(ctx: CanvasRenderingContext2D, board: (number | null)[][]) {
+  private drawBubbles(ctx: CanvasRenderingContext2D, board: (number | null)[][], specialBoard: (SpecialBubbleType | null)[][] = []) {
     for (let y = 0; y < this.ROWS; y++) {
       for (let x = 0; x < this.COLS; x++) {
         const color = board[y]?.[x]
         if (color === null || color === undefined) continue
         
+        const specialType = specialBoard[y]?.[x]
         const pos = this.getBubblePos(x, y)
         
-        // 像素对齐 - 避免模糊
         const bx = Math.round(pos.bx)
         const by = Math.round(pos.by)
         
-        // 减少光晕效果
         ctx.shadowColor = this.COLORS[color]
         ctx.shadowBlur = 3
         
-        // 圆形泡泡 - 更立体的渐变
-        const grad = ctx.createRadialGradient(
+        let grad = ctx.createRadialGradient(
           bx - 8, by - 8, 0,
           bx, by, this.BUBBLE_SIZE / 2
         )
-        grad.addColorStop(0, this.lightenColor(this.COLORS[color], 40))
-        grad.addColorStop(0.6, this.COLORS[color])
-        grad.addColorStop(1, this.darkenColor(this.COLORS[color], 20))
         
-        ctx.fillStyle = grad
-        ctx.beginPath()
-        ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 2, 0, Math.PI * 2)
-        ctx.fill()
-        
-        // 高光 - 更小更柔和
-        ctx.fillStyle = 'rgba(255,255,255,0.5)'
-        ctx.beginPath()
-        ctx.arc(bx - 5, by - 5, 4, 0, Math.PI * 2)
-        ctx.fill()
-        
-        // 边缘轮廓（去除光晕）
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)'
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 2, 0, Math.PI * 2)
-        ctx.stroke()
+        if (specialType === 'rainbow') {
+          this.drawRainbowBubble(ctx, bx, by)
+        } else if (specialType === 'bomb') {
+          this.drawBombBubble(ctx, bx, by, color)
+        } else if (specialType === 'sticky') {
+          this.drawStickyBubble(ctx, bx, by, color)
+        } else {
+          grad.addColorStop(0, this.lightenColor(this.COLORS[color], 40))
+          grad.addColorStop(0.6, this.COLORS[color])
+          grad.addColorStop(1, this.darkenColor(this.COLORS[color], 20))
+          
+          ctx.fillStyle = grad
+          ctx.beginPath()
+          ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 2, 0, Math.PI * 2)
+          ctx.fill()
+          
+          ctx.fillStyle = 'rgba(255,255,255,0.5)'
+          ctx.beginPath()
+          ctx.arc(bx - 5, by - 5, 4, 0, Math.PI * 2)
+          ctx.fill()
+          
+          ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 2, 0, Math.PI * 2)
+          ctx.stroke()
+        }
         
         ctx.shadowBlur = 0
       }
     }
+  }
+
+  private drawRainbowBubble(ctx: CanvasRenderingContext2D, bx: number, by: number) {
+    ctx.shadowColor = '#FFD700'
+    ctx.shadowBlur = 8
+    
+    const rainbowColors = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4ECDC4', '#4D96FF', '#FF69B4']
+    const segments = 6
+    
+    for (let i = 0; i < segments; i++) {
+      const startAngle = (Math.PI * 2 * i) / segments - Math.PI / 2
+      const endAngle = (Math.PI * 2 * (i + 1)) / segments - Math.PI / 2
+      
+      ctx.fillStyle = rainbowColors[i]
+      ctx.beginPath()
+      ctx.moveTo(bx, by)
+      ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 2, startAngle, endAngle)
+      ctx.closePath()
+      ctx.fill()
+    }
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.beginPath()
+    ctx.arc(bx - 5, by - 5, 5, 0, Math.PI * 2)
+    ctx.fill()
+    
+    ctx.fillStyle = '#FFD700'
+    ctx.font = 'bold 14px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('🌈', bx, by + 5)
+    
+    ctx.shadowBlur = 0
+  }
+
+  private drawBombBubble(ctx: CanvasRenderingContext2D, bx: number, by: number, color: number) {
+    const grad = ctx.createRadialGradient(
+      bx - 8, by - 8, 0,
+      bx, by, this.BUBBLE_SIZE / 2
+    )
+    grad.addColorStop(0, this.lightenColor('#333', 30))
+    grad.addColorStop(0.6, '#333')
+    grad.addColorStop(1, '#111')
+    
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 2, 0, Math.PI * 2)
+    ctx.fill()
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.beginPath()
+    ctx.arc(bx - 5, by - 5, 4, 0, Math.PI * 2)
+    ctx.fill()
+    
+    ctx.strokeStyle = '#FF4444'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 4, 0, Math.PI * 2)
+    ctx.stroke()
+    
+    ctx.fillStyle = '#FF4444'
+    ctx.font = 'bold 12px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('💣', bx, by + 4)
+    
+    ctx.shadowBlur = 0
+  }
+
+  private drawStickyBubble(ctx: CanvasRenderingContext2D, bx: number, by: number, color: number) {
+    const grad = ctx.createRadialGradient(
+      bx - 8, by - 8, 0,
+      bx, by, this.BUBBLE_SIZE / 2
+    )
+    grad.addColorStop(0, this.lightenColor(this.COLORS[color], 30))
+    grad.addColorStop(0.6, this.COLORS[color])
+    grad.addColorStop(1, this.darkenColor(this.COLORS[color], 25))
+    
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 2, 0, Math.PI * 2)
+    ctx.fill()
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.beginPath()
+    ctx.arc(bx - 5, by - 5, 4, 0, Math.PI * 2)
+    ctx.fill()
+    
+    ctx.fillStyle = '#FFA500'
+    ctx.font = 'bold 10px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('🟡', bx, by + 4)
+    
+    ctx.shadowBlur = 0
   }
 
   // 绘制瞄准线
@@ -434,7 +532,10 @@ export class Renderer {
         'color_bomb': '💣',
         'clear_row': '🧹',
         'extra_shot': '⚡',
-        'multishot': '🔫'
+        'multishot': '🔫',
+        'time_freeze': '⏸️',
+        'slow_motion': '🐢',
+        'double_score': '💎'
       }
       
       ctx.fillStyle = '#FBBF24'

@@ -1,7 +1,7 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
 import { app } from '../../App'
-import { getPointerPos, resizeCanvasForMobile } from '../../utils/mobileHelper'
+import { getPointerPos, resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
 import { COLOR_SORT_LEVELS, getLevelColors } from './levelConfig'
 import { loadProgress, completeLevel, recordFailure } from './progressManager'
 
@@ -38,60 +38,7 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
   let lastClickTime = 0
   let clickEffect: { tube: number; time: number } | null = null
   let winAnimation = false
-  
-  // 道具系统
-  let inventory: string[] = []
-  const powerupIcons: Record<string, string> = {
-    'hint': '💡',
-    'undo': '↩️',
-    'extra_tube': '🧪',
-    'auto_sort': '✨'
-  }
-  
-  function updateHTMLPowerupBar() {
-    const powerups = Object.keys(powerupIcons).map(id => ({
-      id,
-      icon: powerupIcons[id],
-      name: id
-    }))
-    
-    app.setupCustomPowerupBar('colorSort', powerups, inventory, (powerupId) => {
-      if (usePowerup(powerupId)) {
-        audioService.collect()
-      }
-    })
-  }
-  
-  function usePowerup(type: string): boolean {
-    if (animatingBall || winAnimation) return false
-    
-    const index = inventory.indexOf(type)
-    if (index === -1) return false
-    
-    inventory.splice(index, 1)
-    
-    switch (type) {
-      case 'hint':
-        ;(window as any).sortHint = true
-        audioService.win()
-        break
-      case 'undo':
-        ;(window as any).sortUndo = true
-        audioService.collect()
-        break
-      case 'extra_tube':
-        tubes.push([])
-        audioService.win()
-        break
-      case 'auto_sort':
-        ;(window as any).sortAutoSort = true
-        audioService.win()
-        break
-    }
-    
-    return true
-  }
-  
+
   // 初始化关卡（使用关卡配置）
   function initLevel() {
     tubes = []
@@ -134,8 +81,6 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
     floatingTexts = []
     winAnimation = false
     gameStartTime = Date.now()
-    
-    updateHTMLPowerupBar()
   }
   
   // 检查胜利（使用关卡配置）
@@ -438,6 +383,7 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
       winAnimation = true
       
       completeLevel(currentLevel, score)
+      engine.setVictory(true)
       
       engine.addScore(score + 100, W / 2, H / 2)
       audioService.win()
@@ -481,13 +427,20 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
       }
       
       setTimeout(() => {
-        onEnd()
+        const nextLevel = currentLevel + 1
+        if (nextLevel <= COLOR_SORT_LEVELS.length) {
+          currentLevel = nextLevel
+          initLevel()
+        } else {
+          onEnd()
+        }
       }, 2000)
       return
     }
   }
   
   resizeCanvasForMobile(canvas)
+  injectMobileStyles()
   
   const handleClick = (e: MouseEvent | TouchEvent) => {
     if (animatingBall || winAnimation) return

@@ -6,10 +6,13 @@ export class PowerupSystem {
   
   // 道具图标映射
   private readonly powerupIcons: Record<string, string> = {
-    'color_bomb': '💣',   // 颜色炸弹 - 消除所有同色泡泡
-    'rainbow': '🌈',      // 彩虹球 - 可以匹配任何颜色
-    'extra_shot': '⚡',   // 额外射击 - 立即发射3发
-    'clear_row': '🧹'     // 清除行 - 消除最底下一行
+    'color_bomb': '💣',     // 颜色炸弹 - 消除所有同色泡泡
+    'clear_row': '🧹',      // 清除行 - 消除最底下一行
+    'extra_shot': '⚡',     // 额外射击 - 额外发射机会
+    'multishot': '🔫',     // 三连射 - 连续发射三个泡泡
+    'time_freeze': '⏸️',   // 时间冻结 - 暂停时间5秒
+    'slow_motion': '🐢',   // 慢动作 - 泡泡飞行速度减慢
+    'double_score': '💎'   // 双倍分数 - 8秒内分数翻倍
   }
 
   // 更新 HTML 道具栏
