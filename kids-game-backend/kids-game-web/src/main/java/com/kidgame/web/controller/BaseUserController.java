@@ -38,6 +38,8 @@ public class BaseUserController {
     @Operation(summary = "用户注册")
     @PostMapping("/register")
     public Result<BaseUser> register(@Valid @RequestBody UserRegisterDTO dto) {
+        log.info("Controller 接收到注册请求: username={}, userType={}, nickname={}", 
+            dto.getUsername(), dto.getUserType(), dto.getNickname());
         BaseUser user = userService.register(dto);
         return Result.success(user);
     }

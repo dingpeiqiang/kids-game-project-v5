@@ -37,18 +37,15 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * 跨域配置
+     * 注意：使用 allowedOriginPatterns("*") 时不能同时设置 allowCredentials(true)
+     * simple-game 使用 JWT Token（Bearer Header），不依赖 Cookie，无需 credentials
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns(
-                    "http://localhost:*",
-                    "http://127.0.0.1:*",
-                    "https://*.kids-game.com"
-                )
+                .allowedOriginPatterns("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true)
                 .maxAge(3600);
     }
 
@@ -59,7 +56,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 控制器日志拦截器（最外层，先注册）
         registry.addInterceptor(controllerLogInterceptor)
-                .addPathPatterns("/api/**")
+                .addPathPatterns("/**")
                 .excludePathPatterns(
                         "/doc.html",
                         "/swagger-resources/**",
@@ -106,8 +103,8 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * 注册请求缓存过滤器
-     * 注意：ContentCachingRequestWrapper 在 preHandle 阶段无法读取内容，会导致 Controller 无法读取请求体
-     * 暂时禁用此过滤器，解决登录请求体缺失的问题
+     * 注意：ContentCachingRequestWrapper 在拦截器中读取后会导致 Controller 无法再次读取
+     * 因此暂时禁用此过滤器，改为在 Controller 内部打印请求体
      */
     // @Bean
     // public FilterRegistrationBean<RequestCacheFilter> requestCacheFilterRegistration() {

@@ -1,0 +1,16 @@
+{
+  "frames":[
+    {
+      "filename": "left",
+      "frame": {"x":0,"y":0,"w":27,"h":30}
+    },
+    {
+      "filename": "middle",
+      "frame": {"x":32,"y":0,"w":7,"h":30}
+    },
+    {
+      "filename": "right",
+      "frame": {"x":72,"y":0,"w":28,"h":30}
+    }
+  ]
+}

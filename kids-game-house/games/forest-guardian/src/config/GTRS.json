@@ -1,0 +1,77 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "forest-guardian-default",
+    "themeName": "森林主题",
+    "gameId": "forest-guardian",
+    "ownerType": "GAME",
+    "ownerId": "forest-guardian",
+    "isDefault": true,
+    "author": "",
+    "description": "森林小卫士游戏默认主题",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#4ade80",
+    "secondaryColor": "#22c55e",
+    "bgColor": "#1a2e1a",
+    "textColor": "#ffffff",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "scene": {},
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {},
+      "voice": {}
+    },
+    "atlases": {
+      "sprites": {
+        "hero": {
+          "image": "/themes/top_down/assets/scene/sprites/atlas/hero.png",
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/hero.json"
+        },
+        "slime": {
+          "image": "/themes/top_down/assets/scene/sprites/atlas/slime.png",
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/slime.json"
+        },
+        "coin_atlas": {
+          "image": "/themes/top_down/assets/scene/sprites/atlas/coin.png",
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/coin.json"
+        },
+        "heart": {
+          "image": "/themes/top_down/assets/scene/sprites/atlas/heart.png",
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/heart.json"
+        },
+        "npc_01": {
+          "image": "/themes/top_down/assets/scene/sprites/atlas/npc_01.png",
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/npc_01.json"
+        },
+        "npc_02": {
+          "image": "/themes/top_down/assets/scene/sprites/atlas/npc_02.png",
+          "atlas": "/themes/top_down/assets/scene/sprites/atlas/npc_02.json"
+        }
+      }
+    },
+    "tilemaps": {
+      "scene": {
+        "map_city": {
+          "key": "map_city",
+          "data": "/themes/top_down/assets/scene/sprites/maps/cities/home_page_city.json",
+          "format": "TILED_JSON"
+        }
+      }
+    },
+    "video": {}
+  }
+}

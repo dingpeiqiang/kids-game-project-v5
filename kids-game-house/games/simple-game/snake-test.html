@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #16213e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #27ae60;
+        }
+        .error {
+            background: #e74c3c;
+        }
+        .info {
+            background: #3498db;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐍 贪吃蛇游戏测试</h1>
+        
+        <div class="test-section">
+            <h2>测试说明</h2>
+            <p>此页面用于测试贪吃蛇游戏的修复效果。</p>
+            <ul>
+                <li>✅ 游戏应该能够正常开始</li>
+                <li>✅ 点击屏幕或按方向键可以控制蛇移动</li>
+                <li>✅ 游戏结束后可以点击重新开始</li>
+                <li>✅ 不会出现"开始就结束"的问题</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>测试步骤</h2>
+            <ol>
+                <li>访问 <a href="http://localhost:5105" target="_blank">http://localhost:5105</a></li>
+                <li>在首页找到并点击"贪吃蛇"游戏</li>
+                <li>点击屏幕或按任意键开始游戏</li>
+                <li>使用方向键或点击屏幕控制蛇的移动方向</li>
+                <li>尝试让蛇撞墙或撞到自己来触发游戏结束</li>
+                <li>在游戏结束画面点击屏幕重新开始</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h2>修复内容</h2>
+            <div class="status success">
+                <strong>已修复的问题：</strong>
+                <ul>
+                    <li>游戏开始逻辑优化 - 确保点击后能正常开始</li>
+                    <li>游戏状态管理改进 - 正确处理 alive 和 gameStarted 状态</li>
+                    <li>重新开始功能 - 游戏结束后可点击重新开始</li>
+                    <li>事件处理优化 - 键盘和鼠标事件正确响应</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>快速测试</h2>
+            <button onclick="window.open('http://localhost:5105', '_blank')">打开游戏</button>
+            <button onclick="location.reload()">刷新页面</button>
+        </div>
+    </div>
+</body>
+</html>

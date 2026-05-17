@@ -139,8 +139,10 @@ public class UserServiceTest {
 
     @Test
     public void testListUsers() {
-        List<BaseUser> users = userService.listUsers("KID", "ACTIVE", 1, 10);
-        assertNotNull(users);
-        assertTrue(users.size() >= 0);
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<BaseUser> page = 
+            userService.listUsers("KID", "ACTIVE", 1, 10);
+        assertNotNull(page);
+        assertNotNull(page.getRecords());
+        assertTrue(page.getRecords().size() >= 0);
     }
 }

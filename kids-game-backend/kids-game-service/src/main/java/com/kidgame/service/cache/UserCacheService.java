@@ -10,12 +10,13 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 用户缓存服务
+ * 注意：当 Redis 不可用时，此服务将降级为不缓存模式
  */
 @Slf4j
 @Service
 public class UserCacheService {
 
-    @Autowired
+    @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
 
     private static final String USER_CACHE_PREFIX = "user:";
@@ -28,6 +29,13 @@ public class UserCacheService {
         if (user == null || user.getUserId() == null) {
             return;
         }
+        
+        // 如果 Redis 不可用，直接返回
+        if (redisTemplate == null) {
+            log.debug("Redis 未配置，跳过用户缓存：userId={}", user.getUserId());
+            return;
+        }
+        
         String key = USER_CACHE_PREFIX + user.getUserId();
         try {
             redisTemplate.opsForValue().set(key, user, USER_CACHE_EXPIRE_MINUTES, TimeUnit.MINUTES);
@@ -44,6 +52,13 @@ public class UserCacheService {
         if (userId == null) {
             return null;
         }
+        
+        // 如果 Redis 不可用，直接返回 null
+        if (redisTemplate == null) {
+            log.debug("Redis 未配置，无法获取用户缓存：userId={}", userId);
+            return null;
+        }
+        
         String key = USER_CACHE_PREFIX + userId;
         try {
             Object obj = redisTemplate.opsForValue().get(key);
@@ -64,6 +79,13 @@ public class UserCacheService {
         if (userId == null) {
             return;
         }
+        
+        // 如果 Redis 不可用，直接返回
+        if (redisTemplate == null) {
+            log.debug("Redis 未配置，跳过清除用户缓存：userId={}", userId);
+            return;
+        }
+        
         String key = USER_CACHE_PREFIX + userId;
         try {
             redisTemplate.delete(key);

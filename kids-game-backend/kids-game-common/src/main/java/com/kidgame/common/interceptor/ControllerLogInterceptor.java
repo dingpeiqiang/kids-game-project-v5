@@ -55,8 +55,8 @@ public class ControllerLogInterceptor implements HandlerInterceptor {
         // 打印请求参数
         printRequestParams(request);
 
-        // 注意：不要在 preHandle 阶段读取请求体，否则会导致 Controller 无法读取
-        // 请求体打印在 afterCompletion 阶段处理
+        // 注意：不在 preHandle 阶段读取请求体，避免消耗输入流导致 Controller 无法读取
+        // 请求体的日志应该在 Controller 内部或 AOP 切面中打印
 
         // 记录开始时间
         startTimeHolder.set(System.currentTimeMillis());

@@ -4,9 +4,14 @@
     <header class="mode-header">
       <button @click="goBack" class="back-btn">← 返回</button>
       <div class="game-title">{{ gameName }}</div>
-      <button @click="showThemeSelector = true" class="theme-select-btn" title="选择主题">
-        🎨 主题
-      </button>
+      <div class="header-actions">
+        <button @click="openResourceManager" class="resource-manage-btn" title="管理游戏资源">
+          🖼️ 资源管理
+        </button>
+        <button @click="showThemeSelector = true" class="theme-select-btn" title="选择主题">
+          🎨 主题
+        </button>
+      </div>
     </header>
 
     <!-- 主内容 -->
@@ -214,6 +219,37 @@ function goBack() {
   }
 }
 
+function openResourceManager() {
+  console.log('[Resource Manager] 点击资源管理按钮');
+  console.log('[Resource Manager] 当前游戏类型:', gameType.value);
+  
+  // 打开资源管理页面，传递当前游戏信息
+  const game = gameStore.getGameById(parseInt(gameType.value));
+  if (!game) {
+    console.error('[Resource Manager] 游戏不存在');
+    toast.error('游戏信息不存在');
+    return;
+  }
+  
+  console.log('[Resource Manager] 游戏信息:', game);
+  
+  // 获取当前选择的主题
+  const gameThemeKey = `game-theme-${gameCode.value}`;
+  const themeId = localStorage.getItem(gameThemeKey) || 'default';
+  
+  console.log('[Resource Manager] 主题ID:', themeId);
+  
+  // 跳转到资源管理页面（不限制权限）
+  console.log('[Resource Manager] 跳转到资源管理页面');
+  router.push({
+    path: '/admin/game-resources',
+    query: {
+      gameId: game.gameCode,
+      themeId: themeId
+    }
+  });
+}
+
 async function selectMode(mode: any) {
   console.log('[GameMode] 选择模式:', mode.type);
 
@@ -392,6 +428,29 @@ onMounted(async () => {
   color: #667eea;
   text-align: center;
   flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.resource-manage-btn {
+  padding: 0.5rem 1rem;
+  background: #48dbfb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.resource-manage-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(72, 219, 251, 0.4);
 }
 
 .theme-select-btn {

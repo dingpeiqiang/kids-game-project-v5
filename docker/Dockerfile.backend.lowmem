@@ -1,0 +1,63 @@
+# 多阶段构建 - 后端生产镜像（低内存优化版）
+FROM maven:3.9-eclipse-temurin-17 AS builder
+
+WORKDIR /app
+
+# 复制 POM 文件
+COPY kids-game-backend/pom.xml ./
+COPY kids-game-backend/kids-game-common/pom.xml ./kids-game-common/
+COPY kids-game-backend/kids-game-dao/pom.xml ./kids-game-dao/
+COPY kids-game-backend/kids-game-service/pom.xml ./kids-game-service/
+COPY kids-game-backend/kids-game-web/pom.xml ./kids-game-web/
+
+# 限制 Maven 内存使用（避免构建时 OOM）
+ENV MAVEN_OPTS="-Xmx512m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m"
+
+# 下载依赖（利用 Docker 缓存层，安静模式减少输出）
+RUN mvn dependency:go-offline -B -q
+
+# 复制源代码
+COPY kids-game-backend/ ./
+
+# 构建应用（跳过测试以加快构建速度，减少内存使用）
+RUN mvn clean package -DskipTests -Dmaven.compiler.fork=false
+
+# 生产阶段 - 使用精简 JRE 运行时
+FROM eclipse-temurin:17-jre-alpine
+
+# 安装必要工具
+RUN apk add --no-cache wget
+
+# 创建应用用户（安全最佳实践）
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /app
+
+# 复制构建产物
+COPY --from=builder /app/kids-game-web/target/*.jar app.jar
+
+# 创建日志和上传目录
+RUN mkdir -p /app/logs /app/uploads && \
+    chown -R appuser:appgroup /app
+
+# 切换到非 root 用户
+USER appuser
+
+# 暴露端口
+EXPOSE 8080
+
+# 健康检查（简化版，减少资源消耗）
+HEALTHCHECK --interval=60s --timeout=10s --start-period=120s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+
+# JVM 低内存优化参数
+# -Xms128m: 初始堆内存 128MB
+# -Xmx256m: 最大堆内存 256MB
+# -XX:MetaspaceSize=64m: 元空间初始大小
+# -XX:MaxMetaspaceSize=128m: 元空间最大值
+# -XX:+UseSerialGC: 使用串行 GC（适合单核和低内存）
+# -XX:-UseCompressedOops: 禁用压缩指针（小堆时更有效）
+ENV JAVA_OPTS="-Xms128m -Xmx256m -XX:MetaspaceSize=64m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -XX:-UseCompressedOops -Djava.security.egd=file:/dev/./urandom"
+
+# 启动应用
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

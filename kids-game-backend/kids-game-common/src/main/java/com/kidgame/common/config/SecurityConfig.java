@@ -11,6 +11,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -65,8 +67,11 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/**",
                     "/api/kid/login",
+                    "/api/kid/register",
                     "/api/parent/login",
+                    "/api/parent/register",
                     "/api/user/login",
+                    "/api/user/register",
                     "/api/user/refresh-token",
 
                     // Swagger 文档
@@ -76,13 +81,23 @@ public class SecurityConfig {
                     "/webjars/**",
                     "/favicon.ico",
 
+                    // Actuator 健康检查（Docker healthcheck 需要）
+                    "/actuator/health",
+                    "/actuator/info",
+
                     // 游戏相关公开接口
                     "/api/game/list",
                     "/api/game/code/*",
                     "/api/game/config/**",
                     "/api/game/report",
                     "/api/game/verify",
-                    "/api/question/random"
+                    "/api/question/random",
+                    
+                    // 排行榜公开接口
+                    "/api/leaderboard/top",
+                    
+                    // 套餐查询公开接口（AI表单系统调用）
+                    "/tariff/**"
                 ).permitAll()
                 
                 // 需要认证的端点
@@ -100,17 +115,15 @@ public class SecurityConfig {
 
     /**
      * CORS 配置
+     * 注意：simple-game 使用 JWT Bearer Token，不依赖 Cookie，无需 allowCredentials
+     * 使用 allowedOriginPatterns("*") 放通所有来源（通过 Nginx 代理部署）
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // 允许的源（使用 allowedOriginPatterns 而不是 allowedOrigins，以支持通配符和 allowCredentials）
-        configuration.setAllowedOriginPatterns(List.of(
-            "http://localhost:*",
-            "http://127.0.0.1:*",
-            "https://*.kids-game.com"
-        ));
+        // 放通所有来源（JWT 无状态，无需限制 Origin）
+        configuration.setAllowedOriginPatterns(List.of("*"));
         
         // 允许的方法
         configuration.setAllowedMethods(Arrays.asList(
@@ -118,16 +131,7 @@ public class SecurityConfig {
         ));
         
         // 允许的头部
-        configuration.setAllowedHeaders(Arrays.asList(
-            "Authorization",
-            "Content-Type",
-            "X-Requested-With",
-            "Accept",
-            "Origin",
-            "Access-Control-Request-Method",
-            "Access-Control-Request-Headers",
-            "X-Device-Fingerprint"
-        ));
+        configuration.setAllowedHeaders(List.of("*"));
         
         // 暴露的头部
         configuration.setExposedHeaders(Arrays.asList(
@@ -135,8 +139,8 @@ public class SecurityConfig {
             "X-Refresh-Token"
         ));
         
-        // 允许携带凭证（必须与 allowedOriginPatterns 一起使用，不能与 allowedOrigins("*") 一起使用）
-        configuration.setAllowCredentials(true);
+        // 注意：allowedOriginPatterns("*") 时不能设置 allowCredentials(true)
+        // simple-game 使用 JWT Bearer Token，不需要 credentials
         
         // 预检请求缓存时间
         configuration.setMaxAge(3600L);
@@ -145,5 +149,13 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         
         return source;
+    }
+
+    /**
+     * 密码加密器
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }

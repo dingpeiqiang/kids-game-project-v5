@@ -95,6 +95,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void setAuthentication(Claims claims, HttpServletRequest request) {
         String userId = claims.get("userId", String.class);
         String role = claims.get("role", String.class);
+        Integer userType = claims.get("userType", Integer.class);
         String kidId = claims.get("kidId", String.class);
         String parentId = claims.get("parentId", String.class);
         String deviceFingerprint = request.getHeader(DEVICE_FINGERPRINT_HEADER);
@@ -115,6 +116,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         // 将用户信息放入请求属性（供后续使用）
         request.setAttribute("userId", userId);
+        request.setAttribute("userType", userType);  // 存储数字类型（0=KID, 1=PARENT, 2=ADMIN）
         request.setAttribute("kidId", kidId);
         request.setAttribute("parentId", parentId);
         request.setAttribute("role", role);

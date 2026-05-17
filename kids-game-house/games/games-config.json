@@ -1,0 +1,68 @@
+{
+  "games": [
+    {
+      "id": "snake",
+      "name": "贪吃蛇",
+      "directory": "snake",
+      "port": 3001,
+      "enabled": true,
+      "description": "经典贪吃蛇游戏"
+    },
+    {
+      "id": "plane-shooter",
+      "name": "飞机大战",
+      "directory": "plane-shooter",
+      "port": 3002,
+      "enabled": true,
+      "description": "射击类游戏"
+    },
+    {
+      "id": "pvz",
+      "name": "植物大战僵尸",
+      "directory": "pvz",
+      "port": 3003,
+      "enabled": true,
+      "description": "策略塔防游戏"
+    },
+    {
+      "id": "tank-battle",
+      "name": "坦克大战",
+      "directory": "Tank_1990_game",
+      "port": 3004,
+      "enabled": true,
+      "description": "经典坦克对战"
+    },
+    {
+      "id": "flappy-bird",
+      "name": "Flappy Bird",
+      "directory": "flappy-bird",
+      "port": 3005,
+      "enabled": false,
+      "description": "飞翔的小鸟"
+    },
+    {
+      "id": "mario",
+      "name": "超级马里奥",
+      "directory": "mario",
+      "port": 3006,
+      "enabled": false,
+      "description": "经典马里奥游戏"
+    },
+    {
+      "id": "jewelMatch",
+      "name": "宝石消消乐",
+      "directory": "jewelMatch",
+      "port": 5200,
+      "enabled": true,
+      "description": "解压三消游戏，华丽特效，爽快消除体验"
+    }
+  ],
+  "settings": {
+    "defaultPort": 3001,
+    "portIncrement": 1,
+    "maxGames": 10,
+    "autoStart": true,
+    "healthCheck": true,
+    "healthCheckInterval": 30
+  }
+}

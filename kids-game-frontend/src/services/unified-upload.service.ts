@@ -16,7 +16,7 @@ export interface UnifiedUploadResponse {
 /**
  * 统一上传服务
  * 
- * 文件上传到后端服务器，由后端服务器转发到 COS
+ * 文件上传到后端服务器，由后端服务器保存到本地存储或 SFTP
  * 
  * 使用方式：
  * const response = await unifiedUploadService.uploadImage(file)
@@ -130,7 +130,7 @@ export class UnifiedUploadService {
    * 获取上传方式的描述
    */
   getUploadMethodDescription(): string {
-    return '后端服务器（通过后端转发到 COS）'
+    return '后端服务器（本地存储或 SFTP）'
   }
 }
 

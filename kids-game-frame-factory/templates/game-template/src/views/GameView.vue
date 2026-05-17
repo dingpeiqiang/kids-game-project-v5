@@ -118,6 +118,19 @@
       </div>
     </Transition>
 
+    <!-- Top-Down RPG UI -->
+    <HeroStatus 
+      v-if="isReady && heroHealthStates.length > 0"
+      :health-states="heroHealthStates"
+      :coins="heroCoins"
+    />
+    <DialogBox 
+      v-if="dialogMessages.length > 0"
+      :messages="dialogMessages"
+      :character-name="dialogCharacter"
+      @done="dialogMessages = []"
+    />
+
   </div>
 </template>
 
@@ -132,6 +145,8 @@ import PauseButton from '@/components/ui/PauseButton.vue'
 import GameButton from '@/components/ui/GameButton.vue'
 import SoundToggle from '@/components/ui/SoundToggle.vue'
 import LevelTransitionOverlay from '@/components/ui/LevelTransitionOverlay.vue'
+import DialogBox from '@/components/ui/DialogBox.vue'
+import HeroStatus from '@/components/ui/HeroStatus.vue'
 
 const router     = useRouter()
 const route      = useRoute()
@@ -144,6 +159,12 @@ const isPaused     = ref(false)
 const isReady      = ref(false)
 const errorMessage = ref('')
 const loadingStep  = ref(0)
+
+// Top-Down RPG 状态
+const dialogMessages = ref<string[]>([])
+const dialogCharacter = ref('')
+const heroHealthStates = ref<string[]>([])
+const heroCoins = ref(0)
 
 const loadingSteps = ['初始化引擎', '加载资源', '准备音频', '游戏就绪']
 const loadingText  = computed(() => loadingSteps[Math.min(loadingStep.value, loadingSteps.length - 1)])
@@ -232,6 +253,21 @@ onMounted(() => {
   setTimeout(() => audioStore.startBGM(), 500)
   // 启动模拟加载进度
   setTimeout(advanceLoadingStep, 600)
+
+  // 监听 Phaser 发出的自定义事件
+  window.addEventListener('new-dialog', ((e: any) => {
+    dialogCharacter.value = e.detail.characterName
+    // 这里简化处理，实际应从配置中读取对话内容
+    dialogMessages.value = ['Hello!', 'How are you?']
+  }) as EventListener)
+
+  window.addEventListener('hero-health', ((e: any) => {
+    heroHealthStates.value = e.detail.healthStates
+  }) as EventListener)
+
+  window.addEventListener('hero-coin', ((e: any) => {
+    heroCoins.value = e.detail.heroCoins
+  }) as EventListener)
 })
 
 onUnmounted(() => {

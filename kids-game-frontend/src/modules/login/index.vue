@@ -138,6 +138,15 @@
               <a @click="goToRegister" class="register-link">创建新角色，开启冒险之旅</a>
             </p>
           </div>
+
+          <!-- 游客试玩按钮 -->
+          <div class="guest-section">
+            <button @click="startGuestMode" class="guest-btn">
+              <span class="btn-icon">🎮</span>
+              <span>游客试玩（10分钟）</span>
+            </button>
+            <p class="guest-hint">无需注册，立即体验游戏乐趣！</p>
+          </div>
         </div>
       </div>
     </div>
@@ -215,6 +224,31 @@ async function handleLogin() {
 
 function goToRegister() {
   router.push('/register');
+}
+
+// 游客试玩模式
+function startGuestMode() {
+  // 显示提示信息
+  const confirmStart = confirm(
+    '欢迎体验游客模式！\n\n' +
+    '⏰ 您可以免费试玩10分钟\n' +
+    '🎮 时间到期后将自动跳转到登录/注册页面\n' +
+    '💡 建议注册账号以保存游戏进度\n\n' +
+    '是否开始试玩？'
+  );
+  
+  if (!confirmStart) {
+    return; // 用户取消
+  }
+  
+  // 设置游客标识和开始时间
+  localStorage.setItem('isGuest', 'true');
+  localStorage.setItem('guestStartTime', Date.now().toString());
+  
+  toast.info('已进入游客模式，限时10分钟！');
+  
+  // 跳转到游戏列表页面
+  router.push('/game');
 }
 </script>
 
@@ -1112,6 +1146,45 @@ function goToRegister() {
 .register-link:hover {
   transform: scale(1.05);
   text-decoration: underline;
+}
+
+/* 游客试玩区域 */
+.guest-section {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.guest-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background: linear-gradient(135deg, #48dbfb 0%, #0abde3 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(72, 219, 251, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.guest-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(72, 219, 251, 0.4);
+}
+
+.guest-btn:active {
+  transform: translateY(0);
+}
+
+.guest-hint {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #9ca3af;
 }
 
 /* 响应式 */

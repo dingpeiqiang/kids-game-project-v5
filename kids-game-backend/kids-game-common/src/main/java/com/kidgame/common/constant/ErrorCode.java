@@ -11,6 +11,7 @@ public class ErrorCode {
     // 通用错误码 (1000-1999)
     public static final int SUCCESS = 0;
     public static final int BAD_REQUEST = 400;
+    public static final int INVALID_PARAMETER = 1000;
     public static final int PARAM_ERROR = 1001;
     public static final int SYSTEM_ERROR = 1002;
     public static final int NETWORK_ERROR = 1003;
@@ -78,6 +79,7 @@ public class ErrorCode {
     }
 
     // 常用错误码实例
+    public static final ErrorCode INVALID_PARAMETER_OBJ = new ErrorCode(INVALID_PARAMETER, "无效参数");
     public static final ErrorCode PARAM_ERROR_OBJ = new ErrorCode(PARAM_ERROR, "参数错误");
     public static final ErrorCode USER_NOT_FOUND_OBJ = new ErrorCode(USER_NOT_FOUND, "用户不存在");
     public static final ErrorCode GAME_NOT_FOUND_OBJ = new ErrorCode(GAME_NOT_FOUND, "游戏不存在");

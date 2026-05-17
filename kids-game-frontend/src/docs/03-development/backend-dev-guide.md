@@ -212,7 +212,6 @@ logging:
 | `kids-game-backend/THEME_INTEGRATION_GUIDE.md` | 游戏主题集成指南 |
 | `kids-game-backend/THEME_QUICK_START.md` | 主题系统快速开始 |
 | `kids-game-backend/CONTROLLER_LOG_GUIDE.md` | 接口日志功能说明 |
-| `kids-game-backend/COS_TEMPORARY_CREDENTIAL.md` | 腾讯云 COS 上传功能 |
 
 ---
 

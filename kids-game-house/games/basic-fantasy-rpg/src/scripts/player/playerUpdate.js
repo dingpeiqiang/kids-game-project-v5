@@ -1,0 +1,36 @@
+import standGuard from './standGuard';
+import moveToMoveTarget from './moveToMoveTarget';
+
+/**
+ * PlayerUpdate - update() to run on player
+ * controlled character.
+ *
+ * Handles animations based on the state of the
+ * character.
+ *
+ * Attacks if enemy in range.
+ *
+ * @param  {Character} character reference
+ * @returns {function} update function
+ */
+export default function PlayerUpdate() {
+  const update = function() {
+
+    watchXpBar(this);
+
+    const moving = moveToMoveTarget(this);
+    const attacking = standGuard(this);
+    const casting = this.casting();
+    if (moving) this.animations.run();
+    if (attacking) this.animations.combat();
+    if (!attacking && !moving && !casting) this.animations.idle();
+
+  }
+  return update;
+}
+
+function watchXpBar(character) {
+  if (character.lvl.isDirty()) {
+    character.scene.registry.set('refreshXpBar', character.lvl.lvlInfo())
+  }
+}

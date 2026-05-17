@@ -22,7 +22,9 @@ import { useAudioStore } from '@/stores/audio'
 import GameScene from '@/scenes/GameScene'
 // ⚠️ 重要提示：复制模板后，需要将 MyGameScene 替换为你实际实现的游戏场景类
 // 例如：import PuzzleGameScene from '@/scenes/PuzzleGameScene'
-import MyGameScene from '@/scenes/MyGameScene'
+// import MyGameScene from '@/scenes/MyGameScene'
+// import TopDownGameScene from '@/scenes/TopDownGameScene'
+import ForestGuardianScene from '@/scenes/ForestGuardianScene'
 
 const emit = defineEmits<{
   ready:         []
@@ -64,7 +66,7 @@ async function initGame(): Promise<void> {
       },
     },
     // ⚠️ 重要提示：复制模板后，需要将 MyGameScene 替换为你实际实现的游戏场景类
-    scene: [MyGameScene],
+    scene: [ForestGuardianScene],
   }
 
   phaserGame = new Phaser.Game(config)

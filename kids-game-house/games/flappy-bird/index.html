@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-128903927-1"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-128903927-1');
+    </script>
+
+    <meta charset="UTF-8">
+    <title>Flappy Bird</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <meta name="author" content="Igor Rozani">
+	<meta name="description" content="Flappy Bird in Phaser 3">
+	<meta name="keywords" content="flappy-bird, endless, phaser">
+	<meta http-equiv="content-language" content="en">
+	<meta name="robots" content="index, nofollow">
+	<meta property="og:locale" content="en">
+	<meta property="og:url" content="https://igorrozani.github.io/flappy-bird">
+	<meta property="og:title" content="Flappy Bird">
+	<meta property="og:description" content="Flappy Bird in Phaser 3">
+	<meta property="og:type" content="website">
+	<meta property="og:image" content="/img/favicon.png">
+	<meta name="twitter:url" content="https://igorrozani.github.io/flappy-bird">
+	<meta name="twitter:title" content="Flappy Bird">
+	<meta name="twitter:description" content="Flappy Bird in Phaser 3">
+	<meta name="twitter:image" content="/img/favicon.png">
+	<meta name="twitter:card" content="summary">
+
+    <link rel="shortcut icon" href="img/favicon.png" type="image/png">
+
+    <link rel="manifest" href="/manifest.json">
+
+    <link rel="stylesheet" href="css/site.css">
+    <script type="module" src="/js/game.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        /* 全屏按钮样式 */
+        #fullscreen-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        #fullscreen-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.1);
+        }
+        
+        /* 全屏模式下的样式优化 */
+        :fullscreen #game-container,
+        :-webkit-full-screen #game-container,
+        :-ms-fullscreen #game-container,
+        :-moz-full-screen #game-container {
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+        
+        :fullscreen #fullscreen-btn,
+        :-webkit-full-screen #fullscreen-btn,
+        :-ms-fullscreen #fullscreen-btn,
+        :-moz-full-screen #fullscreen-btn {
+            display: block !important;
+        }
+        
+        /* 防止全屏时的滚动条 */
+        :fullscreen,
+        :-webkit-full-screen,
+        :-ms-fullscreen,
+        :-moz-full-screen {
+            overflow: hidden !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <button id="fullscreen-btn" title="全屏">⛶</button>
+    <script>
+        // 全屏功能
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const gameContainer = document.getElementById('game-container');
+        
+        // 尝试进入全屏
+        async function enterFullscreen() {
+            try {
+                if (gameContainer.requestFullscreen) {
+                    await gameContainer.requestFullscreen();
+                } else if (gameContainer.webkitRequestFullscreen) {
+                    await gameContainer.webkitRequestFullscreen();
+                } else if (gameContainer.msRequestFullscreen) {
+                    await gameContainer.msRequestFullscreen();
+                } else if (gameContainer.mozRequestFullScreen) {
+                    await gameContainer.mozRequestFullScreen();
+                }
+                fullscreenBtn.textContent = '✕';
+                console.log('✅ 已进入全屏模式');
+            } catch (error) {
+                console.error('❌ 进入全屏失败:', error);
+                alert('无法进入全屏模式，请尝试按 F11 键使用浏览器全屏');
+            }
+        }
+        
+        // 尝试退出全屏
+        async function exitFullscreen() {
+            try {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    await document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    await document.msExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    await document.mozCancelFullScreen();
+                }
+                fullscreenBtn.textContent = '⛶';
+                console.log('✅ 已退出全屏模式');
+            } catch (error) {
+                console.error('❌ 退出全屏失败:', error);
+            }
+        }
+        
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement && 
+                !document.webkitFullscreenElement && 
+                !document.msFullscreenElement &&
+                !document.mozFullScreenElement) {
+                // 进入全屏
+                enterFullscreen();
+            } else {
+                // 退出全屏
+                exitFullscreen();
+            }
+        });
+        
+        // 监听全屏变化（支持多种浏览器前缀）
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('msfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        
+        function handleFullscreenChange() {
+            const isFullscreen = document.fullscreenElement || 
+                                document.webkitFullscreenElement || 
+                                document.msFullscreenElement ||
+                                document.mozFullScreenElement;
+            
+            if (!isFullscreen) {
+                fullscreenBtn.textContent = '⛶';
+                console.log('📺 检测到退出全屏');
+            } else {
+                fullscreenBtn.textContent = '✕';
+                console.log('🖥️ 检测到进入全屏');
+            }
+        }
+        
+        // 监听 F11 键
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                if (!document.fullscreenElement && 
+                    !document.webkitFullscreenElement && 
+                    !document.msFullscreenElement &&
+                    !document.mozFullScreenElement) {
+                    enterFullscreen();
+                } else {
+                    exitFullscreen();
+                }
+            }
+            
+            // ESC 键退出全屏
+            if (e.key === 'Escape') {
+                setTimeout(() => {
+                    fullscreenBtn.textContent = '⛶';
+                }, 100);
+            }
+        });
+        
+        // 检测浏览器是否支持全屏 API
+        function checkFullscreenSupport() {
+            const supportsFullscreen = document.fullscreenEnabled || 
+                                      document.webkitFullscreenEnabled || 
+                                      document.msFullscreenEnabled ||
+                                      document.mozFullScreenEnabled;
+            
+            if (!supportsFullscreen) {
+                console.warn('⚠️ 当前浏览器不支持全屏 API，请使用 F11 键');
+                fullscreenBtn.title = '浏览器不支持全屏，请使用 F11 键';
+                fullscreenBtn.style.opacity = '0.5';
+                fullscreenBtn.style.cursor = 'not-allowed';
+            }
+        }
+        
+        // 页面加载时检查
+        checkFullscreenSupport();
+    </script>
+</body>
+</html>

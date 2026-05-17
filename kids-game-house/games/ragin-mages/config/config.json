@@ -1,0 +1,5 @@
+{
+  "protocol": "https",
+  "host": "ragin-mages-server.herokuapp.com",
+  "port": 443
+}

@@ -87,10 +87,16 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    // 启用文件名哈希（解决缓存问题）
+    assetsInlineLimit: 4096, // 小于4KB的资源内联
     rollupOptions: {
         external: ['phaser'], // 👉 打包时不包含Phaser
       output: {
         globals: { phaser: 'Phaser' },
+        // 为所有资源文件添加内容哈希
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]',
         manualChunks: {
           'vendor': ['vue', 'vue-router', 'pinia'],
         },

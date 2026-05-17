@@ -118,8 +118,8 @@ function getIntegratedGameUrl(gameCode: string, baseUrl?: string): string {
     return baseUrl;
   }
 
-  // 使用 CDN 地址
-  const cdnBaseUrl = import.meta.env.VITE_GAME_CDN_URL || window.location.origin;
+  // 使用 CDN 地址（优先读运行时注入的 envConfig.gameCdnUrl，兜底用当前 origin）
+  const cdnBaseUrl = envConfig.gameCdnUrl || window.location.origin;
   const gamePath = `/games/${gameCode.toLowerCase()}/`;
   
   console.log('[GameContainer] 生产模式 - 使用 CDN 地址:', cdnBaseUrl + gamePath);

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kidgame.dao.mapper.GameCommentMapper">
+
+    <!-- 根据游戏ID分页查询评论（按时间倒序） -->
+    <select id="selectByGameId" resultType="com.kidgame.dao.entity.GameComment">
+        SELECT 
+            comment_id,
+            user_id,
+            game_id,
+            content,
+            score,
+            create_time,
+            deleted
+        FROM t_game_comment
+        WHERE game_id = #{gameId}
+          AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据游戏ID统计评论数量 -->
+    <select id="countByGameId" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_game_comment
+        WHERE game_id = #{gameId}
+          AND deleted = 0
+    </select>
+
+    <!-- 根据游戏ID计算平均评分 -->
+    <select id="selectAvgScoreByGameId" resultType="java.lang.Double">
+        SELECT AVG(score)
+        FROM t_game_comment
+        WHERE game_id = #{gameId}
+          AND deleted = 0
+    </select>
+
+</mapper>

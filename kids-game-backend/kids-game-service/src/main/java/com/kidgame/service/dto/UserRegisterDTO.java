@@ -1,5 +1,8 @@
 package com.kidgame.service.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.kidgame.dao.entity.BaseUser;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -13,6 +16,7 @@ import jakarta.validation.constraints.NotNull;
  */
 @Data
 @Schema(description = "统一用户注册请求对象")
+@JsonNaming(PropertyNamingStrategies.LowerCamelCaseStrategy.class)  // 使用小驼峰命名，与前端保持一致
 public class UserRegisterDTO {
 
     @Schema(description = "用户名")
@@ -27,7 +31,8 @@ public class UserRegisterDTO {
     private String nickname;
 
     @Schema(description = "用户类型：KID/PARENT/ADMIN")
-    @NotNull(message = "用户类型不能为空")
+    @NotBlank(message = "用户类型不能为空")
+    @JsonProperty("userType")
     private String userType;
 
     @Schema(description = "邮箱")
