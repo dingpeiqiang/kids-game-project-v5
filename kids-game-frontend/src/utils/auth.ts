@@ -140,6 +140,30 @@ export function checkAndRedirectToLogin(redirectPath: string = '/login'): boolea
  * @returns boolean 是否有权限启动游戏
  */
 export function validateGameStartPermission(): boolean {
+  // 检查是否为游客模式
+  const isGuest = localStorage.getItem('isGuest') === 'true';
+  
+  if (isGuest) {
+    // 检查游客试玩时间是否已过期
+    const guestStartTime = localStorage.getItem('guestStartTime');
+    if (guestStartTime) {
+      const startTime = parseInt(guestStartTime, 10);
+      const currentTime = Date.now();
+      const elapsedMinutes = (currentTime - startTime) / (1000 * 60); // 转换为分钟
+      
+      // 如果超过10分钟，提示登录或注册
+      if (elapsedMinutes >= 10) {
+        alert('游客试玩时间已到（10分钟），请注册或登录后继续游戏！');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return false;
+      }
+    }
+    return true; // 游客且在10分钟内，允许继续
+  }
+  
+  // 非游客模式，正常检查登录状态
   if (!isLoggedIn()) {
     alert('请先登录后再玩游戏');
     if (window.location.pathname !== '/login') {

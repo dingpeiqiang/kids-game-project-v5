@@ -40,25 +40,25 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
   { id: 'bubbleShooter', visible: true,  order: 4,  badge: '' },
 
   // // ── 反应力 ──
-  // { id: 'pop',           visible: true,  order: 1,  badge: '' },
-  // { id: 'whackMole',     visible: true,  order: 2,  badge: '推荐' },
-  // { id: 'colorTap',      visible: true,  order: 3,  badge: '' },
+  { id: 'pop',           visible: true,  order: 1,  badge: '' },
+  { id: 'whackMole',     visible: true,  order: 2,  badge: '推荐' },
+  { id: 'colorTap',      visible: true,  order: 3,  badge: '' },
 
   // // ── 切割爽感 ──
   { id: 'fruitSlice',    visible: true,  order: 1,  badge: '' },
   { id: 'cookieCut',     visible: true,  order: 2,  badge: '' },
 
   // // ── 动作闯关 ──
-  // { id: 'dodge',         visible: true,  order: 1,  badge: '' },
-  // { id: 'racingRun',     visible: true,  order: 2,  badge: '热门' },
-  // { id: 'snake',         visible: true,  order: 3,  badge: '推荐' },
-  // { id: 'neonRun',       visible: true,  order: 4,  badge: '' },
-  // { id: 'slimeJump',     visible: true,  order: 5,  badge: '' },
+  { id: 'dodge',         visible: true,  order: 1,  badge: '' },
+  { id: 'racingRun',     visible: true,  order: 2,  badge: '热门' },
+  { id: 'snake',         visible: true,  order: 3,  badge: '推荐' },
+  { id: 'neonRun',       visible: true,  order: 4,  badge: '' },
+  { id: 'slimeJump',     visible: true,  order: 5,  badge: '' },
 
   // // ── 益智休闲 ──
-  // { id: 'sort',          visible: true,  order: 1,  badge: '' },
-  // { id: 'bouncePath',    visible: true,  order: 2,  badge: '' },
-  // { id: 'starCatcher',   visible: true,  order: 3,  badge: '' },
+  { id: 'sort',          visible: true,  order: 1,  badge: '' },
+  { id: 'bouncePath',    visible: true,  order: 2,  badge: '' },
+  { id: 'starCatcher',   visible: true,  order: 3,  badge: '' },
 
   // // ── 3D沉浸 ──
   { id: 'stack3d',       visible: true,  order: 1,  badge: '' },
@@ -76,7 +76,7 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
   { id: 'towerDefense',  visible: true,  order: 1,  badge: '新' },
 
   // // ── 卡牌记忆 ──
-  // { id: 'memoryMatch',   visible: true,  order: 1,  badge: '' },
+  { id: 'memoryMatch',   visible: true,  order: 1,  badge: '' },
 ]
 
 // ── 工具函数 ──────────────────────────────────────────────

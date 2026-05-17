@@ -43,6 +43,9 @@ class App {
   private mePanel: MePanel
   // 缓存排行榜数据，避免频繁请求
   private rankCache: Map<string, LeaderboardEntry[]> = new Map()
+  // 搜索和收藏状态
+  private currentPage: 'home' | 'rank' | 'favorites' | 'me' = 'home'
+  private searchKeyword: string = ''
 
   constructor() {
     this.authModal = new AuthModal()
@@ -70,6 +73,10 @@ class App {
     this.renderUI()
     this.bindEvents()
     this.bindGameCallbacks()
+    this.updateLogoForScreenSize()
+
+    // 监听窗口大小变化，动态调整 Logo 文本
+    window.addEventListener('resize', () => this.updateLogoForScreenSize())
 
     // 监听用户变更事件（登出、异步恢复登录等）
     window.addEventListener('ugp:userChange', () => this.onUserChange())
@@ -109,8 +116,12 @@ class App {
 
       <!-- 顶部栏 -->
       <div class="top-bar" id="topBar">
-        <div class="logo">解压竞技</div>
+        <div class="logo" id="platformLogo">儿童竞技游戏平台</div>
         <div class="top-right">
+          <div class="search-box" id="searchBox">
+            <input type="text" id="searchInput" placeholder="搜索..." />
+            <button class="search-btn" id="searchBtn">🔍</button>
+          </div>
           <div class="coin-display">
             <div class="coin-icon">★</div>
             <span id="coinCount">${coinVal}</span>
@@ -121,17 +132,48 @@ class App {
 
       <!-- 主界面 -->
       <div class="main-container" id="mainView">
-        <div class="daily-banner" id="dailyBanner">
-          <div class="banner-label">每日惊喜</div>
-          <div class="banner-title">今日可领取双倍积分卡!</div>
-          <div class="banner-sub">已连续登录 ${u ? u.consecutiveLoginDays : data.loginDays} 天，加油!</div>
-          <div class="banner-tag">
-            <div class="tag-num" id="todayGames">${u ? u.todayGames : data.todayGames}</div>
-            <div class="tag-label">今日游戏</div>
+        <!-- 首页内容 -->
+        <div id="homeContent">
+          <div class="daily-banner" id="dailyBanner">
+            <div class="banner-label">每日惊喜</div>
+            <div class="banner-title">今日可领取双倍积分卡!</div>
+            <div class="banner-sub">已连续登录 ${u ? u.consecutiveLoginDays : data.loginDays} 天，加油!</div>
+            <div class="banner-tag">
+              <div class="tag-num" id="todayGames">${u ? u.todayGames : data.todayGames}</div>
+              <div class="tag-label">今日游戏</div>
+            </div>
+          </div>
+
+          <div id="categorySections"></div>
+        </div>
+
+        <!-- 搜索结果页面 -->
+        <div id="searchResults" style="display:none;">
+          <div class="search-header">
+            <div class="search-title">🔍 搜索结果</div>
+            <button class="btn btn-secondary" id="btnCloseSearch">返回</button>
+          </div>
+          <div class="search-count" id="searchCount"></div>
+          <div id="searchGameList" class="game-grid"></div>
+          <div class="no-results" id="noResults" style="display:none;">
+            <div class="no-results-icon">😕</div>
+            <div class="no-results-text">没有找到相关游戏</div>
           </div>
         </div>
 
-        <div id="categorySections"></div>
+        <!-- 收藏列表页面 -->
+        <div id="favoritesContent" style="display:none;">
+          <div class="favorites-header">
+            <div class="favorites-title">❤️ 我的收藏</div>
+          </div>
+          <div class="favorites-count" id="favoritesCount"></div>
+          <div id="favoritesGameList" class="game-grid"></div>
+          <div class="no-favorites" id="noFavorites" style="display:none;">
+            <div class="no-favorites-icon">💔</div>
+            <div class="no-favorites-text">暂无收藏游戏</div>
+            <div class="no-favorites-hint">点击游戏卡片上的 ❤️ 图标即可收藏</div>
+          </div>
+        </div>
       </div>
 
       <!-- 底部导航 -->
@@ -143,6 +185,10 @@ class App {
         <div class="nav-item" data-page="rank">
           <svg viewBox="0 0 24 24"><path d="M7.5 21H2V9l10-7 10 7v12h-5.5v-7h-9v7zm7-11.5L18.5 17H15v-7.5z"/></svg>
           排行
+        </div>
+        <div class="nav-item" data-page="favorites">
+          <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          收藏
         </div>
         <div class="nav-item" data-page="me">
           <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
@@ -383,8 +429,10 @@ class App {
         gamesToPreview.push(game)
       })
       container.appendChild(grid)
-      // ⭐ DOM 已挂载到 document，再启动预览动画
-      gamesToPreview.forEach(game => this.renderPreview(game))
+      // ⭐ 使用 setTimeout 确保 DOM 已挂载并完成布局后再启动预览
+      setTimeout(() => {
+        gamesToPreview.forEach(game => this.renderPreview(game))
+      }, 50)
     })
   }
 
@@ -392,6 +440,10 @@ class App {
     const card = document.createElement('div')
     card.className = 'game-card'
     card.dataset.gameId = game.id
+    
+    // 检查是否已收藏
+    const favorites = this.getFavorites()
+    const isFavorited = favorites.includes(game.id)
     
     // 排名显示
     let rankDisplay = ''
@@ -422,6 +474,9 @@ class App {
         <canvas id="preview_${game.id}" width="320" height="200"></canvas>
         <div class="card-tag">${game.tag}</div>
         ${getGameDisplayConfig(game.id).badge ? `<div class="card-badge">${getGameDisplayConfig(game.id).badge}</div>` : ''}
+        <button class="favorite-btn ${isFavorited ? 'favorited' : ''}" data-game-id="${game.id}" title="${isFavorited ? '取消收藏' : '加入收藏'}">
+          ${isFavorited ? '❤️' : '🤍'}
+        </button>
       </div>
       <div class="card-info">
         <div class="card-name">${game.name}</div>
@@ -435,6 +490,13 @@ class App {
         ${rankDisplay}
       </div>
     `
+    
+    // 绑定收藏按钮事件
+    const favBtn = card.querySelector('.favorite-btn')
+    favBtn?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      this.toggleFavorite(game.id)
+    })
     
     // 绑定排名点击事件
     const bestEl = card.querySelector('.card-best')
@@ -518,31 +580,293 @@ class App {
       frame++
       this.previewAnimFrames.set(game.id, requestAnimationFrame(animate))
     }
-    this.previewAnimFrames.set(game.id, requestAnimationFrame(animate))
+    const rafId = requestAnimationFrame(animate)
+    this.previewAnimFrames.set(game.id, rafId)
   }
 
-  private renderPreview(game: Game) {
+  private renderPreview(game: Game, retryCount = 0) {
     const canvas = document.getElementById('preview_' + game.id) as HTMLCanvasElement
-    if (!canvas) return
+    if (!canvas) {
+      console.warn('[App] renderPreview: Canvas not found for game', game.id)
+      return
+    }
 
+    // ⭐ 诊断：检查Canvas的实际渲染尺寸
+    const rect = canvas.getBoundingClientRect()
+    
+    // ⭐ 如果Canvas尺寸为0，延迟重试（最多5次）
+    if (rect.width === 0 || rect.height === 0) {
+      if (retryCount < 5) {
+        console.log(`[App] renderPreview: Canvas size is 0 (${rect.width.toFixed(1)}x${rect.height.toFixed(1)}), retry ${retryCount + 1}/5 for game`, game.id)
+        setTimeout(() => {
+          this.renderPreview(game, retryCount + 1)
+        }, 100 * (retryCount + 1)) // 递增延迟：100ms, 200ms, 300ms, 400ms, 500ms
+      } else {
+        console.error('[App] renderPreview: Canvas still has 0 size after 5 retries for game', game.id)
+        // 输出父元素信息帮助调试
+        const parent = canvas.parentElement
+        if (parent) {
+          const parentRect = parent.getBoundingClientRect()
+          const parentStyle = window.getComputedStyle(parent)
+          console.error('[App] renderPreview: Parent element -', parent.className, 
+                       'rect:', `w:${parentRect.width.toFixed(1)} h:${parentRect.height.toFixed(1)}`,
+                       'display:', parentStyle.display,
+                       'visibility:', parentStyle.visibility)
+        }
+      }
+      return
+    }
+    
+    // Canvas有尺寸，正常渲染
+    console.log(`[App] renderPreview: Canvas size OK (${rect.width.toFixed(1)}x${rect.height.toFixed(1)}) for game`, game.id)
+    this.doRenderPreview(game, canvas)
+  }
+  
+  private doRenderPreview(game: Game, canvas: HTMLCanvasElement) {
     // 先画一帧静态画面（避免白屏）
-    const ctx = canvas.getContext('2d')!
-    const [c1, c2] = game.color.split(',')
-    const grad = ctx.createLinearGradient(0, 0, 320, 200)
-    grad.addColorStop(0, c1)
-    grad.addColorStop(1, c2)
-    ctx.fillStyle = grad
-    ctx.fillRect(0, 0, 320, 200)
-    ctx.globalAlpha = 0.9
-    ctx.fillStyle = '#fff'
-    ctx.font = 'bold 18px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('▶', 160, 110)
-    ctx.globalAlpha = 1
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      console.error('[App] renderPreview: Failed to get 2D context for canvas', game.id)
+      return
+    }
+    
+    try {
+      const [c1, c2] = game.color.split(',')
+      
+      const grad = ctx.createLinearGradient(0, 0, 320, 200)
+      grad.addColorStop(0, c1)
+      grad.addColorStop(1, c2)
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, 320, 200)
+      ctx.globalAlpha = 0.9
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 18px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('▶', 160, 110)
+      ctx.globalAlpha = 1
+    } catch (error) {
+      console.error('[App] renderPreview: Error drawing static frame for', game.id, error)
+      return
+    }
 
-    // 用 IntersectionObserver 懒加载动画
-    this.initPreviewObserver()
-    this.previewObserver!.observe(canvas)
+    // ⭐ 直接启动动画，不等待 IntersectionObserver
+    // 检查是否已经在运行动画
+    if (!this.previewAnimFrames.has(game.id)) {
+      this.startPreviewAnimation(game, canvas)
+    }
+  }
+
+  // ==================== 收藏功能 ====================
+  
+  private getFavorites(): string[] {
+    const u = userService.current
+    if (u) {
+      return u.favorites || []
+    }
+    const data = storageService.get()
+    return data.favorites || []
+  }
+
+  private toggleFavorite(gameId: string) {
+    const favorites = this.getFavorites()
+    const index = favorites.indexOf(gameId)
+    
+    if (index > -1) {
+      // 取消收藏
+      favorites.splice(index, 1)
+      showToast('已取消收藏')
+    } else {
+      // 加入收藏
+      favorites.push(gameId)
+      showToast('已加入收藏 ❤️')
+    }
+    
+    // 更新存储
+    const u = userService.current
+    if (u) {
+      // TODO: 调用后端 API 更新收藏
+      // apiUpdateFavorites(favorites)
+    } else {
+      const data = storageService.get()
+      data.favorites = favorites
+      storageService.save(data)
+    }
+    
+    // 刷新UI
+    this.refreshCurrentPage()
+  }
+
+  private refreshCurrentPage() {
+    if (this.currentPage === 'home') {
+      this.renderGameCards()
+    } else if (this.currentPage === 'favorites') {
+      this.renderFavoritesPage()
+    }
+  }
+
+  // ==================== 搜索功能 ====================
+  
+  private performSearch(keyword: string) {
+    this.searchKeyword = keyword.trim().toLowerCase()
+    
+    if (!this.searchKeyword) {
+      this.switchToHome()
+      return
+    }
+    
+    // 过滤游戏
+    const results = GAMES.filter(game => 
+      game.name.toLowerCase().includes(this.searchKeyword) ||
+      game.desc.toLowerCase().includes(this.searchKeyword) ||
+      game.tag.toLowerCase().includes(this.searchKeyword)
+    )
+    
+    // 显示搜索结果
+    this.showSearchResults(results)
+  }
+
+  private switchToHome() {
+    const homeContent = document.getElementById('homeContent')
+    const searchResults = document.getElementById('searchResults')
+    const favoritesContent = document.getElementById('favoritesContent')
+    
+    if (homeContent) homeContent.style.display = 'block'
+    if (searchResults) searchResults.style.display = 'none'
+    if (favoritesContent) favoritesContent.style.display = 'none'
+    
+    this.currentPage = 'home'
+    
+    // ⭐ 重新渲染首页游戏卡片，确保预览动画正常
+    this.renderGameCards()
+  }
+
+  private showSearchResults(results: Game[]) {
+    const homeContent = document.getElementById('homeContent')
+    const searchResults = document.getElementById('searchResults')
+    const searchCount = document.getElementById('searchCount')
+    const searchGameList = document.getElementById('searchGameList')
+    const noResults = document.getElementById('noResults')
+    
+    if (!homeContent || !searchResults) return
+    
+    // ⭐ 停止所有预览动画 + 断开旧 Observer
+    this.previewAnimFrames.forEach((rafId) => cancelAnimationFrame(rafId))
+    this.previewAnimFrames.clear()
+    if (this.previewObserver) {
+      this.previewObserver.disconnect()
+      this.previewObserver = null
+    }
+    
+    // 切换显示
+    homeContent.style.display = 'none'
+    searchResults.style.display = 'block'
+    
+    // ⭐ 强制重排，确保布局立即更新
+    void searchResults.offsetHeight
+    
+    // 更新计数
+    if (searchCount) {
+      searchCount.textContent = `找到 ${results.length} 个游戏`
+    }
+    
+    // 渲染结果
+    if (searchGameList) {
+      // ⭐ 清空现有内容
+      searchGameList.innerHTML = ''
+      if (results.length > 0) {
+        const gamesToPreview: Game[] = []
+        results.forEach((game, index) => {
+          const best = this.store.bestScores[game.id] || 0
+          const card = this.createGameCard(game, best, null)
+          // 逐卡错落入场动画延迟
+          card.style.animationDelay = `${index * 55}ms`
+          searchGameList.appendChild(card)
+          gamesToPreview.push(game)
+        })
+        console.log('[App] showSearchResults: Created', gamesToPreview.length, 'cards, starting previews')
+        if (noResults) noResults.style.display = 'none'
+        // ⭐ 双 rAF 确保布局完成后启动预览动画
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            gamesToPreview.forEach((game, i) => {
+              setTimeout(() => this.renderPreview(game), i * 30)
+            })
+          })
+        })
+      } else {
+        console.log('[App] showSearchResults: No results to display')
+        if (noResults) noResults.style.display = 'flex'
+      }
+    }
+  }
+
+  // ==================== 收藏页面 ====================
+  
+  private renderFavoritesPage() {
+    console.log('[App] renderFavoritesPage: Starting to render favorites page')
+    const homeContent = document.getElementById('homeContent')
+    const favoritesContent = document.getElementById('favoritesContent')
+    const favoritesCount = document.getElementById('favoritesCount')
+    const favoritesGameList = document.getElementById('favoritesGameList')
+    const noFavorites = document.getElementById('noFavorites')
+    
+    if (!homeContent || !favoritesContent) return
+    
+    // 切换显示
+    homeContent.style.display = 'none'
+    favoritesContent.style.display = 'block'
+    
+    // ⭐ 强制重排，确保布局立即更新
+    void favoritesContent.offsetHeight
+    
+    // ⭐ 停止所有预览动画 + 断开旧 Observer
+    this.previewAnimFrames.forEach((rafId) => cancelAnimationFrame(rafId))
+    this.previewAnimFrames.clear()
+    if (this.previewObserver) {
+      this.previewObserver.disconnect()
+      this.previewObserver = null
+    }
+    console.log('[App] renderFavoritesPage: Cleared all animations and observer')
+    
+    // 获取收藏的游戏
+    const favoriteIds = this.getFavorites()
+    const favoriteGames = GAMES.filter(game => favoriteIds.includes(game.id))
+    console.log('[App] renderFavoritesPage: Found', favoriteGames.length, 'favorite games')
+    
+    // 更新计数
+    if (favoritesCount) {
+      favoritesCount.textContent = `共 ${favoriteGames.length} 个收藏`
+    }
+    
+    // 渲染收藏列表
+    if (favoritesGameList) {
+      // ⭐ 清空现有内容
+      favoritesGameList.innerHTML = ''
+      if (favoriteGames.length > 0) {
+        const gamesToPreview: Game[] = []
+        favoriteGames.forEach((game, index) => {
+          const best = this.store.bestScores[game.id] || 0
+          const card = this.createGameCard(game, best, null)
+          // 逐卡错落入场动画延迟
+          card.style.animationDelay = `${index * 55}ms`
+          favoritesGameList.appendChild(card)
+          gamesToPreview.push(game)
+        })
+        console.log('[App] renderFavoritesPage: Created', gamesToPreview.length, 'cards, starting previews')
+        if (noFavorites) noFavorites.style.display = 'none'
+        // ⭐ 双 rAF 确保浏览器完成布局+绘制后再启动预览动画
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            gamesToPreview.forEach((game, i) => {
+              setTimeout(() => this.renderPreview(game), i * 30)
+            })
+          })
+        })
+      } else {
+        console.log('[App] renderFavoritesPage: No favorite games to display')
+        if (noFavorites) noFavorites.style.display = 'flex'
+      }
+    }
   }
 
   private bindEvents() {
@@ -569,12 +893,38 @@ class App {
         
         if (page === 'rank') {
           this.showRank()
+        } else if (page === 'favorites') {
+          this.currentPage = 'favorites'
+          this.renderFavoritesPage()
         } else if (page === 'me') {
           this.mePanel.open()
         } else {
           this.closeRank()
+          this.switchToHome()
         }
       })
+    })
+
+    // 搜索功能
+    const searchInput = document.getElementById('searchInput') as HTMLInputElement
+    const searchBtn = document.getElementById('searchBtn')
+    
+    searchBtn?.addEventListener('click', () => {
+      if (searchInput) {
+        this.performSearch(searchInput.value)
+      }
+    })
+    
+    searchInput?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        this.performSearch(searchInput.value)
+      }
+    })
+    
+    // 关闭搜索结果
+    document.getElementById('btnCloseSearch')?.addEventListener('click', () => {
+      this.switchToHome()
+      if (searchInput) searchInput.value = ''
     })
 
     // 结果弹窗
@@ -1697,6 +2047,25 @@ class App {
     const bar = document.getElementById('custom-powerup-bar')
     if (bar) {
       bar.remove()
+    }
+  }
+
+  // 根据屏幕尺寸更新 Logo 文本
+  private updateLogoForScreenSize() {
+    const logoEl = document.getElementById('platformLogo')
+    if (!logoEl) return
+    
+    const width = window.innerWidth
+    
+    if (width <= 480) {
+      // 超小屏幕：使用缩写
+      logoEl.textContent = '儿童游戏'
+    } else if (width <= 768) {
+      // 平板：使用简化版
+      logoEl.textContent = '儿童竞技平台'
+    } else {
+      // 桌面：使用完整版
+      logoEl.textContent = '儿童竞技游戏平台'
     }
   }
 }

@@ -371,6 +371,18 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
 
   function loop() {
     if (!document.getElementById('mainGameCanvas') || gameEnded) return
+    
+    // 检查超时（3分钟）
+    const elapsedTime = Date.now() - gameStartTime
+    if (elapsedTime > 180000) { // 3分钟 = 180000毫秒
+      console.log('[NeonRun] 游戏超时，结束游戏')
+      gameEnded = true
+      engine.endGame()
+      audioService.lose()
+      onEnd()
+      return
+    }
+    
     update()
     draw()
     requestAnimationFrame(loop)

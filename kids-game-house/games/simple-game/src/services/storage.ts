@@ -12,6 +12,7 @@ const KEYS = {
   guideSkipped: 'platform_guide_skipped',
   items: 'platform_items', // 道具数据
   comments: 'platform_comments', // 游戏评论
+  favorites: 'platform_favorites', // 收藏列表
 }
 
 export class StorageService {
@@ -51,10 +52,16 @@ export class StorageService {
       lastLogin: localStorage.getItem(KEYS.lastLogin) || '',
       guideSkipped: JSON.parse(localStorage.getItem(KEYS.guideSkipped) || '{}'),
       items: JSON.parse(localStorage.getItem(KEYS.items) || '{}'), // 不再需要初始道具
+      favorites: JSON.parse(localStorage.getItem(KEYS.favorites) || '[]'),
     }
   }
 
   get = () => this.data
+
+  save(data: PlayerData) {
+    this.data = data
+    localStorage.setItem(KEYS.favorites, JSON.stringify(data.favorites))
+  }
 
   updateBest(gameId: string, score: number) {
     const prev = this.data.bestScores[gameId] || 0

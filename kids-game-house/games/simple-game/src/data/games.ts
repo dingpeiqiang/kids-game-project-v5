@@ -1,45 +1,67 @@
 import type { Game, GameGuide, GameCategoryDef } from '../types'
 
-// 玩法分类定义
+// 按儿童10大能力发展维度分类
 export const GAME_CATEGORIES: GameCategoryDef[] = [
-  { id: 'eliminate', label: '热门消除', icon: '💥', color: '#FF6B6B' },
-  { id: 'reaction',  label: '反应力',   icon: '⚡', color: '#FFD93D' },
-  { id: 'slice',     label: '切割爽感', icon: '🗡️', color: '#FF8E53' },
-  { id: 'action',    label: '动作闯关', icon: '🏃', color: '#4ECDC4' },
-  { id: 'puzzle',    label: '益智休闲', icon: '🧩', color: '#9B59B6' },
-  { id: '3d',        label: '3D沉浸',   icon: '🎮', color: '#87CEEB' },
-  { id: 'build',     label: '堆叠建造', icon: '🏗️', color: '#A8E6CF' },
-  { id: 'shoot',        label: '射击枪战', icon: '🔫', color: '#FF4757' },
-  { id: 'towerDefense', label: '策略塔防', icon: '🏰', color: '#5352ED' },
-  { id: 'card',         label: '卡牌记忆', icon: '🃏', color: '#FDCB6E' },
+  { id: 'logic', label: '🧠 逻辑思维', icon: '💡', color: '#4D96FF', desc: '培养分析推理、因果判断与逻辑思维能力' },
+  { id: 'memory', label: '🃏 记忆训练', icon: '🧩', color: '#9B59B6', desc: '增强短期记忆、模式识别与信息处理能力' },
+  { id: 'attention', label: '🎯 专注力', icon: '👁️', color: '#FF6B6B', desc: '提升注意力集中、抗干扰与持续专注能力' },
+  { id: 'reaction', label: '⚡ 反应速度', icon: '⚡', color: '#FFD93D', desc: '训练快速反应、瞬时决策与手眼协调能力' },
+  { id: 'coordination', label: '🎮 手眼协调', icon: '🖐️', color: '#4ECDC4', desc: '锻炼精细动作、节奏控制与操作精准度' },
+  { id: 'spatial', label: '📐 空间想象', icon: '🔲', color: '#87CEEB', desc: '发展空间感知、几何思维与立体建构能力' },
+  { id: 'strategy', label: '♟️ 策略规划', icon: '♟️', color: '#5352ED', desc: '培养决策能力、资源管理与长远规划思维' },
+  { id: 'creativity', label: '🎨 创造力', icon: '🌈', color: '#FF8E53', desc: '激发想象力、艺术感知与创新表达能力' },
+  { id: 'problemSolving', label: '🔍 问题解决', icon: '🔑', color: '#A8E6CF', desc: '训练分析问题、寻找方案与灵活应变能力' },
+  { id: 'patience', label: '🌱 耐心毅力', icon: '⏳', color: '#6BCB77', desc: '培养坚持不懈、延迟满足与抗压能力' },
 ]
 
 export const GAMES: Game[] = [
-  { id: 'eliminate', name: '极速消除', desc: '点击同色方块，触发连锁爆炸！', type: '2d', category: 'eliminate', tag: '消除', color: '#FF6B6B,#FF8E53', players: 2847, best: 0, preview: 'eliminate' },
-  { id: 'dodge',     name: '轻量躲避', desc: '滑动躲避障碍，收集加分道具', type: '2d', category: 'action', tag: '躲避', color: '#4ECDC4,#45B7AA', players: 3215, best: 0, preview: 'dodge' },
-  { id: 'stack3d',   name: '3D堆叠乐园', desc: '3D模型堆叠挑战，不倒塌就得分', type: '3d', category: '3d', tag: '3D', color: '#A8E6CF,#88D8B0', players: 1893, best: 0, preview: 'stack3d' },
-  { id: 'sort',      name: '色彩排序', desc: '滑动排序彩色液体，超治愈！', type: '2d', category: 'puzzle', tag: '益智', color: '#DDA0DD,#BA55D3', players: 1532, best: 0, preview: 'sort' },
-  { id: 'pop',       name: '气球砰砰', desc: '疯狂点击气球，炸出高分！', type: '2d', category: 'reaction', tag: '点击', color: '#FF69B4,#FF1493', players: 2108, best: 0, preview: 'pop' },
-  { id: 'fruitSlice',name: '水果切切', desc: '划动切割水果，果汁飞溅超解压！', type: '2d', category: 'slice', tag: '切割', color: '#FF6B6B,#FFD93D', players: 1654, best: 0, preview: 'fruitSlice' },
-  { id: 'bouncePath',name: '弹珠迷宫', desc: '控制弹珠收集星星，弹跳乐趣多！', type: '2d', category: 'puzzle', tag: '益智', color: '#4ECDC4,#FFD93D', players: 1432, best: 0, preview: 'bouncePath' },
-  { id: 'neonRun',   name: '霓虹跑酷', desc: '躲避障碍收集金币，无尽奔跑！', type: '2d', category: 'action', tag: '跑酷', color: '#9B59B6,#FF69B4', players: 1987, best: 0, preview: 'neonRun' },
-  { id: 'tetris',    name: '方块消除', desc: '经典俄罗斯方块，益智又上瘾！', type: '2d', category: 'eliminate', tag: '消除', color: '#4D96FF,#FF8E53', players: 2341, best: 0, preview: 'tetris' },
-  { id: 'jewelMatch',name: '宝石消消乐', desc: '交换宝石消除，3个以上连成一线！', type: '2d', category: 'eliminate', tag: '消除', color: '#FFD700,#9B59B6', players: 1876, best: 0, preview: 'jewelMatch' },
-  { id: 'cookieCut',name: '切饼干', desc: '滑动切割飞起的饼干，碎屑四溅超有趣！', type: '2d', category: 'slice', tag: '切割', color: '#D2691E,#FFD700', players: 1567, best: 0, preview: 'cookieCut' },
-  { id: 'starCatcher',name: '星星捕手', desc: '控制小精灵收集星星，躲避乌云袭击！', type: '2d', category: 'puzzle', tag: '益智', color: '#FFD700,#9B59B6', players: 1234, best: 0, preview: 'starCatcher' },
-  { id: 'bubbleShooter',name: '泡泡龙', desc: '经典泡泡龙射击，3个以上相同颜色消除！', type: '2d', category: 'eliminate', tag: '消除', color: '#4ECDC4,#FF69B4', players: 2134, best: 0, preview: 'bubbleShooter' },
-  { id: 'slimeJump',name: '史莱姆跳', desc: '控制史莱姆不断往上跳，收集星星得高分！', type: '2d', category: 'action', tag: '跳跃', color: '#6BCB77,#9B59B6', players: 987, best: 0, preview: 'slimeJump' },
-  { id: 'colorTap',name: '颜色Tap', desc: '快速点击匹配颜色，测试你的反应力！', type: '2d', category: 'reaction', tag: '反应', color: '#FF6B6B,#4ECDC4', players: 1456, best: 0, preview: 'colorTap' },
-  { id: 'stack', name: '叠叠乐', desc: '精准堆叠方块，叠得越高分数越高！', type: '2d', category: 'build', tag: '堆叠', color: '#A8E6CF,#6BCB77', players: 2100, best: 0, preview: 'stack' },
-  { id: 'spaceShooter', name: '太空射击', desc: '驾驶飞船消灭外星入侵者，躲避弹幕！', type: '2d', category: 'shoot', tag: '射击', color: '#0d1b2a,#45B7D1', players: 3200, best: 0, preview: 'spaceShooter' },
-  { id: 'towerDefense', name: '星际塔防', desc: '放置防御塔拦截外星入侵者，守住防线！', type: '2d', category: 'towerDefense', tag: '塔防', color: '#0d1b2a,#5352ED', players: 2500, best: 0, preview: 'towerDefense' },
-  { id: 'memoryMatch', name: '翻牌配对', desc: '翻开卡牌找到相同图案，考验你的记忆力！', type: '2d', category: 'card', tag: '记忆', color: '#0f0c29,#A29BFE', players: 1800, best: 0, preview: 'memoryMatch' },
-  { id: 'snake', name: '贪吃蛇', desc: '控制小蛇吃食物，别撞墙和自己的尾巴！', type: '2d', category: 'action', tag: '经典', color: '#2ECC71,#27AE60', players: 3500, best: 0, preview: 'snake' },
-  { id: 'whackMole', name: '打地鼠', desc: '快速敲击出洞的地鼠，金色鼠得分多，小心炸弹！', type: '2d', category: 'reaction', tag: '反应', color: '#8B5E3C,#FFD700', players: 2760, best: 0, preview: 'whackMole' },
-  { id: 'racingRun', name: '极速赛车', desc: '飙车躲障碍！拾取道具触发火焰加速、护盾、磁铁吸分，超爽！', type: '2d', category: 'action', tag: '赛车', color: '#FF6B00,#FFD700', players: 3180, best: 0, preview: 'racingRun' },
-  { id: 'rpgShooter', name: '星际猎手', desc: 'RPG移动射击！击杀敌人获得经验升级，提升属性挑战波次！', type: '2d', category: 'shoot', tag: 'RPG射击', color: '#5352ED,#9B59B6', players: 2100, best: 0, preview: 'rpgShooter' },
-  { id: 'rpgShooterTD', name: 'RPG塔防射击', desc: '双系统战斗！建造炮台防御+角色移动射击，策略与操作并重！', type: '2d', category: 'shoot', tag: '塔防射击', color: '#4ECDC4,#FF6B6B', players: 1500, best: 0, preview: 'rpgShooterTowerDefense' },
-  { id: 'dragonShooter', name: '打龙小游戏', desc: '国产爆款！滑动控制自动射击，龙体分裂爽感无限！', type: '2d', category: 'shoot', tag: '射击', color: '#FFD700,#FF5722', players: 9999, best: 0, preview: 'dragonShooter' },
+  // 🧠 逻辑思维 - 分析推理、因果判断
+  { id: 'eliminate', name: '极速消除', desc: '点击同色方块，触发连锁爆炸！', type: '2d', category: 'logic', tag: '消除', color: '#FF6B6B,#FF8E53', players: 2847, best: 0, preview: 'eliminate' },
+  { id: 'tetris', name: '方块消除', desc: '经典俄罗斯方块，益智又上瘾！', type: '2d', category: 'logic', tag: '消除', color: '#4D96FF,#FF8E53', players: 2341, best: 0, preview: 'tetris' },
+  { id: 'jewelMatch', name: '宝石消消乐', desc: '交换宝石消除，3个以上连成一线！', type: '2d', category: 'logic', tag: '消除', color: '#FFD700,#9B59B6', players: 1876, best: 0, preview: 'jewelMatch' },
+  { id: 'bubbleShooter', name: '泡泡龙', desc: '经典泡泡龙射击，3个以上相同颜色消除！', type: '2d', category: 'logic', tag: '消除', color: '#4ECDC4,#FF69B4', players: 2134, best: 0, preview: 'bubbleShooter' },
+  { id: 'sort', name: '色彩排序', desc: '滑动排序彩色液体，超治愈！', type: '2d', category: 'logic', tag: '益智', color: '#DDA0DD,#BA55D3', players: 1532, best: 0, preview: 'sort' },
+
+  // 🃏 记忆训练 - 短期记忆、模式识别
+  { id: 'memoryMatch', name: '翻牌配对', desc: '翻开卡牌找到相同图案，考验你的记忆力！', type: '2d', category: 'memory', tag: '记忆', color: '#0f0c29,#A29BFE', players: 1800, best: 0, preview: 'memoryMatch' },
+
+  // 🎯 专注力 - 注意力集中、抗干扰
+  { id: 'colorTap', name: '颜色Tap', desc: '快速点击匹配颜色，测试你的反应力！', type: '2d', category: 'attention', tag: '反应', color: '#FF6B6B,#4ECDC4', players: 1456, best: 0, preview: 'colorTap' },
+  { id: 'whackMole', name: '打地鼠', desc: '快速敲击出洞的地鼠，金色鼠得分多，小心炸弹！', type: '2d', category: 'attention', tag: '反应', color: '#8B5E3C,#FFD700', players: 2760, best: 0, preview: 'whackMole' },
+
+  // ⚡ 反应速度 - 快速反应、瞬时决策
+  { id: 'pop', name: '气球砰砰', desc: '疯狂点击气球，炸出高分！', type: '2d', category: 'reaction', tag: '点击', color: '#FF69B4,#FF1493', players: 2108, best: 0, preview: 'pop' },
+
+  // 🎮 手眼协调 - 精细动作、操作精准
+  { id: 'fruitSlice', name: '水果切切', desc: '划动切割水果，果汁飞溅超解压！', type: '2d', category: 'coordination', tag: '切割', color: '#FF6B6B,#FFD93D', players: 1654, best: 0, preview: 'fruitSlice' },
+  { id: 'cookieCut', name: '切饼干', desc: '滑动切割飞起的饼干，碎屑四溅超有趣！', type: '2d', category: 'coordination', tag: '切割', color: '#D2691E,#FFD700', players: 1567, best: 0, preview: 'cookieCut' },
+  { id: 'dodge', name: '轻量躲避', desc: '滑动躲避障碍，收集加分道具', type: '2d', category: 'coordination', tag: '躲避', color: '#4ECDC4,#45B7AA', players: 3215, best: 0, preview: 'dodge' },
+  { id: 'neonRun', name: '霓虹跑酷', desc: '躲避障碍收集金币，无尽奔跑！', type: '2d', category: 'coordination', tag: '跑酷', color: '#9B59B6,#FF69B4', players: 1987, best: 0, preview: 'neonRun' },
+  { id: 'slimeJump', name: '史莱姆跳', desc: '控制史莱姆不断往上跳，收集星星得高分！', type: '2d', category: 'coordination', tag: '跳跃', color: '#6BCB77,#9B59B6', players: 987, best: 0, preview: 'slimeJump' },
+  { id: 'snake', name: '贪吃蛇', desc: '控制小蛇吃食物，别撞墙和自己的尾巴！', type: '2d', category: 'coordination', tag: '经典', color: '#2ECC71,#27AE60', players: 3500, best: 0, preview: 'snake' },
+  { id: 'racingRun', name: '极速赛车', desc: '飙车躲障碍！拾取道具触发火焰加速、护盾、磁铁吸分，超爽！', type: '2d', category: 'coordination', tag: '赛车', color: '#FF6B00,#FFD700', players: 3180, best: 0, preview: 'racingRun' },
+  { id: 'starCatcher', name: '星星捕手', desc: '控制小精灵收集星星，躲避乌云袭击！', type: '2d', category: 'coordination', tag: '益智', color: '#FFD700,#9B59B6', players: 1234, best: 0, preview: 'starCatcher' },
+
+  // 📐 空间想象 - 空间感知、几何思维
+  { id: 'stack3d', name: '3D堆叠乐园', desc: '3D模型堆叠挑战，不倒塌就得分', type: '3d', category: 'spatial', tag: '3D', color: '#A8E6CF,#88D8B0', players: 1893, best: 0, preview: 'stack3d' },
+  { id: 'bouncePath', name: '弹珠迷宫', desc: '控制弹珠收集星星，弹跳乐趣多！', type: '2d', category: 'spatial', tag: '益智', color: '#4ECDC4,#FFD93D', players: 1432, best: 0, preview: 'bouncePath' },
+  { id: 'stack', name: '叠叠乐', desc: '精准堆叠方块，叠得越高分数越高！', type: '2d', category: 'spatial', tag: '堆叠', color: '#A8E6CF,#6BCB77', players: 2100, best: 0, preview: 'stack' },
+
+  // ♟️ 策略规划 - 决策能力、资源管理
+  { id: 'towerDefense', name: '星际塔防', desc: '放置防御塔拦截外星入侵者，守住防线！', type: '2d', category: 'strategy', tag: '塔防', color: '#0d1b2a,#5352ED', players: 2500, best: 0, preview: 'towerDefense' },
+  { id: 'rpgShooterTD', name: 'RPG塔防射击', desc: '双系统战斗！建造炮台防御+角色移动射击，策略与操作并重！', type: '2d', category: 'strategy', tag: '塔防射击', color: '#4ECDC4,#FF6B6B', players: 1500, best: 0, preview: 'rpgShooterTowerDefense' },
+  { id: 'spaceShooter', name: '太空射击', desc: '驾驶飞船消灭外星入侵者，躲避弹幕！', type: '2d', category: 'strategy', tag: '射击', color: '#0d1b2a,#45B7D1', players: 3200, best: 0, preview: 'spaceShooter' },
+  { id: 'rpgShooter', name: '星际猎手', desc: 'RPG移动射击！击杀敌人获得经验升级，提升属性挑战波次！', type: '2d', category: 'strategy', tag: 'RPG射击', color: '#5352ED,#9B59B6', players: 2100, best: 0, preview: 'rpgShooter' },
+  { id: 'dragonShooter', name: '打龙小游戏', desc: '国产爆款！滑动控制自动射击，龙体分裂爽感无限！', type: '2d', category: 'strategy', tag: '射击', color: '#FFD700,#FF5722', players: 9999, best: 0, preview: 'dragonShooter' },
+
+  // 🎨 创造力 - 想象力、创新表达
+  // (当前暂无专门游戏，可后续添加绘画、音乐类游戏)
+
+  // 🔍 问题解决 - 分析问题、灵活应变
+  // (部分游戏已归入逻辑思维和策略规划)
+
+  // 🌱 耐心毅力 - 坚持不懈、延迟满足
+  // (可通过高难度关卡体现)
 ]
 
 export const GAME_GUIDES: Record<string, GameGuide> = {

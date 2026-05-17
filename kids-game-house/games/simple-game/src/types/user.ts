@@ -48,6 +48,7 @@ export interface UserAccount {
   hasDoubleCard: boolean
   items: Record<string, number>
   guideSkipped: Record<string, boolean>
+  favorites: string[]             // 收藏的游戏ID列表
   // 运营数据
   dailyRewardCollected: string    // 今日是否领过签到奖励（日期字符串）
   weeklyRewardCollected: number   // 本周领取次数

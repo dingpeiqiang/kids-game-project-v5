@@ -97,7 +97,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
   let floatTexts: FloatText[] = []
 
   // 游戏状态
-  let alive = true
+  let alive = false  // 初始为false，等待用户开始
   let score = 0
   let combo = 0
   let comboTimer = 0
@@ -107,6 +107,8 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
   let frameCount = 0
   let screenShake = 0
   let gameTime = 0
+  let gameStarted = false  // 标记游戏是否真正开始
+  let isFirstStart = true  // 标记是否是首次启动
 
   // 道具效果状态
   let speedBoost = 0
@@ -201,16 +203,17 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     console.log('[贪吃蛇] 初始化游戏...')
     
     // 蛇初始位置：屏幕中间，长度4
+    // 蛇头在最右边，身体向左延伸，这样向右移动时不会撞到自己
     const startX = Math.floor(COLS / 2)
     const startY = Math.floor(ROWS / 2)
     snake = []
-    for (let i = 3; i >= 0; i--) {
+    for (let i = 0; i < 4; i++) {
       snake.push({ x: startX - i, y: startY })
     }
-    dir = { x: 1, y: 0 }
+    dir = { x: 1, y: 0 }  // 初始方向向右
     nextDir = { x: 1, y: 0 }
     growCount = 0
-    alive = true
+    alive = false  // 初始为false，等待用户开始
     score = 0
     combo = 0
     comboTimer = 0
@@ -221,6 +224,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     activePowerups = []
     particles = []
     floatTexts = []
+    gameStarted = false  // 重置游戏开始状态
 
     // 清除道具效果
     powerupManager.clearAll()
@@ -453,15 +457,33 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     }
     audioService.pop()
 
-    setTimeout(() => {
-      console.log('[贪吃蛇] 调用 onEnd 回调')
-      onEnd()
-      engine.endGame()
-    }, 800)
+    // 调用统一的结束回调，显示结束页面
+    setTimeout(() => onEnd(), 500)
+  }
+
+  // ====== 重新开始游戏 ======
+  function restartGame() {
+    console.log('[贪吃蛇] 重新开始游戏...')
+    init()
+    gameStarted = true
+    alive = true
+    isFirstStart = false
+    console.log('[贪吃蛇] 游戏重新开始！alive=true, gameStarted=true')
   }
 
   // ====== 点击方向控制 ======
   function handleClick(e: MouseEvent | TouchEvent) {
+    // 如果游戏还未开始，则开始游戏
+    if (!gameStarted) {
+      gameStarted = true
+      alive = true
+      isFirstStart = false
+      console.log('[贪吃蛇] 游戏首次开始！alive=true, gameStarted=true')
+      audioService.click()
+      return
+    }
+    
+    // 游戏进行中才响应方向控制
     if (!alive) return
     const rect = cvs.getBoundingClientRect()
     const scaleX = W / rect.width
@@ -498,6 +520,17 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
 
   // 键盘控制（备用）
   function handleKey(e: KeyboardEvent) {
+    // 如果游戏还未开始，则开始游戏
+    if (!gameStarted) {
+      gameStarted = true
+      alive = true
+      isFirstStart = false
+      console.log('[贪吃蛇] 游戏首次开始！alive=true, gameStarted=true')
+      audioService.click()
+      return
+    }
+    
+    // 游戏进行中才响应方向控制
     if (!alive) return
     switch (e.key) {
       case 'ArrowUp': case 'w': case 'W': if (dir.y !== 1) nextDir = { x: 0, y: -1 }; e.preventDefault(); break
@@ -518,6 +551,12 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
   init()
 
   function loop(time: number) {
+    // 如果游戏已结束，停止循环
+    if (!alive && gameStarted) {
+      console.log('[贪吃蛇] 游戏已结束，停止渲染循环')
+      return
+    }
+    
     const delta = time - lastTime
     lastTime = time
     frameCount++
@@ -535,12 +574,14 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     // 保留 activePowerups 用于显示效果，但不移除初始化逻辑
     activePowerups = []  // 清空，不生成下落道具
 
-    // 蛇移动
-    lastMoveTime += delta
-    if (alive && lastMoveTime >= currentMoveInterval) {
-      lastMoveTime = 0
-      console.log('[贪吃蛇] 执行移动...')
-      moveSnake()
+    // 蛇移动 - 只有当游戏真正开始后才移动
+    if (gameStarted && alive) {
+      lastMoveTime += delta
+      if (lastMoveTime >= currentMoveInterval) {
+        lastMoveTime = 0
+        console.log('[贪吃蛇] 执行移动...')
+        moveSnake()
+      }
     }
 
     // 连击计时
@@ -884,8 +925,8 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     ctx.textBaseline = 'middle'
     ctx.fillText('👆 点击方向控制蛇 | 也可用方向键/WASD', W / 2, H - 12)
 
-    // 游戏结束覆盖
-    if (!alive) {
+    // 显示开始提示（仅在游戏未开始时）
+    if (!gameStarted) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
       ctx.fillRect(0, H / 2 - 80, W, 160)
 
@@ -894,18 +935,16 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
       ctx.textAlign = 'center'
       ctx.shadowColor = '#FFD700'
       ctx.shadowBlur = 10
-      ctx.fillText('🏆 游戏结束', W / 2, H / 2 - 40)
+      ctx.fillText('🐍 贪吃蛇', W / 2, H / 2 - 40)
       ctx.shadowBlur = 0
 
       ctx.fillStyle = '#fff'
       ctx.font = '18px sans-serif'
-      ctx.fillText(`最终得分 ${score}`, W / 2, H / 2 - 5)
-      ctx.fillText(`蛇长度: ${snake.length}`, W / 2, H / 2 + 20)
-      ctx.fillText(`最高连击 ${combo}x`, W / 2, H / 2 + 45)
-
+      ctx.fillText('点击屏幕或按任意键开始', W / 2, H / 2 + 10)
+      
       ctx.fillStyle = 'rgba(255,255,255,0.6)'
       ctx.font = '14px sans-serif'
-      ctx.fillText('点击重新开始', W / 2, H / 2 + 70)
+      ctx.fillText('使用方向键/WASD或点击控制方向', W / 2, H / 2 + 40)
     }
 
     ctx.restore()

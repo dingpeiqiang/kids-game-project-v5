@@ -32,6 +32,11 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
   const TOTAL_TIME = 90000 // 90秒
   let targetButton: number | null = null
   
+  // ====== 音频控制变量 ======
+  let lastSoundTime = 0
+  const MIN_SOUND_INTERVAL = 80 // 最小音效间隔（毫秒）
+  let soundVolume = 0.3 // 降低默认音量
+  
   // ====== 道具系统（库存模式）======
   let inventory: string[] = [] // 道具库存
   
@@ -52,9 +57,11 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
     }))
     
     app.setupCustomPowerupBar('colorTap', powerups, inventory, (powerupId) => {
-      if (usePowerup(powerupId)) {
-        audioService.collect()
-              }
+      const now = Date.now()
+      if (now - lastSoundTime > MIN_SOUND_INTERVAL && usePowerup(powerupId)) {
+        audioService.click() // 使用简单的click音效
+        lastSoundTime = now
+      }
     })
   }
   
@@ -66,32 +73,47 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
     inventory.splice(index, 1)
     console.log('[道具] 使用道具:', type)
     
+    // 控制音效播放频率
+    const now = Date.now()
+    
     switch (type) {
       case 'time_plus':
         // 加时 - 增加10秒
         timeLeft += 10
-        audioService.win()
+        if (now - lastSoundTime > MIN_SOUND_INTERVAL) {
+          audioService.collect() // 使用更简短的collect音效
+          lastSoundTime = now
+        }
         console.log('[道具] 加时10秒，剩余:', timeLeft)
         break
         
       case 'auto_tap':
         // 自动点击 - 5秒内自动正确点击
         ;(window as any).colorAutoTap = Date.now() + 5000
-        audioService.win()
+        if (now - lastSoundTime > MIN_SOUND_INTERVAL) {
+          audioService.buff() // 使用buff音效表示增益效果
+          lastSoundTime = now
+        }
         console.log('[道具] 自动点击生效，持续5秒')
         break
         
       case 'score3x':
         // 三倍分数 - 10秒内分数×3
         ;(window as any).colorScore3x = Date.now() + 10000
-        audioService.win()
+        if (now - lastSoundTime > MIN_SOUND_INTERVAL) {
+          audioService.buff() // 使用buff音效
+          lastSoundTime = now
+        }
         console.log('[道具] 三倍分数生效，持续10秒')
         break
         
       case 'freeze':
         // 冻结 - 停止计时8秒
         ;(window as any).colorFreeze = Date.now() + 8000
-        audioService.collect()
+        if (now - lastSoundTime > MIN_SOUND_INTERVAL) {
+          audioService.freeze() // 使用专门的freeze音效
+          lastSoundTime = now
+        }
         console.log('[道具] 冻结计时8秒')
         break
     }
@@ -271,7 +293,13 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
           combo++
           const baseScore = 10 * combo
           engine.addScore(baseScore, bx, btnY)
-          audioService.win()
+          
+          // 控制音效播放频率，避免声音重叠
+          const now = Date.now()
+          if (now - lastSoundTime > MIN_SOUND_INTERVAL) {
+            audioService.pop() // 使用更清脆的pop音效替代win
+            lastSoundTime = now
+          }
           
           // 爆炸效果
           for (let j = 0; j < 15; j++) {
@@ -293,7 +321,13 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
         } else {
           // 错误
           combo = 0
-          audioService.lose()
+          
+          // 控制音效播放频率
+          const now = Date.now()
+          if (now - lastSoundTime > MIN_SOUND_INTERVAL) {
+            audioService.fail() // 使用fail音效替代lose，更简短
+            lastSoundTime = now
+          }
           
           // 抖动效果
           for (let j = 0; j < 8; j++) {
@@ -345,6 +379,15 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
 
   engine.start()
   spawnChallenge()
+  
+  // 初始化音频上下文（在用户交互后）
+  const initAudio = () => {
+    audioService.initOnGesture()
+    document.removeEventListener('click', initAudio)
+    document.removeEventListener('touchstart', initAudio)
+  }
+  document.addEventListener('click', initAudio, { once: true })
+  document.addEventListener('touchstart', initAudio, { once: true })
   
   loop()
 }

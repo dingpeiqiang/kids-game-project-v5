@@ -1,11 +1,22 @@
-// 玩法分类
-export type GameCategory = 'eliminate' | 'reaction' | 'slice' | 'action' | 'puzzle' | 'build' | 'shoot' | 'towerDefense' | 'card' | '3d'
+// 按儿童10大能力发展维度分类
+export type GameCategory = 
+  | 'logic'           // 逻辑思维
+  | 'memory'          // 记忆能力
+  | 'attention'       // 专注力
+  | 'reaction'        // 反应速度
+  | 'coordination'    // 手眼协调
+  | 'spatial'         // 空间想象
+  | 'strategy'        // 策略规划
+  | 'creativity'      // 创造力
+  | 'problemSolving'  // 问题解决
+  | 'patience'        // 耐心毅力
 
 export interface GameCategoryDef {
   id: GameCategory
   label: string
   icon: string
   color: string
+  desc?: string // 能力描述（可选）
 }
 
 // 游戏定义
@@ -35,6 +46,7 @@ export interface PlayerData {
   lastLogin: string
   guideSkipped: Record<string, boolean>
   items: Record<string, number> // 道具数量 {道具id: 数量}
+  favorites: string[] // 收藏的游戏ID列表
 }
 
 // Buff 定义

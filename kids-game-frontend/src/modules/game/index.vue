@@ -15,6 +15,14 @@
       <p class="loading-text">加载游戏中...</p>
     </div>
 
+    <!-- 游客试玩倒计时提示 -->
+    <div v-if="isGuestMode && remainingTime > 0" class="guest-timer-overlay">
+      <div class="timer-badge">
+        <span class="timer-icon">⏰</span>
+        <span class="timer-text">游客试玩剩余: {{ formatTime(remainingTime) }}</span>
+      </div>
+    </div>
+
     <!-- 资源管理悬浮按钮 -->
     <button 
       @click="openResourceManager" 
@@ -47,6 +55,11 @@ const gameUrl = ref('');
 const isLoading = ref(true);
 const gameInfo = ref<{ gameId: number; gameCode: string } | null>(null);
 const gameCode = ref(''); // 保存当前游戏 code
+let guestCheckInterval: number | null = null; // 游客试玩时间检查定时器
+
+// 游客试玩状态
+const isGuestMode = ref(false);
+const remainingTime = ref(0); // 剩余时间（秒）
 
 /**
  * 初始化游戏
@@ -61,12 +74,35 @@ async function initGame() {
     gameCode.value = currentGameCode; // 保存到 ref
     console.log('[GamePage] 步骤 1: 准备加载游戏:', currentGameCode);
 
-    // 2. 检查用户是否已登录
+    // 2. 检查用户是否已登录或为游客模式
     if (!validateGameStartPermission()) {
-      console.error('[GamePage] 步骤 2: 用户未登录，无法启动游戏');
+      console.error('[GamePage] 步骤 2: 用户未登录且非有效游客，无法启动游戏');
       return;
     }
-    console.log('[GamePage] 步骤 2: 用户已登录');
+    
+    // 检查是否为游客模式并设置试玩时间
+    const isGuest = localStorage.getItem('isGuest') === 'true';
+    if (isGuest) {
+      const guestStartTime = localStorage.getItem('guestStartTime');
+      if (!guestStartTime) {
+        // 首次进入，记录开始时间
+        localStorage.setItem('guestStartTime', Date.now().toString());
+        console.log('[GamePage] 游客模式开始时间已记录');
+      } else {
+        // 检查是否已超过10分钟
+        const startTime = parseInt(guestStartTime, 10);
+        const currentTime = Date.now();
+        const elapsedMinutes = (currentTime - startTime) / (1000 * 60);
+        
+        if (elapsedMinutes >= 10) {
+          alert('游客试玩时间已到（10分钟），请注册或登录后继续游戏！');
+          router.push('/login');
+          return;
+        }
+      }
+    }
+    
+    console.log('[GamePage] 步骤 2: 用户已登录或为有效游客');
     const userId = getCurrentUserId();
     console.log('[GamePage] 步骤 2: 用户 ID:', userId);
 
@@ -328,6 +364,15 @@ function onBeforeUnload(e: BeforeUnloadEvent) {
 }
 
 /**
+ * 格式化时间为 MM:SS 格式
+ */
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
  * 打开资源管理页面
  */
 function openResourceManager() {
@@ -393,6 +438,40 @@ onMounted(async () => {
   // 监听页面可见性变化
   document.addEventListener('visibilitychange', onVisibilityChange);
 
+  // 设置游客试玩时间检查定时器
+  guestCheckInterval = setInterval(() => {
+    const isGuest = localStorage.getItem('isGuest') === 'true';
+    isGuestMode.value = isGuest;
+    
+    if (isGuest) {
+      const guestStartTime = localStorage.getItem('guestStartTime');
+      if (guestStartTime) {
+        const startTime = parseInt(guestStartTime, 10);
+        const currentTime = Date.now();
+        const elapsedMinutes = (currentTime - startTime) / (1000 * 60);
+        const elapsedSeconds = (currentTime - startTime) / 1000;
+        const totalTrialSeconds = 10 * 60; // 10分钟 = 600秒
+        const remainingSeconds = Math.max(0, totalTrialSeconds - elapsedSeconds);
+        
+        // 更新剩余时间显示
+        remainingTime.value = remainingSeconds;
+        
+        if (elapsedMinutes >= 10) {
+          if (guestCheckInterval !== null) {
+            clearInterval(guestCheckInterval);
+            guestCheckInterval = null;
+          }
+          alert('游客试玩时间已到（10分钟），请注册或登录后继续游戏！');
+          router.push('/login');
+        }
+      }
+    } else {
+      // 非游客模式，隐藏倒计时
+      isGuestMode.value = false;
+      remainingTime.value = 0;
+    }
+  }, 1000); // 每秒更新一次
+
   // 初始化游戏
   await initGame();
 });
@@ -404,6 +483,12 @@ onUnmounted(() => {
   window.removeEventListener('message', onMessage);
   window.removeEventListener('beforeunload', onBeforeUnload);
   document.removeEventListener('visibilitychange', onVisibilityChange);
+  
+  // 清除游客试玩时间检查定时器
+  if (guestCheckInterval !== null) {
+    clearInterval(guestCheckInterval);
+    guestCheckInterval = null;
+  }
 });
 </script>
 
@@ -459,6 +544,49 @@ onUnmounted(() => {
   color: #fff;
   font-size: 18px;
   font-weight: 500;
+}
+
+/* 游客试玩倒计时提示 */
+.guest-timer-overlay {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.timer-badge {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 50px;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  animation: timerPulse 2s ease-in-out infinite;
+}
+
+.timer-icon {
+  font-size: 20px;
+}
+
+.timer-text {
+  white-space: nowrap;
+}
+
+@keyframes timerPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+  }
 }
 
 /* 资源管理悬浮按钮 */

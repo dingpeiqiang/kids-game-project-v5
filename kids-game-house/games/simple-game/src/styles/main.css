@@ -5,51 +5,493 @@ html, body {
   overflow: hidden;
   position: fixed;
 }
-body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0ede8;overflow:hidden;user-select:none;-webkit-user-select:none}
-:root{--bg:#f0ede8;--card:#fff;--primary:#5b9bd5;--accent:#f5c842;--text:#333;--sub:#888;--radius:16px}
+body{
+  font-family:'PingFang SC','Microsoft YaHei',sans-serif;
+  background:linear-gradient(135deg, #E8F4F8 0%, #F5E6D3 100%);
+  overflow:hidden;
+  user-select:none;
+  -webkit-user-select:none
+}
+:root{
+  --bg: linear-gradient(135deg, #E8F4F8 0%, #F5E6D3 100%);
+  --card:#fff;
+  --primary:#7EC8E3;
+  --secondary:#FFB6C1;
+  --accent:#FFD93D;
+  --text:#4A4A4A;
+  --sub:#888;
+  --radius:18px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
 
-/* 顶部栏 */
-.top-bar{position:fixed;top:0;left:0;right:0;height:56px;background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
-.top-bar .logo{font-size:18px;font-weight:700;color:var(--primary);letter-spacing:1px}
-.top-bar .top-right{display:flex;align-items:center;gap:16px}
-.coin-display{display:flex;align-items:center;gap:6px;background:#fff8e7;border:1.5px solid #f5c842;border-radius:20px;padding:4px 14px;font-size:14px;font-weight:600;color:#c8860a}
-.coin-icon{width:18px;height:18px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff}
-.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+/* 顶部栏 - 柔和儿童风格 */
+.top-bar{
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  height:64px;
+  background:rgba(255,255,255,0.9);
+  backdrop-filter:blur(12px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 20px;
+  z-index:100;
+  box-shadow:0 2px 12px rgba(0,0,0,0.06);
+  gap: 12px;
+}
+.top-bar .logo{
+  font-size:18px;
+  font-weight:700;
+  color:#7EC8E3;
+  letter-spacing:1px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.top-bar .top-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* 搜索框 */
+.search-box {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:#fff;
+  border:1.5px solid #E0E0E0;
+  border-radius:20px;
+  padding:4px 10px;
+  transition:all 0.2s ease;
+  width: 200px;
+  min-width: 150px;
+  flex-shrink: 0;
+}
+.search-box:focus-within {
+  border-color:#7EC8E3;
+  box-shadow:0 0 0 3px rgba(126,200,227,0.1);
+}
+#searchInput {
+  border:none;
+  outline:none;
+  background:transparent;
+  font-size:13px;
+  width: 100%;
+  min-width: 80px;
+  color:#4A4A4A;
+  flex: 1;
+}
+#searchInput::placeholder {
+  color:#999;
+}
+.search-btn {
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-size:16px;
+  padding:0;
+  transition:transform 0.2s ease;
+  flex-shrink: 0;
+}
+.search-btn:hover {
+  transform:scale(1.1);
+}
+.coin-display{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  background:#FFF9E6;
+  border:1.5px solid #FFD93D;
+  border-radius:20px;
+  padding:4px 12px;
+  font-size:13px;
+  font-weight:600;
+  color:#C8860A;
+  flex-shrink: 0;
+}
+.coin-icon{
+  width:16px;
+  height:16px;
+  background:#FFD93D;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:9px;
+  color:#fff;
+}
+.user-avatar{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#7EC8E3,#FFB6C1);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-weight:700;
+  font-size:14px;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  flex-shrink: 0;
+}
+.user-avatar:hover {
+  transform: scale(1.05);
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .top-bar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  
+  .top-bar .logo {
+    font-size: 13px;
+    max-width: none;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .search-box {
+    width: 120px;
+    min-width: 90px;
+    padding: 3px 8px;
+  }
+  
+  #searchInput {
+    font-size: 12px;
+    min-width: 50px;
+  }
+  
+  .coin-display {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  
+  .user-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 480px) {
+  .top-bar {
+    padding: 0 6px;
+    gap: 4px;
+    height: 52px;
+  }
+  
+  .top-bar .logo {
+    font-size: 12px;
+    max-width: none;
+    flex: 1;
+    min-width: 0;
+    letter-spacing: 0.5px;
+  }
+  
+  .search-box {
+    width: 100px;
+    min-width: 70px;
+    padding: 2px 6px;
+  }
+  
+  #searchInput {
+    font-size: 11px;
+    min-width: 40px;
+  }
+  
+  .search-btn {
+    font-size: 13px;
+  }
+  
+  .coin-display {
+    padding: 2px 6px;
+    font-size: 10px;
+    gap: 2px;
+  }
+  
+  .coin-icon {
+    width: 12px;
+    height: 12px;
+    font-size: 7px;
+  }
+  
+  .user-avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+  
+  .main-container {
+    top: 52px;
+  }
+}
 
 /* 主界面 */
-.main-container{position:fixed;top:56px;left:0;right:0;bottom:64px;overflow-y:auto;padding:20px;scroll-behavior:smooth}
+.main-container{
+  position:fixed;
+  top:64px;
+  left:0;
+  right:0;
+  bottom:72px;
+  overflow-y:auto;
+  padding:16px;
+  scroll-behavior:smooth;
+}
 .main-container::-webkit-scrollbar{width:0}
 
-/* Banner */
-.daily-banner{background:linear-gradient(135deg,#5b9bd5,#8ec5fc);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden}
-.daily-banner::before{content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;background:rgba(255,255,255,0.1);border-radius:50%}
-.daily-banner .banner-label{font-size:12px;opacity:0.85;margin-bottom:4px}
-.daily-banner .banner-title{font-size:20px;font-weight:700;margin-bottom:6px}
-.daily-banner .banner-sub{font-size:13px;opacity:0.8}
-.banner-tag{position:absolute;right:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);border-radius:8px;padding:8px 12px;text-align:center}
-.banner-tag .tag-num{font-size:22px;font-weight:700}
-.banner-tag .tag-label{font-size:10px;opacity:0.85}
+/* 搜索和收藏页面 */
+.search-header, .favorites-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:16px;
+  padding:12px 16px;
+  background:#fff;
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  animation:cardFadeIn 0.3s ease both;
+}
+.search-title, .favorites-title {
+  font-size:18px;
+  font-weight:700;
+  color:#4A4A4A;
+}
+.search-count, .favorites-count {
+  font-size:13px;
+  color:#888;
+  margin-bottom:12px;
+  padding-left:4px;
+}
 
-/* 游戏卡片 */
-.section-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
-.section-title .cat-label{display:flex;align-items:center;gap:6px;padding:4px 12px 4px 6px;background:color-mix(in srgb, var(--cat-color) 12%, transparent);border-radius:20px;font-size:15px}
-.section-title .cat-count{font-size:12px;color:var(--sub);font-weight:400;background:#f0f0f0;padding:2px 10px;border-radius:10px}
-.game-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px}
-.game-card{border-radius:var(--radius);overflow:hidden;background:var(--card);box-shadow:0 2px 12px rgba(0,0,0,0.06);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;position:relative}
-.game-card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,0.1)}
-.game-card:active{transform:translateY(-1px)}
-.card-cover{width:100%;aspect-ratio:16/10;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.card-cover canvas{width:100%;height:100%;border-radius:0;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges}
-.card-tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.5);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;backdrop-filter:blur(4px)}
-.card-badge{position:absolute;top:8px;right:8px;background:linear-gradient(135deg,#ff6b6b,#ff8e53);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;box-shadow:0 2px 6px rgba(255,107,107,0.4)}
-.card-info{padding:10px 12px}
-.card-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
-.card-desc{font-size:11px;color:var(--sub);line-height:1.4}
-.card-meta{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
-.card-players{font-size:11px;color:var(--sub)}
-.card-best{font-size:11px;color:var(--accent);font-weight:600;cursor:pointer;transition:all 0.2s;padding:2px 6px;border-radius:6px}
-.card-best:hover{background:rgba(245,200,66,0.15);transform:scale(1.05)}
-.card-best:active{transform:scale(0.98)}
+/* 无结果/无收藏提示 */
+.no-results, .no-favorites {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:60px 20px;
+  text-align:center;
+}
+.no-results-icon, .no-favorites-icon {
+  font-size:64px;
+  margin-bottom:16px;
+  opacity:0.6;
+}
+.no-results-text, .no-favorites-text {
+  font-size:16px;
+  color:#666;
+  font-weight:600;
+  margin-bottom:8px;
+}
+.no-favorites-hint {
+  font-size:13px;
+  color:#999;
+}
+
+/* Banner - 柔和风格 */
+.daily-banner{
+  background:linear-gradient(135deg,#7EC8E3,#FFB6C1);
+  border-radius:var(--radius);
+  padding:20px 24px;
+  margin-bottom:20px;
+  color:#fff;
+  position:relative;
+  overflow:hidden;
+}
+.daily-banner .banner-label{font-size:12px;opacity:0.9;margin-bottom:4px}
+.daily-banner .banner-title{font-size:20px;font-weight:700;margin-bottom:6px}
+.daily-banner .banner-sub{font-size:13px;opacity:0.9}
+.banner-tag{
+  position:absolute;
+  right:16px;
+  top:50%;
+  transform:translateY(-50%);
+  background:rgba(255,255,255,0.25);
+  border:1px solid rgba(255,255,255,0.4);
+  border-radius:10px;
+  padding:8px 12px;
+  text-align:center;
+}
+.banner-tag .tag-num{font-size:22px;font-weight:700}
+.banner-tag .tag-label{font-size:10px;opacity:0.9}
+
+/* 游戏卡片 - 柔和风格 */
+.section-title{
+  font-size:17px;
+  font-weight:700;
+  color:#4A4A4A;
+  margin-bottom:14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.section-title .cat-label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 14px 5px 9px;
+  background:rgba(255,255,255,0.85);
+  border-radius:20px;
+  font-size:15px;
+  font-weight:600;
+  box-shadow:0 2px 8px rgba(0,0,0,0.08);
+}
+.section-title .cat-count{
+  font-size:12px;
+  color:#666;
+  font-weight:600;
+  background:rgba(255,255,255,0.6);
+  padding:3px 10px;
+  border-radius:10px;
+}
+.game-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(165px,1fr));
+  gap:14px;
+  margin-bottom:24px;
+}
+@keyframes cardFadeIn{
+  from{opacity:0;transform:translateY(18px) scale(0.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.game-card{
+  border-radius:var(--radius);
+  overflow:hidden;
+  background:var(--card);
+  box-shadow:0 2px 12px rgba(0,0,0,0.06);
+  cursor:pointer;
+  transition:transform 0.25s ease, box-shadow 0.25s ease;
+  position:relative;
+  border:2px solid transparent;
+  animation:cardFadeIn 0.35s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+.game-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 8px 24px rgba(0,0,0,0.12);
+  border-color:#FFB6C1;
+}
+.game-card:active{transform:translateY(-2px)}
+.card-cover{
+  width:100%;
+  aspect-ratio:16/10;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.card-cover canvas{
+  width:100%;
+  height:100%;
+  border-radius:0;
+  -webkit-image-rendering:pixelated;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+}
+.card-tag{
+  position:absolute;
+  top:8px;
+  left:8px;
+  background:rgba(126,200,227,0.85);
+  color:#fff;
+  font-size:11px;
+  padding:3px 9px;
+  border-radius:10px;
+  font-weight:600;
+}
+.card-badge{
+  position:absolute;
+  top:8px;
+  right:8px;
+  background:linear-gradient(135deg,#FFB6C1,#FF69B4);
+  color:#fff;
+  font-size:10px;
+  font-weight:700;
+  padding:3px 8px;
+  border-radius:10px;
+}
+
+/* 收藏按钮 */
+.favorite-btn {
+  position:absolute;
+  bottom:8px;
+  right:8px;
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.9);
+  border:2px solid #E0E0E0;
+  cursor:pointer;
+  font-size:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all 0.2s ease;
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+.favorite-btn:hover {
+  transform:scale(1.15);
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+}
+.favorite-btn.favorited {
+  background:rgba(255,182,193,0.9);
+  border-color:#FFB6C1;
+}
+.card-info{
+  padding:11px 12px;
+  background:#fff;
+}
+.card-name{
+  font-size:14px;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:5px;
+}
+.card-desc{
+  font-size:11px;
+  color:var(--sub);
+  line-height:1.5;
+  margin-bottom:6px;
+}
+.card-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-top:6px;
+  padding-top:6px;
+  border-top:1px solid #f5f5f5;
+}
+.card-players{
+  font-size:11px;
+  color:#999;
+  display:flex;
+  align-items:center;
+  gap:3px;
+}
+.card-best{
+  font-size:11px;
+  color:#C8860A;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s;
+  padding:3px 7px;
+  border-radius:6px;
+  background:rgba(255,217,61,0.15);
+}
+.card-best:hover{
+  background:rgba(255,217,61,0.25);
+}
 
 /* 排名显示 */
 .card-rank {
@@ -90,12 +532,55 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0ede8;o
   font-style: italic;
 }
 
-/* 底部导航 */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:64px;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);display:flex;box-shadow:0 -2px 16px rgba(0,0,0,0.06);z-index:100}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--sub);font-size:10px;cursor:pointer;transition:color 0.2s}
-.nav-item.active{color:var(--primary)}
-.nav-item svg{width:22px;height:22px}
-.nav-item.active svg path{fill:var(--primary)}
+/* 底部导航 - 柔和风格 */
+.bottom-nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  height:64px;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(12px);
+  display:flex;
+  box-shadow:0 -2px 12px rgba(0,0,0,0.06);
+  z-index:100;
+}
+.nav-item{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  color:#999;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  position:relative;
+}
+.nav-item.active{
+  color:#7EC8E3;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 3px;
+  background: linear-gradient(90deg, #7EC8E3, #FFB6C1);
+  border-radius: 0 0 4px 4px;
+}
+.nav-item svg{
+  width:24px;
+  height:24px;
+  transition:transform 0.2s ease;
+}
+.nav-item:hover svg {
+  transform: scale(1.1);
+}
 
 /* 游戏界面 */
 #game-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;display:none;background:#1a1a2e;overflow:hidden}

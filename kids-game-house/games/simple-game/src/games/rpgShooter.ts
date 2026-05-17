@@ -18,35 +18,35 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   const STAR_COUNT = 80
   const GAME_DURATION = 120
 
-  // 玩家等级属性表（更平滑的成长曲线）
+  // 玩家等级属性表（更平滑的成长曲线，降低攻击力增长）
   const LEVEL_STATS = [
     { hp: 6, atk: 1, speed: 4.5 },   // Lv1
-    { hp: 7, atk: 2, speed: 4.5 },   // Lv2
-    { hp: 9, atk: 2, speed: 5 },     // Lv3
-    { hp: 11, atk: 3, speed: 5 },    // Lv4
-    { hp: 13, atk: 4, speed: 5.5 },  // Lv5
-    { hp: 16, atk: 5, speed: 5.5 },  // Lv6
-    { hp: 19, atk: 6, speed: 6 },    // Lv7
-    { hp: 23, atk: 7, speed: 6 },    // Lv8
-    { hp: 27, atk: 9, speed: 6.5 },  // Lv9
-    { hp: 32, atk: 11, speed: 7 },   // Lv10 Max
+    { hp: 7, atk: 1, speed: 4.5 },   // Lv2
+    { hp: 8, atk: 2, speed: 4.5 },   // Lv3
+    { hp: 9, atk: 2, speed: 5 },     // Lv4
+    { hp: 10, atk: 2, speed: 5 },    // Lv5
+    { hp: 12, atk: 3, speed: 5 },    // Lv6
+    { hp: 14, atk: 3, speed: 5.5 },  // Lv7
+    { hp: 16, atk: 4, speed: 5.5 },  // Lv8
+    { hp: 18, atk: 4, speed: 6 },    // Lv9
+    { hp: 20, atk: 5, speed: 6 },    // Lv10 Max
   ]
 
   // 敌人类型（增强多样性和挑战性）
   const ENEMY_TYPES = [
-    { w: 22, h: 22, hp: 1, score: 10, exp: 8, color: '#FF6B6B', shape: 'circle', speedMult: 1.2 },
-    { w: 26, h: 26, hp: 3, score: 25, exp: 15, color: '#FFA502', shape: 'diamond', speedMult: 1.0 },
-    { w: 30, h: 30, hp: 6, score: 60, exp: 35, color: '#FF4757', shape: 'hex', speedMult: 0.8 },
-    { w: 38, h: 38, hp: 12, score: 150, exp: 100, color: '#9B59B6', shape: 'boss', speedMult: 0.6 },
-    { w: 28, h: 28, hp: 4, score: 40, exp: 25, color: '#00E5FF', shape: 'fast', speedMult: 1.8 }, // 快速型
-    { w: 34, h: 34, hp: 8, score: 80, exp: 50, color: '#FFD93D', shape: 'tank', speedMult: 0.5 }, // 坦克
+    { w: 22, h: 22, hp: 2, score: 10, exp: 8, color: '#FF6B6B', shape: 'circle', speedMult: 1.2 },
+    { w: 26, h: 26, hp: 4, score: 25, exp: 15, color: '#FFA502', shape: 'diamond', speedMult: 1.0 },
+    { w: 30, h: 30, hp: 8, score: 60, exp: 35, color: '#FF4757', shape: 'hex', speedMult: 0.8 },
+    { w: 38, h: 38, hp: 18, score: 150, exp: 100, color: '#9B59B6', shape: 'boss', speedMult: 0.6 },
+    { w: 28, h: 28, hp: 6, score: 40, exp: 25, color: '#00E5FF', shape: 'fast', speedMult: 1.8 }, // 快速型
+    { w: 34, h: 34, hp: 12, score: 80, exp: 50, color: '#FFD93D', shape: 'tank', speedMult: 0.5 }, // 坦克
   ]
 
   // 掉落物类型（提高掉落率和多样性）
   const DROP_TYPES = [
-    { type: 'hp',      icon: '💚', color: '#00E676', chance: 0.25 },
-    { type: 'exp',     icon: '⭐', color: '#FFD700', chance: 0.30 },
-    { type: 'powerup', icon: '📦', color: '#A855F7', chance: 0.28 }, // 道具
+    { type: 'hp',      icon: '💚', color: '#00E676', chance: 0.20 },
+    { type: 'exp',     icon: '⭐', color: '#FFD700', chance: 0.25 },
+    { type: 'powerup', icon: '📦', color: '#A855F7', chance: 0.40 }, // 提高道具掉落率到40%
   ]
 
   // === 状态 ===
@@ -58,9 +58,9 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   let invincible = 0
   let shootAngle = -Math.PI / 2
   let lastShot = 0
-  const SHOOT_CD = 200 // 更快的射击速度
+  const SHOOT_CD = 350 // 降低射击速度，增加挑战性
 
-  let bullets: { x: number; y: number; vx: number; vy: number; atk: number; color: string; tracking: boolean }[] = []
+  let bullets: { x: number; y: number; vx: number; vy: number; atk: number; color: string; tracking: boolean; piercing?: boolean }[] = []
   let enemies: { x: number; y: number; w: number; h: number; hp: number; maxHp: number; score: number; exp: number; color: string; shape: string; speed: number; vx: number; vy: number; type: number }[] = []
   let particles: { x: number; y: number; vx: number; vy: number; life: number; color: string; size: number }[] = []
   let floatTexts: { text: string; x: number; y: number; life: number; color: string; size: number }[] = []
@@ -130,35 +130,93 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
         floatTexts.push({ text: '☢️ 核弹清场!', x: W / 2, y: H / 2, life: 2.5, color: '#FF4757', size: 32 })
         break
 
+      case 'bomb':
+        // 💣 炸弹：清除屏幕内所有敌人（更强力）
+        enemies.forEach(e => {
+          explode(e.x, e.y, e.color, 20, 6)
+          const bonus = e.score
+          score += bonus
+          engine.addScore(bonus, e.x, e.y)
+          floatTexts.push({ text: `💥+${bonus}`, x: e.x, y: e.y - 10, life: 1, color: '#FF6B6B', size: 14 })
+        })
+        enemies.length = 0
+        shakeAmt = 15
+        screenFlash = 0.4
+        floatTexts.push({ text: '💣 炸弹清屏!', x: W / 2, y: H / 2, life: 2, color: '#FF6B6B', size: 28 })
+        break
+
       case 'laser':
-        // 🔥激光弹幕：持续 4 秒，每帧update 里额外射出
-        laserTimer = 4
+        // 🔥激光弹幕：持续 2 秒，每帧update 里额外射出
+        laserTimer = 2
         floatTexts.push({ text: '🔥激光弹幕', x: playerX, y: playerY - 40, life: 2, color: '#FFD700', size: 24 })
         break
 
       case 'freeze':
-        // ❄️ 时间冻结：敌人静止5 秒
-        freezeTimer = 5
+        // ❄️ 时间冻结：敌人静止3 秒
+        freezeTimer = 3
         floatTexts.push({ text: '❄️ 时间冻结!', x: W / 2, y: H / 2, life: 2, color: '#74B9FF', size: 26 })
         screenFlash = 0.2
         break
 
       case 'shield':
-        // 🛡️护盾：叠加4 层
-        shieldCount += 4
+        // 🛡️护盾：叠加2 层
+        shieldCount += 2
         floatTexts.push({ text: `🛡️护盾×${shieldCount}`, x: playerX, y: playerY - 40, life: 2, color: '#4D96FF', size: 22 })
         break
 
+      case 'rapid':
+        // 🔥狂怒射击：5秒内射速翻倍
+        rapidTimer = 5
+        floatTexts.push({ text: '🔥狂怒射击!', x: playerX, y: playerY - 40, life: 2, color: '#FF5722', size: 22 })
+        break
+
+      case 'pierce':
+        // ➡️穿透弹：4秒内子弹可穿透敌人
+        pierceTimer = 4
+        floatTexts.push({ text: '➡️穿透弹!', x: playerX, y: playerY - 40, life: 2, color: '#FF9800', size: 22 })
+        break
+
+      case 'magnet':
+        // 🧲磁铁：5秒内自动吸取掉落物
+        magnetTimer = 5
+        floatTexts.push({ text: '🧲磁铁!', x: playerX, y: playerY - 40, life: 2, color: '#FF4081', size: 22 })
+        break
+
+      case 'triple':
+        // 🔱三重射击：6秒内每次发射3颗子弹
+        tripleTimer = 6
+        floatTexts.push({ text: '🔱三重射击!', x: playerX, y: playerY - 40, life: 2, color: '#00BCD4', size: 22 })
+        break
+
+      case 'spread':
+        // 💥散射：5秒内子弹呈扇形散射
+        spreadTimer = 5
+        floatTexts.push({ text: '💥散射!', x: playerX, y: playerY - 40, life: 2, color: '#8BC34A', size: 22 })
+        break
+
       case 'score2x':
-        // ⚡双倍分数：15 秒
-        score2xTimer = 15
+        // ⚡双倍分数：8 秒
+        score2xTimer = 8
         floatTexts.push({ text: '⚡双倍分', x: W / 2, y: H / 2 - 20, life: 2, color: '#FFD93D', size: 26 })
         break
 
       case 'clone':
-        // 👾 分身弹：持续 6 秒，子弹击中时额外分出一颗散射子弹
-        cloneTimer = 6
+        // 👾 分身弹：持续 4 秒，子弹击中时额外分出一颗散射子弹
+        cloneTimer = 4
         floatTexts.push({ text: '👾 分身弹', x: playerX, y: playerY - 40, life: 2, color: '#A855F7', size: 22 })
+        break
+
+      case 'heal':
+        // ❤️生命恢复：恢复3点生命值
+        const healAmount = 3
+        const actualHeal = Math.min(healAmount, playerMaxHP - playerHP)
+        if (actualHeal > 0) {
+          playerHP += actualHeal
+          floatTexts.push({ text: `❤️+${actualHeal} HP`, x: playerX, y: playerY - 40, life: 2, color: '#E91E63', size: 22 })
+          explode(playerX, playerY, '#E91E63', 15, 4)
+        } else {
+          floatTexts.push({ text: '❤️ 已满', x: playerX, y: playerY - 40, life: 1.5, color: '#E91E63', size: 18 })
+        }
         break
     }
     
@@ -176,6 +234,11 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   let cloneTimer = 0      // 分身弹剩余秒数
   let score2xTimer = 0    // 双倍分数剩余秒数
   let shieldCount = 0     // 护盾层数（可叠加）
+  let rapidTimer = 0      // 狂怒射击剩余秒数
+  let pierceTimer = 0     // 穿透弹剩余秒数
+  let magnetTimer = 0     // 磁铁剩余秒数
+  let tripleTimer = 0     // 三重射击剩余秒数
+  let spreadTimer = 0     // 散射剩余秒数
 
   // 星空背景初始值
   for (let i = 0; i < STAR_COUNT; i++) {
@@ -273,12 +336,12 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     enemies.push({
       x, y,
       w: type.w, h: type.h,
-      hp: type.hp + Math.floor(difficulty / 2),
-      maxHp: type.hp + Math.floor(difficulty / 2),
+      hp: type.hp + Math.floor(difficulty * 1.2), // 增加难度系数
+      maxHp: type.hp + Math.floor(difficulty * 1.2),
       score: type.score, exp: type.exp,
       color: type.color,
       shape: type.shape,
-      speed: type.speedMult * (ENEMY_BASE_SPEED + difficulty * 0.2),
+      speed: type.speedMult * (ENEMY_BASE_SPEED + difficulty * 0.3), // 增加速度增长
       vx, vy, type: typeIdx
     })
   }
@@ -311,7 +374,9 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   // 射击
   function shoot() {
     const now = Date.now()
-    if (now - lastShot < SHOOT_CD) return
+    // 狂怒射击：射速翻倍
+    const currentShootCD = rapidTimer > 0 ? SHOOT_CD / 2 : SHOOT_CD
+    if (now - lastShot < currentShootCD) return
     lastShot = now
 
     const effectiveATK = playerATK + Math.floor(atkBoost)
@@ -343,14 +408,51 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       angle = Math.atan2(dy, dx)
     }
 
-    bullets.push({
-      x: playerX, y: playerY,
-      vx: Math.cos(angle) * BULLET_SPEED,
-      vy: Math.sin(angle) * BULLET_SPEED,
-      atk: effectiveATK,
-      color: bulletColor,
-      tracking
-    })
+    // 三重射击：每次发射3颗子弹
+    if (tripleTimer > 0) {
+      const spreadAngle = 0.3 // 子弹间角度
+      for (let i = -1; i <= 1; i++) {
+        const bulletAngle = angle + i * spreadAngle
+        bullets.push({
+          x: playerX, y: playerY,
+          vx: Math.cos(bulletAngle) * BULLET_SPEED,
+          vy: Math.sin(bulletAngle) * BULLET_SPEED,
+          atk: effectiveATK,
+          color: tripleTimer > 0 ? '#00BCD4' : bulletColor,
+          tracking,
+          piercing: pierceTimer > 0 // 穿透弹
+        })
+      }
+    } 
+    // 散射：子弹呈扇形散射
+    else if (spreadTimer > 0) {
+      const spreadCount = 5
+      const totalSpread = Math.PI / 3 // 60度扇形
+      for (let i = 0; i < spreadCount; i++) {
+        const bulletAngle = angle - totalSpread / 2 + (totalSpread / (spreadCount - 1)) * i
+        bullets.push({
+          x: playerX, y: playerY,
+          vx: Math.cos(bulletAngle) * BULLET_SPEED,
+          vy: Math.sin(bulletAngle) * BULLET_SPEED,
+          atk: effectiveATK,
+          color: '#8BC34A',
+          tracking: false,
+          piercing: pierceTimer > 0
+        })
+      }
+    }
+    // 普通射击
+    else {
+      bullets.push({
+        x: playerX, y: playerY,
+        vx: Math.cos(angle) * BULLET_SPEED,
+        vy: Math.sin(angle) * BULLET_SPEED,
+        atk: effectiveATK,
+        color: bulletColor,
+        tracking,
+        piercing: pierceTimer > 0 // 穿透弹
+      })
+    }
 
     audioService.click()
   }
@@ -847,7 +949,32 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     }
     if (laserTimer > 0) {
       ctx.fillStyle = '#FFD700'
-      ctx.fillText(`🔥激�?${laserTimer.toFixed(1)}s`, 12, effectY)
+      ctx.fillText(`🔥激光 ${laserTimer.toFixed(1)}s`, 12, effectY)
+      effectY -= 18
+    }
+    if (rapidTimer > 0) {
+      ctx.fillStyle = '#FF5722'
+      ctx.fillText(`🔥狂怒 ${rapidTimer.toFixed(1)}s`, 12, effectY)
+      effectY -= 18
+    }
+    if (tripleTimer > 0) {
+      ctx.fillStyle = '#00BCD4'
+      ctx.fillText(`🔱三重 ${tripleTimer.toFixed(1)}s`, 12, effectY)
+      effectY -= 18
+    }
+    if (spreadTimer > 0) {
+      ctx.fillStyle = '#8BC34A'
+      ctx.fillText(`💥散射 ${spreadTimer.toFixed(1)}s`, 12, effectY)
+      effectY -= 18
+    }
+    if (pierceTimer > 0) {
+      ctx.fillStyle = '#FF9800'
+      ctx.fillText(`➡️穿透 ${pierceTimer.toFixed(1)}s`, 12, effectY)
+      effectY -= 18
+    }
+    if (magnetTimer > 0) {
+      ctx.fillStyle = '#FF4081'
+      ctx.fillText(`🧲磁铁 ${magnetTimer.toFixed(1)}s`, 12, effectY)
       effectY -= 18
     }
     if (cloneTimer > 0) {
@@ -906,21 +1033,21 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
 
     // 生成敌人（更激进的难度曲线）
     if (gameStarted) {
-      const spawnInterval = Math.max(200, 800 - difficulty * 50) // 更快的生成速度
+      const spawnInterval = Math.max(300, 1200 - difficulty * 80) // 降低生成速度，增加挑战性
       spawnTimer -= dt
       if (spawnTimer <= 0) {
         // 根据难度决定生成数量
-        const spawnCount = difficulty >= 4 ? (Math.random() < 0.3 ? 2 : 1) : 1
+        const spawnCount = difficulty >= 6 ? (Math.random() < 0.4 ? 2 : 1) : 1
         
         for (let i = 0; i < spawnCount; i++) {
-          setTimeout(() => { if (!gameEnded) spawnEnemy() }, i * 150)
+          setTimeout(() => { if (!gameEnded) spawnEnemy() }, i * 200)
         }
         
         spawnTimer = spawnInterval
         waveCount++
 
-        // Boss波次（更频繁）
-        if (waveCount % 15 === 0 && difficulty >= 3) {
+        // Boss波次（更频繁但更难）
+        if (waveCount % 12 === 0 && difficulty >= 4) {
           setTimeout(() => { if (!gameEnded) spawnEnemy() }, 300)
           setTimeout(() => { if (!gameEnded) spawnEnemy() }, 600)
         }
@@ -973,13 +1100,16 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       for (let j = enemies.length - 1; j >= 0; j--) {
         const e = enemies[j]
         if (rectCollide(b.x - 3, b.y - 3, 6, 6, e.x - e.w / 2, e.y - e.h / 2, e.w, e.h)) {
-          bullets.splice(i, 1)
+          // 穿透弹：不删除子弹，继续飞行
+          if (!b.piercing) {
+            bullets.splice(i, 1)
+          }
           e.hp -= b.atk
           explode(b.x, b.y, '#FFD700', 3, 2)
 
           // 分身弹：子弹命中时额外产生一颗散射子弹
           if (cloneTimer > 0) {
-            for (let c = 0; c < 2; c++) {
+            for (let c = 0; c < 1; c++) {  // 从2颗减少到1颗
               const spreadAngle = Math.atan2(b.vy, b.vx) + (c === 0 ? 0.4 : -0.4)
               bullets.splice(0, 0, {
                 x: b.x, y: b.y,
@@ -1023,38 +1153,46 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
               size: scoreSize
             })
 
-            // 经验
-            playerExp += e.exp
+            // 经验（提高经验获取）
+            playerExp += e.exp * (combo >= 5 ? 1.5 : 1) // 5连击以上额外50%经验
             if (playerExp >= expToLevel && playerLevel < 10) {
               playerExp -= expToLevel
               levelUp()
             }
 
-            // 更华丽的爆炸效果
-            explode(e.x, e.y, e.color, 15 + e.type * 6, 5)
+            // 积累能量（提高能量获取）
+            energy = Math.min(maxEnergy, energy + 8 + e.type * 3)
+
+            // 更华丽的爆炸效果（连击越高越华丽）
+            const explosionCount = combo >= 10 ? 25 : combo >= 5 ? 20 : 15 + e.type * 6
+            const explosionForce = combo >= 10 ? 8 : combo >= 5 ? 6 : 5
+            explode(e.x, e.y, e.color, explosionCount, explosionForce)
 
             // 高连击触发特殊效果
-            if (combo >= 5) {
-              shakeAmt = 4 + Math.min(combo * 0.5, 10)
-              screenFlash = 0.15
-              engine.triggerRandomBuff()
+            if (combo >= 3) {
+              shakeAmt = 3 + Math.min(combo * 0.6, 12)
+              screenFlash = combo >= 10 ? 0.25 : combo >= 5 ? 0.15 : 0.1
               
-              // 连击光环
-              for (let i = 0; i < 12; i++) {
-                const angle = (Math.PI * 2 / 12) * i
+              // 每5连击触发随机buff
+              if (combo % 5 === 0 && combo >= 5) {
+                engine.triggerRandomBuff()
+              }
+              
+              // 连击光环（更华丽）
+              const ringCount = combo >= 10 ? 20 : combo >= 5 ? 15 : 12
+              for (let i = 0; i < ringCount; i++) {
+                const angle = (Math.PI * 2 / ringCount) * i
+                const speed = combo >= 10 ? 5 : 3
                 particles.push({
                   x: playerX, y: playerY,
-                  vx: Math.cos(angle) * 3,
-                  vy: Math.sin(angle) * 3,
-                  life: 1, color: '#FFD700', size: 3
+                  vx: Math.cos(angle) * speed,
+                  vy: Math.sin(angle) * speed,
+                  life: 1.2, color: combo >= 10 ? '#FF4757' : '#FFD700', size: combo >= 10 ? 5 : 3
                 })
               }
             }
 
             spawnDrop(e.x, e.y)
-
-            // 积累能量
-            energy = Math.min(maxEnergy, energy + 5 + e.type * 2)
 
             audioService.win()
             enemies.splice(j, 1)
@@ -1146,15 +1284,18 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
         continue
       }
 
-      // 自动收集（能量满时扩大范围）
-      const collectRadius = energy >= maxEnergy ? autoCollectRadius * 2 : autoCollectRadius
+      // 自动收集（能量满时扩大范围，磁铁效果时范围更大）
+      let collectRadius = energy >= maxEnergy ? autoCollectRadius * 2 : autoCollectRadius
+      if (magnetTimer > 0) {
+        collectRadius = Math.max(collectRadius, 150) // 磁铁效果：150像素范围
+      }
       const dx = playerX - d.x
       const dy = playerY - d.y
       const dist = Math.sqrt(dx * dx + dy * dy)
 
       // 如果在收集范围内，自动吸向玩家
       if (dist < collectRadius) {
-        const pullStrength = 3
+        const pullStrength = magnetTimer > 0 ? 6 : 3 // 磁铁效果更强
         d.x += (dx / dist) * pullStrength
         d.y += (dy / dist) * pullStrength
       }
@@ -1201,9 +1342,9 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     if (shakeAmt < 0.1) shakeAmt = 0
     if (screenFlash > 0) screenFlash -= dt / 1000 * 2
 
-    // 能量自然衰减（鼓励积极游戏）
+    // 能量自然衰减（降低衰减速度，鼓励积极游戏）
     if (energy > 0) {
-      energy -= dt / 1000 * 2 // 每秒衰减2点
+      energy -= dt / 1000 * 1 // 每秒衰减1点（原2点）
       if (energy < 0) energy = 0
     }
 
@@ -1213,12 +1354,17 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     if (freezeTimer > 0) freezeTimer -= dtSec
     if (cloneTimer > 0) cloneTimer -= dtSec
     if (score2xTimer > 0) score2xTimer -= dtSec
+    if (rapidTimer > 0) rapidTimer -= dtSec
+    if (pierceTimer > 0) pierceTimer -= dtSec
+    if (magnetTimer > 0) magnetTimer -= dtSec
+    if (tripleTimer > 0) tripleTimer -= dtSec
+    if (spreadTimer > 0) spreadTimer -= dtSec
 
-    // 激光弹幕：每帧12方向发射子弹（更密集）
+    // 激光弹幕：每帧8方向发射子弹（降低密度）
     if (laserTimer > 0 && gameStarted) {
       const effectiveATK = playerATK + Math.floor(atkBoost)
-      for (let dir = 0; dir < 12; dir++) {
-        const angle = (Math.PI * 2 / 12) * dir + Date.now() * 0.002 // 旋转效果
+      for (let dir = 0; dir < 8; dir++) {  // 从12方向减少到8方向
+        const angle = (Math.PI * 2 / 8) * dir + Date.now() * 0.002 // 旋转效果
         bullets.push({
           x: playerX, y: playerY,
           vx: Math.cos(angle) * BULLET_SPEED * 1.3,

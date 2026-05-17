@@ -205,11 +205,18 @@ export const STAR_CATCHER_POWERUPS = [
 // ==================== 星际猎手 道具 ====================
 export const RPG_SHOOTER_POWERUPS = [
   { id: 'nuke',     icon: '☢️',  name: '核弹',   desc: '全屏爆炸消灭所有敌人', color: '#FF4757', duration: 0 },
-  { id: 'laser',    icon: '⚡',  name: '激光弹幕', desc: '3秒内每帧发射8方向子弹', color: '#FFD700', duration: 3 },
-  { id: 'freeze',   icon: '❄️',  name: '时间冻结', desc: '冻结所有敌人4秒',       color: '#74B9FF', duration: 4 },
-  { id: 'shield',   icon: '🛡️', name: '护盾',    desc: '免疫3次伤害',            color: '#4D96FF', duration: 0 },
-  { id: 'score2x',  icon: '✨',  name: '双倍分数', desc: '10秒内所有得分×2',       color: '#FFD93D', duration: 10 },
-  { id: 'clone',    icon: '👾',  name: '分身弹',   desc: '每颗子弹额外分裂2颗',    color: '#A855F7', duration: 5 },
+  { id: 'bomb',     icon: '💣',  name: '炸弹',   desc: '清除屏幕内所有敌人', color: '#FF6B6B', duration: 0 },
+  { id: 'laser',    icon: '⚡',  name: '激光弹幕', desc: '2秒内每帧发射8方向子弹', color: '#FFD700', duration: 2 },
+  { id: 'freeze',   icon: '❄️',  name: '时间冻结', desc: '冻结所有敌人3秒',       color: '#74B9FF', duration: 3 },
+  { id: 'shield',   icon: '🛡️', name: '护盾',    desc: '免疫2次伤害',            color: '#4D96FF', duration: 0 },
+  { id: 'rapid',    icon: '🔥',  name: '狂怒射击', desc: '5秒内射速翻倍',        color: '#FF5722', duration: 5 },
+  { id: 'pierce',   icon: '➡️',  name: '穿透弹',  desc: '4秒内子弹可穿透敌人',   color: '#FF9800', duration: 4 },
+  { id: 'magnet',   icon: '🧲',  name: '磁铁',    desc: '5秒内自动吸取掉落物',   color: '#FF4081', duration: 5 },
+  { id: 'triple',   icon: '🔱',  name: '三重射击', desc: '6秒内每次发射3颗子弹', color: '#00BCD4', duration: 6 },
+  { id: 'spread',   icon: '💥',  name: '散射',    desc: '5秒内子弹呈扇形散射',   color: '#8BC34A', duration: 5 },
+  { id: 'score2x',  icon: '✨',  name: '双倍分数', desc: '8秒内所有得分×2',       color: '#FFD93D', duration: 8 },
+  { id: 'clone',    icon: '👾',  name: '分身弹',   desc: '每颗子弹额外分裂1颗',    color: '#A855F7', duration: 4 },
+  { id: 'heal',     icon: '❤️',  name: '生命恢复', desc: '恢复3点生命值',         color: '#E91E63', duration: 0 },
 ]
 
 // ==================== 通用道具映射 ====================
