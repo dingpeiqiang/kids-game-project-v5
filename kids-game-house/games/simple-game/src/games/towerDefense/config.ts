@@ -15,13 +15,38 @@ export const INFINITE_WAVE_CONFIG = {
   maxEnemyCount: 28,
   baseHp: 10,
   hpGrowthRate: 0.08,
-  baseSpeed: 0.08575,
-  speedGrowthRate: 0.001715,
-  maxSpeedMultiplier: 1.8,
+  baseSpeed: 0.18,
+  speedGrowthRate: 0.008,
+  maxSpeedMultiplier: 2.5,
   bossInterval: 5,
-  specialEnemyUnlock: 12,
-  eliteEnemyUnlock: 25,
+  specialEnemyUnlock: 8,
+  eliteEnemyUnlock: 15,
 }
+
+export interface LevelConfig {
+  level: number
+  name: string
+  enemyCount: number
+  hpMultiplier: number
+  speedMultiplier: number
+  spawnInterval: number
+  hasBoss: boolean
+  specialEnemyChance: number
+  eliteEnemyChance: number
+}
+
+export const LEVEL_CONFIGS: LevelConfig[] = [
+  { level: 1, name: '新手训练', enemyCount: 4, hpMultiplier: 1.0, speedMultiplier: 1.0, spawnInterval: 45, hasBoss: false, specialEnemyChance: 0, eliteEnemyChance: 0 },
+  { level: 2, name: '初步接触', enemyCount: 6, hpMultiplier: 1.2, speedMultiplier: 1.1, spawnInterval: 42, hasBoss: false, specialEnemyChance: 0.05, eliteEnemyChance: 0 },
+  { level: 3, name: '稳步推进', enemyCount: 8, hpMultiplier: 1.4, speedMultiplier: 1.2, spawnInterval: 38, hasBoss: false, specialEnemyChance: 0.1, eliteEnemyChance: 0 },
+  { level: 4, name: '加速挑战', enemyCount: 10, hpMultiplier: 1.7, speedMultiplier: 1.3, spawnInterval: 35, hasBoss: false, specialEnemyChance: 0.15, eliteEnemyChance: 0.05 },
+  { level: 5, name: 'Boss来袭', enemyCount: 12, hpMultiplier: 2.0, speedMultiplier: 1.4, spawnInterval: 32, hasBoss: true, specialEnemyChance: 0.2, eliteEnemyChance: 0.08 },
+  { level: 6, name: '精英出现', enemyCount: 14, hpMultiplier: 2.4, speedMultiplier: 1.5, spawnInterval: 30, hasBoss: false, specialEnemyChance: 0.25, eliteEnemyChance: 0.12 },
+  { level: 7, name: '压力倍增', enemyCount: 16, hpMultiplier: 2.8, speedMultiplier: 1.6, spawnInterval: 28, hasBoss: false, specialEnemyChance: 0.3, eliteEnemyChance: 0.15 },
+  { level: 8, name: '全面进攻', enemyCount: 18, hpMultiplier: 3.3, speedMultiplier: 1.7, spawnInterval: 26, hasBoss: false, specialEnemyChance: 0.35, eliteEnemyChance: 0.18 },
+  { level: 9, name: 'Boss挑战', enemyCount: 20, hpMultiplier: 4.0, speedMultiplier: 1.8, spawnInterval: 24, hasBoss: true, specialEnemyChance: 0.4, eliteEnemyChance: 0.22 },
+  { level: 10, name: '最终决战', enemyCount: 25, hpMultiplier: 5.0, speedMultiplier: 2.0, spawnInterval: 22, hasBoss: true, specialEnemyChance: 0.5, eliteEnemyChance: 0.3 },
+]
 
 export const PATH_POINTS: GridPoint[] = [
   { gx: -1, gy: 1 },

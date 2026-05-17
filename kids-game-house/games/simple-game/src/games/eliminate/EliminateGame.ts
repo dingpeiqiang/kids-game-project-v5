@@ -16,13 +16,16 @@ export class EliminateGame {
   private engine: GameEngine
   private onEnd: () => void
   
-  // 游戏常量
-  private readonly W = 400
-  private readonly H = 600
-  private readonly GRID = 8
-  private readonly COLS = 6
-  private readonly CELL = (400 - 40) / 6
-  private readonly TOP = 80
+  // 游戏尺寸（动态计算）
+  private W = 400
+  private H = 600
+  
+  // 布局参数（动态计算）
+  private GRID = 8
+  private COLS = 6
+  private CELL = 60
+  private TOP = 80
+  private PADDING = 15 // 统一的边距值
   private readonly ALL_COLORS = ['#FF6B6B', '#FF8E53', '#FFD93D', '#6BCB77', '#4D96FF', '#9B59B6']
   
   // 关卡系统
@@ -43,10 +46,28 @@ export class EliminateGame {
   // 游戏结束标志 - 防止重复调用 endGame
   private isGameOver = false
   
+  // 选中状态（支持拖拽交换）
+  private selectedBlock: number | null = null // 选中的方块索引
+  private isDragging = false // 是否正在拖拽
+  private dragStartX = 0
+  private dragStartY = 0
+  
+  // 动画状态
+  private isAnimating = false // 是否正在执行动画
+  
   // 游戏计时器
   private lastActionTime = Date.now()
   private gameStartTime = Date.now()
   private levelStartTime = Date.now() // 关卡开始时间
+  
+  // 触摸防抖
+  private lastTouchTime = 0
+  private readonly TOUCH_DEBOUNCE_MS = 200 // 触摸防抖时间
+  
+  // 触摸滑动检测
+  private touchStartX = 0
+  private touchStartY = 0
+  private readonly SWIPE_THRESHOLD = 10 // 滑动阈值（像素）
   
   // 获取当前关卡的时间限制
   private get timeLimit(): number {
@@ -81,11 +102,82 @@ export class EliminateGame {
     this.powerupEffectSystem = new PowerupEffectSystem()
   }
   
+  // 根据Canvas实际尺寸计算布局参数
+  private calculateLayout() {
+    // 使用Canvas的实际尺寸
+    this.W = this.canvas.width
+    this.H = this.canvas.height
+    
+    // 根据屏幕宽高比调整网格大小
+    const aspectRatio = this.W / this.H
+    
+    // 移动端适配：调整列数和网格大小
+    if (this.W < 350) {
+      // 小屏幕手机
+      this.COLS = 5
+      this.GRID = 7
+    } else if (this.W < 450) {
+      // 中等屏幕
+      this.COLS = 6
+      this.GRID = 8
+    } else {
+      // 大屏幕
+      this.COLS = 6
+      this.GRID = 8
+    }
+    
+    // 计算单元格大小，留出边距
+    this.CELL = (this.W - this.PADDING * 2) / this.COLS
+    
+    // 根据单元格大小调整顶部区域
+    this.TOP = Math.max(60, Math.floor(this.CELL * 1.8))
+    
+    console.log(`[消除游戏] 布局计算完成: W=${this.W}, H=${this.H}, COLS=${this.COLS}, GRID=${this.GRID}, CELL=${this.CELL.toFixed(1)}, TOP=${this.TOP}`)
+  }
+  
   init() {
     this.isGameOver = false // 重置游戏结束标志
+    
+    // 确保 Canvas 尺寸正确（移动端适配关键）
+    this.ensureCanvasSize()
+    
+    // 计算布局参数（必须在 initLevel 之前调用）
+    this.calculateLayout()
+    
     this.initLevel(1) // 从第1关开始
     this.setupEventListeners()
     this.updateHTMLPowerupBar()
+  }
+  
+  // 确保 Canvas 尺寸正确 - 解决移动端适配问题
+  private ensureCanvasSize() {
+    const rect = this.canvas.getBoundingClientRect()
+    
+    // 如果 Canvas 的逻辑尺寸与显示尺寸不一致，进行调整
+    if (this.canvas.width !== rect.width || this.canvas.height !== rect.height) {
+      // 保持 400x600 的设计比例
+      const targetRatio = 400 / 600
+      const rectRatio = rect.width / rect.height
+      
+      let logicalWidth = 400
+      let logicalHeight = 600
+      
+      // 根据实际显示尺寸调整逻辑尺寸
+      if (rectRatio > targetRatio) {
+        // 宽度受限
+        logicalWidth = Math.round(rect.width)
+        logicalHeight = Math.round(rect.width / targetRatio)
+      } else {
+        // 高度受限
+        logicalHeight = Math.round(rect.height)
+        logicalWidth = Math.round(rect.height * targetRatio)
+      }
+      
+      this.canvas.width = logicalWidth
+      this.canvas.height = logicalHeight
+      
+      console.log(`[消除游戏] Canvas 尺寸已调整: ${logicalWidth}x${logicalHeight}`)
+    }
   }
   
   // 初始化关卡
@@ -436,8 +528,14 @@ export class EliminateGame {
   }
   
   private setupEventListeners() {
+    // 清除旧的事件监听器
     this.canvas.onclick = null
-    this.canvas.onclick = (e) => {
+    this.canvas.removeEventListener('touchstart', this.handleTouchStart)
+    this.canvas.removeEventListener('touchmove', this.handleTouchMove)
+    this.canvas.removeEventListener('touchend', this.handleTouchEnd)
+    
+    // 绑定点击事件（桌面端）
+    this.canvas.onclick = (e: MouseEvent) => {
       this.lastActionTime = Date.now()
       
       const rect = this.canvas.getBoundingClientRect()
@@ -448,16 +546,421 @@ export class EliminateGame {
       
       this.handleClick(mx, my)
     }
+    
+    // 绑定触摸事件（移动端）
+    this.canvas.addEventListener('touchstart', this.handleTouchStart, { passive: false })
+    this.canvas.addEventListener('touchmove', this.handleTouchMove, { passive: false })
+    this.canvas.addEventListener('touchend', this.handleTouchEnd, { passive: false })
+  }
+  
+  // 触摸事件处理 - touchstart 记录起始位置和选中宝石
+  private handleTouchStart = (e: TouchEvent) => {
+    e.preventDefault()
+    this.lastActionTime = Date.now()
+    
+    const touch = e.touches[0]
+    this.touchStartX = touch.clientX
+    this.touchStartY = touch.clientY
+    
+    // 如果没有选中任何宝石，尝试选中触摸位置的宝石
+    if (!this.selectedBlock && !this.isAnimating) {
+      const rect = this.canvas.getBoundingClientRect()
+      const scaleX = this.canvas.width / rect.width
+      const scaleY = this.canvas.height / rect.height
+      
+      const mx = (touch.clientX - rect.left) * scaleX
+      const my = (touch.clientY - rect.top) * scaleY
+      
+      const col = Math.floor((mx - this.PADDING) / this.CELL)
+      const row = Math.floor((my - this.TOP) / this.CELL)
+      const idx = row * this.COLS + col
+      
+      // 边界检查
+      if (row >= 0 && row < this.GRID && col >= 0 && col < this.COLS && 
+          idx >= 0 && idx < this.blocks.length && this.blocks[idx]) {
+        this.selectedBlock = idx
+        audioService.collect()
+        console.log(`[选中] 方块 ${idx}`)
+      }
+    }
+  }
+  
+  // 触摸事件处理 - touchmove 处理拖拽交换
+  private handleTouchMove = (e: TouchEvent) => {
+    e.preventDefault()
+    
+    // 如果没有选中宝石或正在动画，不处理
+    if (this.selectedBlock === null || this.isAnimating) {
+      return
+    }
+    
+    const touch = e.touches[0]
+    
+    // 计算滑动距离
+    const dx = touch.clientX - this.touchStartX
+    const dy = touch.clientY - this.touchStartY
+    
+    // 判断滑动方向和距离
+    const threshold = 20 // 滑动阈值
+    
+    const selectedRow = Math.floor(this.selectedBlock / this.COLS)
+    const selectedCol = this.selectedBlock % this.COLS
+    
+    let targetIdx: number | null = null
+    
+    // 检测滑动方向
+    if (Math.abs(dx) > threshold) {
+      // 水平滑动
+      const direction = dx > 0 ? 1 : -1
+      const targetCol = selectedCol + direction
+      if (targetCol >= 0 && targetCol < this.COLS) {
+        targetIdx = selectedRow * this.COLS + targetCol
+      }
+    } else if (Math.abs(dy) > threshold) {
+      // 垂直滑动
+      const direction = dy > 0 ? 1 : -1
+      const targetRow = selectedRow + direction
+      if (targetRow >= 0 && targetRow < this.GRID) {
+        targetIdx = targetRow * this.COLS + selectedCol
+      }
+    }
+    
+    // 如果检测到有效的拖拽交换
+    if (targetIdx !== null && this.blocks[targetIdx]) {
+      // 获取触摸位置用于显示特效
+      const rect = this.canvas.getBoundingClientRect()
+      const scaleX = this.canvas.width / rect.width
+      const scaleY = this.canvas.height / rect.height
+      const mx = (touch.clientX - rect.left) * scaleX
+      const my = (touch.clientY - rect.top) * scaleY
+      
+      // 执行交换
+      this.trySwap(this.selectedBlock, targetIdx, mx, my)
+      this.selectedBlock = null // 重置选中状态
+    }
+  }
+  
+  // 触摸事件处理 - touchend 处理点击逻辑
+  private handleTouchEnd = (e: TouchEvent) => {
+    e.preventDefault()
+    
+    const touch = e.changedTouches[0]
+    
+    // 如果已经通过拖拽处理了交换，不再处理点击
+    if (!this.selectedBlock) {
+      return
+    }
+    
+    // 判断是否为点击（滑动距离很小）
+    const dx = Math.abs(touch.clientX - this.touchStartX)
+    const dy = Math.abs(touch.clientY - this.touchStartY)
+    
+    // 如果滑动距离很小，视为点击
+    if (dx < this.SWIPE_THRESHOLD && dy < this.SWIPE_THRESHOLD) {
+      const rect = this.canvas.getBoundingClientRect()
+      const scaleX = this.canvas.width / rect.width
+      const scaleY = this.canvas.height / rect.height
+      
+      const mx = (touch.clientX - rect.left) * scaleX
+      const my = (touch.clientY - rect.top) * scaleY
+      
+      this.handleClick(mx, my)
+    } else {
+      // 滑动结束，重置选中状态
+      this.selectedBlock = null
+    }
   }
   
   private handleClick(mx: number, my: number) {
-    const col = Math.floor((mx - 20) / this.CELL)
+    // 触摸防抖：避免快速连续点击导致频繁播放音效
+    const now = Date.now()
+    if (now - this.lastTouchTime < this.TOUCH_DEBOUNCE_MS) {
+      return
+    }
+    this.lastTouchTime = now
+    
+    // 动画期间不响应点击
+    if (this.isAnimating) return
+    
+    const col = Math.floor((mx - this.PADDING) / this.CELL)
     const row = Math.floor((my - this.TOP) / this.CELL)
     const idx = row * this.COLS + col
     
-    if (idx < 0 || idx >= this.blocks.length || !this.blocks[idx]) return
+    // 边界检查
+    if (row < 0 || row >= this.GRID || col < 0 || col >= this.COLS) {
+      // 点击空白处取消选中
+      this.selectedBlock = null
+      return
+    }
     
-    this.eliminate(idx, mx, my)
+    if (idx < 0 || idx >= this.blocks.length || !this.blocks[idx]) {
+      this.selectedBlock = null
+      return
+    }
+    
+    // 处理选中和交换逻辑
+    this.handleGemSelect(idx, mx, my)
+  }
+  
+  // 处理宝石选中和交换逻辑
+  private handleGemSelect(idx: number, mx: number, my: number) {
+    if (!this.blocks[idx]) return
+    
+    // 如果没有选中任何宝石，选中当前宝石
+    if (this.selectedBlock === null) {
+      this.selectedBlock = idx
+      audioService.collect()
+      console.log(`[选中] 方块 ${idx}`)
+      return
+    }
+    
+    // 如果点击的是同一个宝石，取消选中
+    if (this.selectedBlock === idx) {
+      this.selectedBlock = null
+      return
+    }
+    
+    // 检查是否是相邻宝石（上下左右）
+    const selectedRow = Math.floor(this.selectedBlock / this.COLS)
+    const selectedCol = this.selectedBlock % this.COLS
+    const targetRow = Math.floor(idx / this.COLS)
+    const targetCol = idx % this.COLS
+    
+    const rowDiff = Math.abs(selectedRow - targetRow)
+    const colDiff = Math.abs(selectedCol - targetCol)
+    
+    // 只有相邻的宝石才能交换（上下左右）
+    if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
+      // 尝试交换
+      this.trySwap(this.selectedBlock, idx, mx, my)
+    } else {
+      // 选中新的宝石（非相邻）
+      this.selectedBlock = idx
+      audioService.collect()
+      console.log(`[选中] 方块 ${idx}`)
+    }
+  }
+  
+  // 尝试交换两个宝石
+  private async trySwap(idx1: number, idx2: number, mx: number, my: number) {
+    this.isAnimating = true
+    
+    // 交换方块
+    this.swapBlocks(idx1, idx2)
+    
+    // 等待交换动画
+    await this.wait(200)
+    
+    // 检查是否有匹配
+    const matches = this.findMatches()
+    
+    if (matches.length >= 3) {
+      // 有匹配，执行消除
+      this.selectedBlock = null
+      this.processMatches(matches, mx, my)
+    } else {
+      // 没有匹配，交换回来
+      await this.wait(100)
+      this.swapBlocks(idx1, idx2)
+      await this.wait(200)
+      this.selectedBlock = null
+      this.isAnimating = false
+      audioService.lose() // 播放失败音效
+    }
+  }
+  
+  // 交换两个方块
+  private swapBlocks(idx1: number, idx2: number) {
+    const temp = this.blocks[idx1]
+    this.blocks[idx1] = this.blocks[idx2]
+    this.blocks[idx2] = temp
+    
+    // 更新方块的行列位置
+    if (this.blocks[idx1]) {
+      const row = Math.floor(idx1 / this.COLS)
+      const col = idx1 % this.COLS
+      this.blocks[idx1].setR(row)
+      this.blocks[idx1].setC(col)
+    }
+    if (this.blocks[idx2]) {
+      const row = Math.floor(idx2 / this.COLS)
+      const col = idx2 % this.COLS
+      this.blocks[idx2].setR(row)
+      this.blocks[idx2].setC(col)
+    }
+  }
+  
+  // 查找所有匹配的方块
+  private findMatches(): number[] {
+    const matches = new Set<number>()
+    
+    // 检查横向匹配
+    for (let r = 0; r < this.GRID; r++) {
+      for (let c = 0; c < this.COLS - 2; c++) {
+        const idx = r * this.COLS + c
+        const color = this.blocks[idx]?.getColor()
+        if (!color) continue
+        
+        if (this.blocks[idx + 1]?.getColor() === color && 
+            this.blocks[idx + 2]?.getColor() === color) {
+          matches.add(idx)
+          matches.add(idx + 1)
+          matches.add(idx + 2)
+          // 检查更长的匹配
+          let nextC = c + 3
+          while (nextC < this.COLS && this.blocks[r * this.COLS + nextC]?.getColor() === color) {
+            matches.add(r * this.COLS + nextC)
+            nextC++
+          }
+        }
+      }
+    }
+    
+    // 检查纵向匹配
+    for (let c = 0; c < this.COLS; c++) {
+      for (let r = 0; r < this.GRID - 2; r++) {
+        const idx = r * this.COLS + c
+        const color = this.blocks[idx]?.getColor()
+        if (!color) continue
+        
+        if (this.blocks[idx + this.COLS]?.getColor() === color && 
+            this.blocks[idx + this.COLS * 2]?.getColor() === color) {
+          matches.add(idx)
+          matches.add(idx + this.COLS)
+          matches.add(idx + this.COLS * 2)
+          // 检查更长的匹配
+          let nextR = r + 3
+          while (nextR < this.GRID && this.blocks[nextR * this.COLS + c]?.getColor() === color) {
+            matches.add(nextR * this.COLS + c)
+            nextR++
+          }
+        }
+      }
+    }
+    
+    return Array.from(matches)
+  }
+  
+  // 处理匹配消除
+  private async processMatches(matches: number[], mx: number, my: number) {
+    // 标记消除
+    matches.forEach(i => {
+      if (this.blocks[i]) {
+        this.blocks[i].setExploding(true)
+      }
+    })
+    
+    // 计算分数
+    const basePoints = matches.length * 10
+    const comboMultiplier = 1 + (matches.length - 3) * 0.5
+    let pts = Math.round(basePoints * comboMultiplier * this.comboMultiplier)
+    
+    if (this.doubleScoreActive) {
+      pts *= 2
+    }
+    
+    this.comboMultiplier += 0.1
+    if (this.comboMultiplier > 3) this.comboMultiplier = 3
+    
+    this.engine.addScore(pts, mx, my)
+    this.engine.triggerRandomBuff()
+    
+    // 触发闪光效果
+    this.flashEffect = Math.min(matches.length * 0.1, 0.8)
+    
+    // 播放音效
+    if (matches.length >= 8) {
+      audioService.win()
+    } else if (matches.length >= 5) {
+      audioService.buff()
+    } else {
+      audioService.collect()
+    }
+    
+    // 收集道具和星星
+    const collectedItems: string[] = []
+    matches.forEach(i => {
+      if (this.blocks[i] && this.blocks[i].getItem()) {
+        const itemId = this.blocks[i]!.getItem()!
+        if (!collectedItems.includes(itemId)) {
+          collectedItems.push(itemId)
+          const itemData = GAME_ITEMS.find(item => item.id === itemId)
+          if (itemData) {
+            this.comboSystem.addText(`${itemData.icon} ${itemData.name}!`, mx, my - 50 - collectedItems.length * 30)
+          }
+          this.triggerPowerupCollectEffect(itemId, mx, my)
+          this.usePowerupImmediately(itemId, mx, my)
+        }
+      }
+      
+      if (this.blocks[i] && this.blocks[i].hasStar()) {
+        this.collectedStars++
+        this.comboSystem.addText(`💎 +1 (${this.collectedStars}/${this.levelConfig?.targetStars})`, mx, my - 80)
+        audioService.collect()
+      }
+    })
+    
+    // 震动效果
+    this.screenShake = Math.min(matches.length * 1.5, 15)
+    
+    // 连击文字
+    if (matches.length >= 4) {
+      this.comboSystem.addText(`${matches.length} 连消!`, mx, my - 30)
+    }
+    
+    // 创建粒子效果
+    matches.forEach(i => {
+      const b = this.blocks[i]
+      if (!b) return
+      const x = this.PADDING + b.getC() * this.CELL + this.CELL / 2
+      const y = this.TOP + b.getR() * this.CELL + this.CELL / 2
+      this.particleSystem.createExplosion(x, y, b.getColor(), matches.length)
+    })
+    
+    // Mega buff
+    if (this.engine.hasBuff('mega')) {
+      setTimeout(() => {
+        this.particleSystem.createFullScreenExplosion(this.W, this.H, this.COLORS)
+        this.blocks.forEach((b, i) => {
+          if (b) this.engine.addScore(10, this.PADDING + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
+        })
+        this.blocks.forEach((_, i) => this.blocks[i] = null as any)
+        audioService.win()
+      }, 200)
+    }
+    
+    // 延迟消除
+    await this.wait(150)
+    
+    // 移除匹配的方块
+    matches.forEach(i => { this.blocks[i] = null as any })
+    
+    // 应用重力
+    this.applyGravity()
+    
+    // 等待重力动画
+    await this.wait(300)
+    
+    // 检查新的匹配（连锁反应）
+    const newMatches = this.findMatches()
+    if (newMatches.length >= 3) {
+      this.processMatches(newMatches, mx, my)
+    } else {
+      // 检查是否有有效移动
+      if (!this.hasValidMove()) {
+        this.resetBoard()
+      }
+      
+      // 检查通关
+      this.checkLevelComplete()
+      
+      this.isAnimating = false
+    }
+  }
+  
+  // 等待辅助函数
+  private wait(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
   
   private eliminate(idx: number, mx: number, my: number) {
@@ -762,34 +1265,44 @@ export class EliminateGame {
     const remaining = Math.max(0, this.timeLimit - (now - this.lastActionTime))
     const seconds = Math.ceil(remaining / 1000)
     
+    // 根据单元格大小动态调整字体大小
+    const fontSize = Math.max(10, Math.floor(this.CELL * 0.4))
+    const smallFontSize = Math.max(8, Math.floor(this.CELL * 0.3))
+    const mediumFontSize = Math.max(12, Math.floor(this.CELL * 0.35))
+    const largeFontSize = Math.max(16, Math.floor(this.CELL * 0.5))
+    const hugeFontSize = Math.max(20, Math.floor(this.CELL * 0.65))
+    
+    const padding = 15
+    
     // 绘制关卡信息
     if (this.levelConfig) {
       this.ctx.fillStyle = '#FFD93D'
-      this.ctx.font = 'bold 16px sans-serif'
+      this.ctx.font = `bold ${mediumFontSize}px sans-serif`
       this.ctx.textAlign = 'left'
-      this.ctx.fillText(`关卡 ${this.currentLevel}/10`, 20, 35)
+      this.ctx.fillText(`关卡 ${this.currentLevel}/10`, padding, this.TOP / 3)
       
       this.ctx.fillStyle = 'rgba(255,255,255,0.7)'
-      this.ctx.font = '12px sans-serif'
-      this.ctx.fillText(this.levelConfig.name, 20, 52)
+      this.ctx.font = `${smallFontSize}px sans-serif`
+      this.ctx.fillText(this.levelConfig.name, padding, this.TOP / 3 + mediumFontSize + 2)
     }
     
     // 绘制倒计时背景条
-    const barWidth = (remaining / this.timeLimit) * (this.W - 40)
+    const barWidth = (remaining / this.timeLimit) * (this.W - padding * 2)
+    const barHeight = Math.max(4, Math.floor(this.CELL * 0.12))
     const barColor = remaining < 5000 ? '#FF6B6B' : remaining < 10000 ? '#FFD93D' : '#4ECDC4'
     
     this.ctx.fillStyle = 'rgba(255,255,255,0.1)'
-    this.ctx.fillRect(20, 8, this.W - 40, 6)
+    this.ctx.fillRect(padding, 4, this.W - padding * 2, barHeight)
     
     this.ctx.fillStyle = barColor
-    this.ctx.fillRect(20, 8, barWidth, 6)
+    this.ctx.fillRect(padding, 4, barWidth, barHeight)
     
     // 绘制倒计时数字
     if (seconds <= 10) {
       this.ctx.fillStyle = seconds <= 3 ? '#FF6B6B' : '#FFD93D'
-      this.ctx.font = 'bold 20px sans-serif'
+      this.ctx.font = `bold ${largeFontSize}px sans-serif`
       this.ctx.textAlign = 'right'
-      this.ctx.fillText(`⏱️ ${seconds}s`, this.W - 20, 35)
+      this.ctx.fillText(`⏱️ ${seconds}s`, this.W - padding, this.TOP / 3)
       
       // 最后3秒闪烁效果
       if (seconds <= 3 && Math.floor(now / 200) % 2 === 0) {
@@ -800,25 +1313,25 @@ export class EliminateGame {
     
     // 绘制分数
     this.ctx.fillStyle = '#fff'
-    this.ctx.font = 'bold 28px sans-serif'
+    this.ctx.font = `bold ${hugeFontSize}px sans-serif`
     this.ctx.textAlign = 'center'
-    this.ctx.fillText(String(this.engine.getScore()), this.W / 2, 45)
-    this.ctx.font = '13px sans-serif'
+    this.ctx.fillText(String(this.engine.getScore()), this.W / 2, this.TOP / 2)
+    this.ctx.font = `${smallFontSize}px sans-serif`
     this.ctx.fillStyle = 'rgba(255,255,255,0.5)'
-    this.ctx.fillText('极速消除', this.W / 2, 65)
+    this.ctx.fillText('极速消除', this.W / 2, this.TOP / 2 + hugeFontSize - 4)
     
     // 绘制连击数
     if (this.engine.getCombo() >= 3) {
       this.ctx.fillStyle = '#FFD93D'
-      this.ctx.font = 'bold 16px sans-serif'
-      this.ctx.fillText(`🔥 ${this.engine.getCombo()} 连击`, this.W / 2, 72)
+      this.ctx.font = `bold ${mediumFontSize}px sans-serif`
+      this.ctx.fillText(`🔥 ${this.engine.getCombo()} 连击`, this.W / 2, this.TOP / 2 + hugeFontSize + smallFontSize + 2)
     }
     
     // 绘制连击倍数
     if (this.comboMultiplier > 1.1) {
       this.ctx.fillStyle = '#FF6B6B'
-      this.ctx.font = 'bold 14px sans-serif'
-      this.ctx.fillText(`x${this.comboMultiplier.toFixed(1)} 连击加成`, this.W / 2, 88)
+      this.ctx.font = `bold ${smallFontSize}px sans-serif`
+      this.ctx.fillText(`x${this.comboMultiplier.toFixed(1)} 连击加成`, this.W / 2, this.TOP / 2 + hugeFontSize + smallFontSize * 2 + 6)
     }
     
     // ⭐ 绘制星星收集进度
@@ -829,9 +1342,10 @@ export class EliminateGame {
   }
   
   private drawBlocks() {
+    const padding = 15
     this.blocks.forEach((b, i) => {
       if (!b) return
-      const x = 20 + b.getC() * this.CELL + this.CELL / 2
+      const x = padding + b.getC() * this.CELL + this.CELL / 2
       const y = this.TOP + b.getR() * this.CELL + this.CELL / 2
       const size = this.CELL * 0.4 * b.getScale()
       
@@ -848,8 +1362,16 @@ export class EliminateGame {
         this.ctx.fillStyle = b.getColor()
       }
       
-      // 如果是提示高亮，添加脉冲光晕效果
-      if (isHinted) {
+      // 检查是否是选中的方块
+      const isSelected = this.selectedBlock === i
+      
+      // 如果是选中状态，添加金色脉冲光晕效果
+      if (isSelected) {
+        const pulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
+        this.ctx.shadowColor = '#FFD700'
+        this.ctx.shadowBlur = 20 * pulse
+      } else if (isHinted) {
+        // 如果是提示高亮，添加脉冲光晕效果
         const pulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
         this.ctx.shadowColor = '#FFD700'
         this.ctx.shadowBlur = 15 * pulse
@@ -870,8 +1392,19 @@ export class EliminateGame {
       this.ctx.fill()
       
       // 添加边框效果
-      this.ctx.strokeStyle = isHinted ? '#FFD700' : 'rgba(255,255,255,0.6)'
-      this.ctx.lineWidth = isHinted ? 3 : 2
+      if (isSelected) {
+        // 选中状态：金色粗边框
+        this.ctx.strokeStyle = '#FFD700'
+        this.ctx.lineWidth = 4
+      } else if (isHinted) {
+        // 提示状态：金色边框
+        this.ctx.strokeStyle = '#FFD700'
+        this.ctx.lineWidth = 3
+      } else {
+        // 默认状态：白色边框
+        this.ctx.strokeStyle = 'rgba(255,255,255,0.6)'
+        this.ctx.lineWidth = 2
+      }
       this.ctx.beginPath()
       this.ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
       this.ctx.stroke()
@@ -1260,7 +1793,10 @@ export class EliminateGame {
   
   // 绘制道具持续时间提示
   private drawPowerupTimers(now: number) {
-    let yPos = this.H - 30
+    // 根据单元格大小动态调整字体和位置
+    const fontSize = Math.max(12, Math.floor(this.CELL * 0.35))
+    const lineSpacing = Math.max(20, Math.floor(this.CELL * 0.5))
+    let yPos = this.H - fontSize - 10
     
     // 双倍分数倒计时
     if (this.doubleScoreActive) {
@@ -1268,16 +1804,16 @@ export class EliminateGame {
       const seconds = Math.ceil(remaining / 1000)
       
       this.ctx.fillStyle = 'rgba(255, 105, 180, 0.9)'
-      this.ctx.font = 'bold 14px sans-serif'
+      this.ctx.font = `bold ${fontSize}px sans-serif`
       this.ctx.textAlign = 'center'
       this.ctx.fillText(`✨ 双倍分数 ${seconds}s`, this.W / 2, yPos)
-      yPos -= 25
+      yPos -= lineSpacing
     }
     
     // 提示高亮倒计时（5秒）
     if (this.hintActive) {
       this.ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
-      this.ctx.font = 'bold 14px sans-serif'
+      this.ctx.font = `bold ${fontSize}px sans-serif`
       this.ctx.textAlign = 'center'
       this.ctx.fillText('🔍 提示中...', this.W / 2, yPos)
     }
@@ -1290,29 +1826,38 @@ export class EliminateGame {
     const targetStars = this.levelConfig.targetStars
     const isCompleted = this.collectedStars >= targetStars
     
+    // 根据单元格大小动态调整UI尺寸
+    const fontSize = Math.max(10, Math.floor(this.CELL * 0.35))
+    const padding = 15
+    
     // 在屏幕右上角显示宝石数量
-    const displayX = this.W - 20
-    const displayY = 65
+    const displayX = this.W - padding
+    const displayY = this.TOP / 3 + fontSize
+    
+    // 动态计算背景框尺寸
+    const bgWidth = Math.max(80, Math.floor(this.CELL * 2.2))
+    const bgHeight = Math.max(28, Math.floor(this.CELL * 0.7))
+    const bgRadius = Math.max(6, Math.floor(this.CELL * 0.15))
     
     // 背景圆角矩形
     this.ctx.fillStyle = isCompleted ? 'rgba(138, 43, 226, 0.3)' : 'rgba(0, 0, 0, 0.4)'
     this.ctx.beginPath()
-    this.ctx.roundRect(displayX - 90, displayY - 18, 90, 32, 8)
+    this.ctx.roundRect(displayX - bgWidth, displayY - bgHeight / 2, bgWidth, bgHeight, bgRadius)
     this.ctx.fill()
     
     // 边框
     this.ctx.strokeStyle = isCompleted ? '#8A2BE2' : 'rgba(255, 255, 255, 0.3)'
     this.ctx.lineWidth = 2
     this.ctx.beginPath()
-    this.ctx.roundRect(displayX - 90, displayY - 18, 90, 32, 8)
+    this.ctx.roundRect(displayX - bgWidth, displayY - bgHeight / 2, bgWidth, bgHeight, bgRadius)
     this.ctx.stroke()
     
     // 宝石图标和数量
     this.ctx.fillStyle = '#fff'
-    this.ctx.font = 'bold 16px sans-serif'
+    this.ctx.font = `bold ${fontSize}px sans-serif`
     this.ctx.textAlign = 'center'
     this.ctx.textBaseline = 'middle'
-    this.ctx.fillText(`💎${this.collectedStars}/${targetStars}`, displayX - 45, displayY - 2)
+    this.ctx.fillText(`💎${this.collectedStars}/${targetStars}`, displayX - bgWidth / 2, displayY)
     
     // 如果完成，添加闪烁效果
     if (isCompleted) {
@@ -1320,13 +1865,13 @@ export class EliminateGame {
       const hue = (Date.now() * 0.2) % 360
       this.ctx.fillStyle = `hsla(${hue}, 100%, 60%, ${pulse * 0.2})`
       this.ctx.beginPath()
-      this.ctx.roundRect(displayX - 90, displayY - 18, 90, 32, 8)
+      this.ctx.roundRect(displayX - bgWidth, displayY - bgHeight / 2, bgWidth, bgHeight, bgRadius)
       this.ctx.fill()
       
       // 完成标记
       this.ctx.fillStyle = '#8A2BE2'
-      this.ctx.font = 'bold 12px sans-serif'
-      this.ctx.fillText('✓', displayX - 15, displayY - 2)
+      this.ctx.font = `bold ${Math.floor(fontSize * 0.75)}px sans-serif`
+      this.ctx.fillText('✓', displayX - bgWidth * 0.17, displayY)
     }
     
     // 重置 textBaseline

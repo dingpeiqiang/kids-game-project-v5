@@ -1,7 +1,7 @@
 import type { Tower, Enemy, Bullet, Particle, FloatingText, GameEngine as GameEngineType } from './types'
-import { W, H, GRID, CELL, HUD_H, PATH_POINTS, TOWER_TYPES, INFINITE_WAVE_CONFIG, WAVE_INTERVAL_BASE, SPECIAL_SKILL_MAX_CHARGE } from './config'
+import { W, H, GRID, CELL, HUD_H, PATH_POINTS, TOWER_TYPES, INFINITE_WAVE_CONFIG, WAVE_INTERVAL_BASE, SPECIAL_SKILL_MAX_CHARGE, LEVEL_CONFIGS } from './config'
 import { gridToPixel, createTower, upgradeTower, findTarget } from './towers'
-import { getWaveConfig, createEnemy, damageEnemy as damageEnemyFunc } from './enemies'
+import { getWaveConfig, createEnemy, createEnemyByLevel, damageEnemy as damageEnemyFunc } from './enemies'
 import { createBullet, updateBullet, getAoeEnemies } from './bullets'
 import { createParticles, updateParticle } from './particles'
 import { drawBackground, drawHUD, drawGameOver } from './HUD'
@@ -63,10 +63,10 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     }
   }
 
-  let gold = 150
-  let lives = 40
-  let wave = 0
-  let waveTimer = 240
+  let gold = 200
+  let lives = 50
+  let level = 0
+  let levelTimer = 240
   let enemiesToSpawn = 0
   let spawnCounter = 0
   let score = 0
@@ -81,18 +81,21 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
   let flashEffect = 0
   let slowMotion = 0
   let isGameOver = false
+  let isVictory = false
 
   let gameStartTime = Date.now()
   let sessionId: number | null = null
   let sessionToken: string | null = null
 
-  let totalWavesCompleted = 0
-  let highestWave = 0
+  let totalLevelsCompleted = 0
+  let highestLevel = 0
 
   let specialSkillCharge = 0
   let showSpecialSkillButton = false
 
   let inventory: string[] = []
+
+  const MAX_LEVELS = LEVEL_CONFIGS.length
 
   const towers: Tower[] = []
   const enemies: Enemy[] = []
@@ -280,8 +283,9 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     }
   }
 
-  async function endGame() {
+  async function endGame(isWinParam: boolean = false) {
     isGameOver = true
+    isVictory = isWinParam
     cancelAnimationFrame(animId)
 
     const duration = Math.floor((Date.now() - gameStartTime) / 1000)
@@ -294,13 +298,13 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
           score: score,
           duration: duration,
           lives: lives,
-          level: wave + 1,
-          isWin: false,
+          level: level + 1,
+          isWin: isWinParam,
           details: {
-            wave: wave + 1,
+            wave: level + 1,
             maxCombo: maxCombo,
-            totalWavesCompleted: totalWavesCompleted,
-            highestWave: highestWave,
+            totalWavesCompleted: totalLevelsCompleted,
+            highestWave: highestLevel,
           }
         })
 
@@ -335,32 +339,41 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     if (enemiesToSpawn > 0) {
       spawnCounter--
       if (spawnCounter <= 0) {
-        const enemy = createEnemy(wave, enemiesToSpawn)
+        const currentLevelConfig = LEVEL_CONFIGS[level]
+        const enemy = createEnemyByLevel(currentLevelConfig, enemiesToSpawn)
         if (enemy) {
           enemies.push(enemy)
         }
         enemiesToSpawn--
-        spawnCounter = Math.max(25, 45 - Math.min(wave * 0.5, 15))
+        spawnCounter = currentLevelConfig.spawnInterval
       }
     } else if (enemies.length === 0) {
-      waveTimer--
-      if (waveTimer <= 0) {
-        wave++
-        totalWavesCompleted++
-        if (wave > highestWave) highestWave = wave
+      levelTimer--
+      if (levelTimer <= 0) {
+        level++
+        totalLevelsCompleted++
+        if (level > highestLevel) highestLevel = level
 
-        const cfg = getWaveConfig(wave)
-        enemiesToSpawn = cfg.count
-        spawnCounter = 0
-        waveTimer = Math.max(180, WAVE_INTERVAL_BASE - wave * 2)
-
-        addFloat(W / 2, H / 2, `第${wave + 1} 波`, '#FFD700')
-
-        if (wave === INFINITE_WAVE_CONFIG.specialEnemyUnlock) {
-          setTimeout(() => addFloat(W / 2, H / 2 - 40, '快/坦克敌人出现!', '#00E5FF'), 500)
+        if (level >= MAX_LEVELS) {
+          endGame(true)
+          return
         }
-        if (wave === INFINITE_WAVE_CONFIG.eliteEnemyUnlock) {
-          setTimeout(() => addFloat(W / 2, H / 2 - 40, '👑 精英敌人出现!', '#FFD700'), 500)
+
+        const currentLevelConfig = LEVEL_CONFIGS[level]
+        enemiesToSpawn = currentLevelConfig.enemyCount
+        spawnCounter = 0
+        levelTimer = Math.max(180, WAVE_INTERVAL_BASE - level * 4)
+
+        addFloat(W / 2, H / 2, `第${level + 1}关 - ${currentLevelConfig.name}`, '#FFD700')
+
+        if (currentLevelConfig.hasBoss) {
+          setTimeout(() => addFloat(W / 2, H / 2 - 40, '👹 BOSS即将到来!', '#FF4757'), 500)
+        }
+        if (currentLevelConfig.specialEnemyChance > 0 && level >= 2) {
+          setTimeout(() => addFloat(W / 2, H / 2 - 40, '⚡ 特殊敌人出现!', '#00E5FF'), 500)
+        }
+        if (currentLevelConfig.eliteEnemyChance > 0 && level >= 4) {
+          setTimeout(() => addFloat(W / 2, H / 2 - 60, '👑 精英敌人出现!', '#FFD700'), 800)
         }
 
         sfx.place()
@@ -581,13 +594,14 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     drawBullets(ctx, bullets, enemies)
     drawParticles(ctx, particles)
     drawFloats(ctx, floatingTexts)
-    drawHUD(ctx, gold, lives, wave, combo, maxCombo, specialSkillCharge, showSpecialSkillButton, selectedTowerType, highestWave)
-    drawWaveCountdown(ctx, waveTimer, enemiesToSpawn, enemies)
+    const currentLevelName = level < LEVEL_CONFIGS.length ? LEVEL_CONFIGS[level].name : '最终关卡'
+    drawHUD(ctx, gold, lives, level, MAX_LEVELS, currentLevelName, combo, maxCombo, specialSkillCharge, showSpecialSkillButton, selectedTowerType, highestLevel)
+    drawWaveCountdown(ctx, levelTimer, enemiesToSpawn, enemies)
     drawInstructions(ctx, frameCount)
     drawFlashEffect(ctx, flashEffect)
 
     if (isGameOver) {
-      drawGameOver(ctx, score, wave, maxCombo)
+      drawGameOver(ctx, score, level, maxCombo, isVictory)
     }
 
     ctx.restore()

@@ -43,6 +43,31 @@ export interface Slice {
   life: number
 }
 
+export interface Shockwave {
+  x: number
+  y: number
+  radius: number
+  maxRadius: number
+  life: number
+  color: string
+}
+
+export interface ScorePopup {
+  x: number
+  y: number
+  score: number
+  life: number
+  combo: number
+}
+
+export interface LevelTransition {
+  active: boolean
+  level: number
+  name: string
+  progress: number // 0-1
+  direction: 'in' | 'out' | 'show'
+}
+
 export interface GameConfig {
   canvasWidth: number
   canvasHeight: number

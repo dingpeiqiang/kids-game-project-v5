@@ -3,6 +3,19 @@ import { Particle } from './types'
 export class ParticleSystem {
   private particles: Particle[] = []
 
+  // 添加单个粒子
+  addParticle(x: number, y: number, vx: number, vy: number, color: string, size: number, life: number) {
+    this.particles.push({
+      x,
+      y,
+      vx,
+      vy,
+      life,
+      color,
+      size
+    })
+  }
+
   // 添加爆炸粒子效果
   addExplosion(x: number, y: number, color: string, count: number = 15) {
     for (let i = 0; i < count; i++) {

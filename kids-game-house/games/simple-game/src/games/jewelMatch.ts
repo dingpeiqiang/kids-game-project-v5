@@ -27,14 +27,14 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
   const OFFSET_X = (W - COLS * (GEM_SIZE + GAP)) / 2
   const OFFSET_Y = 100
 
-  // 宝石类型 - 更清晰的配色
+  // 可爱动物主题宝石类型 - 更浅的颜色
   const GEM_TYPES = [
-    { emoji: '🔴', color: '#FF4444', glow: '#FF6666' },  // 红宝石
-    { emoji: '🟠', color: '#FF8C00', glow: '#FFAA33' },  // 橙宝石
-    { emoji: '🟡', color: '#FFD700', glow: '#FFEC8B' },  // 黄宝石
-    { emoji: '🟢', color: '#32CD32', glow: '#90EE90' },  // 绿宝石
-    { emoji: '🔵', color: '#1E90FF', glow: '#87CEEB' },  // 蓝宝石
-    { emoji: '🟣', color: '#9932CC', glow: '#DA70D6' },  // 紫宝石
+    { emoji: '🐱', color: '#FFE4E1', light: '#FFF0F5', dark: '#FFB6C1', name: '猫咪' },
+    { emoji: '🐶', color: '#E0F0FF', light: '#F0F8FF', dark: '#B8DBFF', name: '狗狗' },
+    { emoji: '🐰', color: '#FFF0F5', light: '#FFFAFA', dark: '#FFCCD5', name: '兔子' },
+    { emoji: '🦊', color: '#FFF5E6', light: '#FFFDF5', dark: '#FFE4B5', name: '狐狸' },
+    { emoji: '🐨', color: '#F5F5F5', light: '#FAFAFA', dark: '#D8D8D8', name: '考拉' },
+    { emoji: '🦄', color: '#F3E5F5', light: '#FDF5FF', dark: '#E1BEE7', name: '独角兽' },
   ]
 
   let board: any[][] = []
@@ -54,6 +54,183 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
   const powerupIcons: Record<string, string> = {
     'shuffle': '🔄',    // 洗牌 - 重新排列
     'hint': '💡'        // 提示 - 显示可消除组合
+  }
+  
+  // 特殊道具类型（自动触发）
+  type SpecialGemType = 'bomb' | 'rocket_h' | 'rocket_v' | 'rainbow'
+  
+  // 检查并生成特殊道具
+  function checkAndCreateSpecialGem(matches: { x: number; y: number }[], count: number) {
+    if (matches.length === 0) return
+    
+    // 4个消除生成炸弹
+    if (count >= 4 && count < 5) {
+      createSpecialGem(matches[Math.floor(matches.length / 2)], 'bomb')
+    }
+    // 5个消除生成火箭（随机方向）
+    else if (count >= 5 && count < 7) {
+      const isHorizontal = Math.random() > 0.5
+      createSpecialGem(matches[Math.floor(matches.length / 2)], isHorizontal ? 'rocket_h' : 'rocket_v')
+    }
+    // 7个以上消除生成彩虹宝石
+    else if (count >= 7) {
+      createSpecialGem(matches[Math.floor(matches.length / 2)], 'rainbow')
+    }
+  }
+  
+  // 创建特殊道具
+  function createSpecialGem(pos: { x: number; y: number }, type: SpecialGemType) {
+    const gem = board[pos.y]?.[pos.x]
+    if (gem) {
+      gem.special = type
+      audioService.buff()
+    }
+  }
+  
+  // 触发特殊道具效果
+  async function triggerSpecialGem(x: number, y: number) {
+    const gem = board[y]?.[x]
+    if (!gem || !gem.special) return
+    
+    const specialType = gem.special
+    gem.special = undefined
+    
+    switch (specialType) {
+      case 'bomb':
+        await triggerBombEffect(x, y)
+        break
+      case 'rocket_h':
+        await triggerRocketEffect(x, y, 'horizontal')
+        break
+      case 'rocket_v':
+        await triggerRocketEffect(x, y, 'vertical')
+        break
+      case 'rainbow':
+        await triggerRainbowEffect(x, y)
+        break
+    }
+  }
+  
+  // 炸弹效果 - 消除周围3x3区域
+  async function triggerBombEffect(centerX: number, centerY: number) {
+    const affected: { x: number; y: number }[] = []
+    
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = centerX + dx
+        const ny = centerY + dy
+        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && board[ny]?.[nx]?.type >= 0) {
+          affected.push({ x: nx, y: ny })
+        }
+      }
+    }
+    
+    // 添加爆炸粒子效果
+    affected.forEach(pos => {
+      const g = GEM_TYPES[board[pos.y][pos.x].type]
+      for (let i = 0; i < 15; i++) {
+        const angle = (Math.PI * 2 * i) / 15 + Math.random() * 0.5
+        particles.push({
+          x: OFFSET_X + pos.x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          y: OFFSET_Y + pos.y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          vx: Math.cos(angle) * (5 + Math.random() * 3),
+          vy: Math.sin(angle) * (5 + Math.random() * 3),
+          life: 1,
+          color: g.color,
+          size: 6 + Math.random() * 4
+        })
+      }
+      board[pos.y][pos.x].type = -1
+    })
+    
+    engine.addScore(affected.length * 30, OFFSET_X + centerX * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + centerY * (GEM_SIZE + GAP) + GEM_SIZE / 2)
+    audioService.win()
+    
+    await new Promise(r => setTimeout(r, 300))
+    await processMatches()
+  }
+  
+  // 火箭效果 - 消除整行或整列
+  async function triggerRocketEffect(x: number, y: number, direction: 'horizontal' | 'vertical') {
+    const affected: { x: number; y: number }[] = []
+    
+    if (direction === 'horizontal') {
+      for (let cx = 0; cx < COLS; cx++) {
+        if (board[y]?.[cx]?.type >= 0) {
+          affected.push({ x: cx, y })
+        }
+      }
+    } else {
+      for (let cy = 0; cy < ROWS; cy++) {
+        if (board[cy]?.[x]?.type >= 0) {
+          affected.push({ x, y: cy })
+        }
+      }
+    }
+    
+    // 添加特效
+    affected.forEach(pos => {
+      const g = GEM_TYPES[board[pos.y][pos.x].type]
+      for (let i = 0; i < 8; i++) {
+        const angle = direction === 'horizontal' ? (Math.random() > 0.5 ? 0 : Math.PI) : (Math.random() > 0.5 ? Math.PI/2 : -Math.PI/2)
+        particles.push({
+          x: OFFSET_X + pos.x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          y: OFFSET_Y + pos.y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          vx: Math.cos(angle) * (6 + Math.random() * 4),
+          vy: Math.sin(angle) * (6 + Math.random() * 4),
+          life: 1,
+          color: g.color,
+          size: 5 + Math.random() * 3
+        })
+      }
+      board[pos.y][pos.x].type = -1
+    })
+    
+    engine.addScore(affected.length * 25, OFFSET_X + x * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + y * (GEM_SIZE + GAP) + GEM_SIZE / 2)
+    audioService.win()
+    
+    await new Promise(r => setTimeout(r, 300))
+    await processMatches()
+  }
+  
+  // 彩虹效果 - 消除所有同类型宝石
+  async function triggerRainbowEffect(x: number, y: number) {
+    const targetType = board[y]?.[x]?.type
+    if (targetType === undefined || targetType < 0) return
+    
+    const affected: { x: number; y: number }[] = []
+    
+    for (let cy = 0; cy < ROWS; cy++) {
+      for (let cx = 0; cx < COLS; cx++) {
+        if (board[cy]?.[cx]?.type === targetType) {
+          affected.push({ x: cx, y: cy })
+        }
+      }
+    }
+    
+    // 添加彩虹特效
+    affected.forEach(pos => {
+      const g = GEM_TYPES[targetType]
+      for (let i = 0; i < 12; i++) {
+        const angle = (Math.PI * 2 * i) / 12 + Math.random() * 0.5
+        particles.push({
+          x: OFFSET_X + pos.x * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          y: OFFSET_Y + pos.y * (GEM_SIZE + GAP) + GEM_SIZE / 2,
+          vx: Math.cos(angle) * (4 + Math.random() * 3),
+          vy: Math.sin(angle) * (4 + Math.random() * 3),
+          life: 1,
+          color: `hsl(${(Date.now() / 30 + i * 30) % 360}, 100%, 60%)`,
+          size: 5 + Math.random() * 3
+        })
+      }
+      board[pos.y][pos.x].type = -1
+    })
+    
+    engine.addScore(affected.length * 40, OFFSET_X + x * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + y * (GEM_SIZE + GAP) + GEM_SIZE / 2)
+    audioService.win()
+    
+    await new Promise(r => setTimeout(r, 300))
+    await processMatches()
   }
   
   // 更新 HTML 道具栏
@@ -190,64 +367,189 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     
     const gemType = GEM_TYPES[type]
     const size = (GEM_SIZE + pulse) * (gem?.scale || 1)
-
-    // 选中时的柔和光环（降低强度）
+    const halfSize = size * 0.42
+    
+    // 选中时的柔和光环
     if (highlight) {
-      ctx.shadowBlur = 15
-      ctx.shadowColor = 'rgba(255,215,0,0.4)'
-      ctx.strokeStyle = 'rgba(255,215,0,0.5)'
+      const glowPulse = 1 + Math.sin(Date.now() * 0.005) * 0.15
+      ctx.shadowBlur = 20 * glowPulse
+      ctx.shadowColor = 'rgba(255, 215, 0, 0.5)'
+      ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)'
       ctx.lineWidth = 3
       ctx.beginPath()
-      ctx.arc(finalGx, finalGy, size * 0.52, 0, Math.PI * 2)
+      ctx.roundRect(finalGx - halfSize - 3, finalGy - halfSize - 3, (halfSize + 3) * 2, (halfSize + 3) * 2, 14)
       ctx.stroke()
       ctx.shadowBlur = 0
     }
 
-    // 宝石阴影（更柔和）
-    ctx.fillStyle = 'rgba(0,0,0,0.2)'
+    // 柔和阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'
     ctx.beginPath()
-    ctx.arc(finalGx + 2, finalGy + 2, size * 0.43, 0, Math.PI * 2)
+    ctx.roundRect(finalGx - halfSize + 2, finalGy - halfSize + 2, halfSize * 2, halfSize * 2, 12)
     ctx.fill()
 
-    // 宝石主体（柔和渐变，去除刺眼光晕）
-    const outerGrad = ctx.createRadialGradient(
-      finalGx - size * 0.1, finalGy - size * 0.1, 0,
-      finalGx, finalGy, size * 0.45
+    // 宝石主体（清新渐变）
+    const bodyGrad = ctx.createRadialGradient(
+      finalGx - halfSize * 0.3, finalGy - halfSize * 0.3, 0,
+      finalGx, finalGy, halfSize
     )
-    outerGrad.addColorStop(0, highlight ? '#FFF8DC' : gemType.color)
-    outerGrad.addColorStop(0.6, gemType.color)
-    outerGrad.addColorStop(1, shadeColor(gemType.color, -25))
+    bodyGrad.addColorStop(0, gemType.light)
+    bodyGrad.addColorStop(0.5, gemType.color)
+    bodyGrad.addColorStop(1, gemType.dark)
 
-    ctx.fillStyle = outerGrad
-    ctx.shadowBlur = 0 // 移除光晕效果
+    ctx.fillStyle = bodyGrad
+    ctx.globalAlpha = 0.9
     ctx.beginPath()
-    ctx.arc(finalGx, finalGy, size * 0.43, 0, Math.PI * 2)
+    ctx.roundRect(finalGx - halfSize, finalGy - halfSize, halfSize * 2, halfSize * 2, 12)
     ctx.fill()
+    ctx.globalAlpha = 1
 
-    // 内部高光（更自然）
-    const innerGrad = ctx.createRadialGradient(
-      finalGx - size * 0.15, finalGy - size * 0.15, 0,
-      finalGx, finalGy, size * 0.3
+    // 大面积高光（清新感）
+    const bigHighlight = ctx.createRadialGradient(
+      finalGx - halfSize * 0.4, finalGy - halfSize * 0.4, 0,
+      finalGx, finalGy, halfSize * 0.7
     )
-    innerGrad.addColorStop(0, 'rgba(255,255,255,0.6)')
-    innerGrad.addColorStop(0.6, 'rgba(255,255,255,0.2)')
-    innerGrad.addColorStop(1, 'rgba(255,255,255,0)')
-
-    ctx.fillStyle = innerGrad
+    bigHighlight.addColorStop(0, 'rgba(255,255,255,0.7)')
+    bigHighlight.addColorStop(0.5, 'rgba(255,255,255,0.2)')
+    bigHighlight.addColorStop(1, 'rgba(255,255,255,0)')
+    
+    ctx.fillStyle = bigHighlight
     ctx.beginPath()
-    ctx.arc(finalGx, finalGy, size * 0.3, 0, Math.PI * 2)
+    ctx.roundRect(finalGx - halfSize * 0.9, finalGy - halfSize * 0.9, halfSize * 1.8, halfSize * 1.8, 10)
     ctx.fill()
 
-    // 顶部高光点（更小更精致）
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'
+    // 小高光点
+    ctx.fillStyle = 'rgba(255,255,255,0.95)'
     ctx.beginPath()
-    ctx.arc(finalGx - size * 0.12, finalGy - size * 0.15, size * 0.08, 0, Math.PI * 2)
+    ctx.arc(finalGx - halfSize * 0.25, finalGy - halfSize * 0.25, halfSize * 0.18, 0, Math.PI * 2)
     ctx.fill()
 
-    // 边框（更细）
-    ctx.strokeStyle = highlight ? 'rgba(255,215,0,0.6)' : shadeColor(gemType.color, 20)
+    // 边缘高光
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)'
     ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.roundRect(finalGx - halfSize, finalGy - halfSize, halfSize * 2, halfSize * 2, 12)
     ctx.stroke()
+
+    // 边框（柔和颜色）
+    ctx.strokeStyle = highlight ? 'rgba(255, 215, 0, 0.9)' : gemType.dark
+    ctx.lineWidth = highlight ? 2.5 : 1.5
+    ctx.beginPath()
+    ctx.roundRect(finalGx - halfSize, finalGy - halfSize, halfSize * 2, halfSize * 2, 12)
+    ctx.stroke()
+
+    // 可爱图标（emoji）
+    ctx.font = `${Math.floor(halfSize * 1.3)}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(gemType.emoji, finalGx, finalGy)
+    
+    // 特殊道具标识
+    if (gem.special) {
+      drawSpecialGemIndicator(gem.special, finalGx, finalGy, halfSize)
+    }
+  }
+  
+  // 绘制特殊道具标识
+  function drawSpecialGemIndicator(type: string, cx: number, cy: number, size: number) {
+    ctx.save()
+    
+    const pulse = 0.8 + Math.sin(Date.now() * 0.005) * 0.2
+    
+    switch (type) {
+      case 'bomb':
+        // 炸弹标识 - 黑色圆圈带火花
+        ctx.beginPath()
+        ctx.arc(cx, cy + size * 0.3, size * 0.35, 0, Math.PI * 2)
+        ctx.fillStyle = '#333'
+        ctx.fill()
+        ctx.strokeStyle = '#FF6B6B'
+        ctx.lineWidth = 2 * pulse
+        ctx.stroke()
+        
+        // 火花
+        ctx.fillStyle = '#FFD700'
+        for (let i = 0; i < 4; i++) {
+          const angle = (Math.PI * 2 * i) / 4
+          ctx.beginPath()
+          ctx.moveTo(cx, cy + size * 0.3)
+          ctx.lineTo(
+            cx + Math.cos(angle) * size * 0.5,
+            cy + size * 0.3 + Math.sin(angle) * size * 0.5
+          )
+          ctx.strokeStyle = '#FFD700'
+          ctx.lineWidth = 2
+          ctx.stroke()
+        }
+        break
+        
+      case 'rocket_h':
+      case 'rocket_v':
+        // 火箭标识 - 箭头
+        ctx.fillStyle = '#FF4500'
+        ctx.beginPath()
+        if (type === 'rocket_h') {
+          ctx.moveTo(cx - size * 0.4, cy)
+          ctx.lineTo(cx + size * 0.4, cy - size * 0.2)
+          ctx.lineTo(cx + size * 0.4, cy + size * 0.2)
+          ctx.closePath()
+        } else {
+          ctx.moveTo(cx, cy - size * 0.4)
+          ctx.lineTo(cx - size * 0.2, cy + size * 0.4)
+          ctx.lineTo(cx + size * 0.2, cy + size * 0.4)
+          ctx.closePath()
+        }
+        ctx.fill()
+        
+        // 火焰
+        ctx.fillStyle = '#FFD700'
+        if (type === 'rocket_h') {
+          ctx.beginPath()
+          ctx.moveTo(cx - size * 0.4, cy)
+          ctx.lineTo(cx - size * 0.6, cy - size * 0.15)
+          ctx.lineTo(cx - size * 0.6, cy + size * 0.15)
+          ctx.closePath()
+        } else {
+          ctx.beginPath()
+          ctx.moveTo(cx, cy + size * 0.4)
+          ctx.lineTo(cx - size * 0.15, cy + size * 0.6)
+          ctx.lineTo(cx + size * 0.15, cy + size * 0.6)
+          ctx.closePath()
+        }
+        ctx.fill()
+        break
+        
+      case 'rainbow':
+        // 彩虹标识 - 彩虹光环
+        ctx.strokeStyle = '#FF0000'
+        ctx.lineWidth = 2 * pulse
+        ctx.beginPath()
+        ctx.arc(cx, cy + size * 0.3, size * 0.4, Math.PI, 0)
+        ctx.stroke()
+        
+        ctx.strokeStyle = '#FF7F00'
+        ctx.beginPath()
+        ctx.arc(cx, cy + size * 0.3, size * 0.35, Math.PI, 0)
+        ctx.stroke()
+        
+        ctx.strokeStyle = '#FFFF00'
+        ctx.beginPath()
+        ctx.arc(cx, cy + size * 0.3, size * 0.3, Math.PI, 0)
+        ctx.stroke()
+        
+        ctx.strokeStyle = '#00FF00'
+        ctx.beginPath()
+        ctx.arc(cx, cy + size * 0.3, size * 0.25, Math.PI, 0)
+        ctx.stroke()
+        
+        ctx.strokeStyle = '#0000FF'
+        ctx.beginPath()
+        ctx.arc(cx, cy + size * 0.3, size * 0.2, Math.PI, 0)
+        ctx.stroke()
+        break
+    }
+    
+    ctx.restore()
   }
 
   function shadeColor(color: string, percent: number): string {
@@ -259,26 +561,47 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     return `rgb(${R},${G},${B})`
   }
 
+  function drawClouds() {
+    const time = Date.now() * 0.0003
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
+    
+    // 云朵1
+    const cloud1X = (50 + Math.sin(time) * 10) % W
+    drawCloud(cloud1X, 60, 40)
+    
+    // 云朵2
+    const cloud2X = (200 + Math.sin(time * 0.7) * 15) % W
+    drawCloud(cloud2X, 100, 30)
+    
+    // 云朵3
+    const cloud3X = (350 + Math.sin(time * 0.5) * 12) % W
+    drawCloud(cloud3X, 40, 35)
+  }
+  
+  function drawCloud(x: number, y: number, size: number) {
+    ctx.beginPath()
+    ctx.arc(x, y, size * 0.5, 0, Math.PI * 2)
+    ctx.arc(x + size * 0.4, y - size * 0.2, size * 0.4, 0, Math.PI * 2)
+    ctx.arc(x + size * 0.8, y, size * 0.45, 0, Math.PI * 2)
+    ctx.arc(x + size * 0.4, y + size * 0.15, size * 0.35, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
   function draw() {
-    // 华丽的渐变背景
+    // 清新渐变背景
     const bgGrad = ctx.createLinearGradient(0, 0, W, H)
-    bgGrad.addColorStop(0, '#0f0c29')
-    bgGrad.addColorStop(0.5, '#302b63')
-    bgGrad.addColorStop(1, '#24243e')
+    bgGrad.addColorStop(0, '#FFE4E1')
+    bgGrad.addColorStop(0.3, '#F0E68C')
+    bgGrad.addColorStop(0.6, '#87CEEB')
+    bgGrad.addColorStop(1, '#E6E6FA')
     ctx.fillStyle = bgGrad
     ctx.fillRect(0, 0, W, H)
     
-    // 动态星空背景
-    for (let i = 0; i < 50; i++) {
-      const alpha = 0.3 + Math.sin(Date.now() * 0.001 + i) * 0.2
-      ctx.fillStyle = `rgba(255,255,255,${alpha})`
-      ctx.beginPath()
-      ctx.arc((i * 73) % W, (i * 47) % H, 1 + (i % 2), 0, Math.PI * 2)
-      ctx.fill()
-    }
+    // 可爱云朵装饰
+    drawClouds()
 
     // 顶部标题栏（玻璃态效果）
-    ctx.fillStyle = 'rgba(255,255,255,0.08)'
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
     ctx.fillRect(0, 0, W, 85)
     ctx.strokeStyle = 'rgba(255,255,255,0.15)'
     ctx.lineWidth = 1
@@ -564,8 +887,19 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     const matches = findMatches()
     if (matches.length === 0) return
 
+    // 检查是否生成特殊道具
+    checkAndCreateSpecialGem(matches, matches.length)
+
+    // 检查是否有特殊道具需要触发
+    for (const m of matches) {
+      const gem = board[m.y]?.[m.x]
+      if (gem?.special) {
+        await triggerSpecialGem(m.x, m.y)
+        return
+      }
+    }
+
     const points = matches.length * 20 * combo
-    engine.addScore(points, W / 2, H / 2)
 
     // 消除动画：缩小效果
     for (let i = 0; i < 10; i++) {
@@ -654,22 +988,56 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
   canvas.onclick = null
   canvas.onmousedown = null
   
+  // 获取正确的点击坐标（考虑Canvas缩放）
+  function getScaledPos(e: MouseEvent | TouchEvent): { x: number; y: number } {
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    
+    if ('touches' in e && e.touches.length > 0) {
+      const touch = e.touches[0]
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY
+      }
+    } else if ('changedTouches' in e && e.changedTouches.length > 0) {
+      const touch = e.changedTouches[0]
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY
+      }
+    } else if ('clientX' in e) {
+      return {
+        x: ((e as MouseEvent).clientX - rect.left) * scaleX,
+        y: ((e as MouseEvent).clientY - rect.top) * scaleY
+      }
+    }
+    return { x: 0, y: 0 }
+  }
+
   // 统一的事件处理函数（兼容鼠标和触摸）
   const handleClick = async (e: MouseEvent | TouchEvent) => {
+    e.preventDefault()
+    
     if (animating || gameEnded) return
 
-    const pos = getPointerPos(e, canvas)
+    const pos = getScaledPos(e)
     const mx = pos.x
     const my = pos.y
 
     const x = Math.floor((mx - OFFSET_X) / (GEM_SIZE + GAP))
     const y = Math.floor((my - OFFSET_Y) / (GEM_SIZE + GAP))
 
-    if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return
+    if (x < 0 || x >= COLS || y < 0 || y >= ROWS) {
+      selected = null
+      return
+    }
 
     if (!selected) {
       selected = { x, y }
       audioService.collect()
+    } else if (selected.x === x && selected.y === y) {
+      selected = null
     } else {
       const dx = Math.abs(x - selected.x)
       const dy = Math.abs(y - selected.y)
@@ -681,13 +1049,25 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
           await processMatches()
         }
         animating = false
+      } else {
+        selected = { x, y }
+        audioService.collect()
       }
-      selected = null
     }
   }
 
-  // 绑定事件（同时支持鼠标和触摸）
-  bindCanvasEvents(canvas, handleClick as any)
+  // 清除所有旧的事件监听器
+  canvas.removeEventListener('click', handleClick)
+  canvas.removeEventListener('touchend', handleClick)
+  canvas.removeEventListener('touchstart', handleClick)
+  canvas.removeEventListener('mousemove', handleClick)
+  canvas.removeEventListener('touchmove', handleClick)
+  
+  // 只绑定点击事件（避免鼠标移动触发音频）
+  // 桌面端：click
+  // 移动端：touchend
+  canvas.addEventListener('click', handleClick)
+  canvas.addEventListener('touchend', handleClick, { passive: false })
 
   function checkTimeout() {
     if (gameEnded) return
@@ -722,8 +1102,6 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
   // 初始化HTML道具栏
   updateHTMLPowerupBar()
   
-  // 绑定事件（同时支持鼠标和触摸）
-  bindCanvasEvents(canvas, handleClick as any)
   console.log('[JewelMatch] 事件绑定完成')
   
   // 首次绘制（避免黑屏）

@@ -15,7 +15,7 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { spawnCookie, updateCookies, checkSlice } from './cookie'
 import { createCookieParticles, updateParticles } from './particles'
-import { drawBackground, drawSlices, drawCookies, drawParticles, drawUI } from './renderer'
+import { drawBackground, drawSlices, drawCookies, drawParticles, drawUI, drawShockwaves, drawScorePopups, drawLevelTransition } from './renderer'
 import { setupInputListeners, InputState } from './input'
 import { createInitialState, GameState, updateHTMLPowerupBar, handleCookieSlice } from './gameState'
 import { getLevelConfig, LEVELS } from './levels'
@@ -56,38 +56,99 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void, startLevel:
 
   // 游戏主循环
   function loop() {
-    if (!document.getElementById('mainGameCanvas') || state.gameEnded) return
+    if (!document.getElementById('mainGameCanvas')) return
     
-    // 检查游戏结束
-    if (Date.now() - state.gameStartTime > levelConfig.duration) {
-      state.gameEnded = true
-      
-      // 检查是否通关
-      const score = engine.getScore()
-      if (score >= levelConfig.targetScore && currentLevel < LEVELS.length) {
-        // 通关，进入下一关
-        console.log(`[关卡系统] 通关！分数: ${score}, 目标: ${levelConfig.targetScore}`)
-        setTimeout(() => {
-          nextLevel()
-        }, 2000)
-      } else {
-        // 游戏结束
-        engine.endGame()
-        onEnd()
-      }
-      return
+    // 更新过渡动画
+    if (state.transition.active) {
+      updateTransition()
     }
     
-    // 更新逻辑
-    update()
+    // 检查游戏结束
+    const isTimeUp = Date.now() - state.gameStartTime > levelConfig.duration
+    
+    if (!state.gameEnded && !isTimeUp && !state.transition.active) {
+      // 更新逻辑
+      update()
+    }
     
     // 渲染
     draw()
     
+    // 检查游戏结束处理（只有在没有过渡动画时）
+    if (isTimeUp && !state.gameEnded && !state.transition.active) {
+      state.gameEnded = true
+      
+      const score = engine.getScore()
+      if (score >= levelConfig.targetScore && currentLevel < LEVELS.length) {
+        // 通关，开始过渡动画
+        startLevelTransition(currentLevel + 1)
+      } else {
+        setTimeout(() => {
+          engine.endGame()
+          onEnd()
+        }, 1000)
+        return
+      }
+    }
+    
     requestAnimationFrame(loop)
   }
   
-  // 进入下一关
+  // 开始关卡过渡动画
+  function startLevelTransition(nextLevelNum: number) {
+    const nextConfig = getLevelConfig(nextLevelNum)
+    state.transition = {
+      active: true,
+      level: nextLevelNum,
+      name: nextConfig.name,
+      progress: 0,
+      direction: 'out'
+    }
+    audioService.levelUp()
+  }
+  
+  // 更新过渡动画
+  function updateTransition() {
+    const speed = 0.025
+    
+    if (state.transition.direction === 'out') {
+      state.transition.progress += speed
+      if (state.transition.progress >= 1) {
+        state.transition.progress = 1
+        state.transition.direction = 'show'
+        // 切换到下一关
+        switchToNextLevel()
+      }
+    } else if (state.transition.direction === 'show') {
+      state.transition.progress += speed
+      if (state.transition.progress >= 2) {
+        state.transition.direction = 'in'
+      }
+    } else if (state.transition.direction === 'in') {
+      state.transition.progress -= speed
+      if (state.transition.progress <= 0) {
+        state.transition.progress = 0
+        state.transition.active = false
+      }
+    }
+  }
+  
+  // 切换到下一关（在过渡动画中间）
+  function switchToNextLevel() {
+    currentLevel = state.transition.level
+    levelConfig = getLevelConfig(currentLevel)
+    state.gameStartTime = Date.now()
+    state.gameEnded = false
+    state.cookies = []
+    state.combo = 0
+    state.particles = []
+    state.shockwaves = []
+    state.scorePopups = []
+    
+    console.log(`[关卡系统] 进入第 ${currentLevel} 关: ${levelConfig.name}`)
+  }
+  
+  // 进入下一关（备用方法）
   function nextLevel() {
     currentLevel++
     levelConfig = getLevelConfig(currentLevel)
@@ -95,10 +156,12 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void, startLevel:
     state.gameEnded = false
     state.cookies = []
     state.combo = 0
+    state.particles = []
+    state.shockwaves = []
+    state.scorePopups = []
     
     console.log(`[关卡系统] 进入第 ${currentLevel} 关: ${levelConfig.name}`)
     
-    // 初始生成饼干
     state.cookies.push(spawnCookie(levelConfig))
     setTimeout(() => state.cookies.push(spawnCookie(levelConfig)), 500)
   }
@@ -132,6 +195,9 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void, startLevel:
     // 清空画布并绘制背景（带震动效果）
     drawBackground(ctx, state.shakeIntensity)
     
+    // 绘制冲击波
+    drawShockwaves(ctx, state.shockwaves)
+    
     // 绘制切割轨迹
     drawSlices(ctx, state.slices)
     
@@ -141,8 +207,14 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void, startLevel:
     // 绘制粒子
     drawParticles(ctx, state.particles)
     
+    // 绘制分数飘字
+    drawScorePopups(ctx, state.scorePopups)
+    
     // 绘制UI（包含关卡信息）
     drawUI(ctx, engine.getScore(), state.combo, state.gameStartTime, levelConfig)
+    
+    // 绘制关卡过渡动画（在最顶层）
+    drawLevelTransition(ctx, state.transition)
   }
 
   // 启动游戏

@@ -30,6 +30,7 @@ export interface Projectile {
   vx: number
   vy: number
   color: number
+  powerup?: 'color_bomb' | 'clear_row' | 'extra_shot' | 'multishot' | null
 }
 
 export interface Shooter {

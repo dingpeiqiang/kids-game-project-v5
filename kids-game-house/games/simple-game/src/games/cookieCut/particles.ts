@@ -6,65 +6,65 @@ import type { Particle } from './types'
 import { PARTICLE_COLORS } from './config'
 
 /**
- * 创建饼干碎屑粒子（增强版 - 超解压掉渣效果）
- * 包含：大碎片、中碎屑、小粉末、微尘四种类型
+ * 创建饼干碎屑粒子（性能优化版）
+ * 包含：大碎片、中碎屑、小粉末、微尘四种类型，总数量控制在60个以内
  */
 export function createCookieParticles(x: number, y: number): Particle[] {
   const particles: Particle[] = []
   
-  // 1. 大碎片 (6-8个) - 慢速、大尺寸、长生命周期、明显旋转
-  for (let i = 0; i < 7; i++) {
-    const angle = (Math.PI * 2 * i) / 7 + Math.random() * 0.3
+  // 1. 大碎片 (5个) - 显眼的大碎片，慢速、大尺寸、长生命周期
+  for (let i = 0; i < 5; i++) {
+    const angle = (Math.PI * 2 * i) / 5 + Math.random() * 0.3
     const speed = 2 + Math.random() * 3
     particles.push({
-      x: x + (Math.random() - 0.5) * 10,
-      y: y + (Math.random() - 0.5) * 10,
+      x: x + (Math.random() - 0.5) * 12,
+      y: y + (Math.random() - 0.5) * 12,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 4, // 更强的向上抛起
+      vy: Math.sin(angle) * speed - 4,
       life: 1,
       color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      size: 10 + Math.random() * 8, // 更大的碎片
+      size: 12 + Math.random() * 8,
       rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.25 // 更快的旋转
+      rotSpeed: (Math.random() - 0.5) * 0.2
     })
   }
   
-  // 2. 中等碎屑 (15-18个) - 中速、中等尺寸、自然散落
-  for (let i = 0; i < 16; i++) {
+  // 2. 中等碎屑 (12个) - 中速、中等尺寸
+  for (let i = 0; i < 12; i++) {
     const angle = Math.random() * Math.PI * 2
     const speed = 4 + Math.random() * 5
     particles.push({
-      x: x + (Math.random() - 0.5) * 15,
-      y: y + (Math.random() - 0.5) * 15,
+      x: x + (Math.random() - 0.5) * 18,
+      y: y + (Math.random() - 0.5) * 18,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 2,
       life: 1,
       color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      size: 5 + Math.random() * 4,
+      size: 4 + Math.random() * 3,
       rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.35
+      rotSpeed: (Math.random() - 0.5) * 0.3
     })
   }
   
-  // 3. 小粉末 (25-30个) - 快速、小尺寸、像沙尘一样散开
-  for (let i = 0; i < 28; i++) {
+  // 3. 小粉末 (20个) - 快速、小尺寸
+  for (let i = 0; i < 20; i++) {
     const angle = Math.random() * Math.PI * 2
-    const speed = 6 + Math.random() * 10
+    const speed = 6 + Math.random() * 9
     particles.push({
-      x: x + (Math.random() - 0.5) * 20,
-      y: y + (Math.random() - 0.5) * 20,
+      x: x + (Math.random() - 0.5) * 22,
+      y: y + (Math.random() - 0.5) * 22,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 1,
       life: 1,
       color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      size: 2 + Math.random() * 2,
+      size: 1.5 + Math.random() * 2,
       rotation: 0,
       rotSpeed: 0
     })
   }
   
-  // 4. 微尘/面包屑 (30-40个) - 超快、极小、短命、像烟雾一样飘散
-  for (let i = 0; i < 35; i++) {
+  // 4. 微尘/面包屑 (15个) - 超快、极小
+  for (let i = 0; i < 15; i++) {
     const angle = Math.random() * Math.PI * 2
     const speed = 10 + Math.random() * 12
     particles.push({
@@ -74,7 +74,7 @@ export function createCookieParticles(x: number, y: number): Particle[] {
       vy: Math.sin(angle) * speed - 0.5,
       life: 1,
       color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      size: 1 + Math.random() * 1.5, // 极小的微尘
+      size: 0.8 + Math.random() * 1.2,
       rotation: 0,
       rotSpeed: 0
     })

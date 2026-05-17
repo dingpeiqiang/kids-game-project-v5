@@ -25,10 +25,14 @@ export class Block {
     
     const geometry = this.createGeometry(shape, blockWidth)
     
-    const material = new THREE.MeshBasicMaterial({
+    const material = new THREE.MeshStandardMaterial({
       color: this.originalColor,
+      roughness: 0.35,
+      metalness: 0.6,
+      emissive: this.originalColor,
+      emissiveIntensity: 0.1,
       transparent: true,
-      opacity: 0.95
+      opacity: 0.98
     })
     
     this.mesh = new THREE.Mesh(geometry, material)

@@ -2,7 +2,7 @@
  * 切饼干游戏 - 游戏状态管理
  */
 
-import type { Cookie, Particle, Slice } from './types'
+import type { Cookie, Particle, Slice, Shockwave, ScorePopup, LevelTransition } from './types'
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
 import { app } from '../../App'
@@ -13,12 +13,15 @@ export interface GameState {
   cookies: Cookie[]
   particles: Particle[]
   slices: Slice[]
+  shockwaves: Shockwave[]
+  scorePopups: ScorePopup[]
   combo: number
   lastSpawn: number
   gameStartTime: number
   gameEnded: boolean
   inventory: string[]
   shakeIntensity: number // 屏幕震动强度
+  transition: LevelTransition // 关卡过渡动画状态
 }
 
 /**
@@ -29,12 +32,21 @@ export function createInitialState(): GameState {
     cookies: [],
     particles: [],
     slices: [],
+    shockwaves: [],
+    scorePopups: [],
     combo: 0,
     lastSpawn: 0,
     gameStartTime: Date.now(),
     gameEnded: false,
     inventory: [],
-    shakeIntensity: 0
+    shakeIntensity: 0,
+    transition: {
+      active: false,
+      level: 1,
+      name: '',
+      progress: 0,
+      direction: 'in'
+    }
   }
 }
 
@@ -112,7 +124,8 @@ export function handleCookieSlice(
   createParticles: (x: number, y: number) => Particle[]
 ): void {
   state.combo++
-  engine.addScore(15 * state.combo, cookieX, cookieY)
+  const score = 15 * state.combo
+  engine.addScore(score, cookieX, cookieY)
   
   // 播放切割音效（根据连击数）
   if (state.combo >= 3) {
@@ -122,22 +135,36 @@ export function handleCookieSlice(
   }
   
   // 屏幕震动（连击越高，震动越强）
-  state.shakeIntensity = Math.min(10, 3 + state.combo * 0.8)
+  state.shakeIntensity = Math.min(15, 4 + state.combo * 1)
+  
+  // 添加冲击波效果
+  state.shockwaves.push({
+    x: cookieX,
+    y: cookieY,
+    radius: 0,
+    maxRadius: 80 + state.combo * 15,
+    life: 1,
+    color: state.combo >= 5 ? '#FF6B6B' : state.combo >= 3 ? '#FFD700' : '#FFA500'
+  })
+  
+  // 添加分数飘字
+  state.scorePopups.push({
+    x: cookieX,
+    y: cookieY,
+    score,
+    life: 1,
+    combo: state.combo
+  })
   
   // 生成饼干碎屑粒子（爆炸效果）
   const newParticles = createParticles(cookieX, cookieY)
   state.particles.push(...newParticles)
   
-  // 添加持续掉落的碎屑（掉渣效果 - 像雪花粉末一样飘落到底部）
+  // 添加持续掉落的碎屑（掉渣效果）
   setTimeout(() => {
-    const fallingCrumbs = createFallingCrumbs(cookieX, cookieY, 20) // 增加到20个
+    const fallingCrumbs = createFallingCrumbs(cookieX, cookieY, 10)
     state.particles.push(...fallingCrumbs)
-  }, 100)
-  
-  setTimeout(() => {
-    const moreCrumbs = createFallingCrumbs(cookieX, cookieY + 20, 15) // 增加到15个
-    state.particles.push(...moreCrumbs)
-  }, 250)
+  }, 80)
   
   // 连击奖励
   if (state.combo >= 3) {

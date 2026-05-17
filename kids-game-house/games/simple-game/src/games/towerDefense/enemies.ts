@@ -1,5 +1,5 @@
 import type { Enemy, EnemyType, WaveConfig } from './types'
-import { PATH_POINTS, INFINITE_WAVE_CONFIG } from './config'
+import { PATH_POINTS, INFINITE_WAVE_CONFIG, LEVEL_CONFIGS, type LevelConfig } from './config'
 
 export function getWaveConfig(wave: number): WaveConfig {
   const enemyCount = Math.min(
@@ -13,6 +13,81 @@ export function getWaveConfig(wave: number): WaveConfig {
   )
 
   return { count: Math.floor(enemyCount), hpMul, spdMul }
+}
+
+export function getEnemyTypeByLevel(levelConfig: LevelConfig): EnemyType {
+  if (Math.random() < levelConfig.eliteEnemyChance) {
+    return 'elite'
+  }
+  if (Math.random() < levelConfig.specialEnemyChance) {
+    return Math.random() < 0.5 ? 'fast' : 'tank'
+  }
+  return 'normal'
+}
+
+export function createEnemyByLevel(levelConfig: LevelConfig, enemiesToSpawn: number): Enemy | null {
+  const isBoss = levelConfig.hasBoss && enemiesToSpawn === 1
+  const enemyType = isBoss ? 'normal' : getEnemyTypeByLevel(levelConfig)
+
+  let hpBase = INFINITE_WAVE_CONFIG.baseHp
+  let speedBase = INFINITE_WAVE_CONFIG.baseSpeed + Math.random() * 0.15
+  let rewardBase = 8 + levelConfig.level * 0.8
+  let size = 10
+  let color = `hsl(${levelConfig.level * 35 + Math.random() * 60}, 70%, 55%)`
+
+  switch (enemyType) {
+    case 'fast':
+      speedBase *= 1.6
+      hpBase *= 0.7
+      rewardBase *= 1.3
+      color = '#00E5FF'
+      break
+    case 'tank':
+      speedBase *= 0.6
+      hpBase *= 2.0
+      rewardBase *= 1.5
+      size = 13
+      color = '#9C27B0'
+      break
+    case 'elite':
+      speedBase *= 1.2
+      hpBase *= 1.8
+      rewardBase *= 2.5
+      size = 12
+      color = '#FFD700'
+      break
+  }
+
+  if (isBoss) {
+    hpBase = 45 * levelConfig.hpMultiplier
+    speedBase = INFINITE_WAVE_CONFIG.baseSpeed * 0.9 * levelConfig.speedMultiplier
+    rewardBase = 35 + levelConfig.level * 3
+    size = 18
+    color = '#FF4757'
+  } else {
+    hpBase *= levelConfig.hpMultiplier
+    speedBase *= levelConfig.speedMultiplier
+  }
+
+  const pathPixels = PATH_POINTS.map(p => ({
+    x: p.gx * 40 + 40 / 2,
+    y: p.gy * 40 + 60 + 40 / 2
+  }))
+
+  return {
+    x: pathPixels[0].x - 20,
+    y: pathPixels[0].y,
+    hp: hpBase,
+    maxHp: hpBase,
+    speed: speedBase,
+    pathIdx: 0,
+    pathProgress: 0,
+    slowTimer: 0,
+    reward: Math.floor(rewardBase),
+    color,
+    size,
+    isBoss,
+  }
 }
 
 export function getEnemyType(waveNum: number): EnemyType {

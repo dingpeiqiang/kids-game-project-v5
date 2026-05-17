@@ -8,7 +8,7 @@ export const STACK_COLORS = [
 export const GAME_CONFIG = {
   blockSize: { width: 1.5, height: 0.5, depth: 1.5 },
   fallHeight: 2,
-  moveSpeed: 0.022,
+  moveSpeed: 0.015,
   perfectThreshold: 0.2,
   validThreshold: 2.8,
   perfectScore: 35,

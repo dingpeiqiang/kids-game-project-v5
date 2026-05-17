@@ -1,0 +1,1 @@
+export { initMatch3 } from './Match3Game'

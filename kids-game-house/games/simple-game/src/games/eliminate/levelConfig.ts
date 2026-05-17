@@ -18,11 +18,11 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     level: 1,
     name: '新手入门',
     targetScore: 2000,
-    targetStars: 10, // 提高目标
-    timeLimit: 45000, // 45秒
-    colorCount: 3, // 3种颜色，非常容易匹配
-    itemSpawnRate: 0.08, // 降低道具生成率
-    starSpawnRate: 0.05, // 降低星星生成率
+    targetStars: 10,
+    timeLimit: 45000,
+    colorCount: 3,
+    itemSpawnRate: 0.03, // 降低道具生成率
+    starSpawnRate: 0.05,
     minComboForBonus: 6,
     description: '消除方块收集10颗星星！'
   },
@@ -31,9 +31,9 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     name: '初露锋芒',
     targetScore: 3500,
     targetStars: 13,
-    timeLimit: 40000, // 减少时间
+    timeLimit: 40000,
     colorCount: 4,
-    itemSpawnRate: 0.06,
+    itemSpawnRate: 0.025,
     starSpawnRate: 0.045,
     minComboForBonus: 6,
     description: '收集13颗星星，时间更紧了！'
@@ -43,9 +43,9 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     name: '渐入佳境',
     targetScore: 5500,
     targetStars: 16,
-    timeLimit: 38000, // 38秒
-    colorCount: 4, // 保持4种颜色
-    itemSpawnRate: 0.05,
+    timeLimit: 38000,
+    colorCount: 4,
+    itemSpawnRate: 0.02,
     starSpawnRate: 0.04,
     minComboForBonus: 7,
     description: '颜色变多了，收集16颗星星！'
@@ -55,9 +55,9 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     name: '小试牛刀',
     targetScore: 8000,
     targetStars: 20,
-    timeLimit: 35000, // 35秒
-    colorCount: 5, // 增加到5种颜色
-    itemSpawnRate: 0.04,
+    timeLimit: 35000,
+    colorCount: 5,
+    itemSpawnRate: 0.018,
     starSpawnRate: 0.035,
     minComboForBonus: 7,
     description: '继续保持连击，收集20颗星星！'
@@ -67,9 +67,9 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     name: '游刃有余',
     targetScore: 11500,
     targetStars: 25,
-    timeLimit: 32000, // 32秒
+    timeLimit: 32000,
     colorCount: 5,
-    itemSpawnRate: 0.04,
+    itemSpawnRate: 0.015,
     starSpawnRate: 0.03,
     minComboForBonus: 7,
     description: '一半的征程，收集25颗星星！'
@@ -79,9 +79,9 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     name: '高手进阶',
     targetScore: 16000,
     targetStars: 30,
-    timeLimit: 30000, // 30秒
+    timeLimit: 30000,
     colorCount: 5,
-    itemSpawnRate: 0.03,
+    itemSpawnRate: 0.012,
     starSpawnRate: 0.025,
     minComboForBonus: 8,
     description: '挑战升级，收集30颗星星！'
@@ -91,9 +91,9 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     name: '炉火纯青',
     targetScore: 22000,
     targetStars: 35,
-    timeLimit: 28000, // 28秒
-    colorCount: 6, // 增加到6种颜色（全部）
-    itemSpawnRate: 0.02,
+    timeLimit: 28000,
+    colorCount: 6,
+    itemSpawnRate: 0.01,
     starSpawnRate: 0.02,
     minComboForBonus: 8,
     description: '所有颜色都出现了，收集35颗星星！'
@@ -103,9 +103,9 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     name: '登峰造极',
     targetScore: 30000,
     targetStars: 42,
-    timeLimit: 25000, // 25秒
+    timeLimit: 25000,
     colorCount: 6,
-    itemSpawnRate: 0.02,
+    itemSpawnRate: 0.008,
     starSpawnRate: 0.015,
     minComboForBonus: 9,
     description: '高手的对决，收集42颗星星！'
@@ -115,9 +115,9 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     name: '超凡脱俗',
     targetScore: 42000,
     targetStars: 50,
-    timeLimit: 22000, // 22秒
+    timeLimit: 22000,
     colorCount: 6,
-    itemSpawnRate: 0.01,
+    itemSpawnRate: 0.005,
     starSpawnRate: 0.01,
     minComboForBonus: 10,
     description: '接近巅峰，收集50颗星星！'
@@ -126,11 +126,11 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
     level: 10,
     name: '至尊王者',
     targetScore: 60000,
-    targetStars: 60, // 极高难度
-    timeLimit: 20000, // 20秒（极具挑战性）
+    targetStars: 60,
+    timeLimit: 20000,
     colorCount: 6,
-    itemSpawnRate: 0.01, // 极低道具率
-    starSpawnRate: 0.008, // 极低星星生成率，极具挑战性
+    itemSpawnRate: 0.003,
+    starSpawnRate: 0.008,
     minComboForBonus: 12,
     description: '最终挑战，收集60颗星星证明实力！'
   }

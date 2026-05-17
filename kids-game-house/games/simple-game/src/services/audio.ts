@@ -125,18 +125,44 @@ export class AudioService {
   }
   
   slice = () => {
-    // 切割音：清脆的撕裂声
-    this.playTone(1200, 0.06, 'sawtooth', 0.1)
-    setTimeout(() => this.playTone(1500, 0.05, 'sawtooth', 0.08), 30)
-    this.playNoise(0.04, 0.08)
+    // 切割音：超级清脆的撕裂声，带有多层次音效
+    this.playTone(1300, 0.05, 'sawtooth', 0.12)
+    setTimeout(() => this.playTone(1600, 0.04, 'sawtooth', 0.09), 25)
+    setTimeout(() => this.playTone(1800, 0.03, 'triangle', 0.07), 50)
+    this.playNoise(0.05, 0.1)
+    
+    // 添加低沉的共鸣声，增强切割的冲击力
+    setTimeout(() => this.playTone(200, 0.08, 'sine', 0.06), 10)
   }
   
   sliceCombo = (combo: number) => {
-    // 连击切割音：音调随连击数升高
-    const baseFreq = 1000 + (combo * 100)
-    this.playTone(baseFreq, 0.08, 'sawtooth', 0.12)
-    setTimeout(() => this.playTone(baseFreq + 300, 0.06, 'triangle', 0.1), 40)
-    this.playNoise(0.05, 0.1)
+    // 连击切割音：音调随连击数升高，更加华丽
+    const baseFreq = 1100 + (combo * 120)
+    const highFreq = baseFreq + 400
+    
+    // 主音调
+    this.playTone(baseFreq, 0.07, 'sawtooth', 0.14)
+    setTimeout(() => this.playTone(highFreq, 0.05, 'triangle', 0.11), 35)
+    setTimeout(() => this.playTone(highFreq + 200, 0.04, 'sine', 0.09), 65)
+    
+    // 噪音层增强
+    this.playNoise(0.06, 0.12)
+    
+    // 根据连击数添加额外音效
+    if (combo >= 5) {
+      // 5连击以上添加华丽的上升音阶
+      const notes = [523, 659, 784, 1047]
+      notes.forEach((freq, i) => {
+        setTimeout(() => this.playTone(freq, 0.1, 'sine', 0.08 - i * 0.015), 80 + i * 50)
+      })
+    } else if (combo >= 3) {
+      // 3连击以上添加双音效果
+      setTimeout(() => this.playTone(523, 0.08, 'triangle', 0.06), 80)
+      setTimeout(() => this.playTone(659, 0.1, 'triangle', 0.07), 130)
+    }
+    
+    // 低沉共鸣
+    setTimeout(() => this.playTone(180, 0.1, 'sine', 0.08), 10)
   }
   pop = () => {
     this.playTone(1400, 0.08, 'sine', 0.1)

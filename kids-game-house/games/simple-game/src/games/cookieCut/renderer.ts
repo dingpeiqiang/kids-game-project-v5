@@ -2,32 +2,160 @@
  * 切饼干游戏 - 渲染逻辑
  */
 
-import type { Cookie, Particle, Slice, LevelConfig } from './types'
+import type { Cookie, Particle, Slice, LevelConfig, Shockwave, ScorePopup, LevelTransition } from './types'
 import { GAME_CONFIG } from './config'
 
 /**
- * 绘制切割轨迹
+ * 绘制切割轨迹（增强版 - 带发光和粒子效果）
  */
 export function drawSlices(ctx: CanvasRenderingContext2D, slices: Slice[]): void {
   slices.forEach((s, i) => {
-    s.life -= 0.05
+    s.life -= 0.03 // 减慢衰减，让轨迹更持久
     if (s.life <= 0) {
       slices.splice(i, 1)
       return
     }
     
+    const alpha = s.life
+    
+    // 1. 外层光晕 - 大而柔和的发光效果
+    ctx.save()
+    ctx.shadowColor = `rgba(255, 180, 50, ${alpha * 0.8})`
+    ctx.shadowBlur = 30 * alpha
     ctx.lineCap = 'round'
-    ctx.lineWidth = 16 * s.life
-    ctx.strokeStyle = `rgba(255, 200, 100, ${s.life * 0.6})`
+    ctx.lineWidth = 28 * alpha
+    ctx.strokeStyle = `rgba(255, 150, 50, ${alpha * 0.4})`
+    ctx.beginPath()
+    ctx.moveTo(s.x1, s.y1)
+    ctx.lineTo(s.x2, s.y2)
+    ctx.stroke()
+    ctx.restore()
+    
+    // 2. 中层渐变 - 橙红色过渡
+    const gradient = ctx.createLinearGradient(s.x1, s.y1, s.x2, s.y2)
+    gradient.addColorStop(0, `rgba(255, 200, 100, ${alpha})`)
+    gradient.addColorStop(0.5, `rgba(255, 120, 50, ${alpha})`)
+    gradient.addColorStop(1, `rgba(200, 80, 30, ${alpha * 0.8})`)
+    
+    ctx.lineCap = 'round'
+    ctx.lineWidth = 14 * alpha
+    ctx.strokeStyle = gradient
     ctx.beginPath()
     ctx.moveTo(s.x1, s.y1)
     ctx.lineTo(s.x2, s.y2)
     ctx.stroke()
     
-    ctx.lineWidth = 4 * s.life
-    ctx.strokeStyle = `rgba(255, 255, 255, ${s.life})`
+    // 3. 内层高亮 - 白色核心
+    ctx.save()
+    ctx.shadowColor = `rgba(255, 255, 255, ${alpha})`
+    ctx.shadowBlur = 15 * alpha
+    ctx.lineWidth = 4 * alpha
+    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`
     ctx.stroke()
+    ctx.restore()
+    
+    // 4. 绘制切割轨迹两端的光点
+    const endGlow = (x: number, y: number) => {
+      const glowRadius = 8 * alpha
+      ctx.save()
+      ctx.shadowColor = `rgba(255, 220, 150, ${alpha})`
+      ctx.shadowBlur = 15 * alpha
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
+      ctx.beginPath()
+      ctx.arc(x, y, glowRadius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
+    
+    endGlow(s.x1, s.y1)
+    endGlow(s.x2, s.y2)
   })
+}
+
+/**
+ * 绘制冲击波效果
+ */
+export function drawShockwaves(ctx: CanvasRenderingContext2D, shockwaves: Shockwave[]): void {
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    const s = shockwaves[i]
+    
+    s.radius += 8
+    s.life -= 0.05
+    
+    if (s.life <= 0 || s.radius >= s.maxRadius) {
+      shockwaves.splice(i, 1)
+      continue
+    }
+    
+    const alpha = s.life * (1 - s.radius / s.maxRadius)
+    
+    ctx.save()
+    ctx.strokeStyle = s.color
+    ctx.globalAlpha = alpha
+    ctx.lineWidth = 3
+    ctx.shadowColor = s.color
+    ctx.shadowBlur = 15
+    
+    ctx.beginPath()
+    ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2)
+    ctx.stroke()
+    
+    // 内层光环
+    ctx.lineWidth = 1
+    ctx.globalAlpha = alpha * 0.6
+    ctx.beginPath()
+    ctx.arc(s.x, s.y, s.radius * 0.7, 0, Math.PI * 2)
+    ctx.stroke()
+    
+    ctx.restore()
+  }
+}
+
+/**
+ * 绘制分数飘字
+ */
+export function drawScorePopups(ctx: CanvasRenderingContext2D, popups: ScorePopup[]): void {
+  for (let i = popups.length - 1; i >= 0; i--) {
+    const p = popups[i]
+    
+    p.y -= 2
+    p.life -= 0.025
+    
+    if (p.life <= 0) {
+      popups.splice(i, 1)
+      continue
+    }
+    
+    const alpha = p.life
+    const scale = 1 + (1 - p.life) * 0.5
+    
+    ctx.save()
+    ctx.globalAlpha = alpha
+    ctx.translate(p.x, p.y)
+    ctx.scale(scale, scale)
+    
+    // 文字阴影
+    ctx.shadowColor = p.combo >= 5 ? '#FF0000' : p.combo >= 3 ? '#FFD700' : '#FFFFFF'
+    ctx.shadowBlur = 10
+    
+    // 分数文字
+    ctx.fillStyle = p.combo >= 5 ? '#FF6B6B' : p.combo >= 3 ? '#FFD700' : '#FFFFFF'
+    ctx.font = 'bold 24px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    
+    const text = `+${p.score}`
+    ctx.fillText(text, 0, 0)
+    
+    // 连击标记
+    if (p.combo >= 2) {
+      ctx.font = 'bold 14px sans-serif'
+      ctx.fillStyle = '#FF9F43'
+      ctx.fillText(`${p.combo}x`, 25, -5)
+    }
+    
+    ctx.restore()
+  }
 }
 
 /**
@@ -143,11 +271,55 @@ export function drawUI(
   ctx.textAlign = 'center'
   ctx.fillText(String(score), W / 2, 55)
   
-  // 连击
+  // 连击（增强版）
   if (combo >= 2) {
-    ctx.fillStyle = '#FF9F43'
-    ctx.font = 'bold 28px sans-serif'
-    ctx.fillText(`${combo} 连击!`, W / 2, 100)
+    ctx.save()
+    
+    // 根据连击数选择颜色
+    let comboColor: string
+    let glowColor: string
+    if (combo >= 10) {
+      comboColor = '#FF0000'
+      glowColor = 'rgba(255, 0, 0, 0.8)'
+    } else if (combo >= 7) {
+      comboColor = '#FF6B6B'
+      glowColor = 'rgba(255, 107, 107, 0.7)'
+    } else if (combo >= 5) {
+      comboColor = '#FFD700'
+      glowColor = 'rgba(255, 215, 0, 0.7)'
+    } else if (combo >= 3) {
+      comboColor = '#FF9F43'
+      glowColor = 'rgba(255, 159, 67, 0.6)'
+    } else {
+      comboColor = '#FFB84D'
+      glowColor = 'rgba(255, 184, 77, 0.5)'
+    }
+    
+    // 添加发光效果
+    ctx.shadowColor = glowColor
+    ctx.shadowBlur = 20 + combo * 2
+    
+    // 绘制连击数字
+    const comboScale = 1 + (combo >= 5 ? 0.3 : combo >= 3 ? 0.2 : 0.1)
+    ctx.font = `bold ${28 * comboScale}px sans-serif`
+    ctx.fillStyle = comboColor
+    ctx.fillText(`${combo}`, W / 2 - 30, 100)
+    
+    // 绘制"连击!"文字
+    ctx.font = 'bold 20px sans-serif'
+    ctx.fillStyle = '#FFFFFF'
+    ctx.shadowBlur = 15
+    ctx.fillText('连击!', W / 2 + 15, 100)
+    
+    // 连击超过5时添加额外装饰
+    if (combo >= 5) {
+      ctx.font = 'bold 16px sans-serif'
+      ctx.fillStyle = '#FFD700'
+      ctx.fillText('🔥', W / 2 - 55, 100)
+      ctx.fillText('🔥', W / 2 + 45, 100)
+    }
+    
+    ctx.restore()
   }
 
   // 时间（右上角）
@@ -231,4 +403,83 @@ export function drawBackground(ctx: CanvasRenderingContext2D, shakeIntensity: nu
   if (shakeIntensity > 0) {
     ctx.restore()
   }
+}
+
+/**
+ * 绘制关卡过渡动画
+ */
+export function drawLevelTransition(ctx: CanvasRenderingContext2D, transition: LevelTransition): void {
+  const W = GAME_CONFIG.canvasWidth
+  const H = GAME_CONFIG.canvasHeight
+  
+  if (!transition.active) return
+  
+  let alpha = 0
+  let scale = 1
+  let offsetY = 0
+  
+  if (transition.direction === 'out') {
+    // 淡出效果
+    alpha = transition.progress
+    scale = 1 - transition.progress * 0.1
+    offsetY = -transition.progress * 20
+  } else if (transition.direction === 'show') {
+    // 显示关卡信息
+    const showProgress = transition.progress - 1
+    if (showProgress < 0.3) {
+      alpha = showProgress / 0.3
+      scale = 0.8 + alpha * 0.2
+      offsetY = -20 + alpha * 20
+    } else if (showProgress > 0.7) {
+      alpha = 1 - (showProgress - 0.7) / 0.3
+      scale = 1 - (showProgress - 0.7) * 0.2
+      offsetY = alpha * 20
+    } else {
+      alpha = 1
+      scale = 1
+      offsetY = 0
+    }
+  } else if (transition.direction === 'in') {
+    // 淡入效果
+    alpha = 1 - transition.progress
+    scale = 0.9 + transition.progress * 0.1
+    offsetY = transition.progress * 20
+  }
+  
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.translate(W / 2, H / 2 + offsetY)
+  ctx.scale(scale, scale)
+  
+  // 绘制背景遮罩
+  const bgAlpha = transition.direction === 'show' ? 0.9 : 0.7
+  ctx.fillStyle = `rgba(20, 15, 10, ${bgAlpha})`
+  ctx.fillRect(-W / 2, -H / 2, W, H)
+  
+  // 添加装饰性边框
+  ctx.strokeStyle = '#FFD700'
+  ctx.lineWidth = 4
+  ctx.shadowColor = '#FFD700'
+  ctx.shadowBlur = 20
+  ctx.strokeRect(-W / 2 + 20, -H / 2 + 60, W - 40, 160)
+  
+  // 绘制关卡编号
+  ctx.font = 'bold 72px sans-serif'
+  ctx.fillStyle = '#FFD700'
+  ctx.textAlign = 'center'
+  ctx.shadowBlur = 30
+  ctx.fillText(`第 ${transition.level} 关`, 0, -25)
+  
+  // 绘制关卡名称
+  ctx.font = 'bold 28px sans-serif'
+  ctx.fillStyle = '#FFFFFF'
+  ctx.shadowBlur = 15
+  ctx.fillText(transition.name, 0, 25)
+  
+  // 绘制装饰图案
+  ctx.font = '36px sans-serif'
+  ctx.fillText('🍪', -120, 0)
+  ctx.fillText('✨', 120, 0)
+  
+  ctx.restore()
 }

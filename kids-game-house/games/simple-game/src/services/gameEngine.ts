@@ -8,6 +8,7 @@ type CritCallback = () => void
 type BuffCallback = (buff: Buff) => void
 type ComboCallback = (combo: number) => void
 type ComboBreakCallback = () => void
+type MessageCallback = (message: string) => void
 
 export class GameEngine {
   private state: GameState = {
@@ -26,6 +27,7 @@ export class GameEngine {
   private onBuffPopup?: BuffCallback
   private onComboShow?: ComboCallback
   private onComboBreak?: ComboBreakCallback
+  private onMessage?: MessageCallback
 
   setCallbacks(cb: {
     onScoreFly?: ScoreCallback
@@ -33,12 +35,14 @@ export class GameEngine {
     onBuffPopup?: BuffCallback
     onComboShow?: ComboCallback
     onComboBreak?: ComboBreakCallback
+    onMessage?: MessageCallback
   }) {
     this.onScoreFly = cb.onScoreFly
     this.onCritFlash = cb.onCritFlash
     this.onBuffPopup = cb.onBuffPopup
     this.onComboShow = cb.onComboShow
     this.onComboBreak = cb.onComboBreak
+    this.onMessage = cb.onMessage
   }
 
   start() {
@@ -173,6 +177,10 @@ export class GameEngine {
 
   endGame() {
     this.state.running = false
+  }
+
+  setMessage(message: string) {
+    this.onMessage?.(message)
   }
 
   isRunning() {

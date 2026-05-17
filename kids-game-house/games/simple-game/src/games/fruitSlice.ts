@@ -17,18 +17,20 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   }
   ctx.imageSmoothingEnabled = false
 
-  const FRUITS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍑', '🍒', '🥝']
+  const FRUITS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍑', '🍒', '🥝', '🍉', '🍌', '🥭', '🍍']
   const fruits: any[] = []
   const particles: any[] = []
   const slices: any[] = []
+  const sliceEffects: any[] = [] // 切割特效
   let combo = 0
-  let lastSpawn = Date.now() // 初始化为当前时间
+  let lastSpawn = Date.now()
   let gameStartTime = Date.now()
   const GAME_DURATION = 60000
   let gameEnded = false
   let missedCount = 0
   let isSlicing = false
   let lastX = 0, lastY = 0
+  let scorePopups: any[] = [] // 分数弹出效果
   
   // ====== 道具系统 ======
   let inventory: string[] = [] // 道具库存
@@ -130,96 +132,175 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   }
 
   function spawnFruit() {
-    const size = 55
-    // 从底部随机位置抛出
-    const x = 60 + Math.random() * (W - 120)
+    const size = 50 + Math.random() * 15
+    const x = 50 + Math.random() * (W - 100)
     
-    // 向上抛物线（极慢速度，超级轻松）
-    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.2 // 几乎完全垂直
-    const speed = 5 + Math.random() * 1.5 // 极低初速度
+    // 向上抛物线（适度速度，更容易切割）
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.4
+    const speed = 7 + Math.random() * 3
     
     fruits.push({
       x,
-      y: H + size, // 从屏幕底部开始
+      y: H + size,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      gravity: 0.04, // 极低重力，像羽毛一样飘
+      gravity: 0.06,
       size,
       rotation: 0,
-      rotSpeed: (Math.random() - 0.5) * 0.05, // 极慢旋转
+      rotSpeed: (Math.random() - 0.5) * 0.1,
       emoji: FRUITS[Math.floor(Math.random() * FRUITS.length)],
-      sliced: false
+      sliced: false,
+      scale: 1,
+      alpha: 1
     })
   }
 
   function draw() {
-    // 背景
-    ctx.fillStyle = '#1a1a2e'
+    // 背景渐变
+    const gradient = ctx.createLinearGradient(0, 0, 0, H)
+    gradient.addColorStop(0, '#1a1a2e')
+    gradient.addColorStop(0.5, '#16213e')
+    gradient.addColorStop(1, '#0f3460')
+    ctx.fillStyle = gradient
     ctx.fillRect(0, 0, W, H)
+
+    // 添加背景装饰线
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)'
+    ctx.lineWidth = 1
+    for (let i = 0; i < H; i += 50) {
+      ctx.beginPath()
+      ctx.moveTo(0, i)
+      ctx.lineTo(W, i)
+      ctx.stroke()
+    }
 
     // 切割轨迹
     slices.forEach((s, i) => {
-      s.life -= 0.06
+      s.life -= 0.04
       if (s.life <= 0) { slices.splice(i, 1); return }
       
       ctx.lineCap = 'round'
-      ctx.lineWidth = 14 * s.life
-      ctx.strokeStyle = `rgba(255,100,100,${s.life * 0.5})`
+      ctx.lineWidth = 18 * s.life
+      ctx.strokeStyle = `rgba(255,100,100,${s.life * 0.6})`
       ctx.beginPath()
       ctx.moveTo(s.x1, s.y1)
       ctx.lineTo(s.x2, s.y2)
       ctx.stroke()
       
-      ctx.lineWidth = 4 * s.life
-      ctx.strokeStyle = `rgba(255,255,255,${s.life})`
+      ctx.lineWidth = 6 * s.life
+      ctx.strokeStyle = `rgba(255,255,255,${s.life * 0.9})`
       ctx.stroke()
+      
+      // 切割轨迹发光效果
+      ctx.shadowColor = `rgba(255,150,150,${s.life})`
+      ctx.shadowBlur = 15 * s.life
+      ctx.lineWidth = 10 * s.life
+      ctx.strokeStyle = `rgba(255,200,200,${s.life * 0.3})`
+      ctx.stroke()
+      ctx.shadowBlur = 0
     })
 
     // 水果
     fruits.forEach(f => {
-      if (f.sliced) return
+      if (f.sliced && f.alpha <= 0) return
       
       ctx.save()
       ctx.translate(f.x, f.y)
       ctx.rotate(f.rotation)
-      ctx.shadowColor = 'rgba(0,0,0,0.4)'
-      ctx.shadowBlur = 8
-      ctx.shadowOffsetY = 4
+      ctx.globalAlpha = f.alpha || 1
+      ctx.scale(f.scale || 1, f.scale || 1)
+      
+      // 水果发光效果
+      ctx.shadowColor = 'rgba(255,200,100,0.5)'
+      ctx.shadowBlur = 12
+      ctx.shadowOffsetY = 2
+      
       ctx.font = `${f.size}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(f.emoji, 0, 0)
+      
       ctx.restore()
     })
 
     // 粒子
     particles.forEach((p, i) => {
-      p.life -= 0.025
+      p.life -= 0.02
       p.x += p.vx
       p.y += p.vy
-      p.vy += 0.3
+      p.vy += 0.25
+      p.vx *= 0.99
       
       if (p.life <= 0) { particles.splice(i, 1); return }
       
       ctx.globalAlpha = p.life
       ctx.fillStyle = p.color
+      ctx.shadowColor = p.color
+      ctx.shadowBlur = 10 * p.life
       ctx.beginPath()
       ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2)
       ctx.fill()
+      ctx.shadowBlur = 0
       ctx.globalAlpha = 1
+    })
+
+    // 切割特效
+    sliceEffects.forEach((e, i) => {
+      e.life -= 0.03
+      if (e.life <= 0) { sliceEffects.splice(i, 1); return }
+      
+      ctx.save()
+      ctx.globalAlpha = e.life
+      ctx.translate(e.x, e.y)
+      ctx.rotate(e.rotation + e.life * Math.PI * 2)
+      
+      const scale = 1 + e.life * 2
+      ctx.font = `${e.size * scale}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(e.emoji, 0, 0)
+      
+      ctx.restore()
+    })
+
+    // 分数弹出
+    scorePopups.forEach((popup, i) => {
+      popup.life -= 0.025
+      popup.y -= 1.5
+      popup.x += (Math.random() - 0.5) * 2
+      
+      if (popup.life <= 0) { scorePopups.splice(i, 1); return }
+      
+      ctx.save()
+      ctx.globalAlpha = popup.life
+      ctx.fillStyle = popup.color
+      ctx.font = `${popup.size}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.shadowColor = popup.color
+      ctx.shadowBlur = 10
+      ctx.fillText(popup.text, popup.x, popup.y)
+      ctx.shadowBlur = 0
+      ctx.restore()
     })
 
     // 分数
     ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 38px sans-serif'
+    ctx.font = 'bold 42px sans-serif'
     ctx.textAlign = 'center'
+    ctx.shadowColor = 'rgba(255,215,0,0.5)'
+    ctx.shadowBlur = 10
     ctx.fillText(String(engine.getScore()), W / 2, 55)
+    ctx.shadowBlur = 0
     
     // 连击
     if (combo >= 2) {
-      ctx.fillStyle = '#FF6B6B'
-      ctx.font = 'bold 26px sans-serif'
-      ctx.fillText(`${combo} 连击!`, W / 2, 100)
+      ctx.fillStyle = combo >= 5 ? '#FFD700' : '#FF6B6B'
+      ctx.font = `bold ${26 + Math.min(combo, 10) * 2}px sans-serif`
+      ctx.shadowColor = combo >= 5 ? 'rgba(255,215,0,0.8)' : 'rgba(255,107,107,0.8)'
+      ctx.shadowBlur = 15
+      const bounce = Math.sin(Date.now() / 100) * 3
+      ctx.fillText(`${combo} 连击!`, W / 2, 100 + bounce)
+      ctx.shadowBlur = 0
     }
 
     // 漏掉
@@ -236,12 +317,12 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     const seconds = Math.ceil(remaining / 1000)
     
     ctx.fillStyle = seconds <= 10 ? '#FF4444' : '#fff'
-    ctx.font = 'bold 24px sans-serif'
+    ctx.font = 'bold 26px sans-serif'
     ctx.textAlign = 'right'
     ctx.fillText(`${seconds}s`, W - 15, 50)
 
     // 提示
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'
     ctx.font = '16px sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText('👆 快速滑动切割水果!', W / 2, H - 25)
@@ -297,11 +378,17 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       }
     }
 
-    // 生成（极低频率，配合极慢速度）
+    // 生成（较高频率，更容易切割）
     const now = Date.now()
-    if (now - lastSpawn > 2200 && fruits.length < 3) { // 增加到2.2秒
+    const spawnInterval = Math.max(800, 1500 - combo * 50) // 连击越高生成越快
+    if (now - lastSpawn > spawnInterval && fruits.length < 5) {
       spawnFruit()
       lastSpawn = now
+      
+      // 随机双水果生成
+      if (Math.random() < 0.3 + combo * 0.02) {
+        setTimeout(spawnFruit, 150)
+      }
     }
   }
 
@@ -323,24 +410,97 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       if (dist < f.size / 2 + 25) {
         f.sliced = true
         combo++
-        engine.addScore(10 * combo, f.x, f.y)
-        audioService.win()
         
-        for (let j = 0; j < 20; j++) {
+        const score = 10 * combo
+        engine.addScore(score, f.x, f.y)
+        
+        // 根据连击数播放不同音效
+        if (combo >= 5) {
+          audioService.crit()
+        } else if (combo >= 3) {
+          audioService.sliceCombo(combo)
+        } else {
+          audioService.slice()
+        }
+        
+        // 增强粒子效果（更多粒子）
+        const particleCount = 30 + combo * 5
+        for (let j = 0; j < particleCount; j++) {
+          const angle = (Math.PI * 2 / particleCount) * j + Math.random() * 0.3
+          const speed = 3 + Math.random() * 8
           particles.push({
             x: f.x,
             y: f.y,
-            vx: (Math.random() - 0.5) * 12,
-            vy: (Math.random() - 0.5) * 12,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
             life: 1,
-            color: ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF9F43'][Math.floor(Math.random() * 5)],
-            size: 5 + Math.random() * 6
+            color: ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF9F43', '#FF69B4', '#9932CC'][Math.floor(Math.random() * 7)],
+            size: 4 + Math.random() * 8
           })
+        }
+        
+        // 添加水果切开特效（两半飞散）
+        sliceEffects.push({
+          x: f.x - f.size * 0.3,
+          y: f.y,
+          emoji: f.emoji,
+          size: f.size * 0.6,
+          rotation: -0.5,
+          life: 0.6,
+          vx: -3,
+          vy: -2
+        })
+        sliceEffects.push({
+          x: f.x + f.size * 0.3,
+          y: f.y,
+          emoji: f.emoji,
+          size: f.size * 0.6,
+          rotation: 0.5,
+          life: 0.6,
+          vx: 3,
+          vy: -2
+        })
+        
+        // 分数弹出效果
+        scorePopups.push({
+          x: f.x,
+          y: f.y,
+          text: `+${score}`,
+          color: combo >= 5 ? '#FFD700' : combo >= 3 ? '#FF6B6B' : '#6BCB77',
+          size: combo >= 5 ? 32 : combo >= 3 ? 28 : 24,
+          life: 1
+        })
+        
+        // 高连击时的特殊效果
+        if (combo >= 5) {
+          // 添加星星特效
+          for (let j = 0; j < 8; j++) {
+            const angle = (Math.PI * 2 / 8) * j
+            sliceEffects.push({
+              x: f.x,
+              y: f.y,
+              emoji: '⭐',
+              size: 25,
+              rotation: 0,
+              life: 0.8,
+              vx: Math.cos(angle) * 4,
+              vy: Math.sin(angle) * 4
+            })
+          }
+          audioService.combo()
+        } else if (combo === 3) {
+          audioService.combo()
         }
         
         if (combo >= 3) engine.triggerRandomBuff()
         
-        fruits.splice(i, 1)
+        // 延迟移除水果，显示淡出效果
+        f.alpha = 0.8
+        f.scale = 1.2
+        setTimeout(() => {
+          const idx = fruits.indexOf(f)
+          if (idx !== -1) fruits.splice(idx, 1)
+        }, 100)
       }
     }
   }

@@ -79,7 +79,10 @@ export class Renderer {
     mouseX: number,
     score: number,
     gameStartTime: number,
-    GAME_DURATION: number
+    GAME_DURATION: number,
+    currentLevel: number = 1,
+    totalLevels: number = 10,
+    currentPowerup: string | null = null
   ) {
     const ctx = this.ctx
     
@@ -125,7 +128,7 @@ export class Renderer {
     this.drawFloatingScores(ctx)
 
     // UI 信息
-    this.drawUI(ctx, score, gameStartTime, GAME_DURATION)
+    this.drawUI(ctx, score, gameStartTime, GAME_DURATION, currentLevel, totalLevels, currentPowerup)
   }
 
   // 绘制星空背景
@@ -155,32 +158,33 @@ export class Renderer {
         const bx = Math.round(pos.bx)
         const by = Math.round(pos.by)
         
+        // 减少光晕效果
         ctx.shadowColor = this.COLORS[color]
-        ctx.shadowBlur = 8
+        ctx.shadowBlur = 3
         
         // 圆形泡泡 - 更立体的渐变
         const grad = ctx.createRadialGradient(
-          bx - 6, by - 6, 0,
+          bx - 8, by - 8, 0,
           bx, by, this.BUBBLE_SIZE / 2
         )
-        grad.addColorStop(0, this.lightenColor(this.COLORS[color], 50))
-        grad.addColorStop(0.5, this.COLORS[color])
-        grad.addColorStop(1, this.darkenColor(this.COLORS[color], 30))
+        grad.addColorStop(0, this.lightenColor(this.COLORS[color], 40))
+        grad.addColorStop(0.6, this.COLORS[color])
+        grad.addColorStop(1, this.darkenColor(this.COLORS[color], 20))
         
         ctx.fillStyle = grad
         ctx.beginPath()
         ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 2, 0, Math.PI * 2)
         ctx.fill()
         
-        // 高光 - 更大更亮（像素对齐）
-        ctx.fillStyle = 'rgba(255,255,255,0.6)'
+        // 高光 - 更小更柔和
+        ctx.fillStyle = 'rgba(255,255,255,0.5)'
         ctx.beginPath()
-        ctx.arc(bx - 6, by - 6, 6, 0, Math.PI * 2)
+        ctx.arc(bx - 5, by - 5, 4, 0, Math.PI * 2)
         ctx.fill()
         
-        // 边缘光晕
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)'
-        ctx.lineWidth = 2
+        // 边缘轮廓（去除光晕）
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+        ctx.lineWidth = 1
         ctx.beginPath()
         ctx.arc(bx, by, this.BUBBLE_SIZE / 2 - 2, 0, Math.PI * 2)
         ctx.stroke()
@@ -223,14 +227,15 @@ export class Renderer {
     const sx = Math.round(shooter.x)
     const sy = Math.round(shooter.y)
     
+    // 减少光晕效果
     ctx.shadowColor = this.COLORS[shooter.color]
-    ctx.shadowBlur = 10
+    ctx.shadowBlur = 4
     
     const sGrad = ctx.createRadialGradient(
       sx - 6, sy - 6, 0,
       sx, sy, 22
     )
-    sGrad.addColorStop(0, this.lightenColor(this.COLORS[shooter.color], 50))
+    sGrad.addColorStop(0, this.lightenColor(this.COLORS[shooter.color], 40))
     sGrad.addColorStop(1, this.COLORS[shooter.color])
     
     ctx.fillStyle = sGrad
@@ -238,9 +243,9 @@ export class Renderer {
     ctx.arc(sx, sy, 22, 0, Math.PI * 2)
     ctx.fill()
     
-    // 发射器边框
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)'
-    ctx.lineWidth = 3
+    // 发射器边框（更细更淡）
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+    ctx.lineWidth = 2
     ctx.beginPath()
     ctx.arc(sx, sy, 22, 0, Math.PI * 2)
     ctx.stroke()
@@ -252,14 +257,15 @@ export class Renderer {
   private drawNextBubblePreview(ctx: CanvasRenderingContext2D, shooter: Shooter) {
     const centerX = Math.round(this.W / 2)
     
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'
-    ctx.font = 'bold 16px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.font = 'bold 14px sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText('下一个:', centerX, this.H - 80)
     
     ctx.fillStyle = this.COLORS[shooter.color]
+    // 减少光晕效果
     ctx.shadowColor = this.COLORS[shooter.color]
-    ctx.shadowBlur = 10
+    ctx.shadowBlur = 3
     ctx.beginPath()
     ctx.arc(centerX, this.H - 55, 18, 0, Math.PI * 2)
     ctx.fill()
@@ -272,14 +278,15 @@ export class Renderer {
     const px = Math.round(projectile.x)
     const py = Math.round(projectile.y)
     
+    // 减少光晕效果
     ctx.shadowColor = this.COLORS[projectile.color]
-    ctx.shadowBlur = 10
+    ctx.shadowBlur = 4
     
     const pGrad = ctx.createRadialGradient(
-      px - 5, py - 5, 0,
+      px - 6, py - 6, 0,
       px, py, this.BUBBLE_SIZE / 2
     )
-    pGrad.addColorStop(0, this.lightenColor(this.COLORS[projectile.color], 50))
+    pGrad.addColorStop(0, this.lightenColor(this.COLORS[projectile.color], 40))
     pGrad.addColorStop(1, this.COLORS[projectile.color])
     
     ctx.fillStyle = pGrad
@@ -287,10 +294,10 @@ export class Renderer {
     ctx.arc(px, py, this.BUBBLE_SIZE / 2, 0, Math.PI * 2)
     ctx.fill()
     
-    // 拖尾效果（像素对齐）
+    // 拖尾效果（更淡）
     ctx.strokeStyle = this.COLORS[projectile.color]
-    ctx.lineWidth = 3
-    ctx.globalAlpha = 0.5
+    ctx.lineWidth = 2
+    ctx.globalAlpha = 0.3
     ctx.beginPath()
     ctx.moveTo(px, py)
     ctx.lineTo(
@@ -313,8 +320,9 @@ export class Renderer {
       
       ctx.globalAlpha = p.life
       ctx.fillStyle = p.color
+      // 减少粒子光晕
       ctx.shadowColor = p.color
-      ctx.shadowBlur = 10
+      ctx.shadowBlur = 2
       ctx.beginPath()
       ctx.arc(px, py, p.size * p.life, 0, Math.PI * 2)
       ctx.fill()
@@ -335,8 +343,9 @@ export class Renderer {
       ctx.fillStyle = f.color
       ctx.font = `bold ${f.size}px sans-serif`
       ctx.textAlign = 'center'
+      // 减少文字光晕
       ctx.shadowColor = f.color
-      ctx.shadowBlur = 10
+      ctx.shadowBlur = 4
       ctx.fillText(f.text, fx, fy)
       ctx.shadowBlur = 0
       ctx.globalAlpha = 1
@@ -344,71 +353,95 @@ export class Renderer {
   }
 
   // 绘制 UI
-  private drawUI(ctx: CanvasRenderingContext2D, score: number, gameStartTime: number, GAME_DURATION: number) {
+  private drawUI(ctx: CanvasRenderingContext2D, score: number, gameStartTime: number, GAME_DURATION: number, currentLevel: number = 1, totalLevels: number = 10, currentPowerup: string | null = null) {
     const TOP_Y = 12
     const PADDING = 12
     
     // 左上角：分数面板
-    const scorePanelW = 100
-    drawPanel(ctx, PADDING, TOP_Y, scorePanelW, 50)
+    const scorePanelW = 90
+    drawPanel(ctx, PADDING, TOP_Y, scorePanelW, 45)
     
     ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 28px sans-serif'
+    ctx.font = 'bold 24px sans-serif'
     ctx.textAlign = 'center'
     ctx.shadowColor = '#FFD700'
-    ctx.shadowBlur = 8
-    ctx.fillText(String(score), PADDING + scorePanelW / 2, TOP_Y + 35)
+    ctx.shadowBlur = 6
+    ctx.fillText(String(score), PADDING + scorePanelW / 2, TOP_Y + 32)
     ctx.shadowBlur = 0
     
     // 标签
     ctx.fillStyle = '#9CA3AF'
-    ctx.font = '10px sans-serif'
+    ctx.font = '9px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('分数', PADDING + scorePanelW / 2, TOP_Y + 16)
+    ctx.fillText('分数', PADDING + scorePanelW / 2, TOP_Y + 14)
     
-    // 中上：连击显示（仅当连击 >= 2 时显示）
-    const combo = this.comboSystem.getCombo()
-    if (combo >= 2) {
-      const comboPanelW = 100
-      const comboPanelX = (this.W - comboPanelW) / 2
-      drawPanel(ctx, comboPanelX, TOP_Y, comboPanelW, 50, 'rgba(255, 107, 107, 0.25)')
-      
-      ctx.fillStyle = '#FF6B6B'
-      ctx.font = 'bold 24px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.shadowColor = '#FF6B6B'
-      ctx.shadowBlur = 8
-      ctx.fillText(`${combo} 连击!`, comboPanelX + comboPanelW / 2, TOP_Y + 35)
-      ctx.shadowBlur = 0
-    }
+    // 中上：关卡显示
+    const levelPanelW = 80
+    const levelPanelX = (this.W - levelPanelW) / 2
+    drawPanel(ctx, levelPanelX, TOP_Y, levelPanelW, 45, 'rgba(99, 102, 241, 0.25)')
+    
+    ctx.fillStyle = '#818CF8'
+    ctx.font = 'bold 22px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.shadowColor = '#818CF8'
+    ctx.shadowBlur = 6
+    ctx.fillText(`${currentLevel}/${totalLevels}`, levelPanelX + levelPanelW / 2, TOP_Y + 32)
+    ctx.shadowBlur = 0
+    
+    // 标签
+    ctx.fillStyle = '#9CA3AF'
+    ctx.font = '9px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('关卡', levelPanelX + levelPanelW / 2, TOP_Y + 14)
 
     // 右上角：时间面板
     const elapsed = Date.now() - gameStartTime
     const remaining = Math.max(0, GAME_DURATION - elapsed)
     const seconds = Math.ceil(remaining / 1000)
     
-    const timePanelW = 80
+    const timePanelW = 70
     const timePanelX = this.W - timePanelW - PADDING
     const isWarning = seconds <= 10
     
     // 根据剩余时间选择面板颜色
     const timePanelColor = isWarning ? 'rgba(255, 68, 68, 0.25)' : 'rgba(15, 25, 45, 0.85)'
-    drawPanel(ctx, timePanelX, TOP_Y, timePanelW, 50, timePanelColor)
+    drawPanel(ctx, timePanelX, TOP_Y, timePanelW, 45, timePanelColor)
     
     const timeText = `${seconds}s`
     ctx.fillStyle = isWarning ? '#FF4444' : '#fff'
-    ctx.font = 'bold 22px sans-serif'
+    ctx.font = 'bold 20px sans-serif'
     ctx.textAlign = 'center'
     ctx.shadowColor = isWarning ? '#FF4444' : '#fff'
-    ctx.shadowBlur = 8
-    ctx.fillText(timeText, timePanelX + timePanelW / 2, TOP_Y + 35)
+    ctx.shadowBlur = 6
+    ctx.fillText(timeText, timePanelX + timePanelW / 2, TOP_Y + 32)
     ctx.shadowBlur = 0
     
     // 标签
     ctx.fillStyle = '#9CA3AF'
-    ctx.font = '10px sans-serif'
+    ctx.font = '9px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('时间', timePanelX + timePanelW / 2, TOP_Y + 16)
+    ctx.fillText('时间', timePanelX + timePanelW / 2, TOP_Y + 14)
+    
+    // 底部：道具状态显示
+    if (currentPowerup) {
+      const powerupPanelW = 60
+      const powerupPanelX = (this.W - powerupPanelW) / 2
+      const powerupPanelY = this.H - 50
+      
+      drawPanel(ctx, powerupPanelX, powerupPanelY, powerupPanelW, 40, 'rgba(251, 191, 36, 0.2)')
+      
+      const powerupIcons: Record<string, string> = {
+        'color_bomb': '💣',
+        'clear_row': '🧹',
+        'extra_shot': '⚡',
+        'multishot': '🔫'
+      }
+      
+      ctx.fillStyle = '#FBBF24'
+      ctx.font = '22px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(powerupIcons[currentPowerup] || '✨', powerupPanelX + powerupPanelW / 2, powerupPanelY + 28)
+    }
   }
 
   // 获取泡泡位置

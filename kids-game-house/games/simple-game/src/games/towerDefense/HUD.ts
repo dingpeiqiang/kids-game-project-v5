@@ -23,7 +23,7 @@ export function drawBackground(ctx: CanvasRenderingContext2D) {
   }
 }
 
-export function drawHUD(ctx: CanvasRenderingContext2D, gold: number, lives: number, wave: number, combo: number, maxCombo: number, specialSkillCharge: number, showSpecialSkillButton: boolean, selectedTowerType: number, highestWave: number) {
+export function drawHUD(ctx: CanvasRenderingContext2D, gold: number, lives: number, level: number, maxLevels: number, levelName: string, combo: number, maxCombo: number, specialSkillCharge: number, showSpecialSkillButton: boolean, selectedTowerType: number, highestLevel: number) {
   ctx.fillStyle = 'rgba(10,10,26,0.92)'
   ctx.fillRect(0, 0, W, HUD_H)
   ctx.strokeStyle = 'rgba(255,255,255,0.08)'
@@ -44,34 +44,34 @@ export function drawHUD(ctx: CanvasRenderingContext2D, gold: number, lives: numb
   ctx.fillStyle = '#ddd'
   ctx.textAlign = 'center'
   ctx.font = 'bold 14px sans-serif'
-  ctx.fillText(`第${wave + 1} 波`, W / 2, 20)
+  ctx.fillText(`关卡 ${level + 1}/${maxLevels}`, W / 2, 20)
 
-  if (highestWave > 0) {
+  ctx.font = '11px sans-serif'
+  ctx.fillStyle = '#00E5FF'
+  ctx.fillText(`${levelName}`, W / 2, 38)
+
+  if (highestLevel > 0) {
     ctx.font = '10px sans-serif'
     ctx.fillStyle = '#FFD700'
-    ctx.fillText(`最高 ${highestWave + 1}`, W / 2, 35)
+    ctx.fillText(`最高 ${highestLevel + 1}`, W / 2, 52)
   }
 
   if (combo >= 2) {
     const comboColor = combo >= 15 ? '#FF4757' : combo >= 10 ? '#FF6B6B' : combo >= 5 ? '#FFA502' : '#FFD700'
     ctx.fillStyle = comboColor
-    ctx.font = `bold ${Math.min(16 + combo, 28)}px sans-serif`
-    ctx.fillText(`${combo} 连击!`, W / 2, 40)
+    ctx.font = `bold ${Math.min(14 + combo, 24)}px sans-serif`
+    ctx.fillText(`${combo}x`, W / 2 - 50, 45)
+    ctx.font = '12px sans-serif'
+    ctx.fillText('连击', W / 2 - 25, 45)
 
-    const barWidth = 120
-    const barHeight = 5
-    const barX = W / 2 - barWidth / 2
-    const barY = 48
+    const barWidth = 80
+    const barHeight = 4
+    const barX = W / 2 - 85
+    const barY = 52
     ctx.fillStyle = 'rgba(255,255,255,0.2)'
     ctx.fillRect(barX, barY, barWidth, barHeight)
     ctx.fillStyle = comboColor
     ctx.fillRect(barX, barY, barWidth * Math.min(combo / 20, 1), barHeight)
-
-    if (maxCombo > 0) {
-      ctx.font = '10px sans-serif'
-      ctx.fillStyle = '#AAA'
-      ctx.fillText(`最高 ${maxCombo}`, W / 2, 62)
-    }
   }
 
   if (showSpecialSkillButton || specialSkillCharge > 0) {
@@ -138,22 +138,40 @@ export function drawHUD(ctx: CanvasRenderingContext2D, gold: number, lives: numb
   })
 }
 
-export function drawGameOver(ctx: CanvasRenderingContext2D, score: number, wave: number, maxCombo: number) {
+export function drawGameOver(ctx: CanvasRenderingContext2D, score: number, level: number, maxCombo: number, isVictory: boolean = false) {
   ctx.fillStyle = 'rgba(0,0,0,0.7)'
   ctx.fillRect(0, H / 2 - 80, W, 160)
+  
+  if (isVictory) {
+    ctx.fillStyle = '#FFD700'
+    ctx.font = 'bold 32px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.shadowColor = '#FFD700'
+    ctx.shadowBlur = 15
+    ctx.fillText('🎉 胜利! 🎉', W / 2, H / 2 - 40)
+    ctx.shadowBlur = 0
+    ctx.fillStyle = '#00E5FF'
+    ctx.font = '18px sans-serif'
+    ctx.fillText('恭喜通关所有关卡!', W / 2, H / 2 - 10)
+  } else {
+    ctx.fillStyle = '#FF6B6B'
+    ctx.font = 'bold 28px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.shadowColor = '#FF6B6B'
+    ctx.shadowBlur = 10
+    ctx.fillText('💀 游戏结束', W / 2, H / 2 - 40)
+    ctx.shadowBlur = 0
+    ctx.fillStyle = '#fff'
+    ctx.font = '18px sans-serif'
+    ctx.fillText('基地被敌人突破了', W / 2, H / 2 - 10)
+  }
+  
   ctx.fillStyle = '#FFD700'
-  ctx.font = 'bold 28px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.shadowColor = '#FFD700'
-  ctx.shadowBlur = 10
-  ctx.fillText('🏆 游戏结束', W / 2, H / 2 - 40)
-  ctx.shadowBlur = 0
+  ctx.fillText(`最终得分 ${score}`, W / 2, H / 2 + 20)
   ctx.fillStyle = '#fff'
-  ctx.font = '18px sans-serif'
-  ctx.fillText(`最终得分 ${score}`, W / 2, H / 2 - 5)
-  ctx.fillText(`到达波次: ${wave + 1}`, W / 2, H / 2 + 20)
-  ctx.fillText(`最高连击 ${maxCombo}x`, W / 2, H / 2 + 45)
+  ctx.fillText(`到达关卡: ${level + 1}`, W / 2, H / 2 + 45)
+  ctx.fillText(`最高连击 ${maxCombo}x`, W / 2, H / 2 + 65)
   ctx.fillStyle = 'rgba(255,255,255,0.6)'
   ctx.font = '14px sans-serif'
-  ctx.fillText('点击重新开始', W / 2, H / 2 + 70)
+  ctx.fillText('点击重新开始', W / 2, H / 2 + 90)
 }

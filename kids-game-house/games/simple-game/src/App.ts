@@ -15,7 +15,7 @@ import { initSort } from './games/sort'
 import { initPop } from './games/pop'
 import { initStack3D } from './games/stack3d'
 import { initFruitSlice } from './games/fruitSlice'
-import { initJewelMatch } from './games/jewelMatch'
+import { initAnimalMatch } from './games/animalMatch'
 import { initBouncePath } from './games/bouncePath'
 import { initNeonRun } from './games/neonRun'
 import { initTetris } from './games/tetris'
@@ -34,6 +34,7 @@ import { initRacingRun } from './games/racingRun'
 import { initRpgShooter } from './games/rpgShooter'
 import { initRpgShooterTD } from './games/rpgShooterTowerDefense/init'
 import { initDragonShooter } from './games/dragonShooter'
+import { initMatch3 } from './games/match3'
 
 class App {
   private currentGame: Game | null = null
@@ -1018,13 +1019,13 @@ class App {
     }
 
     switch (this.currentGame.id) {
-      case 'eliminate': initEliminate(gameEngine, () => this.endGame()); break
+      case 'eliminate': initAnimalMatch(gameEngine, () => this.endGame()); break
       case 'dodge':     initDodge(gameEngine, () => this.endGame()); break
       case 'sort':      initSort(gameEngine, () => this.endGame()); break
       case 'pop':       initPop(gameEngine, () => this.endGame()); break
       case 'stack3d':   initStack3D(gameEngine, () => this.endGame()); break
       case 'fruitSlice': initFruitSlice(gameEngine, () => this.endGame()); break
-      case 'jewelMatch': initJewelMatch(gameEngine, () => this.endGame()); break
+      case 'jewelMatch': initAnimalMatch(gameEngine, () => this.endGame()); break
       case 'bouncePath': initBouncePath(gameEngine, () => this.endGame()); break
       case 'neonRun': initNeonRun(gameEngine, () => this.endGame()); break
       case 'tetris': initTetris(gameEngine, () => this.endGame()); break
@@ -1636,6 +1637,68 @@ class App {
   }
   
   // 更新道具数量显示
+  updatePowerupCount(type: string, count: number) {
+    const el = document.getElementById(`powerup_${type}`)
+    if (el) {
+      el.textContent = count > 0 ? String(count) : ''
+    }
+  }
+
+  // 设置自定义道具栏
+  setupCustomPowerupBar(gameId: string, powerups: Array<{id: string; icon: string; name: string}>, inventory: string[], onUse: (powerupId: string) => void) {
+    const gameCanvas = document.getElementById('gameCanvas')
+    if (!gameCanvas) return
+
+    // 移除旧的道具栏
+    const oldBar = document.getElementById('custom-powerup-bar')
+    if (oldBar) {
+      oldBar.remove()
+    }
+
+    // 创建道具栏容器
+    const bar = document.createElement('div')
+    bar.id = 'custom-powerup-bar'
+    bar.className = 'powerup-bar'
+
+    // 渲染道具按钮
+    powerups.forEach(powerup => {
+      const count = inventory.filter(i => i === powerup.id).length
+      const button = document.createElement('button')
+      button.className = `powerup-btn ${count > 0 ? 'has-powerup' : 'no-powerup'}`
+      button.dataset.powerupId = powerup.id
+      button.title = powerup.name
+      button.innerHTML = `
+        <span class="powerup-icon">${powerup.icon}</span>
+        <span class="powerup-count" id="powerup_${powerup.id}">${count > 0 ? String(count) : ''}</span>
+      `
+      
+      button.addEventListener('click', () => {
+        if (count > 0) {
+          onUse(powerup.id)
+          const newCount = count - 1
+          button.classList.toggle('has-powerup', newCount > 0)
+          button.classList.toggle('no-powerup', newCount === 0)
+          const countEl = button.querySelector('.powerup-count')
+          if (countEl) {
+            countEl.textContent = newCount > 0 ? String(newCount) : ''
+          }
+        }
+      })
+      
+      bar.appendChild(button)
+    })
+
+    // 添加到游戏画布层
+    gameCanvas.appendChild(bar)
+  }
+
+  // 移除道具栏
+  removePowerupBar() {
+    const bar = document.getElementById('custom-powerup-bar')
+    if (bar) {
+      bar.remove()
+    }
+  }
 }
 
 export const app = new App()

@@ -1,0 +1,1 @@
+export { createGame as initAnimalMatch } from './jewelMatch'

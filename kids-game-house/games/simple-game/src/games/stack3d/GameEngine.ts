@@ -32,6 +32,8 @@ export class GameEngine {
   private currentBlock: Block | null = null
   private background: Background
   private particleSystem: ParticleSystem
+  private base: THREE.Mesh
+  private edge: THREE.Mesh
   private gameOver = false
   private score = 0
   private colorIdx = 0
@@ -63,7 +65,7 @@ export class GameEngine {
     
     // 移动端使用更快的移动速度
     if (this.isMobile) {
-      this.moveSpeed = 0.08  // 移动端速度提升4倍
+      this.moveSpeed = GAME_CONFIG.moveSpeed * 5  // 移动端速度提升5倍
     }
     
     this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000)
@@ -150,10 +152,10 @@ export class GameEngine {
       roughness: 0.2,
       metalness: 0.85
     })
-    const base = new THREE.Mesh(baseGeometry, baseMaterial)
-    base.position.y = 0.15
-    base.receiveShadow = true
-    this.scene.add(base)
+    this.base = new THREE.Mesh(baseGeometry, baseMaterial)
+    this.base.position.y = 0.15
+    this.base.receiveShadow = true
+    this.scene.add(this.base)
     
     const edgeGeometry = new THREE.BoxGeometry(10.2, 0.4, 6.2)
     const edgeMaterial = new THREE.MeshStandardMaterial({
@@ -163,10 +165,10 @@ export class GameEngine {
       emissive: 0x2ECDC4,
       emissiveIntensity: 0.5
     })
-    const edge = new THREE.Mesh(edgeGeometry, edgeMaterial)
-    edge.position.y = 0.2
-    edge.castShadow = true
-    this.scene.add(edge)
+    this.edge = new THREE.Mesh(edgeGeometry, edgeMaterial)
+    this.edge.position.y = 0.2
+    this.edge.castShadow = true
+    this.scene.add(this.edge)
   }
 
   private setupEventListeners() {
@@ -225,9 +227,9 @@ export class GameEngine {
     this.currentBlock = block
     this.colorIdx++
     
-    // 根据高度增加难度 - 移动速度逐渐加快
-    const heightFactor = Math.min(this.blocks.length * 0.05, 0.5) // 最多增加50%速度
-    this.moveSpeed = GAME_CONFIG.moveSpeed * (1 + heightFactor)
+    const baseSpeed = GAME_CONFIG.moveSpeed * (this.isMobile ? 5 : 1)
+    const heightFactor = Math.min(this.blocks.length * 0.08, 0.8) // 移动端最多增加80%速度，更快的难度递增
+    this.moveSpeed = baseSpeed * (1 + heightFactor)
   }
 
   private getRandomShape(): BlockShape {
@@ -778,6 +780,14 @@ export class GameEngine {
     if (this.totalHeight > 5) {
       const targetY = 6 + (this.totalHeight - 5) * 0.3
       this.camera.position.y += (targetY - this.camera.position.y) * 0.05
+    }
+
+    const baseDropSpeed = 0.08
+    const maxBaseDrop = this.blocks.length * GAME_CONFIG.blockSize.height * 0.5
+    const targetBaseY = 0.15 - maxBaseDrop
+    if (this.base && this.edge) {
+      this.base.position.y += (targetBaseY - this.base.position.y) * baseDropSpeed
+      this.edge.position.y += ((targetBaseY + 0.05) - this.edge.position.y) * baseDropSpeed
     }
 
     if (this.instabilityWarning > 0) {
