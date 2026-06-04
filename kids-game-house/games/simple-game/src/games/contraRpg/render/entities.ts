@@ -58,7 +58,7 @@ function getPlayerGradients(ctx: CanvasRenderingContext2D, level: number): Playe
 export function drawPlayer(
   ctx: CanvasRenderingContext2D,
   player: Player,
-  input: { left: boolean; right: boolean; jump: boolean; shoot: boolean; crouch: boolean },
+  input: { left: boolean; right: boolean; jump: boolean; shoot: boolean; crouch: boolean; stickX: number; stickY: number },
   shieldTimer: number,
   rapidFireTimer: number,
   spreadShotTimer: number,
@@ -68,7 +68,8 @@ export function drawPlayer(
   const t = Date.now()
   const level = p.attackLevel
   const gradients = getPlayerGradients(ctx, level)
-  const isMoving = input.left || input.right
+  // 判断是否在移动：键盘输入或遥感输入
+  const isMoving = input.left || input.right || (Math.abs(input.stickX) > 0.1)
   const isShooting = input.shoot
   const isTransformed = transformTimer > 0
   const isJumping = !p.isGrounded && p.vy < 0

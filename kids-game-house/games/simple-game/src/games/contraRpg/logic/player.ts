@@ -3,7 +3,7 @@ import type { Player, Platform, Particle, Bullet } from '../types'
 
 export function updatePlayer(
   player: Player,
-  input: { left: boolean; right: boolean; jump: boolean; shoot: boolean; crouch: boolean; shootUp: boolean; shootDown: boolean },
+  input: { left: boolean; right: boolean; jump: boolean; shoot: boolean; crouch: boolean; shootUp: boolean; shootDown: boolean; stickX: number; stickY: number },
   platforms: Platform[],
   now: number,
   canDoubleJump: boolean,
@@ -13,11 +13,35 @@ export function updatePlayer(
   spreadShotTimer: number,
   transformTimer: number,
   analogX: number,
-): { shootTriggered: boolean; meleeTriggered: boolean } {
+): { shootTriggered: boolean; meleeTriggered: boolean; shootAngle: number } {
   let shootTriggered = false
   let meleeTriggered = false
+  let shootAngle = 0
 
-  const targetVx = analogX * player.speed * (player.isCrouching ? 0.6 : 1)
+  // 遥感控制逻辑
+  const stickX = input.stickX
+  const stickY = input.stickY
+  const stickMagnitude = Math.sqrt(stickX * stickX + stickY * stickY)
+  
+  // 计算遥感角度（弧度）
+  let stickAngle = 0
+  if (stickMagnitude > 0.1) {
+    stickAngle = Math.atan2(stickY, stickX)
+  }
+
+  // 判断是否为水平移动（±20度范围内）
+  const horizontalThreshold = Math.PI / 9 // 20度
+  const isHorizontal = Math.abs(stickAngle) < horizontalThreshold || Math.abs(stickAngle - Math.PI) < horizontalThreshold || Math.abs(stickAngle + Math.PI) < horizontalThreshold
+
+  // 移动控制：只有水平方向时才允许移动
+  let effectiveAnalogX = analogX
+  
+  if (stickMagnitude > 0.1 && isHorizontal) {
+    // 使用遥感的X分量作为移动输入
+    effectiveAnalogX = stickX / stickMagnitude
+  }
+
+  const targetVx = effectiveAnalogX * player.speed * (player.isCrouching ? 0.6 : 1)
   const accel = 0.45
   const friction = 0.82
 
@@ -27,7 +51,7 @@ export function updatePlayer(
     player.vx = targetVx
   }
 
-  if (analogX === 0) {
+  if (effectiveAnalogX === 0) {
     player.vx *= friction
     if (Math.abs(player.vx) < 0.2) player.vx = 0
   }
@@ -35,6 +59,14 @@ export function updatePlayer(
   player.x += player.vx
   if (player.vx > 0.5) player.facingRight = true
   else if (player.vx < -0.5) player.facingRight = false
+
+  // 确定射击角度：使用遥感角度
+  if (stickMagnitude > 0.1) {
+    shootAngle = stickAngle
+  } else {
+    // 默认使用玩家面向方向
+    shootAngle = player.facingRight ? 0 : Math.PI
+  }
 
   const wantsToCrouch = input.crouch && player.isGrounded
   const wasCrouching = player.isCrouching
@@ -120,7 +152,7 @@ export function updatePlayer(
 
   if (now - player.lastShot > player.shootCooldown && now - player.lastShot > minShotInterval) {
     if (wantsToShoot) {
-      playerShoot(player, bullets, rapidFireTimer, spreadShotTimer, transformTimer, input.shootUp, input.shootDown)
+      playerShoot(player, bullets, rapidFireTimer, spreadShotTimer, transformTimer, shootAngle)
       player.lastShot = now
       shootTriggered = true
       player.consecutiveShots++
@@ -222,8 +254,7 @@ export function playerShoot(
   rapidFireTimer: number,
   spreadShotTimer: number,
   transformTimer: number = 0,
-  shootUp: boolean = false,
-  shootDown: boolean = false,
+  shootAngle: number = 0,
 ) {
   const bulletSpeed = GAME_CONFIG.BULLET_SPEED
   const bulletY = player.y + player.height * 0.45
@@ -231,22 +262,17 @@ export function playerShoot(
   const damage = isTransformed ? player.attackLevel + 2 : player.attackLevel
   const bulletColor = isTransformed ? '#FFD700' : '#00E5FF'
 
-  let baseAngle = 0
-  if (shootUp) {
-    baseAngle = -Math.PI / 3 // 向上30度
-  } else if (shootDown) {
-    baseAngle = Math.PI / 3 // 向下30度
-  }
+  // 使用遥感角度作为射击角度
+  let baseAngle = shootAngle
 
   if (spreadShotTimer > 0) {
     for (let i = -1; i <= 1; i++) {
-      const spreadAngle = baseAngle + i * 0.15 * (player.facingRight ? 1 : -1)
-      const direction = player.facingRight ? 1 : -1
+      const spreadAngle = baseAngle + i * 0.15
       bullets.push({
         x: player.x + player.width / 2 - GAME_CONFIG.BULLET_WIDTH / 2,
         y: bulletY,
-        vx: Math.cos(spreadAngle) * bulletSpeed * direction,
-        vy: Math.sin(spreadAngle) * bulletSpeed * direction,
+        vx: Math.cos(spreadAngle) * bulletSpeed,
+        vy: Math.sin(spreadAngle) * bulletSpeed,
         width: GAME_CONFIG.BULLET_WIDTH,
         height: GAME_CONFIG.BULLET_HEIGHT,
         damage: damage,
@@ -255,12 +281,11 @@ export function playerShoot(
       })
     }
   } else {
-    const direction = player.facingRight ? 1 : -1
     bullets.push({
       x: player.x + player.width / 2 - GAME_CONFIG.BULLET_WIDTH / 2,
       y: bulletY,
-      vx: Math.cos(baseAngle) * bulletSpeed * direction,
-      vy: Math.sin(baseAngle) * bulletSpeed * direction,
+      vx: Math.cos(baseAngle) * bulletSpeed,
+      vy: Math.sin(baseAngle) * bulletSpeed,
       width: GAME_CONFIG.BULLET_WIDTH,
       height: GAME_CONFIG.BULLET_HEIGHT,
       damage: damage,

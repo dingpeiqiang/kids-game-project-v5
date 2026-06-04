@@ -22,7 +22,7 @@ export class ContraRpgGame {
   private onEnd: () => void
   private levelManager: LevelManager
   private state: GameState
-  private input: { left: boolean; right: boolean; jump: boolean; shoot: boolean; crouch: boolean; shootUp: boolean; shootDown: boolean }
+  private input: { left: boolean; right: boolean; jump: boolean; shoot: boolean; crouch: boolean; shootUp: boolean; shootDown: boolean; stickX: number; stickY: number }
   private rapidFireTimer = 0
   private spreadShotTimer = 0
   private shieldTimer = 0
@@ -53,7 +53,7 @@ export class ContraRpgGame {
     this.ctx = this.canvas.getContext('2d')!
     this.ctx.imageSmoothingEnabled = false
 
-    this.input = { left: false, right: false, jump: false, shoot: false, crouch: false, shootUp: false, shootDown: false }
+    this.input = { left: false, right: false, jump: false, shoot: false, crouch: false, shootUp: false, shootDown: false, stickX: 0, stickY: 0 }
     this.levelManager = new LevelManager()
     this.state = this.createInitialState()
     this.stars = initStars()
@@ -148,21 +148,21 @@ export class ContraRpgGame {
   private readonly isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
   private touchActions = new Map<number, string>()
   private touchButtons: { id: string; label: string; color: string; pressed: boolean }[] = [
-    { id: 'up', label: '↑', color: '#FF5722', pressed: false },
-    { id: 'down', label: '↓', color: '#FF5722', pressed: false },
-    { id: 'left', label: '←', color: '#FF9800', pressed: false },
-    { id: 'right', label: '→', color: '#FF9800', pressed: false },
     { id: 'shoot', label: '🔫', color: '#F44336', pressed: false },
     { id: 'bounce', label: '↗', color: '#4CAF50', pressed: false },
   ]
   private btnInputMap: Record<string, keyof typeof this.input> = {
-    up: 'shootUp',
-    down: 'shootDown',
-    left: 'left',
-    right: 'right',
     shoot: 'shoot',
     bounce: 'jump',
   }
+  
+  // 遥感控制相关
+  private joystickActive = false
+  private joystickStartX = 0
+  private joystickStartY = 0
+  private joystickCurrentX = 0
+  private joystickCurrentY = 0
+  private readonly joystickRadius = 60 // 遥感有效半径
 
   private cachedRects: { id: string; x: number; y: number; r: number }[] | null = null
   private cachedRectsKey = ''
@@ -288,26 +288,12 @@ export class ContraRpgGame {
     const rpw = GAME_CONFIG.RIGHT_PANEL_WIDTH
     const centerY = ch * 0.65
 
-    // D-pad buttons (left panel)
-    const dpadCenterX = lpw / 2 + 15
-    
-    // 增加左右按钮的点击区域范围，增大半径并调整间距避免叠加
-    const leftBtnX = dpadCenterX - 55
-    const rightBtnX = dpadCenterX + 55
-    const horizontalR = 32 // 增大左右按钮半径
-    const verticalR = 24 // 上下按钮半径（用于射击方向）
-    const verticalSpread = 50 // 上下按钮间距
-
     // Attack buttons (right panel) - 只有射击和弹跳，纵向排列
     const atkCenterX = cw - rpw / 2 - 5
     const atkR = 32
     const atkSpread = 40 // 纵向间距
 
     this.cachedRects = [
-      { id: 'up', x: dpadCenterX, y: centerY - verticalSpread, r: verticalR },
-      { id: 'down', x: dpadCenterX, y: centerY + verticalSpread, r: verticalR },
-      { id: 'left', x: leftBtnX, y: centerY, r: horizontalR },
-      { id: 'right', x: rightBtnX, y: centerY, r: horizontalR },
       { id: 'shoot', x: atkCenterX, y: centerY - atkSpread, r: atkR },
       { id: 'bounce', x: atkCenterX, y: centerY + atkSpread, r: atkR },
     ]
@@ -331,6 +317,7 @@ export class ContraRpgGame {
     this.touchAlpha = 1
     const totalWidth = GAME_CONFIG.CANVAS_WIDTH + GAME_CONFIG.LEFT_PANEL_WIDTH + GAME_CONFIG.RIGHT_PANEL_WIDTH
     const gameHeight = GAME_CONFIG.CANVAS_HEIGHT
+    const lpw = GAME_CONFIG.LEFT_PANEL_WIDTH
 
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i]
@@ -338,6 +325,17 @@ export class ContraRpgGame {
       const touchX = t.clientX - rect.left
       const touchY = t.clientY - rect.top
       const { gameX, gameY } = this.touchToGame(touchX, touchY)
+
+      // 检查是否在左侧面板（遥感区域）
+      if (gameX < lpw) {
+        // 启动遥感
+        this.joystickActive = true
+        this.joystickStartX = gameX
+        this.joystickStartY = gameY
+        this.joystickCurrentX = gameX
+        this.joystickCurrentY = gameY
+        this.updateJoystickInput()
+      }
 
       const btn = this.findBtn(totalWidth, gameHeight, gameX, gameY)
       if (btn && this.btnInputMap[btn]) {
@@ -351,10 +349,50 @@ export class ContraRpgGame {
 
   private onTouchMove(e: TouchEvent) {
     e.preventDefault()
+    const lpw = GAME_CONFIG.LEFT_PANEL_WIDTH
+
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i]
+      const rect = this.cachedCanvasRect!
+      const touchX = t.clientX - rect.left
+      const touchY = t.clientY - rect.top
+      const { gameX, gameY } = this.touchToGame(touchX, touchY)
+
+      // 更新遥感位置
+      if (this.joystickActive && gameX < lpw) {
+        this.joystickCurrentX = gameX
+        this.joystickCurrentY = gameY
+        this.updateJoystickInput()
+      }
+    }
+  }
+  
+  private updateJoystickInput() {
+    // 计算相对于起始点的偏移
+    const dx = this.joystickCurrentX - this.joystickStartX
+    const dy = this.joystickCurrentY - this.joystickStartY
+    
+    // 计算距离
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    
+    // 如果距离超过半径，归一化到半径范围内
+    if (distance > this.joystickRadius) {
+      const scale = this.joystickRadius / distance
+      this.input.stickX = dx * scale
+      this.input.stickY = dy * scale
+    } else {
+      this.input.stickX = dx
+      this.input.stickY = dy
+    }
   }
   
   private onTouchEnd(e: TouchEvent) {
     e.preventDefault()
+    // 重置遥感状态
+    this.joystickActive = false
+    this.input.stickX = 0
+    this.input.stickY = 0
+    
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i]
       const action = this.touchActions.get(t.identifier)
@@ -380,6 +418,9 @@ export class ContraRpgGame {
     this.input.shoot = false
     this.input.shootUp = false
     this.input.shootDown = false
+    this.input.stickX = 0
+    this.input.stickY = 0
+    this.joystickActive = false
     this.touchActions.clear()
   }
 
@@ -467,6 +508,46 @@ export class ContraRpgGame {
       const cfg = this.touchButtons.find(b => b.id === btn.id)!
       drawBtn(btn.x, btn.y, btn.r, cfg)
     }
+
+    // 绘制遥感区域
+    const joystickX = lpw / 2
+    const joystickY = ch * 0.65
+    const joystickOuterR = 50
+    const joystickInnerR = 20
+    
+    // 外圈
+    ctx.save()
+    ctx.globalAlpha = this.touchAlpha * 0.3
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(joystickX, joystickY, joystickOuterR, 0, Math.PI * 2)
+    ctx.stroke()
+    
+    // 内圈（遥感手柄）
+    let innerX = joystickX
+    let innerY = joystickY
+    if (this.joystickActive) {
+      // 根据遥感偏移计算内圈位置
+      const dx = this.input.stickX
+      const dy = this.input.stickY
+      innerX += dx * 0.8
+      innerY += dy * 0.8
+    }
+    
+    ctx.globalAlpha = this.touchAlpha * 0.5
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.beginPath()
+    ctx.arc(innerX, innerY, joystickInnerR, 0, Math.PI * 2)
+    ctx.fill()
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(innerX, innerY, joystickInnerR, 0, Math.PI * 2)
+    ctx.stroke()
+    
+    ctx.restore()
 
     ctx.restore()
   }
