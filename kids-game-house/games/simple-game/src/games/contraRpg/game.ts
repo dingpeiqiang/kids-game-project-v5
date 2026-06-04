@@ -53,7 +53,7 @@ export class ContraRpgGame {
     this.ctx = this.canvas.getContext('2d')!
     this.ctx.imageSmoothingEnabled = false
 
-    this.input = { left: false, right: false, jump: false, shoot: false, crouch: false, shootUp: false, shootDown: false, stickX: 0, stickY: 0 }
+    this.input = { left: false, right: false, up: false, down: false, jump: false, shoot: false, crouch: false, shootUp: false, shootDown: false, stickX: 0, stickY: 0 }
     this.levelManager = new LevelManager()
     this.state = this.createInitialState()
     this.stars = initStars()
@@ -150,23 +150,19 @@ export class ContraRpgGame {
   private touchButtons: { id: string; label: string; color: string; pressed: boolean }[] = [
     { id: 'shoot', label: '🔫', color: '#F44336', pressed: false },
     { id: 'bounce', label: '↗', color: '#4CAF50', pressed: false },
+    { id: 'up', label: '⬆', color: '#FF9800', pressed: false },
+    { id: 'down', label: '⬇', color: '#FF9800', pressed: false },
+    { id: 'left', label: '⬅', color: '#2196F3', pressed: false },
+    { id: 'right', label: '➡', color: '#2196F3', pressed: false },
   ]
   private btnInputMap: Record<string, keyof typeof this.input> = {
     shoot: 'shoot',
     bounce: 'jump',
+    up: 'up',
+    down: 'down',
+    left: 'left',
+    right: 'right',
   }
-  
-  // 遥感控制相关
-  private joystickActive = false
-  private joystickStartX = 0
-  private joystickStartY = 0
-  private joystickCurrentX = 0
-  private joystickCurrentY = 0
-  private readonly joystickRadius = 60 // 遥感有效半径
-  
-  // 遥感双击相关
-  private joystickDirection = 0 // 上次滑动方向: -1=左, 0=无, 1=右
-  private joystickClickCount = 0 // 当前方向点击次数
   private readonly joystickDoubleClickThreshold = 500 // 双击时间阈值（毫秒）
   private lastJoystickClickTime = 0 // 上次遥感点击时间
   
@@ -176,6 +172,12 @@ export class ContraRpgGame {
   private readonly doubleClickThreshold = 300 // 双击判定阈值（毫秒）
   
   private shootAngle = 0 // 当前射击角度（用于渲染武器对齐）
+  
+  // 射击方向控制
+  private shootTouchActive = false // 是否正在触摸射击区域
+  private shootStartX = 0 // 射击触摸起始X坐标
+  private shootStartY = 0 // 射击触摸起始Y坐标
+  private shootDirectionThreshold = 20 // 触发方向改变的最小滑动距离
 
   private cachedRects: { id: string; x: number; y: number; r: number }[] | null = null
   private cachedRectsKey = ''
@@ -313,12 +315,24 @@ export class ContraRpgGame {
     const rpw = GAME_CONFIG.RIGHT_PANEL_WIDTH
     const centerY = ch * 0.65
 
-    // Attack buttons (right panel) - 只有射击和弹跳，纵向排列
-    const atkCenterX = cw - rpw / 2 - 5
-    const atkR = 32
-    const atkSpread = 40 // 纵向间距
+    // 方向键按钮（左侧面板）
+    const dirCenterX = lpw / 2
+    const dirCenterY = ch * 0.65
+    const dirR = 28
+    const dirGap = 35
+
+    // 攻击按钮（右侧面板）- 放大并向左移动
+    const atkCenterX = cw - rpw / 2 - 20 // 向左移动20像素
+    const atkR = 45 // 放大按钮半径（从32增加到45）
+    const atkSpread = 45 // 射击按钮和弹跳按钮之间的间距
 
     this.cachedRects = [
+      // 方向键 - 十字布局
+      { id: 'up', x: dirCenterX, y: dirCenterY - dirGap, r: dirR },
+      { id: 'down', x: dirCenterX, y: dirCenterY + dirGap, r: dirR },
+      { id: 'left', x: dirCenterX - dirGap, y: dirCenterY, r: dirR },
+      { id: 'right', x: dirCenterX + dirGap, y: dirCenterY, r: dirR },
+      // 攻击按钮（放大并向左移动）
       { id: 'shoot', x: atkCenterX, y: centerY - atkSpread, r: atkR },
       { id: 'bounce', x: atkCenterX, y: centerY + atkSpread, r: atkR },
     ]
@@ -342,7 +356,6 @@ export class ContraRpgGame {
     this.touchAlpha = 1
     const totalWidth = GAME_CONFIG.CANVAS_WIDTH + GAME_CONFIG.LEFT_PANEL_WIDTH + GAME_CONFIG.RIGHT_PANEL_WIDTH
     const gameHeight = GAME_CONFIG.CANVAS_HEIGHT
-    const lpw = GAME_CONFIG.LEFT_PANEL_WIDTH
 
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i]
@@ -351,21 +364,15 @@ export class ContraRpgGame {
       const touchY = t.clientY - rect.top
       const { gameX, gameY } = this.touchToGame(touchX, touchY)
 
-      // 检查是否在左侧面板（遥感区域）
-      if (gameX < lpw) {
-        // 启动遥感 - 使用左侧面板中心作为原点
-        this.joystickActive = true
-        this.joystickStartX = lpw / 2 // 左侧面板中心X
-        this.joystickStartY = gameHeight / 2 // 屏幕中心Y
-        this.joystickCurrentX = gameX
-        this.joystickCurrentY = gameY
-        this.updateJoystickInput()
-      }
-
       const btn = this.findBtn(totalWidth, gameHeight, gameX, gameY)
-      if (btn && this.btnInputMap[btn]) {
+      if (btn) {
         // 射击按钮双击锁定逻辑
         if (btn === 'shoot') {
+          // 记录射击触摸起始位置（用于方向控制）
+          this.shootTouchActive = true
+          this.shootStartX = gameX
+          this.shootStartY = gameY
+          
           const now = Date.now()
           const timeSinceLastClick = now - this.lastShootClickTime
           
@@ -373,7 +380,6 @@ export class ContraRpgGame {
           if (timeSinceLastClick < this.doubleClickThreshold) {
             // 双击：切换锁定状态
             this.shootLocked = !this.shootLocked
-            console.log('[ContraRpg] 射击锁定状态:', this.shootLocked ? '锁定' : '解锁')
           } else {
             // 单击：正常射击
             this.input.shoot = true
@@ -386,6 +392,21 @@ export class ContraRpgGame {
         const b = this.touchButtons.find(b => b.id === btn)
         if (b) b.pressed = true
         
+        // 设置方向键输入
+        if (btn === 'up') {
+          // 上键：控制射击方向向上
+          this.shootAngle = -Math.PI / 2
+        }
+        if (btn === 'down') {
+          // 下键：控制射击方向向下
+          this.shootAngle = Math.PI / 2
+        }
+        if (btn === 'left') this.input.left = true
+        if (btn === 'right') this.input.right = true
+        
+        // 设置跳跃按钮
+        if (btn === 'bounce') this.input.jump = true
+        
         // 如果已锁定，保持射击状态
         if (btn === 'shoot' && this.shootLocked) {
           this.input.shoot = true
@@ -396,7 +417,8 @@ export class ContraRpgGame {
 
   private onTouchMove(e: TouchEvent) {
     e.preventDefault()
-    const lpw = GAME_CONFIG.LEFT_PANEL_WIDTH
+    const totalWidth = GAME_CONFIG.CANVAS_WIDTH + GAME_CONFIG.LEFT_PANEL_WIDTH + GAME_CONFIG.RIGHT_PANEL_WIDTH
+    const gameHeight = GAME_CONFIG.CANVAS_HEIGHT
 
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i]
@@ -405,72 +427,67 @@ export class ContraRpgGame {
       const touchY = t.clientY - rect.top
       const { gameX, gameY } = this.touchToGame(touchX, touchY)
 
-      // 更新遥感位置
-      if (this.joystickActive && gameX < lpw) {
-        this.joystickCurrentX = gameX
-        this.joystickCurrentY = gameY
-        this.updateJoystickInput()
-      }
-    }
-  }
-  
-  private updateJoystickInput() {
-    // 计算相对于起始点的偏移
-    const dx = this.joystickCurrentX - this.joystickStartX
-    const dy = this.joystickCurrentY - this.joystickStartY
-    
-    // 计算距离
-    const distance = Math.sqrt(dx * dx + dy * dy)
-    
-    // 判断滑动方向（只考虑水平方向）
-    const horizontalThreshold = Math.PI / 9 // 20度
-    const stickAngle = Math.atan2(dy, dx)
-    const isHorizontal = Math.abs(stickAngle) < horizontalThreshold || 
-                         Math.abs(stickAngle - Math.PI) < horizontalThreshold || 
-                         Math.abs(stickAngle + Math.PI) < horizontalThreshold
-    
-    // 始终更新射击角度（用于站着不动射击）
-    if (distance > 0.1) {
-      if (distance > this.joystickRadius) {
-        const scale = this.joystickRadius / distance
-        this.input.stickX = dx * scale
-        this.input.stickY = dy * scale
-      } else {
-        this.input.stickX = dx
-        this.input.stickY = dy
-      }
-    }
-    
-    // 检查是否在时间阈值内且同一方向（双击检测移动）
-    const now = Date.now()
-    if (isHorizontal && distance > this.joystickRadius / 2) {
-      const currentDirection = dx > 0 ? 1 : -1 // 1=右, -1=左
+      // 获取当前触摸点之前对应的按钮
+      const prevBtn = this.touchActions.get(t.identifier)
       
-      if (!(now - this.lastJoystickClickTime < this.joystickDoubleClickThreshold &&
-          this.joystickDirection === currentDirection)) {
-        // 不是双击，重置移动输入（但保留射击角度）
-        const currentStickAngle = Math.atan2(this.input.stickY, this.input.stickX)
-        const isMovingHorizontal = Math.abs(currentStickAngle) < horizontalThreshold || 
-                                   Math.abs(currentStickAngle - Math.PI) < horizontalThreshold || 
-                                   Math.abs(currentStickAngle + Math.PI) < horizontalThreshold
+      // 查找当前触摸位置的按钮
+      const currBtn = this.findBtn(totalWidth, gameHeight, gameX, gameY)
+
+      // 射击方向控制：如果当前触摸的是射击按钮或正在射击区域滑动
+      if (prevBtn === 'shoot' || this.shootTouchActive) {
+        // 计算滑动偏移
+        const dx = gameX - this.shootStartX
+        const dy = gameY - this.shootStartY
+        const distance = Math.sqrt(dx * dx + dy * dy)
         
-        if (isMovingHorizontal) {
-          // 水平方向但不是双击，不移动
-          this.input.stickX = 0
+        // 如果滑动距离超过阈值，更新射击角度
+        if (distance > this.shootDirectionThreshold) {
+          this.shootAngle = Math.atan2(dy, dx)
+          // 保持射击状态
+          if (this.shootLocked) {
+            this.input.shoot = true
+          }
         }
       }
-      
-      // 更新方向和时间戳（用于下一次检测）
-      this.joystickDirection = currentDirection
-      this.lastJoystickClickTime = now
+
+      // 如果触摸离开了之前的按钮，释放之前的按钮
+      if (prevBtn && prevBtn !== currBtn) {
+        const b = this.touchButtons.find(b => b.id === prevBtn)
+        if (b) b.pressed = false
+        
+        // 释放方向键输入
+        if (prevBtn === 'left') this.input.left = false
+        if (prevBtn === 'right') this.input.right = false
+        
+        // 如果离开射击按钮，重置射击方向控制状态
+        if (prevBtn === 'shoot') {
+          this.shootTouchActive = false
+        }
+      }
+
+      // 如果当前触摸在新按钮上，按下新按钮
+      if (currBtn && currBtn !== prevBtn) {
+        this.touchActions.set(t.identifier, currBtn)
+        const b = this.touchButtons.find(b => b.id === currBtn)
+        if (b) b.pressed = true
+        
+        // 设置方向键输入
+        if (currBtn === 'up') {
+          // 上键：控制射击方向向上
+          this.shootAngle = -Math.PI / 2
+        }
+        if (currBtn === 'down') {
+          // 下键：控制射击方向向下
+          this.shootAngle = Math.PI / 2
+        }
+        if (currBtn === 'left') this.input.left = true
+        if (currBtn === 'right') this.input.right = true
+      }
     }
   }
   
   private onTouchEnd(e: TouchEvent) {
     e.preventDefault()
-    // 重置遥感状态（保留当前输入值，以便双击后继续移动）
-    this.joystickActive = false
-    // 不重置输入值，保持双击后的移动状态
     
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i]
@@ -478,18 +495,41 @@ export class ContraRpgGame {
       if (action) {
         this.touchActions.delete(t.identifier)
         
+        // 更新按钮状态
+        const b = this.touchButtons.find(b => b.id === action)
+        if (b) b.pressed = false
+        
+        // 重置射击方向控制状态
+        if (action === 'shoot') {
+          this.shootTouchActive = false
+          // 松开射击按钮后恢复水平射击方向
+          this.shootAngle = this.state.player.facingRight ? 0 : Math.PI
+        }
+        
         // 射击按钮如果已锁定，保持射击状态
         if (action === 'shoot' && this.shootLocked) {
           this.input.shoot = true
         } else {
+          // 释放所有按钮输入
           switch (action) {
             case 'shoot':
-              this.touchButtons[0].pressed = false
               this.input.shoot = false
               break
             case 'bounce':
-              this.touchButtons[1].pressed = false
               this.input.jump = false
+              break
+            // 上下键控制射击方向，松开后恢复水平射击
+            case 'up':
+              this.shootAngle = this.state.player.facingRight ? 0 : Math.PI
+              break
+            case 'down':
+              this.shootAngle = this.state.player.facingRight ? 0 : Math.PI
+              break
+            case 'left':
+              this.input.left = false
+              break
+            case 'right':
+              this.input.right = false
               break
           }
         }
@@ -608,6 +648,39 @@ export class ContraRpgGame {
     for (const btn of rects) {
       const cfg = this.touchButtons.find(b => b.id === btn.id)!
       drawBtn(btn.x, btn.y, btn.r, cfg)
+      
+      // 为射击按钮添加方向指针
+      if (btn.id === 'shoot') {
+        ctx.save()
+        ctx.translate(btn.x, btn.y)
+        
+        // 旋转到当前射击角度
+        ctx.rotate(this.shootAngle)
+        
+        // 绘制方向指针（箭头）
+        const pointerLength = btn.r * 0.6
+        const pointerWidth = btn.r * 0.2
+        
+        ctx.fillStyle = '#FFD700'
+        ctx.shadowColor = '#FFD700'
+        ctx.shadowBlur = 8
+        
+        // 绘制三角形箭头
+        ctx.beginPath()
+        ctx.moveTo(pointerLength, 0)
+        ctx.lineTo(pointerLength - pointerWidth * 1.5, -pointerWidth)
+        ctx.lineTo(pointerLength - pointerWidth * 1.5, pointerWidth)
+        ctx.closePath()
+        ctx.fill()
+        
+        // 绘制指针底座
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'
+        ctx.beginPath()
+        ctx.arc(0, 0, btn.r * 0.25, 0, Math.PI * 2)
+        ctx.fill()
+        
+        ctx.restore()
+      }
     }
 
     // 绘制遥感区域
@@ -715,6 +788,7 @@ export class ContraRpgGame {
       this.spreadShotTimer,
       this.transformTimer,
       effectiveAnalogX,
+      this.shootAngle, // 传递触摸控制的射击角度
     )
     
     // 存储射击角度用于渲染

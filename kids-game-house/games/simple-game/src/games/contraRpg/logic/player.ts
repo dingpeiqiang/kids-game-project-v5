@@ -13,6 +13,7 @@ export function updatePlayer(
   spreadShotTimer: number,
   transformTimer: number,
   analogX: number,
+  touchShootAngle: number = 0, // 触摸控制的射击角度
 ): { shootTriggered: boolean; meleeTriggered: boolean; shootAngle: number } {
   let shootTriggered = false
   let meleeTriggered = false
@@ -60,8 +61,12 @@ export function updatePlayer(
   if (player.vx > 0.5) player.facingRight = true
   else if (player.vx < -0.5) player.facingRight = false
 
-  // 确定射击角度：使用遥感角度
-  if (stickMagnitude > 0.1) {
+  // 确定射击角度：优先使用触摸控制的射击角度
+  if (touchShootAngle !== 0) {
+    // 使用触摸滑动控制的射击角度
+    shootAngle = touchShootAngle
+  } else if (stickMagnitude > 0.1) {
+    // 使用遥感角度
     shootAngle = stickAngle
   } else {
     // 默认使用玩家面向方向

@@ -391,9 +391,10 @@ export function drawPlayer(
   ctx.arc(eyeOffset + 1, headY - 1, 1.5, 0, Math.PI * 2)
   ctx.fill()
 
-  const gunLength = 20 + level * 2.5
-  const gunBaseX = p.facingRight ? bodyWidth / 2 + 4 : -bodyWidth / 2 - 4
-  const gunBaseY = bodyY - 8
+  // ==================== 霸气武器系统 ====================
+  const gunLength = 22 + level * 3
+  const gunBaseX = p.facingRight ? bodyWidth / 2 + 6 : -bodyWidth / 2 - 6
+  const gunBaseY = bodyY - 10
   
   // 使用射击角度作为武器角度
   const gunAngle = shootAngle
@@ -404,78 +405,180 @@ export function drawPlayer(
   ctx.translate(gunBaseX, gunBaseY)
   ctx.rotate(gunAngle)
 
-  const gunGlowColor = isTransformed ? '#FFD700' : (level >= 5 ? '#E040FB' : '#00E5FF')
+  // 武器配色方案 - 根据等级和状态变化
+  const isLegendary = level >= 5
+  const gunColor1 = isTransformed ? '#FFD700' : (isLegendary ? '#E040FB' : '#00E5FF')
+  const gunColor2 = isTransformed ? '#FFA500' : (isLegendary ? '#9C27B0' : '#00838F')
+  const metalColor = isLegendary ? '#8D6E63' : '#424242'
+  const accentColor = isTransformed ? '#FFEB3B' : (isLegendary ? '#CE93D8' : '#80DEEA')
+
+  // 武器光晕效果
   ctx.save()
-  ctx.translate(p.facingRight ? gunLength : 0, 0)
-  ctx.fillStyle = gradients.gunGlow
+  ctx.translate(p.facingRight ? gunLength * 0.7 : gunLength * 0.3, 0)
+  const weaponGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, gunLength * 0.4)
+  weaponGlow.addColorStop(0, `${gunColor1}40`)
+  weaponGlow.addColorStop(0.5, `${gunColor1}20`)
+  weaponGlow.addColorStop(1, 'transparent')
+  ctx.fillStyle = weaponGlow
   ctx.beginPath()
-  ctx.arc(0, 0, 15, 0, Math.PI * 2)
+  ctx.arc(0, 0, gunLength * 0.4, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
 
-  ctx.fillStyle = '#444'
-  ctx.fillRect(p.facingRight ? -2 : -gunLength - 2, -4, gunLength + 4, 12)
+  // 枪身主体 - 更复杂的形状
+  const gunDirection = p.facingRight ? 1 : -1
+  
+  // 枪托/握把
+  ctx.fillStyle = '#212121'
+  ctx.beginPath()
+  ctx.roundRect(p.facingRight ? -8 : -gunLength + 2, -6, 12, 16, 3)
+  ctx.fill()
+  
+  // 枪托金属装饰
+  ctx.fillStyle = metalColor
+  ctx.beginPath()
+  ctx.roundRect(p.facingRight ? -6 : -gunLength + 4, -4, 8, 12, 2)
+  ctx.fill()
 
-  ctx.fillStyle = '#555'
-  ctx.fillRect(p.facingRight ? 0 : -gunLength, -2, gunLength, 8)
+  // 枪身中部 - 主武器主体
+  const bodyStart = p.facingRight ? 6 : -gunLength + 6
+  const bodyLength = gunLength - 16
+  
+  // 外层阴影
+  ctx.fillStyle = '#1a1a1a'
+  ctx.beginPath()
+  ctx.roundRect(bodyStart + gunDirection, -8, bodyLength, 20, 4)
+  ctx.fill()
+  
+  // 主枪身
+  const bodyGrad = ctx.createLinearGradient(bodyStart, 0, bodyStart + bodyLength * gunDirection, 0)
+  bodyGrad.addColorStop(0, '#555')
+  bodyGrad.addColorStop(0.5, '#666')
+  bodyGrad.addColorStop(1, '#444')
+  ctx.fillStyle = bodyGrad
+  ctx.beginPath()
+  ctx.roundRect(bodyStart, -7, bodyLength, 18, 4)
+  ctx.fill()
 
-  ctx.fillStyle = '#666'
-  ctx.fillRect(p.facingRight ? 2 : -gunLength + 2, -1, gunLength - 4, 2)
+  // 枪身高光
+  ctx.fillStyle = '#888'
+  ctx.beginPath()
+  ctx.roundRect(bodyStart + 2, -6, bodyLength - 4, 6, 2)
+  ctx.fill()
 
+  // 能量核心/装饰条
+  const coreGrad = ctx.createLinearGradient(bodyStart + 4, 0, bodyStart + bodyLength - 4, 0)
+  coreGrad.addColorStop(0, gunColor2)
+  coreGrad.addColorStop(0.5, gunColor1)
+  coreGrad.addColorStop(1, gunColor2)
+  ctx.fillStyle = coreGrad
+  ctx.shadowColor = gunColor1
+  ctx.shadowBlur = 10
+  ctx.beginPath()
+  ctx.roundRect(bodyStart + 6, -2, bodyLength - 12, 4, 2)
+  ctx.fill()
+  ctx.shadowBlur = 0
+
+  // 枪管 - 更粗更霸气
+  const barrelStart = p.facingRight ? gunLength - 12 : -12
+  const barrelLength = 10
+  
+  // 枪管外层
   ctx.fillStyle = '#333'
-  ctx.fillRect(p.facingRight ? gunLength - 8 : -8, 0, 8, 6)
+  ctx.shadowColor = '#000'
+  ctx.shadowBlur = 5
+  ctx.beginPath()
+  ctx.roundRect(barrelStart - gunDirection * 2, -5, barrelLength + gunDirection * 4, 14, 3)
+  ctx.fill()
+  ctx.shadowBlur = 0
+  
+  // 枪管内层
+  const barrelGrad = ctx.createLinearGradient(barrelStart, 0, barrelStart + barrelLength * gunDirection, 0)
+  barrelGrad.addColorStop(0, '#666')
+  barrelGrad.addColorStop(0.5, '#555')
+  barrelGrad.addColorStop(1, '#444')
+  ctx.fillStyle = barrelGrad
+  ctx.beginPath()
+  ctx.roundRect(barrelStart, -4, barrelLength, 12, 2)
+  ctx.fill()
 
-  if (isShooting) {
-    const muzzleFlash = 1 + Math.sin(t / 30) * 0.3
-    const flashLength = 10 + level * 2
-
-    const muzzleKey = `muzzle_${level >= 5 ? 'purple' : 'blue'}`
-    let muzzleGrads = muzzleGradCache.get(muzzleKey)
-    if (!muzzleGrads) {
-      const glowColor = level >= 5 ? '#E040FB' : '#00E5FF'
-      const radial = ctx.createRadialGradient(0, 0, 0, 0, 0, 25)
-      radial.addColorStop(0, '#FFFFFF')
-      radial.addColorStop(0.3, glowColor)
-      radial.addColorStop(1, 'transparent')
-
-      const linear = ctx.createLinearGradient(0, 0, 30, 0)
-      linear.addColorStop(0, '#FFFFFF')
-      linear.addColorStop(0.3, '#FFFF00')
-      linear.addColorStop(0.6, '#FF8800')
-      linear.addColorStop(1, 'transparent')
-
-      muzzleGrads = { radial, linear }
-      muzzleGradCache.set(muzzleKey, muzzleGrads)
-    }
-
-    // 枪口火焰从枪口位置沿枪杆方向喷出
-    // 注意：当前坐标系已经按gunAngle旋转，所以火焰直接向右即可
-    const barrelEndX = p.facingRight ? gunLength : 0
-    const barrelEndY = 0
-    
-    ctx.fillStyle = muzzleGrads.radial
+  // 枪管散热孔/装饰细节
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = '#222'
     ctx.beginPath()
-    ctx.arc(barrelEndX, barrelEndY, flashLength * muzzleFlash, 0, Math.PI * 2)
+    const holeX = barrelStart + gunDirection * (3 + i * 2)
+    ctx.arc(holeX, -2, 1.5, 0, Math.PI * 2)
     ctx.fill()
-
-    ctx.fillStyle = muzzleGrads.linear
     ctx.beginPath()
-    ctx.moveTo(barrelEndX, barrelEndY - 5)
-    ctx.lineTo(barrelEndX + flashLength * muzzleFlash, barrelEndY)
-    ctx.lineTo(barrelEndX, barrelEndY + 5)
-    ctx.closePath()
+    ctx.arc(holeX, 2, 1.5, 0, Math.PI * 2)
     ctx.fill()
   }
 
-  // 枪管末端发光效果
-  ctx.fillStyle = gunGlowColor
-  ctx.shadowColor = gunGlowColor
-  ctx.shadowBlur = 8
-  const barrelEndX = p.facingRight ? gunLength - 4 : -4
+  // 枪口 - 发光效果
+  const muzzleEnd = p.facingRight ? gunLength : 0
+  ctx.fillStyle = gunColor1
+  ctx.shadowColor = gunColor1
+  ctx.shadowBlur = 15 + Math.sin(t / 20) * 5
   ctx.beginPath()
-  ctx.arc(barrelEndX + (p.facingRight ? 2 : -2), 3, 4, 0, Math.PI * 2)
+  ctx.arc(muzzleEnd, 3, 5, 0, Math.PI * 2)
   ctx.fill()
   ctx.shadowBlur = 0
+
+  // 射击特效
+  if (isShooting) {
+    const muzzleFlash = 1 + Math.sin(t / 20) * 0.4
+    const flashLength = 12 + level * 2.5
+    const spread = 8 + level
+
+    // 主枪口火焰光晕
+    const flameGlow = ctx.createRadialGradient(muzzleEnd, 3, 0, muzzleEnd, 3, flashLength * 1.5)
+    flameGlow.addColorStop(0, '#FFFFFF')
+    flameGlow.addColorStop(0.2, gunColor1)
+    flameGlow.addColorStop(0.5, '#FF8800')
+    flameGlow.addColorStop(1, 'transparent')
+    ctx.fillStyle = flameGlow
+    ctx.beginPath()
+    ctx.arc(muzzleEnd + gunDirection * flashLength * 0.3, 3, flashLength * muzzleFlash, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 锥形火焰
+    const flameGrad = ctx.createLinearGradient(muzzleEnd, 0, muzzleEnd + gunDirection * flashLength * 2, 0)
+    flameGrad.addColorStop(0, '#FFFFFF')
+    flameGrad.addColorStop(0.2, '#FFFF00')
+    flameGrad.addColorStop(0.4, '#FF8800')
+    flameGrad.addColorStop(0.7, '#FF4400')
+    flameGrad.addColorStop(1, 'transparent')
+    ctx.fillStyle = flameGrad
+    ctx.beginPath()
+    ctx.moveTo(muzzleEnd, 3 - spread * 0.5)
+    ctx.lineTo(muzzleEnd + gunDirection * flashLength * (1.5 + Math.sin(t / 15) * 0.3), 3 + (Math.random() - 0.5) * 4)
+    ctx.lineTo(muzzleEnd, 3 + spread * 0.5)
+    ctx.closePath()
+    ctx.fill()
+
+    // 飞溅火星粒子
+    for (let i = 0; i < 5; i++) {
+      const sparkAngle = (Math.random() - 0.5) * Math.PI * 0.5
+      const sparkDist = flashLength * (0.5 + Math.random() * 0.5)
+      const sparkX = muzzleEnd + Math.cos(sparkAngle + gunAngle) * sparkDist * gunDirection
+      const sparkY = 3 + Math.sin(sparkAngle + gunAngle) * sparkDist
+      const sparkSize = 1 + Math.random() * 2
+      
+      ctx.fillStyle = `rgba(255, ${100 + Math.random() * 155}, 0, ${0.6 + Math.random() * 0.4})`
+      ctx.beginPath()
+      ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
+  // 武器状态指示器（传说级武器专属）
+  if (isLegendary || isTransformed) {
+    const pulse = 0.5 + Math.sin(t / 50) * 0.3
+    ctx.fillStyle = `${gunColor1}${Math.round(pulse * 60).toString(16).padStart(2, '0')}`
+    ctx.beginPath()
+    ctx.arc(p.facingRight ? gunLength * 0.5 : gunLength * 0.5, -12, 4, 0, Math.PI * 2)
+    ctx.fill()
+  }
 
   ctx.restore()
 
