@@ -1,0 +1,145 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "game_default_theme",
+    "gameId": "game_001",
+    "themeName": "系统默认主题",
+    "isDefault": true,
+    "author": "官方",
+    "description": "游戏加载失败时的兜底主题"
+  },
+  "globalStyle": {
+    "primaryColor": "#FF6B6B",
+    "secondaryColor": "#4ECDC4",
+    "bgColor": "#1A1A1A",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "login": {
+        "login_bg": {
+          "src": "assets/themes/default/login/bg.png",
+          "type": "png",
+          "alias": "登录背景图"
+        },
+        "login_logo": {
+          "src": "assets/themes/default/login/logo.png",
+          "type": "png",
+          "alias": "登录Logo"
+        },
+        "login_btn_bg": {
+          "src": "assets/themes/default/login/btn_bg.png",
+          "type": "png",
+          "alias": "登录按钮背景"
+        }
+      },
+      "scene": {
+        "scene_bg": {
+          "src": "assets/themes/default/scene/background.png",
+          "type": "png",
+          "alias": "游戏场景背景"
+        },
+        "scene_ground": {
+          "src": "assets/themes/default/scene/ground.png",
+          "type": "png",
+          "alias": "地面背景"
+        }
+      },
+      "ui": {
+        "ui_panel_bg": {
+          "src": "assets/themes/default/ui/panel_bg.png",
+          "type": "png",
+          "alias": "UI面板背景"
+        },
+        "ui_button_normal": {
+          "src": "assets/themes/default/ui/button_normal.png",
+          "type": "png",
+          "alias": "按钮正常状态"
+        },
+        "ui_button_hover": {
+          "src": "assets/themes/default/ui/button_hover.png",
+          "type": "png",
+          "alias": "按钮悬停状态"
+        },
+        "ui_button_pressed": {
+          "src": "assets/themes/default/ui/button_pressed.png",
+          "type": "png",
+          "alias": "按钮按下状态"
+        }
+      },
+      "icon": {
+        "icon_play": {
+          "src": "assets/themes/default/icon/play.png",
+          "type": "png",
+          "alias": "播放图标"
+        },
+        "icon_pause": {
+          "src": "assets/themes/default/icon/pause.png",
+          "type": "png",
+          "alias": "暂停图标"
+        },
+        "icon_settings": {
+          "src": "assets/themes/default/icon/settings.png",
+          "type": "png",
+          "alias": "设置图标"
+        }
+      },
+      "effect": {
+        "effect_explosion": {
+          "src": "assets/themes/default/effect/explosion.png",
+          "type": "png",
+          "alias": "爆炸特效"
+        },
+        "effect_star": {
+          "src": "assets/themes/default/effect/star.png",
+          "type": "png",
+          "alias": "星星特效"
+        }
+      }
+    },
+    "audio": {
+      "bgm": {
+        "bgm_main": {
+          "src": "assets/themes/default/audio/bgm_main.mp3",
+          "type": "mp3",
+          "volume": 0.6,
+          "alias": "主背景音乐"
+        },
+        "bgm_battle": {
+          "src": "assets/themes/default/audio/bgm_battle.mp3",
+          "type": "mp3",
+          "volume": 0.7,
+          "alias": "战斗背景音乐"
+        }
+      },
+      "effect": {
+        "effect_btn_click": {
+          "src": "assets/themes/default/audio/click.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "按钮点击音效"
+        },
+        "effect_success": {
+          "src": "assets/themes/default/audio/success.mp3",
+          "type": "mp3",
+          "volume": 0.6,
+          "alias": "成功音效"
+        },
+        "effect_failure": {
+          "src": "assets/themes/default/audio/failure.mp3",
+          "type": "mp3",
+          "volume": 0.5,
+          "alias": "失败音效"
+        }
+      },
+      "voice": {}
+    },
+    "video": {}
+  }
+}

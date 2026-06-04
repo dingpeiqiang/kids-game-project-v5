@@ -1,0 +1,30 @@
+# 快速后端镜像构建（使用本地 Maven 缓存）
+FROM eclipse-temurin:17-jre-alpine
+
+# 创建应用用户
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /app
+
+# 复制本地构建的 JAR 文件
+COPY kids-game-backend/kids-game-web/target/*.jar app.jar
+
+# 创建日志和上传目录
+RUN mkdir -p /app/logs /app/uploads && \
+    chown -R appuser:appgroup /app
+
+# 切换到非 root 用户
+USER appuser
+
+# 暴露端口
+EXPOSE 8080
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+
+# JVM 优化参数
+ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
+# 启动应用
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

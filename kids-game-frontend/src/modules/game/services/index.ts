@@ -1,0 +1,1 @@
+export * from './fatigue.service';

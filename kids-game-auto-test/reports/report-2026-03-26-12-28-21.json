@@ -1,0 +1,42 @@
+{
+  "summary": {
+    "totalGames": 1,
+    "passed": 0,
+    "failed": 0,
+    "passRate": 0,
+    "totalTests": 0,
+    "totalIssues": 2,
+    "criticalIssues": 2
+  },
+  "games": [
+    {
+      "name": "plane-shooter",
+      "startTime": "2026-03-26T04:28:21.019Z",
+      "tests": [],
+      "issues": [
+        {
+          "type": "test_execution",
+          "severity": "critical",
+          "message": "Could not find Chrome (ver. 121.0.6167.85). This can occur if either\n 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or\n 2. your cache path is incorrectly configured (which is: C:\\Users\\a1521\\.cache\\puppeteer).\nFor (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration."
+        },
+        {
+          "type": "test_error",
+          "severity": "critical",
+          "message": "Cannot read properties of undefined (reading 'goto')",
+          "stack": "TypeError: Cannot read properties of undefined (reading 'goto')\n    at PerformanceMonitor.measureLoadTime (D:\\工作\\sitech\\项目\\研发\\git_workspace\\AI\\kids-game-project-v5\\kids-game-auto-test\\src\\performance-monitor.js:62:20)\n    at PerformanceMonitor.measure (D:\\工作\\sitech\\项目\\研发\\git_workspace\\AI\\kids-game-project-v5\\kids-game-auto-test\\src\\performance-monitor.js:25:48)\n    at TestOrchestrator.runPerformanceTests (D:\\工作\\sitech\\项目\\研发\\git_workspace\\AI\\kids-game-project-v5\\kids-game-auto-test\\src\\orchestrator.js:107:30)\n    at TestOrchestrator.testGame (D:\\工作\\sitech\\项目\\研发\\git_workspace\\AI\\kids-game-project-v5\\kids-game-auto-test\\src\\orchestrator.js:65:50)\n    at async TestOrchestrator.run (D:\\工作\\sitech\\项目\\研发\\git_workspace\\AI\\kids-game-project-v5\\kids-game-auto-test\\src\\orchestrator.js:36:13)\n    at async main (D:\\工作\\sitech\\项目\\研发\\git_workspace\\AI\\kids-game-project-v5\\kids-game-auto-test\\src\\index.js:42:9)"
+        }
+      ],
+      "metrics": {},
+      "status": "ERROR"
+    }
+  ],
+  "overall": {
+    "total": 1,
+    "passed": 0,
+    "failed": 0,
+    "warnings": 0
+  },
+  "startTime": "2026-03-26T04:28:21.018Z",
+  "endTime": "2026-03-26T04:28:21.022Z",
+  "generatedAt": "2026-03-26T04:28:21.023Z"
+}

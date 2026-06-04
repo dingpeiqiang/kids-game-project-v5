@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kidgame.dao.mapper.LeaderboardDataMapper">
+
+    <!-- 查询排行榜数据（带排名） -->
+    <select id="selectLeaderboardWithRank" resultType="java.util.HashMap">
+        SELECT 
+            @rownum := @rownum + 1 AS `rank`,
+            user_id,
+            username,
+            nickname,
+            avatar_url,
+            dimension_value,
+            decimal_value,
+            extra_data,
+            create_time
+        FROM (
+            SELECT 
+                user_id,
+                MAX(username) AS username,
+                MAX(nickname) AS nickname,
+                MAX(avatar_url) AS avatar_url,
+                MAX(dimension_value) AS dimension_value,
+                MAX(decimal_value) AS decimal_value,
+                MAX(extra_data) AS extra_data,
+                MAX(create_time) AS create_time
+            FROM t_leaderboard_data
+            WHERE game_id = #{gameId}
+              AND dimension_code = #{dimensionCode}
+              AND deleted = 0
+              <if test="rankType != null and rankType != 'ALL'">
+                AND rank_type = #{rankType}
+              </if>
+              <if test="rankDate != null and rankDate != ''">
+                AND rank_date = #{rankDate}
+              </if>
+              <if test="rankMonth != null and rankMonth != ''">
+                AND rank_month = #{rankMonth}
+              </if>
+              <if test="rankYear != null and rankYear != ''">
+                AND rank_year = #{rankYear}
+              </if>
+            GROUP BY user_id
+            ORDER BY dimension_value DESC
+            LIMIT #{limit}
+        ) AS ranked_data,
+        (SELECT @rownum := 0) AS r
+    </select>
+
+    <!-- 查询用户的最佳排名 -->
+    <select id="selectUserBestRank" resultType="java.util.HashMap">
+        SELECT 
+            (
+                SELECT 
+                    CASE 
+                        WHEN userMaxValue IS NULL THEN NULL
+                        ELSE (
+                            SELECT COUNT(*) + 1
+                            FROM t_leaderboard_data ld1
+                            WHERE ld1.game_id = #{gameId}
+                              AND ld1.dimension_code = #{dimensionCode}
+                              AND ld1.deleted = 0
+                              AND ld1.dimension_value > userMaxValue
+                        )
+                    END
+                FROM (
+                    SELECT MAX(dimension_value) AS userMaxValue
+                    FROM t_leaderboard_data
+                    WHERE user_id = #{userId}
+                      AND game_id = #{gameId}
+                      AND dimension_code = #{dimensionCode}
+                      AND deleted = 0
+                ) AS user_best
+            ) AS userRank,
+            (
+                SELECT MAX(dimension_value)
+                FROM t_leaderboard_data
+                WHERE user_id = #{userId}
+                  AND game_id = #{gameId}
+                  AND dimension_code = #{dimensionCode}
+                  AND deleted = 0
+            ) AS userValue,
+            (
+                SELECT COUNT(DISTINCT user_id)
+                FROM t_leaderboard_data
+                WHERE game_id = #{gameId}
+                  AND dimension_code = #{dimensionCode}
+                  AND deleted = 0
+            ) AS totalCount
+    </select>
+
+    <!-- 更新或插入排行榜数据（取最大值） -->
+    <insert id="upsertMax">
+        INSERT INTO t_leaderboard_data 
+            (game_id, user_id, username, nickname, avatar_url, 
+             dimension_code, dimension_value, decimal_value, 
+             rank_type, rank_date, rank_month, rank_year, 
+             extra_data, create_time, update_time)
+        VALUES 
+            (#{gameId}, #{userId}, #{username}, #{nickname}, #{avatarUrl},
+             #{dimensionCode}, #{dimensionValue}, #{decimalValue},
+             #{rankType}, #{rankDate}, #{rankMonth}, #{rankYear},
+             #{extraData}, #{createTime}, #{updateTime})
+        ON DUPLICATE KEY UPDATE
+            dimension_value = GREATEST(dimension_value, VALUES(dimension_value)),
+            decimal_value = GREATEST(COALESCE(decimal_value, 0), VALUES(decimal_value)),
+            update_time = VALUES(update_time)
+    </insert>
+
+    <!-- 更新或插入排行榜数据（取最小值） -->
+    <insert id="upsertMin">
+        INSERT INTO t_leaderboard_data 
+            (game_id, user_id, username, nickname, avatar_url, 
+             dimension_code, dimension_value, decimal_value, 
+             rank_type, rank_date, rank_month, rank_year, 
+             extra_data, create_time, update_time)
+        VALUES 
+            (#{gameId}, #{userId}, #{username}, #{nickname}, #{avatarUrl},
+             #{dimensionCode}, #{dimensionValue}, #{decimalValue},
+             #{rankType}, #{rankDate}, #{rankMonth}, #{rankYear},
+             #{extraData}, #{createTime}, #{updateTime})
+        ON DUPLICATE KEY UPDATE
+            dimension_value = LEAST(dimension_value, VALUES(dimension_value)),
+            decimal_value = LEAST(COALESCE(decimal_value, 999999), VALUES(decimal_value)),
+            update_time = VALUES(update_time)
+    </insert>
+
+</mapper>

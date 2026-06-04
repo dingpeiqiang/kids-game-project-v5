@@ -1,0 +1,34 @@
+{
+   battle: {
+        enabled: true,
+        freezeNPC: false,
+   },
+   buildings: {
+        autobuild: false,
+        canfight: true,
+        nobuildings: false
+   },
+    misc: {
+        performInit: false,
+        debugQT: false
+    },
+    civs: {
+        aggro: true,
+        wander: true
+    },
+    wildlife: {
+        aggro: true,
+        nolife: false,
+        wander: true
+    },
+    client: {
+        boot:{
+            autoBoot: false,
+            forceNewPlayer: false,
+            offerTutorial: true
+        },
+        config:{
+            fogOfWar: true
+        }
+    }
+}

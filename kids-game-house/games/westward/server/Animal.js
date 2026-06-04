@@ -1,0 +1,118 @@
+/**
+ * Created by Jerome on 09-10-17.
+ */
+
+import GameObject from './GameObject'
+import GameServer from './GameServer'
+import MovingEntity from './MovingEntity'
+import NPC from './NPC'
+import Utils from '../shared/Utils'
+import World from '../shared/World'
+
+function Animal(x,y,type,instance){
+    this.instance = (instance > -1 ? instance : -1);
+    if(this.instance > -1){
+        this.id = 't'+GameServer.instances[this.instance].nextAnimalID++;
+    }else{
+        this.id = GameServer.lastAnimalID++;
+    }
+    this.isAnimal = true;
+    this.battleTeam = 'Animal';
+    this.entityCategory = 'Animal';
+    this.updateCategory = 'animals';
+    this.sentient = false; // used in battle to know if a battle should end
+    this.battlePriority = 2;
+    this.x = x;
+    this.y = y;
+
+    this.type = type;
+    var animalData = GameServer.getAnimalData(this.type);
+
+    this.cellsWidth = animalData.width || 1;
+    this.cellsHeight = animalData.height || 1;
+
+    this.xpReward = animalData.xp || 0;
+    this.name = animalData.name;
+    this.setAggressive();
+    this.setWander();
+    this.setStartingStats(animalData.stats);
+    this.setLoot(animalData.loot);
+    this.setIdle();
+    NPC.call(this);
+}
+
+Animal.prototype = Object.create(NPC.prototype);
+Animal.prototype.constructor = Animal;
+
+Animal.prototype.setAggressive = function(){
+    // Different from global aggro parameter, specifies if this specific animal should be aggressive pr not
+    // this.aggressive =  GameServer.animalsData[this.type].aggro;
+    this.aggressive = GameServer.getAnimalData(this.type).aggro;
+
+    this.aggroMatrix = {
+        'Player': true,
+        'Civ': true,
+        'CivBuilding': false,
+        'PlayerBuilding': false
+    };
+};
+
+Animal.prototype.isAggressive = function(){
+    return (this.aggressive && GameServer.enableAnimalAggro);
+};
+
+Animal.prototype.canRange = function(){
+    return false;
+};
+
+Animal.prototype.setWander = function(){
+    // this.wander =  GameServer.animalsData[this.type].wander;
+    this.wander =  GameServer.getAnimalData(this.type).wander;
+};
+
+Animal.prototype.doesWander = function(){
+    return (this.wander && GameServer.enableAnimalWander);
+};
+
+Animal.prototype.setSpawnZone = function(zone){
+    this.spawnZone = zone;
+};
+
+Animal.prototype.trim = function(){
+    // Return a smaller object, containing a subset of the initial properties, to be sent to the client
+    var trimmed = {};
+    var broadcastProperties = ['id','path','type','inFight','dead']; // list of properties relevant for the client
+    for(var p = 0; p < broadcastProperties.length; p++){
+        trimmed[broadcastProperties[p]] = this[broadcastProperties[p]];
+    }
+    trimmed.x = parseInt(this.x);
+    trimmed.y = parseInt(this.y);
+    // return trimmed;
+    return GameObject.prototype.trim.call(this,trimmed);
+};
+
+Animal.prototype.endFight = function(alive){
+    MovingEntity.prototype.endFight.call(this);
+    if(alive) this.setIdle();
+};
+
+Animal.prototype.findRandomDestination = function(){
+    var r = GameServer.wildlifeParameters.wanderRange;
+    return {
+        x: Utils.clamp(this.x + Utils.randomInt(-r,r),0,World.worldWidth),
+        y: Utils.clamp(this.y + Utils.randomInt(-r,r),0,World.worldHeight)
+    };
+};
+
+Animal.prototype.die = function(){
+    MovingEntity.prototype.die.call(this);
+    this.idle = false;
+    if(this.spawnZone) this.spawnZone.decrement('animal',this.type);
+};
+
+Animal.prototype.remove = function(){
+    MovingEntity.prototype.remove.call(this);
+    delete GameServer.animals[this.id];
+};
+
+export default Animal

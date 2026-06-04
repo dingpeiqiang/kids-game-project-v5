@@ -1,0 +1,92 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node modules（会在容器内重新安装）
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+
+# Build outputs（避免旧的构建产物进入镜像）
+dist
+build
+output
+*.log
+*.tsbuildinfo
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation（大量 md 文件影响构建上下文）
+*.md
+docs/
+
+# Tests
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+coverage/
+jest.config.*
+
+# Environment files
+.env
+.env.*
+!.env.production.example
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+!Dockerfile.frontend
+!Dockerfile.backend
+!Dockerfile.backend.lowmem
+!Dockerfile.simple-game
+
+# Kids game house（只保留需要的游戏）
+kids-game-house/node_modules
+!kids-game-house/games/simple-game/
+
+# 排除 simple-game 中的非必要文件
+kids-game-house/games/simple-game/node_modules
+kids-game-house/games/simple-game/dist
+kids-game-house/games/simple-game/coverage
+kids-game-house/games/simple-game/promo
+kids-game-house/games/simple-game/*.md
+kids-game-house/games/simple-game/*.ps1
+kids-game-house/games/simple-game/*.cjs
+kids-game-house/games/simple-game/*.html
+!kids-game-house/games/simple-game/index.html
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Reports and logs
+reports/
+logs/
+tasks/
+
+# Scripts（构建不需要）
+*.sh
+!deploy.sh
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Python (for node-gyp compatibility in alpine)
+*.pyc
+__pycache__

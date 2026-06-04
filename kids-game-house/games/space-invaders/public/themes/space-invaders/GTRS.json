@@ -1,0 +1,276 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "space-invaders",
+    "themeName": "Space Invaders Classic Theme",
+    "gameId": "space-invaders",
+    "ownerType": "GAME",
+    "ownerId": "space-invaders",
+    "isDefault": true,
+    "author": "AI Assistant",
+    "description": "Assets for the Space Invaders game using classic retro style",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#4CAF50",
+    "secondaryColor": "#8BC34A",
+    "bgColor": "#1a1a2e",
+    "textColor": "#ffffff",
+    "fontFamily": "'Arial', sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "scene": {
+        "ship": {
+          "alias": "玩家飞船",
+          "src": "/themes/space-invaders/assets/images/ship.png",
+          "type": "png",
+          "width": 80,
+          "height": 48,
+          "phaserKey": "ship",
+          "desc": "玩家控制的绿色三角战机"
+        },
+        "enemy0": {
+          "alias": "入侵者 A（红色）",
+          "src": "/themes/space-invaders/assets/images/enemy0.png",
+          "type": "png",
+          "width": 64,
+          "height": 48,
+          "phaserKey": "enemy0",
+          "desc": "第一行敌人，红色蟹形外星人"
+        },
+        "enemy1": {
+          "alias": "入侵者 B（紫色）",
+          "src": "/themes/space-invaders/assets/images/enemy1.png",
+          "type": "png",
+          "width": 64,
+          "height": 48,
+          "phaserKey": "enemy1",
+          "desc": "第二行敌人，品红色蟹形外星人"
+        },
+        "enemy2": {
+          "alias": "入侵者 C（青色）",
+          "src": "/themes/space-invaders/assets/images/enemy2.png",
+          "type": "png",
+          "width": 64,
+          "height": 48,
+          "phaserKey": "enemy2",
+          "desc": "第三行敌人，青色蟹形外星人"
+        },
+        "enemy3": {
+          "alias": "高速侦察者（橙色）",
+          "src": "/themes/space-invaders/assets/images/enemy3.png",
+          "type": "png",
+          "width": 64,
+          "height": 48,
+          "phaserKey": "enemy3",
+          "desc": "第3关解锁，橙色流线型，速度×2，1HP，15分"
+        },
+        "enemy4": {
+          "alias": "重装甲兵（银色）",
+          "src": "/themes/space-invaders/assets/images/enemy4.png",
+          "type": "png",
+          "width": 72,
+          "height": 56,
+          "phaserKey": "enemy4",
+          "desc": "第5关解锁，银色方形坦克，速度×0.5，3HP，30分"
+        },
+        "enemy5": {
+          "alias": "精英先锋（绿色）",
+          "src": "/themes/space-invaders/assets/images/enemy5.png",
+          "type": "png",
+          "width": 64,
+          "height": 56,
+          "phaserKey": "enemy5",
+          "desc": "第8关解锁，绿色带护甲，速度×1，2HP，20分，偶尔冲刺"
+        },
+        "boss": {
+          "alias": "Boss 旗舰",
+          "src": "/themes/space-invaders/assets/images/boss.png",
+          "type": "png",
+          "width": 120,
+          "height": 90,
+          "phaserKey": "boss",
+          "desc": "每五关出现的 Boss 大型战舰，品红色"
+        },
+        "bullet": {
+          "alias": "玩家子弹",
+          "src": "/themes/space-invaders/assets/images/bullet.png",
+          "type": "png",
+          "width": 8,
+          "height": 24,
+          "phaserKey": "bullet",
+          "desc": "玩家发射的黄色细长子弹"
+        },
+        "enemy_bullet": {
+          "alias": "敌人子弹",
+          "src": "/themes/space-invaders/assets/images/enemy_bullet.png",
+          "type": "png",
+          "width": 16,
+          "height": 16,
+          "phaserKey": "enemy_bullet",
+          "desc": "敌人发射的红色圆形子弹"
+        },
+        "explosion": {
+          "alias": "爆炸特效",
+          "src": "/themes/space-invaders/assets/images/explosion.png",
+          "type": "png",
+          "width": 64,
+          "height": 64,
+          "phaserKey": "explosion",
+          "desc": "命中时的橙黄色爆炸光圈"
+        },
+        "stars": {
+          "alias": "星空背景",
+          "src": "/themes/space-invaders/assets/images/stars.png",
+          "type": "png",
+          "width": 1280,
+          "height": 720,
+          "phaserKey": "stars",
+          "desc": "向下滚动的星空背景（1280×720）"
+        },
+        "particle": {
+          "alias": "粒子",
+          "src": "/themes/space-invaders/assets/images/particle.png",
+          "type": "png",
+          "width": 8,
+          "height": 8,
+          "phaserKey": "particle",
+          "desc": "爆炸散射的白色粒子点"
+        },
+        "powerup_shield": {
+          "alias": "道具：护盾",
+          "src": "/themes/space-invaders/assets/images/powerup_shield.png",
+          "type": "png",
+          "width": 40,
+          "height": 40,
+          "phaserKey": "powerup_shield",
+          "desc": "青色护盾道具，拾取后提供10秒无敌"
+        },
+        "powerup_rapid": {
+          "alias": "道具：速射",
+          "src": "/themes/space-invaders/assets/images/powerup_rapid.png",
+          "type": "png",
+          "width": 40,
+          "height": 40,
+          "phaserKey": "powerup_rapid",
+          "desc": "品红色速射道具，拾取后8秒内射速提升"
+        },
+        "powerup_life": {
+          "alias": "道具：加命",
+          "src": "/themes/space-invaders/assets/images/powerup_life.png",
+          "type": "png",
+          "width": 40,
+          "height": 40,
+          "phaserKey": "powerup_life",
+          "desc": "红色爱心道具，拾取后增加一条命"
+        },
+        "powerup_damage": {
+          "alias": "道具：伤害加成",
+          "src": "/themes/space-invaders/assets/images/powerup_damage.png",
+          "type": "png",
+          "width": 40,
+          "height": 40,
+          "phaserKey": "powerup_damage",
+          "desc": "橙色 D 标记道具，拾取后 8 秒内子弹伤害 ×3"
+        },
+        "powerup_spread": {
+          "alias": "道具：散射弹幕",
+          "src": "/themes/space-invaders/assets/images/powerup_spread.png",
+          "type": "png",
+          "width": 40,
+          "height": 40,
+          "phaserKey": "powerup_spread",
+          "desc": "橙色弹幕道具，拾取后8秒内一次发射5发扇形子弹"
+        },
+        "powerup_bomb": {
+          "alias": "道具：全屏炸弹",
+          "src": "/themes/space-invaders/assets/images/powerup_bomb.png",
+          "type": "png",
+          "width": 48,
+          "height": 48,
+          "phaserKey": "powerup_bomb",
+          "desc": "红色炸弹道具，拾取后立即消灭屏幕所有敌人和敌弹"
+        },
+        "powerup_magnet": {
+          "alias": "道具：磁铁吸分",
+          "src": "/themes/space-invaders/assets/images/powerup_magnet.png",
+          "type": "png",
+          "width": 40,
+          "height": 40,
+          "phaserKey": "powerup_magnet",
+          "desc": "黄色磁铁道具，拾取后10秒内持续从敌人吸取分数"
+        },
+        "powerup_laser": {
+          "alias": "道具：激光武器",
+          "src": "/themes/space-invaders/assets/images/powerup_laser.png",
+          "type": "png",
+          "width": 40,
+          "height": 40,
+          "phaserKey": "powerup_laser",
+          "desc": "绿色激光道具，拾取后6秒内射击变为瞬发激光束"
+        },
+        "powerup_double": {
+          "alias": "道具：双倍得分",
+          "src": "/themes/space-invaders/assets/images/powerup_double.png",
+          "type": "png",
+          "width": 40,
+          "height": 40,
+          "phaserKey": "powerup_double",
+          "desc": "金色星星道具，拾取后10秒内所有得分翻倍"
+        }
+      },
+      "ui": {
+        "invader": {
+          "alias": "入侵者图标（SVG）",
+          "src": "/themes/space-invaders/invader.svg",
+          "type": "svg",
+          "width": 48,
+          "height": 32
+        },
+        "space-invaders-hero": {
+          "alias": "游戏封面图（SVG）",
+          "src": "/themes/space-invaders/space-invaders-hero.svg",
+          "type": "svg",
+          "width": 200,
+          "height": 100
+        }
+      },
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {},
+      "voice": {}
+    },
+    "scripts": {
+      "script-v3.js": {
+        "alias": "游戏主脚本 v3",
+        "src": "script-v3.js",
+        "type": "js",
+        "desc": "当前使用的完整游戏逻辑（Phaser 3，程序化生成纹理）"
+      },
+      "script-gtrs.js": {
+        "alias": "GTRS 资源加载脚本",
+        "src": "script-gtrs.js",
+        "type": "js",
+        "desc": "从 GTRS.json 动态加载外部图片资源，替换程序化生成纹理"
+      },
+      "resource-loader.js": {
+        "alias": "资源加载器",
+        "src": "resource-loader.js",
+        "type": "js",
+        "desc": "统一资源加载工具"
+      }
+    },
+    "video": {},
+    "atlases": {},
+    "tilemaps": {}
+  }
+}

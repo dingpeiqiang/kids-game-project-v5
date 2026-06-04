@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐍 贪吃蛇关卡系统演示</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 1200px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    .test-section {
+      margin-bottom: 40px;
+    }
+
+    .test-section h2 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 15px 25px;
+      font-size: 1em;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    button.success {
+      background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+      color: white;
+    }
+
+    button.warning {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+
+    button.info {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+    }
+
+    .result-box {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+      border-left: 4px solid #667eea;
+    }
+
+    .result-title {
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .result-content {
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      line-height: 1.6;
+      color: #333;
+    }
+
+    .log-entry {
+      padding: 5px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-success {
+      color: #28a745;
+    }
+
+    .log-error {
+      color: #dc3545;
+    }
+
+    .log-info {
+      color: #007bff;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #e0e0e0;
+      border-radius: 15px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 2px solid #667eea;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🐍 贪吃蛇关卡系统演示</h1>
+      <p>GCRS 规范实战 - 标准化 6 阶段流程</p>
+    </div>
+
+    <div class="content">
+      <!-- 测试 1: 加载关卡配置 -->
+      <div class="test-section">
+        <h2>📦 测试 1: 加载关卡配置</h2>
+        <div class="button-group">
+          <button class="primary" onclick="loadLevel('snake_level_1')">加载第 1 关</button>
+          <button class="primary" onclick="loadLevel('snake_level_2')">加载第 2 关</button>
+          <button class="primary" onclick="loadLevel('snake_level_3')">加载第 3 关</button>
+          <button class="info" onclick="loadAllLevels()">批量加载所有关卡</button>
+        </div>
+        <div id="load-result" class="result-box" style="display: none;">
+          <div class="result-title">📊 加载结果</div>
+          <div id="load-content" class="result-content"></div>
+        </div>
+      </div>
+
+      <!-- 测试 2: 验证配置结构 -->
+      <div class="test-section">
+        <h2>✅ 测试 2: 验证配置结构</h2>
+        <div class="button-group">
+          <button class="success" onclick="validateConfig('snake_level_1')">验证第 1 关</button>
+          <button class="success" onclick="validateConfig('snake_level_2')">验证第 2 关</button>
+          <button class="warning" onclick="validateAllConfigs()">验证所有关卡</button>
+        </div>
+        <div id="validate-result" class="result-box" style="display: none;">
+          <div class="result-title">🔍 验证结果</div>
+          <div id="validate-content" class="result-content"></div>
+        </div>
+      </div>
+
+      <!-- 测试 3: 性能测试 -->
+      <div class="test-section">
+        <h2>⚡ 测试 3: 性能测试</h2>
+        <div class="button-group">
+          <button class="info" onclick="testLoadSpeed()">测试加载速度</button>
+          <button class="info" onclick="testCachePerformance()">测试缓存性能</button>
+        </div>
+        <div id="performance-result" class="result-box" style="display: none;">
+          <div class="result-title">📈 性能数据</div>
+          <div id="performance-content" class="result-content"></div>
+        </div>
+      </div>
+
+      <!-- 统计信息 -->
+      <div class="test-section">
+        <h2>📊 统计数据</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-loaded">0</div>
+            <div class="stat-label">已加载关卡</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-validated">0</div>
+            <div class="stat-label">已验证配置</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-errors">0</div>
+            <div class="stat-label">错误数量</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-avg-time">0ms</div>
+            <div class="stat-label">平均加载时间</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 日志输出 -->
+      <div class="test-section">
+        <h2>📝 运行日志</h2>
+        <div id="log-container" class="result-box" style="max-height: 300px; overflow-y: auto;">
+          <div class="result-title">📜 实时日志</div>
+          <div id="log-content" class="result-content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // 导入关卡加载器
+    import { SnakeLevelLoader } from './src/utils/SnakeLevelLoader.js'
+
+    // 全局变量
+    let loadedCount = 0
+    let validatedCount = 0
+    let errorCount = 0
+    let loadTimes = []
+
+    // 日志函数
+    function log(message, type = 'info') {
+      const logContent = document.getElementById('log-content')
+      const entry = document.createElement('div')
+      entry.className = `log-entry log-${type}`
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`
+      logContent.appendChild(entry)
+      logContent.scrollTop = logContent.scrollHeight
+    }
+
+    // 更新统计
+    function updateStats() {
+      document.getElementById('stat-loaded').textContent = loadedCount
+      document.getElementById('stat-validated').textContent = validatedCount
+      document.getElementById('stat-errors').textContent = errorCount
+      
+      if (loadTimes.length > 0) {
+        const avgTime = loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length
+        document.getElementById('stat-avg-time').textContent = `${Math.round(avgTime)}ms`
+      }
+    }
+
+    // 显示结果
+    function showResult(containerId, contentId, content) {
+      const container = document.getElementById(containerId)
+      const contentDiv = document.getElementById(contentId)
+      contentDiv.innerHTML = content
+      container.style.display = 'block'
+    }
+
+    // 加载单个关卡
+    window.loadLevel = async (levelId) => {
+      try {
+        log(`开始加载 ${levelId}...`, 'info')
+        const start = performance.now()
+        
+        const config = await SnakeLevelLoader.loadFromJSON(levelId)
+        const end = performance.now()
+        const time = end - start
+        loadTimes.push(time)
+        
+        loadedCount++
+        updateStats()
+        
+        const content = `
+          <div><strong>✅ 加载成功!</strong></div>
+          <div style="margin-top: 10px;">
+            <div>关卡 ID: ${config.info.id}</div>
+            <div>关卡名称：${config.info.name}</div>
+            <div>难度：${config.info.difficulty}</div>
+            <div>描述：${config.info.description}</div>
+            <div>最小等级：${config.info.minPlayerLevel}</div>
+            <div>目标数量：${config.objectives.length}</div>
+            <div>时间限制：${config.timeLimit || '无'}秒</div>
+            <div>网格大小：${config.params.gridSize}</div>
+            <div>蛇的速度：${config.params.speed}ms</div>
+            <div>初始长度：${config.params.initialLength}</div>
+            <div>障碍物数量：${config.params.obstacleCount}</div>
+            <div style="margin-top: 10px;"><strong>资源配置:</strong></div>
+            <div>背景：${config.resources?.backgrounds?.join(', ')}</div>
+            <div>精灵：${config.resources?.sprites?.join(', ')}</div>
+            <div>音乐：${config.resources?.musicTracks?.join(', ')}</div>
+          </div>
+          <div style="margin-top: 10px; color: #28a745;">
+            ⏱️ 加载耗时：${time.toFixed(2)}ms
+          </div>
+        `
+        
+        showResult('load-result', 'load-content', content)
+        log(`${levelId} 加载完成，耗时 ${time.toFixed(2)}ms`, 'success')
+      } catch (error) {
+        errorCount++
+        updateStats()
+        log(`加载 ${levelId} 失败：${error.message}`, 'error')
+        showResult('load-result', 'load-content', `<div style="color: #dc3545;">❌ 加载失败：${error.message}</div>`)
+      }
+    }
+
+    // 批量加载所有关卡
+    window.loadAllLevels = async () => {
+      try {
+        log('开始批量加载所有关卡...', 'info')
+        const start = performance.now()
+        
+        const levels = await SnakeLevelLoader.loadMultiple([
+          'snake_level_1',
+          'snake_level_2',
+          'snake_level_3'
+        ])
+        
+        const end = performance.now()
+        const time = end - start
+        loadTimes.push(time / 3)
+        
+        loadedCount += 3
+        updateStats()
+        
+        let content = '<div><strong>✅ 批量加载成功!</strong></div>'
+        content += `<div style="margin-top: 10px;">总耗时：${time.toFixed(2)}ms</div>`
+        content += '<div style="margin-top: 10px;">'
+        
+        levels.forEach((level, index) => {
+          content += `
+            <div style="padding: 10px; border-left: 3px solid #667eea; margin: 10px 0; background: white;">
+              <strong>${index + 1}. ${level.info.name}</strong><br>
+              难度：${level.info.difficulty} | 
+              目标：${level.objectives.length}个 | 
+              时间：${level.timeLimit || '∞'}秒
+            </div>
+          `
+        })
+        
+        content += '</div>'
+        
+        showResult('load-result', 'load-content', content)
+        log(`批量加载完成，共 ${levels.length} 个关卡，耗时 ${time.toFixed(2)}ms`, 'success')
+      } catch (error) {
+        errorCount++
+        updateStats()
+        log(`批量加载失败：${error.message}`, 'error')
+      }
+    }
+
+    // 验证配置
+    window.validateConfig = async (levelId) => {
+      try {
+        log(`开始验证 ${levelId}...`, 'info')
+        
+        const config = await SnakeLevelLoader.loadFromJSON(levelId)
+        
+        const errors = []
+        
+        // 验证必需字段
+        if (!config.info || !config.info.id) errors.push('缺少 info.id')
+        if (!config.info || !config.info.name) errors.push('缺少 info.name')
+        if (!config.params) errors.push('缺少 params')
+        if (!config.victoryCondition) errors.push('缺少 victoryCondition')
+        if (!config.objectives || config.objectives.length === 0) errors.push('缺少 objectives')
+        
+        validatedCount++
+        updateStats()
+        
+        if (errors.length === 0) {
+          const content = `
+            <div style="color: #28a745;"><strong>✅ ${levelId} 验证通过!</strong></div>
+            <div style="margin-top: 10px;">
+              <div>✓ 所有必需字段都存在</div>
+              <div>✓ 格式正确</div>
+              <div>✓ 可以安全使用</div>
+            </div>
+          `
+          showResult('validate-result', 'validate-content', content)
+          log(`${levelId} 验证通过`, 'success')
+        } else {
+          const content = `
+            <div style="color: #dc3545;"><strong>❌ ${levelId} 验证失败!</strong></div>
+            <div style="margin-top: 10px;">
+              ${errors.map(err => `<div>✗ ${err}</div>`).join('')}
+            </div>
+          `
+          showResult('validate-result', 'validate-content', content)
+          log(`${levelId} 验证失败：${errors.join(', ')}`, 'error')
+        }
+      } catch (error) {
+        errorCount++
+        updateStats()
+        log(`验证 ${levelId} 失败：${error.message}`, 'error')
+      }
+    }
+
+    // 验证所有配置
+    window.validateAllConfigs = async () => {
+      log('开始验证所有关卡配置...', 'info')
+      
+      const levels = ['snake_level_1', 'snake_level_2', 'snake_level_3']
+      let passed = 0
+      let failed = 0
+      
+      for (const level of levels) {
+        try {
+          const config = await SnakeLevelLoader.loadFromJSON(level)
+          
+          const errors = []
+          if (!config.info?.id) errors.push('缺少 info.id')
+          if (!config.info?.name) errors.push('缺少 info.name')
+          if (!config.params) errors.push('缺少 params')
+          if (!config.victoryCondition) errors.push('缺少 victoryCondition')
+          
+          if (errors.length === 0) {
+            passed++
+            log(`${level} ✓`, 'success')
+          } else {
+            failed++
+            log(`${level} ✗ ${errors.join(', ')}`, 'error')
+          }
+        } catch (error) {
+          failed++
+          log(`${level} 错误：${error.message}`, 'error')
+        }
+      }
+      
+      const content = `
+        <div><strong>验证完成!</strong></div>
+        <div style="margin-top: 10px;">
+          <div style="color: #28a745;">✓ 通过：${passed}</div>
+          <div style="color: #dc3545;">✗ 失败：${failed}</div>
+        </div>
+      `
+      
+      showResult('validate-result', 'validate-content', content)
+      validatedCount++
+      updateStats()
+    }
+
+    // 测试加载速度
+    window.testLoadSpeed = async () => {
+      log('开始加载速度测试...', 'info')
+      
+      const times = []
+      const results = []
+      
+      for (let i = 0; i < 5; i++) {
+        const start = performance.now()
+        await SnakeLevelLoader.loadFromJSON('snake_level_1')
+        const end = performance.now()
+        const time = end - start
+        times.push(time)
+        results.push(`第 ${i + 1} 次：${time.toFixed(2)}ms`)
+      }
+      
+      const avg = times.reduce((a, b) => a + b, 0) / times.length
+      const min = Math.min(...times)
+      const max = Math.max(...times)
+      
+      const content = `
+        <div><strong>加载速度测试结果</strong></div>
+        <div style="margin-top: 10px;">
+          ${results.map(r => `<div>${r}</div>`).join('')}
+        </div>
+        <div style="margin-top: 10px; font-weight: bold;">
+          <div>平均：${avg.toFixed(2)}ms</div>
+          <div>最快：${min.toFixed(2)}ms</div>
+          <div>最慢：${max.toFixed(2)}ms</div>
+        </div>
+      `
+      
+      showResult('performance-result', 'performance-content', content)
+      log(`加载速度测试完成，平均 ${avg.toFixed(2)}ms`, 'success')
+    }
+
+    // 测试缓存性能
+    window.testCachePerformance = async () => {
+      log('开始缓存性能测试...', 'info')
+      
+      // 第一次加载
+      const start1 = performance.now()
+      await SnakeLevelLoader.loadFromJSON('snake_level_1')
+      const end1 = performance.now()
+      const time1 = end1 - start1
+      
+      // 第二次加载（应该命中缓存）
+      const start2 = performance.now()
+      await SnakeLevelLoader.loadFromJSON('snake_level_1')
+      const end2 = performance.now()
+      const time2 = end2 - start2
+      
+      const improvement = ((time1 - time2) / time1 * 100).toFixed(2)
+      
+      const content = `
+        <div><strong>缓存性能测试结果</strong></div>
+        <div style="margin-top: 10px;">
+          <div>首次加载：${time1.toFixed(2)}ms</div>
+          <div>缓存命中：${time2.toFixed(2)}ms</div>
+          <div style="color: #28a745; margin-top: 10px;">
+            性能提升：${improvement}% 🚀
+          </div>
+        </div>
+      `
+      
+      showResult('performance-result', 'performance-content', content)
+      log(`缓存性能测试完成，提升 ${improvement}%`, 'success')
+    }
+
+    // 初始化
+    log('演示页面已就绪', 'success')
+    log('点击按钮开始测试...', 'info')
+  </script>
+</body>
+</html>

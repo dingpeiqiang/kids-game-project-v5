@@ -1,0 +1,40 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "__GAME_ID___default",
+    "themeName": "默认主题",
+    "gameId": "__GAME_ID__",
+    "ownerType": "GAME",
+    "ownerId": "__GAME_ID__",
+    "isDefault": true,
+    "author": "",
+    "description": "",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#4ade80",
+    "secondaryColor": "#22c55e",
+    "bgColor": "#1a1a2e",
+    "textColor": "#ffffff",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "scene": {},
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {},
+      "voice": {}
+    },
+    "video": {}
+  }
+}

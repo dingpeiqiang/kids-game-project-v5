@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kidgame.dao.mapper.UserRelationMapper">
+
+    <!-- 查询儿童的所有监护人 -->
+    <select id="selectGuardiansByKidId" resultType="com.kidgame.dao.entity.UserRelation">
+        SELECT relation_id, relation_type, user_a, user_b, role_type, is_primary,
+               permission_level, status, remark, create_time, update_time, deleted
+        FROM t_user_relation
+        WHERE user_b = #{kidId}
+          AND relation_type = 1
+          AND deleted = 0
+          AND status = 1
+        ORDER BY is_primary DESC, create_time ASC
+    </select>
+
+    <!-- 查询家长的所有儿童 -->
+    <select id="selectKidsByParentId" resultType="com.kidgame.dao.entity.UserRelation">
+        SELECT relation_id, relation_type, user_a, user_b, role_type, is_primary,
+               permission_level, status, remark, create_time, update_time, deleted
+        FROM t_user_relation
+        WHERE user_a = #{parentId}
+          AND relation_type = 1
+          AND deleted = 0
+          AND status = 1
+        ORDER BY is_primary DESC, create_time ASC
+    </select>
+
+</mapper>

@@ -1,0 +1,146 @@
+# =============================================
+# Kids Game Platform - Nginx 开发环境配置
+# =============================================
+# 说明：用于本地开发，代理到各个开发服务器
+# =============================================
+
+server {
+    listen 80;
+    server_name localhost;
+    
+    # 日志
+    access_log /var/log/nginx/kids-game-dev-access.log;
+    error_log /var/log/nginx/kids-game-dev-error.log;
+    
+    # 主前端（Vite 开发服务器）
+    location / {
+        proxy_pass http://localhost:5173;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        
+        # WebSocket 支持
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # 增加缓冲区大小
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+    }
+    
+    # API 代理到后端
+    location /api/ {
+        proxy_pass http://localhost:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        
+        # 超时配置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # WebSocket 代理
+    location /ws/ {
+        proxy_pass http://localhost:8080/ws/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400s;
+    }
+    
+    # =============================================
+    # 独立部署的游戏（开发环境）
+    # =============================================
+    
+    # 贪吃蛇
+    location /games/snake-vue3/ {
+        proxy_pass http://localhost:3003/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        
+        # WebSocket 支持
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+    
+    # 飞机大战
+    location /games/plane-shooter/ {
+        proxy_pass http://localhost:3002/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # 染色体
+    location /games/chromosome/ {
+        proxy_pass http://localhost:3001/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # 植物大战僵尸
+    location /games/plants-vs-zombie/ {
+        proxy_pass http://localhost:3004/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # =============================================
+    # 静态资源（可选）
+    # =============================================
+    
+    location /resources/ {
+        proxy_pass http://localhost:8080/resources/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        
+        # 缓存配置
+        expires 1h;
+        add_header Cache-Control "public";
+    }
+}
+
+# =============================================
+# Docker Compose 开发配置
+# =============================================
+# version: '3.8'
+#
+# services:
+#   nginx-dev:
+#     image: nginx:alpine
+#     ports:
+#       - "80:80"
+#     volumes:
+#       - ./nginx.dev.conf:/etc/nginx/conf.d/default.conf
+#     depends_on:
+#       - frontend
+#       - backend
+#
+#   frontend:
+#     build: ./kids-game-frontend
+#     ports:
+#       - "5173:5173"
+#     volumes:
+#       - ./kids-game-frontend:/app
+#       - /app/node_modules
+#     command: npm run dev -- --host 0.0.0.0
+#
+#   backend:
+#     build: ./kids-game-backend
+#     ports:
+#       - "8080:8080"
+#     environment:
+#       - SPRING_PROFILES_ACTIVE=dev
+#
+#   games:
+#     build: ./kids-game-house
+#     ports:
+#       - "3001:3001"
+#       - "3002:3002"
+#       - "3003:3003"
+#       - "3004:3004"
+#     command: npm run dev-all

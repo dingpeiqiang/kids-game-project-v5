@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://kids-game.com/schemas/gtrs-v1.0.0.json",
+  "title": "Game Theme Resource Specification v1.0.0",
+  "description": "GTRS 游戏主题资源规范 Schema，用于全流程 JSON 校验。configJson 存储 specMeta+globalStyle+resources。",
+  "type": "object",
+  "required": ["specMeta", "globalStyle", "resources"],
+  "additionalProperties": true,
+  "properties": {
+    "$comment": {
+      "type": "string",
+      "description": "JSON Schema 注释字段，用于描述文件用途"
+    },
+    "specMeta": {
+      "type": "object",
+      "description": "规范元信息",
+      "required": ["specName", "specVersion", "compatibleVersion"],
+      "additionalProperties": false,
+      "properties": {
+        "specName": {
+          "type": "string",
+          "const": "GTRS",
+          "description": "规范名称，固定为GTRS"
+        },
+        "specVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "当前规范版本号，格式：主版本.次版本.修订版"
+        },
+        "compatibleVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "向下兼容的最低版本"
+        }
+      }
+    },
+    "themeInfo": {
+      "type": "null",
+      "description": "⭐ 已废弃：主题基础信息已迁移到数据库 theme_info 表，不再在 configJson 中存储"
+    },
+    "globalStyle": {
+      "type": "object",
+      "description": "全局样式配置",
+      "additionalProperties": true,
+      "properties": {
+        "primaryColor": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "主色调，十六进制颜色值"
+        },
+        "secondaryColor": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "辅助色"
+        },
+        "bgColor": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "背景色"
+        },
+        "textColor": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "文字颜色"
+        },
+        "fontFamily": {
+          "type": "string",
+          "description": "字体"
+        },
+        "borderRadius": {
+          "type": "string",
+          "description": "圆角大小"
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "description": "资源集合",
+      "required": ["images", "audio", "video"],
+      "additionalProperties": false,
+      "properties": {
+        "images": {
+          "type": "object",
+          "description": "图片资源",
+          "additionalProperties": {
+            "type": "object",
+            "description": "图片分类",
+            "additionalProperties": {
+              "$ref": "#/definitions/imageResource"
+            }
+          }
+        },
+        "audio": {
+          "type": "object",
+          "description": "音频资源",
+          "additionalProperties": {
+            "type": "object",
+            "description": "音频分类",
+            "additionalProperties": {
+              "$ref": "#/definitions/audioResource"
+            }
+          }
+        },
+        "video": {
+          "type": "object",
+          "description": "视频资源（预留扩展）",
+          "additionalProperties": true
+        }
+      }
+    }
+  },
+  "definitions": {
+    "imageResource": {
+      "type": "object",
+      "required": ["src", "type", "alias"],
+      "additionalProperties": false,
+      "properties": {
+        "src": {
+          "type": "string",
+          "minLength": 1,
+          "description": "资源 URL 地址（支持 http://, https://, 相对路径 ./, ../, assets/, /resources/, /public/, /开头的根路径，或颜色值 #RRGGBB）",
+          "pattern": "^(https?://|\\.{1,2}/|assets/|/resources/|/public/|/|#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})).*$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["png", "jpg", "jpeg", "webp", "gif"],
+          "description": "图片格式"
+        },
+        "alias": {
+          "type": "string",
+          "minLength": 1,
+          "description": "中文别名（可视化界面使用）"
+        }
+      }
+    },
+    "audioResource": {
+      "type": "object",
+      "required": ["src", "type", "alias", "volume"],
+      "additionalProperties": false,
+      "properties": {
+        "src": {
+          "type": "string",
+          "minLength": 1,
+          "description": "音频 URL 地址（支持 http://, https://, 相对路径 ./, ../, assets/, /resources/, /public/, /开头的根路径）",
+          "pattern": "^(https?://|\\.{1,2}/|assets/|/resources/|/public/|/).*$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["mp3"],
+          "description": "音频格式"
+        },
+        "alias": {
+          "type": "string",
+          "minLength": 1,
+          "description": "中文别名"
+        },
+        "volume": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "音量（0~1）"
+        }
+      }
+    }
+  }
+}

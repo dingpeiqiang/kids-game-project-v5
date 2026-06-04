@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexigua Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #ffe8a3;
+        }
+        #game-container {
+            width: 1024px;
+            height: 768px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <script type="module">
+        import Game from '/src/game.ts';
+        
+        // 初始化游戏
+        const container = document.getElementById('game-container');
+        Game.init({
+            debug: false,
+            cdn: '/dist',  // 使用本地 dist 目录作为资源路径
+            parent: container,
+            scale: 1,
+            backgroundColor: '#ffe8a3',
+            transparent: false,
+            event: {
+                onStart: () => console.log('游戏开始'),
+                onGameOver: (score) => console.log('游戏结束，得分:', score),
+                onProgress: (value) => console.log('加载进度:', value),
+                onComplete: () => console.log('加载完成'),
+                onMessage: (msg) => console.log('游戏消息:', msg)
+            }
+        });
+    </script>
+</body>
+</html>

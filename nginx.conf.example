@@ -1,0 +1,196 @@
+# =============================================
+# Kids Game Platform - Nginx 生产环境配置
+# =============================================
+# 说明：此配置支持混合架构，可选择整合部署或分离部署
+# =============================================
+
+upstream backend {
+    server localhost:8080;
+    keepalive 32;
+}
+
+upstream frontend_dev {
+    server localhost:5173;
+}
+
+# =============================================
+# 主服务器配置
+# =============================================
+server {
+    listen 80;
+    server_name kids-game.com www.kids-game.com;
+    
+    # 重定向到 HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name kids-game.com www.kids-game.com;
+    
+    # SSL 证书配置
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    
+    # 日志配置
+    access_log /var/log/nginx/kids-game-access.log;
+    error_log /var/log/nginx/kids-game-error.log;
+    
+    # Gzip 压缩
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
+    
+    # =============================================
+    # 模式 A: 整合部署模式（默认）
+    # 游戏资源作为静态文件，与主前端一起部署
+    # =============================================
+    
+    # 主前端静态文件
+    location / {
+        root /var/www/kids-game-frontend/dist;
+        try_files $uri $uri/ /index.html;
+        
+        # 缓存策略
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+    
+    # 游戏资源（整合部署）
+    location /games/ {
+        root /var/www/kids-game-frontend/public;
+        
+        # 长期缓存（带 hash 的资源文件）
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+        
+        # HTML 文件不缓存
+        location ~* \.html$ {
+            expires -1;
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+        }
+    }
+    
+    # =============================================
+    # 模式 B: 分离部署模式（CDN 加速）
+    # 取消下面注释以启用
+    # =============================================
+    
+    # location /games/ {
+    #     # CDN 代理
+    #     proxy_pass https://cdn.kidsgame.com/games/;
+    #     proxy_set_header Host cdn.kidsgame.com;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    #     
+    #     # 缓存配置
+    #     proxy_cache_valid 200 302 10m;
+    #     proxy_cache_valid 404 1m;
+    #     expires 30d;
+    #     add_header Cache-Control "public, immutable";
+    # }
+    
+    # =============================================
+    # API 反向代理
+    # =============================================
+    
+    location /api/ {
+        proxy_pass http://backend/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # 超时配置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # WebSocket 支持
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+    
+    # WebSocket 专用路径
+    location /ws/ {
+        proxy_pass http://backend/ws/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        
+        # WebSocket 长连接
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+    
+    # =============================================
+    # 开发环境代理（可选，仅本地开发使用）
+    # =============================================
+    
+    # 独立部署的游戏（开发环境）
+    # location /dev-games/snake-vue3/ {
+    #     proxy_pass http://localhost:3003/;
+    #     proxy_set_header Host $host;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    #     
+    #     # WebSocket 支持
+    #     proxy_http_version 1.1;
+    #     proxy_set_header Upgrade $http_upgrade;
+    #     proxy_set_header Connection "upgrade";
+    # }
+    # 
+    # location /dev-games/plane-shooter/ {
+    #     proxy_pass http://localhost:3002/;
+    #     proxy_set_header Host $host;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    # }
+    
+    # =============================================
+    # 错误页面
+    # =============================================
+    
+    error_page 404 /404.html;
+    error_page 500 502 503 504 /50x.html;
+    
+    location = /50x.html {
+        root /var/www/kids-game-frontend/dist;
+    }
+}
+
+# =============================================
+# Docker 部署配置示例
+# =============================================
+# 如果使用 Docker，可以使用以下配置：
+#
+# upstream backend {
+#     server kids-backend:8080;
+# }
+#
+# server {
+#     listen 80;
+#     server_name localhost;
+#     
+#     location / {
+#         root /usr/share/nginx/html;
+#         try_files $uri $uri/ /index.html;
+#     }
+#     
+#     location /games/ {
+#         root /usr/share/nginx/html;
+#         expires 30d;
+#         add_header Cache-Control "public, immutable";
+#     }
+#     
+#     location /api/ {
+#         proxy_pass http://backend/api/;
+#     }
+# }

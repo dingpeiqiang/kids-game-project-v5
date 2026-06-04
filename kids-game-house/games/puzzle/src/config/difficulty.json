@@ -1,0 +1,31 @@
+{
+  "difficulties": [
+    {
+      "id": "easy",
+      "label": "简单 ⭐",
+      "description": "2×2 网格，4 块拼图，适合 3-4 岁",
+      "gridCols": 2,
+      "gridRows": 2,
+      "speed": 1000,
+      "scoreMultiplier": 1.0
+    },
+    {
+      "id": "normal",
+      "label": "普通 ⭐⭐",
+      "description": "3×3 网格，9 块拼图，适合 5-6 岁",
+      "gridCols": 3,
+      "gridRows": 3,
+      "speed": 1000,
+      "scoreMultiplier": 1.5
+    },
+    {
+      "id": "hard",
+      "label": "困难 ⭐⭐⭐",
+      "description": "4×4 网格，16 块拼图，适合 7-8 岁",
+      "gridCols": 4,
+      "gridRows": 4,
+      "speed": 1000,
+      "scoreMultiplier": 2.0
+    }
+  ]
+}

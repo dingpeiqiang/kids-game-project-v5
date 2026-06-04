@@ -1,0 +1,33 @@
+{
+  "rules": {
+    "custom/skeleton-screen-required": "error",
+    "custom/empty-state-required": "error"
+  },
+  "ruleSettings": {
+    "custom/skeleton-screen-required": {
+      "severity": "warning",
+      "description": "列表数据加载时应使用骨架屏",
+      "patterns": [
+        "**/views/**/*.vue",
+        "**/components/**/*.vue"
+      ],
+      "triggers": [
+        "v-loading",
+        "loading"
+      ]
+    },
+    "custom/empty-state-required": {
+      "severity": "warning", 
+      "description": "空数据状态应显示 EmptyState 组件",
+      "patterns": [
+        "**/views/**/*.vue",
+        "**/components/**/*.vue"
+      ],
+      "triggers": [
+        "length === 0",
+        "!data.length",
+        "data?.length === 0"
+      ]
+    }
+  }
+}

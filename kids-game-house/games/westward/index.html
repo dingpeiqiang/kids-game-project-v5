@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Westward</title>
+    <link rel="shortcut icon" type="image/x-icon" href="assets/images/favicon.ico">
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-93796414-4"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-93796414-4');
+    </script>
+
+</head>
+<body>
+    <div class="fontPreload">.</div> <!-- don't forget the dot, the div cannot be empty-->
+    <div class="fontPreloadTreamd">.</div>
+    <div id='game'>
+    </div>
+    <div style='text-align: center;'>
+        <div id="browser" class="danger"></div>
+        <div id="danger" class="danger"></div>
+        <div class="info">
+            <!-- Pixel: <span id="pxx">0</span>,<span id="pxy">0</span>&nbsp;-->
+            Tile: <span id="tx">0</span>,<span id="ty">0</span>&nbsp;
+            AOI: <span id="aoi">0</span>
+            <!-- Pixel: <span id="pxx">0</span>,<span id="pxy">0</span><br/> -->
+        </div>
+    </div>
+    
+    <div id="social" style='text-align: center;'>
+        Join the community on <a target="_blank" href='https://join.slack.com/t/dynetisgames/shared_invite/enQtMTc0NzU2MjgzNDExLTNiMTMwNDJmMGQ1Y2FjM2ZhYTFhMGYzNWEyYmE3MjQ2YzAyNzYwYjQyODllZTZlYzM3ZDM0MGRiMGQyNjIxNWM' title='Slack'><img src='assets/images/social-slack.png'/></a> 
+        or <a target="_blank" href='https://discord.gg/NzUnS7F' title='Discord'><img src='assets/images/discord-social.png'/></a>
+        and drop feedback on <a target="_blank" href='https://www.stomt.com/westward' title='Stomt'><img src='assets/images/stomt-social.png'/></a>!
+    </div>
+    <div id="disqus_thread"></div>
+<!-- <script>
+    if (!(location.hostname === "localhost" || location.hostname === "127.0.0.1")){
+        var disqus_config = function () {
+            this.page.url = "http://westward-prototype.herokuapp.com/";
+            this.page.identifier = "westward-prototype";
+        };
+        (function() {
+            var d = document, s = d.createElement('script');
+            s.src = 'https://dynetis-games.disqus.com/embed.js';
+            s.setAttribute('data-timestamp', +new Date());
+            (d.head || d.body).appendChild(s);
+        })();
+    }
+</script> -->
+    <script type="module" src="/client/main.js"></script>
+</body>
+</html>

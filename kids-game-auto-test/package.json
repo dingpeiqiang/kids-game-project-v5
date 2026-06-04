@@ -1,0 +1,82 @@
+{
+  "name": "kids-game-auto-test",
+  "version": "1.4.0",
+  "description": "Kids Game 自动化测试平台 - AI 驱动的游戏测试和质量分析（Playwright + 后端API + Web 监控面板版）",
+  "main": "src/index.js",
+  "scripts": {
+    "setup": "node setup.js",
+    "setup:all-browsers": "node setup.js --all-browsers",
+    "setup:check": "node setup.js --check-only",
+    "setup:mirror": "node setup.js --mirror",
+    "install:browsers": "npx playwright install chromium --with-deps",
+    "install:browsers:all": "npx playwright install --with-deps",
+
+    "test:all": "node src/index.js --mode=all",
+    "test:all:headless": "node src/index.js --mode=all --headless",
+    "test:all:parallel": "node src/index.js --mode=all --parallel --headless",
+    "test:game": "node src/index.js --mode=single",
+    "test:performance": "node src/index.js --mode=performance",
+    "test:record": "node src/index.js --mode=all --headless --record",
+
+    "test:smoke": "node src/index.js --mode=all --headless --timeout=30000",
+    "test:ci": "node src/index.js --mode=all --headless --parallel --timeout=60000",
+    "test:debug": "node src/index.js --mode=all --timeout=120000",
+
+    "pipeline": "node src/pipeline.js",
+    "pipeline:scan": "node src/pipeline.js --scan-only",
+    "pipeline:generate": "node src/pipeline.js --generate-only",
+    "pipeline:headless": "node src/pipeline.js --headless --report",
+    "pipeline:ci": "node src/pipeline.js --headless --concurrency=2 --priority=P0,P1 --report --junit",
+    "pipeline:p0": "node src/pipeline.js --headless --priority=P0 --report",
+
+    "pipeline:api": "node src/pipeline.js --api-mode --headless --report",
+    "pipeline:api-only": "node src/pipeline.js --api-only --report",
+    "pipeline:api-ci": "node src/pipeline.js --api-mode --headless --concurrency=2 --priority=P0,P1 --report --junit",
+    "pipeline:api-p0": "node src/pipeline.js --api-mode --headless --priority=P0 --report",
+    "pipeline:api-debug": "node src/pipeline.js --api-only --backend-url=http://localhost:8080",
+
+    "dashboard": "node src/pipeline.js --dashboard --dashboard-open",
+    "dashboard:ci": "node src/pipeline.js --headless --dashboard --junit --report",
+
+    "report:demo": "node examples/demo-report.js",
+    "report:demo:open": "node examples/demo-report.js --open",
+    "report:demo:trend": "node examples/demo-report.js --multi --open",
+    "report:open": "node -e \"const fs=require('fs'),path=require('path'),{exec}=require('child_process');const d=path.resolve('reports');const f=fs.readdirSync(d).filter(f=>f.endsWith('.html')).sort().pop();if(f){const p=path.join(d,f);console.log('Opening:',p);exec(process.platform==='win32'?'start \"\" \"'+p+'\"':'open \"'+p+'\"');}else{console.error('No HTML report found.');}\"",
+
+    "test:ai-analysis": "python ai/analyzer.py",
+    "clean": "node -e \"const fs=require('fs');['reports','screenshots','videos','src/logs'].forEach(d=>{if(fs.existsSync(d))fs.rmSync(d,{recursive:true});console.log('Cleaned:',d);})\""
+  },
+  "keywords": [
+    "kids-game",
+    "automation",
+    "testing",
+    "playwright",
+    "ai-analysis",
+    "quality-assurance",
+    "api-testing",
+    "spring-boot",
+    "dashboard",
+    "junit",
+    "sse"
+  ],
+  "author": "Kids Game Team",
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.58.0",
+    "axios": "^1.6.0",
+    "winston": "^3.11.0",
+    "moment": "^2.29.0",
+    "lodash": "^4.17.21",
+    "commander": "^12.0.0",
+    "exceljs": "^4.4.0",
+    "nodemailer": "^7.0.0",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "plane_shooter_default",
+    "themeName": "飞机大战默认主题",
+    "gameId": "plane-shooter",
+    "ownerType": "GAME",
+    "ownerId": "plane-shooter",
+    "isDefault": true,
+    "author": "AI Assistant",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#3b82f6",
+    "secondaryColor": "#1e40af",
+    "bgColor": "#0f172a",
+    "textColor": "#ffffff",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "scene": {
+        "bg_main": {
+          "alias": "游戏背景",
+          "src": "/themes/plane_shooter_default/images/bg_main.png",
+          "type": "png"
+        },
+        "player": {
+          "alias": "玩家飞机",
+          "src": "/themes/plane_shooter_default/images/player.png",
+          "type": "png"
+        },
+        "enemy_small": {
+          "alias": "小型敌机",
+          "src": "/themes/plane_shooter_default/images/enemy_small.png",
+          "type": "png"
+        },
+        "enemy_medium": {
+          "alias": "中型敌机",
+          "src": "/themes/plane_shooter_default/images/enemy_medium.png",
+          "type": "png"
+        },
+        "enemy_large": {
+          "alias": "大型敌机",
+          "src": "/themes/plane_shooter_default/images/enemy_large.png",
+          "type": "png"
+        },
+        "bullet_player": {
+          "alias": "玩家子弹",
+          "src": "/themes/plane_shooter_default/images/bullet_player.png",
+          "type": "png"
+        },
+        "bullet_enemy": {
+          "alias": "敌机子弹",
+          "src": "/themes/plane_shooter_default/images/bullet_enemy.png",
+          "type": "png"
+        },
+        "prop_double": {
+          "alias": "双发子弹",
+          "src": "/themes/plane_shooter_default/images/prop_double.png",
+          "type": "png"
+        },
+        "prop_shield": {
+          "alias": "护盾",
+          "src": "/themes/plane_shooter_default/images/prop_shield.png",
+          "type": "png"
+        },
+        "prop_heart": {
+          "alias": "生命恢复",
+          "src": "/themes/plane_shooter_default/images/prop_heart.png",
+          "type": "png"
+        },
+        "prop_bomb": {
+          "alias": "炸弹",
+          "src": "/themes/plane_shooter_default/images/prop_bomb.png",
+          "type": "png"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {
+        "explosion": {
+          "alias": "爆炸特效",
+          "src": "/themes/plane_shooter_default/images/explosion.png",
+          "type": "png"
+        }
+      }
+    },
+    "audio": {
+      "bgm": {
+        "bgm_main": {
+          "alias": "背景音乐",
+          "src": "/themes/plane_shooter_default/audio/bgm_main.mp3",
+          "type": "mp3",
+          "volume": 0.6
+        }
+      },
+      "effect": {
+        "sfx_shoot": {
+          "alias": "射击音效",
+          "src": "/themes/plane_shooter_default/audio/sfx_shoot.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        },
+        "sfx_explosion": {
+          "alias": "爆炸音效",
+          "src": "/themes/plane_shooter_default/audio/sfx_explosion.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        },
+        "sfx_hit": {
+          "alias": "被击中音效",
+          "src": "/themes/plane_shooter_default/audio/sfx_hit.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        },
+        "sfx_prop": {
+          "alias": "拾取道具音效",
+          "src": "/themes/plane_shooter_default/audio/sfx_prop.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        },
+        "sfx_gameover": {
+          "alias": "游戏结束音效",
+          "src": "/themes/plane_shooter_default/audio/sfx_gameover.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        }
+      },
+      "voice": {}
+    },
+    "video": {}
+  }
+}

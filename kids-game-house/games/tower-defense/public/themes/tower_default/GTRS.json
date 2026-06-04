@@ -1,0 +1,86 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "tower_default",
+    "themeName": "塔防游戏默认主题",
+    "gameId": "tower-defense",
+    "ownerType": "GAME",
+    "ownerId": "tower-defense",
+    "isDefault": true,
+    "author": "AI Assistant",
+    "description": "塔防游戏默认主题 - AI 自动生成",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#4ade80",
+    "secondaryColor": "#22c55e",
+    "bgColor": "#87CEEB",
+    "textColor": "#ffffff",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "8px"
+  },
+  "resources": {
+    "images": {
+      "scene": {
+        "enemy_red": {
+          "alias": "红色敌人",
+          "src": "/themes/tower_default/assets/scene/level/tank_bigRed.png",
+          "type": "png"
+        },
+        "enemy_sand": {
+          "alias": "沙色敌人",
+          "src": "/themes/tower_default/assets/scene/level/tank_sand.png",
+          "type": "png"
+        },
+        "turret": {
+          "alias": "炮塔",
+          "src": "/themes/tower_default/assets/scene/level/tankBody_darkLarge_outline.png",
+          "type": "png"
+        },
+        "bullet": {
+          "alias": "子弹",
+          "src": "/themes/tower_default/assets/scene/level/bulletDark2_outline.png",
+          "type": "png"
+        },
+        "terrain": {
+          "alias": "地形瓦片",
+          "src": "/themes/tower_default/assets/scene/level/terrainTiles_default.png",
+          "type": "png"
+        },
+        "cursor": {
+          "alias": "光标",
+          "src": "/themes/tower_default/assets/scene/ui/cursor.png",
+          "type": "png"
+        },
+        "button_primary": {
+          "alias": "主按钮",
+          "src": "/themes/tower_default/assets/scene/ui/blue_button02.png",
+          "type": "png"
+        },
+        "button_secondary": {
+          "alias": "次按钮",
+          "src": "/themes/tower_default/assets/scene/ui/blue_button03.png",
+          "type": "png"
+        },
+        "title": {
+          "alias": "标题",
+          "src": "/themes/tower_default/assets/scene/ui/title.png",
+          "type": "png"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {},
+      "voice": {}
+    },
+    "video": {}
+  }
+}

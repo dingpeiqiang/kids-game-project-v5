@@ -1,0 +1,319 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeCode": "puzzle_animal_default",
+    "themeName": "快乐拼图屋 - 动物主题默认主题",
+    "gameId": "puzzle",
+    "ownerType": "GAME",
+    "ownerId": "puzzle",
+    "isDefault": true,
+    "author": "AI Assistant",
+    "description": "快乐拼图屋 - 动物主题动物主题默认主题",
+    "version": "1.0.0"
+  },
+  "globalStyle": {
+    "primaryColor": "#FFB347",
+    "secondaryColor": "#FFA500",
+    "bgColor": "#87CEEB",
+    "textColor": "#ffffff",
+    "fontFamily": "Arial, sans-serif",
+    "borderRadius": "12px"
+  },
+  "resources": {
+    "images": {
+      "scene": {
+        "bg_main": {
+          "alias": "bg main",
+          "src": "/themes/puzzle_animal_default/assets/scene/bg_main.png",
+          "type": "png"
+        },
+        "btn_restart": {
+          "alias": "btn restart",
+          "src": "/themes/puzzle_animal_default/assets/scene/btn_restart.png",
+          "type": "png"
+        },
+        "icon_hint": {
+          "alias": "icon hint",
+          "src": "/themes/puzzle_animal_default/assets/scene/icon_hint.png",
+          "type": "png"
+        },
+        "star_1": {
+          "alias": "star 1",
+          "src": "/themes/puzzle_animal_default/assets/scene/star_1.png",
+          "type": "png"
+        },
+        "star_2": {
+          "alias": "star 2",
+          "src": "/themes/puzzle_animal_default/assets/scene/star_2.png",
+          "type": "png"
+        },
+        "star_3": {
+          "alias": "star 3",
+          "src": "/themes/puzzle_animal_default/assets/scene/star_3.png",
+          "type": "png"
+        },
+        "tile_cat": {
+          "alias": "tile cat",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_cat.png",
+          "type": "png"
+        },
+        "tile_cat_1": {
+          "alias": "tile cat 1",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_cat_1.png",
+          "type": "png"
+        },
+        "tile_cat_2": {
+          "alias": "tile cat 2",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_cat_2.png",
+          "type": "png"
+        },
+        "tile_cat_3": {
+          "alias": "tile cat 3",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_cat_3.png",
+          "type": "png"
+        },
+        "tile_cat_4": {
+          "alias": "tile cat 4",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_cat_4.png",
+          "type": "png"
+        },
+        "tile_dog": {
+          "alias": "tile dog",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog.png",
+          "type": "png"
+        },
+        "tile_dog_1": {
+          "alias": "tile dog 1",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog_1.png",
+          "type": "png"
+        },
+        "tile_dog_2": {
+          "alias": "tile dog 2",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog_2.png",
+          "type": "png"
+        },
+        "tile_dog_3": {
+          "alias": "tile dog 3",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog_3.png",
+          "type": "png"
+        },
+        "tile_dog_4": {
+          "alias": "tile dog 4",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog_4.png",
+          "type": "png"
+        },
+        "tile_dog_5": {
+          "alias": "tile dog 5",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog_5.png",
+          "type": "png"
+        },
+        "tile_dog_6": {
+          "alias": "tile dog 6",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog_6.png",
+          "type": "png"
+        },
+        "tile_dog_7": {
+          "alias": "tile dog 7",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog_7.png",
+          "type": "png"
+        },
+        "tile_dog_8": {
+          "alias": "tile dog 8",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog_8.png",
+          "type": "png"
+        },
+        "tile_dog_9": {
+          "alias": "tile dog 9",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_dog_9.png",
+          "type": "png"
+        },
+        "tile_panda": {
+          "alias": "tile panda",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda.png",
+          "type": "png"
+        },
+        "tile_panda_1": {
+          "alias": "tile panda 1",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_1.png",
+          "type": "png"
+        },
+        "tile_panda_10": {
+          "alias": "tile panda 10",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_10.png",
+          "type": "png"
+        },
+        "tile_panda_11": {
+          "alias": "tile panda 11",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_11.png",
+          "type": "png"
+        },
+        "tile_panda_12": {
+          "alias": "tile panda 12",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_12.png",
+          "type": "png"
+        },
+        "tile_panda_13": {
+          "alias": "tile panda 13",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_13.png",
+          "type": "png"
+        },
+        "tile_panda_14": {
+          "alias": "tile panda 14",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_14.png",
+          "type": "png"
+        },
+        "tile_panda_15": {
+          "alias": "tile panda 15",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_15.png",
+          "type": "png"
+        },
+        "tile_panda_16": {
+          "alias": "tile panda 16",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_16.png",
+          "type": "png"
+        },
+        "tile_panda_2": {
+          "alias": "tile panda 2",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_2.png",
+          "type": "png"
+        },
+        "tile_panda_3": {
+          "alias": "tile panda 3",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_3.png",
+          "type": "png"
+        },
+        "tile_panda_4": {
+          "alias": "tile panda 4",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_4.png",
+          "type": "png"
+        },
+        "tile_panda_5": {
+          "alias": "tile panda 5",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_5.png",
+          "type": "png"
+        },
+        "tile_panda_6": {
+          "alias": "tile panda 6",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_6.png",
+          "type": "png"
+        },
+        "tile_panda_7": {
+          "alias": "tile panda 7",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_7.png",
+          "type": "png"
+        },
+        "tile_panda_8": {
+          "alias": "tile panda 8",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_8.png",
+          "type": "png"
+        },
+        "tile_panda_9": {
+          "alias": "tile panda 9",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_panda_9.png",
+          "type": "png"
+        },
+        "tile_rabbit": {
+          "alias": "tile rabbit",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit.png",
+          "type": "png"
+        },
+        "tile_rabbit_1": {
+          "alias": "tile rabbit 1",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit_1.png",
+          "type": "png"
+        },
+        "tile_rabbit_2": {
+          "alias": "tile rabbit 2",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit_2.png",
+          "type": "png"
+        },
+        "tile_rabbit_3": {
+          "alias": "tile rabbit 3",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit_3.png",
+          "type": "png"
+        },
+        "tile_rabbit_4": {
+          "alias": "tile rabbit 4",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit_4.png",
+          "type": "png"
+        },
+        "tile_rabbit_5": {
+          "alias": "tile rabbit 5",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit_5.png",
+          "type": "png"
+        },
+        "tile_rabbit_6": {
+          "alias": "tile rabbit 6",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit_6.png",
+          "type": "png"
+        },
+        "tile_rabbit_7": {
+          "alias": "tile rabbit 7",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit_7.png",
+          "type": "png"
+        },
+        "tile_rabbit_8": {
+          "alias": "tile rabbit 8",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit_8.png",
+          "type": "png"
+        },
+        "tile_rabbit_9": {
+          "alias": "tile rabbit 9",
+          "src": "/themes/puzzle_animal_default/assets/scene/tile_rabbit_9.png",
+          "type": "png"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {
+        "bgm_main": {
+          "alias": "背景音乐",
+          "src": "/themes/puzzle_animal_default/assets/audio/bgm_main.mp3",
+          "type": "mp3",
+          "volume": 0.6
+        }
+      },
+      "effect": {
+        "sfx_select": {
+          "alias": "选中音效",
+          "src": "/themes/puzzle_animal_default/assets/audio/sfx_select.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        },
+        "sfx_swap": {
+          "alias": "交换音效",
+          "src": "/themes/puzzle_animal_default/assets/audio/sfx_swap.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        },
+        "sfx_correct": {
+          "alias": "正确归位音效",
+          "src": "/themes/puzzle_animal_default/assets/audio/sfx_correct.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        },
+        "sfx_win": {
+          "alias": "胜利音效",
+          "src": "/themes/puzzle_animal_default/assets/audio/sfx_win.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        },
+        "sfx_click": {
+          "alias": "UI 点击音效",
+          "src": "/themes/puzzle_animal_default/assets/audio/sfx_click.mp3",
+          "type": "mp3",
+          "volume": 0.8
+        }
+      },
+      "voice": {}
+    },
+    "video": {}
+  }
+}
