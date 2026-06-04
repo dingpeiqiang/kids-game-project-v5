@@ -29,7 +29,9 @@ export const level2Config: LevelConfig = {
   },
 
   platforms: [
-    { x: 0, y: GAME_CONFIG.CANVAS_HEIGHT - 40, width: 8000, height: 40, type: 'normal' },
+    { x: 0, y: GAME_CONFIG.CANVAS_HEIGHT - 40, width: 8100, height: 40, type: 'normal' },
+    // 在传送门右侧添加一个阻挡墙，防止玩家走出地图
+    { x: 8064, y: GAME_CONFIG.CANVAS_HEIGHT - 120, width: 20, height: 80, type: 'normal' },
     { x: 60, y: GAME_CONFIG.CANVAS_HEIGHT - 100, width: 80, height: 16, type: 'normal' },
     { x: 200, y: GAME_CONFIG.CANVAS_HEIGHT - 130, width: 70, height: 16, type: 'normal' },
     { x: 350, y: GAME_CONFIG.CANVAS_HEIGHT - 100, width: 90, height: 16, type: 'normal' },

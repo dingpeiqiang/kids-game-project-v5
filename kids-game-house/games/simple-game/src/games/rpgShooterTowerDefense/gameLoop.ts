@@ -51,16 +51,8 @@ export function updateGame(
     if (state.screenFlash < 0) state.screenFlash = 0
   }
 
-  // 记录射击前的投射物数量
-  const projectileCountBefore = state.projectiles.length
-
-  // 玩家自动攻击
-  playerShoot(state, now)
-
-  // 新投射物产生时播放音效
-  if (state.projectiles.length > projectileCountBefore) {
-    playSound('shoot')
-  }
+  // ✅ 玩家自动攻击已在 updatePlayer 中调用，此处不再重复调用
+  // 避免双重射击导致性能问题
 
   // 更新各系统
   updateTurrets(state, now)

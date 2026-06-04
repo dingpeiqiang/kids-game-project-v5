@@ -53,13 +53,43 @@ export function updatePlayer(
   player.y += player.vy
 
   player.isGrounded = false
+  let collisionDetected = false
+  let debugPlatformInfo = null
+  
   for (const platform of platforms) {
     if (checkPlatformCollision(player, platform)) {
+      collisionDetected = true
+      debugPlatformInfo = {
+        platformX: platform.x,
+        platformY: platform.y,
+        platformWidth: platform.width,
+        platformHeight: platform.height,
+        playerX: player.x,
+        playerY: player.y,
+        playerWidth: player.width,
+        playerHeight: player.height,
+        playerVy: player.vy
+      }
       player.isGrounded = true
       player.vy = 0
       player.y = platform.y - player.height
       player.canDoubleJump = canDoubleJump
     }
+  }
+  
+  // 如果玩家靠近地面但没有检测到碰撞，输出调试信息
+  const groundLevel = GAME_CONFIG.CANVAS_HEIGHT - 40
+  if (!player.isGrounded && player.y > groundLevel - player.height - 20 && player.y < groundLevel + 50) {
+    console.log('[Player] ⚠️ 靠近地面但未检测到碰撞:', {
+      playerY: player.y,
+      playerHeight: player.height,
+      playerBottom: player.y + player.height,
+      groundLevel: groundLevel,
+      playerVy: player.vy,
+      platformCount: platforms.length,
+      collisionDetected: collisionDetected,
+      platformInfo: debugPlatformInfo
+    })
   }
 
   if (input.jump && player.isGrounded) {
@@ -84,7 +114,11 @@ export function updatePlayer(
     player.lastShotKeyUp = now
   }
 
-  if (now - player.lastShot > player.shootCooldown) {
+  // 限制长按射击时的最大子弹生成速率
+  const maxBulletsPerSecond = 15
+  const minShotInterval = 1000 / maxBulletsPerSecond
+
+  if (now - player.lastShot > player.shootCooldown && now - player.lastShot > minShotInterval) {
     if (wantsToShoot) {
       playerShoot(player, bullets, rapidFireTimer, spreadShotTimer, transformTimer, input.shootUp, input.shootDown)
       player.lastShot = now
@@ -110,12 +144,42 @@ export function updatePlayer(
 }
 
 export function checkPlatformCollision(player: Player, platform: Platform): boolean {
-  return (
-    player.x < platform.x + platform.width &&
-    player.x + player.width > platform.x &&
-    player.y + player.height >= platform.y &&
-    player.y + player.height <= platform.y + platform.height + player.vy + 1
-  )
+  const playerLeft = player.x
+  const playerRight = player.x + player.width
+  const playerBottom = player.y + player.height
+  
+  const platformLeft = platform.x
+  const platformRight = platform.x + platform.width
+  const platformTop = platform.y
+  const platformBottom = platform.y + platform.height
+  
+  const horizontalCheck = playerLeft < platformRight && playerRight > platformLeft
+  const verticalCheck = playerBottom >= platformTop && playerBottom <= platformBottom + player.vy + 1
+  
+  // 当靠近地面但碰撞失败时，输出详细信息
+  if (!horizontalCheck || !verticalCheck) {
+    const groundLevel = GAME_CONFIG.CANVAS_HEIGHT - 40
+    if (platform.y === groundLevel && player.y > groundLevel - player.height - 30) {
+      console.log('[Collision] 🚧 平台碰撞检测失败:', {
+        playerLeft: playerLeft.toFixed(2),
+        playerRight: playerRight.toFixed(2),
+        playerBottom: playerBottom.toFixed(2),
+        playerVy: player.vy.toFixed(2),
+        platformLeft: platformLeft,
+        platformRight: platformRight,
+        platformTop: platformTop,
+        platformBottom: platformBottom,
+        horizontalCheck: horizontalCheck,
+        verticalCheck: verticalCheck,
+        condition1: playerLeft < platformRight,
+        condition2: playerRight > platformLeft,
+        condition3: playerBottom >= platformTop,
+        condition4: playerBottom <= platformBottom + player.vy + 1
+      })
+    }
+  }
+  
+  return horizontalCheck && verticalCheck
 }
 
 export function addJumpParticles(x: number, y: number, particles: Particle[]) {

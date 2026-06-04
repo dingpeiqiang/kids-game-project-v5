@@ -535,7 +535,38 @@ export class ContraRpgGame {
       effectiveAnalogX,
     )
 
+    // 调试日志：玩家状态更新后
+    if (this.state.player.y > GAME_CONFIG.CANVAS_HEIGHT - 100 || !this.state.player.isGrounded) {
+      console.log('[ContraRpg] 📊 玩家状态检查:', {
+        playerX: this.state.player.x,
+        playerY: this.state.player.y,
+        playerVy: this.state.player.vy,
+        playerGrounded: this.state.player.isGrounded,
+        playerWidth: this.state.player.width,
+        playerHeight: this.state.player.height,
+        isCrouching: this.state.player.isCrouching,
+        platformCount: this.state.platforms.length,
+        groundY: GAME_CONFIG.CANVAS_HEIGHT - GAME_CONFIG.PLAYER_HEIGHT - 40,
+        frameCount: this.frameCount,
+        currentLevel: this.state.currentLevel,
+        levelCompleteTriggered: this.levelCompleteTriggered,
+        fadeInTimer: this.fadeInTimer
+      })
+    }
+
+    // 检查玩家是否掉出地图外
     if (this.state.player.y > GAME_CONFIG.CANVAS_HEIGHT + 50) {
+      console.log('[ContraRpg] ❌ 玩家掉出地图外！', {
+        playerY: this.state.player.y,
+        canvasHeight: GAME_CONFIG.CANVAS_HEIGHT,
+        playerVy: this.state.player.vy,
+        playerGrounded: this.state.player.isGrounded,
+        playerInvincible: this.state.player.invincible,
+        levelCompleteTriggered: this.levelCompleteTriggered,
+        currentLevel: this.state.currentLevel,
+        cameraX: this.state.cameraX,
+        frameCount: this.frameCount
+      })
       this.playerHit()
     }
 
@@ -572,20 +603,48 @@ export class ContraRpgGame {
 
     this.frameCount++
     const trapResult = updateTraps(this.state.traps, this.state.player, this.state.cameraX, this.frameCount)
-    if (trapResult.playerHit && this.state.player.invincible <= 0 && this.shieldTimer <= 0 && this.transformTimer <= 0) {
-      this.state.player.hp -= trapResult.damage
-      this.state.player.invincible = GAME_CONFIG.INVINCIBLE_DURATION
-      this.damageFlash = 1
-      this.shakeAmt = 5
-      audioService.pop()
-      if (this.state.player.hp <= 0) {
-        if (this.state.player.lives > 0) {
-          this.respawnPlayer()
-        } else {
-          this.state.gameOver = true
-          this.engine.endGame()
-          setTimeout(() => this.onEnd(), 1000)
+    
+    if (trapResult.playerHit) {
+      console.log('[ContraRpg] 陷阱击中检测:', {
+        playerHit: true,
+        damage: trapResult.damage,
+        playerInvincible: this.state.player.invincible,
+        shieldTimer: this.shieldTimer,
+        transformTimer: this.transformTimer,
+        willTakeDamage: this.state.player.invincible <= 0 && this.shieldTimer <= 0 && this.transformTimer <= 0
+      })
+      
+      if (this.state.player.invincible <= 0 && this.shieldTimer <= 0 && this.transformTimer <= 0) {
+        console.log('[ContraRpg] ⚠️ 玩家受到陷阱伤害！', {
+          beforeHp: this.state.player.hp,
+          damage: trapResult.damage,
+          afterHp: this.state.player.hp - trapResult.damage,
+          lives: this.state.player.lives
+        })
+        
+        this.state.player.hp -= trapResult.damage
+        this.state.player.invincible = GAME_CONFIG.INVINCIBLE_DURATION
+        this.damageFlash = 1
+        this.shakeAmt = 5
+        audioService.pop()
+        
+        if (this.state.player.hp <= 0) {
+          console.log('[ContraRpg] ❌ 玩家HP归零！', {
+            currentHp: this.state.player.hp,
+            lives: this.state.player.lives,
+            gameOver: this.state.player.lives <= 0
+          })
+          
+          if (this.state.player.lives > 0) {
+            this.respawnPlayer()
+          } else {
+            this.state.gameOver = true
+            this.engine.endGame()
+            setTimeout(() => this.onEnd(), 1000)
+          }
         }
+      } else {
+        console.log('[ContraRpg] 玩家有护盾/无敌保护，免受陷阱伤害')
       }
     }
 
@@ -615,9 +674,23 @@ export class ContraRpgGame {
     )
 
     if (collisionResult.gameOver) {
+      console.log('[ContraRpg] ❌ collisionResult.gameOver 触发！', {
+        playerHp: this.state.player.hp,
+        playerLives: this.state.player.lives,
+        level: this.state.currentLevel,
+        playerX: this.state.player.x,
+        playerY: this.state.player.y,
+        collisionResult: {
+          playerHitTriggered: collisionResult.playerHitTriggered,
+          score: collisionResult.score
+        }
+      })
+      
       if (this.state.player.lives > 0) {
+        console.log('[ContraRpg] 玩家还有生命，执行复活')
         this.respawnPlayer()
       } else {
+        console.log('[ContraRpg] ❌ 玩家生命耗尽，游戏结束')
         this.state.gameOver = true
         this.engine.endGame()
         setTimeout(() => this.onEnd(), 1000)
@@ -662,23 +735,50 @@ export class ContraRpgGame {
     if (currentLevelConfig.exit && !this.levelCompleteTriggered) {
       const exit = currentLevelConfig.exit
       const player = this.state.player
-      // 检查玩家与门的碰撞
       const playerRight = player.x + player.width
       const playerBottom = player.y + player.height
       const exitRight = exit.x + exit.width
       const exitBottom = exit.y + exit.height
       
-      if (playerRight > exit.x && player.x < exitRight && playerBottom > exit.y && player.y < exitBottom) {
-        // 对于有 Boss 的关卡，必须先击败 Boss
-        if (!currentLevelConfig.hasBoss || this.levelManager.isBossDefeated()) {
-          this.levelCompleteTriggered = true
-          this.transitionTimer = this.transitionDuration // 过渡时间
-        }
+      // 扩大传送门检测范围：只要玩家到达传送门区域附近就触发
+      // 水平方向：传送门左侧 50px 到右侧 300px
+      const isNearExit = playerRight > exit.x - 50 && player.x < exitRight + 300
+      
+      // 垂直方向：非常宽松的检测，允许玩家从高处掉落或在传送门下方
+      const isInVerticalRange = player.y < exit.y + 500 && player.y > exit.y - 500
+      
+      // 传送门触发条件：水平接近 + 垂直范围内
+      const canEnterPortal = isNearExit && isInVerticalRange
+      
+      console.log('[ContraRpg] 传送门检测', {
+        level: this.state.currentLevel,
+        playerX: player.x,
+        playerY: player.y,
+        playerRight: playerRight,
+        playerBottom: playerBottom,
+        exitX: exit.x,
+        exitY: exit.y,
+        exitRight: exitRight,
+        exitBottom: exitBottom,
+        isNearExit: isNearExit,
+        isInVerticalRange: isInVerticalRange,
+        canEnterPortal: canEnterPortal
+      })
+      
+      if (canEnterPortal) {
+        console.log('[ContraRpg] 玩家进入终点门！')
+        // 移除 Boss 限制，直接进入下一关
+        this.levelCompleteTriggered = true
+        this.transitionTimer = this.transitionDuration // 过渡时间
       }
     }
 
     // 处理关卡过渡计时
     if (this.levelCompleteTriggered) {
+      // 在过渡期间限制玩家移动，防止玩家走出地图
+      this.state.player.vx = 0
+      this.state.player.vy = 0
+      
       this.transitionTimer -= 16
       if (this.transitionTimer <= 0) {
         this.goNextLevel()
@@ -725,7 +825,20 @@ export class ContraRpgGame {
   }
 
   private goNextLevel() {
+    console.log('[ContraRpg] ========== 关卡切换开始 ==========')
+    console.log('[ContraRpg] 当前关卡:', this.state.currentLevel)
+    console.log('[ContraRpg] 玩家状态切换前:', {
+      x: this.state.player.x,
+      y: this.state.player.y,
+      hp: this.state.player.hp,
+      maxHp: this.state.player.maxHp,
+      lives: this.state.player.lives,
+      invincible: this.state.player.invincible,
+      vy: this.state.player.vy
+    })
+
     if (this.state.currentLevel >= this.levelManager.getTotalLevelCount()) {
+      console.log('[ContraRpg] 已到达最后一关，触发胜利')
       this.state.victory = true
       this.levelCompleteTriggered = false
       this.engine.setVictory(true)
@@ -738,14 +851,37 @@ export class ContraRpgGame {
     if (levelChanged) {
       this.state.currentLevel++
       const newLevel = this.levelManager.getCurrentLevel()
+      console.log('[ContraRpg] 切换到关卡:', this.state.currentLevel, '关卡名称:', newLevel.name)
+
+      // 保存旧状态用于调试
+      const oldPlayerX = this.state.player.x
+      const oldPlayerY = this.state.player.y
+
+      // 更新关卡数据
       this.state.platforms = [...newLevel.platforms]
+      console.log('[ContraRpg] 加载平台数量:', this.state.platforms.length)
+
       this.state.traps = createTraps(newLevel.traps || [])
+      console.log('[ContraRpg] 加载陷阱数量:', this.state.traps.length)
+      if (this.state.traps.length > 0) {
+        console.log('[ContraRpg] 陷阱详情:', this.state.traps.slice(0, 5).map(t => ({ type: t.type, x: t.x, y: t.y, active: t.active })))
+      }
+
+      // 设置玩家初始位置
       this.state.player.x = 80
-      // 玩家站在底部平台上，确保位置正确
       const groundY = GAME_CONFIG.CANVAS_HEIGHT - GAME_CONFIG.PLAYER_HEIGHT - 40
       this.state.player.y = groundY
       this.state.player.vy = 0
-      this.state.player.invincible = 15000 // 关卡切换时给予15秒无敌时间，防止进入新关卡就死亡
+      this.state.player.isGrounded = true
+      this.state.player.isCrouching = false
+      this.state.player.height = GAME_CONFIG.PLAYER_HEIGHT
+
+      // 设置无敌时间
+      this.state.player.invincible = 15000
+      console.log('[ContraRpg] 玩家位置重置:', { x: this.state.player.x, y: this.state.player.y, groundY })
+      console.log('[ContraRpg] 设置无敌时间:', this.state.player.invincible, 'ms')
+
+      // 重置其他状态
       this.state.cameraX = 0
       this.state.enemies = []
       this.state.bullets = []
@@ -753,13 +889,39 @@ export class ContraRpgGame {
       this.state.particles = []
       this.state.shockwaves = []
       this.state.floatTexts = []
+
+      // 检查玩家位置是否安全（是否与陷阱重叠）
+      const trapsNearPlayer = this.state.traps.filter(trap => {
+        const dx = Math.abs(trap.x - this.state.player.x)
+        const dy = Math.abs(trap.y - this.state.player.y)
+        return dx < 150 && dy < 100
+      })
+      console.log('[ContraRpg] 玩家附近陷阱数量:', trapsNearPlayer.length)
+      if (trapsNearPlayer.length > 0) {
+        console.warn('[ContraRpg] ⚠️ 玩家出生位置附近有陷阱:', trapsNearPlayer.map(t => ({ type: t.type, x: t.x, y: t.y })))
+      }
+
+      console.log('[ContraRpg] 玩家状态切换后:', {
+        x: this.state.player.x,
+        y: this.state.player.y,
+        hp: this.state.player.hp,
+        maxHp: this.state.player.maxHp,
+        lives: this.state.player.lives,
+        invincible: this.state.player.invincible,
+        vy: this.state.player.vy,
+        isGrounded: this.state.player.isGrounded
+      })
     } else {
       // 没有更多关卡，显示胜利画面
+      console.log('[ContraRpg] 没有更多关卡，显示胜利画面')
       this.state.victory = true
     }
+
     this.levelCompleteTriggered = false
     this.transitionTimer = 0
-    this.fadeInTimer = this.fadeInDuration // 新关卡淡入
+    this.fadeInTimer = this.fadeInDuration
+    console.log('[ContraRpg] 淡入时间:', this.fadeInTimer, 'ms')
+    console.log('[ContraRpg] ========== 关卡切换完成 ==========')
   }
 
   private render() {

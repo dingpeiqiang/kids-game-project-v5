@@ -142,6 +142,7 @@ function applyProjectileEffect(
 // 自动瞄准并射击最近的敌人
 let _lastShootTime = 0
 const _shootCooldown = 400  // 毫秒（降低攻速）
+const MAX_PARTICLES = 200   // 最大粒子数限制
 
 export function updateAutoAim(state: GameState, dt: number): void {
   const player = state.player
@@ -149,15 +150,18 @@ export function updateAutoAim(state: GameState, dt: number): void {
 
   if (now - _lastShootTime < _shootCooldown) return
 
-  // 寻找最近的敌人
+  // 寻找最近的敌人（优化：使用距离平方比较，避免开方运算）
   const attackRange = 150 * SCALE_RATIO
+  const attackRangeSq = attackRange * attackRange  // 预计算平方
   let nearest: Enemy | null = null
-  let minDist = Infinity
+  let minDistSq = Infinity
 
   for (const enemy of state.enemies) {
-    const dist = Math.sqrt((enemy.x - player.x) ** 2 + (enemy.y - player.y) ** 2)
-    if (dist < minDist && dist <= attackRange) {
-      minDist = dist
+    const dx = enemy.x - player.x
+    const dy = enemy.y - player.y
+    const distSq = dx * dx + dy * dy  // 距离平方，避免 sqrt
+    if (distSq < minDistSq && distSq <= attackRangeSq) {
+      minDistSq = distSq
       nearest = enemy
     }
   }
@@ -177,7 +181,7 @@ export function updateAutoAim(state: GameState, dt: number): void {
   // 发射子弹
   const speed = 12 * SCALE_RATIO
   state.projectiles.push({
-    id: `p_${now}`,
+    id: `p_${now}_${Math.random().toString(36).substr(2, 9)}`,
     x: player.x,
     y: player.y,
     vx: Math.cos(player.shootAngle) * speed,
@@ -190,20 +194,22 @@ export function updateAutoAim(state: GameState, dt: number): void {
     hitEnemies: new Set()
   })
 
-  // 播放射击音效
-  playSound('playerShoot')
+  // 播放射击音效（非阻塞调用，避免 await 阻塞）
+  playSound('playerShoot').catch(() => {})
 
-  // 射击特效
-  state.particles.push({
-    x: player.x + Math.cos(player.shootAngle) * 12,
-    y: player.y + Math.sin(player.shootAngle) * 12,
-    vx: Math.cos(player.shootAngle) * 2,
-    vy: Math.sin(player.shootAngle) * 2,
-    life: 0.2,
-    maxLife: 0.2,
-    color: '#FFD700',
-    size: 3
-  })
+  // 射击特效（添加粒子数量限制）
+  if (state.particles.length < MAX_PARTICLES) {
+    state.particles.push({
+      x: player.x + Math.cos(player.shootAngle) * 12,
+      y: player.y + Math.sin(player.shootAngle) * 12,
+      vx: Math.cos(player.shootAngle) * 2,
+      vy: Math.sin(player.shootAngle) * 2,
+      life: 0.2,
+      maxLife: 0.2,
+      color: '#FFD700',
+      size: 3
+    })
+  }
 }
 
 // 兼容旧接口

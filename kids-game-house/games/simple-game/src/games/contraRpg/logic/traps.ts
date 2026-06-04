@@ -23,17 +23,35 @@ export function updateTraps(traps: Trap[], player: Player, cameraX: number, fram
   const visibleRight = cameraX + GAME_CONFIG.CANVAS_WIDTH + 100
   
   for (const trap of traps) {
+    // 跳过屏幕外的陷阱
     if (trap.x < visibleLeft || trap.x > visibleRight) {
       continue
     }
 
+    // 更新陷阱激活状态
     if (frameCount - trap.lastActivated >= trap.cooldown) {
       trap.active = true
     }
 
+    // 检查碰撞
     if (trap.active && checkTrapCollision(trap, player)) {
       trap.active = false
       trap.lastActivated = frameCount
+      
+      console.log('[Traps] ⚠️ 陷阱触发！', {
+        trapId: trap.id,
+        type: trap.type,
+        x: trap.x,
+        y: trap.y,
+        damage: trap.damage,
+        frameCount: frameCount,
+        playerX: player.x,
+        playerY: player.y,
+        playerInvincible: player.invincible,
+        playerHp: player.hp,
+        playerLives: player.lives
+      })
+      
       return { playerHit: true, damage: trap.damage }
     }
   }
