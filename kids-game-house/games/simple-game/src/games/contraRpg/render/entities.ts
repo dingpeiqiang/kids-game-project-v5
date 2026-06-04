@@ -63,6 +63,7 @@ export function drawPlayer(
   rapidFireTimer: number,
   spreadShotTimer: number,
   transformTimer: number = 0,
+  shootAngle: number = 0,
 ) {
   const p = player
   const t = Date.now()
@@ -295,10 +296,12 @@ export function drawPlayer(
   ctx.fill()
   ctx.restore()
 
-  // 右臂（持枪）
+  // 右臂（持枪）- 与枪杆对齐
   ctx.save()
   ctx.translate(bodyWidth / 2 + 2, bodyY - bodyHeight / 2 + 8)
-  ctx.rotate(armSwing + (isShooting ? -0.2 : 0))
+  // 手臂角度与枪杆角度对齐
+  const armAngle = armSwing + shootAngle - (p.facingRight ? 0 : Math.PI)
+  ctx.rotate(armAngle)
   ctx.fillStyle = bodyColor
   ctx.beginPath()
   ctx.roundRect(-armWidth / 2, 0, armWidth, armLength, 2)
@@ -389,15 +392,21 @@ export function drawPlayer(
   ctx.fill()
 
   const gunLength = 20 + level * 2.5
-  const gunX = p.facingRight ? bodyWidth / 2 + 4 : -bodyWidth / 2 - gunLength - 4
-  const gunAngle = isShooting ? (p.facingRight ? -0.1 : 0.1) : 0
+  const gunBaseX = p.facingRight ? bodyWidth / 2 + 4 : -bodyWidth / 2 - 4
+  const gunBaseY = bodyY - 8
+  
+  // 使用射击角度作为武器角度
+  const gunAngle = shootAngle
 
   ctx.save()
+  
+  // 根据射击角度调整武器位置和方向
+  ctx.translate(gunBaseX, gunBaseY)
   ctx.rotate(gunAngle)
 
   const gunGlowColor = isTransformed ? '#FFD700' : (level >= 5 ? '#E040FB' : '#00E5FF')
   ctx.save()
-  ctx.translate(gunX + (p.facingRight ? gunLength : 0), bodyY - 1 - 7)
+  ctx.translate(p.facingRight ? gunLength : 0, 0)
   ctx.fillStyle = gradients.gunGlow
   ctx.beginPath()
   ctx.arc(0, 0, 15, 0, Math.PI * 2)
@@ -405,16 +414,16 @@ export function drawPlayer(
   ctx.restore()
 
   ctx.fillStyle = '#444'
-  ctx.fillRect(gunX - 2, bodyY - 8, gunLength + 4, 12)
+  ctx.fillRect(p.facingRight ? -2 : -gunLength - 2, -4, gunLength + 4, 12)
 
   ctx.fillStyle = '#555'
-  ctx.fillRect(gunX, bodyY - 6, gunLength, 8)
+  ctx.fillRect(p.facingRight ? 0 : -gunLength, -2, gunLength, 8)
 
   ctx.fillStyle = '#666'
-  ctx.fillRect(gunX + 2, bodyY - 5, gunLength - 4, 2)
+  ctx.fillRect(p.facingRight ? 2 : -gunLength + 2, -1, gunLength - 4, 2)
 
   ctx.fillStyle = '#333'
-  ctx.fillRect(gunX + (p.facingRight ? gunLength - 8 : 0), bodyY - 4, 8, 6)
+  ctx.fillRect(p.facingRight ? gunLength - 8 : -8, 0, 8, 6)
 
   if (isShooting) {
     const muzzleFlash = 1 + Math.sin(t / 30) * 0.3
@@ -439,27 +448,32 @@ export function drawPlayer(
       muzzleGradCache.set(muzzleKey, muzzleGrads)
     }
 
+    // 枪口火焰从枪口位置沿枪杆方向喷出
+    // 注意：当前坐标系已经按gunAngle旋转，所以火焰直接向右即可
+    const barrelEndX = p.facingRight ? gunLength : 0
+    const barrelEndY = 0
+    
     ctx.fillStyle = muzzleGrads.radial
     ctx.beginPath()
-    ctx.arc(gunX + (p.facingRight ? gunLength : 0), bodyY - 1, flashLength * muzzleFlash, 0, Math.PI * 2)
+    ctx.arc(barrelEndX, barrelEndY, flashLength * muzzleFlash, 0, Math.PI * 2)
     ctx.fill()
 
     ctx.fillStyle = muzzleGrads.linear
     ctx.beginPath()
-    const direction = p.facingRight ? 1 : -1
-    ctx.moveTo(gunX + gunLength * direction, bodyY - 5)
-    ctx.lineTo(gunX + (gunLength + flashLength * muzzleFlash) * direction, bodyY)
-    ctx.lineTo(gunX + gunLength * direction, bodyY + 5)
+    ctx.moveTo(barrelEndX, barrelEndY - 5)
+    ctx.lineTo(barrelEndX + flashLength * muzzleFlash, barrelEndY)
+    ctx.lineTo(barrelEndX, barrelEndY + 5)
     ctx.closePath()
     ctx.fill()
   }
 
+  // 枪管末端发光效果
   ctx.fillStyle = gunGlowColor
   ctx.shadowColor = gunGlowColor
   ctx.shadowBlur = 8
-  const barrelEnd = gunX + (p.facingRight ? gunLength - 4 : 0)
+  const barrelEndX = p.facingRight ? gunLength - 4 : -4
   ctx.beginPath()
-  ctx.arc(barrelEnd + (p.facingRight ? 2 : -2), bodyY - 1, 4, 0, Math.PI * 2)
+  ctx.arc(barrelEndX + (p.facingRight ? 2 : -2), 3, 4, 0, Math.PI * 2)
   ctx.fill()
   ctx.shadowBlur = 0
 

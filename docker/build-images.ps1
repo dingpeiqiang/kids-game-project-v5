@@ -222,6 +222,7 @@ if (Should-BuildService "frontend") {
     Write-Host "  Building frontend..." -ForegroundColor Cyan
     $dockerArgs = @("build", "-f", "Dockerfile.frontend",
         "--label", "build-time=${BUILD_TIME}",
+        "--build-arg", "BUILD_TIMESTAMP=${BUILD_TIME}",
         "-t", $FRONTEND_IMAGE, "-t", $FRONTEND_IMAGE_VERSIONED)
     if ($NoCache) { $dockerArgs += "--no-cache" }
     $dockerArgs += ".."
@@ -238,6 +239,7 @@ if (Should-BuildService "simple-game") {
     Write-Host "  Building simple-game..." -ForegroundColor Cyan
     $dockerArgs = @("build", "-f", "Dockerfile.simple-game",
         "--label", "build-time=${BUILD_TIME}",
+        "--build-arg", "BUILD_TIMESTAMP=${BUILD_TIME}",
         "-t", $SIMPLE_GAME_IMAGE, "-t", $SIMPLE_GAME_IMAGE_VERSIONED)
     if ($NoCache) { $dockerArgs += "--no-cache" }
     $dockerArgs += ".."

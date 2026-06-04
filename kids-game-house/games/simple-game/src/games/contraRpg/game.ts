@@ -164,10 +164,18 @@ export class ContraRpgGame {
   private joystickCurrentY = 0
   private readonly joystickRadius = 60 // 遥感有效半径
   
+  // 遥感双击相关
+  private joystickDirection = 0 // 上次滑动方向: -1=左, 0=无, 1=右
+  private joystickClickCount = 0 // 当前方向点击次数
+  private readonly joystickDoubleClickThreshold = 500 // 双击时间阈值（毫秒）
+  private lastJoystickClickTime = 0 // 上次遥感点击时间
+  
   // 射击锁定相关
   private shootLocked = false // 射击锁定状态
   private lastShootClickTime = 0 // 上次射击按钮点击时间
   private readonly doubleClickThreshold = 300 // 双击判定阈值（毫秒）
+  
+  private shootAngle = 0 // 当前射击角度（用于渲染武器对齐）
 
   private cachedRects: { id: string; x: number; y: number; r: number }[] | null = null
   private cachedRectsKey = ''
@@ -259,11 +267,18 @@ export class ContraRpgGame {
     const { gameX, gameY } = this.touchToGame(touchX, touchY)
 
     const btn = this.findBtn(totalWidth, gameHeight, gameX, gameY)
-    if (btn && this.btnInputMap[btn]) {
+    if (btn) {
       this.touchActions.set(0, btn)
-      const b = this.touchButtons.find(b => b.id === btn)
-      if (b) b.pressed = true
-      this.input[this.btnInputMap[btn]] = true
+      switch (btn) {
+        case 'shoot':
+          this.touchButtons[0].pressed = true
+          this.input.shoot = true
+          break
+        case 'bounce':
+          this.touchButtons[1].pressed = true
+          this.input.jump = true
+          break
+      }
     }
   }
 
@@ -277,10 +292,15 @@ export class ContraRpgGame {
     const action = this.touchActions.get(0)
     if (action) {
       this.touchActions.delete(0)
-      const b = this.touchButtons.find(b => b.id === action)
-      if (b) b.pressed = false
-      if (this.btnInputMap[action]) {
-        this.input[this.btnInputMap[action]] = false
+      switch (action) {
+        case 'shoot':
+          this.touchButtons[0].pressed = false
+          this.input.shoot = false
+          break
+        case 'bounce':
+          this.touchButtons[1].pressed = false
+          this.input.jump = false
+          break
       }
     }
   }
@@ -333,10 +353,10 @@ export class ContraRpgGame {
 
       // 检查是否在左侧面板（遥感区域）
       if (gameX < lpw) {
-        // 启动遥感
+        // 启动遥感 - 使用左侧面板中心作为原点
         this.joystickActive = true
-        this.joystickStartX = gameX
-        this.joystickStartY = gameY
+        this.joystickStartX = lpw / 2 // 左侧面板中心X
+        this.joystickStartY = gameHeight / 2 // 屏幕中心Y
         this.joystickCurrentX = gameX
         this.joystickCurrentY = gameY
         this.updateJoystickInput()
@@ -356,7 +376,7 @@ export class ContraRpgGame {
             console.log('[ContraRpg] 射击锁定状态:', this.shootLocked ? '锁定' : '解锁')
           } else {
             // 单击：正常射击
-            this.input[this.btnInputMap[btn]] = true
+            this.input.shoot = true
           }
           
           this.lastShootClickTime = now
@@ -402,37 +422,76 @@ export class ContraRpgGame {
     // 计算距离
     const distance = Math.sqrt(dx * dx + dy * dy)
     
-    // 如果距离超过半径，归一化到半径范围内
-    if (distance > this.joystickRadius) {
-      const scale = this.joystickRadius / distance
-      this.input.stickX = dx * scale
-      this.input.stickY = dy * scale
-    } else {
-      this.input.stickX = dx
-      this.input.stickY = dy
+    // 判断滑动方向（只考虑水平方向）
+    const horizontalThreshold = Math.PI / 9 // 20度
+    const stickAngle = Math.atan2(dy, dx)
+    const isHorizontal = Math.abs(stickAngle) < horizontalThreshold || 
+                         Math.abs(stickAngle - Math.PI) < horizontalThreshold || 
+                         Math.abs(stickAngle + Math.PI) < horizontalThreshold
+    
+    // 始终更新射击角度（用于站着不动射击）
+    if (distance > 0.1) {
+      if (distance > this.joystickRadius) {
+        const scale = this.joystickRadius / distance
+        this.input.stickX = dx * scale
+        this.input.stickY = dy * scale
+      } else {
+        this.input.stickX = dx
+        this.input.stickY = dy
+      }
+    }
+    
+    // 检查是否在时间阈值内且同一方向（双击检测移动）
+    const now = Date.now()
+    if (isHorizontal && distance > this.joystickRadius / 2) {
+      const currentDirection = dx > 0 ? 1 : -1 // 1=右, -1=左
+      
+      if (!(now - this.lastJoystickClickTime < this.joystickDoubleClickThreshold &&
+          this.joystickDirection === currentDirection)) {
+        // 不是双击，重置移动输入（但保留射击角度）
+        const currentStickAngle = Math.atan2(this.input.stickY, this.input.stickX)
+        const isMovingHorizontal = Math.abs(currentStickAngle) < horizontalThreshold || 
+                                   Math.abs(currentStickAngle - Math.PI) < horizontalThreshold || 
+                                   Math.abs(currentStickAngle + Math.PI) < horizontalThreshold
+        
+        if (isMovingHorizontal) {
+          // 水平方向但不是双击，不移动
+          this.input.stickX = 0
+        }
+      }
+      
+      // 更新方向和时间戳（用于下一次检测）
+      this.joystickDirection = currentDirection
+      this.lastJoystickClickTime = now
     }
   }
   
   private onTouchEnd(e: TouchEvent) {
     e.preventDefault()
-    // 重置遥感状态
+    // 重置遥感状态（保留当前输入值，以便双击后继续移动）
     this.joystickActive = false
-    this.input.stickX = 0
-    this.input.stickY = 0
+    // 不重置输入值，保持双击后的移动状态
     
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i]
       const action = this.touchActions.get(t.identifier)
       if (action) {
         this.touchActions.delete(t.identifier)
-        const b = this.touchButtons.find(b => b.id === action)
-        if (b) b.pressed = false
         
         // 射击按钮如果已锁定，保持射击状态
         if (action === 'shoot' && this.shootLocked) {
           this.input.shoot = true
-        } else if (this.btnInputMap[action]) {
-          this.input[this.btnInputMap[action]] = false
+        } else {
+          switch (action) {
+            case 'shoot':
+              this.touchButtons[0].pressed = false
+              this.input.shoot = false
+              break
+            case 'bounce':
+              this.touchButtons[1].pressed = false
+              this.input.jump = false
+              break
+          }
         }
       }
     }
@@ -657,6 +716,9 @@ export class ContraRpgGame {
       this.transformTimer,
       effectiveAnalogX,
     )
+    
+    // 存储射击角度用于渲染
+    this.shootAngle = result.shootAngle
 
     // 调试日志：玩家状态更新后
     if (this.state.player.y > GAME_CONFIG.CANVAS_HEIGHT - 100 || !this.state.player.isGrounded) {
@@ -1076,7 +1138,7 @@ export class ContraRpgGame {
     ctx.translate(-this.state.cameraX, 0)
     drawPowerups(ctx, this.state.powerups)
     drawEnemies(ctx, this.state.enemies)
-    drawPlayer(ctx, this.state.player, this.input, this.shieldTimer, this.rapidFireTimer, this.spreadShotTimer, this.transformTimer)
+    drawPlayer(ctx, this.state.player, this.input, this.shieldTimer, this.rapidFireTimer, this.spreadShotTimer, this.transformTimer, this.shootAngle)
     drawBullets(ctx, this.state.bullets)
     drawParticles(ctx, this.state.particles)
     drawShockwaves(ctx, this.state.shockwaves)

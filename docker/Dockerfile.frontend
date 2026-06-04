@@ -8,7 +8,10 @@ WORKDIR /app
 COPY kids-game-frontend/package*.json ./
 
 ENV NODE_OPTIONS="--max-old-space-size=512"
-RUN npm ci --ignore-engines --prefer-offline --no-audit || npm install --ignore-engines
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-engines --prefer-offline --no-audit || npm install --ignore-engines
+
+ARG BUILD_TIMESTAMP
+RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-timestamp.txt
 
 COPY kids-game-frontend/ ./
 

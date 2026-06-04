@@ -172,7 +172,7 @@ export function updatePlayer(
     }
   }
 
-  return { shootTriggered, meleeTriggered: false }
+  return { shootTriggered, meleeTriggered: false, shootAngle }
 }
 
 export function checkPlatformCollision(player: Player, platform: Platform): boolean {
