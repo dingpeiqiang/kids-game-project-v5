@@ -163,6 +163,11 @@ export class ContraRpgGame {
   private joystickCurrentX = 0
   private joystickCurrentY = 0
   private readonly joystickRadius = 60 // 遥感有效半径
+  
+  // 射击锁定相关
+  private shootLocked = false // 射击锁定状态
+  private lastShootClickTime = 0 // 上次射击按钮点击时间
+  private readonly doubleClickThreshold = 300 // 双击判定阈值（毫秒）
 
   private cachedRects: { id: string; x: number; y: number; r: number }[] | null = null
   private cachedRectsKey = ''
@@ -339,10 +344,32 @@ export class ContraRpgGame {
 
       const btn = this.findBtn(totalWidth, gameHeight, gameX, gameY)
       if (btn && this.btnInputMap[btn]) {
+        // 射击按钮双击锁定逻辑
+        if (btn === 'shoot') {
+          const now = Date.now()
+          const timeSinceLastClick = now - this.lastShootClickTime
+          
+          // 检测双击
+          if (timeSinceLastClick < this.doubleClickThreshold) {
+            // 双击：切换锁定状态
+            this.shootLocked = !this.shootLocked
+            console.log('[ContraRpg] 射击锁定状态:', this.shootLocked ? '锁定' : '解锁')
+          } else {
+            // 单击：正常射击
+            this.input[this.btnInputMap[btn]] = true
+          }
+          
+          this.lastShootClickTime = now
+        }
+        
         this.touchActions.set(t.identifier, btn)
         const b = this.touchButtons.find(b => b.id === btn)
         if (b) b.pressed = true
-        this.input[this.btnInputMap[btn]] = true
+        
+        // 如果已锁定，保持射击状态
+        if (btn === 'shoot' && this.shootLocked) {
+          this.input.shoot = true
+        }
       }
     }
   }
@@ -400,7 +427,11 @@ export class ContraRpgGame {
         this.touchActions.delete(t.identifier)
         const b = this.touchButtons.find(b => b.id === action)
         if (b) b.pressed = false
-        if (this.btnInputMap[action]) {
+        
+        // 射击按钮如果已锁定，保持射击状态
+        if (action === 'shoot' && this.shootLocked) {
+          this.input.shoot = true
+        } else if (this.btnInputMap[action]) {
           this.input[this.btnInputMap[action]] = false
         }
       }
@@ -453,7 +484,7 @@ export class ContraRpgGame {
     ctx.globalAlpha = this.touchAlpha
     
     const drawBtn = (x: number, y: number, r: number, cfg: { id: string; label: string; color: string; pressed: boolean }) => {
-      const isPressed = cfg.pressed
+      const isPressed = cfg.pressed || (cfg.id === 'shoot' && this.shootLocked)
       const s = isPressed ? 0.92 : 1
 
       ctx.save()
@@ -486,6 +517,17 @@ export class ContraRpgGame {
       ctx.beginPath()
       ctx.arc(0, 0, r, 0, Math.PI * 2)
       ctx.fill()
+
+      // 射击锁定时显示特殊边框
+      if (cfg.id === 'shoot' && this.shootLocked) {
+        ctx.strokeStyle = '#FFD700'
+        ctx.lineWidth = 3
+        ctx.setLineDash([5, 3])
+        ctx.beginPath()
+        ctx.arc(0, 0, r + 4, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
 
       ctx.shadowBlur = 0
       ctx.strokeStyle = isPressed ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.15)'
