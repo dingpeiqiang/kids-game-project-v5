@@ -36,6 +36,7 @@ import { initRpgShooter } from './games/rpgShooter'
 import { initRpgShooterTD } from './games/rpgShooterTowerDefense/init'
 import { initDragonShooter } from './games/dragonShooter'
 import { initContraRpg } from './games/contraRpg'
+import { initWangzheRpg } from './games/wangzheRpg'
 import { initMatch3 } from './games/match3'
 
 class App {
@@ -1356,9 +1357,11 @@ class App {
     const isSpaceShooter = this.currentGame.id === 'spaceShooter'
     const isRacingRun = this.currentGame.id === 'racingRun'
     const isContraRpg = this.currentGame.id === 'contraRpg'
+    const isWangzheRpg = this.currentGame.id === 'wangzheRpg'
 
     // 设置游戏分辨率
     // 魂斗罗RPG：固定横屏 680x320（含左右操作面板）
+    // 王者RPG：固定横屏 660x360
     // 极速飞车：400x720（固定竖屏）
     // 其他游戏：400x600（竖屏）
     let gameW = 400
@@ -1367,6 +1370,9 @@ class App {
     if (isContraRpg) {
       gameW = 680
       gameH = 320
+    } else if (isWangzheRpg) {
+      gameW = 660
+      gameH = 360
     } else if (isRacingRun) {
       gameH = 720
     }
@@ -1400,9 +1406,12 @@ class App {
       canvas.innerHTML = `<canvas id="mainGameCanvas" width="${gameW}" height="${gameH}" style="width:${displayW}px;height:${displayH}px;display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
     }
 
-    if (isContraRpg) {
+    if (isContraRpg || isWangzheRpg) {
       const gameLayer = document.getElementById('game-layer')!
       gameLayer.classList.add('landscape-mode')
+      // 设置横屏宽高比 CSS 变量
+      const ratio = gameH / gameW
+      gameLayer.style.setProperty('--game-ratio', ratio.toString())
       const isMobile = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
       if (isMobile) {
         gameLayer.classList.add('force-landscape')
@@ -1441,6 +1450,7 @@ class App {
       case 'rpgShooterTD': initRpgShooterTD(gameEngine, () => this.endGame()); break
       case 'dragonShooter': initDragonShooter(gameEngine, () => this.endGame()); break
       case 'contraRpg': initContraRpg(gameEngine, () => this.endGame()); break
+      case 'wangzheRpg': initWangzheRpg(gameEngine, () => this.endGame()); break
     }
   }
 

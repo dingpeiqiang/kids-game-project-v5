@@ -72,6 +72,7 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
   { id: 'rpgShooter',    visible: true,  order: 3,  badge: '推荐' },
   { id: 'rpgShooterTD',  visible: true,  order: 4,  badge: '新' },
   { id: 'contraRpg',     visible: true,  order: 5,  badge: '新' },
+  { id: 'wangzheRpg',    visible: true,  order: 6,  badge: '新' },
 
   // // ── 策略塔防 ──
   { id: 'towerDefense',  visible: true,  order: 1,  badge: '新' },

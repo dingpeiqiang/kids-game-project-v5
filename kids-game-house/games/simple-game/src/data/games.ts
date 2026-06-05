@@ -54,6 +54,7 @@ export const GAMES: Game[] = [
   { id: 'rpgShooter', name: '星际猎手', desc: 'RPG移动射击！击杀敌人获得经验升级，提升属性挑战波次！', type: '2d', category: 'strategy', tag: 'RPG射击', color: '#5352ED,#9B59B6', players: 2100, best: 0, preview: 'rpgShooter' },
   { id: 'dragonShooter', name: '打龙小游戏', desc: '国产爆款！滑动控制自动射击，龙体分裂爽感无限！', type: '2d', category: 'strategy', tag: '射击', color: '#FFD700,#FF5722', players: 9999, best: 0, preview: 'dragonShooter' },
   { id: 'contraRpg', name: '魂斗罗RPG', desc: '经典横版射击闯关！击败敌人收集道具，挑战最终BOSS！', type: '2d', category: 'strategy', tag: '射击RPG', color: '#1a2f1a,#4a90d9', players: 2000, best: 0, preview: 'contraRpg' },
+  { id: 'wangzheRpg', name: '王者荣耀', desc: '横版对战！摇杆移动+技能释放，击杀敌方3次获胜！', type: '2d', category: 'strategy', tag: '对战', color: '#1a1a2e,#ffd700', players: 5000, best: 0, preview: 'wangzheRpg' },
 
   // 🎨 创造力 - 想象力、创新表达
   // (当前暂无专门游戏，可后续添加绘画、音乐类游戏)
@@ -353,6 +354,19 @@ export const GAME_GUIDES: Record<string, GameGuide> = {
     tipsTitle: '💡 小技巧',
     tips: '1. 第三关解锁二段跳！\n2. 收集道具强化能力：❤️回血/💚生命上限/⚡射速/💥散射弹/🛡️护盾\n3. 击败所有敌人过关，最终BOSS有多种攻击模式！\n4. 近战攻击(L/⚔)伤害高，滑铲(S/↘)可躲子弹！',
     bg: '#1a2f1a'
+  },
+  wangzheRpg: {
+    icon: '⚔️', name: '王者荣耀', desc: '横版对战！摇杆移动+技能释放，击杀敌方3次获胜！',
+    ops: [
+      { icon: '🕹️', text: '<b>左侧摇杆</b>360度移动英雄' },
+      { icon: '⚔️', text: '<b>普攻按键</b>短按单次攻击，长按连续攻击' },
+      { icon: '1️⃣', text: '<b>1/2技能</b>小范围金色伤害' },
+      { icon: '3️⃣', text: '<b>3技能大招</b>大范围高伤害' },
+      { icon: '🔄', text: '<b>重新开局</b>顶部按钮重置对局' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '1. 击杀敌方3次即可胜利！\n2. 1/2技能小范围伤害150，3技能大范围伤害250\n3. 敌方会巡逻、追击、攻击，保持走位拉扯\n4. 180秒超时判负，注意时间！',
+    bg: '#1a1a2e'
   }
 }
 
