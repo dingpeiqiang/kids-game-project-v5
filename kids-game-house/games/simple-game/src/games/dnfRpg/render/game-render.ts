@@ -4,7 +4,7 @@
  */
 
 import * as C from '../config'
-import type { Player, Enemy, Bullet, DropItem, Particle, Shockwave, FloatText, Equipment, SkillInstance } from '../types'
+import type { Player, Enemy, Bullet, DropItem, Particle, Shockwave, FloatText, Equipment, SkillInstance, ScreenShake } from '../types'
 import { drawPlayer } from './player'
 import { drawEnemies, drawBossHealthBar } from './enemies'
 import {
@@ -19,6 +19,7 @@ import { drawDungeonBackground, drawDoor } from './dungeon'
 import { drawTouchUI, type TouchUIData } from './touch-ui'
 import type { DungeonManager } from '../logic/dungeon'
 import type { TouchButtonState, JoystickState } from '../logic/input-manager'
+import { getShakeOffset } from '../logic/effects'
 
 export interface GameRenderData {
   player: Player
@@ -46,6 +47,7 @@ export interface GameRenderData {
   // 滑动过渡
   transitionPhase: 'none' | 'slide_out' | 'slide_in'
   transitionProgress: number
+  screenShake: ScreenShake | null
 }
 
 export function renderGame(ctx: CanvasRenderingContext2D, data: GameRenderData): void {
@@ -88,6 +90,10 @@ export function renderGame(ctx: CanvasRenderingContext2D, data: GameRenderData):
   }
 
   ctx.translate(-data.cameraX + transitionOffsetX, 0)
+
+  // 屏幕震动
+  const shake = getShakeOffset(data.screenShake)
+  ctx.translate(shake.x, shake.y)
 
   // 背景
   drawDungeonBackground(ctx, room, data.cameraX)

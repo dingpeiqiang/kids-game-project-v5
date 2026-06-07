@@ -126,23 +126,57 @@ export function checkSkillAttack(player: Player, enemies: Enemy[], skill: SkillI
     })
   }
 
-  // 远程子弹技能
+  // 远程子弹技能（range > 100 且 非AOE）
   if (skill.range > 100 && skill.aoeRadius === 0) {
-    newBullets.push({
-      x: player.facingRight ? player.x + player.width : player.x - 10,
-      y: player.y + player.height / 2 - 4,
-      vx: player.facingRight ? 6 : -6,
-      vy: 0,
-      width: 12,
-      height: 8,
-      damage,
-      isPlayerBullet: true,
-      color: '#FFD700',
-      pierce: skill.id.includes('pierce') || skill.id.includes('shot'),
-      life: 2000,
-      maxLife: 2000,
-      trail: true,
-      owner: 'player',
+    const bulletCount = skill.id.includes('multi') ? 3 : 1
+    for (let i = 0; i < bulletCount; i++) {
+      newBullets.push({
+        x: player.facingRight ? player.x + player.width : player.x - 10,
+        y: player.y + player.height / 2 - 4 + (bulletCount > 1 ? (i - 1) * 8 : 0),
+        vx: player.facingRight ? 6 : -6,
+        vy: 0,
+        width: 12,
+        height: 8,
+        damage,
+        isPlayerBullet: true,
+        color: '#FFD700',
+        pierce: skill.id.includes('pierce') || skill.id.includes('shot'),
+        life: 2000,
+        maxLife: 2000,
+        trail: true,
+        owner: 'player',
+      })
+    }
+  }
+
+  // 近战单体技能（range <= 100 且 非AOE）—— 直接命中前方敌人
+  if (skill.range <= 100 && skill.aoeRadius === 0) {
+    const attackX = player.x + (player.facingRight ? player.width : -skill.range)
+    const attackY = player.y
+    const attackW = skill.range
+    const attackH = player.height
+
+    updatedEnemies = updatedEnemies.map(enemy => {
+      if (enemy.hp <= 0) return enemy
+      // AABB碰撞检测
+      if (
+        enemy.x + enemy.width > attackX &&
+        enemy.x < attackX + attackW &&
+        enemy.y + enemy.height > attackY &&
+        enemy.y < attackY + attackH
+      ) {
+        let e = { ...enemy }
+        e.hp -= damage
+        e.vx = player.facingRight ? skill.knockback : -skill.knockback
+        e.vy = skill.launchHeight
+        e.hitStun = 200
+        e.airborn = skill.launchHeight < 0
+        if (skill.launchHeight < 0) e.isGrounded = false
+        hitCount++
+        hitEnemiesList.push(e)
+        return e
+      }
+      return enemy
     })
   }
 

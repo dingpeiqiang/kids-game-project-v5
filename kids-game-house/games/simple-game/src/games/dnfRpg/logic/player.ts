@@ -169,7 +169,7 @@ export function updatePlayer(player: Player, input: InputState, dt: number, room
     return {
       player: applyPhysics(p, roomWidth, platforms),
       attackTriggered: false, attackDamage, attackRange, attackKnockback, attackLaunch,
-      skill1Triggered: false, skill2Triggered: false,
+      skill1Triggered: false, skill2Triggered: false, skill3Triggered: false, skill4Triggered: false,
       skillDamage, skillRange, skillAOE, skillKnockback, skillLaunch,
     }
   }

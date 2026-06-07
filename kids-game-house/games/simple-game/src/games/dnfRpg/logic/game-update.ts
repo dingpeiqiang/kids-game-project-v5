@@ -6,7 +6,7 @@
 import * as C from '../config'
 import type {
   Player, Enemy, InputState, Bullet, DropItem,
-  Particle, Shockwave, FloatText, Equipment, SkillInstance,
+  Particle, Shockwave, FloatText, Equipment, SkillInstance, ScreenShake,
 } from '../types'
 import { createPlayer, updatePlayer, addExp } from './player'
 import { updateEnemies } from './enemies'
@@ -15,6 +15,7 @@ import { generateDrops, pickupDrops, applyEquipment } from './equipment'
 import { updateParticles, updateShockwaves, updateFloatTexts, updateBullets, updateDrops } from '../render/effects'
 import type { DungeonManager } from './dungeon'
 import { spawnHitEffects, spawnSkillEffects, spawnDeathEffects, spawnRoomEnemiesFromState } from './game-effects'
+import { updateScreenShake } from './effects'
 
 export interface GameUpdateState {
   player: Player
@@ -43,6 +44,7 @@ export interface GameUpdateState {
   // 滑动过渡
   transitionPhase: 'none' | 'slide_out' | 'slide_in'
   transitionProgress: number
+  screenShake: ScreenShake | null
 }
 
 export function updateGameLogic(
@@ -273,6 +275,7 @@ export function updateGameLogic(
   updateFloatTexts(state.floatTexts)
   updateBullets(state.bullets)
   updateDrops(state.drops)
+  state.screenShake = updateScreenShake(state.screenShake, dt)
 
   const particleLimit = C.isMobileDevice() ? C.PARTICLE_MAX_MOBILE : C.PARTICLE_MAX
   if (state.particles.length > particleLimit) {

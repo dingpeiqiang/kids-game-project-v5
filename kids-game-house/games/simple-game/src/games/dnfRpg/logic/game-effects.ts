@@ -8,6 +8,7 @@ import type { GameUpdateState } from './game-update'
 import { createEnemy, createBoss } from './enemies'
 import type { DungeonManager } from './dungeon'
 import * as C from '../config'
+import { createScreenShake } from './effects'
 
 // ============ 职业技能配色方案 ============
 const CLASS_SKILL_COLORS: Record<string, {
@@ -100,7 +101,7 @@ export function spawnHitEffects(state: GameUpdateState, x: number, y: number, da
     life: isCritical ? 900 : 700,
     maxLife: isCritical ? 900 : 700,
     color: isCritical ? '#FFD700' : (damage > 30 ? '#FF4444' : '#FF8800'),
-    size: isCritical ? 24 : (damage > 40 ? 18 : (damage > 25 ? 16 : 14)),
+    size: isCritical ? 28 : (damage > 80 ? 22 : (damage > 40 ? 18 : (damage > 25 ? 16 : 14))),
     vy: isCritical ? -5 : -3,
     type: 'damage',
   })
@@ -120,15 +121,19 @@ export function spawnSkillEffects(
   if (skillIndex === 0) {
     // 技能1：小型爆发特效（快速、锐利）
     spawnSkill1Effect(state, x, y, colors)
+    state.screenShake = createScreenShake(4, 150)
   } else if (skillIndex === 1) {
     // 技能2：大型AOE特效（范围广、震撼）
     spawnSkill2Effect(state, x, y, colors)
+    state.screenShake = createScreenShake(6, 200)
   } else if (skillIndex === 2) {
     // 技能3：强力单体特效（集中、穿透）
     spawnSkill3Effect(state, x, y, colors)
+    state.screenShake = createScreenShake(8, 250)
   } else {
     // 技能4：终极技能特效（全屏、震撼）
     spawnSkill4Effect(state, x, y, colors)
+    state.screenShake = createScreenShake(12, 350)
   }
 }
 

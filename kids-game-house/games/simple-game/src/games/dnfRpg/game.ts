@@ -1,6 +1,6 @@
 import type { GameEngine } from '../../services/gameEngine'
 import * as C from './config'
-import type { Player, Enemy, Bullet, DropItem, Equipment } from './types'
+import type { Player, Enemy, Bullet, DropItem, Equipment, ScreenShake } from './types'
 import { DungeonManager } from './logic/dungeon'
 import { createPlayer } from './logic/player'
 import { createEnemy, createBoss } from './logic/enemies'
@@ -38,7 +38,7 @@ export class DnfRpgGame {
   private shownComboMilestones: number[] = []
 
   private inputManager: InputManager
-  private input = { left: false, right: false, up: false, down: false, jump: false, attack: false, skill1: false, skill2: false, dash: false, interact: false, stickX: 0, stickY: 0 }
+  private input = { left: false, right: false, up: false, down: false, jump: false, attack: false, skill1: false, skill2: false, skill3: false, skill4: false, dash: false, interact: false, stickX: 0, stickY: 0 }
   private inCharSelect = true
   private selectedClass: 'swordsman' | 'fighter' | 'archer' | 'mage' | 'gunner' | null = null
   private hoveredClassIndex = -1
@@ -55,6 +55,7 @@ export class DnfRpgGame {
 
   private transitionPhase: 'none' | 'slide_out' | 'slide_in' = 'none'
   private transitionProgress = 0
+  private screenShake: ScreenShake | null = null
 
   private cameraX = 0
   private targetCameraX = 0
@@ -152,6 +153,7 @@ export class DnfRpgGame {
       fadeInTimer: this.fadeInTimer,
       transitionPhase: this.transitionPhase,
       transitionProgress: this.transitionProgress,
+      screenShake: this.screenShake,
     }
     spawnRoomEnemiesFromState(state, this.dungeon)
     this.enemies = state.enemies
@@ -207,6 +209,7 @@ export class DnfRpgGame {
       fadeInTimer: this.fadeInTimer,
       transitionPhase: this.transitionPhase,
       transitionProgress: this.transitionProgress,
+      screenShake: this.screenShake,
     }
 
     updateGameLogic(state, this.input, dt, this.engine, this.dungeon, this.onEnd, this.lastFrameTimeRef)
@@ -236,6 +239,7 @@ export class DnfRpgGame {
     this.fadeInTimer = state.fadeInTimer
     this.transitionPhase = state.transitionPhase
     this.transitionProgress = state.transitionProgress
+    this.screenShake = state.screenShake
   }
 
   private render(): void {
@@ -264,6 +268,7 @@ export class DnfRpgGame {
       skills: this.player?.skills || [],
       transitionPhase: this.transitionPhase,
       transitionProgress: this.transitionProgress,
+      screenShake: this.screenShake,
     }
     renderGame(this.ctx, data)
   }
