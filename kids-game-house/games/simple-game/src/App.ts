@@ -37,6 +37,7 @@ import { initRpgShooterTD } from './games/rpgShooterTowerDefense/init'
 import { initDragonShooter } from './games/dragonShooter'
 import { initContraRpg } from './games/contraRpg'
 import { initWangzheRpg } from './games/wangzheRpg'
+import { initDnfRpg } from './games/dnfRpg'
 import { initMatch3 } from './games/match3'
 
 class App {
@@ -1339,6 +1340,7 @@ class App {
     gameEngine.start()
 
     document.getElementById('game-layer')!.classList.add('show')
+    document.documentElement.classList.add('game-active')
     document.getElementById('topBar')!.style.display = 'none'
     document.getElementById('bottomNav')!.style.display = 'none'
     document.getElementById('mainView')!.style.display = 'none'
@@ -1358,6 +1360,8 @@ class App {
     const isRacingRun = this.currentGame.id === 'racingRun'
     const isContraRpg = this.currentGame.id === 'contraRpg'
     const isWangzheRpg = this.currentGame.id === 'wangzheRpg'
+    const isPlantsVsZombies = this.currentGame.id === 'plantsVsZombies'
+    const isDnfRpg = this.currentGame.id === 'dnfRpg'
 
     // 设置游戏分辨率
     // 魂斗罗RPG：固定横屏 680x320（含左右操作面板）
@@ -1375,6 +1379,12 @@ class App {
       gameH = 360
     } else if (isRacingRun) {
       gameH = 720
+    } else if (isPlantsVsZombies) {
+      gameW = 720
+      gameH = 600
+    } else if (isDnfRpg) {
+      gameW = 880  // TOTAL_WIDTH = CANVAS_WIDTH(720) + LEFT_PANEL(80) + RIGHT_PANEL(80)
+      gameH = 440  // CANVAS_HEIGHT
     }
 
     let displayW: number = gameW
@@ -1386,27 +1396,52 @@ class App {
       canvas.innerHTML = ''
       console.log('[App] spaceShooter 使用 Phaser ENVELOP 模式，设计分辨率 400x600')
     } else {
-      // 其他竖版游戏：保持宽高比，不超出屏幕
-      const heightRatio = isRacingRun ? window.innerHeight * 0.95 / gameH : window.innerHeight * 0.85 / gameH
-      const widthRatio = window.innerWidth / gameW
-      const scale = Math.min(widthRatio, heightRatio)
-      displayW = Math.floor(gameW * scale * 100) / 100
-      displayH = Math.floor(gameH * scale * 100) / 100
-
-      if (window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+      // 判断是否为横屏游戏
+      const isLandscapeGame = isContraRpg || isWangzheRpg || isPlantsVsZombies || isDnfRpg
+      
+      if (isLandscapeGame) {
+        // 横屏游戏：优先使用高度来缩放，确保完整显示（包括左右面板）
+        const heightRatio = window.innerHeight / gameH
+        const widthRatio = window.innerWidth / gameW
+        const scale = Math.min(widthRatio, heightRatio)
+        displayW = Math.floor(gameW * scale * 100) / 100
+        displayH = Math.floor(gameH * scale * 100) / 100
+        
+        // 强制画布容器使用flex布局来居中显示
         canvas.style.display = 'flex'
         canvas.style.alignItems = 'center'
         canvas.style.justifyContent = 'center'
         canvas.style.width = '100%'
         canvas.style.height = '100%'
+      } else {
+        // 竖版游戏：保持宽高比，不超出屏幕
+        const heightRatio = isRacingRun ? window.innerHeight * 0.95 / gameH : window.innerHeight * 0.85 / gameH
+        const widthRatio = window.innerWidth / gameW
+        const scale = Math.min(widthRatio, heightRatio)
+        displayW = Math.floor(gameW * scale * 100) / 100
+        displayH = Math.floor(gameH * scale * 100) / 100
+
+        if (window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+          canvas.style.display = 'flex'
+          canvas.style.alignItems = 'center'
+          canvas.style.justifyContent = 'center'
+          canvas.style.width = '100%'
+          canvas.style.height = '100%'
+        }
       }
     }
 
     if (!isSpaceShooter) {
-      canvas.innerHTML = `<canvas id="mainGameCanvas" width="${gameW}" height="${gameH}" style="width:${displayW}px;height:${displayH}px;display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
+      const isLandscapeGame = isContraRpg || isWangzheRpg || isPlantsVsZombies || isDnfRpg
+      if (isLandscapeGame) {
+        // 横屏游戏：不设置显示宽高，让CSS处理
+        canvas.innerHTML = `<canvas id="mainGameCanvas" width="${gameW}" height="${gameH}" style="display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
+      } else {
+        canvas.innerHTML = `<canvas id="mainGameCanvas" width="${gameW}" height="${gameH}" style="width:${displayW}px;height:${displayH}px;display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
+      }
     }
 
-    if (isContraRpg || isWangzheRpg) {
+    if (isContraRpg || isWangzheRpg || isPlantsVsZombies || isDnfRpg) {
       const gameLayer = document.getElementById('game-layer')!
       gameLayer.classList.add('landscape-mode')
       // 设置横屏宽高比 CSS 变量
@@ -1451,6 +1486,7 @@ class App {
       case 'dragonShooter': initDragonShooter(gameEngine, () => this.endGame()); break
       case 'contraRpg': initContraRpg(gameEngine, () => this.endGame()); break
       case 'wangzheRpg': initWangzheRpg(gameEngine, () => this.endGame()); break
+      case 'dnfRpg': initDnfRpg(gameEngine, () => this.endGame()); break
     }
   }
 
@@ -1768,6 +1804,7 @@ class App {
     }
     
     document.getElementById('game-layer')!.classList.remove('show')
+    document.documentElement.classList.remove('game-active')
     document.getElementById('gameCanvas')!.innerHTML = ''
     // 清理可能残留的游戏 DOM
     document.getElementById('phaser-space-shooter')?.remove()

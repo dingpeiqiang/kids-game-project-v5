@@ -76,6 +76,7 @@ export const GAME_DISPLAY_CONFIG: GameConfig[] = [
 
   // // ── 策略塔防 ──
   { id: 'towerDefense',  visible: true,  order: 1,  badge: '新' },
+  { id: 'dnfRpg',        visible: true,  order: 2,  badge: '新' },
 
   // // ── 卡牌记忆 ──
   { id: 'memoryMatch',   visible: true,  order: 1,  badge: '' },
