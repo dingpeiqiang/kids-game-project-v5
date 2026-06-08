@@ -1,4 +1,4 @@
-import type { PlantType, Sun, Particle, FloatingText } from '../types'
+import type { PlantType, Sun, Particle, FloatingText, Projectile } from '../types'
 import { GAME_CONFIG, COLORS, PLANT_CONFIGS, AVAILABLE_PLANTS } from '../config'
 
 export function drawUI(
@@ -120,7 +120,7 @@ export function drawSuns(ctx: CanvasRenderingContext2D, suns: Sun[]) {
   })
 }
 
-export function drawProjectiles(ctx: CanvasRenderingContext2D, projectiles: { id: string; x: number; y: number; speed: number; damage: number; type: 'pea' | 'snow_pea'; row: number }[]) {
+export function drawProjectiles(ctx: CanvasRenderingContext2D, projectiles: Projectile[]) {
   projectiles.forEach(proj => {
     ctx.save()
     ctx.translate(proj.x, proj.y)

@@ -37,8 +37,10 @@ import { initRpgShooterTD } from './games/rpgShooterTowerDefense/init'
 import { initDragonShooter } from './games/dragonShooter'
 import { initContraRpg } from './games/contraRpg'
 import { initWangzheRpg } from './games/wangzheRpg'
+import { initPlantsVsZombies } from './games/plantsVsZombies'
 import { initDnfRpg } from './games/dnfRpg'
 import { initMatch3 } from './games/match3'
+import { initVoxelSandbox } from './games/voxelSandbox'
 
 class App {
   private currentGame: Game | null = null
@@ -1486,7 +1488,12 @@ class App {
       case 'dragonShooter': initDragonShooter(gameEngine, () => this.endGame()); break
       case 'contraRpg': initContraRpg(gameEngine, () => this.endGame()); break
       case 'wangzheRpg': initWangzheRpg(gameEngine, () => this.endGame()); break
+      case 'plantsVsZombies': initPlantsVsZombies(gameEngine, () => this.endGame()); break
       case 'dnfRpg': initDnfRpg(gameEngine, () => this.endGame()); break
+      case 'voxelSandbox': 
+        canvas.innerHTML = '';
+        initVoxelSandbox(canvas);
+        break
     }
   }
 

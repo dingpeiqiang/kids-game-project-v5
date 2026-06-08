@@ -1,5 +1,5 @@
-import type { Plant, PlantType, GridPos, Zombie } from '../types'
-import { PLANT_CONFIGS, generateId, gridToPixel } from '../config'
+import type { Plant, PlantType, GridPos, Zombie, Projectile, Sun } from '../types'
+import { PLANT_CONFIGS, GAME_CONFIG, generateId, gridToPixel } from '../config'
 
 export function createPlant(type: PlantType, gridPos: GridPos): Plant {
   const config = PLANT_CONFIGS[type]
@@ -24,20 +24,41 @@ export function createPlant(type: PlantType, gridPos: GridPos): Plant {
     lastSunTime: Date.now(),
     isReady: type !== 'potato_mine',
     animationFrame: 0,
+    plantTime: Date.now(),
   }
 }
 
 export function updatePlants(
   plants: Plant[],
   zombies: Zombie[],
-  projectiles: { id: string; x: number; y: number; speed: number; damage: number; type: 'pea' | 'snow_pea'; row: number }[],
-  suns: { id: string; x: number; y: number; vy: number; targetY: number; isCollected: boolean }[],
+  projectiles: Projectile[],
+  suns: Sun[],
   currentTime: number
 ) {
   const newProjectiles: typeof projectiles = []
+  const detonatedPlants: Plant[] = []
+  const killedZombies: Zombie[] = []
   
   plants.forEach((plant, plantIndex) => {
     plant.animationFrame = (plant.animationFrame + 0.1) % 4
+    
+    if (plant.type === 'cherry_bomb' && currentTime - plant.plantTime >= 3000) {
+      detonatedPlants.push(plant)
+      return
+    }
+    
+    if (plant.type === 'potato_mine' && plant.isReady) {
+      const plantPos = gridToPixel(plant.gridPos)
+      const nearbyZombie = zombies.find(z =>
+        z.row === plant.gridPos.row &&
+        !z.isJumping &&
+        Math.abs(z.position.x - plantPos.x) < GAME_CONFIG.CELL_WIDTH / 2 + 30
+      )
+      if (nearbyZombie) {
+        detonatedPlants.push(plant)
+        return
+      }
+    }
     
     if (plant.sunProduction && plant.sunInterval) {
       if (currentTime - plant.lastSunTime >= plant.sunInterval) {
@@ -65,16 +86,19 @@ export function updatePlants(
         if (closestZombie) {
           const plantPos = gridToPixel(plant.gridPos)
           const zombieDistance = closestZombie.position.x - plantPos.x
+          const range = (plant.range || 9) * GAME_CONFIG.CELL_WIDTH
           
-          if (zombieDistance > 0 && zombieDistance < (plant.range || 9) * 80) {
-            if (plant.type === 'repeater') {
+          if (zombieDistance > 0 && zombieDistance < range) {
+            if (plant.type === 'chomper') {
+              killedZombies.push(closestZombie)
+            } else if (plant.type === 'repeater') {
               newProjectiles.push(
-                createProjectile(plantPos.x + 30, plantPos.y, plant.slowDuration ? 'snow_pea' : 'pea', plant.gridPos.row, plant.attack),
-                createProjectile(plantPos.x + 30, plantPos.y + 10, plant.slowDuration ? 'snow_pea' : 'pea', plant.gridPos.row, plant.attack)
+                createProjectile(plantPos.x + 30, plantPos.y, plant.slowDuration ? 'snow_pea' : 'pea', plant.gridPos.row, plant.attack, plant.slowDuration),
+                createProjectile(plantPos.x + 30, plantPos.y + 10, plant.slowDuration ? 'snow_pea' : 'pea', plant.gridPos.row, plant.attack, plant.slowDuration)
               )
             } else {
               newProjectiles.push(
-                createProjectile(plantPos.x + 30, plantPos.y, plant.slowDuration ? 'snow_pea' : 'pea', plant.gridPos.row, plant.attack)
+                createProjectile(plantPos.x + 30, plantPos.y, plant.slowDuration ? 'snow_pea' : 'pea', plant.gridPos.row, plant.attack, plant.slowDuration)
               )
             }
             plant.lastAttackTime = currentTime
@@ -90,10 +114,10 @@ export function updatePlants(
     }
   })
   
-  return { newProjectiles, plants: plants.filter(p => p.health > 0) }
+  return { newProjectiles, detonatedPlants, killedZombies, plants: plants.filter(p => p.health > 0 && !detonatedPlants.includes(p)) }
 }
 
-function createProjectile(x: number, y: number, type: 'pea' | 'snow_pea', row: number, damage: number) {
+function createProjectile(x: number, y: number, type: 'pea' | 'snow_pea', row: number, damage: number, slowDuration?: number) {
   return {
     id: generateId(),
     x,
@@ -102,6 +126,7 @@ function createProjectile(x: number, y: number, type: 'pea' | 'snow_pea', row: n
     damage,
     type,
     row,
+    slowDuration,
   }
 }
 

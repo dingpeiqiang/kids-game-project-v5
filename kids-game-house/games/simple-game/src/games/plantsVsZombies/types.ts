@@ -55,6 +55,7 @@ export interface Plant {
   lastSunTime: number
   isReady: boolean
   animationFrame: number
+  plantTime: number
 }
 
 export type ZombieType =
@@ -106,6 +107,7 @@ export interface Projectile {
   damage: number
   type: ProjectileType
   row: number
+  slowDuration?: number
 }
 
 export interface Sun {

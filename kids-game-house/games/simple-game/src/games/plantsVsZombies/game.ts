@@ -1,4 +1,4 @@
-import type { Plant, Zombie, Sun, Particle, FloatingText, PlantType, LevelConfig } from './types'
+import type { Plant, Zombie, Sun, Particle, FloatingText, PlantType, Projectile } from './types'
 import { GAME_CONFIG, LEVELS, PLANT_CONFIGS, AVAILABLE_PLANTS, generateId } from './config'
 import { createPlant, updatePlants, getPlantAt } from './logic/plants'
 import { createZombie, updateZombies } from './logic/zombies'
@@ -16,10 +16,13 @@ export class PlantsVsZombiesGame {
   private ctx: CanvasRenderingContext2D
   private plants: Plant[] = []
   private zombies: Zombie[] = []
-  private projectiles: { id: string; x: number; y: number; speed: number; damage: number; type: 'pea' | 'snow_pea'; row: number }[] = []
+  private projectiles: Projectile[] = []
   private suns: Sun[] = []
   private particles: Particle[] = []
   private floatingTexts: FloatingText[] = []
+  
+  private boundHandleClick!: (e: MouseEvent) => void
+  private boundHandleTouch!: (e: TouchEvent) => void
   
   private sun: number = 200
   private lives: number = 5
@@ -51,8 +54,10 @@ export class PlantsVsZombiesGame {
   }
   
   private setupEventListeners() {
-    this.canvas.addEventListener('click', this.handleClick.bind(this))
-    this.canvas.addEventListener('touchstart', this.handleTouch.bind(this), { passive: false })
+    this.boundHandleClick = this.handleClick.bind(this)
+    this.boundHandleTouch = this.handleTouch.bind(this)
+    this.canvas.addEventListener('click', this.boundHandleClick)
+    this.canvas.addEventListener('touchstart', this.boundHandleTouch, { passive: false })
   }
   
   private handleClick(e: MouseEvent) {
@@ -101,12 +106,6 @@ export class PlantsVsZombiesGame {
           this.plants.push(plant)
           this.sun -= config.sunCost
           
-          if (this.selectedPlant === 'cherry_bomb') {
-            setTimeout(() => {
-              this.detonateCherryBomb(plant)
-            }, 3000)
-          }
-          
           this.floatingTexts.push(createFloatingText(
             col * GAME_CONFIG.CELL_WIDTH + GAME_CONFIG.CELL_WIDTH / 2,
             row * GAME_CONFIG.CELL_HEIGHT + GAME_CONFIG.HUD_HEIGHT,
@@ -135,11 +134,6 @@ export class PlantsVsZombiesGame {
   }
   
   private detonateCherryBomb(plant: Plant) {
-    const idx = this.plants.indexOf(plant)
-    if (idx !== -1) {
-      this.plants.splice(idx, 1)
-    }
-    
     this.particles.push(...createZombieDeathEffect(
       plant.gridPos.col * GAME_CONFIG.CELL_WIDTH + GAME_CONFIG.CELL_WIDTH / 2,
       plant.gridPos.row * GAME_CONFIG.CELL_HEIGHT + GAME_CONFIG.HUD_HEIGHT + GAME_CONFIG.CELL_HEIGHT / 2
@@ -153,11 +147,34 @@ export class PlantsVsZombiesGame {
       const dx = zombie.position.x - bombX
       const dy = zombie.position.y - bombY
       if (Math.sqrt(dx * dx + dy * dy) < 150) {
-        this.killZombie(zombie, i)
+        this.zombies.splice(i, 1)
+        this.applyZombieKillRewards(zombie)
       }
     }
     
     this.floatingTexts.push(createFloatingText(bombX, bombY - 30, '💥 爆炸!', '#FFD700'))
+  }
+  
+  private detonatePotatoMine(plant: Plant) {
+    this.particles.push(...createZombieDeathEffect(
+      plant.gridPos.col * GAME_CONFIG.CELL_WIDTH + GAME_CONFIG.CELL_WIDTH / 2,
+      plant.gridPos.row * GAME_CONFIG.CELL_HEIGHT + GAME_CONFIG.HUD_HEIGHT + GAME_CONFIG.CELL_HEIGHT / 2
+    ))
+    
+    const mineX = plant.gridPos.col * GAME_CONFIG.CELL_WIDTH + GAME_CONFIG.CELL_WIDTH / 2
+    const mineY = plant.gridPos.row * GAME_CONFIG.CELL_HEIGHT + GAME_CONFIG.HUD_HEIGHT + GAME_CONFIG.CELL_HEIGHT / 2
+    
+    for (let i = this.zombies.length - 1; i >= 0; i--) {
+      const zombie = this.zombies[i]
+      const dx = zombie.position.x - mineX
+      const dy = zombie.position.y - mineY
+      if (Math.sqrt(dx * dx + dy * dy) < 100) {
+        this.zombies.splice(i, 1)
+        this.applyZombieKillRewards(zombie)
+      }
+    }
+    
+    this.floatingTexts.push(createFloatingText(mineX, mineY - 30, '💥 地雷!', '#FF8C00'))
   }
   
   private startGame() {
@@ -255,6 +272,22 @@ export class PlantsVsZombiesGame {
     this.projectiles.push(...plantUpdate.newProjectiles)
     this.plants = plantUpdate.plants
     
+    for (const plant of plantUpdate.detonatedPlants) {
+      if (plant.type === 'cherry_bomb') {
+        this.detonateCherryBomb(plant)
+      } else if (plant.type === 'potato_mine') {
+        this.detonatePotatoMine(plant)
+      }
+    }
+    
+    for (const zombie of plantUpdate.killedZombies) {
+      const idx = this.zombies.indexOf(zombie)
+      if (idx !== -1) {
+        this.zombies.splice(idx, 1)
+        this.applyZombieKillRewards(zombie)
+      }
+    }
+    
     const zombieUpdate = updateZombies(this.zombies, this.plants, currentTime)
     this.zombies = zombieUpdate.zombies
     this.plants = zombieUpdate.plants
@@ -281,23 +314,14 @@ export class PlantsVsZombiesGame {
     this.zombies = projUpdate.zombies
     
     projUpdate.killedZombies.forEach(zombie => {
-      this.killZombie(zombie, -1)
+      this.applyZombieKillRewards(zombie)
     })
     
     this.particles = updateParticles(this.particles)
     this.floatingTexts = updateFloatingTexts(this.floatingTexts)
   }
   
-  private killZombie(zombie: Zombie, index: number) {
-    if (index >= 0) {
-      this.zombies.splice(index, 1)
-    } else {
-      const idx = this.zombies.indexOf(zombie)
-      if (idx >= 0) {
-        this.zombies.splice(idx, 1)
-      }
-    }
-    
+  private applyZombieKillRewards(zombie: Zombie) {
     this.score += zombie.reward * 10
     this.sun = Math.min(this.sun + zombie.reward, LEVELS[this.currentLevel].sunLimit)
     
@@ -358,7 +382,7 @@ export class PlantsVsZombiesGame {
   
   public destroy() {
     cancelAnimationFrame(this.animId)
-    this.canvas.removeEventListener('click', this.handleClick.bind(this))
-    this.canvas.removeEventListener('touchstart', this.handleTouch.bind(this))
+    this.canvas.removeEventListener('click', this.boundHandleClick)
+    this.canvas.removeEventListener('touchstart', this.boundHandleTouch)
   }
 }

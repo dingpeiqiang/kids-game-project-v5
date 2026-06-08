@@ -27,7 +27,7 @@ export function updateProjectiles(
       
       if (projectile.type === 'snow_pea') {
         hitZombie.isSlowed = true
-        hitZombie.slowTimer = 3000
+        hitZombie.slowTimer = projectile.slowDuration || 3000
         hitZombie.speed = hitZombie.baseSpeed * 0.5
       }
       
