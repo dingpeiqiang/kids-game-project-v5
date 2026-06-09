@@ -49,9 +49,17 @@ For multi-step tasks, state a brief plan:
 
 ## Project Overview
 
-kids-game-simple - A collection of 20+ mini-games for children, built with HTML5 Canvas and Phaser 3.
+kids-game-simple — 儿童向多游戏合集（30+），主工程在 `kids-game-simple/`。
 
-**Design Philosophy**: Casual, fun, visually appealing games with Chinese cultural themes. Games should be easy to pick up but have depth.
+| 维度 | 技术 |
+|------|------|
+| **2D** | Phaser 3 + 部分历史 Canvas 2D（保留，新 2D 优先 Phaser 或目录化脚手架） |
+| **3D（新）** | **Babylon.js** + 共用 `src/engine3d/`；旧 **Three.js 3D 废弃重做**，勿再修补 |
+| **壳** | Vite、TypeScript、Capacitor（Android） |
+
+**设计取向**：轻松、好看、易上手；全站规范以仓库根目录 [AGENTS.md](../AGENTS.md) 为准。
+
+**3D 上架**：未通过 AGENTS.md §7.3 的 3D 在 `GAME_DISPLAY_CONFIG` 中保持 `visible: false`。
 
 ## Build Commands
 
@@ -66,10 +74,10 @@ npm test             # Run tests (jest)
 ## Architecture
 
 ### Game Structure
-- Each game is a separate file in `src/games/`
-- All games export an `initXxx(engine, onEnd)` function
-- Games receive a `GameEngine` instance for score/combo management
-- Games call `onEnd()` when finished to return to menu
+- 游戏目录：`src/games/<gameId>/`（推荐）或历史单文件 `src/games/xxx.ts`
+- **运行期入口**：`src/games/gameRegistry.ts` 的 `GAME_REGISTRY[id].init(engine, onEnd)`
+- 模块可导出 `initXxx(engine, onEnd)`；App **不**直接扫 `index.ts`，以 Registry 为准
+- 3D / Phaser 必须在 Registry 提供 **`destroy`**，切换游戏时释放 WebGL/引擎
 
 ### Core Services (`src/services/`)
 - `gameEngine.ts` - Score, combo, buff system. All games should use this.
@@ -78,22 +86,24 @@ npm test             # Run tests (jest)
 - `userService.ts` - User management
 
 ### Game Types
-- **Canvas 2D** (most games) - Pure Canvas API, custom render loop
-- **Phaser 3** (spaceShooter, towerDefense) - Phaser game engine with CanvasTexture rendering
+- **Canvas 2D** — 自管 `requestAnimationFrame`（历史游戏）
+- **Phaser 3** — `spaceShooter`、`towerDefense` 等
+- **3D（重做）** — Babylon + `engine3d`；勿新增 Three 游戏
 
-### Data Files (`src/data/`)
-- `games.ts` - Game metadata (name, description, tags)
-- `game-config.ts` - Display configuration (visibility, order, badges)
-- `powerups.ts` - Power-up definitions
+### Data & config
+- `src/data/games.ts` — `GAMES`、`GAME_GUIDES`（与 Registry 的 `game.id` 一致）
+- `src/games/gameRegistry.ts` — `GAME_REGISTRY`、`GAME_DISPLAY_CONFIG`（可见性、排序、角标）
+- `src/data/powerups.ts` — 道具定义
 
 ## Development Patterns
 
 ### Adding a New Game
-1. Create `src/games/xxx.ts` with `initXxx(engine, onEnd)` export
-2. Add to `src/games/index.ts`
-3. Add entry to `GAMES` array in `src/data/games.ts`
-4. Add to `GAME_DISPLAY_CONFIG` in `src/data/game-config.ts`
-5. Add guide to `GAME_GUIDES` in `src/data/games.ts`
+1. 创建 `src/games/<gameId>/`（`index.ts` 导出 `initXxx(engine, onEnd)`，3D 加 `destroyXxx`）
+2. 在 `GAME_REGISTRY` 增加条目（`init` 内 `await import('./<gameId>')`）
+3. 更新 `GAME_DISPLAY_CONFIG`（未完成则 `visible: false`）
+4. 同步 `src/data/games.ts` 的 `GAMES` / `GAME_GUIDES`
+5. 可选：`src/games/index.ts` 再导出（非必须，Registry 已懒加载）
+6. `npm run type-check`
 
 ### Game Loop Pattern (Canvas 2D)
 ```typescript
@@ -158,11 +168,11 @@ npm test -- --testPathPattern=dragonShooter
 
 ## Key Files to Know
 
-- `src/App.ts` - Main app, game selection, navigation
-- `src/games/dragonShooter.ts` - Dragon shooting game (most recently updated)
-- `src/games/spaceShooter.ts` - Space shooter with Phaser
-- `src/services/gameEngine.ts` - Score/combo/buff system
-- `src/data/games.ts` - Game catalog
+- `src/App.ts` — 大厅、开局/结束、容器布局
+- `src/games/gameRegistry.ts` — 游戏注册与展示配置（真相源）
+- `src/services/gameEngine.ts` — 积分/连击/Buff
+- `src/data/games.ts` — 目录文案与引导
+- `src/engine3d/` — 新 3D 共用层（Babylon，随重做落地）
 
 ## Game Quality Checklist
 
