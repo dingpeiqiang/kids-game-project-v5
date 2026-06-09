@@ -26,8 +26,8 @@ import { createCamera, updateCameraPosition, cycleCameraMode } from './render/ca
 import { createVehicle, updateVehicleMesh } from './render/vehicle';
 import { createParkingUI, type ParkingUI } from './render/ui';
 
+/** 返回大厅时由 index 统一写入 gameEngine 分数 */
 export interface CarParkingPlatformBridge {
-  onScore: (score: number, victory: boolean, stats?: Record<string, unknown>) => void;
   onExit: () => void;
 }
 
@@ -368,15 +368,9 @@ export class CarParkingGame {
     });
   }
 
-  private finishForPlatform(score: number, victory: boolean): void {
+  private finishForPlatform(_score: number, _victory: boolean): void {
     if (this.endedForPlatform) return;
     this.endedForPlatform = true;
-    this.platform?.onScore(score, victory, {
-      level: this.gameState.currentLevel,
-      collisions: this.gameState.collisions,
-      perfect: this.gameState.isPerfect,
-      won: victory,
-    });
     this.platform?.onExit();
   }
 

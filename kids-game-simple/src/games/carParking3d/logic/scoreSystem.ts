@@ -1,4 +1,4 @@
-import { GameState, PlayerData, ParkingResult } from '../types';
+import { GameState, PlayerData } from '../types';
 import { GAME_CONFIG } from '../config';
 
 const STORAGE_KEY = 'carParking3d_playerData';
@@ -94,8 +94,4 @@ export function resetGameState(state: GameState, levelTime: number): GameState {
     isCompleted: false,
     isPerfect: false,
   };
-}
-
-export function updateScoreFromParking(result: ParkingResult): number {
-  return result.score;
 }

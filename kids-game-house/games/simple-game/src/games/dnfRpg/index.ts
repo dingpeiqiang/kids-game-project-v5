@@ -1,1 +1,0 @@
-export { initDnfRpg } from './game'

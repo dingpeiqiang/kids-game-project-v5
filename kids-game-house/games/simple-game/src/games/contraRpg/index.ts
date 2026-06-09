@@ -1,1 +1,0 @@
-export { initContraRpg } from './game'

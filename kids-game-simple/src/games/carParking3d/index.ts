@@ -38,10 +38,6 @@ export function initCarParking3D(engine: ExternalEngine, onEnd: () => void): voi
   };
 
   gameInstance = new CarParkingGame(container, {
-    onScore: (score, victory) => {
-      engine.setScore(score);
-      engine.setVictory(victory);
-    },
     onExit: () => {
       const state = gameInstance?.getState();
       const score = state?.score ?? 0;
