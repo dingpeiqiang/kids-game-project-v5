@@ -24,10 +24,11 @@
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:exported="true"
-            android:screenOrientation="landscape">
+            android:screenOrientation="fullSensor">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>

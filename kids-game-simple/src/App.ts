@@ -10,10 +10,12 @@ import { AuthModal, MePanel, showToast, injectUserStyles } from './services/user
 import { apiGetBatchUserRank, apiSubmitComment, apiGetComments, tokenStore } from './services/apiClient'
 import { getTopList, type LeaderboardEntry } from './services/leaderboardService'
 import { getGameRegistration, initGame, destroyGame } from './games/gameRegistry'
+import { OrientationManager } from './utils/orientation'
 
 class App {
   private currentGame: Game | null = null
   private guideSkipped: boolean = false
+  private orientationManager: OrientationManager | null = null
   private authModal: AuthModal
   private mePanel: MePanel
   // 缓存排行榜数据，避免频繁请求
@@ -1415,6 +1417,12 @@ class App {
     if (isContraRpg || isWangzheRpg || isPlantsVsZombies || isDnfRpg) {
       const gameLayer = document.getElementById('game-layer')!
       gameLayer.classList.add('landscape-mode')
+      
+      // 横屏游戏：锁定屏幕方向为横屏
+      if (!this.orientationManager) {
+        this.orientationManager = new OrientationManager()
+      }
+      this.orientationManager.tryLockLandscape()
       // 设置横屏宽高比 CSS 变量
       const ratio = gameH / gameW
       gameLayer.style.setProperty('--game-ratio', ratio.toString())
@@ -1440,6 +1448,11 @@ class App {
   private async endGame() {
     gameEngine.stop()
     gameEngine.endGame()
+    
+    // 退出游戏时恢复竖屏
+    if (this.orientationManager) {
+      this.orientationManager.tryLockPortrait()
+    }
     
     // 移除横屏样式
     const gameLayer = document.getElementById('game-layer')!

@@ -65,6 +65,20 @@ export class OrientationManager {
     }
   }
 
+  public async tryLockPortrait(): Promise<boolean> {
+    if (!this.supportsOrientationLock()) {
+      return false
+    }
+
+    try {
+      await screen.orientation.lock('portrait')
+      this.isLocked = true
+      return true
+    } catch {
+      return false
+    }
+  }
+
   public unlock(): void {
     if (this.supportsOrientationLock() && this.isLocked) {
       try {
