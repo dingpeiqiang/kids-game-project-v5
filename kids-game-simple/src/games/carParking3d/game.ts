@@ -25,6 +25,8 @@ import {
 import { createCamera, updateCameraPosition, cycleCameraMode } from './render/camera';
 import { createVehicle, updateVehicleMesh } from './render/vehicle';
 import { createParkingUI, type ParkingUI } from './render/ui';
+import { flashCollision, pulseParkingSpot } from './render/effects';
+import { audioService } from '../../services/audio';
 
 /** 返回大厅时由 index 统一写入 gameEngine 分数 */
 export interface CarParkingPlatformBridge {
@@ -45,6 +47,7 @@ export class CarParkingGame {
 
   private currentLevelConfig: Level | null = null;
   private liveParkingScore = 0;
+  private parkingHint = { center: 1, angle: 1, inside: false };
   private outOfBoundsTimer = 0;
 
   private vehicleState: VehicleState = {
@@ -289,6 +292,8 @@ export class CarParkingGame {
         this.gameState.score = Math.max(0, this.gameState.score - GAME_CONFIG.COLLISION_PENALTY);
         this.lastCollisionTime = currentTime;
         this.vehicleState = applyCollisionResponse(this.vehicleState);
+        flashCollision(this.container);
+        audioService.crash();
         this.ui.showToast(`碰撞！-${GAME_CONFIG.COLLISION_PENALTY}分`);
 
         if (this.gameState.collisions >= this.gameState.maxCollisions) {
@@ -300,6 +305,11 @@ export class CarParkingGame {
 
     const parkingPreview = checkParking(this.vehicleState, level.parkingSpot);
     this.liveParkingScore = parkingPreview.score;
+    this.parkingHint = {
+      center: parkingPreview.centerDeviation,
+      angle: parkingPreview.angleDeviation,
+      inside: parkingPreview.isFullyInside,
+    };
 
     if (currentTime - this.lastParkingCheck > GAME_CONFIG.PARKING_CHECK_INTERVAL) {
       if (Math.abs(this.vehicleState.velocity) < 0.12) {
@@ -311,7 +321,7 @@ export class CarParkingGame {
       this.lastParkingCheck = currentTime;
     }
 
-    updateVehicleMesh(this.vehicle, this.vehicleState);
+    updateVehicleMesh(this.vehicle, this.vehicleState, deltaTime);
     updateCameraPosition(
       this.camera,
       this.vehicleState.position,
@@ -334,6 +344,10 @@ export class CarParkingGame {
     const isNewBest = finalScore > prevBest;
     updatePlayerData(this.gameState.currentLevel, finalScore, this.gameState.isPerfect);
 
+    if (this.parkingSpotGroup) pulseParkingSpot(this.parkingSpotGroup);
+    if (this.gameState.isPerfect) audioService.win();
+    else audioService.pop();
+
     this.ui.showToast(this.gameState.isPerfect ? '完美停车！' : '停车成功！');
     const hasNext = this.gameState.currentLevel < LEVELS.length;
 
@@ -353,6 +367,7 @@ export class CarParkingGame {
   private gameOver(reason: string): void {
     this.gameState.isGameOver = true;
     this.gameState.isPlaying = false;
+    audioService.lose();
     this.ui.showToast(reason);
 
     this.ui.showResult({
@@ -376,7 +391,13 @@ export class CarParkingGame {
 
   private syncHud(): void {
     const name = this.currentLevelConfig?.name ?? '';
-    this.ui.updateHud(this.gameState, name, this.cameraMode, this.liveParkingScore);
+    this.ui.updateHud(
+      this.gameState,
+      name,
+      this.cameraMode,
+      this.liveParkingScore,
+      this.parkingHint
+    );
   }
 
   private render(): void {
@@ -385,10 +406,6 @@ export class CarParkingGame {
 
   public getState(): GameState {
     return { ...this.gameState };
-  }
-
-  public getLevels(): Level[] {
-    return [...LEVELS];
   }
 
   public destroy(): void {

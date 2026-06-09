@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import { CameraMode } from '../types';
 import { CAMERA_CONFIG } from '../config';
 
+const _lookAt = new THREE.Vector3();
+const _desiredLook = new THREE.Vector3();
+
 export function createCamera(container: HTMLDivElement): THREE.PerspectiveCamera {
-  const camera = new THREE.PerspectiveCamera(
-    60,
-    container.clientWidth / container.clientHeight,
-    0.1,
-    1000
-  );
+  const w = container.clientWidth || 400;
+  const h = container.clientHeight || 600;
+  const camera = new THREE.PerspectiveCamera(58, w / h, 0.1, 200);
+  camera.position.set(0, 8, 12);
   return camera;
 }
 
@@ -19,8 +20,11 @@ export function updateCameraPosition(
   mode: CameraMode,
   deltaTime: number
 ): void {
+  const dt = Math.min(deltaTime, 50) / 16.67;
+  const lerp = 1 - Math.pow(1 - CAMERA_CONFIG.transitionSpeed * 1.8, dt);
+
   let targetCameraPosition: THREE.Vector3;
-  
+
   switch (mode) {
     case 'follow':
       targetCameraPosition = new THREE.Vector3(
@@ -29,23 +33,20 @@ export function updateCameraPosition(
         targetPosition.z - Math.sin(targetRotation) * CAMERA_CONFIG.followDistance
       );
       break;
-      
     case 'top':
       targetCameraPosition = new THREE.Vector3(
         targetPosition.x,
         CAMERA_CONFIG.topHeight,
-        targetPosition.z - 2
+        targetPosition.z + 0.5
       );
       break;
-      
     case 'rear':
       targetCameraPosition = new THREE.Vector3(
         targetPosition.x - Math.cos(targetRotation) * CAMERA_CONFIG.rearDistance,
-        CAMERA_CONFIG.followHeight * 0.8,
+        CAMERA_CONFIG.followHeight * 0.75,
         targetPosition.z - Math.sin(targetRotation) * CAMERA_CONFIG.rearDistance
       );
       break;
-      
     default:
       targetCameraPosition = new THREE.Vector3(
         targetPosition.x - CAMERA_CONFIG.followDistance,
@@ -53,20 +54,14 @@ export function updateCameraPosition(
         targetPosition.z
       );
   }
-  
-  const lerpFactor = CAMERA_CONFIG.transitionSpeed * (deltaTime / 16.67);
-  camera.position.lerp(targetCameraPosition, lerpFactor);
-  
-  const lookAtTarget = new THREE.Vector3(targetPosition.x, targetPosition.y + 0.5, targetPosition.z);
-  
-  const currentLookAt = new THREE.Vector3();
-  camera.getWorldDirection(currentLookAt);
-  currentLookAt.add(camera.position);
-  
-  const targetLookAt = lookAtTarget;
-  currentLookAt.lerp(targetLookAt, lerpFactor);
-  
-  camera.lookAt(currentLookAt);
+
+  camera.position.lerp(targetCameraPosition, lerp);
+
+  _desiredLook.set(targetPosition.x, targetPosition.y + 0.55, targetPosition.z);
+  camera.getWorldDirection(_lookAt);
+  _lookAt.add(camera.position);
+  _lookAt.lerp(_desiredLook, lerp);
+  camera.lookAt(_lookAt);
 }
 
 export function cycleCameraMode(currentMode: CameraMode): CameraMode {

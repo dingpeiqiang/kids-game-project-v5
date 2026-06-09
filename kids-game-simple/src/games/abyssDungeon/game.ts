@@ -7,7 +7,7 @@ import { handlePlayerAttack, handleEnemyAttack, handleTrapCollision, checkStairs
 import { saveGame, loadGame, hasSave, createNewGamePlayer } from './logic/save'
 import { InputManager } from './logic/input'
 import { SceneRenderer } from './render/scene'
-import { UIRenderer } from './ui/render'
+import { UIRenderer } from './render/ui'
 import type { Player, DungeonLevel, DamageNumber, UIState } from './types'
 
 export class AbyssDungeonGame {

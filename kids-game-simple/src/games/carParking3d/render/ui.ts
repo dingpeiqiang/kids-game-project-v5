@@ -16,10 +16,25 @@ export function injectParkingStyles(): void {
       font-family: system-ui, sans-serif; color: #fff;
       text-shadow: 0 1px 3px rgba(0,0,0,.6);
     }
+    .cp3d-hud-bar {
+      position: absolute; left: 12px; right: 12px; top: 52px; z-index: 19; pointer-events: none;
+    }
+    .cp3d-meter-label { font-size: 11px; color: rgba(255,255,255,.85); margin-bottom: 4px; }
+    .cp3d-meter-track {
+      height: 6px; background: rgba(0,0,0,.4); border-radius: 6px; overflow: hidden; margin-bottom: 6px;
+    }
+    .cp3d-meter-fill {
+      height: 100%; width: 0%; background: linear-gradient(90deg,#2ecc71,#3498db);
+      transition: width .2s ease;
+    }
+    .cp3d-meter-fill.warn { background: linear-gradient(90deg,#f39c12,#e74c3c); }
     .cp3d-hud-pill {
-      background: rgba(0,0,0,.45); border-radius: 10px; padding: 6px 10px; font-size: 13px;
+      background: rgba(0,0,0,.5); border-radius: 10px; padding: 6px 10px; font-size: 13px;
+      backdrop-filter: blur(6px);
     }
     .cp3d-hud-pill b { color: #7ec8ff; }
+    .cp3d-hud-pill.time-warn { background: rgba(180,40,40,.65); animation: cp3d-pulse 1s infinite; }
+    @keyframes cp3d-pulse { 50% { opacity: .85; } }
     .cp3d-hud-actions { display: flex; gap: 8px; pointer-events: auto; }
     .cp3d-btn {
       border: none; border-radius: 10px; padding: 8px 12px;
@@ -90,7 +105,13 @@ export function injectParkingStyles(): void {
 
 export interface ParkingUI {
   root: HTMLElement;
-  updateHud(state: GameState, levelName: string, cameraMode: CameraMode, liveParkingScore: number): void;
+  updateHud(
+    state: GameState,
+    levelName: string,
+    cameraMode: CameraMode,
+    liveParkingScore: number,
+    parkingHint?: { center: number; angle: number; inside: boolean }
+  ): void;
   showToast(msg: string, ms?: number): void;
   showGuide(onClose: () => void): void;
   showResult(opts: {
@@ -180,7 +201,16 @@ export function createParkingUI(container: HTMLDivElement): ParkingUI {
     </div>
   `;
 
+  const meterBar = document.createElement('div');
+  meterBar.className = 'cp3d-hud-bar';
+  meterBar.innerHTML = `
+    <div class="cp3d-meter-label" id="cp3dParkLabel">停车精度</div>
+    <div class="cp3d-meter-track"><div class="cp3d-meter-fill" id="cp3dParkFill"></div></div>
+    <div class="cp3d-meter-label" id="cp3dParkDetail">—</div>
+  `;
+
   container.appendChild(hud);
+  container.appendChild(meterBar);
   container.appendChild(toast);
   container.appendChild(modalWrap);
   container.appendChild(guide);
@@ -251,21 +281,39 @@ export function createParkingUI(container: HTMLDivElement): ParkingUI {
 
   return {
     root: container,
-    updateHud(state, levelName, cameraMode, liveParkingScore) {
+    updateHud(state, levelName, cameraMode, liveParkingScore, parkingHint) {
       const elLevel = document.getElementById('cp3dLevel');
       const elTime = document.getElementById('cp3dTime');
       const elColl = document.getElementById('cp3dColl');
       const elScore = document.getElementById('cp3dScore');
       const elBest = document.getElementById('cp3dBest');
       const elCam = document.getElementById('cp3dCam');
+      const fill = document.getElementById('cp3dParkFill');
+      const detail = document.getElementById('cp3dParkDetail');
       const data = loadPlayerData();
       const displayScore = state.isPlaying ? Math.max(state.score, liveParkingScore) : state.score;
       if (elLevel) elLevel.innerHTML = `<b>关卡</b> ${state.currentLevel} ${levelName}`;
-      if (elTime) elTime.innerHTML = `<b>时间</b> ${Math.max(0, Math.ceil(state.timeRemaining))}s`;
+      const tLeft = Math.max(0, Math.ceil(state.timeRemaining));
+      if (elTime) {
+        elTime.innerHTML = `<b>时间</b> ${tLeft}s`;
+        elTime.classList.toggle('time-warn', tLeft > 0 && tLeft <= 15);
+      }
       if (elColl) elColl.innerHTML = `<b>碰撞</b> ${state.collisions}/${state.maxCollisions}`;
       if (elScore) elScore.innerHTML = `<b>得分</b> ${displayScore}`;
       if (elBest) elBest.innerHTML = `<b>最佳</b> ${data.levelBests[state.currentLevel] ?? '-'}`;
       if (elCam) elCam.innerHTML = `<b>视角</b> ${camLabels[cameraMode]}`;
+      if (fill && parkingHint) {
+        const pct = Math.min(100, Math.max(0, liveParkingScore));
+        fill.style.width = `${pct}%`;
+        fill.classList.toggle('warn', !parkingHint.inside);
+        const ang = Math.round(parkingHint.angle * 45);
+        const ctr = Math.round(parkingHint.center * 100);
+        if (detail) {
+          detail.textContent = parkingHint.inside
+            ? `入位良好 · 角度偏差约 ${ang}° · 中心偏差 ${ctr}%`
+            : `未完全入位 · 请调整车身`;
+        }
+      }
     },
     showToast(msg, ms = 1600) {
       toast.textContent = msg;
@@ -326,6 +374,7 @@ export function createParkingUI(container: HTMLDivElement): ParkingUI {
     },
     destroy() {
       hud.remove();
+      meterBar.remove();
       toast.remove();
       modalWrap.remove();
       guide.remove();

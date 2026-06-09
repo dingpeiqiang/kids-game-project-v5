@@ -94,7 +94,9 @@ export function isGameVisible(gameId: string): boolean {
 export interface GameRegistration {
   game: Game
   guide?: GameGuide
-  init: (engine: GameEngine, onEnd: () => void) => void
+  init: (engine: GameEngine, onEnd: () => void) => Promise<void>
+  /** 退出/重开前释放 WebGL 等资源 */
+  destroy?: () => void
   isSpecial?: boolean
   setup?: (canvas: HTMLDivElement) => { gameW: number; gameH: number; displayW: number; displayH: number }
 }
@@ -112,8 +114,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '方块消除后，上方方块会下落，可能引发连锁反应，得分翻倍！',
       bg: '#FF6B6B'
     },
-    init: (engine, onEnd) => {
-      const { initEliminate } = require('./eliminate')
+    init: async (engine, onEnd) => {
+      const { initEliminate } = await import('./eliminate')
       initEliminate(engine, onEnd)
     }
   },
@@ -131,8 +133,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '一次消除多行得分更高！消灭50行即可获胜！',
       bg: '#4D96FF'
     },
-    init: (engine, onEnd) => {
-      const { initTetris } = require('./tetris')
+    init: async (engine, onEnd) => {
+      const { initTetris } = await import('./tetris')
       initTetris(engine, onEnd)
     }
   },
@@ -149,8 +151,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '创造更多匹配可以触发连锁反应，得分翻倍！30秒内没有移动会游戏结束！',
       bg: '#FFD700'
     },
-    init: (engine, onEnd) => {
-      const { initAnimalMatch } = require('./animalMatch')
+    init: async (engine, onEnd) => {
+      const { initAnimalMatch } = await import('./animalMatch')
       initAnimalMatch(engine, onEnd)
     }
   },
@@ -170,8 +172,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '1. 瞄准同色泡泡发射，触发连锁消除获得高分！\n2. 泡泡反弹可以到达死角位置\n3. 消除底部泡泡会让上方漂浮的泡泡落下，获得额外奖励分数！\n4. 连续消除触发连击加成，分数翻倍！\n5. 关卡越高难度越大，时间越紧张！',
       bg: '#4ECDC4'
     },
-    init: (engine, onEnd) => {
-      const { initBubbleShooter } = require('./bubbleShooter')
+    init: async (engine, onEnd) => {
+      const { initBubbleShooter } = await import('./bubbleShooter')
       initBubbleShooter(engine, onEnd)
     }
   },
@@ -188,8 +190,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '只能移动到空管或相同颜色的顶部哦！完成所有排序可获得大量加分！',
       bg: '#DDA0DD'
     },
-    init: (engine, onEnd) => {
-      const { initColorSort } = require('./colorSort')
+    init: async (engine, onEnd) => {
+      const { initColorSort } = await import('./colorSort')
       initColorSort(engine, onEnd)
     }
   },
@@ -207,8 +209,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '关卡开始时有1.5秒预览时间！连续配对成功可获得连击加分。剩余时间会转化为奖励分数，越快通关分越高！',
       bg: '#0f0c29'
     },
-    init: (engine, onEnd) => {
-      const { initMemoryMatch } = require('./memoryMatch')
+    init: async (engine, onEnd) => {
+      const { initMemoryMatch } = await import('./memoryMatch')
       initMemoryMatch(engine, onEnd)
     }
   },
@@ -225,8 +227,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '反应越快得分越高！连续正确匹配触发连击加成！',
       bg: '#FF6B6B'
     },
-    init: (engine, onEnd) => {
-      const { initColorTap } = require('./colorTap')
+    init: async (engine, onEnd) => {
+      const { initColorTap } = await import('./colorTap')
       initColorTap(engine, onEnd)
     }
   },
@@ -244,8 +246,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '金色地鼠出现时间短，要眼疾手快！炸弹地鼠出现时间长，仔细辨认再下手！后期地鼠冒出越来越快，注意力要高度集中！',
       bg: '#8B5E3C'
     },
-    init: (engine, onEnd) => {
-      const { initWhackMole } = require('./whackMole')
+    init: async (engine, onEnd) => {
+      const { initWhackMole } = await import('./whackMole')
       initWhackMole(engine, onEnd)
     }
   },
@@ -262,8 +264,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '大气球飘得慢但分高，小气球飘得快但分低，看准时机快速点击！',
       bg: '#FF69B4'
     },
-    init: (engine, onEnd) => {
-      const { initPop } = require('./pop')
+    init: async (engine, onEnd) => {
+      const { initPop } = await import('./pop')
       initPop(engine, onEnd)
     }
   },
@@ -280,8 +282,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '不要让水果飞出屏幕！连续切割触发连击加成！',
       bg: '#FF6B6B'
     },
-    init: (engine, onEnd) => {
-      const { initFruitSlice } = require('./fruitSlice')
+    init: async (engine, onEnd) => {
+      const { initFruitSlice } = await import('./fruitSlice')
       initFruitSlice(engine, onEnd)
     }
   },
@@ -298,8 +300,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '饼干从底部飞起，碰到墙壁会反弹！连续切割触发连击加成！',
       bg: '#D2691E'
     },
-    init: (engine, onEnd) => {
-      const { initCookieCut } = require('./cookieCut')
+    init: async (engine, onEnd) => {
+      const { initCookieCut } = await import('./cookieCut')
       initCookieCut(engine, onEnd, 1)
     }
   },
@@ -316,8 +318,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '障碍物有红色和紫色两种，小心别碰到！收集道具还能触发随机Buff！',
       bg: '#4ECDC4'
     },
-    init: (engine, onEnd) => {
-      const { initDodge } = require('./dodge')
+    init: async (engine, onEnd) => {
+      const { initDodge } = await import('./dodge')
       initDodge(engine, onEnd)
     }
   },
@@ -334,8 +336,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '速度会逐渐加快！躲避障碍和收集金币可以获得分数！',
       bg: '#9B59B6'
     },
-    init: (engine, onEnd) => {
-      const { initNeonRun } = require('./neonRun')
+    init: async (engine, onEnd) => {
+      const { initNeonRun } = await import('./neonRun')
       initNeonRun(engine, onEnd)
     }
   },
@@ -353,8 +355,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '弹簧平台可以跳得更高！紫色移动平台要小心！',
       bg: '#6BCB77'
     },
-    init: (engine, onEnd) => {
-      const { initSlimeJump } = require('./slimeJump')
+    init: async (engine, onEnd) => {
+      const { initSlimeJump } = await import('./slimeJump')
       initSlimeJump(engine, onEnd)
     }
   },
@@ -372,8 +374,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '蛇会越吃越长，空间越来越小！沿边缘行走是经典策略，留够转身空间。金色食物分值更高，不要错过！',
       bg: '#2ECC71'
     },
-    init: (engine, onEnd) => {
-      const { initSnake } = require('./snake')
+    init: async (engine, onEnd) => {
+      const { initSnake } = await import('./snake')
       initSnake(engine, onEnd)
     }
   },
@@ -395,8 +397,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '道具持续时间大幅延长！幽灵模式可以无视碰撞，狂怒模式自动炸车！双倍分数期间连击得分翻倍！速度越快得分越高！',
       bg: '#FF6B00'
     },
-    init: (engine, onEnd) => {
-      const { initRacingRun } = require('./racingRun')
+    init: async (engine, onEnd) => {
+      const { initRacingRun } = await import('./racingRun')
       const colors: Array<'red' | 'blue' | 'yellow'> = ['red', 'blue', 'yellow']
       const randomColor = colors[Math.floor(Math.random() * colors.length)]
       initRacingRun(engine, onEnd, randomColor)
@@ -416,8 +418,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '金色星星分值更高！碰到乌云会扣分，连续收集触发连击！',
       bg: '#FFD700'
     },
-    init: (engine, onEnd) => {
-      const { initStarCatcher } = require('./starCatcher')
+    init: async (engine, onEnd) => {
+      const { initStarCatcher } = await import('./starCatcher')
       initStarCatcher(engine, onEnd)
     }
   },
@@ -434,8 +436,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '弹珠会自动弹跳，点击给一个向上的力，连续收集星星触发连击！',
       bg: '#4ECDC4'
     },
-    init: (engine, onEnd) => {
-      const { initBouncePath } = require('./bouncePath')
+    init: async (engine, onEnd) => {
+      const { initBouncePath } = await import('./bouncePath')
       initBouncePath(engine, onEnd)
     }
   },
@@ -452,8 +454,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '偏差小于4像素触发"完美对齐"，方块不会缩小！连续完美对齐获得大量奖励分数！',
       bg: '#A8E6CF'
     },
-    init: (engine, onEnd) => {
-      const { initStack } = require('./stack')
+    init: async (engine, onEnd) => {
+      const { initStack } = await import('./stack')
       initStack(engine, onEnd)
     }
   },
@@ -470,8 +472,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '落点偏移越小，分数加成越高！超过底座宽度游戏结束。',
       bg: '#A8E6CF'
     },
-    init: (engine, onEnd) => {
-      const { initStack3D } = require('./stack3d')
+    init: async (engine, onEnd) => {
+      const { initStack3D } = await import('./stack3d')
       initStack3D(engine, onEnd)
     }
   },
@@ -491,8 +493,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '1. 蓄力时间越长，跳跃距离越远！\n2. 落在平台中心触发"完美落点"，额外+2分！\n3. 连续完美落点累计连击，最高1.5倍分数加成！\n4. 随着分数提升，平台会变小、间距会变大！',
       bg: '#4169E1'
     },
-    init: (engine, onEnd) => {
-      const { initJump3D } = require('./jump3d')
+    init: async (engine, onEnd) => {
+      const { initJump3D } = await import('./jump3d')
       initJump3D(engine, onEnd)
     }
   },
@@ -512,8 +514,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '1. 冰面赛道摩擦力小，容易打滑！\n2. 流沙赛道会减速，需要提前加速！\n3. 摆锤和移动挡板是动态障碍，看准时机通过！\n4. 收集全部水晶可获得完美通关评价！',
       bg: '#4169E1'
     },
-    init: (engine, onEnd) => {
-      const { initRollingBall } = require('./rollingBall')
+    init: async (engine, onEnd) => {
+      const { initRollingBall } = await import('./rollingBall')
       initRollingBall(engine, onEnd)
     }
   },
@@ -535,8 +537,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '1. 收集全部钥匙后出口才会激活！\n2. 触碰陷阱会减速、缩小视野或扣除时间！\n3. 高阶关卡有迷雾效果，只能看到周围区域！\n4. 用时越短得分越高，剩余时间会转化为奖励分数！\n5. 连续触碰3次陷阱会直接失败！',
       bg: '#6B7280'
     },
-    init: (engine, onEnd) => {
-      const { initMazeExplorer } = require('./mazeExplorer')
+    init: async (engine, onEnd) => {
+      const { initMazeExplorer } = await import('./mazeExplorer')
       initMazeExplorer(engine, onEnd)
     }
   },
@@ -551,17 +553,21 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
         { icon: '⌨️', text: '<b>空格键</b>刹车驻车' },
         { icon: '⌨️', text: '<b>C键</b>切换视角' },
         { icon: '⌨️', text: '<b>R键</b>重置关卡' },
-        { icon: '👆', text: '<b>触屏滑动</b>控制车辆方向' },
+        { icon: '👆', text: '<b>触屏虚拟键</b>前进/后退/转向/刹车' },
       ],
       tipsTitle: '💡 小技巧',
       tips: '1. 低速行驶更容易精准控制方向！\n2. 倒车时方向与前进相反，注意控制！\n3. 使用顶视角观察车身与车位的位置关系！\n4. 碰撞障碍物会扣分，累计3次碰撞失败！\n5. 停车越精准、用时越短得分越高！',
       bg: '#3498db'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initCarParking3D } = require('./carParking3d')
+    init: async (engine, onEnd) => {
+      const { initCarParking3D } = await import('./carParking3d')
       initCarParking3D(engine, onEnd)
-    }
+    },
+    destroy: async () => {
+      const { destroyCarParking3D } = await import('./carParking3d')
+      destroyCarParking3D()
+    },
   },
 
   chinaMap3d: {
@@ -579,8 +585,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#FF6B6B'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initChinaMap3D } = require('./chinaMap3d')
+    init: async (engine, onEnd) => {
+      const { initChinaMap3D } = await import('./chinaMap3d')
       const canvas = document.getElementById('gameCanvas')!
       canvas.innerHTML = ''
       initChinaMap3D(canvas)
@@ -603,8 +609,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#FFD700'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initMiniFighter } = require('./miniFighter')
+    init: async (engine, onEnd) => {
+      const { initMiniFighter } = await import('./miniFighter')
       const canvas = document.getElementById('gameCanvas')!
       canvas.innerHTML = ''
       initMiniFighter(canvas)
@@ -625,8 +631,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#0d1b2a'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initSpaceShooter } = require('./spaceshooter')
+    init: async (engine, onEnd) => {
+      const { initSpaceShooter } = await import('./spaceshooter')
       initSpaceShooter(engine, onEnd)
     }
   },
@@ -644,8 +650,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '激光塔射速快、火炮塔伤害高带范围爆炸、冰冻塔减速敌人！每5波会出现BOSS，火力集中消灭！',
       bg: '#0d1b2a'
     },
-    init: (engine, onEnd) => {
-      const { initTowerDefense } = require('./towerDefense')
+    init: async (engine, onEnd) => {
+      const { initTowerDefense } = await import('./towerDefense')
       initTowerDefense(engine, onEnd)
     }
   },
@@ -665,8 +671,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#7CB342'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initPlantsVsZombies } = require('./plantsVsZombies')
+    init: async (engine, onEnd) => {
+      const { initPlantsVsZombies } = await import('./plantsVsZombies')
       initPlantsVsZombies(engine, onEnd)
     }
   },
@@ -686,8 +692,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '升级可以提升HP上限和攻击力！合理走位躲避敌人，优先击杀落单的敌人。速度道具适合近距离缠斗，攻击道具适合远程火力压制！',
       bg: '#5352ED'
     },
-    init: (engine, onEnd) => {
-      const { initRpgShooter } = require('./rpgShooter')
+    init: async (engine, onEnd) => {
+      const { initRpgShooter } = await import('./rpgShooter')
       initRpgShooter(engine, onEnd)
     }
   },
@@ -707,8 +713,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '连击越多得分越高！优先打龙段制造分裂，获得更多击杀机会。升级时选择合适的Buff，强化自己的战斗风格！',
       bg: '#FFD700'
     },
-    init: (engine, onEnd) => {
-      const { initDragonShooter } = require('./dragonShooter')
+    init: async (engine, onEnd) => {
+      const { initDragonShooter } = await import('./dragonShooter')
       initDragonShooter(engine, onEnd)
     }
   },
@@ -727,8 +733,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '击杀敌人获得钻石建造炮台！激光塔射速快(40💎)、导弹塔范围大(80💎)、冰冻塔减速(50💎)、闪电塔连锁(120💎)！守住8波敌人即可获胜！',
       bg: '#4ECDC4'
     },
-    init: (engine, onEnd) => {
-      const { initRpgShooterTD } = require('./rpgShooterTowerDefense/init')
+    init: async (engine, onEnd) => {
+      const { initRpgShooterTD } = await import('./rpgShooterTowerDefense/init')
       initRpgShooterTD(engine, onEnd)
     }
   },
@@ -750,8 +756,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#1a2f1a'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initContraRpg } = require('./contraRpg')
+    init: async (engine, onEnd) => {
+      const { initContraRpg } = await import('./contraRpg')
       initContraRpg(engine, onEnd)
     }
   },
@@ -772,8 +778,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#1a1a2e'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initWangzheRpg } = require('./wangzheRpg')
+    init: async (engine, onEnd) => {
+      const { initWangzheRpg } = await import('./wangzheRpg')
       initWangzheRpg(engine, onEnd)
     }
   },
@@ -797,8 +803,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#8B4513'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initDnfRpg } = require('./dnfRpg')
+    init: async (engine, onEnd) => {
+      const { initDnfRpg } = await import('./dnfRpg')
       initDnfRpg(engine, onEnd)
     }
   },
@@ -818,8 +824,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#1a1a2e'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initAbyssDungeon } = require('./abyssDungeon')
+    init: async (engine, onEnd) => {
+      const { initAbyssDungeon } = await import('./abyssDungeon')
       initAbyssDungeon(engine, onEnd)
     }
   },
@@ -840,8 +846,8 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#4CAF50'
     },
     isSpecial: true,
-    init: (engine, onEnd) => {
-      const { initVoxelSandbox } = require('./voxelSandbox')
+    init: async (engine, onEnd) => {
+      const { initVoxelSandbox } = await import('./voxelSandbox')
       const canvas = document.getElementById('gameCanvas')!
       canvas.innerHTML = ''
       initVoxelSandbox(canvas)
@@ -861,12 +867,17 @@ export function getGameRegistration(gameId: string): GameRegistration | undefine
   return GAME_REGISTRY[gameId]
 }
 
-export function initGame(gameId: string, engine: GameEngine, onEnd: () => void): boolean {
+export function destroyGame(gameId: string): void {
+  const registration = GAME_REGISTRY[gameId]
+  registration?.destroy?.()
+}
+
+export async function initGame(gameId: string, engine: GameEngine, onEnd: () => void): Promise<boolean> {
   const registration = GAME_REGISTRY[gameId]
   if (!registration) {
     console.error(`[GameRegistry] Game not found: ${gameId}`)
     return false
   }
-  registration.init(engine, onEnd)
+  await registration.init(engine, onEnd)
   return true
 }

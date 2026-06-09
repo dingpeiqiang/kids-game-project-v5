@@ -1,90 +1,70 @@
 import * as THREE from 'three';
 import { Obstacle, ParkingSpot } from '../types';
 import { COLORS } from '../config';
+import { applyEnvironment, createAsphaltGround, addParkingFrame } from './environment';
 
 export function createScene(): THREE.Scene {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(COLORS.SKY);
-  scene.fog = new THREE.Fog(COLORS.SKY, 35, 70);
+  applyEnvironment(scene);
   return scene;
 }
 
 export function createRenderer(container: HTMLDivElement): THREE.WebGLRenderer {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+  const dpr = Math.min(window.devicePixelRatio, 2);
   renderer.setSize(container.clientWidth, container.clientHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(dpr);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
   container.appendChild(renderer.domElement);
   return renderer;
 }
 
 export function createLighting(scene: THREE.Scene): void {
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
   scene.add(ambientLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  directionalLight.position.set(10, 20, 10);
+  const hemi = new THREE.HemisphereLight(0xb8d4ff, 0x3d4a38, 0.45);
+  scene.add(hemi);
+
+  const directionalLight = new THREE.DirectionalLight(0xfff4e6, 1.05);
+  directionalLight.position.set(12, 22, 8);
   directionalLight.castShadow = true;
   directionalLight.shadow.mapSize.width = 2048;
   directionalLight.shadow.mapSize.height = 2048;
   directionalLight.shadow.camera.near = 0.5;
-  directionalLight.shadow.camera.far = 50;
-  directionalLight.shadow.camera.left = -20;
-  directionalLight.shadow.camera.right = 20;
-  directionalLight.shadow.camera.top = 20;
-  directionalLight.shadow.camera.bottom = -20;
+  directionalLight.shadow.camera.far = 55;
+  directionalLight.shadow.camera.left = -22;
+  directionalLight.shadow.camera.right = 22;
+  directionalLight.shadow.camera.top = 22;
+  directionalLight.shadow.camera.bottom = -22;
+  directionalLight.shadow.bias = -0.0002;
   scene.add(directionalLight);
 }
 
 export function createGround(scene: THREE.Scene): THREE.Mesh {
-  const geometry = new THREE.PlaneGeometry(50, 50);
-  const material = new THREE.MeshStandardMaterial({ color: COLORS.GROUND });
-  const ground = new THREE.Mesh(geometry, material);
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  
-  const gridHelper = new THREE.GridHelper(50, 50, 0x666666, 0x444444);
-  gridHelper.position.y = 0.01;
-  scene.add(gridHelper);
-  
-  scene.add(ground);
-  return ground;
+  return createAsphaltGround(scene);
 }
 
 export function createParkingSpot(scene: THREE.Scene, spot: ParkingSpot): THREE.Group {
   const group = new THREE.Group();
-  
-  const hw = spot.width / 2;
-  const hl = spot.length / 2;
-  
-  const cornerPoints = [
-    new THREE.Vector3(-hw, 0.02, -hl),
-    new THREE.Vector3(hw, 0.02, -hl),
-    new THREE.Vector3(hw, 0.02, hl),
-    new THREE.Vector3(-hw, 0.02, hl),
-  ];
-  
-  const lineMaterial = new THREE.LineBasicMaterial({ color: COLORS.PARKING_LINE, linewidth: 3 });
-  
-  for (let i = 0; i < 4; i++) {
-    const geometry = new THREE.BufferGeometry().setFromPoints([
-      cornerPoints[i],
-      cornerPoints[(i + 1) % 4],
-    ]);
-    const line = new THREE.Line(geometry, lineMaterial);
-    group.add(line);
-  }
-  
-  const areaGeometry = new THREE.PlaneGeometry(spot.width, spot.length);
-  const areaMaterial = new THREE.MeshBasicMaterial({ 
-    color: COLORS.PARKING_SPOT, 
-    transparent: true, 
-    opacity: 0.3 
-  });
-  const area = new THREE.Mesh(areaGeometry, areaMaterial);
+
+  addParkingFrame(group, spot.width, spot.length);
+
+  const area = new THREE.Mesh(
+    new THREE.PlaneGeometry(spot.width, spot.length),
+    new THREE.MeshBasicMaterial({
+      color: COLORS.PARKING_SPOT,
+      transparent: true,
+      opacity: 0.22,
+    })
+  );
+  area.name = 'parkingArea';
   area.rotation.x = -Math.PI / 2;
-  area.position.y = 0.01;
+  area.position.y = 0.015;
   group.add(area);
   
   group.position.set(spot.position.x, spot.position.y, spot.position.z);
@@ -103,12 +83,27 @@ export function createObstacles(scene: THREE.Scene, obstacles: Obstacle[]): THRE
     let mesh: THREE.Mesh;
     
     switch (obstacle.type) {
-      case 'cone':
-        const coneGeometry = new THREE.ConeGeometry(obstacle.width / 2, obstacle.height, 8);
-        const coneMaterial = new THREE.MeshStandardMaterial({ color: COLORS.CONE });
-        mesh = new THREE.Mesh(coneGeometry, coneMaterial);
-        mesh.position.y = obstacle.height / 2;
-        break;
+      case 'cone': {
+        const coneGroup = new THREE.Group();
+        const coneGeometry = new THREE.ConeGeometry(obstacle.width / 2, obstacle.height, 12);
+        const coneMaterial = new THREE.MeshStandardMaterial({ color: COLORS.CONE, roughness: 0.55 });
+        const coneMesh = new THREE.Mesh(coneGeometry, coneMaterial);
+        coneMesh.position.y = obstacle.height / 2;
+        coneMesh.castShadow = true;
+        coneGroup.add(coneMesh);
+        const stripe = new THREE.Mesh(
+          new THREE.CylinderGeometry(obstacle.width * 0.22, obstacle.width * 0.28, 0.12, 12),
+          new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.05 })
+        );
+        stripe.position.y = obstacle.height * 0.55;
+        coneGroup.add(stripe);
+        group.add(coneGroup);
+        group.position.set(obstacle.position.x, obstacle.position.y, obstacle.position.z);
+        group.rotation.y = obstacle.rotation;
+        scene.add(group);
+        groups.push(group);
+        continue;
+      }
         
       case 'barrier':
         const barrierGeometry = new THREE.BoxGeometry(obstacle.width, obstacle.height, obstacle.depth);

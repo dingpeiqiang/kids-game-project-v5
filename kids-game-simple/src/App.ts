@@ -9,7 +9,7 @@ import { userService } from './services/userService'
 import { AuthModal, MePanel, showToast, injectUserStyles } from './services/userUI'
 import { apiGetBatchUserRank, apiSubmitComment, apiGetComments, tokenStore } from './services/apiClient'
 import { getTopList, type LeaderboardEntry } from './services/leaderboardService'
-import { getGameRegistration, initGame } from './games/gameRegistry'
+import { getGameRegistration, initGame, destroyGame } from './games/gameRegistry'
 
 class App {
   private currentGame: Game | null = null
@@ -1305,7 +1305,7 @@ class App {
     this.currentGame = null
   }
 
-  private startGame() {
+  private async startGame() {
     if (!this.currentGame) return
 
     gameEngine.start()
@@ -1434,7 +1434,7 @@ class App {
         canvas.innerHTML = ''
       }
       
-      initGame(this.currentGame.id, gameEngine, () => this.endGame())
+      await initGame(this.currentGame.id, gameEngine, () => this.endGame())
   }
 
   private async endGame() {
@@ -1738,6 +1738,7 @@ class App {
 
   private replayGame() {
     document.getElementById('result-overlay')!.classList.remove('show')
+    if (this.currentGame) destroyGame(this.currentGame.id)
     // 清理可能残留的 Phaser DOM（spaceShooter 等）
     document.getElementById('phaser-space-shooter')?.remove()
     document.getElementById('gameCanvas')!.innerHTML = ''
@@ -1749,6 +1750,8 @@ class App {
     if (this.unlockOrientation) {
       this.unlockOrientation()
     }
+
+    if (this.currentGame) destroyGame(this.currentGame.id)
     
     document.getElementById('game-layer')!.classList.remove('show')
     document.documentElement.classList.remove('game-active')
