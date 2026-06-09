@@ -1,0 +1,1 @@
+export { initSkyFrenzy, destroySkyFrenzy } from './game'

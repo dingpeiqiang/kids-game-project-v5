@@ -1,0 +1,13 @@
+# 欢乐防线 — 素材版权登记（AI + Blender 工作流）
+
+## 3D 模型（GLB）
+# 工具：Meshy / Tripo / Rodin 等（文生 3D 粗模）
+# 后期：Blender 减面、烘焙贴图、导出 glTF Binary
+# 请记录：生成日期、Prompt 摘要、工具名称与用户协议条款
+
+## 2D 贴图 / UI（可选）
+# AI 文生图 或 手绘；保留生成记录
+
+## 示例
+# [2026-xx-xx] tower_popcorn.glb — Meshy — prompt: "cute chibi popcorn tower..."
+# [2026-xx-xx] grass.webp — Stable Diffusion — seamless grass tile

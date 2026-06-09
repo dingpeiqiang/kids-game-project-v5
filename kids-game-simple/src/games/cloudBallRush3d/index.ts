@@ -1,0 +1,1 @@
+export { initCloudBallRush3d, destroyCloudBallRush3d } from './game'

@@ -1,0 +1,8 @@
+云端滚球大冒险 (cloudBallRush3d) 素材版权记录
+========================================
+程序几何体与 UI 为项目内实现，无第三方模型依赖即可运行。
+
+放入 public/assets/cloudBallRush3d/ 的 GLB、WebP、OGG 等文件请在此登记：
+- 来源（自研 / AI 生成工具与提示词 / Kenney / ambientCG 等）
+- 许可证（CC0 / 自有版权等）
+- 文件名与日期

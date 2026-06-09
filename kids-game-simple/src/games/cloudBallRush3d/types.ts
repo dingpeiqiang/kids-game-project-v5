@@ -104,8 +104,10 @@ export interface LevelRuntime {
 }
 
 export interface RunStats {
+  /** 各关历史最多收集星光数之和（用于皮肤解锁） */
   bestTotalStars: number
   levelBestMs: Record<number, number>
+  levelBestStars: Record<number, number>
   perfectClears: number
   totalClears: number
   unlockedSkin: number

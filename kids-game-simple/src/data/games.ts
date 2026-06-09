@@ -40,6 +40,7 @@ export const GAMES: Game[] = [
   { id: 'slimeJump', name: '史莱姆跳', desc: '控制史莱姆不断往上跳，收集星星得高分！', type: '2d', category: 'coordination', tag: '跳跃', color: '#6BCB77,#9B59B6', players: 987, best: 0, preview: 'slimeJump' },
   { id: 'snake', name: '贪吃蛇', desc: '控制小蛇吃食物，别撞墙和自己的尾巴！', type: '2d', category: 'coordination', tag: '经典', color: '#2ECC71,#27AE60', players: 3500, best: 0, preview: 'snake' },
   { id: 'racingRun', name: '极速赛车', desc: '飙车躲障碍！拾取道具触发火焰加速、护盾、磁铁吸分，超爽！', type: '2d', category: 'coordination', tag: '赛车', color: '#FF6B00,#FFD700', players: 3180, best: 0, preview: 'racingRun' },
+  { id: 'cloudBallRush3d', name: '云端滚球大冒险', desc: '3D物理滚球闯关！治愈解压、收集星光、轻度竞速冲榜。', type: '3d', category: 'coordination', tag: '滚球', color: '#6EC8FF,#A8E6CF', players: 0, best: 0, preview: 'cloudBallRush3d' },
   { id: 'starCatcher', name: '星星捕手', desc: '控制小精灵收集星星，躲避乌云袭击！', type: '2d', category: 'coordination', tag: '益智', color: '#FFD700,#9B59B6', players: 1234, best: 0, preview: 'starCatcher' },
 
   // 📐 空间想象 - 空间感知、几何思维

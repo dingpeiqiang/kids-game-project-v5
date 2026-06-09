@@ -68,7 +68,9 @@ export const GAME_DISPLAY_CONFIG: GameDisplayConfig[] = [
   { id: 'plantsVsZombies', visible: true, order: 3, badge: '新' },
   { id: 'memoryMatch',   visible: true,  order: 1,  badge: '' },
   { id: 'voxelRealm',    visible: true,  order: 2,  badge: '新' },
-  { id: 'happyDefense',  visible: false, order: 3,  badge: '' },
+  { id: 'happyDefense',  visible: true, order: 3,  badge: '' },
+  { id: 'cloudBallRush3d', visible: true, order: 4, badge: '' },
+  { id: 'skyFrenzy', visible: true, order: 5, badge: '' },
 ]
 
 export function getGameDisplayConfig(gameId: string): GameDisplayConfig {
@@ -660,6 +662,46 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
     },
   },
 
+  cloudBallRush3d: {
+    game: {
+      id: 'cloudBallRush3d',
+      name: '云端滚球大冒险',
+      desc: '3D物理滚球闯关！治愈解压、收集星光、轻度竞速冲榜。',
+      type: '3d',
+      category: 'coordination',
+      tag: '滚球',
+      color: '#6EC8FF,#A8E6CF',
+      players: 0,
+      best: 0,
+      preview: 'cloudBallRush3d',
+    },
+    guide: {
+      icon: '\u{26BD}',
+      name: '云端滚球大冒险',
+      desc: '操控立体球体在浮空赛道滚动，收集星光、拾取道具，平稳抵达终点！',
+      ops: [
+        { icon: '\u2328\uFE0F', text: '<b>WASD / 方向键</b>控制滚球平衡与转向' },
+        { icon: '\u{1F446}', text: '<b>左下虚拟摇杆</b>（移动端）移动' },
+        { icon: '\u2B06\uFE0F', text: '<b>空格 / 跳</b>按钮跨越沟壑与障碍' },
+        { icon: '\u2B50', text: '收集<b>星光</b>决定关卡星级，隐藏彩蛋加分' },
+        { icon: '\u{1F3C6}', text: '<b>休闲</b>加宽赛道 · <b>竞速</b>挑战最快用时' },
+      ],
+      tipsTitle: '\u{1F4A1} 小技巧',
+      tips: '坠落可免费重试无惩罚；护盾免疫减速地块，冲刺压缩用时，导航高亮推荐路线。六关主题从草甸到星穹逐步进阶！',
+      bg: '#6EC8FF',
+    },
+    isSpecial: true,
+    destroy: () => {
+      void import('./cloudBallRush3d').then(m => {
+        m.destroyCloudBallRush3d()
+      })
+    },
+    init: async (engine, onEnd) => {
+      const { initCloudBallRush3d } = await import('./cloudBallRush3d')
+      await initCloudBallRush3d(engine, onEnd)
+    },
+  },
+
   voxelRealm: {
     game: {
       id: 'voxelRealm',
@@ -697,6 +739,46 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
     init: async (engine, onEnd) => {
       const { initVoxelRealm } = await import('./voxelRealm')
       await initVoxelRealm(engine, onEnd)
+    },
+  },
+
+  skyFrenzy: {
+    game: {
+      id: 'skyFrenzy',
+      name: '天际狂潮',
+      desc: '3D俯视角趣味空战！自动开火清屏解压，六波闯关冲榜竞速。',
+      type: '3d',
+      category: 'reaction',
+      tag: '射击',
+      color: '#6BCBFF,#FFD93D',
+      players: 0,
+      best: 0,
+      preview: 'skyFrenzy',
+    },
+    guide: {
+      icon: '\u{2708}\uFE0F',
+      name: '天际狂潮：空战对决',
+      desc: '云端空域全自动射击，躲避弹幕拾取道具，抵御六波敌机并击败终极BOSS！',
+      ops: [
+        { icon: '\u{1F446}', text: '<b>拖拽</b>或 <b>WASD</b> 移动战机' },
+        { icon: '\u{1F52B}', text: '<b>自动开火</b>，四阶弹幕随道具升级' },
+        { icon: '\u{1F381}', text: '拾取火力/护盾/回血/缓速道具' },
+        { icon: '\u{1F4A5}', text: '<b>清屏技能</b>瞬间秒杀全场敌弹' },
+        { icon: '\u{1F3C6}', text: '<b>休闲</b>佛系刷怪 · <b>竞技</b>高密度冲分速通' },
+      ],
+      tipsTitle: '\u{1F4A1} 小技巧',
+      tips: '连击提升得分倍率！清屏有冷却但无扣分；竞技模式敌更密、倍率更高。无伤通关可冲 S 评级。',
+      bg: '#6BCBFF',
+    },
+    isSpecial: true,
+    destroy: () => {
+      void import('./skyFrenzy').then(m => {
+        m.destroySkyFrenzy()
+      })
+    },
+    init: async (engine, onEnd) => {
+      const { initSkyFrenzy } = await import('./skyFrenzy')
+      await initSkyFrenzy(engine, onEnd)
     },
   },
 

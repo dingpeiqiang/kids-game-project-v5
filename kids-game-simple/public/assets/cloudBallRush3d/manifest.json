@@ -1,0 +1,51 @@
+{
+  "style": "lowpoly-macaron-healing-3d",
+  "version": 1,
+  "models": {
+    "ball_base": "models/ball_base.glb",
+    "track_cloud_set": "models/track_cloud_set.glb",
+    "bounce_pad": "models/bounce_pad.glb",
+    "sliding_barrier": "models/sliding_barrier.glb",
+    "finish_flag": "models/finish_flag.glb",
+    "deco_grass": "models/deco_grass.glb",
+    "deco_cloud": "models/deco_cloud.glb",
+    "deco_star_rock": "models/deco_star_rock.glb",
+    "pickup_shield": "models/pickup_shield.glb",
+    "pickup_speed": "models/pickup_speed.glb",
+    "pickup_guide": "models/pickup_guide.glb"
+  },
+  "textures": {
+    "track_meadow": "textures/track_meadow.webp",
+    "track_ice": "textures/track_ice.webp",
+    "track_star": "textures/track_star.webp",
+    "slow_zone": "textures/slow_zone.webp",
+    "skin_macaron_mint": "textures/skin_macaron_mint.webp",
+    "skin_macaron_peach": "textures/skin_macaron_peach.webp",
+    "skin_macaron_lilac": "textures/skin_macaron_lilac.webp",
+    "skin_nebula_cyan": "textures/skin_nebula_cyan.webp",
+    "skin_nebula_violet": "textures/skin_nebula_violet.webp"
+  },
+  "ui": {
+    "star_badge": "ui/star_badge.png",
+    "mode_casual": "ui/mode_casual.png",
+    "mode_compete": "ui/mode_compete.png"
+  },
+  "audio": {
+    "ball_roll": "audio/ball_roll.ogg",
+    "ball_jump_land": "audio/ball_jump_land.ogg",
+    "ball_ice_slide": "audio/ball_ice_slide.ogg",
+    "star_collect": "audio/star_collect.ogg",
+    "pickup_buff": "audio/pickup_buff.ogg",
+    "barrier_slide": "audio/barrier_slide.ogg",
+    "fall_void": "audio/fall_void.ogg",
+    "level_clear": "audio/level_clear.ogg",
+    "level_reset": "audio/level_reset.ogg",
+    "ui_click": "audio/ui_click.ogg",
+    "bgm_casual": "audio/bgm_casual.ogg",
+    "bgm_compete": "audio/bgm_compete.ogg",
+    "shield_loop": "audio/shield_loop.ogg",
+    "skin_switch": "audio/skin_switch.ogg",
+    "star_rating": "audio/star_rating.ogg",
+    "ambience_wind": "audio/ambience_wind.ogg"
+  }
+}

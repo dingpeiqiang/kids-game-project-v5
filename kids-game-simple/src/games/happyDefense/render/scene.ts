@@ -1,13 +1,28 @@
 import {
   ArcRotateCamera,
   Color3,
+  DirectionalLight,
   Mesh,
   MeshBuilder,
   Scene,
+  ShadowGenerator,
   StandardMaterial,
+  TransformNode,
   Vector3,
 } from '@babylonjs/core'
-import { ENEMY_DEFS, GAME_CONFIG, TOWER_DEFS, cellKindAt, gridToWorld } from '../config'
+import { GAME_CONFIG, TOWER_DEFS, cellKindAt, gridToWorld } from '../config'
+import { enemyWorldPos } from '../logic/gameLoop'
+import type { EnemyState, GameState, TowerState } from '../types'
+import type { HappyDefenseAssets } from './assets'
+import { tileKeyForCell } from './assets'
+import {
+  addShadowCasters,
+  cloneBaseModel,
+  cloneEnemyModel,
+  cloneTowerModel,
+  disposeVisual,
+  type ModelTemplates,
+} from './models'
 
 function hexToColor3(hex: string): Color3 {
   const h = hex.replace('#', '')
@@ -16,21 +31,51 @@ function hexToColor3(hex: string): Color3 {
   const b = parseInt(h.slice(4, 6), 16) / 255
   return new Color3(r, g, b)
 }
-import { enemyWorldPos } from '../logic/gameLoop'
-import type { EnemyState, GameState, TowerState } from '../types'
+
+const ENEMY_COLORS: Record<string, Color3> = {
+  grunt: new Color3(0.65, 0.85, 0.95),
+  flyer: new Color3(0.95, 0.75, 1),
+  tank: new Color3(0.55, 0.45, 0.9),
+  boss: new Color3(1, 0.5, 0.35),
+}
+
+type TowerVisual = Mesh | TransformNode
+type EnemyVisual = Mesh | TransformNode
 
 export class HappyDefenseScene {
   private groundTiles: Mesh[] = []
-  private towerMeshes = new Map<number, Mesh>()
-  private enemyMeshes = new Map<number, Mesh>()
+  private towerVisuals = new Map<number, TowerVisual>()
+  private enemyVisuals = new Map<number, EnemyVisual>()
   private highlight: Mesh | null = null
-  private baseMesh: Mesh | null = null
+  private baseVisual: TowerVisual | null = null
+  private tileMats = new Map<string, StandardMaterial>()
+  private shadowGen: ShadowGenerator | null = null
+  private enemyMats: Record<string, StandardMaterial> = {}
 
   constructor(
     private scene: Scene,
     public camera: ArcRotateCamera,
+    assets: HappyDefenseAssets,
+    private models: ModelTemplates,
+    enableShadows: boolean,
   ) {
-    this.buildMap()
+    for (const kind of Object.keys(ENEMY_COLORS)) {
+      const m = new StandardMaterial(`hd_enemy_${kind}`, this.scene)
+      m.diffuseColor = ENEMY_COLORS[kind]!.clone()
+      m.specularColor = new Color3(0.15, 0.15, 0.15)
+      this.enemyMats[kind] = m
+    }
+    if (enableShadows) this.setupShadows()
+    this.buildMap(assets)
+  }
+
+  private setupShadows(): void {
+    const sun = new DirectionalLight('hdSun', new Vector3(-0.4, -1, -0.3), this.scene)
+    sun.position = new Vector3(8, 14, 6)
+    sun.intensity = 0.55
+    this.shadowGen = new ShadowGenerator(512, sun)
+    this.shadowGen.useBlurExponentialShadowMap = true
+    this.shadowGen.blurKernel = 16
   }
 
   private cellColor(gx: number, gz: number): Color3 {
@@ -41,7 +86,49 @@ export class HappyDefenseScene {
     return new Color3(0.55, 0.82, 0.45)
   }
 
-  private buildMap(): void {
+  private getTileMaterial(assets: HappyDefenseAssets, gx: number, gz: number): StandardMaterial {
+    const kind = cellKindAt(gx, gz)
+    const texKey = tileKeyForCell(kind)
+    const cacheKey = texKey && assets.tiles[texKey] ? `tex_${texKey}` : `solid_${kind}`
+    let mat = this.tileMats.get(cacheKey)
+    if (mat) return mat
+
+    mat = new StandardMaterial(`hd_tile_${cacheKey}`, this.scene)
+    mat.specularColor = new Color3(0.08, 0.08, 0.08)
+    if (texKey && assets.tiles[texKey]) {
+      mat.diffuseTexture = assets.tiles[texKey]
+      mat.diffuseColor = new Color3(1, 1, 1)
+    } else {
+      mat.diffuseColor = this.cellColor(gx, gz)
+    }
+    this.tileMats.set(cacheKey, mat)
+    return mat
+  }
+
+  private placeBaseAt(gx: number, gz: number): void {
+    const w = gridToWorld(gx, gz)
+    const cs = GAME_CONFIG.cellSize
+    const glb = cloneBaseModel(this.models, 'base_live')
+    if (glb) {
+      glb.position = new Vector3(w.x, 0, w.z)
+      if (this.shadowGen) addShadowCasters(glb, this.shadowGen)
+      this.baseVisual = glb
+      return
+    }
+    const core = MeshBuilder.CreateCylinder('baseCore', { height: 0.8, diameter: cs * 0.7 }, this.scene)
+    core.position = new Vector3(w.x, 0.5, w.z)
+    const cm = new StandardMaterial('baseMat', this.scene)
+    cm.diffuseColor = new Color3(1, 0.35, 0.45)
+    cm.emissiveColor = new Color3(0.25, 0.05, 0.1)
+    core.material = cm
+    if (this.shadowGen) {
+      this.shadowGen.addShadowCaster(core)
+      core.receiveShadows = true
+    }
+    this.baseVisual = core
+  }
+
+  private buildMap(assets: HappyDefenseAssets): void {
     const cs = GAME_CONFIG.cellSize
     for (let gz = 0; gz < GAME_CONFIG.gridH; gz++) {
       for (let gx = 0; gx < GAME_CONFIG.gridW; gx++) {
@@ -52,25 +139,13 @@ export class HappyDefenseScene {
           this.scene,
         )
         tile.position = new Vector3(w.x, 0.11, w.z)
-        const mat = new StandardMaterial(`tm_${gx}_${gz}`, this.scene)
-        mat.diffuseColor = this.cellColor(gx, gz)
-        mat.specularColor = new Color3(0.1, 0.1, 0.1)
-        tile.material = mat
+        tile.material = this.getTileMaterial(assets, gx, gz)
         tile.isPickable = true
         tile.metadata = { gx, gz }
+        tile.receiveShadows = !!this.shadowGen
         this.groundTiles.push(tile)
         if (cellKindAt(gx, gz) === 'base') {
-          const core = MeshBuilder.CreateCylinder(
-            'baseCore',
-            { height: 0.8, diameter: cs * 0.7 },
-            this.scene,
-          )
-          core.position = new Vector3(w.x, 0.5, w.z)
-          const cm = new StandardMaterial('baseMat', this.scene)
-          cm.diffuseColor = new Color3(1, 0.35, 0.45)
-          cm.emissiveColor = new Color3(0.25, 0.05, 0.1)
-          core.material = cm
-          this.baseMesh = core
+          this.placeBaseAt(gx, gz)
         }
       }
     }
@@ -99,7 +174,7 @@ export class HappyDefenseScene {
     this.highlight = ring
   }
 
-  private towerMesh(tower: TowerState): Mesh {
+  private fallbackTowerMesh(tower: TowerState): Mesh {
     const def = TOWER_DEFS[tower.kind]
     const w = gridToWorld(tower.gx, tower.gz)
     const h = 0.5 + tower.level * 0.22
@@ -115,79 +190,100 @@ export class HappyDefenseScene {
     mat.emissiveColor = c.scale(0.25)
     mesh.material = mat
     mesh.metadata = { towerId: tower.id }
+    if (this.shadowGen) this.shadowGen.addShadowCaster(mesh)
     return mesh
+  }
+
+  private createTowerVisual(tower: TowerState): TowerVisual {
+    const glb = cloneTowerModel(this.models, tower.kind, `tower_${tower.id}`)
+    if (glb) {
+      const w = gridToWorld(tower.gx, tower.gz)
+      glb.position = new Vector3(w.x, 0.2, w.z)
+      glb.scaling.y = 0.85 + tower.level * 0.12
+      if (this.shadowGen) addShadowCasters(glb, this.shadowGen)
+      return glb
+    }
+    return this.fallbackTowerMesh(tower)
+  }
+
+  private updateTowerTransform(tower: TowerState, visual: TowerVisual): void {
+    const w = gridToWorld(tower.gx, tower.gz)
+    if (visual instanceof Mesh && visual.name.startsWith('tower_')) {
+      const h = 0.5 + tower.level * 0.22
+      visual.position = new Vector3(w.x, h / 2 + 0.2, w.z)
+      visual.scaling.y = 0.8 + tower.level * 0.15
+    } else {
+      visual.position = new Vector3(w.x, 0.2, w.z)
+      visual.scaling.y = 0.85 + tower.level * 0.12
+    }
   }
 
   syncTowers(towers: TowerState[]): void {
     const alive = new Set(towers.map(t => t.id))
-    for (const [id, mesh] of this.towerMeshes) {
+    for (const [id, visual] of this.towerVisuals) {
       if (!alive.has(id)) {
-        mesh.dispose()
-        this.towerMeshes.delete(id)
+        disposeVisual(visual)
+        this.towerVisuals.delete(id)
       }
     }
     for (const t of towers) {
-      let mesh = this.towerMeshes.get(t.id)
-      if (!mesh) {
-        mesh = this.towerMesh(t)
-        this.towerMeshes.set(t.id, mesh)
+      let visual = this.towerVisuals.get(t.id)
+      if (!visual) {
+        visual = this.createTowerVisual(t)
+        this.towerVisuals.set(t.id, visual)
       } else {
-        const w = gridToWorld(t.gx, t.gz)
-        const h = 0.5 + t.level * 0.22
-        mesh.position = new Vector3(w.x, h / 2 + 0.2, w.z)
-        mesh.scaling.y = 0.8 + t.level * 0.15
-      }
-      const sel = mesh.material as StandardMaterial
-      if (sel) {
-        const def = TOWER_DEFS[t.kind]
-        const c = Color3.FromHexString(def.color)
-        sel.emissiveColor = c.scale(0.35)
+        this.updateTowerTransform(t, visual)
       }
     }
+  }
+
+  private createEnemyVisual(e: EnemyState): EnemyVisual {
+    const scale = e.kind === 'boss' ? 1.4 : e.kind === 'tank' ? 1.1 : 0.75
+    const glb = cloneEnemyModel(this.models, e.kind, `enemy_${e.id}`)
+    if (glb) {
+      if (this.shadowGen) addShadowCasters(glb, this.shadowGen)
+      return glb
+    }
+    const mesh = MeshBuilder.CreateSphere(`enemy_${e.id}`, { diameter: 0.55 * scale }, this.scene)
+    mesh.material = this.enemyMats[e.kind] ?? this.enemyMats.grunt!
+    if (this.shadowGen) this.shadowGen.addShadowCaster(mesh)
+    return mesh
   }
 
   syncEnemies(enemies: EnemyState[]): void {
     const alive = new Set(enemies.filter(e => e.alive).map(e => e.id))
-    for (const [id, mesh] of this.enemyMeshes) {
+    for (const [id, visual] of this.enemyVisuals) {
       if (!alive.has(id)) {
-        mesh.dispose()
-        this.enemyMeshes.delete(id)
+        disposeVisual(visual)
+        this.enemyVisuals.delete(id)
       }
     }
     for (const e of enemies) {
       if (!e.alive) continue
-      let mesh = this.enemyMeshes.get(e.id)
+      let visual = this.enemyVisuals.get(e.id)
       const pos = enemyWorldPos(e)
-      const def = ENEMY_DEFS[e.kind]
       const scale = e.kind === 'boss' ? 1.4 : e.kind === 'tank' ? 1.1 : 0.75
-      if (!mesh) {
-        mesh = MeshBuilder.CreateSphere(`enemy_${e.id}`, { diameter: 0.55 * scale }, this.scene)
-        const m = new StandardMaterial(`emat_${e.id}`, this.scene)
-        if (e.kind === 'grunt') m.diffuseColor = new Color3(0.65, 0.85, 0.95)
-        else if (e.kind === 'flyer') m.diffuseColor = new Color3(0.95, 0.75, 1)
-        else if (e.kind === 'tank') m.diffuseColor = new Color3(0.55, 0.45, 0.9)
-        else m.diffuseColor = new Color3(1, 0.5, 0.35)
-        mesh.material = m
-        this.enemyMeshes.set(e.id, mesh)
+      if (!visual) {
+        visual = this.createEnemyVisual(e)
+        this.enemyVisuals.set(e.id, visual)
       }
-      mesh.position = new Vector3(pos.x, pos.y + 0.35 * scale, pos.z)
-      if (e.freezeTimer > 0) {
-        mesh.scaling.setAll(scale * 0.95)
-      } else {
-        mesh.scaling.setAll(scale)
+      const isFallback = visual instanceof Mesh
+      const yLift = isFallback ? 0.35 * scale : 0.15
+      visual.position = new Vector3(pos.x, pos.y + yLift, pos.z)
+      if (isFallback) {
+        visual.scaling.setAll(e.freezeTimer > 0 ? scale * 0.95 : scale)
       }
-      void def
     }
   }
 
   syncSelection(state: GameState): void {
-    for (const [id, mesh] of this.towerMeshes) {
-      const mat = mesh.material as StandardMaterial
+    for (const [id, visual] of this.towerVisuals) {
+      if (!(visual instanceof Mesh)) continue
+      const mat = visual.material as StandardMaterial
       if (!mat) continue
       const t = state.towers.find(x => x.id === id)
       if (!t) continue
-      const def = TOWER_DEFS[t.kind]
-      const c = Color3.FromHexString(def.color)
+      const c = hexToColor3(TOWER_DEFS[t.kind].color)
       mat.emissiveColor =
         state.selectedTowerId === id ? new Color3(0.9, 0.9, 0.2) : c.scale(0.25)
     }
@@ -195,13 +291,17 @@ export class HappyDefenseScene {
 
   dispose(): void {
     this.highlight?.dispose()
-    this.baseMesh?.dispose()
+    if (this.baseVisual) disposeVisual(this.baseVisual)
+    this.shadowGen?.dispose()
     for (const m of this.groundTiles) m.dispose()
-    for (const m of this.towerMeshes.values()) m.dispose()
-    for (const m of this.enemyMeshes.values()) m.dispose()
+    for (const v of this.towerVisuals.values()) disposeVisual(v)
+    for (const v of this.enemyVisuals.values()) disposeVisual(v)
+    for (const m of this.tileMats.values()) m.dispose()
+    for (const m of Object.values(this.enemyMats)) m.dispose()
     this.groundTiles = []
-    this.towerMeshes.clear()
-    this.enemyMeshes.clear()
+    this.towerVisuals.clear()
+    this.enemyVisuals.clear()
+    this.tileMats.clear()
   }
 }
 

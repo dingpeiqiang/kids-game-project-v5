@@ -241,26 +241,27 @@ export function resolveCollisions(
   const p = runtime.player
   const pr = GAME_CONFIG.playerRadius
 
-  const hitEnemyIds = new Set<number>()
+  const deadBullets = new Set<number>()
 
   for (const b of runtime.bullets) {
-    if (!b.fromPlayer) continue
+    if (!b.fromPlayer || deadBullets.has(b.id)) continue
     for (const e of runtime.enemies) {
-      if (hitEnemyIds.has(e.id) && b.pierceLeft <= 0) continue
+      if (e.hp <= 0) continue
       const er = e.kind === 'meteor' ? METEOR.radius : ENEMY_DEF[e.kind as keyof typeof ENEMY_DEF]?.radius ?? 0.5
       if (!circleHit(b.x, b.z, b.radius, e.x, e.z, er)) continue
       e.hp -= b.damage
       if (b.pierceLeft > 0) b.pierceLeft -= 1
-      else hitEnemyIds.add(b.id)
+      else deadBullets.add(b.id)
       if (e.hp <= 0) {
         registerKill(runtime, e.scoreValue, engineAddScore)
         addExplosion(runtime, e.x, e.z, e.kind === 'boss' ? 2.2 : 1)
         if (e.kind === 'boss') runtime.stats.bossKills += 1
         spawnPickup(runtime, e.x, e.z)
-        e.hp = -999
       }
+      if (deadBullets.has(b.id)) break
     }
   }
+  runtime.bullets = runtime.bullets.filter(b => !deadBullets.has(b.id))
 
   runtime.enemies = runtime.enemies.filter(e => e.hp > 0)
 

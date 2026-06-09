@@ -16,6 +16,8 @@ import {
   tryUpgradeTower,
   updateSimulation,
 } from './logic/gameLoop'
+import { disposeHappyDefenseAssets, loadHappyDefenseAssets } from './render/assets'
+import { disposeModelTemplates, loadHappyDefenseModels } from './render/models'
 import { HappyDefenseScene, setupTopDownCamera } from './render/scene'
 import { createHappyDefenseHud } from './render/ui'
 import type { GameState } from './types'
@@ -50,15 +52,21 @@ export async function initHappyDefense(engine: GameEngine, onEnd: () => void): P
   const ctx3d = createEngine3d({
     parent,
     antialias: !isMobile,
-    hardwareScalingLevel: isMobile ? 1.25 : 1,
+    hardwareScalingLevel: isMobile ? 1.35 : 1,
   })
 
   ctx3d.camera.detachControl()
   const camera = setupTopDownCamera(ctx3d.scene, ctx3d.canvas)
   ctx3d.scene.activeCamera = camera
 
+  const [assets, models] = await Promise.all([
+    loadHappyDefenseAssets(ctx3d.scene),
+    loadHappyDefenseModels(ctx3d.scene),
+  ])
+  const enableShadows = !isMobile
+
   const hud = createHappyDefenseHud(parent)
-  const view = new HappyDefenseScene(ctx3d.scene, camera)
+  const view = new HappyDefenseScene(ctx3d.scene, camera, assets, models, enableShadows)
   let state: GameState = createInitialState()
   let ended = false
   let hoverGx: number | null = null
@@ -149,7 +157,7 @@ export async function initHappyDefense(engine: GameEngine, onEnd: () => void): P
     updateSimulation(state, dt)
     const scoreDelta = state.score - prevScore
     if (scoreDelta > 0) {
-      engine.addScore(scoreDelta, window.innerWidth * 0.5, window.innerHeight * 0.35, false, state.combo >= 3)
+      engine.addScore(scoreDelta, window.innerWidth * 0.5, window.innerHeight * 0.35)
     }
 
     if (hoverGx != null && hoverGz != null && cellKindAt(hoverGx, hoverGz) === 'build') {
@@ -176,6 +184,8 @@ export async function initHappyDefense(engine: GameEngine, onEnd: () => void): P
     ctx3d.canvas.removeEventListener('pointermove', onMove)
     hud.dispose()
     view.dispose()
+    disposeHappyDefenseAssets(assets)
+    disposeModelTemplates(models)
     ctx3d.dispose()
   }
 }
