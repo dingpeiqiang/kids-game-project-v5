@@ -7,12 +7,12 @@
 #   .\build-images.ps1          # Interactive mode
 #   .\build-images.ps1 -Service backend # Build backend only
 #   .\build-images.ps1 -Service frontend # Build frontend only
-#   .\build-images.ps1 -Service simple-game # Build simple-game only
+#   .\build-images.ps1 -Service kids-game-simple # Build kids-game-simple only
 #   .\build-images.ps1 -Service all # Build all images
 # ========================================
 
 param(
-    [ValidateSet("backend", "frontend", "simple-game", "all")]
+    [ValidateSet("backend", "frontend", "kids-game-simple", "all")]
     [string]$Service = "",
     [switch]$NoCache
 )
@@ -26,8 +26,8 @@ $BACKEND_IMAGE = "kids-game-backend:latest"
 $BACKEND_IMAGE_VERSIONED = "kids-game-backend:$BUILD_TIME"
 $FRONTEND_IMAGE = "kids-game-frontend:latest"
 $FRONTEND_IMAGE_VERSIONED = "kids-game-frontend:$BUILD_TIME"
-$SIMPLE_GAME_IMAGE = "kids-game-simple-game:latest"
-$SIMPLE_GAME_IMAGE_VERSIONED = "kids-game-simple-game:$BUILD_TIME"
+$SIMPLE_GAME_IMAGE = "kids-game-kids-game-simple:latest"
+$SIMPLE_GAME_IMAGE_VERSIONED = "kids-game-kids-game-simple:$BUILD_TIME"
 $OUTPUT_DIR = "../docker-images"
 
 # Server Configuration (for reference only)
@@ -73,7 +73,7 @@ function Get-CustomSelection {
         switch ($sel) {
             "1" { $services += "backend" }
             "2" { $services += "frontend" }
-            "3" { $services += "simple-game" }
+            "3" { $services += "kids-game-simple" }
             default { 
                 if ($sel -ne "") {
                     Write-Host "Invalid selection: $sel" -ForegroundColor Red
@@ -95,7 +95,7 @@ if ([string]::IsNullOrEmpty($Service)) {
         switch ($choice) {
             "1" { $Service = "backend"; break }
             "2" { $Service = "frontend"; break }
-            "3" { $Service = "simple-game"; break }
+            "3" { $Service = "kids-game-simple"; break }
             "4" { $Service = "all"; break }
             "5" { 
                 $customServices = Get-CustomSelection
@@ -235,9 +235,9 @@ if (Should-BuildService "frontend") {
     Write-Host "  [OK] Frontend image built" -ForegroundColor Green
 }
 
-if (Should-BuildService "simple-game") {
-    Write-Host "  Building simple-game..." -ForegroundColor Cyan
-    $dockerArgs = @("build", "-f", "Dockerfile.simple-game",
+if (Should-BuildService "kids-game-simple") {
+    Write-Host "  Building kids-game-simple..." -ForegroundColor Cyan
+    $dockerArgs = @("build", "-f", "Dockerfile.kids-game-simple",
         "--label", "build-time=${BUILD_TIME}",
         "--build-arg", "BUILD_TIMESTAMP=${BUILD_TIME}",
         "-t", $SIMPLE_GAME_IMAGE, "-t", $SIMPLE_GAME_IMAGE_VERSIONED)
@@ -258,7 +258,7 @@ Write-Host "[5/6] Exporting image files..." -ForegroundColor Yellow
 
 $BACKEND_TAR = Join-Path $OUTPUT_DIR "backend.tar"
 $FRONTEND_TAR = Join-Path $OUTPUT_DIR "frontend.tar"
-$SIMPLE_GAME_TAR = Join-Path $OUTPUT_DIR "simple-game.tar"
+$SIMPLE_GAME_TAR = Join-Path $OUTPUT_DIR "kids-game-simple.tar"
 
 if (Should-BuildService "backend") {
     Write-Host "  Exporting backend..." -ForegroundColor Gray
@@ -270,8 +270,8 @@ if (Should-BuildService "frontend") {
     docker save $FRONTEND_IMAGE -o $FRONTEND_TAR
 }
 
-if (Should-BuildService "simple-game") {
-    Write-Host "  Exporting simple-game..." -ForegroundColor Gray
+if (Should-BuildService "kids-game-simple") {
+    Write-Host "  Exporting kids-game-simple..." -ForegroundColor Gray
     docker save $SIMPLE_GAME_IMAGE -o $SIMPLE_GAME_TAR
 }
 
@@ -291,7 +291,7 @@ if (Should-BuildService "frontend") {
     Write-Host "  Frontend image: $FRONTEND_SIZE MB" -ForegroundColor Cyan
     $TOTAL_SIZE += $FRONTEND_SIZE
 }
-if (Should-BuildService "simple-game") {
+if (Should-BuildService "kids-game-simple") {
     $SIMPLE_GAME_SIZE = [math]::Round((Get-Item $SIMPLE_GAME_TAR).Length / 1MB, 2)
     Write-Host "  Simple-game image: $SIMPLE_GAME_SIZE MB" -ForegroundColor Cyan
     $TOTAL_SIZE += $SIMPLE_GAME_SIZE
@@ -313,8 +313,8 @@ if (Should-BuildService "backend") {
 if (Should-BuildService "frontend") {
     Write-Host "  scp docker-images/frontend.tar root@8.136.156.190:/tmp/" -ForegroundColor Gray
 }
-if (Should-BuildService "simple-game") {
-    Write-Host "  scp docker-images/simple-game.tar root@8.136.156.190:/tmp/" -ForegroundColor Gray
+if (Should-BuildService "kids-game-simple") {
+    Write-Host "  scp docker-images/kids-game-simple.tar root@8.136.156.190:/tmp/" -ForegroundColor Gray
 }
 Write-Host ""
 Write-Host "Then deploy on server:" -ForegroundColor Yellow

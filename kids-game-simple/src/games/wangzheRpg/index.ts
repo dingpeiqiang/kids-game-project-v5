@@ -1,0 +1,1 @@
+export { initWangzheRpg } from './game'

@@ -1,0 +1,143 @@
+import type { LevelConfig } from '../types'
+
+// GROUND_Y = 300（CANVAS_HEIGHT 440 - 140）
+
+export const level3Config: LevelConfig = {
+  id: 3,
+  name: '天帷巨兽',
+  description: '巨大生物背上的神殿，长脚罗特斯盘踞于此',
+  minLevel: 10,
+  rewardGold: 350,
+  rooms: [
+    {
+      id: 1,
+      name: '神殿外围',
+      width: 1300,
+      roomType: 'entry',
+      bgColor: '#2a1a2a',
+      groundColor: '#3a2a3a',
+      branches: [2],
+      enemies: [
+        { type: 'normal', x: 120, y: 280, quantity: 2, spacing: 120, behavior: 'chase' },
+        { type: 'elite', x: 380, y: 280, quantity: 1, behavior: 'chase' },
+        { type: 'normal', x: 600, y: 280, quantity: 2, spacing: 100, behavior: 'walk' },
+        { type: 'elite', x: 850, y: 280, quantity: 1, behavior: 'chase' },
+        { type: 'normal', x: 1050, y: 280, quantity: 2, spacing: 80, behavior: 'chase' },
+      ],
+      obstacles: [
+        { type: 'barricade', x: 300, y: 276, width: 50, height: 24, destructible: true, hp: 35, state: 'normal' },
+        { type: 'spikes', x: 700, y: 288, width: 50, height: 12, destructible: false },
+      ],
+      decorations: [
+        { type: 'torch', x: 60, y: 250 },
+        { type: 'pillar', x: 200, y: 300 },
+        { type: 'statue', x: 450, y: 280 },
+        { type: 'skull', x: 550, y: 285 },
+        { type: 'crystal', x: 750, y: 280 },
+        { type: 'chest', x: 1000, y: 275 },
+      ],
+    },
+    {
+      id: 2,
+      name: '第二脊椎',
+      width: 1300,
+      roomType: 'normal',
+      bgColor: '#3a1a4a',
+      groundColor: '#4a2a5a',
+      branches: [3, 4],
+      enemies: [
+        { type: 'normal', x: 120, y: 280, quantity: 2, spacing: 120, behavior: 'chase' },
+        { type: 'elite', x: 380, y: 280, quantity: 1, behavior: 'chase' },
+        { type: 'normal', x: 600, y: 280, quantity: 2, spacing: 100, behavior: 'walk' },
+        { type: 'elite', x: 850, y: 280, quantity: 1, behavior: 'chase' },
+      ],
+      obstacles: [
+        { type: 'box', x: 300, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
+        { type: 'barricade', x: 750, y: 276, width: 50, height: 24, destructible: true, hp: 35, state: 'normal' },
+      ],
+      decorations: [
+        { type: 'torch', x: 60, y: 250 },
+        { type: 'crystal', x: 200, y: 280 },
+        { type: 'pillar', x: 450, y: 300 },
+        { type: 'statue', x: 600, y: 280 },
+        { type: 'barrel', x: 900, y: 275 },
+      ],
+    },
+    {
+      id: 3,
+      name: '罗特斯巢穴',
+      width: 1400,
+      roomType: 'boss',
+      bgColor: '#2a0a3a',
+      groundColor: '#3a1a4a',
+      branches: [],
+      enemies: [
+        { type: 'normal', x: 150, y: 280, quantity: 2, spacing: 120, behavior: 'chase' },
+        { type: 'elite', x: 450, y: 280, quantity: 1, behavior: 'chase' },
+        { type: 'normal', x: 700, y: 280, quantity: 2, spacing: 100, behavior: 'chase' },
+      ],
+      hasBoss: true,
+      bossConfig: {
+        name: '长脚罗特斯',
+        hp: 80,
+        mp: 120,
+        width: 64,
+        height: 68,
+        attackPower: 15,
+        speed: 2.0,
+        color: '#4CAF50',
+        skills: [
+          { id: 'boss_melee', name: '触手拍击', type: 'melee', cooldown: 1600, damage: 14, range: 55, duration: 600, phaseRequired: 1 },
+          { id: 'boss_spread', name: '墨汁喷射', type: 'spread', cooldown: 2800, damage: 12, range: 200, duration: 900, phaseRequired: 1 },
+          { id: 'boss_summon', name: '召唤触手', type: 'summon', cooldown: 4000, damage: 0, range: 100, duration: 2000, phaseRequired: 2 },
+          { id: 'boss_laser', name: '深海激光', type: 'laser', cooldown: 5000, damage: 20, range: 350, duration: 2000, phaseRequired: 3 },
+        ],
+        patterns: [
+          { type: 'melee', cooldown: 1600, damage: 14, range: 55 },
+          { type: 'spread', cooldown: 2800, damage: 12, range: 200 },
+          { type: 'summon', cooldown: 4000, damage: 0, range: 100 },
+          { type: 'laser', cooldown: 5000, damage: 20, range: 350, duration: 2000 },
+        ],
+        maxPhase: 4,
+        dropTable: [
+          { type: 'gold', chance: 1.0, quantity: 50 },
+          { type: 'hpPotion', chance: 0.7, quantity: 4 },
+          { type: 'mpPotion', chance: 0.5, quantity: 3 },
+          { type: 'equipment', chance: 0.6, quality: 'purple' },
+        ],
+      },
+      obstacles: [
+        { type: 'box', x: 350, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
+        { type: 'barricade', x: 800, y: 276, width: 50, height: 24, destructible: true, hp: 35, state: 'normal' },
+      ],
+      decorations: [
+        { type: 'torch', x: 60, y: 250 },
+        { type: 'crystal', x: 200, y: 280 },
+        { type: 'pillar', x: 450, y: 300 },
+        { type: 'throne', x: 1000, y: 275 },
+        { type: 'skull', x: 600, y: 285 },
+      ],
+    },
+    // 分支：深海休息室
+    {
+      id: 4,
+      name: '深海休息室',
+      width: 800,
+      roomType: 'rest',
+      bgColor: '#0a2a3a',
+      groundColor: '#1a3a4a',
+      branches: [3],
+      enemies: [
+        { type: 'normal', x: 300, y: 280, quantity: 1, spacing: 100, behavior: 'stationary' },
+      ],
+      obstacles: [],
+      decorations: [
+        { type: 'torch', x: 80, y: 250 },
+        { type: 'crystal', x: 200, y: 280 },
+        { type: 'statue', x: 400, y: 280 },
+        { type: 'chest', x: 600, y: 275 },
+      ],
+      restEffect: { healPercent: 40, mpRestorePercent: 40 },
+    },
+  ],
+}

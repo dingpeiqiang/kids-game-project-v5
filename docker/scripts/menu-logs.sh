@@ -23,7 +23,7 @@ show_menu() {
     echo "  【实时日志】(Ctrl+C 返回)"
     echo "  1. 后端实时日志"
     echo "  2. 前端实时日志"
-    echo "  3. simple-game 实时日志"
+    echo "  3. kids-game-simple 实时日志"
     echo "  4. MySQL 实时日志"
     echo "  5. Redis 实时日志"
     echo "  6. 所有服务实时日志"
@@ -31,7 +31,7 @@ show_menu() {
     echo "  【历史日志】"
     echo "  7. 后端最近 50 行"
     echo "  8. 前端最近 50 行"
-    echo "  9. simple-game 最近 50 行"
+    echo "  9. kids-game-simple 最近 50 行"
     echo "  10. 查看所有服务最近 50 行"
     echo ""
     echo "  【其他】"
@@ -122,7 +122,7 @@ while true; do
             view_live_logs "frontend" "前端实时日志"
             ;;
         3)
-            view_live_logs "simple-game" "simple-game 实时日志"
+            view_live_logs "kids-game-simple" "kids-game-simple 实时日志"
             ;;
         4)
             view_live_logs "mysql" "MySQL 实时日志"
@@ -140,7 +140,7 @@ while true; do
             view_history_logs "frontend" "前端日志" 50
             ;;
         9)
-            view_history_logs "simple-game" "simple-game 日志" 50
+            view_history_logs "kids-game-simple" "kids-game-simple 日志" 50
             ;;
         10)
             view_history_logs "" "所有服务日志" 50

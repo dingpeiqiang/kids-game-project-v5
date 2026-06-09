@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>云端极速跑酷 - Cloud 3D Runner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      overflow: hidden;
+      background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+    }
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <script type="module">
+    import { initCloudRunner } from './src/games/cloudRunner/index.ts';
+    initCloudRunner('game-container');
+  </script>
+</body>
+</html>

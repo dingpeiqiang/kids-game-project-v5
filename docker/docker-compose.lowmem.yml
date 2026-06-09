@@ -164,12 +164,12 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # simple-game 游戏服务 - 独立部署
-  simple-game:
+  # kids-game-simple 游戏服务 - 独立部署
+  kids-game-simple:
     image: kids-game-simple-game:latest
     build:
       context: ..
-      dockerfile: docker/Dockerfile.simple-game
+      dockerfile: docker/Dockerfile.kids-game-simple
     container_name: kids-game-simple-game
     restart: unless-stopped
     environment:

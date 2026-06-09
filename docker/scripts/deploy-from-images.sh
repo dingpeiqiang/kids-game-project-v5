@@ -64,7 +64,7 @@ check_images() {
     SIMPLE_GAME_TAR_OK=0
     [ -f "/tmp/backend.tar"   ] && BACKEND_TAR_OK=1
     [ -f "/tmp/frontend.tar" ] && FRONTEND_TAR_OK=1
-    [ -f "/tmp/simple-game.tar" ] && SIMPLE_GAME_TAR_OK=1
+    [ -f "/tmp/kids-game-simple.tar" ] && SIMPLE_GAME_TAR_OK=1
 }
 
 # 生成时间戳
@@ -113,8 +113,8 @@ show_menu() {
     echo "  2) 前端部署（不加载镜像）"
     echo "  3) 后端镜像加载 + 部署"
     echo "  4) 后端部署（不加载镜像）"
-    echo "  5) simple-game 镜像加载 + 部署"
-    echo "  6) simple-game 部署（不加载镜像）"
+    echo "  5) kids-game-simple 镜像加载 + 部署"
+    echo "  6) kids-game-simple 部署（不加载镜像）"
     echo "  7) 全量部署"
     echo "  8) 查看镜像信息"
     echo "  0) 退出"
@@ -208,45 +208,45 @@ do_action() {
             echo "========================================="
             tail -50 "$LOG_DIR/backend.log"
             ;;
-        5)  # simple-game 镜像加载 + 部署
+        5)  # kids-game-simple 镜像加载 + 部署
             echo ""
-            echo ">>> [5] simple-game 镜像加载 + 部署"
-            if [ ! -f "/tmp/simple-game.tar" ]; then
-                echo "ERROR: /tmp/simple-game.tar 不存在"
+            echo ">>> [5] kids-game-simple 镜像加载 + 部署"
+            if [ ! -f "/tmp/kids-game-simple.tar" ]; then
+                echo "ERROR: /tmp/kids-game-simple.tar 不存在"
                 return 1
             fi
             echo ">>> 停止容器..."
-            docker compose -f "$COMPOSE_FILE" stop simple-game > /dev/null 2>&1
+            docker compose -f "$COMPOSE_FILE" stop kids-game-simple > /dev/null 2>&1
             echo ">>> 清理旧镜像..."
-            cleanup_old_image "kids-game-simple-game"
+            cleanup_old_image "kids-game-kids-game-simple"
             echo ">>> 加载镜像..."
-            docker load < /tmp/simple-game.tar 2>&1 | grep -v "^$"
+            docker load < /tmp/kids-game-simple.tar 2>&1 | grep -v "^$"
             echo ">>> 强制重建容器..."
-            force_recreate_container simple-game
+            force_recreate_container kids-game-simple
             sleep 3
             echo ""
             echo "========================================="
             echo ">>> 当前运行镜像版本"
             echo "========================================="
-            docker inspect --format='{{.Config.Image}} 创建于 {{.Created}}' kids-game-simple-game 2>/dev/null
+            docker inspect --format='{{.Config.Image}} 创建于 {{.Created}}' kids-game-kids-game-simple 2>/dev/null
             echo "========================================="
-            echo ">>> simple-game 已部署"
+            echo ">>> kids-game-simple 已部署"
             echo "========================================="
             echo "访问地址: http://8.136.156.190:3001/"
             ;;
-        6)  # simple-game 部署
+        6)  # kids-game-simple 部署
             echo ""
-            echo ">>> [6] simple-game 部署（不加载镜像）"
+            echo ">>> [6] kids-game-simple 部署（不加载镜像）"
             echo ">>> 强制重建容器..."
-            force_recreate_container simple-game
+            force_recreate_container kids-game-simple
             sleep 3
             echo ""
             echo "========================================="
             echo ">>> 当前运行镜像版本"
             echo "========================================="
-            docker inspect --format='{{.Config.Image}} 创建于 {{.Created}}' kids-game-simple-game 2>/dev/null
+            docker inspect --format='{{.Config.Image}} 创建于 {{.Created}}' kids-game-kids-game-simple 2>/dev/null
             echo "========================================="
-            echo ">>> simple-game 已部署"
+            echo ">>> kids-game-simple 已部署"
             echo "========================================="
             echo "访问地址: http://8.136.156.190:3001/"
             ;;
@@ -261,26 +261,26 @@ do_action() {
                 echo "ERROR: /tmp/frontend.tar 不存在"
                 return 1
             fi
-            if [ ! -f "/tmp/simple-game.tar" ]; then
-                echo "WARNING: /tmp/simple-game.tar 不存在，跳过 simple-game"
+            if [ ! -f "/tmp/kids-game-simple.tar" ]; then
+                echo "WARNING: /tmp/kids-game-simple.tar 不存在，跳过 kids-game-simple"
                 SIMPLE_GAME_DEPLOY=0
             else
                 SIMPLE_GAME_DEPLOY=1
             fi
             echo ">>> 停止所有容器..."
-            docker compose -f "$COMPOSE_FILE" stop backend frontend simple-game > /dev/null 2>&1
+            docker compose -f "$COMPOSE_FILE" stop backend frontend kids-game-simple > /dev/null 2>&1
             echo ">>> 清理旧镜像..."
             cleanup_old_image "kids-game-backend"
             cleanup_old_image "kids-game-frontend"
-            [ $SIMPLE_GAME_DEPLOY -eq 1 ] && cleanup_old_image "kids-game-simple-game"
+            [ $SIMPLE_GAME_DEPLOY -eq 1 ] && cleanup_old_image "kids-game-kids-game-simple"
             echo ">>> 加载镜像..."
             docker load < /tmp/backend.tar  2>&1 | grep -v "^$"
             docker load < /tmp/frontend.tar 2>&1 | grep -v "^$"
             if [ $SIMPLE_GAME_DEPLOY -eq 1 ]; then
-                docker load < /tmp/simple-game.tar 2>&1 | grep -v "^$"
+                docker load < /tmp/kids-game-simple.tar 2>&1 | grep -v "^$"
             fi
             echo ">>> 强制重建所有容器..."
-            docker compose -f "$COMPOSE_FILE" rm -f backend frontend simple-game > /dev/null 2>&1
+            docker compose -f "$COMPOSE_FILE" rm -f backend frontend kids-game-simple > /dev/null 2>&1
             docker compose -f "$COMPOSE_FILE" up -d --no-build --force-recreate > /dev/null 2>&1
             sleep 5
             echo ""
@@ -292,7 +292,7 @@ do_action() {
             echo "========================================="
             echo ">>> 当前运行镜像版本"
             echo "========================================="
-            docker images kids-game-backend:latest kids-game-frontend:latest kids-game-simple-game:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}\t{{.Size}}" 2>/dev/null
+            docker images kids-game-backend:latest kids-game-frontend:latest kids-game-kids-game-simple:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}\t{{.Size}}" 2>/dev/null
             echo ""
             echo "========================================="
             echo ">>> logs/backend.log"
@@ -314,8 +314,8 @@ do_action() {
             echo "前端镜像:"
             docker images kids-game-frontend --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}\t{{.Size}}"
             echo ""
-            echo "simple-game 镜像:"
-            docker images kids-game-simple-game --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}\t{{.Size}}"
+            echo "kids-game-simple 镜像:"
+            docker images kids-game-kids-game-simple --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}\t{{.Size}}"
             echo ""
             printf "按回车返回菜单..."
             read dummy
@@ -327,7 +327,7 @@ do_action() {
 while true; do
     check_images
     echo ""
-    echo "镜像状态：backend.tar=$( [ $BACKEND_TAR_OK -eq 1 ] && echo '存在' || echo '缺失')  frontend.tar=$( [ $FRONTEND_TAR_OK -eq 1 ] && echo '存在' || echo '缺失')  simple-game.tar=$( [ $SIMPLE_GAME_TAR_OK -eq 1 ] && echo '存在' || echo '缺失')"
+    echo "镜像状态：backend.tar=$( [ $BACKEND_TAR_OK -eq 1 ] && echo '存在' || echo '缺失')  frontend.tar=$( [ $FRONTEND_TAR_OK -eq 1 ] && echo '存在' || echo '缺失')  kids-game-simple.tar=$( [ $SIMPLE_GAME_TAR_OK -eq 1 ] && echo '存在' || echo '缺失')"
     echo "日志文件：$LOG_DIR/backend.log  $LOG_DIR/frontend.log"
     show_menu
     printf "请选择 [0-8]: "

@@ -1,0 +1,186 @@
+import type { LevelConfig } from '../types'
+
+// GROUND_Y = 300（CANVAS_HEIGHT 440 - 140，地面占画布32%）
+// 开阔地面 + 极少遮挡，适合地面行走+跳跃
+
+export const level1Config: LevelConfig = {
+  id: 1,
+  name: '格兰之森',
+  description: '最初的冒险，格兰之森中潜伏着各种危险生物',
+  minLevel: 1,
+  rewardGold: 100,
+  rooms: [
+    {
+      id: 1,
+      name: '幽暗密林入口',
+      width: 1000,
+      roomType: 'entry',
+      bgColor: '#152a15',
+      groundColor: '#254a25',
+      branches: [2],
+      enemies: [
+        { type: 'normal', x: 200, y: 280, quantity: 3, spacing: 100, behavior: 'chase' },
+        { type: 'normal', x: 550, y: 280, quantity: 2, spacing: 90, behavior: 'walk' },
+        { type: 'normal', x: 780, y: 280, quantity: 2, spacing: 80, behavior: 'chase' },
+      ],
+      obstacles: [
+        { type: 'box', x: 400, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
+        { type: 'box', x: 650, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
+      ],
+      decorations: [
+        { type: 'torch', x: 80, y: 250 },
+        { type: 'pillar', x: 180, y: 300 },
+        { type: 'barrel', x: 350, y: 275 },
+        { type: 'crystal', x: 550, y: 280 },
+        { type: 'chest', x: 750, y: 275 },
+      ],
+    },
+    {
+      id: 2,
+      name: '密林深处',
+      width: 1100,
+      roomType: 'normal',
+      bgColor: '#122512',
+      groundColor: '#223522',
+      branches: [3],
+      enemies: [
+        { type: 'normal', x: 180, y: 280, quantity: 2, spacing: 100, behavior: 'chase' },
+        { type: 'ranged', x: 450, y: 280, quantity: 1, behavior: 'chase' },
+        { type: 'normal', x: 650, y: 280, quantity: 2, spacing: 90, behavior: 'walk' },
+      ],
+      obstacles: [
+        { type: 'barricade', x: 350, y: 276, width: 50, height: 24, destructible: true, hp: 35, state: 'normal' },
+        { type: 'box', x: 550, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
+      ],
+      decorations: [
+        { type: 'torch', x: 70, y: 250 },
+        { type: 'pillar', x: 250, y: 300 },
+        { type: 'barrel', x: 400, y: 275 },
+        { type: 'crystal', x: 700, y: 280 },
+      ],
+    },
+    {
+      id: 3,
+      name: '雷鸣废墟',
+      width: 1200,
+      roomType: 'normal',
+      bgColor: '#1a2015',
+      groundColor: '#2a3020',
+      branches: [4, 6],
+      enemies: [
+        { type: 'normal', x: 150, y: 280, quantity: 2, spacing: 100, behavior: 'chase' },
+        { type: 'normal', x: 380, y: 280, quantity: 2, spacing: 90, behavior: 'walk' },
+        { type: 'ranged', x: 600, y: 280, quantity: 1, behavior: 'chase' },
+        { type: 'elite', x: 850, y: 280, quantity: 1, behavior: 'chase' },
+      ],
+      obstacles: [
+        { type: 'barricade', x: 300, y: 276, width: 50, height: 24, destructible: true, hp: 35, state: 'normal' },
+        { type: 'box', x: 500, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
+      ],
+      decorations: [
+        { type: 'torch', x: 70, y: 250 },
+        { type: 'statue', x: 220, y: 280 },
+        { type: 'pillar', x: 500, y: 300 },
+        { type: 'barrel', x: 750, y: 275 },
+      ],
+    },
+    {
+      id: 4,
+      name: '猛毒之地',
+      width: 1300,
+      roomType: 'boss',
+      bgColor: '#1a1510',
+      groundColor: '#2a2510',
+      branches: [],
+      enemies: [
+        { type: 'normal', x: 150, y: 280, quantity: 3, spacing: 100, behavior: 'chase' },
+        { type: 'ranged', x: 450, y: 280, quantity: 1, behavior: 'chase' },
+        { type: 'elite', x: 700, y: 280, quantity: 1, behavior: 'chase' },
+        { type: 'normal', x: 950, y: 280, quantity: 2, spacing: 80, behavior: 'walk' },
+      ],
+      obstacles: [
+        { type: 'box', x: 300, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
+        { type: 'barricade', x: 550, y: 276, width: 50, height: 24, destructible: true, hp: 35, state: 'normal' },
+        { type: 'barricade', x: 800, y: 276, width: 50, height: 24, destructible: true, hp: 35, state: 'normal' },
+      ],
+      hasBoss: true,
+      bossConfig: {
+        name: '毒猫王',
+        hp: 80,
+        mp: 60,
+        width: 48,
+        height: 52,
+        attackPower: 12,
+        speed: 2.2,
+        color: '#4CAF50',
+        skills: [
+          { id: 'boss_melee', name: '毒爪', type: 'melee', cooldown: 1200, damage: 12, range: 40, duration: 500, phaseRequired: 1 },
+          { id: 'boss_spread', name: '毒雾', type: 'spread', cooldown: 2500, damage: 8, range: 120, duration: 800, phaseRequired: 1 },
+          { id: 'boss_charge', name: '猛扑', type: 'charge', cooldown: 4000, damage: 18, range: 180, duration: 600, phaseRequired: 2 },
+        ],
+        patterns: [
+          { type: 'melee', cooldown: 1200, damage: 12, range: 40 },
+          { type: 'spread', cooldown: 2500, damage: 8, range: 120 },
+          { type: 'charge', cooldown: 4000, damage: 18, range: 180 },
+        ],
+        maxPhase: 3,
+        dropTable: [
+          { type: 'gold', chance: 1.0, quantity: 25 },
+          { type: 'hpPotion', chance: 0.5, quantity: 2 },
+          { type: 'mpPotion', chance: 0.4, quantity: 1 },
+          { type: 'equipment', chance: 0.3, quality: 'white' },
+        ],
+      },
+      decorations: [
+        { type: 'torch', x: 60, y: 250 },
+        { type: 'pillar', x: 200, y: 300 },
+        { type: 'skull', x: 400, y: 285 },
+        { type: 'crystal', x: 600, y: 280 },
+        { type: 'chest', x: 1000, y: 275 },
+      ],
+    },
+    // === 分支房间 ===
+    {
+      id: 5,
+      name: '隐藏宝库',
+      width: 800,
+      roomType: 'treasure',
+      bgColor: '#1a2a10',
+      groundColor: '#2a3a1a',
+      branches: [4],
+      enemies: [
+        { type: 'normal', x: 200, y: 280, quantity: 2, spacing: 100, behavior: 'chase' },
+        { type: 'elite', x: 500, y: 280, quantity: 1, behavior: 'chase' },
+      ],
+      obstacles: [
+        { type: 'box', x: 350, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
+      ],
+      decorations: [
+        { type: 'torch', x: 80, y: 250 },
+        { type: 'chest', x: 200, y: 275 },
+        { type: 'chest', x: 400, y: 275 },
+        { type: 'crystal', x: 600, y: 280 },
+      ],
+      reward: { gold: 80, exp: 50 },
+    },
+    {
+      id: 6,
+      name: '林间休憩地',
+      width: 700,
+      roomType: 'rest',
+      bgColor: '#0a2a1a',
+      groundColor: '#1a3a2a',
+      branches: [4],
+      enemies: [],
+      obstacles: [],
+      decorations: [
+        { type: 'torch', x: 80, y: 250 },
+        { type: 'pillar', x: 200, y: 300 },
+        { type: 'statue', x: 400, y: 280 },
+      ],
+      restEffect: { healPercent: 30, mpRestorePercent: 30 },
+      // 隐藏条件：打破隐藏墙壁后出现
+      secretCondition: { type: 'hidden_wall', description: '击碎隐秘的藤蔓墙壁' },
+    },
+  ],
+}

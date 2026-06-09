@@ -1,0 +1,1 @@
+export { initRacingRun } from './game';
