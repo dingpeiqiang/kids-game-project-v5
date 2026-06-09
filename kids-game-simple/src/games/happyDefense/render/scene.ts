@@ -7,7 +7,15 @@ import {
   StandardMaterial,
   Vector3,
 } from '@babylonjs/core'
-import { ENEMY_DEFS, GAME_CONFIG, MAP_LAYOUT, TOWER_DEFS, cellKindAt, gridToWorld } from '../config'
+import { ENEMY_DEFS, GAME_CONFIG, TOWER_DEFS, cellKindAt, gridToWorld } from '../config'
+
+function hexToColor3(hex: string): Color3 {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16) / 255
+  const g = parseInt(h.slice(2, 4), 16) / 255
+  const b = parseInt(h.slice(4, 6), 16) / 255
+  return new Color3(r, g, b)
+}
 import { enemyWorldPos } from '../logic/gameLoop'
 import type { EnemyState, GameState, TowerState } from '../types'
 
@@ -102,7 +110,7 @@ export class HappyDefenseScene {
     )
     mesh.position = new Vector3(w.x, h / 2 + 0.2, w.z)
     const mat = new StandardMaterial(`tmat_${tower.id}`, this.scene)
-    const c = Color3.FromHexString(def.color)
+    const c = hexToColor3(def.color)
     mat.diffuseColor = c
     mat.emissiveColor = c.scale(0.25)
     mesh.material = mat

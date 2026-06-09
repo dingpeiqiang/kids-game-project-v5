@@ -251,8 +251,11 @@ function fireFromTower(state: GameState, tower: TowerState, stats: ReturnType<ty
   const w = gridToWorld(tower.gx, tower.gz)
   const target = findTarget(state, w.x, w.z, stats.range)
   if (!target) return
+  if (tower.kind === 'lightning') {
+    applyLightningHit(state, target, stats.damage * state.damageBuffMul, stats.chainCount, new Set())
+    return
+  }
   if (state.projectiles.length >= GAME_CONFIG.maxProjectiles) return
-  const tp = positionOnPath(worldPath, target.pathT)
   state.projectiles.push({
     id: uid(),
     kind: tower.kind,
@@ -268,9 +271,6 @@ function fireFromTower(state: GameState, tower: TowerState, stats: ReturnType<ty
     freezeDuration: stats.freezeDuration,
     alive: true,
   })
-  if (tower.kind === 'lightning') {
-    applyLightningHit(state, target, stats.damage * state.damageBuffMul, stats.chainCount, new Set())
-  }
 }
 
 function applyLightningHit(
@@ -456,6 +456,7 @@ function checkWaveEnd(state: GameState): void {
   if (state.waveIndex >= state.totalWaves) {
     state.phase = 'victory'
     state.waveClearTime = (performance.now() - state.runStartTime) / 1000
+    persistRecords(state)
     return
   }
   state.pendingBuffChoices = rollBuffChoices()

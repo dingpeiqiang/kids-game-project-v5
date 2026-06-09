@@ -1,0 +1,1 @@
+export { initHappyDefense, destroyHappyDefense } from './game'
