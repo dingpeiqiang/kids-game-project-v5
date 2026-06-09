@@ -40,6 +40,8 @@ export interface Level {
   startPosition: Vector3;
   startRotation: number;
   difficulty: 'easy' | 'medium' | 'hard';
+  /** 场地半宽（XZ），默认 24 */
+  boundsHalfSize?: number;
 }
 
 export interface GameState {
@@ -76,7 +78,9 @@ export interface ParkingResult {
 
 export interface PlayerData {
   bestScore: number;
+  levelBests: Record<number, number>;
   completedLevels: number[];
   perfectLevels: number[];
   totalAttempts: number;
+  guideSeen: boolean;
 }

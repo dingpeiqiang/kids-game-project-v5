@@ -13,6 +13,7 @@ export const VEHICLE_CONFIG = {
   FRICTION: 0.02,
   TURN_RADIUS_MULTIPLIER: 0.05,
   INERTIA: 0.92,
+  LOW_SPEED_FRICTION: 0.88,
   STEERING_INERTIA: 0.9,
 };
 
@@ -34,8 +35,8 @@ export const GAME_CONFIG = {
 export const LEVELS: Level[] = [
   {
     id: 1,
-    name: '基础训练',
-    description: '空旷场地，熟悉车辆操控',
+    name: '基础行驶',
+    description: '超大空旷场地，熟悉车速、转向与惯性',
     timeLimit: 120,
     parkingSpot: {
       position: { x: 0, y: 0, z: 0 },

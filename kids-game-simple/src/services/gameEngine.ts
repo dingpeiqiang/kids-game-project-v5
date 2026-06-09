@@ -76,6 +76,11 @@ export class GameEngine {
     return this.state.score
   }
 
+  /** 3D 停车等整局结算类游戏直接写入最终得分 */
+  setScore(score: number) {
+    this.state.score = Math.max(0, Math.round(score))
+  }
+
   getCombo() {
     return this.state.combo
   }

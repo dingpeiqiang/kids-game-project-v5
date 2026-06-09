@@ -4,7 +4,7 @@
  */
 import { userService } from './userService'
 import { getLevelByExp, getLevelProgress, ALL_ACHIEVEMENTS } from '../types/user'
-import { GAMES } from '../data/games'
+import { GAMES } from '../games/gameRegistry'
 
 // ============================================================
 // 工具：显示 Toast 提示

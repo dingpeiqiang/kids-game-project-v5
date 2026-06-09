@@ -1,12 +1,35 @@
 import * as THREE from 'three';
 import { VehicleState, GameState, CameraMode, Level } from './types';
 import { LEVELS, GAME_CONFIG } from './config';
-import { updateVehicle } from './logic/vehiclePhysics';
-import { checkCollision, checkParking } from './logic/collision';
-import { calculateFinalScore, isPerfectScore, updatePlayerData, resetGameState } from './logic/scoreSystem';
-import { createScene, createRenderer, createLighting, createGround, createParkingSpot, createObstacles, handleResize } from './render/scene';
+import { updateVehicle, applyCollisionResponse } from './logic/vehiclePhysics';
+import { checkCollision, checkParking, isOutOfBounds } from './logic/collision';
+import {
+  calculateFinalScore,
+  isPerfectScore,
+  updatePlayerData,
+  resetGameState,
+  loadPlayerData,
+  markGuideSeen,
+  getLevelBest,
+} from './logic/scoreSystem';
+import {
+  createScene,
+  createRenderer,
+  createLighting,
+  createGround,
+  createParkingSpot,
+  createObstacles,
+  createLevelBounds,
+  handleResize,
+} from './render/scene';
 import { createCamera, updateCameraPosition, cycleCameraMode } from './render/camera';
 import { createVehicle, updateVehicleMesh } from './render/vehicle';
+import { createParkingUI, type ParkingUI } from './render/ui';
+
+export interface CarParkingPlatformBridge {
+  onScore: (score: number, victory: boolean, stats?: Record<string, unknown>) => void;
+  onExit: () => void;
+}
 
 export class CarParkingGame {
   private container: HTMLDivElement;
@@ -16,7 +39,14 @@ export class CarParkingGame {
   private vehicle: THREE.Group;
   private parkingSpotGroup: THREE.Group | null = null;
   private obstacleGroups: THREE.Group[] = [];
-  
+  private boundsGroup: THREE.Group | null = null;
+  private ui: ParkingUI;
+  private platform: CarParkingPlatformBridge | null = null;
+
+  private currentLevelConfig: Level | null = null;
+  private liveParkingScore = 0;
+  private outOfBoundsTimer = 0;
+
   private vehicleState: VehicleState = {
     position: { x: 0, y: 0, z: 0 },
     rotation: 0,
@@ -25,7 +55,7 @@ export class CarParkingGame {
     steeringAngle: 0,
     isBraking: false,
   };
-  
+
   private gameState: GameState = {
     currentLevel: 1,
     score: 0,
@@ -39,52 +69,65 @@ export class CarParkingGame {
     isCompleted: false,
     isPerfect: false,
   };
-  
+
   private cameraMode: CameraMode = 'follow';
-  private inputState = {
-    throttle: 0,
-    steering: 0,
-    brake: false,
-  };
-  
-  private animationId: number = 0;
-  private lastTime: number = 0;
-  private lastParkingCheck: number = 0;
-  private lastCollisionTime: number = 0;
-  
-  private onStateChange?: (state: GameState) => void;
-  private onLevelComplete?: (score: number, isPerfect: boolean, levelId: number) => void;
-  private onGameOver?: (score: number, levelId: number) => void;
-  private onCollision?: () => void;
-  
-  constructor(container: HTMLDivElement) {
+  private inputState = { throttle: 0, steering: 0, brake: false };
+
+  private animationId = 0;
+  private lastTime = 0;
+  private lastParkingCheck = 0;
+  private lastCollisionTime = 0;
+  private endedForPlatform = false;
+
+  private readonly onKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e);
+  private readonly onKeyUp = (e: KeyboardEvent) => this.handleKeyUp(e);
+
+  constructor(container: HTMLDivElement, platform?: CarParkingPlatformBridge) {
     this.container = container;
+    this.platform = platform ?? null;
+
+    this.ui = createParkingUI(container);
+    this.ui.onViewReset(
+      () => this.resetLevel(),
+      () => {
+        this.cameraMode = cycleCameraMode(this.cameraMode);
+        this.ui.showToast(`视角：${this.cameraMode === 'follow' ? '跟随' : this.cameraMode === 'top' ? '俯视' : '后视'}`);
+      }
+    );
+    this.ui.setMobileInput((partial) => {
+      if (partial.throttle !== undefined) this.inputState.throttle = partial.throttle;
+      if (partial.steering !== undefined) this.inputState.steering = partial.steering;
+      if (partial.brake !== undefined) this.inputState.brake = partial.brake;
+    });
+
     this.scene = createScene();
     this.camera = createCamera(container);
     this.renderer = createRenderer(container);
-    
     createLighting(this.scene);
     createGround(this.scene);
-    handleResize(this.renderer, this.camera);
-    
+    handleResize(this.renderer, this.camera, container);
+
     this.vehicle = createVehicle();
     this.scene.add(this.vehicle);
-    
-    this.initEventListeners();
+
+    window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
+
     this.loadLevel(1);
-    this.render();
+    const data = loadPlayerData();
+    const begin = () => {
+      markGuideSeen();
+      this.startGame();
+    };
+    if (!data.guideSeen) {
+      this.ui.showGuide(begin);
+    } else {
+      begin();
+    }
   }
-  
-  private initEventListeners(): void {
-    window.addEventListener('keydown', this.handleKeyDown.bind(this));
-    window.addEventListener('keyup', this.handleKeyUp.bind(this));
-    
-    this.container.addEventListener('touchstart', this.handleTouchStart.bind(this));
-    this.container.addEventListener('touchend', this.handleTouchEnd.bind(this));
-    this.container.addEventListener('touchmove', this.handleTouchMove.bind(this));
-  }
-  
+
   private handleKeyDown(e: KeyboardEvent): void {
+    if (this.gameState.isCompleted || this.gameState.isGameOver) return;
     switch (e.key.toLowerCase()) {
       case 'w':
         this.inputState.throttle = 1;
@@ -99,6 +142,7 @@ export class CarParkingGame {
         this.inputState.steering = 1;
         break;
       case ' ':
+        e.preventDefault();
         this.inputState.brake = true;
         break;
       case 'c':
@@ -109,7 +153,7 @@ export class CarParkingGame {
         break;
     }
   }
-  
+
   private handleKeyUp(e: KeyboardEvent): void {
     switch (e.key.toLowerCase()) {
       case 'w':
@@ -129,58 +173,21 @@ export class CarParkingGame {
         break;
     }
   }
-  
-  private touchStartPos = { x: 0, y: 0 };
-  private touchStartTime = 0;
-  
-  private handleTouchStart(e: TouchEvent): void {
-    e.preventDefault();
-    const touch = e.touches[0];
-    this.touchStartPos = { x: touch.clientX, y: touch.clientY };
-    this.touchStartTime = Date.now();
-  }
-  
-  private handleTouchMove(e: TouchEvent): void {
-    if (!this.gameState.isPlaying || this.gameState.isPaused) return;
-    
-    e.preventDefault();
-    const touch = e.touches[0];
-    const dx = touch.clientX - this.touchStartPos.x;
-    const dy = touch.clientY - this.touchStartPos.y;
-    
-    this.inputState.steering = Math.max(-1, Math.min(1, dx * 0.01));
-    this.inputState.throttle = Math.max(-1, Math.min(1, -dy * 0.01));
-  }
-  
-  private handleTouchEnd(e: TouchEvent): void {
-    e.preventDefault();
-    this.inputState.steering = 0;
-    this.inputState.throttle = 0;
-    
-    const touchDuration = Date.now() - this.touchStartTime;
-    if (touchDuration < 200) {
-      const touch = e.changedTouches[0];
-      const rect = this.container.getBoundingClientRect();
-      const x = (touch.clientX - rect.left) / rect.width;
-      const y = (touch.clientY - rect.top) / rect.height;
-      
-      if (x > 0.85 && y < 0.15) {
-        this.cameraMode = cycleCameraMode(this.cameraMode);
-      } else if (x < 0.15 && y < 0.15) {
-        this.resetLevel();
-      }
-    }
-  }
-  
+
   private loadLevel(levelId: number): void {
-    const level = LEVELS.find(l => l.id === levelId);
+    const level = LEVELS.find((l) => l.id === levelId);
     if (!level) return;
-    
+
+    this.ui.hideResult();
     this.clearLevelObjects();
-    
+    this.currentLevelConfig = level;
+    this.liveParkingScore = 0;
+    this.outOfBoundsTimer = 0;
+    this.endedForPlatform = false;
+
     this.gameState.currentLevel = levelId;
     this.gameState = resetGameState(this.gameState, level.timeLimit);
-    
+
     this.vehicleState = {
       position: { ...level.startPosition, y: 0.5 },
       rotation: level.startRotation,
@@ -189,173 +196,213 @@ export class CarParkingGame {
       steeringAngle: 0,
       isBraking: false,
     };
-    
+
     this.parkingSpotGroup = createParkingSpot(this.scene, level.parkingSpot);
     this.obstacleGroups = createObstacles(this.scene, level.obstacles);
-    
+    this.boundsGroup = createLevelBounds(this.scene, level.boundsHalfSize ?? 24);
+
     updateVehicleMesh(this.vehicle, this.vehicleState);
-    this.render();
-    
-    this.notifyStateChange();
+    this.syncHud();
   }
-  
+
   private clearLevelObjects(): void {
     if (this.parkingSpotGroup) {
       this.scene.remove(this.parkingSpotGroup);
       this.parkingSpotGroup = null;
     }
-    
+    if (this.boundsGroup) {
+      this.scene.remove(this.boundsGroup);
+      this.boundsGroup = null;
+    }
     for (const group of this.obstacleGroups) {
       this.scene.remove(group);
     }
     this.obstacleGroups = [];
   }
-  
+
   public startGame(): void {
-    if (this.gameState.isPlaying) return;
-    
+    if (this.gameState.isPlaying && !this.gameState.isGameOver && !this.gameState.isCompleted) return;
     this.gameState.isPlaying = true;
+    this.gameState.isPaused = false;
+    this.gameState.isGameOver = false;
+    this.gameState.isCompleted = false;
     this.lastTime = performance.now();
+    cancelAnimationFrame(this.animationId);
     this.gameLoop();
   }
-  
-  public pauseGame(): void {
-    this.gameState.isPaused = !this.gameState.isPaused;
-    this.notifyStateChange();
-  }
-  
+
   public resetLevel(): void {
     cancelAnimationFrame(this.animationId);
     this.loadLevel(this.gameState.currentLevel);
+    this.startGame();
   }
-  
+
   public nextLevel(): void {
     const nextLevelId = this.gameState.currentLevel + 1;
     if (nextLevelId <= LEVELS.length) {
       this.loadLevel(nextLevelId);
+      this.startGame();
+    } else {
+      this.finishForPlatform(this.gameState.score, true);
     }
   }
-  
-  public selectLevel(levelId: number): void {
-    if (levelId >= 1 && levelId <= LEVELS.length) {
-      this.loadLevel(levelId);
-    }
-  }
-  
+
   private gameLoop(): void {
     const currentTime = performance.now();
     const deltaTime = currentTime - this.lastTime;
     this.lastTime = currentTime;
-    
-    if (!this.gameState.isPaused && !this.gameState.isGameOver && !this.gameState.isCompleted) {
+
+    if (this.gameState.isPlaying && !this.gameState.isPaused && !this.gameState.isGameOver && !this.gameState.isCompleted) {
       this.update(deltaTime, currentTime);
     }
-    
+
     this.render();
-    
     this.animationId = requestAnimationFrame(() => this.gameLoop());
   }
-  
+
   private update(deltaTime: number, currentTime: number): void {
-    const level = LEVELS.find(l => l.id === this.gameState.currentLevel);
+    const level = this.currentLevelConfig;
     if (!level) return;
-    
+
     this.gameState.timeRemaining -= deltaTime / 1000;
     if (this.gameState.timeRemaining <= 0) {
-      this.gameOver();
+      this.gameOver('时间到！停车失败');
       return;
     }
-    
+
     this.vehicleState = updateVehicle(this.vehicleState, this.inputState, deltaTime);
-    
+
+    const half = level.boundsHalfSize ?? 24;
+    if (isOutOfBounds(this.vehicleState, half)) {
+      this.outOfBoundsTimer += deltaTime;
+      if (this.outOfBoundsTimer > 2500) {
+        this.gameOver('驶出场地边界');
+        return;
+      }
+    } else {
+      this.outOfBoundsTimer = 0;
+    }
+
     if (checkCollision(this.vehicleState, level.obstacles)) {
       if (currentTime - this.lastCollisionTime > 500) {
         this.gameState.collisions++;
         this.gameState.score = Math.max(0, this.gameState.score - GAME_CONFIG.COLLISION_PENALTY);
         this.lastCollisionTime = currentTime;
-        this.onCollision?.();
-        
+        this.vehicleState = applyCollisionResponse(this.vehicleState);
+        this.ui.showToast(`碰撞！-${GAME_CONFIG.COLLISION_PENALTY}分`);
+
         if (this.gameState.collisions >= this.gameState.maxCollisions) {
-          this.gameOver();
+          this.gameOver('碰撞次数过多');
           return;
         }
-        
-        this.vehicleState.velocity *= -0.3;
       }
     }
-    
+
+    const parkingPreview = checkParking(this.vehicleState, level.parkingSpot);
+    this.liveParkingScore = parkingPreview.score;
+
     if (currentTime - this.lastParkingCheck > GAME_CONFIG.PARKING_CHECK_INTERVAL) {
-      if (Math.abs(this.vehicleState.velocity) < 0.1) {
-        const parkingResult = checkParking(this.vehicleState, level.parkingSpot);
-        if (parkingResult.success) {
-          const finalScore = calculateFinalScore(parkingResult.score, this.gameState.timeRemaining, level.timeLimit);
-          this.gameState.score = finalScore;
-          this.gameState.isPerfect = isPerfectScore(finalScore);
-          this.gameState.isCompleted = true;
-          
-          updatePlayerData(this.gameState.currentLevel, finalScore, this.gameState.isPerfect);
-          this.onLevelComplete?.(finalScore, this.gameState.isPerfect, this.gameState.currentLevel);
+      if (Math.abs(this.vehicleState.velocity) < 0.12) {
+        if (parkingPreview.success) {
+          this.levelComplete(parkingPreview.score, level);
+          return;
         }
       }
       this.lastParkingCheck = currentTime;
     }
-    
+
     updateVehicleMesh(this.vehicle, this.vehicleState);
-    updateCameraPosition(this.camera, this.vehicleState.position, this.vehicleState.rotation, this.cameraMode, deltaTime);
-    
-    this.notifyStateChange();
+    updateCameraPosition(
+      this.camera,
+      this.vehicleState.position,
+      this.vehicleState.rotation,
+      this.cameraMode,
+      deltaTime
+    );
+
+    this.syncHud();
   }
-  
-  private gameOver(): void {
-    cancelAnimationFrame(this.animationId);
+
+  private levelComplete(baseParkingScore: number, level: Level): void {
+    const finalScore = calculateFinalScore(baseParkingScore, this.gameState.timeRemaining, level.timeLimit);
+    this.gameState.score = finalScore;
+    this.gameState.isPerfect = isPerfectScore(finalScore);
+    this.gameState.isCompleted = true;
+    this.gameState.isPlaying = false;
+
+    const prevBest = getLevelBest(this.gameState.currentLevel);
+    const isNewBest = finalScore > prevBest;
+    updatePlayerData(this.gameState.currentLevel, finalScore, this.gameState.isPerfect);
+
+    this.ui.showToast(this.gameState.isPerfect ? '完美停车！' : '停车成功！');
+    const hasNext = this.gameState.currentLevel < LEVELS.length;
+
+    this.ui.showResult({
+      title: this.gameState.isPerfect ? '完美通关' : '停车成功',
+      score: finalScore,
+      collisions: this.gameState.collisions,
+      isPerfect: this.gameState.isPerfect,
+      isNewBest,
+      hasNext,
+      onNext: () => this.nextLevel(),
+      onRetry: () => this.resetLevel(),
+      onExit: () => this.finishForPlatform(finalScore, true),
+    });
+  }
+
+  private gameOver(reason: string): void {
     this.gameState.isGameOver = true;
     this.gameState.isPlaying = false;
-    this.onGameOver?.(this.gameState.score, this.gameState.currentLevel);
-    this.notifyStateChange();
+    this.ui.showToast(reason);
+
+    this.ui.showResult({
+      title: '闯关失败',
+      score: this.gameState.score,
+      collisions: this.gameState.collisions,
+      isPerfect: false,
+      isNewBest: false,
+      hasNext: false,
+      onNext: () => {},
+      onRetry: () => this.resetLevel(),
+      onExit: () => this.finishForPlatform(this.gameState.score, false),
+    });
   }
-  
+
+  private finishForPlatform(score: number, victory: boolean): void {
+    if (this.endedForPlatform) return;
+    this.endedForPlatform = true;
+    this.platform?.onScore(score, victory, {
+      level: this.gameState.currentLevel,
+      collisions: this.gameState.collisions,
+      perfect: this.gameState.isPerfect,
+      won: victory,
+    });
+    this.platform?.onExit();
+  }
+
+  private syncHud(): void {
+    const name = this.currentLevelConfig?.name ?? '';
+    this.ui.updateHud(this.gameState, name, this.cameraMode, this.liveParkingScore);
+  }
+
   private render(): void {
     this.renderer.render(this.scene, this.camera);
   }
-  
-  private notifyStateChange(): void {
-    this.onStateChange?.({ ...this.gameState });
-  }
-  
-  public on(event: string, callback: (...args: unknown[]) => void): void {
-    switch (event) {
-      case 'stateChange':
-        this.onStateChange = callback as (state: GameState) => void;
-        break;
-      case 'levelComplete':
-        this.onLevelComplete = callback as (score: number, isPerfect: boolean, levelId: number) => void;
-        break;
-      case 'gameOver':
-        this.onGameOver = callback as (score: number, levelId: number) => void;
-        break;
-      case 'collision':
-        this.onCollision = callback as () => void;
-        break;
-    }
-  }
-  
+
   public getState(): GameState {
     return { ...this.gameState };
   }
-  
-  public getCameraMode(): CameraMode {
-    return this.cameraMode;
-  }
-  
+
   public getLevels(): Level[] {
     return [...LEVELS];
   }
-  
+
   public destroy(): void {
     cancelAnimationFrame(this.animationId);
-    
+    window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
     this.clearLevelObjects();
-    
+    this.ui.destroy();
     this.vehicle.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.geometry.dispose();
@@ -365,11 +412,9 @@ export class CarParkingGame {
       }
     });
     this.scene.remove(this.vehicle);
-    
     this.renderer.dispose();
-    this.container.removeChild(this.renderer.domElement);
-    
-    window.removeEventListener('keydown', this.handleKeyDown.bind(this));
-    window.removeEventListener('keyup', this.handleKeyUp.bind(this));
+    if (this.renderer.domElement.parentElement === this.container) {
+      this.container.removeChild(this.renderer.domElement);
+    }
   }
 }

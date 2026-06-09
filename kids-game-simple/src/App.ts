@@ -1,7 +1,7 @@
 import './styles/main.css'
 import type { Game, Buff } from './types'
-import { GAMES, GAME_GUIDES, MOCK_RANK_DATA, GAME_CATEGORIES } from './data/games'
-import { isGameVisible, getGameDisplayConfig } from './data/game-config'
+import { GAMES, GAME_GUIDES, GAME_CATEGORIES, MOCK_RANK_DATA } from './games/gameRegistry'
+import { isGameVisible, getGameDisplayConfig } from './games/gameRegistry'
 import { storageService } from './services/storage'
 import { audioService } from './services/audio'
 import { gameEngine } from './services/gameEngine'
@@ -9,38 +9,7 @@ import { userService } from './services/userService'
 import { AuthModal, MePanel, showToast, injectUserStyles } from './services/userUI'
 import { apiGetBatchUserRank, apiSubmitComment, apiGetComments, tokenStore } from './services/apiClient'
 import { getTopList, type LeaderboardEntry } from './services/leaderboardService'
-import { initEliminate } from './games/eliminate'
-import { initDodge } from './games/dodge'
-import { initColorSort } from './games/colorSort'  // 新版色彩排序（10关卡系统）
-// import { initSort } from './games/sort'  // 旧版已废弃
-import { initPop } from './games/pop'
-import { initStack3D } from './games/stack3d'
-import { initFruitSlice } from './games/fruitSlice'
-import { initAnimalMatch } from './games/animalMatch'
-import { initBouncePath } from './games/bouncePath'
-import { initNeonRun } from './games/neonRun'
-import { initTetris } from './games/tetris'
-import { initCookieCut } from './games/cookieCut/index'
-import { initStarCatcher } from './games/starCatcher'
-import { initBubbleShooter } from './games/bubbleShooter/index'
-import { initSlimeJump } from './games/slimeJump'
-import { initColorTap } from './games/colorTap'
-import { initStack } from './games/stack'
-import { initSpaceShooter } from './games/spaceshooter'
-import { initTowerDefense } from './games/towerDefense'
-import { initMemoryMatch } from './games/memoryMatch'
-import { initSnake } from './games/snake'
-import { initWhackMole } from './games/whackMole/index'
-import { initRacingRun } from './games/racingRun'
-import { initRpgShooter } from './games/rpgShooter'
-import { initRpgShooterTD } from './games/rpgShooterTowerDefense/init'
-import { initDragonShooter } from './games/dragonShooter'
-import { initContraRpg } from './games/contraRpg'
-import { initWangzheRpg } from './games/wangzheRpg'
-import { initPlantsVsZombies } from './games/plantsVsZombies'
-import { initDnfRpg } from './games/dnfRpg'
-import { initMatch3 } from './games/match3'
-import { initVoxelSandbox } from './games/voxelSandbox'
+import { getGameRegistration, initGame } from './games/gameRegistry'
 
 class App {
   private currentGame: Game | null = null
@@ -1455,46 +1424,17 @@ class App {
       }
     }
 
-    switch (this.currentGame.id) {
-      case 'eliminate': initEliminate(gameEngine, () => this.endGame()); break
-      case 'dodge':     initDodge(gameEngine, () => this.endGame()); break
-      case 'sort':      initColorSort(gameEngine, () => this.endGame()); break  // 使用新版色彩排序
-      case 'pop':       initPop(gameEngine, () => this.endGame()); break
-      case 'stack3d':   initStack3D(gameEngine, () => this.endGame()); break
-      case 'fruitSlice': initFruitSlice(gameEngine, () => this.endGame()); break
-      case 'jewelMatch': initAnimalMatch(gameEngine, () => this.endGame()); break
-      case 'bouncePath': initBouncePath(gameEngine, () => this.endGame()); break
-      case 'neonRun': initNeonRun(gameEngine, () => this.endGame()); break
-      case 'tetris': initTetris(gameEngine, () => this.endGame()); break
-            case 'cookieCut': initCookieCut(gameEngine, () => this.endGame(), 1); break
-      case 'starCatcher': initStarCatcher(gameEngine, () => this.endGame()); break
-      case 'bubbleShooter': initBubbleShooter(gameEngine, () => this.endGame()); break
-      case 'slimeJump': initSlimeJump(gameEngine, () => this.endGame()); break
-      case 'colorTap': initColorTap(gameEngine, () => this.endGame()); break
-      case 'stack': initStack(gameEngine, () => this.endGame()); break
-      case 'spaceShooter': initSpaceShooter(gameEngine, () => this.endGame()); break
-      case 'towerDefense': initTowerDefense(gameEngine, () => this.endGame()); break
-      case 'memoryMatch': initMemoryMatch(gameEngine, () => this.endGame()); break
-      case 'snake': initSnake(gameEngine, () => this.endGame()); break
-      case 'whackMole': initWhackMole(gameEngine, () => this.endGame()); break
-      case 'racingRun': 
-        // 随机选择车辆颜色（红/蓝/黄）
-        const colors: Array<'red' | 'blue' | 'yellow'> = ['red', 'blue', 'yellow'];
-        const randomColor = colors[Math.floor(Math.random() * colors.length)];
-        initRacingRun(gameEngine, () => this.endGame(), randomColor); 
-        break
-      case 'rpgShooter': initRpgShooter(gameEngine, () => this.endGame()); break
-      case 'rpgShooterTD': initRpgShooterTD(gameEngine, () => this.endGame()); break
-      case 'dragonShooter': initDragonShooter(gameEngine, () => this.endGame()); break
-      case 'contraRpg': initContraRpg(gameEngine, () => this.endGame()); break
-      case 'wangzheRpg': initWangzheRpg(gameEngine, () => this.endGame()); break
-      case 'plantsVsZombies': initPlantsVsZombies(gameEngine, () => this.endGame()); break
-      case 'dnfRpg': initDnfRpg(gameEngine, () => this.endGame()); break
-      case 'voxelSandbox': 
-        canvas.innerHTML = '';
-        initVoxelSandbox(canvas);
-        break
-    }
+    const registration = getGameRegistration(this.currentGame.id)
+      if (!registration) {
+        console.error(`[App] Game registration not found: ${this.currentGame.id}`)
+        return
+      }
+      
+      if (registration.isSpecial) {
+        canvas.innerHTML = ''
+      }
+      
+      initGame(this.currentGame.id, gameEngine, () => this.endGame())
   }
 
   private async endGame() {

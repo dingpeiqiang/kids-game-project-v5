@@ -5,6 +5,7 @@ import { COLORS } from '../config';
 export function createScene(): THREE.Scene {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(COLORS.SKY);
+  scene.fog = new THREE.Fog(COLORS.SKY, 35, 70);
   return scene;
 }
 
@@ -193,15 +194,76 @@ function createOtherCar(width: number, height: number, depth: number): THREE.Gro
   return group;
 }
 
-export function handleResize(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera): void {
-  const handleResize = () => {
-    const container = renderer.domElement.parentElement;
-    if (container) {
-      renderer.setSize(container.clientWidth, container.clientHeight);
-      camera.aspect = container.clientWidth / container.clientHeight;
-      camera.updateProjectionMatrix();
-    }
+/** 场地边界护栏（视觉 + 出界判定参考） */
+export function createLevelBounds(scene: THREE.Scene, halfSize: number): THREE.Group {
+  const group = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color: COLORS.WALL });
+  const h = 1.2;
+  const t = 0.25;
+  const len = halfSize * 2 + t;
+
+  const walls: [number, number, number, number][] = [
+    [0, h / 2, -halfSize, len],
+    [0, h / 2, halfSize, len],
+    [-halfSize, h / 2, 0, len],
+    [halfSize, h / 2, 0, len],
+  ];
+
+  walls.forEach(([x, y, z, size], i) => {
+    const geo =
+      i < 2
+        ? new THREE.BoxGeometry(size, h, t)
+        : new THREE.BoxGeometry(t, h, size);
+    const mesh = new THREE.Mesh(geo, wallMat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  });
+
+  const lampGeo = new THREE.CylinderGeometry(0.08, 0.1, 3, 8);
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0x4a5568 });
+  const corners = [
+    [-halfSize + 1, halfSize - 1],
+    [halfSize - 1, halfSize - 1],
+    [-halfSize + 1, -halfSize + 1],
+    [halfSize - 1, -halfSize + 1],
+  ];
+  corners.forEach(([cx, cz]) => {
+    const pole = new THREE.Mesh(lampGeo, lampMat);
+    pole.position.set(cx, 1.5, cz);
+    group.add(pole);
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xfff4cc })
+    );
+    bulb.position.set(cx, 3.1, cz);
+    group.add(bulb);
+  });
+
+  scene.add(group);
+  return group;
+}
+
+let resizeHandler: (() => void) | null = null;
+
+export function handleResize(
+  renderer: THREE.WebGLRenderer,
+  camera: THREE.PerspectiveCamera,
+  container?: HTMLElement
+): void {
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler);
+  }
+  resizeHandler = () => {
+    const el = container ?? renderer.domElement.parentElement;
+    if (!el) return;
+    const w = el.clientWidth || window.innerWidth;
+    const h = el.clientHeight || window.innerHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
   };
-  
-  window.addEventListener('resize', handleResize);
+  resizeHandler();
+  window.addEventListener('resize', resizeHandler);
 }

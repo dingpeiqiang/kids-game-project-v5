@@ -63,6 +63,8 @@ export const GAMES: Game[] = [
   { id: 'dnfRpg', name: '地下城勇士', desc: '高仿DNF！选择职业闯荡地下城，连招浮空击败BOSS！', type: '2d', category: 'strategy', tag: '格斗RPG', color: '#8B4513,#FFD700', players: 0, best: 0, preview: 'dnfRpg' },
   { id: 'abyssDungeon', name: '深渊地下城', desc: '3D顶视角RPG！探索随机地牢、击杀怪物、收集装备、挑战BOSS！', type: '3d', category: 'strategy', tag: '3D RPG', color: '#1a1a2e,#6B7280', players: 0, best: 0, preview: 'abyssDungeon' },
   { id: 'rollingBall', name: '云端滚球闯关', desc: '3D物理滚球闯关！收集水晶、躲避障碍，在悬空赛道上挑战极限！', type: '3d', category: 'coordination', tag: '3D闯关', color: '#4169E1,#87CEEB', players: 0, best: 0, preview: 'rollingBall' },
+  { id: 'chinaMap3d', name: '中国地图3D', desc: '3D立体中国地图！学习地理知识，认识各省位置！', type: '3d', category: 'spatial', tag: '3D地理', color: '#FF6B6B,#4ECDC4', players: 0, best: 0, preview: 'chinaMap3d' },
+  { id: 'miniFighter', name: '迷你格斗家', desc: '3D卡通格斗游戏！选择角色，使用技能击败对手！', type: '3d', category: 'strategy', tag: '3D格斗', color: '#FFD700,#FF5722', players: 0, best: 0, preview: 'miniFighter' },
 
   // 🎨 创造力 - 想象力、创新表达
   // (当前暂无专门游戏，可后续添加绘画、音乐类游戏)
@@ -430,6 +432,31 @@ export const GAME_GUIDES: Record<string, GameGuide> = {
     tipsTitle: '💡 小技巧',
     tips: '1. 低速行驶更容易精准控制方向！\n2. 倒车时方向与前进相反，注意控制！\n3. 使用顶视角观察车身与车位的位置关系！\n4. 碰撞障碍物会扣分，累计3次碰撞失败！\n5. 停车越精准、用时越短得分越高！',
     bg: '#3498db'
+  },
+  chinaMap3d: {
+    icon: '🗺️', name: '中国地图3D', desc: '3D立体中国地图！学习地理知识，认识各省位置！',
+    ops: [
+      { icon: '🖱️', text: '<b>鼠标拖拽</b>旋转3D地图' },
+      { icon: '🔍', text: '<b>滚轮</b>缩放地图' },
+      { icon: '👆', text: '<b>点击省份</b>查看详细信息' },
+      { icon: '❓', text: '<b>答题模式</b>测试地理知识' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '1. 拖拽地图可以从不同角度观察！\n2. 点击省份可以学习该省的省会和特色！\n3. 答题模式答对得分，答错不扣分！\n4. 连续答对触发连击加成！',
+    bg: '#FF6B6B'
+  },
+  miniFighter: {
+    icon: '🥊', name: '迷你格斗家', desc: '3D卡通格斗游戏！选择角色，使用技能击败对手！',
+    ops: [
+      { icon: '🕹️', text: '<b>左侧摇杆</b>控制移动方向' },
+      { icon: '👊', text: '<b>普攻键</b>连续攻击' },
+      { icon: '1️⃣', text: '<b>技能1</b>快速连击' },
+      { icon: '2️⃣', text: '<b>技能2</b>范围攻击' },
+      { icon: '3️⃣', text: '<b>大招</b>强力终结技' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '1. 合理使用技能连击造成大量伤害！\n2. 注意躲避敌方攻击，保持走位！\n3. 大招需要蓄力，看准时机释放！\n4. 击败敌人获得金币，解锁新角色！',
+    bg: '#FFD700'
   }
 }
 
