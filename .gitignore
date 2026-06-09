@@ -113,3 +113,8 @@ coverage/
 
 # 调试文件
 .debug/
+
+# ==================== Android/Gradle 特定 ====================
+# Gradle 分发包（文件名过长问题）
+gradle-8.14.3/
+gradle-*.zip/
