@@ -54,7 +54,3 @@ export function destroyCarParking3D(): void {
   }
   document.getElementById('carParking3dRoot')?.remove();
 }
-
-export { CarParkingGame } from './game';
-export { LEVELS } from './config';
-export type { GameState, CameraMode, Level } from './types';
