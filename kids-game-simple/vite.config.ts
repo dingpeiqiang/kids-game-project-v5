@@ -1,80 +1,62 @@
-import { defineConfig } from 'vite'
-import { resolve } from 'path'
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import { resolve } from 'path';
+
+/** 与 kids-game-frontend 共用业务源码，终端包仅独立入口与路由 */
+const frontendSrc = resolve(__dirname, '../kids-game-frontend/src');
 
 export default defineConfig({
-  base: './',
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src'),
+  define: {
+    'import.meta.env.VITE_APP_SHELL': JSON.stringify('simple'),
+  },
+  plugins: [vue()],
+  publicDir: resolve(__dirname, '../kids-game-frontend/public'),
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern',
+        silenceDeprecations: ['legacy-js-api'],
+      },
     },
   },
-  // 依赖预构建优化（加速冷启动）
+  resolve: {
+    alias: {
+      '@': frontendSrc,
+      '@simple': resolve(__dirname, 'src'),
+      '@root': resolve(__dirname, '..'),
+    },
+  },
   optimizeDeps: {
-    include: ['phaser'],
-    // 排除不需要预构建的包
-    exclude: [],
+    exclude: ['phaser'],
+    include: ['vue', 'pinia', 'vue-router', 'axios'],
+  },
+  server: {
+    port: 3001,
+    headers: { 'Cache-Control': 'no-store' },
+    proxy: {
+      '/api': { target: 'http://localhost:8080', changeOrigin: true },
+      '/ws': { target: 'ws://localhost:8080', ws: true },
+      '/public': { target: 'http://localhost:3005', changeOrigin: true },
+      '/files': {
+        target: 'http://106.54.7.205',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/public/, ''),
+      },
+    },
+    fs: { allow: ['..'] },
   },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
-    // 目标浏览器（现代浏览器即可，减小 polyfill 体积）
+    emptyOutDir: true,
     target: 'es2020',
-    // 启用 CSS 代码分割
-    cssCodeSplit: true,
-    // 生成 sourcemap（调试用，生产可关闭）
-    sourcemap: false,
-    // 小于此大小的资源内联为 base64（减少请求数）
-    assetsInlineLimit: 4096,
-    // chunk 大小警告阈值
-    chunkSizeWarningLimit: 1000,
-    // 启用 terser 压缩（生产环境）
-    minify: 'esbuild',
     rollupOptions: {
+      external: ['phaser'],
       output: {
-        // 【核心】文件名带内容哈希 → 内容变化自动更新，未变化走缓存
-        entryFileNames: 'assets/[name]-[hash:10].js',
-        chunkFileNames: 'assets/[name]-[hash:10].js',
-        assetFileNames: 'assets/[name]-[hash:10].[ext]',
-        // 代码分割：将大型依赖拆分为独立 chunk
-        manualChunks(id) {
-          if (id.includes('node_modules/phaser')) {
-            return 'vendor-phaser'
-          }
-          if (id.includes('node_modules/three')) {
-            return 'vendor-three'
-          }
-          if (id.includes('node_modules/@babylonjs')) {
-            return 'vendor-babylon'
-          }
-          if (id.includes('node_modules')) {
-            return 'vendor'
-          }
+        globals: { phaser: 'Phaser' },
+        manualChunks: {
+          vendor: ['vue', 'vue-router', 'pinia'],
         },
       },
     },
   },
-  server: {
-    port: 5100,
-    host: true,
-    // 强制禁用浏览器缓存（开发模式）
-    headers: {
-      'Cache-Control': 'no-store',
-    },
-    // 文件监听优化
-    watch: {
-      ignored: [
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/.git/**',
-        '**/*.md',
-      ],
-    },
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
-  },
-})
+});

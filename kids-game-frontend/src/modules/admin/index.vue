@@ -31,9 +31,9 @@
       </nav>
 
       <div class="sidebar-footer">
-        <button class="sidebar-btn" @click="goHome" title="返回首页">
-          <span class="btn-icon">🏠</span>
-          <span class="btn-text" v-show="!sidebarCollapsed">返回首页</span>
+        <button class="sidebar-btn" @click="goPlayApp" title="儿童游玩端">
+          <span class="btn-icon">🎮</span>
+          <span class="btn-text" v-show="!sidebarCollapsed">儿童游玩端</span>
         </button>
         <button class="sidebar-btn danger" @click="handleLogout" title="退出登录">
           <span class="btn-icon">🚪</span>
@@ -142,7 +142,9 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useUserStore } from '@/core/store/user.store';
-import { adminMenuItems } from './utils/admin-menu.config';
+import { getAdminMenuForRole } from './utils/admin-menu.config';
+import { getCurrentUserType } from '@/utils/auth';
+import { DEFAULT_PLAY_APP_URL } from '@kids-game/shared';
 import { modal } from '@/composables/useUnifiedModalV2';
 import KidUnifiedModalV2 from '@/components/ui/KidUnifiedModalV2.vue';
 
@@ -150,10 +152,17 @@ const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
 
-const menuItems = adminMenuItems.map((item, index) => ({
-  ...item,
-  badge: index === 0 ? '5' : index === 1 ? '12' : undefined,
-}));
+const portalRole = computed(() => {
+  const t = getCurrentUserType();
+  return t === 'admin' || t === 'parent' ? t : 'admin';
+});
+
+const menuItems = computed(() =>
+  getAdminMenuForRole(portalRole.value).map((item, index) => ({
+    ...item,
+    badge: index === 0 ? '5' : index === 1 ? '12' : undefined,
+  }))
+);
 
 const sidebarCollapsed = ref(false);
 const showLogoutConfirm = ref(false);
@@ -162,7 +171,7 @@ const showUserMenu = ref(false);
 const notificationCount = ref(17);
 
 const currentPageTitle = computed(() => {
-  const menuItem = menuItems.find(item => item.path === route.path);
+  const menuItem = menuItems.value.find((item) => item.path === route.path);
   return menuItem ? menuItem.name : '运营后台';
 });
 
@@ -170,8 +179,8 @@ function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value;
 }
 
-function goHome() {
-  router.push('/');
+function goPlayApp() {
+  window.location.href = import.meta.env.VITE_PLAY_URL || DEFAULT_PLAY_APP_URL;
 }
 
 function handleLogout() {
@@ -179,7 +188,11 @@ function handleLogout() {
 }
 
 function confirmLogout() {
-  userStore.logoutAdmin();
+  if (portalRole.value === 'parent') {
+    userStore.logoutParent();
+  } else {
+    userStore.logoutAdmin();
+  }
   router.push('/login');
 }
 

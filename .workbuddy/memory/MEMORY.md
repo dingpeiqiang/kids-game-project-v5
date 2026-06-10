@@ -7,7 +7,6 @@
 | `kids-game-house/` | 游戏实现（snake、puzzle、tank-battle、simple-game 等）|
 | `kids-game-frontend/` | 平台前端（Vue3 + Element Plus）|
 | `kids-game-backend/` | 平台后端（Spring Boot）|
-| `kids-game-auto-test/` | 自动化测试工具 |
 | `kids-game-frame-factory/` | 游戏开发框架（模板驱动，给 AI 使用）|
 
 ---

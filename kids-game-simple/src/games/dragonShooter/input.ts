@@ -41,7 +41,13 @@ export function createInputHandler(
   // 缓存画布尺寸，避免重复获取
   let cachedRect: DOMRect | null = null
   let lastResizeTime = 0
-  
+
+  /** 缩放/旋转后由入口调用，避免触摸坐标偏移 */
+  ;(canvas as HTMLCanvasElement & { __invalidateTouchRect?: () => void }).__invalidateTouchRect = () => {
+    cachedRect = null
+    lastResizeTime = 0
+  }
+
   // 获取画布矩形信息（带缓存）
   function getCanvasRect(): DOMRect {
     const now = Date.now()

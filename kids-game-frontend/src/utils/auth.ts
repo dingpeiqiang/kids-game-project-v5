@@ -1,175 +1,19 @@
 /**
- * 认证工具
- * 提供用户登录状态检查和管理的工具函数
+ * 认证工具（实现见 @kids-game/shared，此处保留原路径以兼容存量引用）
  */
+export {
+  API_CONSTANTS,
+} from '@kids-game/shared';
 
-import { API_CONSTANTS } from '@/services/api.types';
-
-/**
- * 检查用户是否已登录
- * @returns boolean 是否已登录
- */
-export function isLoggedIn(): boolean {
-  try {
-    // 检查是否有有效的token（使用统一的 key）
-    const token = localStorage.getItem(API_CONSTANTS.TOKEN_KEY);
-    const parentToken = localStorage.getItem(API_CONSTANTS.PARENT_TOKEN_KEY);
-    // 管理员也使用 TOKEN_KEY
-    
-    if (!token && !parentToken) {
-      return false;
-    }
-
-    // 检查是否有用户信息
-    const userInfo = localStorage.getItem('userInfo');
-    const parentInfo = localStorage.getItem('parentInfo');
-    const adminInfo = localStorage.getItem('adminInfo');
-    
-    const user = JSON.parse(parentInfo || adminInfo || userInfo || '{}');
-    const userId = user.userId || user.parentId || user.adminId || user.id || 0;
-    
-    return userId > 0;
-    
-  } catch (e) {
-    console.warn('[Auth] 检查登录状态失败:', e);
-    return false;
-  }
-}
-
-/**
- * 获取当前用户ID
- * @returns number 用户ID，未登录返回0
- */
-export function getCurrentUserId(): number {
-  try {
-    if (!isLoggedIn()) {
-      return 0;
-    }
-
-    const userInfo = localStorage.getItem('userInfo');
-    const parentInfo = localStorage.getItem('parentInfo');
-    const adminInfo = localStorage.getItem('adminInfo');
-    
-    const user = JSON.parse(parentInfo || adminInfo || userInfo || '{}');
-    return user.userId || user.parentId || user.adminId || user.id || 0;
-    
-  } catch (e) {
-    console.warn('[Auth] 获取用户ID失败:', e);
-    return 0;
-  }
-}
-
-/**
- * 获取当前用户名
- * @returns string 用户名
- */
-export function getCurrentUserName(): string {
-  try {
-    const userInfo = localStorage.getItem('userInfo');
-    const parentInfo = localStorage.getItem('parentInfo');
-    const adminInfo = localStorage.getItem('adminInfo');
-    
-    const user = JSON.parse(parentInfo || adminInfo || userInfo || '{}');
-    return user.username || user.nickname || user.phone || '未知玩家';
-  } catch (e) {
-    console.warn('[Auth] 获取用户名失败:', e);
-    return '未知玩家';
-  }
-}
-
-/**
- * 获取当前用户类型
- * @returns string 用户类型: 'kid' | 'parent' | 'admin' | 'unknown'
- */
-export function getCurrentUserType(): string {
-  try {
-    if (localStorage.getItem('adminInfo')) {
-      return 'admin';
-    }
-    if (localStorage.getItem('parentInfo')) {
-      return 'parent';
-    }
-    if (localStorage.getItem('userInfo')) {
-      return 'kid';
-    }
-    return 'unknown';
-  } catch (e) {
-    console.warn('[Auth] 获取用户类型失败:', e);
-    return 'unknown';
-  }
-}
-
-/**
- * 清除所有登录信息
- */
-export function clearAllAuth(): void {
-  try {
-    // 清除token（使用统一的 key）
-    localStorage.removeItem(API_CONSTANTS.TOKEN_KEY);
-    localStorage.removeItem(API_CONSTANTS.PARENT_TOKEN_KEY);
-    
-    // 清除用户信息
-    localStorage.removeItem('userInfo');
-    localStorage.removeItem('parentInfo');
-    localStorage.removeItem('adminInfo');
-    
-    console.log('[Auth] 已清除所有登录信息');
-  } catch (e) {
-    console.error('[Auth] 清除登录信息失败:', e);
-  }
-}
-
-/**
- * 检查并重定向到登录页
- * @param redirectPath 重定向路径，默认为'/login'
- * @returns boolean 是否需要重定向
- */
-export function checkAndRedirectToLogin(redirectPath: string = '/login'): boolean {
-  if (!isLoggedIn()) {
-    console.warn('[Auth] 用户未登录，跳转到登录页');
-    if (window.location.pathname !== redirectPath) {
-      window.location.href = redirectPath;
-    }
-    return true;
-  }
-  return false;
-}
-
-/**
- * 验证游戏启动权限
- * @returns boolean 是否有权限启动游戏
- */
-export function validateGameStartPermission(): boolean {
-  // 检查是否为游客模式
-  const isGuest = localStorage.getItem('isGuest') === 'true';
-  
-  if (isGuest) {
-    // 检查游客试玩时间是否已过期
-    const guestStartTime = localStorage.getItem('guestStartTime');
-    if (guestStartTime) {
-      const startTime = parseInt(guestStartTime, 10);
-      const currentTime = Date.now();
-      const elapsedMinutes = (currentTime - startTime) / (1000 * 60); // 转换为分钟
-      
-      // 如果超过10分钟，提示登录或注册
-      if (elapsedMinutes >= 10) {
-        alert('游客试玩时间已到（10分钟），请注册或登录后继续游戏！');
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-        return false;
-      }
-    }
-    return true; // 游客且在10分钟内，允许继续
-  }
-  
-  // 非游客模式，正常检查登录状态
-  if (!isLoggedIn()) {
-    alert('请先登录后再玩游戏');
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
-    return false;
-  }
-  return true;
-}
+export {
+  type ClientUserType,
+  DEFAULT_PLAY_APP_URL,
+  DEFAULT_ADMIN_APP_URL,
+  getCurrentUserType,
+  isLoggedIn,
+  clearAllAuth,
+  getCurrentUserId,
+  getCurrentUserName,
+  checkAndRedirectToLogin,
+  validateGameStartPermission,
+} from '@kids-game/shared';

@@ -2,6 +2,7 @@ import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { createPowerupManager, ActivePowerup } from '../services/powerupManager'
 import { app } from '../App'
+import { getCanvasPaletteForGame } from '../utils/GTRSThemeApplier'
 
 interface Point { x: number; y: number }
 
@@ -193,10 +194,10 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     twinkle: Math.random() * Math.PI * 2
   }))
 
-  // 食物颜色配置
-  const FOOD_COLORS = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4ECDC4', '#FF8E53', '#DDA0DD', '#87CEEB', '#FF69B4']
-  const BONUS_COLOR = '#FFD700'
-  const SPEED_COLOR = '#00E5FF'
+  const palette = getCanvasPaletteForGame('snake')
+  const FOOD_COLORS = palette.foodColors
+  const BONUS_COLOR = palette.bonusColor
+  const SPEED_COLOR = palette.speedColor
 
   // ====== 初始化 ======
   function init() {
@@ -689,9 +690,9 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
 
     // 背景
     const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
-    bgGrad.addColorStop(0, '#0a1a0a')
-    bgGrad.addColorStop(0.5, '#0d2818')
-    bgGrad.addColorStop(1, '#061208')
+    bgGrad.addColorStop(0, palette.backgroundDark)
+    bgGrad.addColorStop(0.5, palette.background)
+    bgGrad.addColorStop(1, palette.backgroundDark)
     ctx.fillStyle = bgGrad
     ctx.fillRect(0, 0, W, H)
 
@@ -699,7 +700,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     stars.forEach(s => {
       s.twinkle += 0.03
       ctx.globalAlpha = 0.3 + Math.sin(s.twinkle) * 0.2
-      ctx.fillStyle = '#A8E6CF'
+      ctx.fillStyle = palette.star
       ctx.beginPath()
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
       ctx.fill()
@@ -711,7 +712,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     ctx.fillRect(OFFSET_X, OFFSET_Y, COLS * CELL, ROWS * CELL)
 
     // 网格线
-    ctx.strokeStyle = 'rgba(46, 204, 113, 0.08)'
+    ctx.strokeStyle = palette.grid
     ctx.lineWidth = 0.5
     for (let x = 0; x <= COLS; x++) {
       ctx.beginPath()
@@ -727,7 +728,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     }
 
     // 边框
-    ctx.strokeStyle = 'rgba(46, 204, 113, 0.3)'
+    ctx.strokeStyle = palette.border
     ctx.lineWidth = 2
     ctx.strokeRect(OFFSET_X, OFFSET_Y, COLS * CELL, ROWS * CELL)
 
@@ -803,11 +804,11 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
 
       if (i === 0) {
         // 蛇头 - 带眼睛
-        ctx.shadowColor = '#2ECC71'
+        ctx.shadowColor = palette.primary
         ctx.shadowBlur = 10
         const headGrad = ctx.createRadialGradient(sx + CELL / 2 - 2, sy + CELL / 2 - 2, 1, sx + CELL / 2, sy + CELL / 2, CELL * 0.55)
-        headGrad.addColorStop(0, '#6BCB77')
-        headGrad.addColorStop(1, '#27AE60')
+        headGrad.addColorStop(0, palette.snakeHead[0])
+        headGrad.addColorStop(1, palette.snakeHead[1])
         ctx.fillStyle = headGrad
         roundedRect(ctx, sx + 1, sy + 1, CELL - 2, CELL - 2, 5)
         ctx.fill()
@@ -898,13 +899,13 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     ctx.fillRect(0, 0, W, 30)
 
     // 分数
-    ctx.fillStyle = '#2ECC71'
+    ctx.fillStyle = palette.primary
     ctx.font = 'bold 13px sans-serif'
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
     ctx.fillText(`🐍 长度: ${snake.length}`, 10, 15)
 
-    ctx.fillStyle = '#FFD700'
+    ctx.fillStyle = palette.accent
     ctx.textAlign = 'center'
     ctx.fillText(`⭐ ${score}`, W / 2, 15)
 

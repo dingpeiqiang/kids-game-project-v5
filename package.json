@@ -1,5 +1,21 @@
 {
-  "dependencies": {
-    "sharp": "^0.34.5"
-  }
+  "name": "kids-game-monorepo",
+  "private": true,
+  "version": "5.0.0",
+  "description": "Kids game platform monorepo",
+  "scripts": {
+    "dev:admin": "pnpm --filter kids-game-frontend dev",
+    "dev:simple": "pnpm --filter kids-game-simple dev",
+    "dev:shared": "pnpm --filter @kids-game/shared dev",
+    "dev:all": "pnpm -r --parallel --filter kids-game-frontend --filter kids-game-simple dev",
+    "build:admin": "pnpm --filter kids-game-frontend build",
+    "build:simple": "pnpm --filter kids-game-simple build",
+    "build": "pnpm run build:shared && pnpm run build:admin && pnpm run build:simple",
+    "build:shared": "pnpm --filter @kids-game/shared build"
+  },
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  },
+  "packageManager": "pnpm@9.15.0"
 }

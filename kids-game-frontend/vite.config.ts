@@ -3,6 +3,9 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_APP_SHELL': JSON.stringify('admin'),
+  },
   plugins: [vue()],
   // 设置静态资源目录为 assets
   publicDir: 'public',

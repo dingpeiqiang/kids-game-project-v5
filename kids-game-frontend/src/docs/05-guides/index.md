@@ -20,6 +20,7 @@
 
 | 文档 | 说明 |
 |------|------|
+| [终端 Canvas 游戏](./canvas-games.md) | **v5 主路径**：`kids-game-simple/src/games` 注册与接入 |
 | [游戏开发对接文档](./game-development.md) | 第三方游戏接入平台的完整指南 |
 | [贪吃蛇游戏开发](./snake-game-dev.md) | 贪吃蛇游戏开发详细指南 |
 | [Phaser 最佳实践](./phaser-best-practice.md) | Phaser 3 最优配置方案 |

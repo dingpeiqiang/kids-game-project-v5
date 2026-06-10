@@ -12,9 +12,11 @@ import {
   BASE_W, BASE_H, CANVAS_W, CANVAS_H, CANVAS_OFFSET_X,
   COLORS, SCENES, DRAGON_CONFIGS, POWERUP_ICONS, BUFF_OPTIONS,
   LEVEL_CONFIGS,
-  MAX_PARTICLES, MAX_POWERUPS, MAX_COIN_DROPS, MAX_FLOAT_TEXTS, MAX_BULLETS,
+  MAX_POWERUPS, MAX_COIN_DROPS,
+  getParticleCap, getFloatTextCap, getBulletCap,
   STORAGE_KEY
 } from './constants'
+import { getDragonViewportLayout } from './viewport'
 import { lightenColor, triggerScreenWave, createRingWave, createEnergyBurst, createFireEffect, createFreezeEffect, createToxinCloud, createSlashWave, createCritEffect, createDefDownEffect } from './effects'
 import {
   createDragon as _createDragon,
@@ -300,9 +302,10 @@ export function updateFloatTexts(state: GameState, dt: number) {
   }
   arr.length = writeIdx
 
-  if (arr.length > MAX_FLOAT_TEXTS) {
-    for (let i = MAX_FLOAT_TEXTS; i < arr.length; i++) recycleFloatText(arr[i])
-    arr.length = MAX_FLOAT_TEXTS
+  const floatCap = getFloatTextCap(getDragonViewportLayout().isMobile)
+  if (arr.length > floatCap) {
+    for (let i = floatCap; i < arr.length; i++) recycleFloatText(arr[i])
+    arr.length = floatCap
   }
 }
 
@@ -325,12 +328,12 @@ export function updateParticles(state: GameState, dt: number) {
   }
   arr.length = writeIdx
   // 性能限制 - 使用更高效的方式截断数组
-  if (state.particles.length > MAX_PARTICLES) {
-    // 回收多余的粒子
-    for (let i = MAX_PARTICLES; i < state.particles.length; i++) {
+  const particleCap = getParticleCap(getDragonViewportLayout().isMobile)
+  if (state.particles.length > particleCap) {
+    for (let i = particleCap; i < state.particles.length; i++) {
       recycleParticle(state.particles[i])
     }
-    state.particles.length = MAX_PARTICLES
+    state.particles.length = particleCap
   }
 }
 
@@ -753,7 +756,8 @@ export function shoot(state: GameState) {
     let angle = baseAngle
     if (count > 1) angle = baseAngle + ((i / (count - 1)) - 0.5) * spread * (count - 1)
 
-    if (state.bullets.length >= MAX_BULLETS) {
+    const bulletCap = getBulletCap(getDragonViewportLayout().isMobile)
+    if (state.bullets.length >= bulletCap) {
       const removed = state.bullets.shift()!
       recycleBullet(removed)
     }
@@ -830,9 +834,10 @@ export function updateBullets(state: GameState, dt: number) {
 
           audioService.hit()
 
+          const particleCapHit = getParticleCap(getDragonViewportLayout().isMobile)
           // 命中粒子效果
           for (let k = 0; k < 4; k++) {
-            if (state.particles.length < MAX_PARTICLES) {
+            if (state.particles.length < particleCapHit) {
               const p = getParticleFromPool()
               p.x = seg.x
               p.y = seg.y
@@ -1800,9 +1805,10 @@ export function saveCustomRoutes(customRoutes: CustomRoute[]): void {
  * 生成爆炸粒子效果（使用对象池）
  */
 function spawnExplosionParticles(state: GameState, x: number, y: number, color: string, size: number): void {
+  const particleCap = getParticleCap(getDragonViewportLayout().isMobile)
   const count = Math.floor(size * 0.6)
   for (let i = 0; i < count; i++) {
-    if (state.particles.length >= MAX_PARTICLES) break
+    if (state.particles.length >= particleCap) break
     const angle = Math.random() * Math.PI * 2
     const speed = 1 + Math.random() * 3
     const p = getParticleFromPool()
@@ -1817,7 +1823,7 @@ function spawnExplosionParticles(state: GameState, x: number, y: number, color: 
     state.particles.push(p)
   }
 
-  if (size > 8 && state.particles.length < MAX_PARTICLES) {
+  if (size > 8 && state.particles.length < particleCap) {
     const p = getParticleFromPool()
     p.x = x
     p.y = y
@@ -1832,7 +1838,7 @@ function spawnExplosionParticles(state: GameState, x: number, y: number, color: 
 
   const emberCount = Math.floor(size * 0.3)
   for (let i = 0; i < emberCount; i++) {
-    if (state.particles.length >= MAX_PARTICLES) break
+    if (state.particles.length >= particleCap) break
     const angle = Math.random() * Math.PI * 2
     const speed = 0.3 + Math.random() * 0.8
     const p = getParticleFromPool()

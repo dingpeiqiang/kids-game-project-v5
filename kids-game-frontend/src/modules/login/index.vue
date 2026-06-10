@@ -139,8 +139,8 @@
             </p>
           </div>
 
-          <!-- 游客试玩按钮 -->
-          <div class="guest-section">
+          <!-- 游客试玩按钮（仅终端应用） -->
+          <div v-if="isPlayShell" class="guest-section">
             <button @click="startGuestMode" class="guest-btn">
               <span class="btn-icon">🎮</span>
               <span>游客试玩（10分钟）</span>
@@ -154,9 +154,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { getDefaultAdminLanding } from '@kids-game/shared';
 import { useUserStore } from '@/core/store/user.store';
+
+const APP_SHELL = import.meta.env.VITE_APP_SHELL || 'legacy';
+const isPlayShell = APP_SHELL === 'simple';
+const isAdminShell = APP_SHELL === 'admin';
+const ADMIN_URL = import.meta.env.VITE_ADMIN_URL || 'http://localhost:3000';
+const PLAY_URL = import.meta.env.VITE_PLAY_URL || 'http://localhost:3001';
 import GlobalLoading from '@/components/GlobalLoading.vue';
 import ErrorDisplay from '@/components/ErrorDisplay.vue';
 import { toast } from '@/services/toast.service';
@@ -214,19 +221,28 @@ async function handleLogin() {
     const result = await userStore.unifiedLogin(formData.value.username, formData.value.password);
     console.log('登录成功:', result);
 
-    // 根据用户类型跳转
+    // 根据用户类型与应用壳跳转
     if (result.userType === 0) {
-      // 儿童 - 不允许单独登录，必须通过家长账号关联
-      toast.error('儿童账号不允许单独登录，请使用家长账号登录后切换');
-      errorMessage.value = '儿童账号不允许单独登录，请使用家长账号登录后切换';
+      if (isAdminShell) {
+        toast.error('儿童账号请使用儿童游玩端登录');
+        userStore.logoutKid();
+        window.location.href = PLAY_URL;
+        return;
+      }
+      toast.success('登录成功！');
+      if (await userStore.kidHasPatternLock()) {
+        await router.push('/pattern-unlock');
+      } else {
+        await router.push('/');
+      }
     } else if (result.userType === 1) {
       // 家长
       toast.success('家长登录成功！');
       
       // 保存家长账号密码（用于下次自动填充）
       localStorage.setItem('parentLoginInfo', JSON.stringify({
-        username: formData.username,
-        password: formData.password,
+        username: formData.value.username,
+        password: formData.value.password,
         lastLoginTime: Date.now(),
       }));
       
@@ -243,16 +259,25 @@ async function handleLogin() {
       localStorage.setItem('parentInfo', JSON.stringify(userStore.parentUser));
       
       // 如果已设置图案解锁，跳转到图案解锁页面
+      if (isPlayShell) {
+        toast.info('家长请使用管理端进行管控');
+        userStore.logoutParent();
+        window.location.href = `${ADMIN_URL.replace(/\/$/, '')}/login`;
+        return;
+      }
       if (userStore.parentHasPatternLock()) {
         await router.push('/pattern-unlock');
       } else {
-        // 否则直接跳转到家长首页
-        await router.push('/parent');
+        await router.push(getDefaultAdminLanding('parent'));
       }
     } else if (result.userType === 2) {
       // 管理员
       toast.success('管理员登录成功！');
-      await router.push('/admin');
+      if (isPlayShell) {
+        window.location.href = `${ADMIN_URL.replace(/\/$/, '')}${getDefaultAdminLanding('admin')}`;
+        return;
+      }
+      await router.push(getDefaultAdminLanding('admin'));
     } else {
       toast.error('未知用户类型');
     }

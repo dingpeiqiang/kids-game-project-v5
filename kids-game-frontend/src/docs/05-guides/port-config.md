@@ -1,163 +1,55 @@
-# 端口配置说明
+# 端口配置说明（v5 双前端）
 
-## 📊 正确的端口配置
+## 日常开发端口
 
-根据 `vite.config.ts` 的实际配置：
+| 服务 | 端口 | 配置 | 访问 |
+|------|------|------|------|
+| **管理端** `kids-game-frontend` | **3000** | `kids-game-frontend/vite.config.ts` | http://localhost:3000 |
+| **终端** `kids-game-simple` | **3001** | `kids-game-simple/vite.config.ts` | http://localhost:3001 |
+| **后端 API** | **8080** | `kids-game-backend` `application.yml` | http://localhost:8080 |
+| MySQL | 3306 | 数据源配置 | localhost:3306 |
+| Redis | 6379 | 缓存配置 | localhost:6379 |
 
-| 服务 | 端口 | 配置文件 | 访问地址 |
-|------|------|----------|----------|
-| **主系统前端** | **3000** | `kids-game-frontend/vite.config.ts` (第18行) | http://localhost:3000 |
-| **贪吃蛇游戏** | **3005** | `kids-game-house/snake-vue3/vite.config.ts` (第13行) | http://localhost:3005 |
-| **后端 API** | 8080 | `application.yml` | http://localhost:8080 |
-| **MySQL** | 3306 | 数据库配置 | localhost:3306 |
+## 访问入口
 
-## 🔗 访问地址
+### 管理端（3000）
 
-### 主系统（端口 3000）
-- **首页**：http://localhost:3000
-- **登录页**：http://localhost:3000/login
-- **儿童首页**：http://localhost:3000/home
-- **家长管控**：http://localhost:3000/parent
+- 登录：http://localhost:3000/login
+- 管理员：http://localhost:3000/admin/dashboard
+- 家长：http://localhost:3000/admin/parent
+- 旧路径 `/parent` 会重定向到 `/admin/parent`
 
-### 贪吃蛇游戏（端口 3005）
-- **游戏主页**：http://localhost:3005
-- **游戏页面**：http://localhost:3005/game
-- **难度选择**：http://localhost:3005/difficulty
+### 终端（3001）
 
-### 后端 API（端口 8080）
-- **API 文档**：http://localhost:8080/doc.html
-- **主题列表**：http://localhost:8080/api/theme/list
-- **游戏列表**：http://localhost:8080/api/game/list
+- 儿童首页：http://localhost:3001/
+- 登录：http://localhost:3001/login
+- 游戏：http://localhost:3001/game/:type/play
+- 访问 `/admin`、`/creator-center` 会跳转到 `VITE_ADMIN_URL`（默认 3000）
 
-## 🔄 用户访问流程
+### 后端（8080）
 
-### 未登录用户访问贪吃蛇游戏
+- Knife4j：http://localhost:8080/doc.html
+- 主题、游戏等：`/api/*`（前端 Vite proxy 到 8080）
 
-```
-访问 http://localhost:3005 (贪吃蛇游戏)
-  ↓
-路由守卫检查 token（不存在）
-  ↓
-跳转到 http://localhost:3000/login?redirect=http://localhost:3005
-  ↓
-用户在主系统登录
-  ↓
-登录成功后跳转回 http://localhost:3005
-```
+## 跨应用环境变量
 
-### 已登录用户访问贪吃蛇游戏
+| 变量 | 使用方 | 说明 |
+|------|--------|------|
+| `VITE_ADMIN_URL` | 终端 | 管理端基址，默认 `http://localhost:3000` |
+| `VITE_PLAY_URL` | 管理端 | 终端基址，默认 `http://localhost:3001` |
+| `VITE_APP_SHELL` | 两前端 | `admin` / `simple`（构建标识） |
 
-```
-访问 http://localhost:3005 (贪吃蛇游戏)
-  ↓
-路由守卫检查 token（存在）
-  ↓
-继续访问，加载主题
-  ↓
-调用 http://localhost:8080/api/theme/list
-  ↓
-正常显示游戏
-```
+## 可选：kids-game-house 独立游戏
 
-## 🚀 启动服务
+独立工程端口以各子项目 `vite.config.ts` 为准（如 snake 可能为 3005），**与** 3000/3001 双前端并行开发时使用。平台主路径不依赖 house 常驻端口。
 
-### 启动主系统
+## 启动命令（根目录）
+
 ```bash
-cd kids-game-frontend
-npm run dev
-# 访问 http://localhost:3000
+pnpm dev:admin    # 3000
+pnpm dev:simple   # 3001
+pnpm dev:all      # 3000 + 3001
+start-dev-all.bat # 8080 + 3000 + 3001
 ```
 
-### 启动贪吃蛇游戏
-```bash
-cd kids-game-house/snake-vue3
-npm run dev
-# 访问 http://localhost:3005
-```
-
-### 启动后端
-```bash
-cd kids-game-backend
-mvn spring-boot:run
-# 访问 http://localhost:8080
-```
-
-## ⚠️ 重要提示
-
-1. **不要混淆端口号**：
-   - ❌ 错误：5173, 5174（这是 Vite 默认端口）
-   - ✅ 正确：3000, 3005（实际配置端口）
-
-2. **跨域访问**：
-   - 贪吃蛇游戏 (3005) 访问后端 (8080) 需要配置 CORS
-   - 主系统 (3000) 也访问后端 (8080)
-
-3. **登录跳转**：
-   - 未登录时从贪吃蛇游戏跳转到主系统登录页
-   - 使用 `redirect` 参数保存当前路径
-   - 登录成功后跳转回来
-
-4. **Token 存储**：
-   - Token 存储在 localStorage
-   - 两个系统共享同一个 localStorage（同域名）
-   - Token 过期时自动跳转到登录页
-
-## 📝 配置文件位置
-
-### 主系统配置
-```javascript
-// kids-game-frontend/vite.config.ts
-server: {
-  port: 3000,  // ✅ 主系统端口
-  proxy: {
-    '/api': {
-      target: 'http://localhost:8080',
-      changeOrigin: true,
-    }
-  }
-}
-```
-
-### 贪吃蛇游戏配置
-```javascript
-// kids-game-house/snake-vue3/vite.config.ts
-server: {
-  port: 3005,  // ✅ 贪吃蛇游戏端口
-}
-```
-
-### 后端配置
-```yaml
-# kids-game-backend/src/main/resources/application.yml
-server:
-  port: 8080  # ✅ 后端端口
-```
-
-## 🧪 测试端口
-
-### 测试主系统
-```bash
-curl http://localhost:3000
-# 应该返回 HTML 页面
-```
-
-### 测试贪吃蛇游戏
-```bash
-curl http://localhost:3005
-# 应该返回 HTML 页面
-```
-
-### 测试后端
-```bash
-curl http://localhost:8080/api/game/list
-# 应该返回 JSON 数据
-```
-
-## 总结
-
-✅ **正确配置**：
-- 主系统：http://localhost:3000
-- 贪吃蛇游戏：http://localhost:3005
-- 后端 API：http://localhost:8080
-
-所有跳转地址已修正为正确的端口号！
+详见 [QUICK_START.md](../QUICK_START.md)、[双前端架构](../04-architecture/dual-frontend.md)。

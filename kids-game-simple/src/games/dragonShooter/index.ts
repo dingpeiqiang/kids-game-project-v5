@@ -7,6 +7,14 @@ import type { GameEngine } from '../../services/gameEngine'
 import { routeLoader } from './routeLoader'
 import type { GameState, CustomRoute } from './types'
 import { performanceMonitor } from './performance'
+import {
+  detectDragonShooterMobile,
+  applyDragonCanvasFit,
+  lockMobilePageScroll,
+  unlockMobilePageScroll,
+  createMobileWrapperStyles,
+  setDragonViewportLayout
+} from './viewport'
 import { apiSubmitGameResult, apiStartGameSession } from '../../services/apiClient'
 import { userService } from '../../services/userService'
 
@@ -42,79 +50,64 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
   const container = document.getElementById('gameCanvas')!
   container.innerHTML = ''
 
-  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-    || (window.visualViewport ? window.visualViewport.width < 768 : window.innerWidth < 768)
+  const isMobile = detectDragonShooterMobile()
+  setDragonViewportLayout({ isMobile, scale: 1 })
 
   const canvas = document.createElement('canvas')
   canvas.width = CANVAS_W
   canvas.height = CANVAS_H
 
+  let disposeViewport: (() => void) | null = null
+
   if (isMobile) {
     const wrapper = document.createElement('div')
     wrapper.id = 'dragon-shooter-wrapper'
-    // 全屏覆盖，无留白（参考 spaceShooter Phaser FIT 模式）
-    wrapper.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 1000;
-      background: #000;
-      overflow: hidden;
-      touch-action: none;
-      margin: 0;
-      padding: 0;
-    `
+    wrapper.style.cssText = createMobileWrapperStyles()
 
-    // Canvas 绝对定位，通过 transform scale + 偏移实现 FIT 模式
-    // 关键：缩放基准是游戏内容区 BASE_W×BASE_H，不是整个画布
-    // 这样游戏内容区会尽量填满屏幕，多余画布区域被 wrapper 的 overflow:hidden 裁掉
     canvas.style.position = 'absolute'
-    canvas.style.top = '0px'
-    canvas.style.left = '0px'
+    canvas.style.top = '0'
+    canvas.style.left = '0'
+    canvas.style.touchAction = 'none'
 
+    let resizeRaf = 0
     const updateCanvasScale = () => {
-      const windowWidth = window.visualViewport?.width ?? window.innerWidth
-      const windowHeight = window.visualViewport?.height ?? window.innerHeight
-
-      // 以游戏内容区为基准计算缩放（类似 Phaser Scale.FIT）
-      const scaleX = windowWidth / BASE_W
-      const scaleY = windowHeight / BASE_H
-      const scale = Math.min(scaleX, scaleY)
-
-      // 缩放后游戏内容区尺寸
-      const scaledBaseW = BASE_W * scale
-      const scaledBaseH = BASE_H * scale
-
-      // 将画布定位到：游戏内容区在视口内居中
-      // 画布左上角 = 居中位置 - 游戏区偏移量 * scale
-      canvas.style.left = ((windowWidth - scaledBaseW) / 2 - CANVAS_OFFSET_X * scale) + 'px'
-      canvas.style.top = ((windowHeight - scaledBaseH) / 2 - CANVAS_OFFSET_Y * scale) + 'px'
-      canvas.style.transform = `scale(${scale})`
-      canvas.style.transformOrigin = '0 0'
+      cancelAnimationFrame(resizeRaf)
+      resizeRaf = requestAnimationFrame(() => {
+        applyDragonCanvasFit(canvas, wrapper)
+        ;(canvas as HTMLCanvasElement & { __invalidateTouchRect?: () => void }).__invalidateTouchRect?.()
+      })
     }
 
     updateCanvasScale()
     window.visualViewport?.addEventListener('resize', updateCanvasScale)
+    window.visualViewport?.addEventListener('scroll', updateCanvasScale)
     window.addEventListener('resize', updateCanvasScale)
+    window.addEventListener('orientationchange', updateCanvasScale)
 
     wrapper.appendChild(canvas)
     document.body.appendChild(wrapper)
+    lockMobilePageScroll()
 
-    // 防止移动端滚动和缩放（参考 spaceShooter）
-    document.body.style.overflow = 'hidden'
-    document.body.style.touchAction = 'none'
-    ;(window as any)._dragonShooterResizeHandler = () => {
+    disposeViewport = () => {
+      cancelAnimationFrame(resizeRaf)
       window.visualViewport?.removeEventListener('resize', updateCanvasScale)
+      window.visualViewport?.removeEventListener('scroll', updateCanvasScale)
       window.removeEventListener('resize', updateCanvasScale)
+      window.removeEventListener('orientationchange', updateCanvasScale)
+      unlockMobilePageScroll()
+      const wrapperEl = document.getElementById('dragon-shooter-wrapper')
+      if (wrapperEl) wrapperEl.remove()
+      setDragonViewportLayout({ isMobile: false, scale: 1 })
     }
   } else {
     canvas.style.cssText = `display: block; width: ${CANVAS_W}px; height: ${CANVAS_H}px;`
     container.appendChild(canvas)
   }
 
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext('2d', { alpha: false })!
+  if (ctx) {
+    ctx.imageSmoothingEnabled = true
+  }
 
   // 🎯 游戏会话管理
   let sessionId: number | null = null
@@ -159,25 +152,8 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       }
     }
     
-    // 🎯 清理移动端样式
-    if (isMobile) {
-      document.body.style.overflow = ''
-      document.body.style.touchAction = ''
-      document.body.style.position = ''
-      document.body.style.width = ''
-      document.body.style.height = ''
-      
-      // 移除 resize 监听器
-      const resizeHandler = (window as any)._dragonShooterResizeHandler
-      if (resizeHandler) {
-        window.removeEventListener('resize', resizeHandler)
-        delete (window as any)._dragonShooterResizeHandler
-      }
-      
-      // 移除 wrapper
-      const wrapper = document.getElementById('dragon-shooter-wrapper')
-      if (wrapper) wrapper.remove()
-    }
+    disposeViewport?.()
+    performanceMonitor.destroy()
     onEnd()
   })
 

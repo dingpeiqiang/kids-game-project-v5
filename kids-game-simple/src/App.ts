@@ -1335,6 +1335,7 @@ class App {
     const isPlantsVsZombies = this.currentGame.id === 'plantsVsZombies'
     const isDnfRpg = this.currentGame.id === 'dnfRpg'
     const isCuteTankBattle = this.currentGame.id === 'cuteTankBattle'
+    const isSuperMario = this.currentGame.id === 'superMario'
 
     // 设置游戏分辨率
     // 魂斗罗RPG：固定横屏 680x320（含左右操作面板）
@@ -1361,6 +1362,9 @@ class App {
     } else if (isCuteTankBattle) {
       gameW = 750
       gameH = 1334
+    } else if (isSuperMario) {
+      gameW = 400
+      gameH = 640
     }
 
     let displayW: number = gameW

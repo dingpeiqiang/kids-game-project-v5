@@ -67,7 +67,7 @@ COS_TEMPORARY_CREDENTIAL.md
 node_modules/
 npm-debug.log
 yarn-error.log
-pnpm-lock.yaml
+# pnpm-lock.yaml 应提交，保证 Monorepo 可复现安装
 
 # 构建输出
 dist/
@@ -91,13 +91,13 @@ vite.config.ts.timestamp-*
 tsconfig.tsbuildinfo
 
 # ==================== 游戏模块特定 ====================
-# Plants vs Zombie
-plants-vs-zombie/node_modules/
-plants-vs-zombie/dist/
+kids-game-house/**/node_modules/
+kids-game-house/**/dist/
 
-# Snake Vue3
-snake-vue3/node_modules/
-snake-vue3/dist/
+# 已移除的历史目录（防止误提交）
+kids-game-frame-factory/
+plants-vs-zombie/
+snake-vue3/
 
 # ==================== 文档和其他 ====================
 # 自动生成的文档

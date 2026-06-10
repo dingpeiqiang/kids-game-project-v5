@@ -21,6 +21,9 @@
       </div>
       
       <div class="batch-actions">
+        <button type="button" @click="openGtrsCreate" class="btn-create secondary">
+          GTRS 编辑器
+        </button>
         <button @click="showCreateModal = true" class="btn-create">
           ➕ 创建官方主题
         </button>
@@ -44,6 +47,7 @@
           <!-- 已上线/已下架主题：显示常规操作 -->
           <template v-else>
             <button @click="viewThemeDetail(theme)" class="btn-view">👁️ 查看</button>
+            <button type="button" @click="openGtrsEdit(theme)" class="btn-edit">🎨 GTRS</button>
             <button @click="editTheme(theme)" class="btn-edit">✏️ 编辑</button>
             <button
               @click="toggleThemeStatus(theme)"
@@ -212,13 +216,27 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { ADMIN_PATHS } from '@kids-game/shared';
 import KidModal from '@/components/ui/KidModal.vue';
 import { dialog, useConfirm } from '@/composables/useDialog';
 import ThemeCard from '@/core/theme/components/ThemeCard.vue';
 import { API_CONSTANTS } from '@/services/api.types';
 
+const router = useRouter();
 const API_BASE = '/api';
+
+function openGtrsCreate() {
+  router.push({ path: ADMIN_PATHS.gtrsEditor, query: { mode: 'create' } });
+}
+
+function openGtrsEdit(theme: ThemeInfo) {
+  router.push({
+    path: ADMIN_PATHS.gtrsEditor,
+    query: { mode: 'edit', themeId: String(theme.themeId) },
+  });
+}
 
 interface ThemeInfo {
   themeId: number;

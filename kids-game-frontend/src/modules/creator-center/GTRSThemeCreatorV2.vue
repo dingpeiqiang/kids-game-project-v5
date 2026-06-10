@@ -447,6 +447,7 @@ import { validateGTRSTheme, type GTRSTheme } from '@/utils/gtrs-validator'
 import defaultTheme from '@/configs/gtrs-template.json'
 import { useUserStore } from '@/core/store/user.store'
 import { gameApi } from '@/services/game-api.service'
+import { ADMIN_PATHS } from '@kids-game/shared'
 
 // ========== 数据定义 ==========
 
@@ -599,7 +600,7 @@ const switchTab = (tab: string) => {
 const goBack = async () => {
   if (isViewOnlyMode.value) {
     // 查看模式下直接返回，不需要提示
-    router.push('/creator-center')
+    router.push(ADMIN_PATHS.creatorCenter)
     return
   }
   
@@ -614,12 +615,12 @@ const goBack = async () => {
           type: 'warning',
         }
       )
-      router.push('/creator-center')
+      router.push(ADMIN_PATHS.creatorCenter)
     } catch {
       // 用户取消
     }
   } else {
-    router.push('/creator-center')
+    router.push(ADMIN_PATHS.creatorCenter)
   }
 }
 

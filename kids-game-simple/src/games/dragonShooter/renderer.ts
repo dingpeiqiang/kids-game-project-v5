@@ -12,6 +12,7 @@ import {
   SCENES, DRAGON_CONFIGS, POWERUP_ICONS, POWERUP_SEGMENT_COLORS
 } from './constants'
 import { lightenColor } from './effects'
+import { getDragonViewportLayout } from './viewport'
 
 // ============================================
 // 道具卡片几何缓存（模块级常量，避免重复计算）
@@ -141,13 +142,31 @@ export function createRenderer(
   function drawDragon(dragon: Dragon) {
     if (!dragon.alive) return
     _frameTime = Date.now() // 每帧缓存一次时间
-    for (let i = dragon.segments.length - 1; i >= 0; i--) {
-      const seg = dragon.segments[i]
-      drawDragonSegment(seg, seg.hp, seg.maxHp, dragon.type, dragon.slowed, dragon._isBoosting)
+    const mobile = getDragonViewportLayout().isMobile
+    const margin = mobile ? 48 : 24
+    const segs = dragon.segments
+    for (let i = segs.length - 1; i >= 0; i--) {
+      const seg = segs[i]
+      // 视口外节段跳过绘制（游戏区已 clip，但仍可减少 save/restore）
+      if (
+        !seg.isHead &&
+        (seg.x < -margin || seg.x > BASE_W + margin ||
+          seg.y < -margin || seg.y > BASE_H + margin)
+      ) {
+        continue
+      }
+      drawDragonSegment(
+        seg, seg.hp, seg.maxHp, dragon.type, dragon.slowed, dragon._isBoosting,
+        mobile && !seg.isHead
+      )
     }
   }
 
-  function drawDragonSegment(seg: DragonSegment, dragonHp: number, dragonMaxHp: number, type: keyof typeof DRAGON_CONFIGS, isSlowed: boolean, isBoosting: boolean) {
+  function drawDragonSegment(
+    seg: DragonSegment, dragonHp: number, dragonMaxHp: number,
+    type: keyof typeof DRAGON_CONFIGS, isSlowed: boolean, isBoosting: boolean,
+    simplifiedDraw = false
+  ) {
     ctx.save()
     ctx.translate(seg.x, seg.y)
 
@@ -158,6 +177,14 @@ export function createRenderer(
 
     // --- 身体节段（非龙头） ---
     if (!seg.isHead) {
+      if (simplifiedDraw && !seg.attachedPowerUp) {
+        ctx.fillStyle = seg.color
+        ctx.beginPath()
+        ctx.arc(0, 0, s, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+        return
+      }
       // 🎯 性能：受伤时才闪烁，减少不必要的计算
       const damagedFlash = hpRatio < 0.3 ? (Math.sin(t * 0.008) * 0.5 + 0.5) * 0.6 : 0
 
@@ -405,25 +432,11 @@ export function createRenderer(
     const playerDrawY = state.playerY ?? BASE_H - 55
     ctx.translate(state.playerX, playerDrawY)
 
-    // 🎯 移动端适配：根据 Canvas 缩放比例调整玩家大小
-    // 获取当前 Canvas 的缩放比例
-    const canvasElement = ctx.canvas as HTMLCanvasElement
-    const canvasStyle = window.getComputedStyle(canvasElement)
-    const transform = canvasStyle.transform
-    let currentScale = 1
-
-    if (transform && transform !== 'none') {
-      const match = transform.match(/matrix\(([^)]+)\)/)
-      if (match) {
-        const values = match[1].split(',').map(Number)
-        currentScale = values[0] || 1  // matrix(a, b, c, d, e, f) 中的 a 值
-      }
-    }
-
-    // 🎯 玩家等级成长系统：尺寸和颜色随关卡提升
+    const { scale: viewportScale, isMobile: isMobileView } = getDragonViewportLayout()
     const level = state.level || 1
-    const levelScale = 1 + (level - 1) * 0.05  // 每关 +5% 尺寸
-    const sizeMultiplier = (currentScale > 1.5 ? (1.5 / currentScale) : 1) * levelScale
+    const levelScale = 1 + (level - 1) * 0.05
+    const sizeMultiplier =
+      (isMobileView && viewportScale > 1.5 ? 1.5 / viewportScale : 1) * levelScale
     const playerSize = 20 * sizeMultiplier  // 基础半径20
     const helmetSize = 15 * sizeMultiplier
     const capeWidth = 18 * sizeMultiplier
@@ -1619,7 +1632,7 @@ export function createRenderer(
       drawStartScreen()
     } else {
       // 路线轨迹（路线存游戏坐标，在 translate 区域内绘制）
-      if (state.dragons.length > 0) {
+      if (state.dragons.length > 0 && !getDragonViewportLayout().isMobile) {
         for (const dragon of state.dragons) {
           drawRouteTrail(dragon)
         }

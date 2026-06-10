@@ -78,6 +78,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/core/store/user.store';
+import { getDefaultAdminLanding } from '@kids-game/shared';
+
+const APP_SHELL = import.meta.env.VITE_APP_SHELL || 'legacy';
+const isPlayShell = APP_SHELL === 'simple';
+const isAdminShell = APP_SHELL === 'admin';
 import PatternLock from '@/components/PatternLock.vue';
 import ErrorDisplay from '@/components/ErrorDisplay.vue';
 import GlobalLoading from '@/components/GlobalLoading.vue';
@@ -151,16 +156,27 @@ async function handlePatternComplete(pattern: string) {
   }
 }
 
+function landingAfterUnlock(type: 'parent' | 'kid') {
+  if (type === 'kid') {
+    if (isAdminShell) {
+      window.location.href = import.meta.env.VITE_PLAY_URL || 'http://localhost:3001';
+      return;
+    }
+    router.push('/');
+    return;
+  }
+  if (isPlayShell) {
+    window.location.href = `${(import.meta.env.VITE_ADMIN_URL || 'http://localhost:3000').replace(/\/$/, '')}${getDefaultAdminLanding('parent')}`;
+    return;
+  }
+  router.push(getDefaultAdminLanding('parent'));
+}
+
 // 处理验证成功
 function handleSuccess() {
-  // 标记图案验证成功
   userStore.confirmPatternVerified();
-  
-  // 切换到对应的用户类型
   userStore.switchUserType(currentUserType.value);
-  
-  // 跳转到首页
-  router.push('/');
+  landingAfterUnlock(currentUserType.value);
 }
 
 // 处理验证失败

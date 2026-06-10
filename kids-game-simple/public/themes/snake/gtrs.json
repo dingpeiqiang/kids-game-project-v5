@@ -1,0 +1,52 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "snake_theme_forest",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "森林贪吃蛇",
+    "isDefault": true,
+    "gameId": "snake",
+    "description": "kids-game-simple 默认 GTRS 主题（颜色元数据 + 可选贴图路径）"
+  },
+  "globalStyle": {
+    "primaryColor": "#2ECC71",
+    "secondaryColor": "#6BCB77",
+    "bgColor": "#0d2818",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "snake_head_light": { "src": "#6BCB77", "type": "png", "alias": "蛇头亮部" },
+        "snake_head_dark": { "src": "#27AE60", "type": "png", "alias": "蛇头暗部" },
+        "snake_body": { "src": "#2ECC71", "type": "png", "alias": "蛇身" },
+        "food_bonus": { "src": "#FFD700", "type": "png", "alias": "金色食物" },
+        "food_speed": { "src": "#00E5FF", "type": "png", "alias": "加速食物" },
+        "star": { "src": "#A8E6CF", "type": "png", "alias": "背景星点" },
+        "grid": { "src": "rgba(46, 204, 113, 0.08)", "type": "png", "alias": "网格" },
+        "border": { "src": "rgba(46, 204, 113, 0.3)", "type": "png", "alias": "边框" },
+        "food_palette": {
+          "src": "[\"#FF6B6B\",\"#FFD93D\",\"#6BCB77\",\"#4ECDC4\",\"#FF8E53\",\"#DDA0DD\",\"#87CEEB\",\"#FF69B4\"]",
+          "type": "png",
+          "alias": "普通食物色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {},
+      "voice": {}
+    },
+    "video": {}
+  }
+}

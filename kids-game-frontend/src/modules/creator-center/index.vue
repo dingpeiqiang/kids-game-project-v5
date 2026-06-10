@@ -243,6 +243,7 @@ import { dialog } from '@/composables/useDialog';
 import { getCurrentUserId } from '@/utils/auth';
 import { ThemePreferenceUtil } from '@/core/utils/theme-preference.util';
 import { themeManager } from '@/core/theme/ThemeManager';
+import { ADMIN_PATHS } from '@kids-game/shared';
 
 const router = useRouter();
 const route = useRoute();
@@ -763,7 +764,7 @@ async function reloadCurrentData() {
 
 // 事件处理函数
 function goBack() {
-  router.push('/parent');
+  router.push(ADMIN_PATHS.dashboard);
 }
 
 function handleViewTheme(theme: any) {
@@ -785,7 +786,7 @@ function handleViewTheme(theme: any) {
   }
   
   router.push({
-    path: '/creator-center/gtrs-editor',
+    path: ADMIN_PATHS.gtrsEditor,
     query
   });
 }

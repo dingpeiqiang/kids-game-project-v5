@@ -39,6 +39,10 @@ export async function prepareGameTheme(gameId: string, themeId?: string | null):
   try {
     const { loadThemeGTRS } = await import('../services/gtrsThemeLoader')
     const result = await loadThemeGTRS(gameId, resolvedThemeId ?? undefined)
+    if (result.success) {
+      const { applyCachedThemeToDocument } = await import('../utils/GTRSThemeApplier')
+      applyCachedThemeToDocument(gameId)
+    }
     lastPrepared = {
       gameId,
       themeId: result.themeId ?? resolvedThemeId,

@@ -1,0 +1,1 @@
+export { initSuperMario, destroySuperMario } from './game'

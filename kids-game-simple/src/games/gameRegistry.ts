@@ -53,6 +53,7 @@ export const GAME_DISPLAY_CONFIG: GameDisplayConfig[] = [
   { id: 'snake',         visible: true,  order: 3,  badge: '推荐' },
   { id: 'neonRun',       visible: true,  order: 4,  badge: '' },
   { id: 'slimeJump',     visible: true,  order: 5,  badge: '' },
+  { id: 'superMario',    visible: true,  order: 6,  badge: '新' },
   { id: 'sort',          visible: true,  order: 1,  badge: '' },
   { id: 'bouncePath',    visible: true,  order: 2,  badge: '' },
   { id: 'starCatcher',   visible: true,  order: 3,  badge: '' },
@@ -359,6 +360,42 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       const { initSlimeJump } = await import('./slimeJump')
       initSlimeJump(engine, onEnd)
     }
+  },
+
+  superMario: {
+    game: {
+      id: 'superMario',
+      name: '超级玛丽',
+      desc: '手游横版闯关！跳跃踩怪、顶砖块、闯过 5 大关到达终点旗！',
+      type: '2d',
+      category: 'coordination',
+      tag: '平台',
+      color: '#e52521,#5c94fc',
+      players: 3200,
+      best: 0,
+      preview: 'superMario',
+    },
+    guide: {
+      icon: '\u{1F3AE}',
+      name: '超级玛丽',
+      desc: '经典平台跳跃！跑向终点旗杆，共 5 个关卡。',
+      ops: [
+        { icon: '\u{1F579}\uFE0F', text: '<b>左侧摇杆</b>左右移动（推到底可加速）' },
+        { icon: '\u2B06\uFE0F', text: '<b>右侧「跳」</b>或键盘 W / 空格跳跃' },
+        { icon: '\u{1F45F}', text: '<b>从上方踩</b>敌人可消灭并获得弹跳' },
+        { icon: '\u2753', text: '<b>顶问号砖</b>获得金币与道具' },
+      ],
+      tipsTitle: '\u{1F4A1} 小技巧',
+      tips: '收集 100 枚金币加 1 条命！蘑菇变大可顶碎砖块。星星无敌可冲撞敌人。注意倒计时！',
+      bg: '#5c94fc',
+    },
+    init: async (engine, onEnd) => {
+      const { initSuperMario } = await import('./superMario')
+      await initSuperMario(engine, onEnd)
+    },
+    destroy: () => {
+      void import('./superMario').then((m) => m.destroySuperMario())
+    },
   },
 
   snake: {

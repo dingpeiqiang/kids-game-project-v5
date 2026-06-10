@@ -11,9 +11,8 @@
 | 位置 | 说明 |
 |------|------|
 | `kids-game-frontend/src/types/gtrs-theme.ts` | GTRS 类型定义（已对齐到 simple） |
-| `kids-game-frontend/src/docs/05-guides/gtrs-integration.md` | Phaser 游戏集成指南 |
+| `kids-game-frontend/src/docs/05-guides/gtrs-integration.md` | Phaser 集成、资源路径与 GTRS 示例 |
 | `kids-game-backend` `ThemeMigrationService` | 旧 `config_json` → GTRS |
-| `kids-game-frame-factory/docs/GTRS_GUIDE.md` | 资源路径与示例 JSON |
 | `kids-game-trs` | TRS 参考实现（逐步废弃，逻辑迁移到 GTRS 加载器） |
 
 ## 已在 simple 中落地的模块
@@ -24,6 +23,10 @@
 | `src/services/gtrsThemeLoader.ts` | 加载 API / 静态 JSON / 默认主题；`migrateTRSOrLegacyToGTRS` |
 | `src/games/gameThemeBridge.ts` | `prepareGameTheme`、纹理 key、`localStorage` 选中主题 |
 | `src/games/gameRegistry.ts` | `initGame` 内统一调用 `prepareGameTheme`（失败不阻断游戏） |
+| `src/utils/GTRSThemeApplier.ts` | `getCanvasPaletteForGame`、`applyGlobalStyleToDocument`（CSS 变量） |
+| `src/utils/gtrsColor.ts` | `hexToRgba`、`darkenHex` |
+| `public/themes/snake/gtrs.json` | 贪吃蛇默认 GTRS（颜色元数据） |
+| `src/games/snake.ts` | 已接入 `getCanvasPaletteForGame('snake')` |
 
 ## 加载顺序
 
@@ -63,8 +66,9 @@ npm run dev
 
 ## 后续工作清单
 
-- [ ] 实现 `GTRSThemeApplier`（Phaser preload / CSS 变量注入）
+- [x] `GTRSThemeApplier`（Canvas 调色板 + CSS 变量；Phaser preload 待补）
 - [ ] `themeService` 与大厅 UI 主题切换（若与 frontend 共用后端）
-- [ ] 为热门游戏（snake、eliminate 等）提交 `gtrs.json` 与占位资源
+- [x] snake：`public/themes/snake/gtrs.json` + Canvas 接主题色
+- [ ] eliminate、tetris 等 `gtrs.json` 与贴图资源
 - [ ] 单元测试：`migrateTRSOrLegacyToGTRS`、`isGTRSFormat`
 - [ ] 与 `kids-game-trs` 依赖解耦，删除重复 TRS 包引用（若曾引入）

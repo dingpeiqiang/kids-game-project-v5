@@ -49,12 +49,29 @@ export const DRAGON_CONFIGS = {
   boss:   { segments: 350, hp: 300, size: 22, color: COLORS.dragonGold,   score: 500 },
 }
 
-// 性能限制
+// 性能限制（桌面）
 export const MAX_PARTICLES = 200
 export const MAX_POWERUPS = 10
 export const MAX_COIN_DROPS = 20
 export const MAX_FLOAT_TEXTS = 30
 export const MAX_BULLETS = 50
+
+/** 移动端更严格的实体上限，减轻 Canvas 绘制压力 */
+export const MAX_PARTICLES_MOBILE = 100
+export const MAX_FLOAT_TEXTS_MOBILE = 18
+export const MAX_BULLETS_MOBILE = 35
+
+export function getParticleCap(isMobile: boolean): number {
+  return isMobile ? MAX_PARTICLES_MOBILE : MAX_PARTICLES
+}
+
+export function getFloatTextCap(isMobile: boolean): number {
+  return isMobile ? MAX_FLOAT_TEXTS_MOBILE : MAX_FLOAT_TEXTS
+}
+
+export function getBulletCap(isMobile: boolean): number {
+  return isMobile ? MAX_BULLETS_MOBILE : MAX_BULLETS
+}
 
 // 道具节段出现概率（约 8%，接近经典祖玛，每 12 节左右一个道具节）
 export const POWERUP_SEGMENT_CHANCE = 0.08
