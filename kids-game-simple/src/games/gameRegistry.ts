@@ -1015,6 +1015,14 @@ export async function initGame(gameId: string, engine: GameEngine, onEnd: () => 
     console.error(`[GameRegistry] Game not found: ${gameId}`)
     return false
   }
+
+  try {
+    const { prepareGameTheme } = await import('./gameThemeBridge')
+    await prepareGameTheme(gameId)
+  } catch (err) {
+    console.warn(`[GameRegistry] GTRS theme prep failed for "${gameId}", using defaults`, err)
+  }
+
   await registration.init(engine, onEnd)
   return true
 }

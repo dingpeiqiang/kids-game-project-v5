@@ -14,6 +14,7 @@ import { apiClient, tokenStore } from './apiClient'
 import type { AuthResponseData, UserInfoData } from './apiClient'
 import { getLevelByExp, ALL_ACHIEVEMENTS } from '../types/user'
 import type { UserAccount, UserSession, GameRecord } from '../types/user'
+import { patternLockService } from './patternLockService'
 import {
   submitScore,
   getTopList,
@@ -637,6 +638,95 @@ class UserService {
     })
 
     if (this._current?.id === uid) this._current = account
+  }
+
+  // ── 图案解锁相关方法 ──────────────────────────────────────────────
+  
+  /**
+   * 保存图案解锁（家长账号）
+   * @param pattern 图案字符串（如 "01245"）
+   */
+  async saveParentPatternLock(pattern: string): Promise<{ ok: boolean; msg: string }> {
+    const userId = tokenStore.getUserId()
+    if (!userId) return { ok: false, msg: '用户未登录' }
+    
+    return patternLockService.savePatternLock(pattern, parseInt(userId, 10), 'PARENT')
+  }
+
+  /**
+   * 保存图案解锁（儿童账号）
+   * @param pattern 图案字符串
+   * @param userId 儿童用户ID
+   */
+  async saveKidPatternLock(pattern: string, userId: number): Promise<{ ok: boolean; msg: string }> {
+    return patternLockService.savePatternLock(pattern, userId, 'KID')
+  }
+
+  /**
+   * 验证图案解锁（家长账号）
+   * @param pattern 用户绘制的图案
+   */
+  async verifyParentPattern(pattern: string): Promise<{ ok: boolean; msg: string }> {
+    const userId = tokenStore.getUserId()
+    if (!userId) return { ok: false, msg: '用户未登录' }
+    
+    return patternLockService.validatePattern(pattern, parseInt(userId, 10), 'PARENT')
+  }
+
+  /**
+   * 验证图案解锁（儿童账号）
+   * @param pattern 用户绘制的图案
+   * @param userId 儿童用户ID
+   */
+  async verifyKidPattern(pattern: string, userId: number): Promise<{ ok: boolean; msg: string }> {
+    return patternLockService.validatePattern(pattern, userId, 'KID')
+  }
+
+  /**
+   * 检查家长账号是否设置了图案解锁
+   */
+  async hasParentPatternLock(): Promise<boolean> {
+    const userId = tokenStore.getUserId()
+    if (!userId) return false
+    
+    return patternLockService.hasPatternLock(parseInt(userId, 10), 'PARENT')
+  }
+
+  /**
+   * 检查儿童账号是否设置了图案解锁
+   * @param userId 儿童用户ID
+   */
+  async hasKidPatternLock(userId: number): Promise<boolean> {
+    return patternLockService.hasPatternLock(userId, 'KID')
+  }
+
+  /**
+   * 删除家长账号的图案解锁
+   */
+  async deleteParentPatternLock(): Promise<{ ok: boolean; msg: string }> {
+    const userId = tokenStore.getUserId()
+    if (!userId) return { ok: false, msg: '用户未登录' }
+    
+    return patternLockService.deletePatternLock(parseInt(userId, 10), 'PARENT')
+  }
+
+  /**
+   * 删除儿童账号的图案解锁
+   * @param userId 儿童用户ID
+   */
+  async deleteKidPatternLock(userId: number): Promise<{ ok: boolean; msg: string }> {
+    return patternLockService.deletePatternLock(userId, 'KID')
+  }
+
+  /**
+   * 获取图案解锁尝试状态
+   */
+  getPatternLockStatus(): { isLocked: boolean; remainingAttempts: number; remainingLockTime: number } {
+    return {
+      isLocked: patternLockService.isLocked,
+      remainingAttempts: patternLockService.remainingAttempts,
+      remainingLockTime: patternLockService.remainingLockTime,
+    }
   }
 }
 

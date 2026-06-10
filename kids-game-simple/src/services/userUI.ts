@@ -5,6 +5,7 @@
 import { userService } from './userService'
 import { getLevelByExp, getLevelProgress, ALL_ACHIEVEMENTS } from '../types/user'
 import { GAMES } from '../games/gameRegistry'
+import { PatternLockPanel, injectPatternLockStyles } from '../components/PatternLockPanel'
 
 // ============================================================
 // 工具：显示 Toast 提示
@@ -357,6 +358,10 @@ export class AuthModal {
       const res = await userService.register(username, pass, nickname, userType)
       console.log('[AuthModal] 注册结果:', res)
       if (res.ok) {
+        // 家长用户注册成功后，强制设置图案解锁
+        if (userType === 'PARENT') {
+          await this.setupParentPatternLock()
+        }
         this.close()
         this.onSuccess?.()
         showToast(res.msg, 'success')
@@ -365,6 +370,23 @@ export class AuthModal {
       }
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '立即注册' }
+    }
+  }
+
+  /**
+   * 家长注册后设置图案解锁
+   */
+  private async setupParentPatternLock(): Promise<void> {
+    injectPatternLockStyles()
+    
+    const result = await PatternLockPanel.showSetPattern('设置家长解锁图案')
+    if (result.ok && result.pattern) {
+      const saveRes = await userService.saveParentPatternLock(result.pattern)
+      if (saveRes.ok) {
+        showToast('图案解锁设置成功！', 'success')
+      } else {
+        showToast('图案解锁设置失败：' + saveRes.msg, 'error')
+      }
     }
   }
 

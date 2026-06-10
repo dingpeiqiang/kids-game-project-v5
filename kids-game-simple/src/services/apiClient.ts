@@ -517,6 +517,107 @@ export async function apiHasSignedInToday(): Promise<{ ok: boolean; data?: boole
 }
 
 // ─────────────────────────────────────────────
+// 图案解锁相关 API
+// ─────────────────────────────────────────────
+
+/**
+ * 图案解锁数据结构
+ */
+export interface PatternLockData {
+  encryptedPattern: string
+  salt: string
+  userId: number
+  userType: 'PARENT' | 'KID'
+}
+
+/**
+ * 保存图案解锁
+ * POST /api/pattern-lock/save
+ */
+export async function apiSavePatternLock(data: PatternLockData): Promise<{ ok: boolean; msg: string }> {
+  try {
+    const res = await request<void>(
+      '/pattern-lock/save',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    )
+    
+    if (res.code === 200) {
+      return { ok: true, msg: res.msg || '保存成功' }
+    }
+    return { ok: false, msg: res.msg || '保存失败' }
+  } catch (error) {
+    console.error('[API] 保存图案解锁失败:', error)
+    return { ok: false, msg: '网络请求失败' }
+  }
+}
+
+/**
+ * 获取图案解锁
+ * GET /api/pattern-lock/get?userId={userId}&userType={userType}
+ */
+export async function apiGetPatternLock(userId: number, userType: 'PARENT' | 'KID'): Promise<{ ok: boolean; data?: PatternLockData; msg?: string }> {
+  try {
+    const res = await request<PatternLockData>(
+      `/pattern-lock/get?userId=${userId}&userType=${userType}`,
+      { method: 'GET' }
+    )
+    
+    if (res.code === 200 && res.data) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 获取图案解锁失败:', error)
+    return { ok: false, msg: '网络请求失败' }
+  }
+}
+
+/**
+ * 检查是否存在图案解锁
+ * GET /api/pattern-lock/exists?userId={userId}&userType={userType}
+ */
+export async function apiHasPatternLock(userId: number, userType: 'PARENT' | 'KID'): Promise<{ ok: boolean; data?: { exists: boolean }; msg?: string }> {
+  try {
+    const res = await request<{ exists: boolean }>(
+      `/pattern-lock/exists?userId=${userId}&userType=${userType}`,
+      { method: 'GET' }
+    )
+    
+    if (res.code === 200) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 检查图案解锁存在失败:', error)
+    return { ok: false, msg: '网络请求失败' }
+  }
+}
+
+/**
+ * 删除图案解锁
+ * DELETE /api/pattern-lock/delete?userId={userId}&userType={userType}
+ */
+export async function apiDeletePatternLock(userId: number, userType: 'PARENT' | 'KID'): Promise<{ ok: boolean; msg: string }> {
+  try {
+    const res = await request<void>(
+      `/pattern-lock/delete?userId=${userId}&userType=${userType}`,
+      { method: 'DELETE' }
+    )
+    
+    if (res.code === 200) {
+      return { ok: true, msg: res.msg || '删除成功' }
+    }
+    return { ok: false, msg: res.msg || '删除失败' }
+  } catch (error) {
+    console.error('[API] 删除图案解锁失败:', error)
+    return { ok: false, msg: '网络请求失败' }
+  }
+}
+
+// ─────────────────────────────────────────────
 // 兼容旧版 apiClient 接口（供 userService 调用）
 // ─────────────────────────────────────────────
 class ApiClient {
@@ -558,6 +659,23 @@ class ApiClient {
 
   async healthCheck() {
     return apiHealthCheck()
+  }
+
+  // ── 图案解锁相关方法 ────────────────────────
+  async savePatternLock(data: PatternLockData) {
+    return apiSavePatternLock(data)
+  }
+
+  async getPatternLock(userId: number, userType: 'PARENT' | 'KID') {
+    return apiGetPatternLock(userId, userType)
+  }
+
+  async hasPatternLock(userId: number, userType: 'PARENT' | 'KID') {
+    return apiHasPatternLock(userId, userType)
+  }
+
+  async deletePatternLock(userId: number, userType: 'PARENT' | 'KID') {
+    return apiDeletePatternLock(userId, userType)
   }
 }
 
