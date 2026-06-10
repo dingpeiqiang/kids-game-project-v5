@@ -173,6 +173,24 @@ const formData = ref({
   password: '',
 });
 
+// ===== 生命周期 =====
+
+onMounted(() => {
+  // 尝试从本地存储加载家长登录信息
+  try {
+    const parentLoginInfo = localStorage.getItem('parentLoginInfo');
+    if (parentLoginInfo) {
+      const info = JSON.parse(parentLoginInfo);
+      // 只自动填充家长账号，不填充儿童账号
+      formData.value.username = info.username || '';
+      formData.value.password = info.password || '';
+      console.log('[Login] 已自动填充家长账号信息');
+    }
+  } catch (err) {
+    console.error('[Login] 加载家长登录信息失败:', err);
+  }
+});
+
 // ===== 方法 =====
 
 async function handleLogin() {
@@ -198,13 +216,39 @@ async function handleLogin() {
 
     // 根据用户类型跳转
     if (result.userType === 0) {
-      // 儿童
-      toast.success('登录成功！开始游戏吧~');
-      await router.push('/');
+      // 儿童 - 不允许单独登录，必须通过家长账号关联
+      toast.error('儿童账号不允许单独登录，请使用家长账号登录后切换');
+      errorMessage.value = '儿童账号不允许单独登录，请使用家长账号登录后切换';
     } else if (result.userType === 1) {
       // 家长
       toast.success('家长登录成功！');
-      await router.push('/parent');
+      
+      // 保存家长账号密码（用于下次自动填充）
+      localStorage.setItem('parentLoginInfo', JSON.stringify({
+        username: formData.username,
+        password: formData.password,
+        lastLoginTime: Date.now(),
+      }));
+      
+      // 更新parentUser信息
+      userStore.parentUser = {
+        parentId: result.userId,
+        username: result.username,
+        nickname: result.nickname,
+        phone: result.phone,
+        token: result.token,
+        fatiguePoints: result.fatiguePoints || 10,
+        dailyAnswerPoints: result.dailyAnswerPoints || 0,
+      };
+      localStorage.setItem('parentInfo', JSON.stringify(userStore.parentUser));
+      
+      // 如果已设置图案解锁，跳转到图案解锁页面
+      if (userStore.parentHasPatternLock()) {
+        await router.push('/pattern-unlock');
+      } else {
+        // 否则直接跳转到家长首页
+        await router.push('/parent');
+      }
     } else if (result.userType === 2) {
       // 管理员
       toast.success('管理员登录成功！');

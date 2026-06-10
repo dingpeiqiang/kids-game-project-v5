@@ -5,6 +5,18 @@
         ← 返回
       </button>
 
+      <!-- 步骤指示器 -->
+      <div v-if="currentRole === 'parent'" class="step-indicator">
+        <div 
+          v-for="(step, index) in parentSteps" 
+          :key="index"
+          :class="['step', { active: currentStep === index, completed: currentStep > index }]"
+        >
+          <span class="step-number">{{ index + 1 }}</span>
+          <span class="step-label">{{ step.label }}</span>
+        </div>
+      </div>
+
       <h1 class="register-title">🎮 注册新账号</h1>
 
       <!-- 错误提示 -->
@@ -19,8 +31,8 @@
       <!-- 全屏Loading遮罩 -->
       <GlobalLoading :loading="isLoading" message="注册中..." />
 
-      <!-- 角色选择 -->
-      <div class="role-selector">
+      <!-- 角色选择（步骤0） -->
+      <div v-if="currentStep === 0" class="role-selector">
         <button
           class="role-btn"
           :class="{ active: currentRole === 'kid' }"
@@ -37,8 +49,12 @@
         </button>
       </div>
 
-      <!-- 家长注册表单 -->
-      <form v-if="currentRole === 'parent'" @submit.prevent="handleParentRegister" class="register-form">
+      <!-- 家长注册表单（步骤1） -->
+      <form 
+        v-if="currentRole === 'parent' && currentStep === 1" 
+        @submit.prevent="handleParentRegister" 
+        class="register-form"
+      >
         <div class="form-group">
           <label for="username">用户名</label>
           <input
@@ -125,12 +141,46 @@
         </div>
 
         <button type="submit" class="register-btn" :disabled="isLoading || !isParentFormValid">
-          {{ isLoading ? '注册中...' : '注册' }}
+          {{ isLoading ? '注册中...' : '下一步：设置图案解锁' }}
         </button>
       </form>
 
+      <!-- 设置图案解锁（步骤2） -->
+      <div v-if="currentRole === 'parent' && currentStep === 2" class="pattern-step">
+        <h2 class="pattern-step-title">🔐 设置图案解锁</h2>
+        <p class="pattern-step-desc">请绘制一个解锁图案（至少连接4个点）</p>
+        
+        <PatternLock 
+          title="绘制图案"
+          subtitle="请绘制解锁图案"
+          @complete="handlePatternSet"
+          @error="handlePatternError"
+        />
+        
+        <button @click="currentStep = 1" class="back-btn-secondary">
+          ← 返回修改信息
+        </button>
+      </div>
+
+      <!-- 确认图案解锁（步骤3） -->
+      <div v-if="currentRole === 'parent' && currentStep === 3" class="pattern-step">
+        <h2 class="pattern-step-title">🔐 确认图案解锁</h2>
+        <p class="pattern-step-desc">请再次绘制相同的图案确认</p>
+        
+        <PatternLock 
+          title="确认图案"
+          subtitle="请再次绘制相同的图案"
+          @complete="handlePatternConfirm"
+          @error="handlePatternError"
+        />
+        
+        <button @click="currentStep = 2" class="back-btn-secondary">
+          ← 返回重新设置
+        </button>
+      </div>
+
       <!-- 儿童注册表单 -->
-      <form v-else @submit.prevent="handleKidRegister" class="register-form">
+      <form v-if="currentRole === 'kid' && currentStep === 0" @submit.prevent="handleKidRegister" class="register-form">
         <div class="form-group">
           <label for="username">用户名</label>
           <input
@@ -253,21 +303,35 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useUserStore } from '@/core/store/user.store';
 import { parentApi } from '@/services/parent-api.service';
 import { kidApi } from '@/services/kid-api.service';
 import { handleApiError } from '@/utils/error-handler.util';
 import GlobalLoading from '@/components/GlobalLoading.vue';
 import ErrorDisplay from '@/components/ErrorDisplay.vue';
+import PatternLock from '@/components/PatternLock.vue';
 
 const router = useRouter();
 const route = useRoute();
+const userStore = useUserStore();
 
 // ===== 状态 =====
 
 const currentRole = ref<'kid' | 'parent'>(route.query.type === 'parent' ? 'parent' : 'kid');
+const currentStep = ref(0); // 0: 表单/角色选择, 1: 家长表单, 2: 设置图案, 3: 确认图案
 const isLoading = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
+
+// 家长注册步骤
+const parentSteps = [
+  { label: '填写信息' },
+  { label: '设置图案' },
+  { label: '确认图案' },
+];
+
+// 图案解锁数据
+const firstPattern = ref('');
 
 const parentForm = ref({
   username: '',
@@ -348,7 +412,6 @@ const isKidFormValid = computed(() => {
     !errors.value.parentPhone
   );
 });
-
 
 
 // ===== 验证方法 =====
@@ -500,11 +563,14 @@ function validateKidParentPhone() {
 // ===== 方法 =====
 
 function goBack() {
-  router.back();
+  if (currentStep.value > 0) {
+    currentStep.value--;
+  } else {
+    router.back();
+  }
 }
 
-
-
+// 家长注册（第一步：提交表单）
 async function handleParentRegister() {
   errorMessage.value = '';
   successMessage.value = '';
@@ -523,16 +589,27 @@ async function handleParentRegister() {
 
   try {
     isLoading.value = true;
-    await parentApi.register(parentForm.value);
-    successMessage.value = '注册成功！正在跳转到登录页...';
-    setTimeout(() => {
-      router.push('/login');
-    }, 1500);
+    // 先注册用户
+    const result = await parentApi.register(parentForm.value);
+    console.log('家长注册成功:', result);
+    
+    // 保存用户信息到store（用于保存图案解锁）
+    userStore.parentUser = {
+      parentId: result.userId || Date.now(),
+      username: parentForm.value.username,
+      nickname: parentForm.value.nickname,
+      phone: parentForm.value.phone,
+      token: result.token,
+      fatiguePoints: 10,
+      dailyAnswerPoints: 0,
+    };
+    localStorage.setItem('parentInfo', JSON.stringify(userStore.parentUser));
+    
+    // 进入下一步：设置图案解锁
+    currentStep.value = 2;
   } catch (err: any) {
     console.error('家长注册失败:', err);
-    // 提取更详细的错误信息
     if (err.response) {
-      // 有响应的错误
       if (err.response.data && err.response.data.msg) {
         errorMessage.value = err.response.data.msg;
       } else if (err.response.data) {
@@ -541,10 +618,8 @@ async function handleParentRegister() {
         errorMessage.value = `注册失败 (${err.response.status}): ${err.response.statusText}`;
       }
     } else if (err.request) {
-      // 请求发送了但没有响应
       errorMessage.value = '网络连接失败,请检查网络后重试';
     } else {
-      // 其他错误
       errorMessage.value = err.message || '注册失败,请稍后重试';
     }
   } finally {
@@ -552,6 +627,44 @@ async function handleParentRegister() {
   }
 }
 
+// 设置图案解锁
+function handlePatternSet(pattern: string) {
+  firstPattern.value = pattern;
+  currentStep.value = 3;
+}
+
+// 确认图案解锁
+async function handlePatternConfirm(pattern: string) {
+  if (pattern !== firstPattern.value) {
+    errorMessage.value = '两次绘制的图案不一致，请重新设置';
+    currentStep.value = 2;
+    firstPattern.value = '';
+    return;
+  }
+
+  try {
+    isLoading.value = true;
+    // 保存图案解锁（同时保存到本地和后端）
+    await userStore.saveParentPatternLock(pattern);
+    
+    successMessage.value = '注册成功！正在跳转到登录页...';
+    setTimeout(() => {
+      router.push('/login');
+    }, 1500);
+  } catch (err: any) {
+    console.error('保存图案解锁失败:', err);
+    errorMessage.value = '保存图案解锁失败，请重试';
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+// 图案错误处理
+function handlePatternError(message: string) {
+  errorMessage.value = message;
+}
+
+// 儿童注册
 async function handleKidRegister() {
   errorMessage.value = '';
   successMessage.value = '';
@@ -588,7 +701,10 @@ async function handleKidRegister() {
 // ===== 生命周期 =====
 
 onMounted(() => {
-  // 不需要加载家长列表了
+  // 如果是家长注册，直接进入表单步骤
+  if (currentRole.value === 'parent') {
+    currentStep.value = 1;
+  }
 });
 </script>
 
@@ -665,6 +781,76 @@ onMounted(() => {
 .back-btn:hover {
   background: #f3f4f6;
   color: #333;
+}
+
+.back-btn-secondary {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #f3f4f6;
+  color: #666;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.back-btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+/* 步骤指示器 */
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.step-number {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+
+.step-label {
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.step.active .step-number {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transform: scale(1.1);
+}
+
+.step.active .step-label {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.step.completed .step-number {
+  background: #10b981;
+  color: white;
+}
+
+.step.completed .step-label {
+  color: #10b981;
 }
 
 .register-title {
@@ -756,6 +942,26 @@ onMounted(() => {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+}
+
+/* 图案解锁步骤样式 */
+.pattern-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pattern-step-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+}
+
+.pattern-step-desc {
+  font-size: 1rem;
+  color: #666;
+  margin: 0 0 1.5rem 0;
 }
 
 .register-form {
@@ -985,6 +1191,10 @@ onMounted(() => {
 
   .avatar-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+
+  .step-label {
+    display: none;
   }
 }
 </style>
