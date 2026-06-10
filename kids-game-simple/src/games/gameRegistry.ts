@@ -70,6 +70,7 @@ export const GAME_DISPLAY_CONFIG: GameDisplayConfig[] = [
   { id: 'voxelRealm',    visible: true,  order: 2,  badge: '新' },
   { id: 'happyDefense',  visible: true, order: 3,  badge: '' },
   { id: 'plantZombieDefense', visible: true, order: 4, badge: '新' },
+  { id: 'plantZombieDefense2d', visible: true, order: 5, badge: '新' },
   { id: 'cloudBallRush3d', visible: true, order: 4, badge: '' },
   { id: 'skyFrenzy', visible: true, order: 5, badge: '' },
   { id: 'cuteTankBattle', visible: true, order: 6, badge: '新' },
@@ -771,6 +772,41 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
     init: async (engine, onEnd) => {
       const { initPlantZombieDefense } = await import('./plantZombieDefense')
       await initPlantZombieDefense(engine, onEnd)
+    },
+  },
+
+  plantZombieDefense2d: {
+    game: {
+      id: 'plantZombieDefense2d',
+      name: '萌植防线 2D',
+      desc: '横屏种萌植收阳光，挡呆萌僵尸守小屋，休闲闯关冲三星！',
+      type: '2d',
+      category: 'strategy',
+      tag: '塔防',
+      color: '#72D566,#FFD23F',
+      players: 0,
+      best: 0,
+      preview: 'plantZombieDefense2d',
+    },
+    guide: {
+      icon: '��',
+      name: '萌植防线 2D',
+      desc: '摆放萌系植物，收集阳光，击退呆萌僵尸，守护小屋通关闯关。',
+      ops: [
+        { icon: '☀️', text: '<b>点击</b>飘落阳光，增加放置资源' },
+        { icon: '��', text: '<b>点草坪格</b>放置选中的植物' },
+        { icon: '🗑️', text: '<b>点已种植物</b>出售，返还 20% 阳光' },
+      ],
+      tipsTitle: '游玩小技巧',
+      tips: '优先种向日葵攒阳光，坚果挡路、豌豆输出，漏怪会扣小屋血量！',
+      bg: '#C2E8B9',
+    },
+    destroy: () => {
+      void import('./plantZombieDefense2d').then(m => m.destroyPlantZombieDefense2d())
+    },
+    init: async (engine, onEnd) => {
+      const { initPlantZombieDefense2d } = await import('./plantZombieDefense2d')
+      await initPlantZombieDefense2d(engine, onEnd)
     },
   },
 

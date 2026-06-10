@@ -1,0 +1,1 @@
+export { initPlantZombieDefense2d, destroyPlantZombieDefense2d } from './game'

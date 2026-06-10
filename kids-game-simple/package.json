@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "type-check": "tsc --noEmit --incremental",
     "clean": "node scripts/clean-cache.js",
+    "assets:pzd2d": "node scripts/generate-pzd2d-assets.mjs",
     "test": "jest",
     "test:coverage": "jest --coverage"
   },

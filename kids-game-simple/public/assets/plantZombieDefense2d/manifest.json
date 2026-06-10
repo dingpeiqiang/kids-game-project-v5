@@ -1,0 +1,37 @@
+{
+  "gameId": "plantZombieDefense2d",
+  "style": "2d-cartoon-kids-lawn-defense",
+  "version": 1,
+  "baseUrl": "/assets/plantZombieDefense2d",
+  "backgrounds": {
+    "lawn_day": "backgrounds/lawn_day.png"
+  },
+  "sprites": {
+    "plant_peashooter": "sprites/plant_peashooter.png",
+    "plant_sunflower": "sprites/plant_sunflower.png",
+    "plant_wallnut": "sprites/plant_wallnut.png",
+    "plant_potato_mine": "sprites/plant_potato_mine.png",
+    "plant_snow_pea": "sprites/plant_snow_pea.png",
+    "zombie_normal": "sprites/zombie_normal.png",
+    "zombie_flag": "sprites/zombie_flag.png",
+    "zombie_bucket": "sprites/zombie_bucket.png",
+    "zombie_sport": "sprites/zombie_sport.png"
+  },
+  "ui": {
+    "icon_sun": "ui/icon_sun.png",
+    "card_frame": "ui/card_frame.png",
+    "house": "ui/house.png",
+    "hp_bar_bg": "ui/hp_bar_bg.png",
+    "pea": "ui/pea.png"
+  },
+  "audio": {
+    "bgm_lawn": "audio/bgm_lawn.ogg",
+    "sun_pop": "audio/sun_pop.ogg",
+    "pea_hit": "audio/pea_hit.ogg",
+    "zombie_pop": "audio/zombie_pop.ogg",
+    "wave_clear": "audio/wave_clear.ogg",
+    "house_hit": "audio/house_hit.ogg",
+    "win": "audio/win.ogg",
+    "lose": "audio/lose.ogg"
+  }
+}
