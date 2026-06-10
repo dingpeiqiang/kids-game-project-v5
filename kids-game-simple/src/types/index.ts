@@ -47,6 +47,8 @@ export interface PlayerData {
   guideSkipped: Record<string, boolean>
   items: Record<string, number> // 道具数量 {道具id: 数量}
   favorites: string[] // 收藏的游戏ID列表
+  dailyRewardCollected: string // 今日是否领过签到奖励（日期字符串）
+  consecutiveLoginDays: number // 连续登录天数
 }
 
 // Buff 定义

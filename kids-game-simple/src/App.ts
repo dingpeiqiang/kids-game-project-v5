@@ -118,7 +118,7 @@ class App {
           <div class="daily-banner" id="dailyBanner">
             <div class="banner-label">每日惊喜</div>
             <div class="banner-title">今日可领取双倍积分卡!</div>
-            <div class="banner-sub">已连续登录 ${u ? u.consecutiveLoginDays : data.loginDays} 天，加油!</div>
+            <div class="banner-sub">已连续登录 ${u ? u.consecutiveLoginDays : data.consecutiveLoginDays} 天，加油!</div>
             <div class="banner-tag">
               <div class="tag-num" id="todayGames">${u ? u.todayGames : data.todayGames}</div>
               <div class="tag-label">今日游戏</div>

@@ -55,6 +55,7 @@ interface LocalGameData {
   hasDoubleCard: boolean
   items: Record<string, number>
   guideSkipped: Record<string, boolean>
+  favorites: string[]
   dailyRewardCollected: string
   weeklyRewardCollected: number
 }
@@ -81,6 +82,7 @@ function defaultGameData(): LocalGameData {
     hasDoubleCard: true,  // 注册礼包
     items: {},
     guideSkipped: {},
+    favorites: [],
     dailyRewardCollected: '',
     weeklyRewardCollected: 0,
   }
@@ -183,7 +185,6 @@ class UserService {
       createdAt: 'createTime' in info && info.createTime
         ? new Date(info.createTime).toISOString()
         : new Date().toISOString(),
-      favorites: gd.favorites || [],
       ...gd,
     }
 
@@ -243,7 +244,6 @@ class UserService {
       password: '',
       avatar: pickAvatar(),
       createdAt: new Date().toISOString(),
-      favorites: gd.favorites || [],
       ...gd,
     }
 
@@ -274,7 +274,6 @@ class UserService {
       password: '',
       avatar: meta.avatar,
       createdAt: new Date().toISOString(),
-      favorites: gd.favorites || [],
       ...gd,
     }
     this._dailyCheckIn()
@@ -302,12 +301,12 @@ class UserService {
 
   // ── 手动签到领奖 ──────────────────────────────────────────────
   async collectDailyReward(): Promise<{ ok: boolean; msg: string; coins?: number }> {
-    if (!this._current) return { ok: false, msg: '请先登录' }
+    if (!this._current) return { ok: false, msg: '请先登录或进入游客模式' }
     
     const today = new Date().toDateString()
     if (this._current.dailyRewardCollected === today) return { ok: false, msg: '今日已领取' }
 
-    // 尝试同步到后端
+    // 尝试同步到后端（仅已登录用户）
     if (this.isLoggedIn) {
       try {
         console.log('[UserService] 尝试同步签到到后端...')
@@ -623,6 +622,7 @@ class UserService {
       hasDoubleCard: account.hasDoubleCard,
       items: account.items,
       guideSkipped: account.guideSkipped,
+      favorites: account.favorites || [],
       dailyRewardCollected: account.dailyRewardCollected,
       weeklyRewardCollected: account.weeklyRewardCollected,
     }

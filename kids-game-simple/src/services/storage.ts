@@ -13,6 +13,8 @@ const KEYS = {
   items: 'platform_items', // 道具数据
   comments: 'platform_comments', // 游戏评论
   favorites: 'platform_favorites', // 收藏列表
+  dailyRewardCollected: 'platform_daily_reward_collected', // 签到奖励领取日期
+  consecutiveLoginDays: 'platform_consecutive_login_days', // 连续登录天数
 }
 
 export class StorageService {
@@ -33,11 +35,20 @@ export class StorageService {
         ? parseInt(localStorage.getItem(KEYS.loginDays) || '1') + 1
         : 1
       localStorage.setItem(KEYS.loginDays, String(loginDays))
+      
+      // 计算连续登录天数
+      const consecutiveLoginDays = lastLogin === yesterday
+        ? parseInt(localStorage.getItem(KEYS.consecutiveLoginDays) || '1') + 1
+        : 1
+      localStorage.setItem(KEYS.consecutiveLoginDays, String(consecutiveLoginDays))
+      
       // 50%概率给双倍卡
       if (localStorage.getItem(KEYS.doubleCard) !== '1' && Math.random() < 0.5) {
         localStorage.setItem(KEYS.doubleCard, '1')
       }
       localStorage.setItem(KEYS.lastLogin, today)
+      // 重置每日签到奖励领取状态
+      localStorage.setItem(KEYS.dailyRewardCollected, '')
     }
 
     this.data = {
@@ -51,8 +62,10 @@ export class StorageService {
       loginDays: parseInt(localStorage.getItem(KEYS.loginDays) || '1'),
       lastLogin: localStorage.getItem(KEYS.lastLogin) || '',
       guideSkipped: JSON.parse(localStorage.getItem(KEYS.guideSkipped) || '{}'),
-      items: JSON.parse(localStorage.getItem(KEYS.items) || '{}'), // 不再需要初始道具
+      items: JSON.parse(localStorage.getItem(KEYS.items) || '{}'),
       favorites: JSON.parse(localStorage.getItem(KEYS.favorites) || '[]'),
+      dailyRewardCollected: localStorage.getItem(KEYS.dailyRewardCollected) || '',
+      consecutiveLoginDays: parseInt(localStorage.getItem(KEYS.consecutiveLoginDays) || '1'),
     }
   }
 
@@ -61,6 +74,33 @@ export class StorageService {
   save(data: PlayerData) {
     this.data = data
     localStorage.setItem(KEYS.favorites, JSON.stringify(data.favorites))
+    localStorage.setItem(KEYS.dailyRewardCollected, data.dailyRewardCollected)
+    localStorage.setItem(KEYS.consecutiveLoginDays, String(data.consecutiveLoginDays))
+    localStorage.setItem(KEYS.coins, String(data.coins))
+  }
+
+  // 签到奖励相关方法
+  collectDailyReward(): { ok: boolean; msg: string; coins?: number } {
+    const today = new Date().toDateString()
+    if (this.data.dailyRewardCollected === today) {
+      return { ok: false, msg: '今日已领取' }
+    }
+
+    const days = this.data.consecutiveLoginDays
+    const baseCoins = 50
+    const bonus = Math.min(days - 1, 6) * 10
+    const coins = baseCoins + bonus
+
+    this.data.dailyRewardCollected = today
+    this.data.coins += coins
+    if (days >= 3) {
+      // 连续3天以上额外奖励经验（游客模式不处理经验）
+    }
+
+    localStorage.setItem(KEYS.dailyRewardCollected, today)
+    localStorage.setItem(KEYS.coins, String(this.data.coins))
+
+    return { ok: true, msg: `签到成功！获得 ${coins} 金币`, coins }
   }
 
   updateBest(gameId: string, score: number) {
