@@ -1,6 +1,6 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
-import { GAME_CONFIG } from './config'
+import { GAME_CONFIG, getDefaultPlayerSpawnY } from './config'
 import { LevelManager } from './levelManager'
 import type { Player, Enemy, Bullet, Powerup, Particle, Platform, GameState, Shockwave, FloatText, Trap } from './types'
 import type { LevelConfig } from './types/level'
@@ -9,11 +9,12 @@ import { drawPlayer, drawEnemies, drawBossHealthBar } from './render/entities'
 import { drawBullets, drawPowerups, drawParticles, drawShockwaves, drawFloatTexts } from './render/effects'
 import { drawUI, drawGameOverScreen, drawVictoryScreen } from './render/ui'
 import { drawTraps } from './render/traps'
-import { updatePlayer } from './logic/player'
+import { updatePlayer, snapPlayerToGround } from './logic/player'
 import { updateEnemies } from './logic/enemies'
 import { updateBullets, updatePowerups, updateParticles, updateShockwaves, updateFloatTexts, checkCollisions } from './logic/combat'
 import { updateCamera } from './logic/progression'
 import { createTraps, updateTraps, resetTrapIdCounter } from './logic/traps'
+import { VirtualJoystick } from './joystick'
 
 export class ContraRpgGame {
   private canvas: HTMLCanvasElement
@@ -22,7 +23,19 @@ export class ContraRpgGame {
   private onEnd: () => void
   private levelManager: LevelManager
   private state: GameState
-  private input: { left: boolean; right: boolean; jump: boolean; shoot: boolean; crouch: boolean; shootUp: boolean; shootDown: boolean; stickX: number; stickY: number }
+  private input: {
+    left: boolean
+    right: boolean
+    jump: boolean
+    shoot: boolean
+    crouch: boolean
+    melee: boolean
+    shootUp: boolean
+    shootDown: boolean
+    stickX: number
+    stickY: number
+  }
+  private movementJoystick: VirtualJoystick
   private rapidFireTimer = 0
   private spreadShotTimer = 0
   private shieldTimer = 0
@@ -42,6 +55,9 @@ export class ContraRpgGame {
   private fadeInTimer = 0 // 关卡开始淡入计时器
   private fadeInDuration = 800 // 淡入持续时间（ms）
   private spawnIndex = 0
+  /** 开局若干帧内不因掉出地图连续扣血 */
+  private spawnGraceFrames = 90
+  private pitHitCooldown = 0
 
   constructor(engine: GameEngine, onEnd: () => void) {
     this.engine = engine
@@ -53,7 +69,27 @@ export class ContraRpgGame {
     this.ctx = this.canvas.getContext('2d')!
     this.ctx.imageSmoothingEnabled = false
 
-    this.input = { left: false, right: false, up: false, down: false, jump: false, shoot: false, crouch: false, shootUp: false, shootDown: false, stickX: 0, stickY: 0 }
+    this.input = {
+      left: false,
+      right: false,
+      jump: false,
+      shoot: false,
+      crouch: false,
+      melee: false,
+      shootUp: false,
+      shootDown: false,
+      stickX: 0,
+      stickY: 0,
+    }
+    const lpw = GAME_CONFIG.LEFT_PANEL_WIDTH
+    const ch = GAME_CONFIG.CANVAS_HEIGHT
+    this.movementJoystick = new VirtualJoystick({
+      x: lpw / 2,
+      y: ch * 0.65,
+      radius: 50,
+      knobRadius: 20,
+      deadZone: 0.12,
+    })
     this.levelManager = new LevelManager()
     this.state = this.createInitialState()
     this.stars = initStars()
@@ -78,7 +114,7 @@ export class ContraRpgGame {
       score: 0,
       player: {
         x: 80,
-        y: GAME_CONFIG.CANVAS_HEIGHT - GAME_CONFIG.PLAYER_HEIGHT - 20,
+        y: getDefaultPlayerSpawnY(),
         width: GAME_CONFIG.PLAYER_WIDTH,
         height: GAME_CONFIG.PLAYER_HEIGHT,
         hp: 30,
@@ -100,6 +136,7 @@ export class ContraRpgGame {
         isCrouching: false,
         consecutiveShots: 0,
         lastShotKeyUp: 0,
+        lastMelee: 0,
       },
       enemies: [],
       bullets: [],
@@ -125,6 +162,7 @@ export class ContraRpgGame {
       if (e.key === 'ArrowRight' || e.key === 'd') this.input.right = true
       if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') this.input.jump = true
       if (e.key === 'j' || e.key === 'k') this.input.shoot = true
+      if (e.key === 'l') this.input.melee = true
       if (e.key === 's' || e.key === 'ArrowDown') this.input.crouch = true
     }
     document.addEventListener('keydown', this.keydownHandler)
@@ -138,6 +176,7 @@ export class ContraRpgGame {
         this.state.player.consecutiveShots = 0
         this.state.player.lastShotKeyUp = Date.now()
       }
+      if (e.key === 'l') this.input.melee = false
       if (e.key === 's' || e.key === 'ArrowDown') this.input.crouch = false
     }
     document.addEventListener('keyup', this.keyupHandler)
@@ -149,23 +188,13 @@ export class ContraRpgGame {
   private touchActions = new Map<number, string>()
   private touchButtons: { id: string; label: string; color: string; pressed: boolean }[] = [
     { id: 'shoot', label: '🔫', color: '#F44336', pressed: false },
+    { id: 'melee', label: '⚔', color: '#9C27B0', pressed: false },
     { id: 'bounce', label: '↗', color: '#4CAF50', pressed: false },
     { id: 'up', label: '⬆', color: '#FF9800', pressed: false },
-    { id: 'down', label: '⬇', color: '#FF9800', pressed: false },
+    { id: 'down', label: '↘', color: '#FF9800', pressed: false },
     { id: 'left', label: '⬅', color: '#2196F3', pressed: false },
     { id: 'right', label: '➡', color: '#2196F3', pressed: false },
   ]
-  private btnInputMap: Record<string, keyof typeof this.input> = {
-    shoot: 'shoot',
-    bounce: 'jump',
-    up: 'up',
-    down: 'down',
-    left: 'left',
-    right: 'right',
-  }
-  private readonly joystickDoubleClickThreshold = 500 // 双击时间阈值（毫秒）
-  private lastJoystickClickTime = 0 // 上次遥感点击时间
-  
   // 射击锁定相关
   private shootLocked = false // 射击锁定状态
   private lastShootClickTime = 0 // 上次射击按钮点击时间
@@ -178,6 +207,7 @@ export class ContraRpgGame {
   private shootStartX = 0 // 射击触摸起始X坐标
   private shootStartY = 0 // 射击触摸起始Y坐标
   private shootDirectionThreshold = 20 // 触发方向改变的最小滑动距离
+  private joystickTouchId: number | null = null
 
   private cachedRects: { id: string; x: number; y: number; r: number }[] | null = null
   private cachedRectsKey = ''
@@ -268,43 +298,56 @@ export class ContraRpgGame {
     const touchY = e.clientY - rect.top
     const { gameX, gameY } = this.touchToGame(touchX, touchY)
 
+    if (
+      gameX < GAME_CONFIG.LEFT_PANEL_WIDTH &&
+      this.movementJoystick.containsPoint(gameX, gameY) &&
+      this.joystickTouchId === null
+    ) {
+      this.joystickTouchId = 0
+      this.touchActions.set(0, 'joystick')
+      this.movementJoystick.activate(gameX, gameY, 0)
+      this.syncJoystickInput()
+      return
+    }
+
     const btn = this.findBtn(totalWidth, gameHeight, gameX, gameY)
     if (btn) {
       this.touchActions.set(0, btn)
-      switch (btn) {
-        case 'shoot':
-          this.touchButtons[0].pressed = true
-          this.input.shoot = true
-          break
-        case 'bounce':
-          this.touchButtons[1].pressed = true
-          this.input.jump = true
-          break
+      this.pressTouchButton(btn)
+      if (btn === 'shoot') {
+        this.input.shoot = true
       }
     }
   }
 
   private onMouseMove(e: MouseEvent) {
     e.preventDefault()
+    if (this.touchActions.get(0) !== 'joystick') return
+    const rect = this.cachedCanvasRect!
+    const touchX = e.clientX - rect.left
+    const touchY = e.clientY - rect.top
+    const { gameX, gameY } = this.touchToGame(touchX, touchY)
+    this.movementJoystick.update(gameX, gameY)
+    this.syncJoystickInput()
   }
-  
-  // 鼠标释放事件处理
+
   private onMouseUp(e: MouseEvent) {
     e.preventDefault()
     const action = this.touchActions.get(0)
-    if (action) {
-      this.touchActions.delete(0)
-      switch (action) {
-        case 'shoot':
-          this.touchButtons[0].pressed = false
-          this.input.shoot = false
-          break
-        case 'bounce':
-          this.touchButtons[1].pressed = false
-          this.input.jump = false
-          break
-      }
+    if (!action) return
+    this.touchActions.delete(0)
+    if (action === 'joystick') {
+      this.movementJoystick.deactivate()
+      this.joystickTouchId = null
+      this.input.stickX = 0
+      this.input.stickY = 0
+      this.input.left = false
+      this.input.right = false
+      this.input.jump = false
+      this.input.crouch = false
+      return
     }
+    this.releaseTouchButton(action)
   }
 
   private getBtnRects(cw: number, ch: number): { id: string; x: number; y: number; r: number }[] {
@@ -323,17 +366,16 @@ export class ContraRpgGame {
 
     // 攻击按钮（右侧面板）- 放大并向左移动
     const atkCenterX = cw - rpw / 2 - 20 // 向左移动20像素
-    const atkR = 45 // 放大按钮半径（从32增加到45）
-    const atkSpread = 45 // 射击按钮和弹跳按钮之间的间距
+    const atkR = 40
+    const atkSpread = 38
 
     this.cachedRects = [
-      // 方向键 - 十字布局
       { id: 'up', x: dirCenterX, y: dirCenterY - dirGap, r: dirR },
       { id: 'down', x: dirCenterX, y: dirCenterY + dirGap, r: dirR },
       { id: 'left', x: dirCenterX - dirGap, y: dirCenterY, r: dirR },
       { id: 'right', x: dirCenterX + dirGap, y: dirCenterY, r: dirR },
-      // 攻击按钮（放大并向左移动）
-      { id: 'shoot', x: atkCenterX, y: centerY - atkSpread, r: atkR },
+      { id: 'shoot', x: atkCenterX, y: centerY - atkSpread * 1.35, r: atkR },
+      { id: 'melee', x: atkCenterX - atkSpread * 0.85, y: centerY - atkSpread * 0.15, r: 30 },
       { id: 'bounce', x: atkCenterX, y: centerY + atkSpread, r: atkR },
     ]
     this.cachedRectsKey = key
@@ -350,6 +392,76 @@ export class ContraRpgGame {
     return null
   }
 
+  private syncJoystickInput() {
+    const out = this.movementJoystick.getState().output
+    this.input.stickX = out.x * 50
+    this.input.stickY = out.y * 50
+    if (out.magnitude <= 0.15) {
+      return
+    }
+    this.input.left = out.x < -0.2
+    this.input.right = out.x > 0.2
+    this.input.jump = out.y < -0.35
+    this.input.crouch = out.y > 0.45
+  }
+
+  private pressTouchButton(btn: string) {
+    const b = this.touchButtons.find(x => x.id === btn)
+    if (b) b.pressed = true
+    switch (btn) {
+      case 'shoot':
+        break
+      case 'melee':
+        this.input.melee = true
+        break
+      case 'bounce':
+        this.input.jump = true
+        break
+      case 'up':
+        this.shootAngle = -Math.PI / 2
+        break
+      case 'down':
+        this.input.crouch = true
+        break
+      case 'left':
+        this.input.left = true
+        break
+      case 'right':
+        this.input.right = true
+        break
+    }
+  }
+
+  private releaseTouchButton(btn: string) {
+    const b = this.touchButtons.find(x => x.id === btn)
+    if (b) b.pressed = false
+    switch (btn) {
+      case 'shoot':
+        if (!this.shootLocked) this.input.shoot = false
+        this.shootTouchActive = false
+        this.shootAngle = this.state.player.facingRight ? 0 : Math.PI
+        break
+      case 'melee':
+        this.input.melee = false
+        break
+      case 'bounce':
+        this.input.jump = false
+        break
+      case 'up':
+        this.shootAngle = this.state.player.facingRight ? 0 : Math.PI
+        break
+      case 'down':
+        this.input.crouch = false
+        break
+      case 'left':
+        this.input.left = false
+        break
+      case 'right':
+        this.input.right = false
+        break
+    }
+  }
+
   private onTouchStart(e: TouchEvent) {
     e.preventDefault()
     this.touchFadeTimer = 3000
@@ -363,6 +475,18 @@ export class ContraRpgGame {
       const touchX = t.clientX - rect.left
       const touchY = t.clientY - rect.top
       const { gameX, gameY } = this.touchToGame(touchX, touchY)
+
+      if (
+        gameX < GAME_CONFIG.LEFT_PANEL_WIDTH &&
+        this.movementJoystick.containsPoint(gameX, gameY) &&
+        this.joystickTouchId === null
+      ) {
+        this.joystickTouchId = t.identifier
+        this.touchActions.set(t.identifier, 'joystick')
+        this.movementJoystick.activate(gameX, gameY, t.identifier)
+        this.syncJoystickInput()
+        continue
+      }
 
       const btn = this.findBtn(totalWidth, gameHeight, gameX, gameY)
       if (btn) {
@@ -389,25 +513,10 @@ export class ContraRpgGame {
         }
         
         this.touchActions.set(t.identifier, btn)
-        const b = this.touchButtons.find(b => b.id === btn)
-        if (b) b.pressed = true
-        
-        // 设置方向键输入
-        if (btn === 'up') {
-          // 上键：控制射击方向向上
-          this.shootAngle = -Math.PI / 2
+        this.pressTouchButton(btn)
+        if (btn === 'shoot' && !this.shootLocked) {
+          this.input.shoot = true
         }
-        if (btn === 'down') {
-          // 下键：控制射击方向向下
-          this.shootAngle = Math.PI / 2
-        }
-        if (btn === 'left') this.input.left = true
-        if (btn === 'right') this.input.right = true
-        
-        // 设置跳跃按钮
-        if (btn === 'bounce') this.input.jump = true
-        
-        // 如果已锁定，保持射击状态
         if (btn === 'shoot' && this.shootLocked) {
           this.input.shoot = true
         }
@@ -429,7 +538,13 @@ export class ContraRpgGame {
 
       // 获取当前触摸点之前对应的按钮
       const prevBtn = this.touchActions.get(t.identifier)
-      
+
+      if (prevBtn === 'joystick') {
+        this.movementJoystick.update(gameX, gameY)
+        this.syncJoystickInput()
+        continue
+      }
+
       // 查找当前触摸位置的按钮
       const currBtn = this.findBtn(totalWidth, gameHeight, gameX, gameY)
 
@@ -492,46 +607,24 @@ export class ContraRpgGame {
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i]
       const action = this.touchActions.get(t.identifier)
+      if (action === 'joystick') {
+        this.touchActions.delete(t.identifier)
+        this.movementJoystick.deactivate(t.identifier)
+        this.joystickTouchId = null
+        this.input.stickX = 0
+        this.input.stickY = 0
+        this.input.left = false
+        this.input.right = false
+        this.input.jump = false
+        this.input.crouch = false
+        continue
+      }
       if (action) {
         this.touchActions.delete(t.identifier)
-        
-        // 更新按钮状态
-        const b = this.touchButtons.find(b => b.id === action)
-        if (b) b.pressed = false
-        
-        // 重置射击方向控制状态
-        if (action === 'shoot') {
-          this.shootTouchActive = false
-          // 松开射击按钮后恢复水平射击方向
-          this.shootAngle = this.state.player.facingRight ? 0 : Math.PI
-        }
-        
-        // 射击按钮如果已锁定，保持射击状态
         if (action === 'shoot' && this.shootLocked) {
           this.input.shoot = true
         } else {
-          // 释放所有按钮输入
-          switch (action) {
-            case 'shoot':
-              this.input.shoot = false
-              break
-            case 'bounce':
-              this.input.jump = false
-              break
-            // 上下键控制射击方向，松开后恢复水平射击
-            case 'up':
-              this.shootAngle = this.state.player.facingRight ? 0 : Math.PI
-              break
-            case 'down':
-              this.shootAngle = this.state.player.facingRight ? 0 : Math.PI
-              break
-            case 'left':
-              this.input.left = false
-              break
-            case 'right':
-              this.input.right = false
-              break
-          }
+          this.releaseTouchButton(action)
         }
       }
     }
@@ -550,7 +643,9 @@ export class ContraRpgGame {
     this.input.shootDown = false
     this.input.stickX = 0
     this.input.stickY = 0
-    this.joystickActive = false
+    this.input.melee = false
+    this.joystickTouchId = null
+    this.movementJoystick.deactivate()
     this.touchActions.clear()
   }
 
@@ -683,45 +778,8 @@ export class ContraRpgGame {
       }
     }
 
-    // 绘制遥感区域
-    const joystickX = lpw / 2
-    const joystickY = ch * 0.65
-    const joystickOuterR = 50
-    const joystickInnerR = 20
-    
-    // 外圈
-    ctx.save()
-    ctx.globalAlpha = this.touchAlpha * 0.3
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.arc(joystickX, joystickY, joystickOuterR, 0, Math.PI * 2)
-    ctx.stroke()
-    
-    // 内圈（遥感手柄）
-    let innerX = joystickX
-    let innerY = joystickY
-    if (this.joystickActive) {
-      // 根据遥感偏移计算内圈位置
-      const dx = this.input.stickX
-      const dy = this.input.stickY
-      innerX += dx * 0.8
-      innerY += dy * 0.8
-    }
-    
-    ctx.globalAlpha = this.touchAlpha * 0.5
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'
-    ctx.beginPath()
-    ctx.arc(innerX, innerY, joystickInnerR, 0, Math.PI * 2)
-    ctx.fill()
-    
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.arc(innerX, innerY, joystickInnerR, 0, Math.PI * 2)
-    ctx.stroke()
-    
-    ctx.restore()
+    ctx.globalAlpha = this.touchAlpha
+    this.movementJoystick.draw(ctx)
 
     ctx.restore()
   }
@@ -729,6 +787,10 @@ export class ContraRpgGame {
   private destroyed = false
 
   private startGame() {
+    snapPlayerToGround(this.state.player, this.state.platforms)
+    this.spawnGraceFrames = 90
+    this.pitHitCooldown = 0
+    this.state.player.invincible = Math.max(this.state.player.invincible, 120)
     this.fadeInTimer = this.fadeInDuration
     this.gameLoop()
   }
@@ -775,7 +837,12 @@ export class ContraRpgGame {
     updateClouds(this.clouds, this.state.isScrolling)
 
     const canDoubleJump = this.state.currentLevel >= GAME_CONFIG.DOUBLE_JUMP_UNLOCK_LEVEL
-    const effectiveAnalogX = this.input.left ? -1 : (this.input.right ? 1 : 0)
+    let effectiveAnalogX = 0
+    if (this.input.left) effectiveAnalogX -= 1
+    if (this.input.right) effectiveAnalogX += 1
+    if (Math.abs(this.input.stickX) > 8) {
+      effectiveAnalogX = Math.max(-1, Math.min(1, this.input.stickX / 50))
+    }
     const result = updatePlayer(
       this.state.player,
       this.input,
@@ -794,39 +861,23 @@ export class ContraRpgGame {
     // 存储射击角度用于渲染
     this.shootAngle = result.shootAngle
 
-    // 调试日志：玩家状态更新后
-    if (this.state.player.y > GAME_CONFIG.CANVAS_HEIGHT - 100 || !this.state.player.isGrounded) {
-      console.log('[ContraRpg] 📊 玩家状态检查:', {
-        playerX: this.state.player.x,
-        playerY: this.state.player.y,
-        playerVy: this.state.player.vy,
-        playerGrounded: this.state.player.isGrounded,
-        playerWidth: this.state.player.width,
-        playerHeight: this.state.player.height,
-        isCrouching: this.state.player.isCrouching,
-        platformCount: this.state.platforms.length,
-        groundY: GAME_CONFIG.CANVAS_HEIGHT - GAME_CONFIG.PLAYER_HEIGHT - 40,
-        frameCount: this.frameCount,
-        currentLevel: this.state.currentLevel,
-        levelCompleteTriggered: this.levelCompleteTriggered,
-        fadeInTimer: this.fadeInTimer
-      })
+    if (this.spawnGraceFrames > 0) {
+      this.spawnGraceFrames--
     }
 
-    // 检查玩家是否掉出地图外
+    if (this.pitHitCooldown > 0) {
+      this.pitHitCooldown -= 16
+    }
+
     if (this.state.player.y > GAME_CONFIG.CANVAS_HEIGHT + 50) {
-      console.log('[ContraRpg] ❌ 玩家掉出地图外！', {
-        playerY: this.state.player.y,
-        canvasHeight: GAME_CONFIG.CANVAS_HEIGHT,
-        playerVy: this.state.player.vy,
-        playerGrounded: this.state.player.isGrounded,
-        playerInvincible: this.state.player.invincible,
-        levelCompleteTriggered: this.levelCompleteTriggered,
-        currentLevel: this.state.currentLevel,
-        cameraX: this.state.cameraX,
-        frameCount: this.frameCount
-      })
-      this.playerHit()
+      if (this.spawnGraceFrames <= 0 && this.pitHitCooldown <= 0) {
+        this.pitHitCooldown = 800
+        this.playerHit()
+        snapPlayerToGround(this.state.player, this.state.platforms)
+        this.state.player.x = Math.max(80, this.state.player.x)
+      } else if (this.spawnGraceFrames > 0) {
+        snapPlayerToGround(this.state.player, this.state.platforms)
+      }
     }
 
     this.state.cameraX = updateCamera(this.state.player.x, this.state.cameraX)
@@ -864,23 +915,13 @@ export class ContraRpgGame {
     const trapResult = updateTraps(this.state.traps, this.state.player, this.state.cameraX, this.frameCount)
     
     if (trapResult.playerHit) {
-      console.log('[ContraRpg] 陷阱击中检测:', {
-        playerHit: true,
-        damage: trapResult.damage,
-        playerInvincible: this.state.player.invincible,
-        shieldTimer: this.shieldTimer,
-        transformTimer: this.transformTimer,
-        willTakeDamage: this.state.player.invincible <= 0 && this.shieldTimer <= 0 && this.transformTimer <= 0
-      })
-      
-      if (this.state.player.invincible <= 0 && this.shieldTimer <= 0 && this.transformTimer <= 0) {
-        console.log('[ContraRpg] ⚠️ 玩家受到陷阱伤害！', {
-          beforeHp: this.state.player.hp,
-          damage: trapResult.damage,
-          afterHp: this.state.player.hp - trapResult.damage,
-          lives: this.state.player.lives
-        })
-        
+      const trapCanHit =
+        !this.state.player.isSliding &&
+        this.state.player.invincible <= 0 &&
+        this.shieldTimer <= 0 &&
+        this.transformTimer <= 0
+
+      if (trapCanHit) {
         this.state.player.hp -= trapResult.damage
         this.state.player.invincible = GAME_CONFIG.INVINCIBLE_DURATION
         this.damageFlash = 1
@@ -888,12 +929,6 @@ export class ContraRpgGame {
         audioService.pop()
         
         if (this.state.player.hp <= 0) {
-          console.log('[ContraRpg] ❌ 玩家HP归零！', {
-            currentHp: this.state.player.hp,
-            lives: this.state.player.lives,
-            gameOver: this.state.player.lives <= 0
-          })
-          
           if (this.state.player.lives > 0) {
             this.respawnPlayer()
           } else {
@@ -902,8 +937,6 @@ export class ContraRpgGame {
             setTimeout(() => this.onEnd(), 1000)
           }
         }
-      } else {
-        console.log('[ContraRpg] 玩家有护盾/无敌保护，免受陷阱伤害')
       }
     }
 
@@ -933,23 +966,9 @@ export class ContraRpgGame {
     )
 
     if (collisionResult.gameOver) {
-      console.log('[ContraRpg] ❌ collisionResult.gameOver 触发！', {
-        playerHp: this.state.player.hp,
-        playerLives: this.state.player.lives,
-        level: this.state.currentLevel,
-        playerX: this.state.player.x,
-        playerY: this.state.player.y,
-        collisionResult: {
-          playerHitTriggered: collisionResult.playerHitTriggered,
-          score: collisionResult.score
-        }
-      })
-      
       if (this.state.player.lives > 0) {
-        console.log('[ContraRpg] 玩家还有生命，执行复活')
         this.respawnPlayer()
       } else {
-        console.log('[ContraRpg] ❌ 玩家生命耗尽，游戏结束')
         this.state.gameOver = true
         this.engine.endGame()
         setTimeout(() => this.onEnd(), 1000)
@@ -1008,25 +1027,8 @@ export class ContraRpgGame {
       
       // 传送门触发条件：水平接近 + 垂直范围内
       const canEnterPortal = isNearExit && isInVerticalRange
-      
-      console.log('[ContraRpg] 传送门检测', {
-        level: this.state.currentLevel,
-        playerX: player.x,
-        playerY: player.y,
-        playerRight: playerRight,
-        playerBottom: playerBottom,
-        exitX: exit.x,
-        exitY: exit.y,
-        exitRight: exitRight,
-        exitBottom: exitBottom,
-        isNearExit: isNearExit,
-        isInVerticalRange: isInVerticalRange,
-        canEnterPortal: canEnterPortal
-      })
-      
+
       if (canEnterPortal) {
-        console.log('[ContraRpg] 玩家进入终点门！')
-        // 移除 Boss 限制，直接进入下一关
         this.levelCompleteTriggered = true
         this.transitionTimer = this.transitionDuration // 过渡时间
       }
@@ -1065,10 +1067,10 @@ export class ContraRpgGame {
   private respawnPlayer() {
     this.state.player.lives--
     this.state.player.hp = this.state.player.maxHp
-    // 原地复活 - 保留玩家当前位置和camera位置
-    // this.state.player.x = 80
-    // this.state.player.y = GAME_CONFIG.CANVAS_HEIGHT - GAME_CONFIG.PLAYER_HEIGHT - 20
     this.state.player.vy = 0
+    snapPlayerToGround(this.state.player, this.state.platforms)
+    this.pitHitCooldown = 800
+    this.spawnGraceFrames = 45
     this.state.player.invincible = 15000 // 15秒无敌
     this.state.player.attackLevel = 1
     // 保留cameraX位置，实现真正的原地复活
@@ -1084,20 +1086,7 @@ export class ContraRpgGame {
   }
 
   private goNextLevel() {
-    console.log('[ContraRpg] ========== 关卡切换开始 ==========')
-    console.log('[ContraRpg] 当前关卡:', this.state.currentLevel)
-    console.log('[ContraRpg] 玩家状态切换前:', {
-      x: this.state.player.x,
-      y: this.state.player.y,
-      hp: this.state.player.hp,
-      maxHp: this.state.player.maxHp,
-      lives: this.state.player.lives,
-      invincible: this.state.player.invincible,
-      vy: this.state.player.vy
-    })
-
     if (this.state.currentLevel >= this.levelManager.getTotalLevelCount()) {
-      console.log('[ContraRpg] 已到达最后一关，触发胜利')
       this.state.victory = true
       this.levelCompleteTriggered = false
       this.engine.setVictory(true)
@@ -1110,35 +1099,21 @@ export class ContraRpgGame {
     if (levelChanged) {
       this.state.currentLevel++
       const newLevel = this.levelManager.getCurrentLevel()
-      console.log('[ContraRpg] 切换到关卡:', this.state.currentLevel, '关卡名称:', newLevel.name)
 
-      // 保存旧状态用于调试
-      const oldPlayerX = this.state.player.x
-      const oldPlayerY = this.state.player.y
-
-      // 更新关卡数据
       this.state.platforms = [...newLevel.platforms]
-      console.log('[ContraRpg] 加载平台数量:', this.state.platforms.length)
 
       this.state.traps = createTraps(newLevel.traps || [])
-      console.log('[ContraRpg] 加载陷阱数量:', this.state.traps.length)
-      if (this.state.traps.length > 0) {
-        console.log('[ContraRpg] 陷阱详情:', this.state.traps.slice(0, 5).map(t => ({ type: t.type, x: t.x, y: t.y, active: t.active })))
-      }
 
       // 设置玩家初始位置
       this.state.player.x = 80
-      const groundY = GAME_CONFIG.CANVAS_HEIGHT - GAME_CONFIG.PLAYER_HEIGHT - 40
-      this.state.player.y = groundY
+      this.state.player.y = getDefaultPlayerSpawnY()
+      snapPlayerToGround(this.state.player, this.state.platforms)
       this.state.player.vy = 0
       this.state.player.isGrounded = true
       this.state.player.isCrouching = false
       this.state.player.height = GAME_CONFIG.PLAYER_HEIGHT
 
-      // 设置无敌时间
       this.state.player.invincible = 15000
-      console.log('[ContraRpg] 玩家位置重置:', { x: this.state.player.x, y: this.state.player.y, groundY })
-      console.log('[ContraRpg] 设置无敌时间:', this.state.player.invincible, 'ms')
 
       // 重置其他状态
       this.state.cameraX = 0
@@ -1149,38 +1124,13 @@ export class ContraRpgGame {
       this.state.shockwaves = []
       this.state.floatTexts = []
 
-      // 检查玩家位置是否安全（是否与陷阱重叠）
-      const trapsNearPlayer = this.state.traps.filter(trap => {
-        const dx = Math.abs(trap.x - this.state.player.x)
-        const dy = Math.abs(trap.y - this.state.player.y)
-        return dx < 150 && dy < 100
-      })
-      console.log('[ContraRpg] 玩家附近陷阱数量:', trapsNearPlayer.length)
-      if (trapsNearPlayer.length > 0) {
-        console.warn('[ContraRpg] ⚠️ 玩家出生位置附近有陷阱:', trapsNearPlayer.map(t => ({ type: t.type, x: t.x, y: t.y })))
-      }
-
-      console.log('[ContraRpg] 玩家状态切换后:', {
-        x: this.state.player.x,
-        y: this.state.player.y,
-        hp: this.state.player.hp,
-        maxHp: this.state.player.maxHp,
-        lives: this.state.player.lives,
-        invincible: this.state.player.invincible,
-        vy: this.state.player.vy,
-        isGrounded: this.state.player.isGrounded
-      })
     } else {
-      // 没有更多关卡，显示胜利画面
-      console.log('[ContraRpg] 没有更多关卡，显示胜利画面')
       this.state.victory = true
     }
 
     this.levelCompleteTriggered = false
     this.transitionTimer = 0
     this.fadeInTimer = this.fadeInDuration
-    console.log('[ContraRpg] 淡入时间:', this.fadeInTimer, 'ms')
-    console.log('[ContraRpg] ========== 关卡切换完成 ==========')
   }
 
   private render() {

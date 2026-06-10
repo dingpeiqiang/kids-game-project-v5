@@ -1,0 +1,1 @@
+export { initBeatDragon, destroyBeatDragon } from './game'

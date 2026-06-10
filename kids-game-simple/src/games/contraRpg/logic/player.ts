@@ -1,9 +1,27 @@
-import { GAME_CONFIG } from '../config'
+import { GAME_CONFIG, getDefaultPlayerSpawnY } from '../config'
 import type { Player, Platform, Particle, Bullet } from '../types'
+
+/** 将玩家脚底对齐到主地面，避免出生悬空穿地 */
+export function snapPlayerToGround(player: Player, platforms: Platform[]) {
+  const groundY = getDefaultPlayerSpawnY()
+  player.y = groundY
+  player.vy = 0
+  player.isGrounded = true
+  for (const platform of platforms) {
+    if (
+      player.x + player.width > platform.x &&
+      player.x < platform.x + platform.width &&
+      platform.y <= GAME_CONFIG.CANVAS_HEIGHT - 30
+    ) {
+      player.y = platform.y - player.height
+      break
+    }
+  }
+}
 
 export function updatePlayer(
   player: Player,
-  input: { left: boolean; right: boolean; jump: boolean; shoot: boolean; crouch: boolean; shootUp: boolean; shootDown: boolean; stickX: number; stickY: number },
+  input: { left: boolean; right: boolean; jump: boolean; shoot: boolean; crouch: boolean; melee: boolean; shootUp: boolean; shootDown: boolean; stickX: number; stickY: number },
   platforms: Platform[],
   now: number,
   canDoubleJump: boolean,
@@ -18,6 +36,34 @@ export function updatePlayer(
   let shootTriggered = false
   let meleeTriggered = false
   let shootAngle = 0
+
+  if (player.slideTimer > 0) {
+    player.slideTimer -= 16
+    player.isSliding = true
+    player.isCrouching = false
+    player.height = GAME_CONFIG.PLAYER_HEIGHT * 0.45
+    const slideDir = player.facingRight ? 1 : -1
+    player.vx = slideDir * GAME_CONFIG.SLIDE_SPEED
+    player.vy = 0
+    player.x += player.vx
+    player.isGrounded = true
+    for (const platform of platforms) {
+      if (checkPlatformCollision(player, platform)) {
+        player.y = platform.y - player.height
+      }
+    }
+    if (player.slideTimer <= 0) {
+      player.isSliding = false
+      player.height = GAME_CONFIG.PLAYER_HEIGHT
+      player.y -= GAME_CONFIG.PLAYER_HEIGHT * 0.45
+      player.vx *= 0.3
+    }
+    player.x = Math.max(0, player.x)
+    shootAngle = player.facingRight ? 0 : Math.PI
+    return { shootTriggered: false, meleeTriggered: false, shootAngle }
+  }
+
+  player.isSliding = false
 
   // 遥感控制逻辑
   const stickX = input.stickX
@@ -73,10 +119,26 @@ export function updatePlayer(
     shootAngle = player.facingRight ? 0 : Math.PI
   }
 
-  const wantsToCrouch = input.crouch && player.isGrounded
-  const wasCrouching = player.isCrouching
+  const wantsToCrouch = input.crouch && player.isGrounded && !player.isSliding
+  const wantsSlide =
+  player.isGrounded &&
+  input.crouch &&
+  (input.left || input.right || Math.abs(effectiveAnalogX) > 0.35)
 
-  if (wantsToCrouch && !player.isCrouching) {
+  if (wantsSlide && player.slideTimer <= 0) {
+    if (input.left || effectiveAnalogX < -0.35) player.facingRight = false
+    else if (input.right || effectiveAnalogX > 0.35) player.facingRight = true
+    player.slideTimer = GAME_CONFIG.SLIDE_DURATION
+    player.isCrouching = false
+    if (player.height >= GAME_CONFIG.PLAYER_HEIGHT * 0.9) {
+      player.y += GAME_CONFIG.PLAYER_HEIGHT * 0.55
+      player.height = GAME_CONFIG.PLAYER_HEIGHT * 0.45
+    }
+    addSlideParticles(player.x + player.width / 2, player.y + player.height, particles, player.facingRight)
+    return { shootTriggered: false, meleeTriggered: false, shootAngle: player.facingRight ? 0 : Math.PI }
+  }
+
+  if (wantsToCrouch && !player.isCrouching && !player.isSliding) {
     player.isCrouching = true
     player.height = GAME_CONFIG.PLAYER_HEIGHT * 0.55
     player.y += GAME_CONFIG.PLAYER_HEIGHT * 0.45
@@ -90,46 +152,17 @@ export function updatePlayer(
   player.y += player.vy
 
   player.isGrounded = false
-  let collisionDetected = false
-  let debugPlatformInfo = null
-  
+
   for (const platform of platforms) {
     if (checkPlatformCollision(player, platform)) {
-      collisionDetected = true
-      debugPlatformInfo = {
-        platformX: platform.x,
-        platformY: platform.y,
-        platformWidth: platform.width,
-        platformHeight: platform.height,
-        playerX: player.x,
-        playerY: player.y,
-        playerWidth: player.width,
-        playerHeight: player.height,
-        playerVy: player.vy
-      }
       player.isGrounded = true
       player.vy = 0
       player.y = platform.y - player.height
       player.canDoubleJump = canDoubleJump
     }
   }
-  
-  // 如果玩家靠近地面但没有检测到碰撞，输出调试信息
-  const groundLevel = GAME_CONFIG.CANVAS_HEIGHT - 40
-  if (!player.isGrounded && player.y > groundLevel - player.height - 20 && player.y < groundLevel + 50) {
-    console.log('[Player] ⚠️ 靠近地面但未检测到碰撞:', {
-      playerY: player.y,
-      playerHeight: player.height,
-      playerBottom: player.y + player.height,
-      groundLevel: groundLevel,
-      playerVy: player.vy,
-      platformCount: platforms.length,
-      collisionDetected: collisionDetected,
-      platformInfo: debugPlatformInfo
-    })
-  }
 
-  if (input.jump && player.isGrounded) {
+  if (input.jump && player.isGrounded && !player.isSliding) {
     player.isCrouching = false
     player.height = GAME_CONFIG.PLAYER_HEIGHT
     player.vy = player.jumpForce
@@ -177,7 +210,12 @@ export function updatePlayer(
     }
   }
 
-  return { shootTriggered, meleeTriggered: false, shootAngle }
+  if (input.melee && now - player.lastMelee >= GAME_CONFIG.MELEE_COOLDOWN && !player.isSliding) {
+    player.lastMelee = now
+    meleeTriggered = true
+  }
+
+  return { shootTriggered, meleeTriggered, shootAngle }
 }
 
 export function checkPlatformCollision(player: Player, platform: Platform): boolean {
@@ -192,30 +230,7 @@ export function checkPlatformCollision(player: Player, platform: Platform): bool
   
   const horizontalCheck = playerLeft < platformRight && playerRight > platformLeft
   const verticalCheck = playerBottom >= platformTop && playerBottom <= platformBottom + player.vy + 1
-  
-  // 当靠近地面但碰撞失败时，输出详细信息
-  if (!horizontalCheck || !verticalCheck) {
-    const groundLevel = GAME_CONFIG.CANVAS_HEIGHT - 40
-    if (platform.y === groundLevel && player.y > groundLevel - player.height - 30) {
-      console.log('[Collision] 🚧 平台碰撞检测失败:', {
-        playerLeft: playerLeft.toFixed(2),
-        playerRight: playerRight.toFixed(2),
-        playerBottom: playerBottom.toFixed(2),
-        playerVy: player.vy.toFixed(2),
-        platformLeft: platformLeft,
-        platformRight: platformRight,
-        platformTop: platformTop,
-        platformBottom: platformBottom,
-        horizontalCheck: horizontalCheck,
-        verticalCheck: verticalCheck,
-        condition1: playerLeft < platformRight,
-        condition2: playerRight > platformLeft,
-        condition3: playerBottom >= platformTop,
-        condition4: playerBottom <= platformBottom + player.vy + 1
-      })
-    }
-  }
-  
+
   return horizontalCheck && verticalCheck
 }
 

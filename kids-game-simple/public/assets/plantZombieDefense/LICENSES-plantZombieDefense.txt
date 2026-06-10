@@ -1,0 +1,2 @@
+# LICENSES-plantZombieDefense.txt
+# Register each AI-generated asset per GDD §10 when files are added.

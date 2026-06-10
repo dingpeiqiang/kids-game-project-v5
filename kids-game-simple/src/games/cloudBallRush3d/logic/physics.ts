@@ -18,22 +18,39 @@ function onIce(segments: TrackSegment[], x: number, z: number): boolean {
   return false
 }
 
-export function tickBallPhysics(
-  state: GameState,
-  input: InputSnapshot,
-  dt: number,
-  timeSec: number,
-): void {
-  const { ball, level } = state
-  const r = GAME_CONFIG.ballRadius
-
-  let ax = input.moveX
-  let az = input.moveZ
+/** 将摇杆/键盘输入转为世界 XZ（与第三人称相机朝向一致：上/W = 往屏幕里滚） */
+export function inputToWorldXZ(
+  moveX: number,
+  moveZ: number,
+  camForwardX: number,
+  camForwardZ: number,
+): { ax: number; az: number } {
+  const fl = Math.hypot(camForwardX, camForwardZ) || 1
+  const fx = camForwardX / fl
+  const fz = camForwardZ / fl
+  const rx = fz
+  const rz = -fx
+  let ax = moveX * rx + moveZ * fx
+  let az = moveX * rz + moveZ * fz
   const len = Math.hypot(ax, az)
   if (len > 1) {
     ax /= len
     az /= len
   }
+  return { ax, az }
+}
+
+export function tickBallPhysics(
+  state: GameState,
+  input: InputSnapshot,
+  dt: number,
+  timeSec: number,
+  camForward: { x: number; z: number },
+): void {
+  const { ball, level } = state
+  const r = GAME_CONFIG.ballRadius
+
+  const { ax, az } = inputToWorldXZ(input.moveX, input.moveZ, camForward.x, camForward.z)
 
   const accel = GAME_CONFIG.baseAccel * (ball.speedBoostT > 0 ? 1.35 : 1)
   const control = ball.onGround ? 1 : GAME_CONFIG.airControl

@@ -69,8 +69,12 @@ export const GAME_DISPLAY_CONFIG: GameDisplayConfig[] = [
   { id: 'memoryMatch',   visible: true,  order: 1,  badge: '' },
   { id: 'voxelRealm',    visible: true,  order: 2,  badge: '新' },
   { id: 'happyDefense',  visible: true, order: 3,  badge: '' },
+  { id: 'plantZombieDefense', visible: true, order: 4, badge: '新' },
   { id: 'cloudBallRush3d', visible: true, order: 4, badge: '' },
   { id: 'skyFrenzy', visible: true, order: 5, badge: '' },
+  { id: 'cuteTankBattle', visible: true, order: 6, badge: '新' },
+  { id: 'beatDragon', visible: true, order: 7, badge: '新' },
+  { id: 'kingBaby', visible: true, order: 8, badge: '新' },
 ]
 
 export function getGameDisplayConfig(gameId: string): GameDisplayConfig {
@@ -557,6 +561,76 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
     }
   },
 
+  beatDragon: {
+    game: {
+      id: 'beatDragon',
+      name: '打了个龙',
+      desc: '竖屏解压屠龙小游戏，滑动走位自动射击，闯关变强，治愈解压！',
+      type: '2d',
+      category: 'strategy',
+      tag: '解压',
+      color: '#58A6FF,#4ADE80',
+      players: 0,
+      best: 0,
+      preview: 'beatDragon',
+    },
+    guide: {
+      icon: '��',
+      name: '打了个龙',
+      desc: '竖屏滑动走位，自动射击分段巨龙，拾取 buff 无脑变强，极致解压屠龙闯关。',
+      ops: [
+        { icon: '👆', text: '<b>滑动</b>操控勇者走位' },
+        { icon: '⚔️', text: '角色<b>自动开火</b>，无需手动攻击' },
+        { icon: '✨', text: '击碎宝箱，<b>选择强化 buff</b>变强屠龙' },
+      ],
+      tipsTitle: '屠龙小技巧',
+      tips: '优先击碎小龙宝箱，多选穿透、多重子弹 buff，躲开光弹轻松通关！',
+      bg: '#F0F4FF',
+    },
+    destroy: () => {
+      void import('./beatDragon').then(m => m.destroyBeatDragon())
+    },
+    init: async (engine, onEnd) => {
+      const { initBeatDragon } = await import('./beatDragon')
+      await initBeatDragon(engine, onEnd)
+    },
+  },
+
+  kingBaby: {
+    game: {
+      id: 'kingBaby',
+      name: '王者萌斗',
+      desc: 'Q版萌系1v1轻MOBA，拖动走位、技能清线，摧毁敌方水晶轻松闯关！',
+      type: '2d',
+      category: 'strategy',
+      tag: '竞技',
+      color: '#73C0F4,#F8BBD0',
+      players: 0,
+      best: 0,
+      preview: 'kingBaby',
+    },
+    guide: {
+      icon: '��',
+      name: '王者萌斗',
+      desc: '横屏轻MOBA：拖动走位、普攻自动、两键技能，推线拆水晶拿星级。',
+      ops: [
+        { icon: '��', text: '左侧<b>拖动</b>控制萌版刘备走位' },
+        { icon: '⚔️', text: '<b>普攻自动</b>攻击范围内敌人' },
+        { icon: '✨', text: '右侧<b>技能/大招</b>清小兵，可开自动作战' },
+      ],
+      tipsTitle: '萌斗小技巧',
+      tips: '先清小兵攒金币，残血后撤等复活；大招留给小兵扎堆，优先推掉敌方水晶！',
+      bg: '#E8F4FC',
+    },
+    destroy: () => {
+      void import('./kingBaby').then(m => m.destroyKingBaby())
+    },
+    init: async (engine, onEnd) => {
+      const { initKingBaby } = await import('./kingBaby')
+      await initKingBaby(engine, onEnd)
+    },
+  },
+
   rpgShooterTD: {
     game: { id: 'rpgShooterTD', name: 'RPG塔防射击', desc: '双系统战斗！建造炮台防御+角色移动射击，策略与操作并重！', type: '2d', category: 'strategy', tag: '塔防射击', color: '#4ECDC4,#FF6B6B', players: 1500, best: 0, preview: 'rpgShooterTowerDefense' },
     guide: {
@@ -659,6 +733,44 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
     init: async (engine, onEnd) => {
       const { initHappyDefense } = await import('./happyDefense')
       await initHappyDefense(engine, onEnd)
+    },
+  },
+
+  plantZombieDefense: {
+    game: {
+      id: 'plantZombieDefense',
+      name: '萌趣植物僵尸3D防线',
+      desc: '3D童趣塔防，摆放植物抵御呆萌僵尸，休闲闯关，儿童离线小游戏',
+      type: '3d',
+      category: 'strategy',
+      tag: '塔防',
+      color: '#72D566,#FFD23F',
+      players: 0,
+      best: 0,
+      preview: 'plantZombieDefense',
+    },
+    guide: {
+      icon: '��',
+      name: '萌趣植物僵尸3D防线',
+      desc: '摆放Q版植物炮塔，击退呆萌僵尸，守护庭院小屋通关闯关。',
+      ops: [
+        { icon: '☀️', text: '<b>点击</b>收集，获取植物放置资源' },
+        { icon: '🌱', text: '<b>点击草坪格子</b>放置选中的植物' },
+        { icon: '🗑️', text: '<b>点击已放置植物</b>，一键移除返还20%阳光' },
+      ],
+      tipsTitle: '游玩小技巧',
+      tips: '优先种植向日葵收集阳光，搭配坚果阻挡僵尸，合理布局轻松通关哦！',
+      bg: '#C2E8B9',
+    },
+    isSpecial: true,
+    destroy: () => {
+      void import('./plantZombieDefense').then(m => {
+        m.destroyPlantZombieDefense()
+      })
+    },
+    init: async (engine, onEnd) => {
+      const { initPlantZombieDefense } = await import('./plantZombieDefense')
+      await initPlantZombieDefense(engine, onEnd)
     },
   },
 
@@ -779,6 +891,42 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
     init: async (engine, onEnd) => {
       const { initSkyFrenzy } = await import('./skyFrenzy')
       await initSkyFrenzy(engine, onEnd)
+    },
+  },
+
+  cuteTankBattle: {
+    game: {
+      id: 'cuteTankBattle',
+      name: '萌趣坦克大作战',
+      desc: 'Q萌卡通坦克闯关，极简操控，击毁敌方小兵，守护家园基地！',
+      type: '2d',
+      category: 'reaction',
+      tag: '射击',
+      color: '#48C990,#FFD970',
+      players: 0,
+      best: 0,
+      preview: 'cuteTankBattle',
+    },
+    guide: {
+      icon: '\u{1F3AE}',
+      name: '萌趣坦克大作战',
+      desc: '操控Q萌坦克击毁敌方小兵，守护基地，闯关通关休闲射击小游戏。',
+      ops: [
+        { icon: '👆', text: '<b>滑动</b>控制坦克上下左右移动' },
+        { icon: '💥', text: '<b>点击</b>屏幕发射炮弹，击毁敌方与砖墙' },
+      ],
+      tipsTitle: '闯关小技巧',
+      tips: '躲避敌方炮弹，击碎砖墙开辟道路，保护基地即可轻松通关哦！',
+      bg: '#E6F4FF',
+    },
+    destroy: () => {
+      void import('./cuteTankBattle').then(m => {
+        m.destroyCuteTankBattle()
+      })
+    },
+    init: async (engine, onEnd) => {
+      const { initCuteTankBattle } = await import('./cuteTankBattle')
+      await initCuteTankBattle(engine, onEnd)
     },
   },
 

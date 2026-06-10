@@ -22,6 +22,7 @@ export interface Player {
   isCrouching: boolean
   consecutiveShots: number
   lastShotKeyUp: number
+  lastMelee: number
 }
 
 export interface Enemy {

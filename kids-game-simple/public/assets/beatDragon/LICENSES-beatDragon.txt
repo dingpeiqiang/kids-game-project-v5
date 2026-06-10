@@ -1,0 +1,2 @@
+# beatDragon asset licenses
+# Place AI-generated asset attribution here after §9 pipeline step 5.

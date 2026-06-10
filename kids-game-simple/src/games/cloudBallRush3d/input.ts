@@ -81,8 +81,8 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
       mz = 0
       if (keys.has('ArrowLeft') || keys.has('KeyA')) mx -= 1
       if (keys.has('ArrowRight') || keys.has('KeyD')) mx += 1
-      if (keys.has('ArrowUp') || keys.has('KeyW')) mz -= 1
-      if (keys.has('ArrowDown') || keys.has('KeyS')) mz += 1
+      if (keys.has('ArrowUp') || keys.has('KeyW')) mz += 1
+      if (keys.has('ArrowDown') || keys.has('KeyS')) mz -= 1
       const len = Math.hypot(mx, mz)
       if (len > 1) {
         mx /= len

@@ -8,11 +8,12 @@ export function tickGame(
   input: InputSnapshot,
   dt: number,
   timeSec: number,
+  camForward: { x: number; z: number },
 ): { completed: boolean; stars: 0 | 1 | 2 | 3 } | null {
   if (state.phase !== 'playing') return null
 
   state.elapsedMs += dt * 1000
-  tickBallPhysics(state, input, dt, timeSec)
+  tickBallPhysics(state, input, dt, timeSec, camForward)
 
   if (state.phase !== 'playing') return null
 

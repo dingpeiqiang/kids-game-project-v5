@@ -24,6 +24,16 @@ export const GAME_CONFIG = {
   SPREAD_SHOT_DURATION: 8000,
   SHIELD_DURATION: 5000,
   TRANSFORM_DURATION: 8000,
+  SLIDE_DURATION: 420,
+  SLIDE_SPEED: 14,
+  MELEE_COOLDOWN: 450,
+  MELEE_DAMAGE: 4,
+  MELEE_RANGE: 52,
+}
+
+/** 站在主地面平台上的玩家 Y（与 level platforms y = CANVAS_HEIGHT - 40 对齐） */
+export function getDefaultPlayerSpawnY(): number {
+  return GAME_CONFIG.CANVAS_HEIGHT - 40 - GAME_CONFIG.PLAYER_HEIGHT
 }
 
 export const POWERUP_CONFIG = {

@@ -170,7 +170,11 @@ async function runSession(
     if (flags.jump) input.snapshot.jump = true
 
     if (state.phase === 'playing') {
-      const result = tickGame(state, input.snapshot, dt, timeSec)
+      const basis = view.getMoveBasis()
+      const result = tickGame(state, input.snapshot, dt, timeSec, {
+        x: basis.forwardX,
+        z: basis.forwardZ,
+      })
       if (result?.completed) {
         void handleLevelComplete(result.stars)
       }

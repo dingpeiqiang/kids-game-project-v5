@@ -384,6 +384,24 @@ export class CloudBallSceneView {
     return { jumped, rolling, onIce }
   }
 
+  /** 相机在 XZ 上的「往前看」方向（第三人称：从相机指向球），用于相对移动 */
+  getMoveBasis(): { forwardX: number; forwardZ: number } {
+    const cam = this.camera.position
+    const ball = this.ball.position
+    let fx = ball.x - cam.x
+    let fz = ball.z - cam.z
+    const len = Math.hypot(fx, fz)
+    if (len < 0.001) {
+      const alpha = this.camera.alpha
+      fx = Math.sin(alpha)
+      fz = Math.cos(alpha)
+    } else {
+      fx /= len
+      fz /= len
+    }
+    return { forwardX: fx, forwardZ: fz }
+  }
+
   dispose(): void {
     if (this.assets) disposeCloudBallAssets(this.assets)
     for (const m of this.segmentMeshes) m.dispose()

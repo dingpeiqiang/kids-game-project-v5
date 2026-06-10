@@ -381,7 +381,55 @@ export function checkCollisions(
     }
   }
 
-  if (player.invincible <= 0 && timers.shieldTimer <= 0 && timers.transformTimer <= 0) {
+  if (meleeTriggered) {
+    const meleeY = player.y + player.height * 0.35
+    const meleeH = player.height * 0.5
+  const meleeW = GAME_CONFIG.MELEE_RANGE
+    const meleeX = player.facingRight
+      ? player.x + player.width
+      : player.x - meleeW
+
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const enemy = enemies[j]
+      if (!rectCollision(meleeX, meleeY, meleeW, meleeH, enemy.x, enemy.y, enemy.width, enemy.height)) {
+        continue
+      }
+      enemy.hp -= GAME_CONFIG.MELEE_DAMAGE
+      enemy.recentlyHit = 40
+      addHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#FFAA00', particles)
+      if (enemy.hp <= 0) {
+        const wasBoss = enemy.type === 'boss'
+        totalScore += enemy.score
+        addScore(enemy.score, enemy.x, enemy.y)
+        const cx = enemy.x + enemy.width / 2
+        const cy = enemy.y + enemy.height / 2
+        addExplosionParticles(cx, cy, enemy.color, particles)
+        addFloatText(`+${enemy.score}`, cx, cy - 10, 14, '#FFFFFF', floatTexts)
+        if (levelManager && !wasBoss) {
+          levelManager.markEnemyDead(enemy.id)
+        }
+        enemies.splice(j, 1)
+        audioWin()
+        if (wasBoss) {
+          bossDefeated = true
+          newShakeAmt = 10
+        }
+      } else {
+        audioClick()
+      }
+    }
+    addShockwave(
+      player.x + player.width / 2 + (player.facingRight ? 20 : -20),
+      player.y + player.height / 2,
+      35,
+      '#FFCC00',
+      shockwaves,
+    )
+  }
+
+  const canTakeHit = !player.isSliding && player.invincible <= 0 && timers.shieldTimer <= 0 && timers.transformTimer <= 0
+
+  if (canTakeHit) {
     for (let i = bullets.length - 1; i >= 0; i--) {
       const bullet = bullets[i]
       if (bullet.isPlayerBullet) continue
@@ -398,7 +446,7 @@ export function checkCollisions(
     }
   }
 
-  if (player.invincible <= 0 && timers.shieldTimer <= 0 && timers.transformTimer <= 0) {
+  if (canTakeHit) {
     const playerPartition = getXPartition(player.x, CELL_SIZE)
     const possiblePartitions = [playerPartition - 1, playerPartition, playerPartition + 1]
 

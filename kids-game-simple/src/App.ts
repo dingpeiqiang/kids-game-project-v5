@@ -1335,6 +1335,7 @@ class App {
     const isWangzheRpg = this.currentGame.id === 'wangzheRpg'
     const isPlantsVsZombies = this.currentGame.id === 'plantsVsZombies'
     const isDnfRpg = this.currentGame.id === 'dnfRpg'
+    const isCuteTankBattle = this.currentGame.id === 'cuteTankBattle'
 
     // 设置游戏分辨率
     // 魂斗罗RPG：固定横屏 680x320（含左右操作面板）
@@ -1358,6 +1359,9 @@ class App {
     } else if (isDnfRpg) {
       gameW = 880  // TOTAL_WIDTH = CANVAS_WIDTH(720) + LEFT_PANEL(80) + RIGHT_PANEL(80)
       gameH = 440  // CANVAS_HEIGHT
+    } else if (isCuteTankBattle) {
+      gameW = 750
+      gameH = 1334
     }
 
     let displayW: number = gameW

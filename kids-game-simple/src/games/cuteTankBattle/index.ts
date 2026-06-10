@@ -1,0 +1,1 @@
+export { initCuteTankBattle, destroyCuteTankBattle } from './game'
