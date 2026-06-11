@@ -124,12 +124,6 @@ import { toast } from '@/services/toast.service';
 import { loadParentLoginUsername, saveParentLoginUsername } from '@/utils/auth-session';
 import { clearAllAuth } from '@/utils/auth';
 
-const APP_SHELL = import.meta.env.VITE_APP_SHELL || 'legacy';
-const isPlayShell = APP_SHELL === 'simple';
-const isAdminShell = APP_SHELL === 'admin';
-const ADMIN_URL = import.meta.env.VITE_ADMIN_URL || 'http://localhost:3000';
-const PLAY_URL = import.meta.env.VITE_PLAY_URL || 'http://localhost:3001';
-
 const router = useRouter();
 const userStore = useUserStore();
 
@@ -174,30 +168,14 @@ async function handleLogin() {
     const result = await userStore.unifiedLogin(formData.value.username, formData.value.password);
 
     if (result.userType === 0) {
-      if (isAdminShell) {
-        toast.error('儿童账号请使用儿童游玩端登录');
-        userStore.logoutKid();
-        window.location.href = PLAY_URL;
-        return;
-      }
       toast.success('登录成功！');
       await router.push('/');
     } else if (result.userType === 1) {
       toast.success('家长登录成功！');
       saveParentLoginUsername(formData.value.username);
-      if (isPlayShell) {
-        toast.info('家长请使用管理端进行管控');
-        userStore.logoutParent();
-        window.location.href = `${ADMIN_URL.replace(/\/$/, '')}/login`;
-        return;
-      }
       await router.push(getDefaultAdminLanding('parent'));
     } else if (result.userType === 2) {
       toast.success('管理员登录成功！');
-      if (isPlayShell) {
-        window.location.href = `${ADMIN_URL.replace(/\/$/, '')}${getDefaultAdminLanding('admin')}`;
-        return;
-      }
       await router.push(getDefaultAdminLanding('admin'));
     } else {
       toast.error('未知用户类型');

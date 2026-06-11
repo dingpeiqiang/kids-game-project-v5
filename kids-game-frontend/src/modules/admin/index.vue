@@ -144,7 +144,6 @@ import { useRouter, useRoute } from 'vue-router';
 import { useUserStore } from '@/core/store/user.store';
 import { getAdminMenuForRole } from './utils/admin-menu.config';
 import { getCurrentUserType } from '@/utils/auth';
-import { DEFAULT_PLAY_APP_URL } from '@kids-game/shared';
 import { modal } from '@/composables/useUnifiedModalV2';
 import KidUnifiedModalV2 from '@/components/ui/KidUnifiedModalV2.vue';
 
@@ -180,7 +179,6 @@ function toggleSidebar() {
 }
 
 function goPlayApp() {
-  window.location.href = import.meta.env.VITE_PLAY_URL || DEFAULT_PLAY_APP_URL;
 }
 
 function handleLogout() {

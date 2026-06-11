@@ -13,8 +13,6 @@ import {
   type AdminPortalRole,
 } from '@kids-game/shared';
 
-const PLAY_URL = import.meta.env.VITE_PLAY_URL || 'http://localhost:3001';
-
 function portalRole(): AdminPortalRole | null {
   const t = getCurrentUserType();
   if (t === 'admin') return 'admin';
@@ -142,29 +140,17 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/game/:pathMatch(.*)*',
-    beforeEnter: (to) => {
-      const base = PLAY_URL.replace(/\/$/, '');
-      const path = to.path.startsWith('/') ? to.path : `/${to.path}`;
-      const query = to.fullPath.includes('?') ? to.fullPath.slice(to.fullPath.indexOf('?')) : '';
-      window.location.href = `${base}${path}${query}`;
-      return false;
-    },
+    redirect: '/',
     component: () => import('@/modules/login/index.vue'),
   },
   {
     path: '/answer',
-    beforeEnter: () => {
-      window.location.href = `${PLAY_URL.replace(/\/$/, '')}/answer`;
-      return false;
-    },
+    redirect: '/',
     component: () => import('@/modules/login/index.vue'),
   },
   {
     path: '/home',
-    beforeEnter: () => {
-      window.location.href = PLAY_URL;
-      return false;
-    },
+    redirect: '/',
     component: () => import('@/modules/login/index.vue'),
   },
   ...(import.meta.env.DEV
@@ -207,13 +193,7 @@ router.beforeEach((to, _from, next) => {
 
   const requiresAuth = to.meta.requiresAuth !== false;
   const loggedIn = isLoggedIn();
-  const userType = getCurrentUserType();
   const role = portalRole();
-
-  if (userType === 'kid' && loggedIn) {
-    window.location.href = PLAY_URL;
-    return;
-  }
 
   if (requiresAuth && !loggedIn) {
     next('/login');

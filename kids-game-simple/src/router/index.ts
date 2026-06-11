@@ -3,10 +3,8 @@
  */
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
-import { isLoggedIn, getCurrentUserType } from '@/utils/auth';
+import { isLoggedIn } from '@/utils/auth';
 import { isEmbeddedCanvasGame } from '@simple/games/embeddedCanvasGames';
-
-const DEFAULT_ADMIN_URL = import.meta.env.VITE_ADMIN_URL || 'http://localhost:3000';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -76,26 +74,17 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/admin/:pathMatch(.*)*',
-    beforeEnter: () => {
-      window.location.href = DEFAULT_ADMIN_URL;
-      return false;
-    },
+    redirect: '/',
     component: () => import('@/modules/login/index.vue'),
   },
   {
     path: '/parent',
-    beforeEnter: () => {
-      window.location.href = `${DEFAULT_ADMIN_URL.replace(/\/$/, '')}/parent`;
-      return false;
-    },
+    redirect: '/',
     component: () => import('@/modules/login/index.vue'),
   },
   {
     path: '/creator-center/:pathMatch(.*)*',
-    beforeEnter: () => {
-      window.location.href = `${DEFAULT_ADMIN_URL.replace(/\/$/, '')}/admin/creator-center`;
-      return false;
-    },
+    redirect: '/',
     component: () => import('@/modules/login/index.vue'),
   },
   {
@@ -117,7 +106,6 @@ router.beforeEach((to, _from, next) => {
 
   const requiresAuth = to.meta.requiresAuth !== false;
   const loggedIn = isLoggedIn();
-  const userType = getCurrentUserType();
 
   if (requiresAuth && !loggedIn) {
     next('/login');
@@ -125,16 +113,7 @@ router.beforeEach((to, _from, next) => {
   }
 
   if (to.path === '/login' && loggedIn) {
-    if (userType === 'admin' || userType === 'parent') {
-      window.location.href = DEFAULT_ADMIN_URL;
-      return;
-    }
     next('/');
-    return;
-  }
-
-  if (loggedIn && (userType === 'admin' || userType === 'parent') && to.meta.requiresAuth) {
-    window.location.href = DEFAULT_ADMIN_URL;
     return;
   }
 
