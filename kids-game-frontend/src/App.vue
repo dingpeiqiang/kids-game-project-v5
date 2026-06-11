@@ -10,7 +10,6 @@ import { Config } from '@/core/config';
 import { wsClient } from '@/core/network/ws';
 import { useUserStore } from '@/core/store/user.store';
 import { versionManager } from '@/utils/version';
-import { needPatternLock } from '@/utils/pattern-lock.util';
 
 onMounted(() => {
   console.log('[App] 正在初始化应用...');
@@ -27,9 +26,6 @@ onMounted(() => {
   userStore.restoreFromStorage();
   console.log('[App] 用户状态已恢复');
 
-  // 检查是否需要图案解锁
-  checkPatternLockRequired();
-
   // 初始化版本管理器（检测更新）
   versionManager.init().catch(err => {
     console.warn('[App] 版本管理器初始化失败:', err);
@@ -39,25 +35,6 @@ onMounted(() => {
   // 这样避免未登录用户也建立连接
   console.log('[App] 应用已就绪');
 });
-
-// 检查是否需要显示图案解锁
-function checkPatternLockRequired() {
-  const userStore = useUserStore();
-  
-  // 检查条件：
-  // 1. 家长已登录
-  // 2. 家长已设置图案解锁
-  // 3. 需要图案验证（应用启动时）
-  if (userStore.parentUser && userStore.parentHasPatternLock() && needPatternLock()) {
-    console.log('[App] 需要图案解锁验证，跳转到图案解锁页面');
-    
-    // 使用 setTimeout 确保路由已初始化
-    setTimeout(() => {
-      const router = require('vue-router').useRouter();
-      router.push('/pattern-unlock');
-    }, 100);
-  }
-}
 </script>
 
 <style>

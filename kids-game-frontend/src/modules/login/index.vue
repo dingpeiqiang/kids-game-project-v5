@@ -122,6 +122,7 @@ import GlobalLoading from '@/components/GlobalLoading.vue';
 import ErrorDisplay from '@/components/ErrorDisplay.vue';
 import { toast } from '@/services/toast.service';
 import { loadParentLoginUsername, saveParentLoginUsername } from '@/utils/auth-session';
+import { clearAllAuth } from '@/utils/auth';
 
 const APP_SHELL = import.meta.env.VITE_APP_SHELL || 'legacy';
 const isPlayShell = APP_SHELL === 'simple';
@@ -167,6 +168,8 @@ async function handleLogin() {
   }
 
   try {
+    // 清除之前的登录状态，确保正确识别用户类型
+    clearAllAuth();
     isLoading.value = true;
     const result = await userStore.unifiedLogin(formData.value.username, formData.value.password);
 
@@ -178,11 +181,7 @@ async function handleLogin() {
         return;
       }
       toast.success('登录成功！');
-      if (await userStore.kidHasPatternLock()) {
-        await router.push('/pattern-unlock');
-      } else {
-        await router.push('/');
-      }
+      await router.push('/');
     } else if (result.userType === 1) {
       toast.success('家长登录成功！');
       saveParentLoginUsername(formData.value.username);
@@ -192,11 +191,7 @@ async function handleLogin() {
         window.location.href = `${ADMIN_URL.replace(/\/$/, '')}/login`;
         return;
       }
-      if (userStore.parentHasPatternLock()) {
-        await router.push('/pattern-unlock');
-      } else {
-        await router.push(getDefaultAdminLanding('parent'));
-      }
+      await router.push(getDefaultAdminLanding('parent'));
     } else if (result.userType === 2) {
       toast.success('管理员登录成功！');
       if (isPlayShell) {

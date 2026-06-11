@@ -12,20 +12,7 @@ import { authApi } from '@/services/auth-api.service';
 import { persistAuthSession } from '@/utils/auth-session';
 import { API_CONSTANTS } from '@/services/api.types';
 import type { Kid, Parent } from '@/services/api.types';
-import {
-  savePatternLock,
-  validatePattern,
-  deletePatternLock,
-  clearAllPatternLocks,
-  hasPatternLock,
-  getUsersWithPatternLock,
-  setCurrentUserType,
-  getCurrentUserType,
-  clearCurrentUserType,
-  markPatternVerified,
-  clearPatternVerified,
-  needPatternLock,
-} from '@/utils/pattern-lock.util';
+
 
 export interface UserInfo {
   id: number;
@@ -491,125 +478,6 @@ export const useUserStore = defineStore('user', () => {
     return false;
   }
 
-  // ===== 图案解锁相关方法 =====
-
-  /**
-   * 保存图案解锁（家长）
-   */
-  async function saveParentPatternLock(pattern: string): Promise<void> {
-    if (parentUser.value) {
-      await savePatternLock(pattern, parentUser.value.parentId, 'parent');
-      console.log('[UserStore] 家长图案解锁已保存');
-    }
-  }
-
-  /**
-   * 保存图案解锁（儿童）
-   */
-  async function saveKidPatternLock(pattern: string): Promise<void> {
-    if (currentUser.value) {
-      await savePatternLock(pattern, currentUser.value.id, 'kid');
-      console.log('[UserStore] 儿童图案解锁已保存');
-    }
-  }
-
-  /**
-   * 验证家长图案解锁
-   */
-  async function validateParentPattern(pattern: string): Promise<boolean> {
-    if (parentUser.value) {
-      return await validatePattern(pattern, parentUser.value.parentId, 'parent');
-    }
-    return false;
-  }
-
-  /**
-   * 验证儿童图案解锁
-   */
-  async function validateKidPattern(pattern: string): Promise<boolean> {
-    if (currentUser.value) {
-      return await validatePattern(pattern, currentUser.value.id, 'kid');
-    }
-    return false;
-  }
-
-  /**
-   * 检查家长是否设置了图案解锁
-   */
-  async function parentHasPatternLock(): Promise<boolean> {
-    return parentUser.value ? await hasPatternLock(parentUser.value.parentId, 'parent') : false;
-  }
-
-  /**
-   * 检查儿童是否设置了图案解锁
-   */
-  async function kidHasPatternLock(): Promise<boolean> {
-    return currentUser.value ? await hasPatternLock(currentUser.value.id, 'kid') : false;
-  }
-
-  /**
-   * 删除家长图案解锁
-   */
-  function deleteParentPatternLock(): void {
-    if (parentUser.value) {
-      deletePatternLock(parentUser.value.parentId, 'parent');
-    }
-  }
-
-  /**
-   * 删除儿童图案解锁
-   */
-  function deleteKidPatternLock(): void {
-    if (currentUser.value) {
-      deletePatternLock(currentUser.value.id, 'kid');
-    }
-  }
-
-  /**
-   * 获取所有已设置图案解锁的用户
-   */
-  function getPatternLockUsers(): { userId: number; userType: 'parent' | 'kid' }[] {
-    return getUsersWithPatternLock();
-  }
-
-  /**
-   * 设置当前用户类型（用于切换账号）
-   */
-  function switchUserType(userType: 'parent' | 'kid'): void {
-    setCurrentUserType(userType);
-    markPatternVerified();
-    console.log('[UserStore] 切换到', userType, '用户');
-  }
-
-  /**
-   * 获取当前用户类型
-   */
-  function getSwitchUserType(): 'parent' | 'kid' | null {
-    return getCurrentUserType();
-  }
-
-  /**
-   * 检查是否需要显示图案解锁
-   */
-  function checkNeedPatternLock(): boolean {
-    return needPatternLock();
-  }
-
-  /**
-   * 标记图案验证成功
-   */
-  function confirmPatternVerified(): void {
-    markPatternVerified();
-  }
-
-  /**
-   * 清除图案验证标记（退出登录时调用）
-   */
-  function resetPatternVerified(): void {
-    clearPatternVerified();
-    clearCurrentUserType();
-  }
-
   return {
     // 状态
     currentUser,
@@ -650,21 +518,5 @@ export const useUserStore = defineStore('user', () => {
     refreshTokenSilently,
     clearAllLogout,
     logoutAll,
-
-    // 图案解锁相关方法
-    saveParentPatternLock,
-    saveKidPatternLock,
-    validateParentPattern,
-    validateKidPattern,
-    parentHasPatternLock,
-    kidHasPatternLock,
-    deleteParentPatternLock,
-    deleteKidPatternLock,
-    getPatternLockUsers,
-    switchUserType,
-    getSwitchUserType,
-    checkNeedPatternLock,
-    confirmPatternVerified,
-    resetPatternVerified,
   };
 });

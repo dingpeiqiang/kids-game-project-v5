@@ -35,12 +35,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/modules/register/index.vue'),
     meta: { title: '注册', requiresAuth: false },
   },
-  {
-    path: '/pattern-unlock',
-    name: 'PatternUnlock',
-    component: () => import('@/modules/pattern-unlock/index.vue'),
-    meta: { title: '图案解锁', requiresAuth: false },
-  },
+  
   {
     path: '/',
     name: 'Root',

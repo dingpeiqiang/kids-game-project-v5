@@ -11,7 +11,7 @@ import { apiGetBatchUserRank, apiSubmitComment, apiGetComments, tokenStore } fro
 import { getTopList, type LeaderboardEntry } from '../services/leaderboardService'
 import { getGameRegistration, initGame, destroyGame } from '../games/gameRegistry'
 import { OrientationManager } from '../utils/orientation'
-import { PatternLockPanel, injectPatternLockStyles } from '../components/PatternLockPanel'
+
 
 class App {
   private currentGame: Game | null = null
@@ -63,7 +63,7 @@ class App {
     // 监听用户变更事件（登出、异步恢复登录等）
     window.addEventListener('ugp:userChange', () => this.onUserChange())
 
-    // 等待异步会话恢复完成后，再决定是否弹出登录框或图案解锁
+    // 等待异步会话恢复完成后，再决定是否弹出登录框
     setTimeout(() => {
       this.handlePostInit()
     }, 1200) // 给后端恢复会话 1.2s 时间
@@ -2160,87 +2160,6 @@ class App {
   // ====== 横屏锁定 ======
   private isMobileDevice(): boolean {
     return 'ontouchstart' in window || navigator.maxTouchPoints > 0
-  }
-
-  // ====== 图案解锁相关方法 ======
-
-  /**
-   * 初始化后处理逻辑 - 处理图案解锁验证和家长账号自动回显
-   */
-  private async handlePostInit() {
-    console.log('[App] handlePostInit 被调用')
-    
-    // 检查是否已登录
-    if (userService.isLoggedIn) {
-      console.log('[App] 用户已登录，检查图案解锁设置')
-      
-      // 检查是否是家长账号且已设置图案解锁
-      const hasPattern = await userService.hasParentPatternLock()
-      console.log('[App] 图案解锁检查结果:', hasPattern)
-      
-      if (hasPattern) {
-        // 显示图案解锁界面
-        await this.showPatternLock()
-      } else {
-        // 未设置图案解锁，正常进入
-        console.log('[App] 未设置图案解锁，直接进入')
-      }
-    } else {
-      console.log('[App] 用户未登录，检查是否有记住的家长账号')
-      
-      // 检查是否有本地缓存的账号（家长账号快速回显）
-      const accounts = userService.getAccountList()
-      if (accounts.length > 0) {
-        console.log('[App] 检测到', accounts.length, '个本地账号')
-        // 可以在这里实现家长账号自动回显逻辑
-      }
-      
-      // 未登录，显示登录界面
-      // this.authModal.open(() => this.onUserChange())
-    }
-  }
-
-  /**
-   * 显示图案解锁界面
-   */
-  private async showPatternLock() {
-    injectPatternLockStyles()
-    
-    const result = await PatternLockPanel.showVerifyPattern('家长图案解锁')
-    console.log('[App] 图案解锁结果:', result)
-    
-    if (!result.ok) {
-      // 验证失败，退出登录
-      await userService.logout()
-      showToast('图案验证失败，请重新登录', 'error')
-      this.authModal.open(() => this.onUserChange())
-    } else {
-      // 验证成功，继续使用APP
-      showToast('图案验证成功', 'success')
-      
-      // 如果是家长账号，可以显示账号切换选项
-      if (result.pattern) {
-        await this.handlePatternSuccess(result.pattern)
-      }
-    }
-  }
-
-  /**
-   * 图案验证成功后的处理 - 支持家长/儿童账号切换
-   */
-  private async handlePatternSuccess(pattern: string) {
-    console.log('[App] 图案验证成功，处理账号切换逻辑')
-    
-    // 获取当前用户信息
-    const currentUser = userService.current
-    if (!currentUser) return
-    
-    // 如果是家长账号，可以显示切换选项
-    // 这里可以扩展为根据绘制的不同图案切换到不同账号
-    // 例如：家长图案 -> 家长账号，儿童图案 -> 儿童账号
-    
-    // 触发用户变更事件，刷新UI
-    window.dispatchEvent(new CustomEvent('ugp:userChange'))
   }
 
   /**
