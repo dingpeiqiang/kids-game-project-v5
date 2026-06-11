@@ -38,6 +38,14 @@
             <span class="theme-icon">🎨</span>
           </button>
         </router-link>
+        <!-- 家长中心入口 -->
+        <button @click="goToParentCenter" class="parent-center-btn" title="家长中心">
+          <span class="parent-center-icon">👨‍👩‍👧</span>
+        </button>
+        <!-- 管理中心入口 -->
+        <button @click="goToAdminCenter" class="admin-center-btn" title="管理中心">
+          <span class="admin-center-icon">🛡️</span>
+        </button>
         <div class="user-info" @click="showAvatarPicker = true">
           <div class="user-avatar" :class="{ animate: avatarAnimating }">
             <img v-if="isImageUrl(userStore.avatar)" :src="userStore.avatar" alt="头像" class="avatar-image" />
@@ -640,6 +648,35 @@ function logout() {
   showLogoutConfirm.value = true;
 }
 
+/** 将登录信息同步到 cookie，供 3000 管理端跨端口读取 */
+function syncAuthToCookie(): void {
+  try {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('parentToken');
+    const userInfo = localStorage.getItem('userInfo');
+    const parentInfo = localStorage.getItem('parentInfo');
+    const adminInfo = localStorage.getItem('adminInfo');
+
+    if (token) {
+      document.cookie = `cross_auth_token=${encodeURIComponent(token)}; path=/; max-age=300; SameSite=Lax`;
+    }
+    if (userInfo) document.cookie = `cross_user_info=${encodeURIComponent(userInfo)}; path=/; max-age=300; SameSite=Lax`;
+    if (parentInfo) document.cookie = `cross_parent_info=${encodeURIComponent(parentInfo)}; path=/; max-age=300; SameSite=Lax`;
+    if (adminInfo) document.cookie = `cross_admin_info=${encodeURIComponent(adminInfo)}; path=/; max-age=300; SameSite=Lax`;
+  } catch (e) {
+    console.warn('[KidsHome] syncAuthToCookie failed:', e);
+  }
+}
+
+function goToParentCenter() {
+  syncAuthToCookie();
+  window.open('http://localhost:3000/parent', '_blank');
+}
+
+function goToAdminCenter() {
+  syncAuthToCookie();
+  window.open('http://localhost:3000/admin/dashboard', '_blank');
+}
+
 function confirmLogout() {
   userStore.logoutKid();
   showLogoutConfirm.value = false;
@@ -851,6 +888,44 @@ onUnmounted(() => {
 
 .theme-icon {
   font-size: 1.3rem;
+}
+
+/* 家长中心 / 管理中心入口按钮 */
+.parent-center-btn,
+.admin-center-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.parent-center-btn {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+}
+
+.parent-center-btn:hover {
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.admin-center-btn {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.admin-center-btn:hover {
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.parent-center-icon,
+.admin-center-icon {
+  font-size: 1.2rem;
 }
 
 /* 主题功能已移动到创作者中心 */
@@ -1902,7 +1977,9 @@ onUnmounted(() => {
 
   .notification-btn,
   .exit-btn,
-  .theme-btn {
+  .theme-btn,
+  .parent-center-btn,
+  .admin-center-btn {
     width: 36px;
     height: 36px;
   }

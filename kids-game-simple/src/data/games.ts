@@ -40,17 +40,20 @@ export const GAMES: Game[] = [
   { id: 'slimeJump', name: '史莱姆跳', desc: '控制史莱姆不断往上跳，收集星星得高分！', type: '2d', category: 'coordination', tag: '跳跃', color: '#6BCB77,#9B59B6', players: 987, best: 0, preview: 'slimeJump' },
   { id: 'snake', name: '贪吃蛇', desc: '控制小蛇吃食物，别撞墙和自己的尾巴！', type: '2d', category: 'coordination', tag: '经典', color: '#2ECC71,#27AE60', players: 3500, best: 0, preview: 'snake' },
   { id: 'racingRun', name: '极速赛车', desc: '飙车躲障碍！拾取道具触发火焰加速、护盾、磁铁吸分，超爽！', type: '2d', category: 'coordination', tag: '赛车', color: '#FF6B00,#FFD700', players: 3180, best: 0, preview: 'racingRun' },
-  { id: 'cloudBallRush3d', name: '云端滚球大冒险', desc: '3D物理滚球闯关！治愈解压、收集星光、轻度竞速冲榜。', type: '3d', category: 'coordination', tag: '滚球', color: '#6EC8FF,#A8E6CF', players: 0, best: 0, preview: 'cloudBallRush3d' },
   { id: 'starCatcher', name: '星星捕手', desc: '控制小精灵收集星星，躲避乌云袭击！', type: '2d', category: 'coordination', tag: '益智', color: '#FFD700,#9B59B6', players: 1234, best: 0, preview: 'starCatcher' },
 
   // 📐 空间想象 - 空间感知、几何思维
+  { id: 'jump3d', name: '云端立体跳跳', desc: '3D立体跳一跳！长按蓄力精准跳跃，挑战极限高分！', type: '3d', category: 'spatial', tag: '3D跳跃', color: '#4169E1,#87CEEB', players: 0, best: 0, preview: 'jump3d' },
+  { id: 'stack3d', name: '3D堆叠乐园', desc: '3D模型堆叠挑战，不倒塌就得分', type: '3d', category: 'spatial', tag: '3D', color: '#A8E6CF,#88D8B0', players: 1893, best: 0, preview: 'stack3d' },
   { id: 'bouncePath', name: '弹珠迷宫', desc: '控制弹珠收集星星，弹跳乐趣多！', type: '2d', category: 'spatial', tag: '益智', color: '#4ECDC4,#FFD93D', players: 1432, best: 0, preview: 'bouncePath' },
   { id: 'stack', name: '叠叠乐', desc: '精准堆叠方块，叠得越高分数越高！', type: '2d', category: 'spatial', tag: '堆叠', color: '#A8E6CF,#6BCB77', players: 2100, best: 0, preview: 'stack' },
+  { id: 'mazeExplorer', name: '星界迷宫', desc: '3D第一人称迷宫探险！收集钥匙开启出口传送门，限时闯关挑战！', type: '3d', category: 'spatial', tag: '3D迷宫', color: '#6B7280,#3B82F6', players: 0, best: 0, preview: 'mazeExplorer' },
+  { id: 'carParking3d', name: '3D停车大师', desc: '真实3D停车模拟！精准操控车辆，完成倒车入库、侧方停车等挑战！', type: '3d', category: 'coordination', tag: '3D驾驶', color: '#3498db,#2980b9', players: 0, best: 0, preview: 'carParking3d' },
+  { id: 'voxelSandbox', name: '方块沙盒世界', desc: '3D体素沙盒建造游戏！随机地形生成、自由破坏建造、昼夜光影系统，创造你的专属世界！', type: '3d', category: 'creativity', tag: '沙盒建造', color: '#4CAF50,#8BC34A', players: 0, best: 0, preview: 'voxelSandbox' },
 
   // ♟️ 策略规划 - 决策能力、资源管理
   { id: 'plantsVsZombies', name: '植物大战僵尸', desc: '种植植物抵御僵尸入侵，保护你的家园！', type: '2d', category: 'strategy', tag: '塔防', color: '#7CB342,#FFD700', players: 0, best: 0, preview: 'plantsVsZombies' },
   { id: 'towerDefense', name: '星际塔防', desc: '放置防御塔拦截外星入侵者，守住防线！', type: '2d', category: 'strategy', tag: '塔防', color: '#0d1b2a,#5352ED', players: 2500, best: 0, preview: 'towerDefense' },
-  { id: 'happyDefense', name: '欢乐防线大作战', desc: '3D俯视角趣味塔防！摆塔刷怪解压，六波闯关竞速冲高分。', type: '3d', category: 'strategy', tag: '塔防', color: '#6BCB77,#FFD93D', players: 0, best: 0, preview: 'happyDefense' },
   { id: 'rpgShooterTD', name: 'RPG塔防射击', desc: '双系统战斗！建造炮台防御+角色移动射击，策略与操作并重！', type: '2d', category: 'strategy', tag: '塔防射击', color: '#4ECDC4,#FF6B6B', players: 1500, best: 0, preview: 'rpgShooterTowerDefense' },
   { id: 'spaceShooter', name: '太空射击', desc: '驾驶飞船消灭外星入侵者，躲避弹幕！', type: '2d', category: 'strategy', tag: '射击', color: '#0d1b2a,#45B7D1', players: 3200, best: 0, preview: 'spaceShooter' },
   { id: 'rpgShooter', name: '星际猎手', desc: 'RPG移动射击！击杀敌人获得经验升级，提升属性挑战波次！', type: '2d', category: 'strategy', tag: 'RPG射击', color: '#5352ED,#9B59B6', players: 2100, best: 0, preview: 'rpgShooter' },
@@ -58,6 +61,8 @@ export const GAMES: Game[] = [
   { id: 'contraRpg', name: '魂斗罗RPG', desc: '经典横版射击闯关！击败敌人收集道具，挑战最终BOSS！', type: '2d', category: 'strategy', tag: '射击RPG', color: '#1a2f1a,#4a90d9', players: 2000, best: 0, preview: 'contraRpg' },
   { id: 'wangzheRpg', name: '王者荣耀', desc: '横版对战！摇杆移动+技能释放，击杀敌方3次获胜！', type: '2d', category: 'strategy', tag: '对战', color: '#1a1a2e,#ffd700', players: 5000, best: 0, preview: 'wangzheRpg' },
   { id: 'dnfRpg', name: '地下城勇士', desc: '高仿DNF！选择职业闯荡地下城，连招浮空击败BOSS！', type: '2d', category: 'strategy', tag: '格斗RPG', color: '#8B4513,#FFD700', players: 0, best: 0, preview: 'dnfRpg' },
+  { id: 'abyssDungeon', name: '深渊地下城', desc: '3D顶视角RPG！探索随机地牢、击杀怪物、收集装备、挑战BOSS！', type: '3d', category: 'strategy', tag: '3D RPG', color: '#1a1a2e,#6B7280', players: 0, best: 0, preview: 'abyssDungeon' },
+  { id: 'rollingBall', name: '云端滚球闯关', desc: '3D物理滚球闯关！收集水晶、躲避障碍，在悬空赛道上挑战极限！', type: '3d', category: 'coordination', tag: '3D闯关', color: '#4169E1,#87CEEB', players: 0, best: 0, preview: 'rollingBall' },
 
   // 🎨 创造力 - 想象力、创新表达
   // (当前暂无专门游戏，可后续添加绘画、音乐类游戏)
@@ -89,6 +94,16 @@ export const GAME_GUIDES: Record<string, GameGuide> = {
     tipsTitle: '💡 小技巧',
     tips: '障碍物有红色和紫色两种，小心别碰到！收集道具还能触发随机Buff！',
     bg: '#4ECDC4'
+  },
+  stack3d: {
+    icon: '🏗️', name: '3D堆叠乐园', desc: '3D方块左右摆动，点击屏幕将方块放到下方底座上，堆得越高分数越多！',
+    ops: [
+      { icon: '👆', text: '<b>点击/点击屏幕</b>放下方块' },
+      { icon: '🎯', text: '方块需落在下方底座上' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '落点偏移越小，分数加成越高！超过底座宽度游戏结束。',
+    bg: '#A8E6CF'
   },
   sort: {
     icon: '🎨', name: '色彩排序', desc: '点击交换两个管子顶部的彩色球，将相同颜色的球排在一起即完成！',
@@ -361,6 +376,61 @@ export const GAME_GUIDES: Record<string, GameGuide> = {
     tips: '1. 击杀敌方3次即可胜利！\n2. 1/2技能小范围伤害150，3技能大范围伤害250\n3. 敌方会巡逻、追击、攻击，保持走位拉扯\n4. 180秒超时判负，注意时间！',
     bg: '#1a1a2e'
   },
+  jump3d: {
+    icon: '🎯', name: '云端立体跳跳', desc: '3D立体跳一跳！长按蓄力控制跳跃距离，精准落在平台上挑战高分！',
+    ops: [
+      { icon: '👆', text: '<b>长按鼠标/屏幕</b>蓄力' },
+      { icon: '🖱️', text: '<b>松开</b>起跳，蓄力越久跳越远' },
+      { icon: '⭐', text: '<b>完美落点</b>获得额外加分' },
+      { icon: '🔥', text: '<b>连击</b>5次开启1.2倍加成，10次开启1.5倍' },
+      { icon: '🔄', text: '<b>R键/按钮</b>重置游戏' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '1. 蓄力时间越长，跳跃距离越远！\n2. 落在平台中心触发"完美落点"，额外+2分！\n3. 连续完美落点累计连击，最高1.5倍分数加成！\n4. 随着分数提升，平台会变小、间距会变大！',
+    bg: '#4169E1'
+  },
+  rollingBall: {
+    icon: '🎱', name: '云端滚球闯关', desc: '3D物理滚球闯关！收集水晶、躲避障碍，在悬空赛道上挑战极限！',
+    ops: [
+      { icon: '⌨️', text: '<b>WASD/方向键</b>控制小球滚动方向' },
+      { icon: '👆', text: '<b>触屏滑动</b>控制小球移动方向' },
+      { icon: '⭐', text: '<b>收集水晶</b>获得积分' },
+      { icon: '🏁', text: '<b>到达终点</b>通关进入下一关' },
+      { icon: '🔄', text: '<b>空格键/下拉屏幕</b>重置关卡' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '1. 冰面赛道摩擦力小，容易打滑！\n2. 流沙赛道会减速，需要提前加速！\n3. 摆锤和移动挡板是动态障碍，看准时机通过！\n4. 收集全部水晶可获得完美通关评价！',
+    bg: '#4169E1'
+  },
+  mazeExplorer: {
+    icon: '🏰', name: '星界迷宫', desc: '3D第一人称迷宫探险！收集钥匙开启出口传送门，限时闯关挑战！',
+    ops: [
+      { icon: '⌨️', text: '<b>WASD</b>前后左右移动' },
+      { icon: '🖱️', text: '<b>鼠标移动</b>旋转视角' },
+      { icon: '👆', text: '<b>触屏滑动</b>旋转视角+虚拟摇杆移动' },
+      { icon: '⭐', text: '<b>收集钥匙</b>解锁出口传送门' },
+      { icon: '🏁', text: '<b>进入传送门</b>通关' },
+      { icon: '🗺️', text: '<b>M键/按钮</b>开关小地图' },
+      { icon: '🔄', text: '<b>R键/按钮</b>重置关卡' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '1. 收集全部钥匙后出口才会激活！\n2. 触碰陷阱会减速、缩小视野或扣除时间！\n3. 高阶关卡有迷雾效果，只能看到周围区域！\n4. 用时越短得分越高，剩余时间会转化为奖励分数！\n5. 连续触碰3次陷阱会直接失败！',
+    bg: '#6B7280'
+  },
+  carParking3d: {
+    icon: '🚗', name: '3D停车大师', desc: '真实3D停车模拟！精准操控车辆完成停车挑战！',
+    ops: [
+      { icon: '⌨️', text: '<b>W键</b>前进 / <b>S键</b>后退' },
+      { icon: '⌨️', text: '<b>A键</b>左转 / <b>D键</b>右转' },
+      { icon: '⌨️', text: '<b>空格键</b>刹车驻车' },
+      { icon: '⌨️', text: '<b>C键</b>切换视角' },
+      { icon: '⌨️', text: '<b>R键</b>重置关卡' },
+      { icon: '👆', text: '<b>触屏滑动</b>控制车辆方向' },
+    ],
+    tipsTitle: '💡 小技巧',
+    tips: '1. 低速行驶更容易精准控制方向！\n2. 倒车时方向与前进相反，注意控制！\n3. 使用顶视角观察车身与车位的位置关系！\n4. 碰撞障碍物会扣分，累计3次碰撞失败！\n5. 停车越精准、用时越短得分越高！',
+    bg: '#3498db'
+  }
 }
 
 export const MOCK_RANK_DATA = [

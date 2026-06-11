@@ -9,15 +9,13 @@ import { isEmbeddedCanvasGame } from '@simple/games/embeddedCanvasGames';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'KidsHome',
-    component: () => import('@/modules/kids-home/index.vue'),
+    name: 'SimpleHome',
+    component: () => import('@simple/views/SimpleHome.vue'),
     meta: { title: '趣玩乐园', requiresAuth: true },
   },
   {
     path: '/home',
-    name: 'Home',
-    component: () => import('@/modules/home/index.vue'),
-    meta: { title: '首页', requiresAuth: true },
+    redirect: '/',
   },
   {
     path: '/game/:type',

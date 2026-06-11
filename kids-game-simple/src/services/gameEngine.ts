@@ -19,6 +19,8 @@ export class GameEngine {
     crits: 0,
     sessionCoins: 0,
   }
+  /** 壳层暂停：对局仍算进行中，但各游戏循环应跳过逻辑更新 */
+  private _paused = false
   private _isVictory = false
   private _gameStats: any = null  // 游戏统计数据
   private _orientation: 'portrait' | 'landscape' = 'portrait'
@@ -64,12 +66,33 @@ export class GameEngine {
       sessionCoins: 0,
     }
     this.state.running = true
+    this._paused = false
     this._isVictory = false
     this._gameStats = null
   }
 
   stop() {
     this.state.running = false
+    this._paused = false
+  }
+
+  pause() {
+    if (!this.state.running) return
+    this._paused = true
+  }
+
+  resume() {
+    if (!this.state.running) return
+    this._paused = false
+  }
+
+  isPaused() {
+    return this._paused
+  }
+
+  /** 游戏循环应同时检查 isRunning() && !isPaused() */
+  canTick() {
+    return this.state.running && !this._paused
   }
 
   getScore() {

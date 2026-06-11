@@ -1,24 +1,49 @@
 <template>
-  <div class="canvas-game-play" :class="{ 'landscape-mode': landscapeMode, 'force-landscape': forceLandscape }">
-    <header class="play-header">
-      <button type="button" class="back-btn" @click="onBack">← 返回</button>
-      <span class="title">{{ title }}</span>
-      <span class="score">得分 {{ liveScore }}</span>
-    </header>
-    <div ref="canvasHost" class="canvas-host" />
-    <div v-if="loading" class="loading-mask">加载游戏中…</div>
-    <div v-if="ended" class="result-mask">
-      <div class="result-card">
-        <p class="result-title">本局结束</p>
-        <p class="result-score">{{ finalScore }}</p>
-        <div class="result-actions">
-          <button type="button" @click="onBack">返回</button>
-          <button type="button" class="primary" @click="replay">再来一局</button>
-        </div>
-      </div>
+  <div
+    class="game-play-shell"
+    :class="{
+      'game-play-shell--landscape': landscapeMode,
+      'game-play-shell--force-landscape': forceLandscape,
+    }"
+  >
+    <GamePlayShellHeader
+      v-if="showHeader"
+      :title="title"
+      :icon="guideIcon"
+      :score="liveScore"
+      :combo="liveCombo"
+      :paused="session.isPaused.value"
+      :show-pause="session.isPlaying.value || session.isPaused.value"
+      @back="onBack"
+      @toggle-pause="onTogglePause"
+    />
+
+    <div
+      ref="canvasHost"
+      class="game-play-shell__canvas"
+      :class="{ 'game-play-shell__canvas--frozen': session.isPaused.value }"
+    />
+
+    <div v-if="session.phase.value === 'loading'" class="game-play-shell__loading">
+      {{ shellLabels.loading }}
     </div>
+
+    <GamePlayPauseOverlay
+      v-if="session.isPaused.value"
+      @resume="onTogglePause"
+      @back="onBack"
+    />
+
+    <GamePlayResultPanel
+      v-if="session.isEnded.value"
+      :score="session.finalScore.value"
+      :victory="session.victory.value"
+      @back="onBack"
+      @replay="replay"
+    />
+
     <GameGuideOverlay
-      v-if="showGuide && guide"
+      v-if="session.phase.value === 'guide' && guide"
       :guide="guide"
       :accent="accentColor"
       @start="onGuideStart"
@@ -38,7 +63,12 @@ import { OrientationManager } from '@simple/utils/orientation';
 import { storageService } from '@simple/services/storage';
 import { userService } from '@simple/services/userService';
 import GameGuideOverlay from '@simple/components/GameGuideOverlay.vue';
+import GamePlayShellHeader from '@simple/components/game-play/GamePlayShellHeader.vue';
+import GamePlayResultPanel from '@simple/components/game-play/GamePlayResultPanel.vue';
+import GamePlayPauseOverlay from '@simple/components/game-play/GamePlayPauseOverlay.vue';
 import { prepareEmbeddedCanvasPlay } from '@simple/services/embeddedGameLaunch';
+import { useCanvasGameSession } from '@simple/composables/useCanvasGameSession';
+import { GAME_PLAY_SHELL } from '@simple/constants/gamePlayShell';
 
 const props = defineProps<{
   gameId: string;
@@ -46,23 +76,31 @@ const props = defineProps<{
 
 const router = useRouter();
 const canvasHost = ref<HTMLElement | null>(null);
-const loading = ref(true);
-const ended = ref(false);
-const showGuide = ref(false);
-const liveScore = ref(0);
-const finalScore = ref(0);
 const landscapeMode = ref(false);
 const forceLandscape = ref(false);
 
+const session = useCanvasGameSession(props.gameId);
+const liveScore = session.liveScore;
+const liveCombo = session.liveCombo;
+
 let orientationManager: OrientationManager | null = null;
 let scoreTimer: ReturnType<typeof setInterval> | null = null;
-let sessionActive = false;
 let launchPrepared = false;
+
+const shellLabels = GAME_PLAY_SHELL.labels;
 
 const registration = computed(() => getGameRegistration(props.gameId));
 const title = computed(() => registration.value?.game.name ?? props.gameId);
 const guide = computed<GameGuide | undefined>(() => GAME_GUIDES[props.gameId]);
+const guideIcon = computed(() => guide.value?.icon ?? '');
 const accentColor = computed(() => registration.value?.game.color?.split(',')[0] ?? '#4D96FF');
+
+const showHeader = computed(
+  () =>
+    session.phase.value !== 'guide' &&
+    session.phase.value !== 'loading' &&
+    !session.isEnded.value,
+);
 
 function isGuideSkipped(): boolean {
   const skipped = userService.isLoggedIn
@@ -77,8 +115,15 @@ function onBack() {
 }
 
 function onGuideCancel() {
-  showGuide.value = false;
+  session.setPhase('guide');
   router.back();
+}
+
+function onTogglePause() {
+  if (!session.isPlaying.value && !session.isPaused.value) return;
+  session.togglePause();
+  if (session.isPaused.value) gameEngine.pause();
+  else gameEngine.resume();
 }
 
 async function ensureLaunchPrepared(): Promise<boolean> {
@@ -93,7 +138,6 @@ function onGuideStart(skipNext: boolean) {
     if (userService.isLoggedIn) userService.skipGuide(props.gameId);
     else storageService.skipGuide(props.gameId);
   }
-  showGuide.value = false;
   void (async () => {
     if (!(await ensureLaunchPrepared())) {
       router.back();
@@ -104,7 +148,7 @@ function onGuideStart(skipNext: boolean) {
 }
 
 function replay() {
-  ended.value = false;
+  session.resetForReplay();
   launchPrepared = false;
   void (async () => {
     if (!(await ensureLaunchPrepared())) {
@@ -116,7 +160,22 @@ function replay() {
 }
 
 function teardownSession() {
-  sessionActive = false;
+  session.teardown();
+  clearRuntimeOnly();
+}
+
+function wireEngineUiCallbacks() {
+  gameEngine.setCallbacks({
+    onComboShow: (combo) => {
+      liveCombo.value = combo;
+    },
+    onComboBreak: () => {
+      liveCombo.value = 0;
+    },
+  });
+}
+
+function clearRuntimeOnly() {
   if (scoreTimer) {
     clearInterval(scoreTimer);
     scoreTimer = null;
@@ -132,15 +191,14 @@ function teardownSession() {
 async function startSession() {
   const reg = registration.value;
   if (!reg || !canvasHost.value) {
-    loading.value = false;
+    session.setPhase('guide');
     return;
   }
 
-  loading.value = true;
-  ended.value = false;
-  teardownSession();
-  sessionActive = true;
+  clearRuntimeOnly();
+  session.beginSession();
 
+  wireEngineUiCallbacks();
   gameEngine.start();
   const vp = resolveGameViewport(props.gameId);
   landscapeMode.value = vp.isLandscapeGame;
@@ -154,18 +212,29 @@ async function startSession() {
   mountMainGameCanvas(canvasHost.value, vp, !!reg.isSpecial);
 
   const ok = await initGame(props.gameId, gameEngine, () => {
-    if (!sessionActive) return;
-    finalScore.value = gameEngine.getScore();
-    liveScore.value = finalScore.value;
-    ended.value = true;
+    if (!session.sessionActive.value) return;
+    const score = gameEngine.getScore();
+    liveScore.value = score;
+    session.endSession({
+      score,
+      victory: gameEngine.isVictory(),
+      stats: gameEngine.getGameStats(),
+    });
     gameEngine.endGame();
   });
 
-  loading.value = false;
-  if (!ok) return;
+  if (!ok) {
+    session.teardown();
+    return;
+  }
+
+  session.markPlaying();
 
   scoreTimer = setInterval(() => {
-    if (gameEngine.isRunning()) liveScore.value = gameEngine.getScore();
+    if (gameEngine.isRunning() && session.isPlaying.value) {
+      liveScore.value = gameEngine.getScore();
+      liveCombo.value = gameEngine.getCombo();
+    }
   }, 200);
 }
 
@@ -175,7 +244,7 @@ onMounted(async () => {
     return;
   }
   if (!isGuideSkipped() && guide.value) {
-    showGuide.value = true;
+    session.setPhase('guide');
     return;
   }
   if (!(await ensureLaunchPrepared())) {
@@ -191,85 +260,40 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.canvas-game-play {
+.game-play-shell {
   position: fixed;
   inset: 0;
   z-index: 100;
   display: flex;
   flex-direction: column;
-  background: #0f172a;
+  background: var(--game-shell-bg, #0f172a);
   color: #fff;
 }
-.play-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.35);
-  flex-shrink: 0;
-}
-.back-btn {
-  border: none;
-  background: transparent;
-  color: #93c5fd;
-  font-size: 16px;
-  cursor: pointer;
-}
-.title {
-  flex: 1;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.score {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.9;
-}
-.canvas-host {
+
+.game-play-shell__canvas {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
-.loading-mask,
-.result-mask {
+
+.game-play-shell__canvas--frozen {
+  pointer-events: none;
+  filter: brightness(0.55);
+}
+
+.game-play-shell__loading {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 140;
+  font-size: 16px;
 }
-.result-card {
-  background: #fff;
-  color: #111;
-  padding: 24px 32px;
-  border-radius: 16px;
-  text-align: center;
-}
-.result-score {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 12px 0;
-}
-.result-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-top: 16px;
-}
-.result-actions button {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  cursor: pointer;
-}
-.result-actions .primary {
-  background: #4d96ff;
-  color: #fff;
-  border-color: #4d96ff;
-}
-.landscape-mode.force-landscape .canvas-host {
+
+.game-play-shell--landscape.game-play-shell--force-landscape .game-play-shell__canvas {
   width: 100vh;
   height: 100vw;
   transform: rotate(90deg);

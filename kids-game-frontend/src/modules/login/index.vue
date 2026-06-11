@@ -116,7 +116,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { getDefaultAdminLanding } from '@kids-game/shared';
 import { useUserStore } from '@/core/store/user.store';
 import GlobalLoading from '@/components/GlobalLoading.vue';
 import ErrorDisplay from '@/components/ErrorDisplay.vue';
@@ -167,16 +166,21 @@ async function handleLogin() {
     isLoading.value = true;
     const result = await userStore.unifiedLogin(formData.value.username, formData.value.password);
 
+    // 统一登录：所有用户登录后都跳转到 3001 终端首页（KidsHome）
+    // 家长/管理员在首页通过"家长中心"/"管理中心"按钮跳转到 3000 管理端
     if (result.userType === 0) {
       toast.success('登录成功！');
+      syncAuthToCookie();
       await router.push('/');
     } else if (result.userType === 1) {
-      toast.success('家长登录成功！');
+      toast.success('登录成功！');
       saveParentLoginUsername(formData.value.username);
-      await router.push(getDefaultAdminLanding('parent'));
+      syncAuthToCookie();
+      await router.push('/');
     } else if (result.userType === 2) {
-      toast.success('管理员登录成功！');
-      await router.push(getDefaultAdminLanding('admin'));
+      toast.success('登录成功！');
+      syncAuthToCookie();
+      await router.push('/');
     } else {
       toast.error('未知用户类型');
     }
@@ -187,6 +191,25 @@ async function handleLogin() {
     toast.error(errorMsg);
   } finally {
     isLoading.value = false;
+  }
+}
+
+/** 将登录信息同步到 cookie，供 3000 管理端口跨端口读取 */
+function syncAuthToCookie(): void {
+  try {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('parentToken');
+    const userInfo = localStorage.getItem('userInfo');
+    const parentInfo = localStorage.getItem('parentInfo');
+    const adminInfo = localStorage.getItem('adminInfo');
+
+    if (token) {
+      document.cookie = `cross_auth_token=${encodeURIComponent(token)}; path=/; max-age=300; SameSite=Lax`;
+    }
+    if (userInfo) document.cookie = `cross_user_info=${encodeURIComponent(userInfo)}; path=/; max-age=300; SameSite=Lax`;
+    if (parentInfo) document.cookie = `cross_parent_info=${encodeURIComponent(parentInfo)}; path=/; max-age=300; SameSite=Lax`;
+    if (adminInfo) document.cookie = `cross_admin_info=${encodeURIComponent(adminInfo)}; path=/; max-age=300; SameSite=Lax`;
+  } catch (e) {
+    console.warn('[Login] syncAuthToCookie failed:', e);
   }
 }
 

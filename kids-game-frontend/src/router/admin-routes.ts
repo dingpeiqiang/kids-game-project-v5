@@ -1,5 +1,7 @@
 /**
  * 管理端路由（系统管理员 + 家长，/admin 内按角色显示菜单）
+ * 3000 端口无独立登录页，未认证时跳转到 3001 终端登录。
+ * 从 3001 跳转时通过 URL ?token= 携带认证令牌。
  */
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
@@ -20,18 +22,63 @@ function portalRole(): AdminPortalRole | null {
   return null;
 }
 
+/** 从 cookie 中提取并存储 3001 传递的跨端口认证信息 */
+function consumeCrossPortAuth(): void {
+  try {
+    const cookies = document.cookie.split(';').reduce((acc, c) => {
+      const [k, v] = c.trim().split('=');
+      if (k && v) acc[k] = decodeURIComponent(v);
+      return acc;
+    }, {} as Record<string, string>);
+
+    if (cookies.cross_auth_token) {
+      // 根据 user info 判断 token 类型并存储
+      const adminInfo = cookies.cross_admin_info;
+      const parentInfo = cookies.cross_parent_info;
+      const userInfo = cookies.cross_user_info;
+
+      if (adminInfo) {
+        localStorage.setItem('adminInfo', adminInfo);
+        localStorage.setItem('authToken', cookies.cross_auth_token);
+      } else if (parentInfo) {
+        localStorage.setItem('parentInfo', parentInfo);
+        localStorage.setItem('parentToken', cookies.cross_auth_token);
+      } else if (userInfo) {
+        localStorage.setItem('userInfo', userInfo);
+        localStorage.setItem('authToken', cookies.cross_auth_token);
+      }
+
+      // 清理跨端口 cookie（仅用于一次性传输）
+      document.cookie = 'cross_auth_token=; path=/; max-age=0';
+      document.cookie = 'cross_user_info=; path=/; max-age=0';
+      document.cookie = 'cross_parent_info=; path=/; max-age=0';
+      document.cookie = 'cross_admin_info=; path=/; max-age=0';
+    }
+  } catch (e) {
+    console.warn('[admin-routes] consumeCrossPortAuth failed:', e);
+  }
+}
+
+// 启动时立即消费跨端口认证
+consumeCrossPortAuth();
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/modules/login/index.vue'),
-    meta: { title: '登录', requiresAuth: false },
+    beforeEnter: () => {
+      // 3000 管理端无独立登录页，统一跳转到 3001 终端登录
+      window.location.href = 'http://localhost:3001/login';
+      return false;
+    },
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('@/modules/register/index.vue'),
-    meta: { title: '注册', requiresAuth: false },
+    beforeEnter: () => {
+      window.location.href = 'http://localhost:3001/register';
+      return false;
+    },
   },
   
   {
@@ -195,8 +242,9 @@ router.beforeEach((to, _from, next) => {
   const loggedIn = isLoggedIn();
   const role = portalRole();
 
+  // 3000 无独立登录页，未认证时跳转到 3001 终端登录
   if (requiresAuth && !loggedIn) {
-    next('/login');
+    window.location.href = 'http://localhost:3001/login';
     return;
   }
 

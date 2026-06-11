@@ -639,31 +639,29 @@ export function initWhackMole(engine: GameEngine, onEnd: () => void) {
   }
 
   function drawHUD() {
-    // 顶部半透明信息栏
+    // 顶栏：得分/连击由 CanvasGamePlay 统一壳层展示，此处仅保留局内计时与 buff
     ctx.fillStyle = 'rgba(0,0,0,0.45)'
-    roundRect(ctx, 10, 8, W - 20, 52, 12)
+    roundRect(ctx, 10, 8, W - 20, 44, 12)
     ctx.fill()
 
-    // 剩余时间
-    ctx.fillStyle = timeLeft <= 10 ? '#FF4757' : '#FFD700'
-    ctx.font = 'bold 22px sans-serif'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(`⏱ ${timeLeft}s`, 22, 34)
-
-    // 分数
-    ctx.fillStyle = '#fff'
-    ctx.font = 'bold 20px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`★ ${engine.getScore()}`, W - 18, 34)
-    
-    // 双倍buff指示器
+    const hudY = 30
     if (scoreMultiplier > 1 && Date.now() < doubleScoreEndTime) {
       const remainingTime = Math.ceil((doubleScoreEndTime - Date.now()) / 1000)
+      ctx.fillStyle = timeLeft <= 10 ? '#FF4757' : '#FFD700'
+      ctx.font = 'bold 20px sans-serif'
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(`⏱ ${timeLeft}s`, 22, hudY)
       ctx.fillStyle = '#FF6B9D'
-      ctx.font = 'bold 16px sans-serif'
+      ctx.font = 'bold 15px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(`✨ 双倍得分 ${remainingTime}s`, W / 2, 34)
+      ctx.fillText(`✨ 双倍 ${remainingTime}s`, W / 2, hudY)
+    } else {
+      ctx.fillStyle = timeLeft <= 10 ? '#FF4757' : '#FFD700'
+      ctx.font = 'bold 22px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(`⏱ 剩余 ${timeLeft} 秒`, W / 2, hudY)
     }
 
     // 倒计时低于10秒闪红

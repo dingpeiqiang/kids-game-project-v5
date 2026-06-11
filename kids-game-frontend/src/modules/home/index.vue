@@ -164,15 +164,11 @@
     <!-- 个人中心 -->
     <aside class="profile-section">
       <div class="profile-card">
-        <!-- 头像和用户信息 -->
         <div class="avatar-section" @click="changeAvatar">
           <span class="avatar">{{ userStore.avatar }}</span>
           <span class="avatar-tip">点击更换</span>
         </div>
         <h3>{{ userStore.username }}</h3>
-        <p class="user-level">Lv.{{ userStore.level || 1 }}</p>
-        
-        <!-- 统计数据 -->
         <div class="stats">
           <div class="stat-item">
             <span class="stat-label">游学币</span>
@@ -185,40 +181,10 @@
             <span class="stat-value">{{ currentGradeName }}</span>
           </div>
         </div>
-        
-        <!-- 额外统计 -->
-        <div class="mini-stats">
-          <div class="mini-stat">
-            <span class="mini-value">{{ userStore.totalGamesPlayed || 0 }}</span>
-            <span class="mini-label">游戏次数</span>
-          </div>
-          <div class="mini-stat">
-            <span class="mini-value">{{ userStore.totalScore || 0 }}</span>
-            <span class="mini-label">总得分</span>
-          </div>
-          <div class="mini-stat">
-            <span class="mini-value">{{ userStore.answerCount || 0 }}</span>
-            <span class="mini-label">答题数</span>
-          </div>
-        </div>
-        
-        <!-- 游学币不足提示 -->
         <div v-if="!userStore.hasFatiguePoints" class="points-notice">
           <p>💡 游学币不足</p>
           <button @click="goToAnswer" class="answer-btn">
             答题赚取
-          </button>
-        </div>
-        
-        <!-- 功能按钮 -->
-        <div class="profile-actions">
-          <button @click="showProfileDetail" class="action-btn">
-            <span class="action-icon">👤</span>
-            <span>个人资料</span>
-          </button>
-          <button @click="goToSettings" class="action-btn">
-            <span class="action-icon">⚙️</span>
-            <span>设置</span>
           </button>
         </div>
       </div>
@@ -540,46 +506,6 @@ async function logout() {
 
 function handleLogout() {
   logout();
-}
-
-function showProfileDetail() {
-  modal.info({
-    title: '个人资料',
-    content: `
-      <div style="text-align: center;">
-        <div style="font-size: 4rem; margin-bottom: 1rem;">${userStore.avatar}</div>
-        <h3 style="margin-bottom: 0.5rem;">${userStore.username}</h3>
-        <p style="color: #667eea; margin-bottom: 1rem;">Lv.${userStore.level || 1}</p>
-        <div style="text-align: left; background: #f9fafb; padding: 1rem; border-radius: 8px;">
-          <p><strong>年级：</strong>${currentGradeName}</p>
-          <p><strong>游学币：</strong>${userStore.currentUser?.fatiguePoints || 0}</p>
-          <p><strong>游戏次数：</strong>${userStore.totalGamesPlayed || 0}</p>
-          <p><strong>总得分：</strong>${userStore.totalScore || 0}</p>
-        </div>
-      </div>
-    `,
-    width: '400px',
-  });
-}
-
-function goToSettings() {
-  modal.info({
-    title: '设置',
-    content: `
-      <div style="text-align: center;">
-        <p style="margin-bottom: 1.5rem;">设置功能正在开发中...</p>
-        <div style="display: flex; justify-content: center; gap: 1rem;">
-          <button 
-            onclick="document.querySelector('.el-dialog__footer .el-button--primary').click()"
-            style="padding: 0.5rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;"
-          >
-            确定
-          </button>
-        </div>
-      </div>
-    `,
-    width: '300px',
-  });
 }
 
 async function loadGames() {
@@ -1064,16 +990,9 @@ onUnmounted(() => {
 }
 
 .profile-card h3 {
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 1rem 0;
   color: #333;
   font-size: 1.2rem;
-}
-
-.user-level {
-  margin: 0 0 1rem 0;
-  font-size: 0.85rem;
-  color: #667eea;
-  font-weight: 500;
 }
 
 .stats {
@@ -1108,41 +1027,12 @@ onUnmounted(() => {
   color: #ef4444;
 }
 
-/* 迷你统计 */
-.mini-stats {
-  display: flex;
-  justify-content: space-around;
-  padding: 0.75rem 0;
-  border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 1rem;
-}
-
-.mini-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.125rem;
-}
-
-.mini-value {
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #374151;
-}
-
-.mini-label {
-  font-size: 0.7rem;
-  color: #9ca3af;
-}
-
 .points-notice {
   background: #fef3c7;
   border: 1px solid #f59e0b;
   border-radius: 8px;
   padding: 0.75rem;
-  margin-top: 0;
-  margin-bottom: 1rem;
+  margin-top: 1rem;
 }
 
 .points-notice p {
@@ -1166,40 +1056,6 @@ onUnmounted(() => {
 .answer-btn:hover {
   background: #d97706;
   transform: translateY(-2px);
-}
-
-/* 功能按钮 */
-.profile-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.75rem 0.5rem;
-  background: #f3f4f6;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.action-btn:hover {
-  background: #e5e7eb;
-  transform: translateY(-2px);
-}
-
-.action-icon {
-  font-size: 1.2rem;
-}
-
-.action-btn span:last-child {
-  font-size: 0.75rem;
-  color: #374151;
 }
 
 /* 弹窗 */
