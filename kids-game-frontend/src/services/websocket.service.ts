@@ -1,12 +1,12 @@
 /**
  * WebSocket 实时通信服务
- * 功能：管理 WebSocket 连接，实时同步疲劳点，推送远程控制消息
+ * 功能：管理 WebSocket 连接，实时同步游学币，推送远程控制消息
  * 从 platform 迁移到 frontend，适配 Vue 3 + Vite
  */
 import { envConfig } from '@/core/config';
 
 export enum WSMessageType {
-  // 疲劳点相关
+  // 游学币相关
   FATIGUE_POINTS_UPDATE = 'fatigue_points_update',
   FATIGUE_POINTS_LOW = 'fatigue_points_low',
   FATIGUE_POINTS_EXHAUSTED = 'fatigue_points_exhausted',

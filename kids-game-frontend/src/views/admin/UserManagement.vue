@@ -73,7 +73,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="fatiguePoints" label="疲劳点" width="80" />
+        <el-table-column prop="fatiguePoints" label="游学币" width="80" />
         <el-table-column label="创建时间" width="180">
           <template #default="{ row }">
             {{ formatTime(row.createTime) }}
@@ -167,7 +167,7 @@
             {{ getStatusText(currentUser.status) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="疲劳点">{{ currentUser.fatiguePoints || 0 }}</el-descriptions-item>
+        <el-descriptions-item label="游学币">{{ currentUser.fatiguePoints || 0 }}</el-descriptions-item>
         <el-descriptions-item label="每日答题积分">{{ currentUser.dailyAnswerPoints || 0 }}</el-descriptions-item>
         <el-descriptions-item label="最后登录时间">
           {{ formatTime(currentUser.lastLoginTime) }}
@@ -253,7 +253,7 @@
           <el-col :span="12">
             <h4 style="margin-bottom: 15px; color: #303133;">⚙️ 属性设置</h4>
             
-            <el-form-item label="疲劳点">
+            <el-form-item label="游学币">
               <el-input-number 
                 v-model="editForm.fatiguePoints" 
                 :min="0" 
@@ -263,7 +263,7 @@
               />
               <el-tooltip placement="bottom">
                 <template #content>
-                  儿童用户的疲劳点上限为 10 点<br/>超过后将限制游戏时长
+                  儿童用户的游学币上限为 10 点<br/>超过后将限制游戏时长
                 </template>
                 <el-icon style="margin-left: 5px;"><QuestionFilled /></el-icon>
               </el-tooltip>

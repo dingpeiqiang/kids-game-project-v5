@@ -60,17 +60,17 @@ public class GameSessionService {
             throw new BusinessException("游戏不存在或已下架");
         }
 
-        // 检查用户疲劳点
+        // 检查用户游学币
         BaseUser user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
 
         if (user.getFatiguePoints() == null || user.getFatiguePoints() <= 0) {
-            throw new BusinessException("疲劳点不足，请休息后再玩");
+            throw new BusinessException("游学币不足，请休息后再玩");
         }
 
-        log.info("[GameSession] 用户 {} 启动游戏，当前疲劳点: {}", userId, user.getFatiguePoints());
+        log.info("[GameSession] 用户 {} 启动游戏，当前游学币: {}", userId, user.getFatiguePoints());
 
         // 创建会话
         GameSession session = new GameSession();
@@ -129,11 +129,11 @@ public class GameSessionService {
             throw new BusinessException("更新会话失败");
         }
 
-        // 计算消耗的疲劳点（每分钟1点）
+        // 计算消耗的游学币（每分钟1点）
         int consumePoints = (int) Math.ceil(result.getDuration() / 60.0);
         session.setConsumePoints(consumePoints);
 
-        // 扣除用户疲劳点
+        // 扣除用户游学币
         BaseUser user = userMapper.selectById(session.getUserId());
         if (user != null) {
             fatiguePointsService.consumeFatiguePoints(
@@ -154,7 +154,7 @@ public class GameSessionService {
         // 保存游戏记录
         saveGameRecord(session);
 
-        log.info("[GameSession] 提交结果成功，会话ID: {}, 分数: {}, 时长: {}秒, 消耗疲劳点: {}",
+        log.info("[GameSession] 提交结果成功，会话ID: {}, 分数: {}, 时长: {}秒, 消耗游学币: {}",
                 session.getSessionId(), result.getScore(), result.getDuration(), consumePoints);
     }
 
@@ -174,7 +174,7 @@ public class GameSessionService {
             int consumePoints = (int) Math.ceil(session.getDuration() / 60.0);
             session.setConsumePoints(consumePoints);
 
-            // 扣除疲劳点
+            // 扣除游学币
             BaseUser user = userMapper.selectById(session.getUserId());
             if (user != null) {
                 fatiguePointsService.consumeFatiguePoints(

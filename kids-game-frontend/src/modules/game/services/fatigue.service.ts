@@ -18,7 +18,7 @@ export function useFatigueService() {
       }
       return MAX_DAILY_FATIGUE;
     } catch (error) {
-      console.error('[FatigueService] 加载疲劳点失败:', error);
+      console.error('[FatigueService] 加载游学币失败:', error);
       return MAX_DAILY_FATIGUE;
     }
   }
@@ -32,7 +32,7 @@ export function useFatigueService() {
       localStorage.setItem(FATIGUE_POINTS_KEY, JSON.stringify(data));
       fatiguePoints.value = points;
     } catch (error) {
-      console.error('[FatigueService] 保存疲劳点失败:', error);
+      console.error('[FatigueService] 保存游学币失败:', error);
     }
   }
 

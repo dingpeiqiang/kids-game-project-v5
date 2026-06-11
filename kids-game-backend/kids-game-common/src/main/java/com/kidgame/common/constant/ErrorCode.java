@@ -43,7 +43,7 @@ public class ErrorCode {
     public static final int GAME_SESSION_NOT_FOUND = 4006;
     public static final int GAME_ALREADY_RUNNING = 4007;
 
-    // 疲劳点相关错误码 (5000-5999)
+    // 游学币相关错误码 (5000-5999)
     public static final int INSUFFICIENT_FATIGUE_POINTS = 5001;
     public static final int FATIGUE_POINTS_LIMIT = 5002;
 
@@ -86,7 +86,7 @@ public class ErrorCode {
     public static final ErrorCode GAME_BLOCKED_BY_PARENT_OBJ = new ErrorCode(GAME_BLOCKED_BY_PARENT, "游戏已被家长屏蔽");
     public static final ErrorCode GAME_TIME_NOT_ALLOWED_OBJ = new ErrorCode(GAME_TIME_NOT_ALLOWED, "当前时间不允许玩游戏");
     public static final ErrorCode DAILY_DURATION_EXCEEDED_OBJ = new ErrorCode(DAILY_DURATION_EXCEEDED, "今日游戏时长已用完");
-    public static final ErrorCode INSUFFICIENT_FATIGUE_POINTS_OBJ = new ErrorCode(INSUFFICIENT_FATIGUE_POINTS, "疲劳点不足");
+    public static final ErrorCode INSUFFICIENT_FATIGUE_POINTS_OBJ = new ErrorCode(INSUFFICIENT_FATIGUE_POINTS, "游学币不足");
 
     // 儿童相关错误码实例
     public static final ErrorCode KID_NOT_FOUND_OBJ = new ErrorCode(KID_NOT_FOUND, "儿童不存在");

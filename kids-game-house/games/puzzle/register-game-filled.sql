@@ -62,8 +62,8 @@ VALUES (
     0,                                  -- status: 0=草稿（开发中），发布后改 2
     0,                                  -- sort_order: 排序权重
     0,                                  -- is_featured: 是否推荐
-    1,                                  -- consume_points_per_minute: 每分钟疲劳点
-    0,                                  -- min_fatigue_to_start: 启动所需疲劳度
+    1,                                  -- consume_points_per_minute: 每分钟游学币
+    0,                                  -- min_fatigue_to_start: 启动所需游学币度
     0,                                  -- online_count: 在线人数
     0,                                  -- total_play_count: 累计游玩次数
     0,                                  -- total_play_duration: 累计时长（秒）

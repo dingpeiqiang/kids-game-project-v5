@@ -100,7 +100,7 @@ public class StatsServiceImpl implements StatsService {
         stats.setTotalFatiguePoints(stats.getTotalFatiguePoints() + points);
         stats.setUpdateTime(System.currentTimeMillis());
         dailyStatsMapper.updateById(stats);
-        log.info("疲劳点发放：增加{}点，总发放：{}点", points, stats.getTotalFatiguePoints());
+        log.info("游学币发放：增加{}点，总发放：{}点", points, stats.getTotalFatiguePoints());
     }
 
     @Override
@@ -109,7 +109,7 @@ public class StatsServiceImpl implements StatsService {
         stats.setTotalConsumedPoints(stats.getTotalConsumedPoints() + points);
         stats.setUpdateTime(System.currentTimeMillis());
         dailyStatsMapper.updateById(stats);
-        log.info("疲劳点消耗：消耗{}点，总消耗：{}点", points, stats.getTotalConsumedPoints());
+        log.info("游学币消耗：消耗{}点，总消耗：{}点", points, stats.getTotalConsumedPoints());
     }
 
     @Override

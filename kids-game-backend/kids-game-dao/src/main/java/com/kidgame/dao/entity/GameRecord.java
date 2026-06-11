@@ -47,7 +47,7 @@ public class GameRecord implements Serializable {
     private Integer score;
 
     /**
-     * 消耗疲劳点
+     * 消耗游学币
      */
     private Integer consumePoints;
 

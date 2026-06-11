@@ -34,7 +34,7 @@ public class UpdateChildPermissionsDTO {
     private String endTime;
 
     /**
-     * 是否启用疲劳点系统
+     * 是否启用游学币系统
      */
     private Boolean enableFatiguePoints;
 }

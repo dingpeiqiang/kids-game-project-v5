@@ -6,7 +6,7 @@ import lombok.Data;
 import java.io.Serializable;
 
 /**
- * 疲劳点日志实体
+ * 游学币日志实体
  */
 @Data
 @TableName("t_fatigue_points_log")

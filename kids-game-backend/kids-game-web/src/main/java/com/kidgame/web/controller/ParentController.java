@@ -4,7 +4,11 @@ import com.kidgame.common.model.Result;
 import com.kidgame.dao.entity.Kid;
 import com.kidgame.dao.entity.Parent;
 import com.kidgame.dao.entity.ParentLimit;
+import com.kidgame.common.util.JwtAuthHelper;
+import com.kidgame.service.FatiguePointsService;
 import com.kidgame.service.ParentService;
+import com.kidgame.service.dto.ParentRewardStudyCoinsDTO;
+import jakarta.servlet.http.HttpServletRequest;
 import com.kidgame.service.dto.AddChildDTO;
 import com.kidgame.service.dto.BindExistingKidDTO;
 import com.kidgame.service.dto.ParentLimitDTO;
@@ -31,6 +35,9 @@ public class ParentController {
 
     @Autowired
     private ParentService parentService;
+
+    @Autowired
+    private FatiguePointsService fatiguePointsService;
 
     @Operation(summary = "家长注册")
     @PostMapping("/register")
@@ -212,5 +219,20 @@ public class ParentController {
             @Parameter(description = "是否为主要监护人") @RequestParam(required = false, defaultValue = "false") Boolean isPrimary) {
         Long relationId = parentService.requestBindKid(parentId, kidUsername, roleType, isPrimary);
         return Result.success(relationId);
+    }
+
+    @Operation(summary = "家长奖励游学币", description = "仅已绑定家长可操作；游戏不能获得游学币")
+    @PostMapping("/reward-study-coins")
+    public Result<Integer> rewardStudyCoins(
+            @RequestBody ParentRewardStudyCoinsDTO dto,
+            HttpServletRequest request) {
+        Long parentId = JwtAuthHelper.resolveUserId(request);
+        Integer userType = JwtAuthHelper.resolveUserType(request);
+        if (parentId == null || userType == null || userType != 1) {
+            return Result.error(com.kidgame.common.constant.ErrorCode.FORBIDDEN, "需要家长登录");
+        }
+        Integer balance = fatiguePointsService.grantStudyCoinsFromParent(
+                parentId, dto.getKidId(), dto.getPoints(), dto.getRemark());
+        return Result.success(balance);
     }
 }

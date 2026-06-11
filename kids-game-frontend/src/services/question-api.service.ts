@@ -1,8 +1,42 @@
 /**
- * 答题相关 API 服务
+ * 答题与题库 API
  */
 import { BaseApiService } from './base-api.service';
 import type { Question, AnswerRecord } from './api.types';
+
+export interface AnswerSubmitResult {
+  isCorrect: boolean;
+  correctAnswer: string;
+  analysis?: string;
+  getPoints: number;
+  currentPoints?: number;
+  /** 兼容旧字段 */
+  points?: number;
+}
+
+export interface QuestionPageResult {
+  list: Question[];
+  total: number;
+}
+
+export interface QuestionSavePayload {
+  questionId?: number;
+  content: string;
+  options: string;
+  correctAnswer: string;
+  analysis?: string;
+  grade: string;
+  type: string;
+  difficulty?: number;
+  status?: number;
+}
+
+interface BackendPageResult<T> {
+  page?: number;
+  size?: number;
+  total: number;
+  records: T[];
+}
 
 export class QuestionApiService extends BaseApiService {
   private static instance: QuestionApiService;
@@ -18,29 +52,86 @@ export class QuestionApiService extends BaseApiService {
     return QuestionApiService.instance;
   }
 
-  /**
-   * 获取随机题目
-   */
-  async getRandom(grade: string): Promise<Question> {
-    return this.get<Question>(`/api/question/random?grade=${grade}`);
+  async getRandom(grade: string, excludeQuestionIds?: number[]): Promise<Question> {
+    const q = new URLSearchParams();
+    q.set('grade', grade);
+    if (excludeQuestionIds?.length) {
+      q.set('excludeIds', excludeQuestionIds.join(','));
+    }
+    return this.get<Question>(`/api/question/random?${q.toString()}`);
   }
 
-  /**
-   * 提交答案
-   */
-  async submit(data: {
-    kidId: number;
-    questionId: number;
-    userAnswer: string;
-  }): Promise<{ isCorrect: boolean; points: number; correctAnswer: string }> {
-    return this.post('/api/question/submit', data);
+  async submitAnswer(
+    kidId: number,
+    questionId: number,
+    userAnswer: string,
+    answerTime?: number,
+  ): Promise<AnswerSubmitResult> {
+    const result = await this.post<AnswerSubmitResult>('/api/question/submit', {
+      kidId,
+      questionId,
+      userAnswer,
+      answerTime: answerTime ?? 0,
+    });
+    return {
+      ...result,
+      points: result.getPoints ?? result.points ?? 0,
+    };
   }
 
-  /**
-   * 获取答题记录
-   */
   async getRecords(kidId: number, limit: number = 20): Promise<AnswerRecord[]> {
-    return this.get<AnswerRecord[]>(`/api/question/records?kidId=${kidId}&limit=${limit}`);
+    return this.get<AnswerRecord[]>(
+      `/api/question/records?kidId=${kidId}&limit=${limit}`,
+    );
+  }
+
+  async getTodayAnswerPoints(kidId: number): Promise<number> {
+    return this.get<number>(`/api/question/today-points?kidId=${kidId}`);
+  }
+
+  async pageQuestions(params: {
+    grade?: string;
+    type?: string;
+    status?: number;
+    page?: number;
+    size?: number;
+  }): Promise<QuestionPageResult> {
+    const q = new URLSearchParams();
+    if (params.grade) q.set('grade', params.grade);
+    if (params.type) q.set('type', params.type);
+    if (params.status !== undefined && params.status !== null) {
+      q.set('status', String(params.status));
+    }
+    q.set('page', String(params.page ?? 1));
+    q.set('size', String(params.size ?? 10));
+    const res = await this.get<BackendPageResult<Question>>(`/api/question/page?${q.toString()}`);
+    return {
+      list: res.records ?? [],
+      total: res.total ?? 0,
+    };
+  }
+
+  async getDetail(questionId: number): Promise<Question> {
+    return this.get<Question>(`/api/question/${questionId}`);
+  }
+
+  async createQuestion(payload: QuestionSavePayload): Promise<Question> {
+    return this.post<Question>('/api/question', payload);
+  }
+
+  async updateQuestion(questionId: number, payload: QuestionSavePayload): Promise<Question> {
+    return this.put<Question>(`/api/question/${questionId}`, {
+      ...payload,
+      questionId,
+    });
+  }
+
+  async deleteQuestion(questionId: number): Promise<void> {
+    await this.delete(`/api/question/${questionId}`);
+  }
+
+  async batchUpdateStatus(questionIds: number[], status: number): Promise<number> {
+    return this.put<number>('/api/question/batch-status', { questionIds, status });
   }
 }
 

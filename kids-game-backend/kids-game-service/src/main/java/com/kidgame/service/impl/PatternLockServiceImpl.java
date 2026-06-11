@@ -27,9 +27,8 @@ public class PatternLockServiceImpl implements PatternLockService {
     public void savePatternLock(Long userId, String userType, String pattern) {
         log.info("保存图案解锁, userId={}, userType={}", userId, userType);
 
-        // 生成盐值并加密图案
-        String salt = BCryptGenerator.generateSalt();
-        String encryptedPattern = BCryptGenerator.hashPassword(pattern, salt);
+        // BCrypt 内部自动生成随机盐值并嵌入哈希结果中
+        String encryptedPattern = BCryptGenerator.hash(pattern);
 
         // 检查是否已存在，存在则删除
         if (hasPatternLock(userId, userType)) {
@@ -41,7 +40,7 @@ public class PatternLockServiceImpl implements PatternLockService {
         patternLock.setUserId(userId);
         patternLock.setUserType(userType);
         patternLock.setEncryptedPattern(encryptedPattern);
-        patternLock.setSalt(salt);
+        patternLock.setSalt(null); // BCrypt 盐值已嵌入 encryptedPattern
         patternLock.setCreateTime(System.currentTimeMillis());
         patternLock.setUpdateTime(System.currentTimeMillis());
 
@@ -62,11 +61,9 @@ public class PatternLockServiceImpl implements PatternLockService {
 
         PatternLock patternLock = optionalPatternLock.get();
         String encryptedPattern = patternLock.getEncryptedPattern();
-        String salt = patternLock.getSalt();
 
-        // 使用盐值验证图案
-        String hashedInput = BCryptGenerator.hashPassword(pattern, salt);
-        boolean isValid = hashedInput.equals(encryptedPattern);
+        // BCrypt 验证：自动从哈希中提取盐值进行比对
+        boolean isValid = BCryptGenerator.matches(pattern, encryptedPattern);
 
         if (!isValid) {
             log.warn("图案解锁验证失败, userId={}", userId);

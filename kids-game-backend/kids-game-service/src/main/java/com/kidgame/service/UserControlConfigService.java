@@ -77,10 +77,10 @@ public interface UserControlConfigService {
     void updateTimeLimit(Long userId, Integer dailyTimeLimitMinutes);
 
     /**
-     * 更新疲劳点设置
+     * 更新游学币设置
      *
      * @param userId 用户ID
-     * @param fatiguePointMinutes 疲劳点阈值（分钟）
+     * @param fatiguePointMinutes 游学币阈值（分钟）
      * @param restDurationMinutes 强制休息时长（分钟）
      */
     void updateFatiguePoint(Long userId, Integer fatiguePointMinutes, Integer restDurationMinutes);
@@ -95,10 +95,10 @@ public interface UserControlConfigService {
     void updateTimeRange(Long userId, String allowedStartTime, String allowedEndTime);
 
     /**
-     * 更新疲劳控制模式
+     * 更新游学币控制模式
      *
      * @param userId 用户ID
-     * @param fatigueControlMode 疲劳控制模式
+     * @param fatigueControlMode 游学币控制模式
      */
     void updateFatigueMode(Long userId, String fatigueControlMode);
 
@@ -119,11 +119,11 @@ public interface UserControlConfigService {
     boolean checkDailyLimit(Long userId);
 
     /**
-     * 检查是否触发疲劳点
+     * 检查是否触发游学币
      *
      * @param userId 用户ID
      * @param playedMinutes 已玩游戏时长（分钟）
-     * @return 是否触发疲劳点
+     * @return 是否触发游学币
      */
     boolean checkFatigue(Long userId, Integer playedMinutes);
 

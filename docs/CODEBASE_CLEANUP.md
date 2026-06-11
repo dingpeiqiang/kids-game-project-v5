@@ -8,6 +8,7 @@
 |----|------|------|
 | Canvas 游戏注册表 | ✅ | **唯一**：`kids-game-simple/src/games/gameRegistry.ts` |
 | `kids-game-frontend/src/modules/game/gameRegistry.ts` | 🔧 | 空文件，无引用，**应删除** |
+| `kids-game-simple/src/App.ts` | ✅ | 已迁至 `src/legacy/App.ts`（停用） |
 | 业务模块 | ✅ | 终端通过 `@` 复用 `kids-game-frontend/src/modules`，勿在 simple 再复制一份 |
 | 鉴权 | ✅ | `@kids-game/shared` + `kids-game-frontend/src/utils/auth.ts` |
 | `kids-game-frontend/src/router/index.ts` | ✅ | 已废弃，转发 `admin-routes.ts` |

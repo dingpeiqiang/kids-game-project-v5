@@ -3,6 +3,7 @@ package com.kidgame.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kidgame.dao.entity.BaseUser;
 import com.kidgame.dao.entity.UserProfile;
+import com.kidgame.service.dto.AuthRegisterDTO;
 import com.kidgame.service.dto.AuthRequestDTO;
 import com.kidgame.service.dto.AuthResponseDTO;
 import com.kidgame.service.dto.UserLoginDTO;
@@ -75,6 +76,11 @@ public interface UserService {
      * 分页查询用户列表
      */
     Page<BaseUser> listUsers(String userType, String status, Integer page, Integer size);
+
+    /**
+     * 统一公开注册（当前支持家长；儿童请走 Kid 注册以绑定监护人）
+     */
+    BaseUser registerPublic(AuthRegisterDTO dto);
 
     /**
      * 统一认证（支持儿童/家长/管理员）

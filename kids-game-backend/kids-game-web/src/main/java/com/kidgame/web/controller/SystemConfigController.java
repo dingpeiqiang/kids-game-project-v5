@@ -36,7 +36,7 @@ public class SystemConfigController {
         return Result.success(systemConfigService.getConfigGroup(group));
     }
 
-    @Operation(summary = "获取疲劳点配置")
+    @Operation(summary = "获取游学币配置")
     @GetMapping("/fatigue")
     public Result<Map<String, Object>> getFatigueConfig() {
         return Result.success(systemConfigService.getFatigueConfig());

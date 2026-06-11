@@ -104,15 +104,15 @@ public class GameStatisticsDTO implements Serializable {
      */
     private Double weekRetention;
 
-    // ========== 疲劳度统计 ==========
+    // ========== 游学币度统计 ==========
 
     /**
-     * 总消耗疲劳度
+     * 总消耗游学币度
      */
     private Integer totalFatigueConsumed;
 
     /**
-     * 人均消耗疲劳度
+     * 人均消耗游学币度
      */
     private Integer averageFatiguePerPlayer;
 }

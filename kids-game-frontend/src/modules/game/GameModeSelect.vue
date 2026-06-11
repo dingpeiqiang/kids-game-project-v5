@@ -301,19 +301,19 @@ async function selectMode(mode: any) {
     console.log('[GameMode] 游戏资源检查通过');
     // ===== 资源检查结束 =====
 
-    // 检查疲劳点是否足够
+    // 检查游学币是否足够
     if (!userStore.currentUserHasEnoughFatigue(1)) {
-      toast.error('疲劳点不足，请通过答题获得疲劳点');
+      toast.error('游学币不足，请通过答题获得游学币');
       return;
     }
 
-    // 扣除疲劳点（每次游戏消耗1点）
+    // 扣除游学币（每次游戏消耗1点）
     try {
       await userStore.consumeCurrentUserFatiguePoints(1);
     } catch (error: any) {
-      console.error('[GameMode] 扣除疲劳点失败:', error);
+      console.error('[GameMode] 扣除游学币失败:', error);
       // 显示后端返回的具体错误信息
-      toast.error(error.message || '扣除疲劳点失败');
+      toast.error(error.message || '扣除游学币失败');
       return;
     }
 

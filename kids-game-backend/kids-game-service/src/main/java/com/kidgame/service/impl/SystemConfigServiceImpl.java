@@ -104,19 +104,19 @@ public class SystemConfigServiceImpl implements SystemConfigService {
 
         long now = System.currentTimeMillis();
 
-        // 疲劳点配置
-        createConfigIfNotExists("fatigue.initial_points", "10", "初始疲劳点数", "fatigue", now);
-        createConfigIfNotExists("fatigue.points_per_minute", "1", "每分钟消耗疲劳点", "fatigue", now);
+        // 游学币配置
+        createConfigIfNotExists("fatigue.initial_points", "10", "初始游学币", "fatigue", now);
+        createConfigIfNotExists("fatigue.points_per_minute", "1", "每分钟消耗游学币", "fatigue", now);
         createConfigIfNotExists("fatigue.daily_reset_time", "00:00", "每日重置时间", "fatigue", now);
-        createConfigIfNotExists("fatigue.max_daily_points", "20", "每日最大疲劳点", "fatigue", now);
+        createConfigIfNotExists("fatigue.max_daily_points", "20", "每日最大游学币", "fatigue", now);
 
         // 答题配置
-        createConfigIfNotExists("answer.points_per_correct", "1", "答对每题获得疲劳点", "answer", now);
-        createConfigIfNotExists("answer.daily_max_points", "10", "每日答题获得疲劳点上限", "answer", now);
+        createConfigIfNotExists("answer.points_per_correct", "1", "答对每题获得游学币", "answer", now);
+        createConfigIfNotExists("answer.daily_max_points", "10", "每日答题获得游学币上限", "answer", now);
         createConfigIfNotExists("answer.question_count_per_request", "1", "每次请求题目数量", "answer", now);
 
         // 游戏配置
-        createConfigIfNotExists("game.min_fatigue_points", "1", "开始游戏所需最小疲劳点", "game", now);
+        createConfigIfNotExists("game.min_fatigue_points", "1", "开始游戏所需最小游学币", "game", now);
         createConfigIfNotExists("game.max_single_duration", "60", "单次游戏最大时长(分钟)", "game", now);
         createConfigIfNotExists("game.heartbeat_interval", "60", "心跳间隔(秒)", "game", now);
 

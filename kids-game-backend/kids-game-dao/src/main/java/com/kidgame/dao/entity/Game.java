@@ -120,12 +120,12 @@ public class Game implements Serializable {
     private Long publishTime;
 
     /**
-     * 每分钟消耗疲劳点数
+     * 每分钟消耗游学币
      */
     private Integer consumePointsPerMinute;
 
     /**
-     * 启动所需最低疲劳度
+     * 启动所需最低游学币度
      */
     @TableField("min_fatigue_to_start")
     private Integer minFatigueToStart;

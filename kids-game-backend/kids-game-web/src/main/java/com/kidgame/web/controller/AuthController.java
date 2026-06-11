@@ -4,6 +4,8 @@ import com.kidgame.common.config.RsaKeyConfig;
 import com.kidgame.common.model.Result;
 import com.kidgame.common.util.RsaUtil;
 import com.kidgame.service.UserService;
+import com.kidgame.dao.entity.BaseUser;
+import com.kidgame.service.dto.AuthRegisterDTO;
 import com.kidgame.service.dto.AuthRequestDTO;
 import com.kidgame.service.dto.AuthResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,6 +49,18 @@ public class AuthController {
         log.info("返回 RSA 公钥，索引：{}", RsaKeyConfig.getCurrentKeyIndex());
         
         return Result.success(result);
+    }
+
+    @Operation(summary = "统一注册（当前支持家长）")
+    @PostMapping("/register")
+    public Result<Map<String, Object>> register(@Valid @RequestBody AuthRegisterDTO dto) {
+        BaseUser user = userService.registerPublic(dto);
+        Map<String, Object> body = new HashMap<>();
+        body.put("userId", user.getUserId());
+        body.put("username", user.getUsername());
+        body.put("nickname", user.getNickname());
+        body.put("userType", user.getUserType());
+        return Result.success(body);
     }
 
     @Operation(summary = "统一登录接口")

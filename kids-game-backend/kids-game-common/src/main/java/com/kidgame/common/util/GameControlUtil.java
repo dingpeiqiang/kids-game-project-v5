@@ -111,7 +111,7 @@ public class GameControlUtil {
     }
 
     /**
-     * 检查疲劳点是否足够
+     * 检查游学币是否足够
      *
      * @param currentPoints  当前点数
      * @param requiredPoints 需要点数

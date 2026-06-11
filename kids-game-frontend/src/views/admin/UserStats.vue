@@ -94,12 +94,12 @@
       </el-col>
     </el-row>
 
-    <!-- 疲劳点使用统计 -->
+    <!-- 游学币使用统计 -->
     <el-row :gutter="20" class="charts-row">
       <el-col :span="12">
         <el-card>
           <template #header>
-            <div class="card-title">疲劳点使用情况</div>
+            <div class="card-title">游学币使用情况</div>
           </template>
           <div ref="fatigueChartRef" class="chart"></div>
         </el-card>
@@ -319,7 +319,7 @@ const renderActivityTrendChart = () => {
   })
 }
 
-// 疲劳点使用情况
+// 游学币使用情况
 const renderFatigueChart = () => {
   if (!fatigueChartRef.value) return
   

@@ -61,7 +61,7 @@ public class GameUpdateDTO implements Serializable {
     private Integer sortOrder;
 
     /**
-     * 每分钟消耗疲劳点数
+     * 每分钟消耗游学币
      */
     private Integer consumePointsPerMinute;
 

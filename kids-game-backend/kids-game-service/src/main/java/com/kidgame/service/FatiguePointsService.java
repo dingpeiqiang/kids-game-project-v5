@@ -1,7 +1,7 @@
 package com.kidgame.service;
 
 /**
- * 统一疲劳值服务接口
+ * 统一游学币服务接口
  * 支持所有用户类型（儿童、家长、管理员）
  *
  * @author kids-game-platform
@@ -10,29 +10,29 @@ package com.kidgame.service;
 public interface FatiguePointsService {
 
     /**
-     * 更新用户疲劳点数
+     * 更新用户游学币
      * @param userId 用户ID
      * @param userType 用户类型（0-KID, 1-PARENT, 2-ADMIN）
-     * @param changeType 变化类型（1-游戏消耗，2-答题获得，3-每日重置，4-初始化）
+     * @param changeType 变化类型（见 GameConstants.FatigueChangeType；正数入账仅 2/3/4/5/6）
      * @param changePoints 变化点数（正数表示增加，负数表示减少）
      * @param relatedId 关联ID（如游戏会话ID、题目ID等）
      * @param relatedType 关联类型（GAME_SESSION, QUESTION, INIT等）
      * @param remark 备注
-     * @return 更新后的疲劳点数
+     * @return 更新后的游学币
      */
     Integer updateFatiguePoints(Long userId, Integer userType, Integer changeType,
                                 Integer changePoints, Long relatedId, String relatedType, String remark);
 
     /**
-     * 获取用户当前疲劳点数
+     * 获取用户当前游学币
      * @param userId 用户ID
      * @param userType 用户类型
-     * @return 疲劳点数
+     * @return 游学币
      */
     Integer getFatiguePoints(Long userId, Integer userType);
 
     /**
-     * 检查用户是否有足够的疲劳点数
+     * 检查用户是否有足够的游学币
      * @param userId 用户ID
      * @param userType 用户类型
      * @param requiredPoints 需要的点数
@@ -41,7 +41,7 @@ public interface FatiguePointsService {
     boolean hasEnoughFatiguePoints(Long userId, Integer userType, Integer requiredPoints);
 
     /**
-     * 消耗疲劳点数（用于游戏启动）
+     * 消耗游学币（用于游戏启动）
      * @param userId 用户ID
      * @param userType 用户类型
      * @param points 消耗的点数
@@ -51,28 +51,39 @@ public interface FatiguePointsService {
     boolean consumeFatiguePoints(Long userId, Integer userType, Integer points, Long relatedId);
 
     /**
-     * 增加疲劳点数（用于答题奖励）
+     * 增加游学币（用于答题奖励）
      * @param userId 用户ID
      * @param userType 用户类型
      * @param points 增加的点数
      * @param relatedId 关联的题目ID
-     * @return 增加后的疲劳点数
+     * @return 增加后的游学币
      */
     Integer addFatiguePoints(Long userId, Integer userType, Integer points, Long relatedId);
 
     /**
-     * 重置用户每日疲劳点数
+     * 家长奖励游学币（仅绑定家长可操作）
+     */
+    Integer grantStudyCoinsFromParent(Long parentId, Long kidId, Integer points, String remark);
+
+    /**
+     * 系统赠与游学币（注册初始化、每日补充、管理员等）
+     */
+    Integer grantStudyCoinsBySystem(Long userId, Integer userType, Integer points, int changeType,
+                                    String relatedType, String remark, Long relatedId);
+
+    /**
+     * 重置用户每日游学币
      * @param userId 用户ID
      * @param userType 用户类型
-     * @return 重置后的疲劳点数
+     * @return 重置后的游学币
      */
     Integer resetDailyFatiguePoints(Long userId, Integer userType);
 
     /**
-     * 初始化用户疲劳点数（用户注册时调用）
+     * 初始化用户游学币（用户注册时调用）
      * @param userId 用户ID
      * @param userType 用户类型
-     * @param initialPoints 初始疲劳点数
+     * @param initialPoints 初始游学币
      */
     void initializeFatiguePoints(Long userId, Integer userType, Integer initialPoints);
 }

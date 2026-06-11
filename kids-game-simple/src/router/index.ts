@@ -4,6 +4,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
 import { isLoggedIn, getCurrentUserType } from '@/utils/auth';
+import { isEmbeddedCanvasGame } from '@simple/games/embeddedCanvasGames';
 
 const DEFAULT_ADMIN_URL = import.meta.env.VITE_ADMIN_URL || 'http://localhost:3000';
 
@@ -26,6 +27,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/modules/game/GameModeSelect.vue'),
     meta: { title: '选择游戏模式', requiresAuth: true },
     props: true,
+    beforeEnter: (to) => {
+      const code = String(to.params.type ?? '');
+      if (isEmbeddedCanvasGame(code)) {
+        return { path: `/game/${code}/play`, query: to.query };
+      }
+      return true;
+    },
   },
   {
     path: '/game/:type/local-login',
@@ -37,7 +45,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/game/:type/play',
     name: 'Game',
-    component: () => import('@/modules/game/index.vue'),
+    component: () => import('@simple/views/GamePlayHost.vue'),
     meta: { title: '游戏', requiresAuth: true },
     props: true,
   },

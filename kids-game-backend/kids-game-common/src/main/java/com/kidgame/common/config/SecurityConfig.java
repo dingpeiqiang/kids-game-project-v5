@@ -66,6 +66,7 @@ public class SecurityConfig {
                 // 公开端点（不需要认证）
                 .requestMatchers(
                     "/api/auth/**",
+                    "/api/auth/register",
                     "/api/kid/login",
                     "/api/kid/register",
                     "/api/parent/login",
@@ -91,7 +92,6 @@ public class SecurityConfig {
                     "/api/game/config/**",
                     "/api/game/report",
                     "/api/game/verify",
-                    "/api/question/random",
                     
                     // 排行榜公开接口
                     "/api/leaderboard/top",

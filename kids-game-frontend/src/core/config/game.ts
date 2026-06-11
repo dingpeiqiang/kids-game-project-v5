@@ -32,7 +32,7 @@ export const gameConfig: GameConfig = {
     initialPoints: 10, // 初始点数
     pointsPerGame: 1, // 每次游戏消耗1点
     dailyReset: true, // 每日重置点数
-    maxFatigueLevel: 10, // 最大疲劳度等级
+    maxFatigueLevel: 10, // 最大游学币度等级
   },
 };
 

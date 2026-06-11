@@ -12,8 +12,8 @@ const envConfigs: Record<string, EnvConfig> = {
   development: {
     environment: 'development',
     apiBaseUrl: import.meta.env.VITE_API_URL
-      ? `${import.meta.env.VITE_API_URL}/api`
-      : 'http://localhost:8080/api',
+      ? `${import.meta.env.VITE_API_URL}`
+      : 'http://localhost:8080',
     wsBaseUrl: import.meta.env.VITE_WS_URL
       ? `${import.meta.env.VITE_WS_URL}/ws`
       : 'ws://localhost:8080/ws',

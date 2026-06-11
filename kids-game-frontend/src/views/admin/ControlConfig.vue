@@ -36,7 +36,7 @@
         <el-table-column label="允许时间段" width="150">
           <template #default="{ row }">{{ row.allowedTimeStart }} ~ {{ row.allowedTimeEnd }}</template>
         </el-table-column>
-        <el-table-column label="疲劳点阈值" width="100">
+        <el-table-column label="游学币阈值" width="100">
           <template #default="{ row }">{{ row.fatiguePointThreshold || '-' }}</template>
         </el-table-column>
         <el-table-column label="控制模式" width="100">
@@ -134,7 +134,7 @@
 
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="疲劳点阈值 (分钟)">
+            <el-form-item label="游学币阈值 (分钟)">
               <el-input-number v-model="form.fatiguePointThreshold" :min="0" :max="1440" :step="5" />
             </el-form-item>
           </el-col>
@@ -145,7 +145,7 @@
           </el-col>
         </el-row>
 
-        <el-form-item label="疲劳控制模式">
+        <el-form-item label="游学币控制模式">
           <el-radio-group v-model="form.fatigueControlMode">
             <el-radio value="SOFT">软性控制（提醒但不强制）</el-radio>
             <el-radio value="FORCED">强制控制（到点强制下线）</el-radio>

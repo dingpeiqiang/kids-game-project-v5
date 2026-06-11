@@ -496,7 +496,7 @@
               <div class="permission-item checkbox-item">
                 <label>
                   <input type="checkbox" v-model="rules.enableFatiguePoints" />
-                  <span>启用疲劳点系统</span>
+                  <span>启用游学币系统</span>
                 </label>
               </div>
             </div>

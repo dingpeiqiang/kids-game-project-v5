@@ -19,38 +19,22 @@ export class KidApiService extends BaseApiService {
   }
 
   /**
-   * 统一用户登录（支持儿童和家长自动识别）
+   * @deprecated 请使用 authApi.login + userStore.unifiedLogin
    */
   async unifiedLogin(username: string, password: string): Promise<any> {
-    const result = await this.post<any>('/api/user/login', { username, password });
-
-    // 保存 token（基类 setToken 会自动保存到 localStorage）
-    if (result?.token) {
-      this.setToken(result.token);
-    }
-    if (result?.refreshToken) {
-      localStorage.setItem('refreshToken', result.refreshToken);
-    }
-
-    return result;
+    const { authApi } = await import('./auth-api.service');
+    const { persistAuthSession } = await import('@/utils/auth-session');
+    const result = await authApi.login(username, password);
+    persistAuthSession(result);
+    return { ...result, token: result.token };
   }
 
   /**
-   * 刷新 Token
+   * @deprecated 请使用 authApi.refreshAccessToken
    */
   async refreshToken(): Promise<string> {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) {
-      throw new Error('Refresh token 不存在');
-    }
-
-    const result = await this.post<any>('/api/user/refresh-token', { refreshToken });
-
-    if (result?.token) {
-      this.setToken(result.token);
-      return result.token;
-    }
-    throw new Error('刷新 Token 失败');
+    const { authApi } = await import('./auth-api.service');
+    return authApi.refreshAccessToken();
   }
 
   /**
@@ -97,14 +81,14 @@ export class KidApiService extends BaseApiService {
   }
 
   /**
-   * 获取疲劳点数
+   * 获取游学币
    */
   async getFatiguePoints(kidId: number): Promise<number> {
     return this.get<number>(`/api/kid/fatigue-points?kidId=${kidId}`);
   }
 
   /**
-   * 消耗疲劳点
+   * 消耗游学币
    * 后端使用 @RequestParam，需以 x-www-form-urlencoded 格式传参
    */
   async consumeFatiguePoints(kidId: number, points: number = 1): Promise<boolean> {
@@ -116,7 +100,7 @@ export class KidApiService extends BaseApiService {
   }
 
   /**
-   * 增加疲劳点（答题奖励）
+   * 增加游学币（答题奖励）
    * 后端使用 @RequestParam，需以 x-www-form-urlencoded 格式传参
    */
   async addFatiguePoints(kidId: number, points: number = 1, relatedId?: number): Promise<number> {

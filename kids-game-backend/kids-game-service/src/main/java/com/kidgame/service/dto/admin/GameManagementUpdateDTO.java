@@ -62,12 +62,12 @@ public class GameManagementUpdateDTO implements Serializable {
     private Integer isFeatured;
 
     /**
-     * 每分钟消耗疲劳点数
+     * 每分钟消耗游学币
      */
     private Integer consumePointsPerMinute;
 
     /**
-     * 启动所需最低疲劳度
+     * 启动所需最低游学币度
      */
     private Integer minFatigueToStart;
 

@@ -7,8 +7,10 @@ import com.kidgame.common.constant.GameConstants;
 import com.kidgame.common.exception.BusinessException;
 import com.kidgame.dao.entity.BaseUser;
 import com.kidgame.dao.entity.FatiguePointsLog;
+import com.kidgame.dao.entity.UserRelation;
 import com.kidgame.dao.mapper.BaseUserMapper;
 import com.kidgame.dao.mapper.FatiguePointsLogMapper;
+import com.kidgame.dao.mapper.UserRelationMapper;
 import com.kidgame.service.FatiguePointsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +22,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 /**
- * 统一疲劳值服务实现
+ * 统一游学币服务实现
  * 支持所有用户类型（儿童、家长、管理员）
  *
  * @author kids-game-platform
@@ -36,6 +38,9 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
     @Autowired
     private FatiguePointsLogMapper fatiguePointsLogMapper;
 
+    @Autowired
+    private UserRelationMapper userRelationMapper;
+
     @Value("${kidgame.game.fatigue-points.initial:10}")
     private Integer initialFatiguePoints;
 
@@ -49,35 +54,37 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
     @Transactional(rollbackFor = Exception.class)
     public Integer updateFatiguePoints(Long userId, Integer userType, Integer changeType,
                                        Integer changePoints, Long relatedId, String relatedType, String remark) {
-        // 1. 查询用户当前疲劳点数
+        // 1. 查询用户当前游学币
         BaseUser user = baseUserMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在");
         }
 
-        // 2. 检查疲劳点数是否需要每日重置
+        assertAllowedCoinChange(changeType, changePoints, relatedType);
+
+        // 2. 检查游学币是否需要每日重置
         checkAndResetDailyFatigue(user);
 
-        // 3. 计算新的疲劳点数
+        // 3. 计算新的游学币
         Integer currentPoints = user.getFatiguePoints() != null ? user.getFatiguePoints() : initialFatiguePoints;
         Integer newPoints = currentPoints + changePoints;
 
-        // 4. 验证疲劳点数范围
+        // 4. 验证游学币范围
         if (newPoints < 0) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "疲劳点数不足");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "游学币不足");
         }
         if (newPoints > 100) {
             newPoints = 100; // 最大值限制
         }
 
-        // 5. 更新用户疲劳点数
+        // 5. 更新用户游学币
         LambdaUpdateWrapper<BaseUser> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(BaseUser::getUserId, userId);
         updateWrapper.set(BaseUser::getFatiguePoints, newPoints);
         updateWrapper.set(BaseUser::getFatigueUpdateTime, System.currentTimeMillis());
         baseUserMapper.update(null, updateWrapper);
 
-        // 6. 记录疲劳点变化日志
+        // 6. 记录游学币变化日志
         FatiguePointsLog fatigueLog = new FatiguePointsLog();
         fatigueLog.setUserId(userId);
         fatigueLog.setChangeType(changeType);
@@ -89,7 +96,7 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
         fatigueLog.setCreateTime(System.currentTimeMillis());
         fatiguePointsLogMapper.insert(fatigueLog);
 
-        log.info("更新用户疲劳点成功. UserId: {}, UserType: {}, ChangeType: {}, ChangePoints: {}, CurrentPoints: {}",
+        log.info("更新用户游学币成功. UserId: {}, UserType: {}, ChangeType: {}, ChangePoints: {}, CurrentPoints: {}",
                 userId, userType, changeType, changePoints, newPoints);
 
         return newPoints;
@@ -99,11 +106,11 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
     public Integer getFatiguePoints(Long userId, Integer userType) {
         BaseUser user = baseUserMapper.selectById(userId);
         if (user == null) {
-            log.warn("用户不存在，返回默认疲劳点数. UserId: {}", userId);
+            log.warn("用户不存在，返回默认游学币. UserId: {}", userId);
             return initialFatiguePoints;
         }
 
-        // 检查并重置每日疲劳点
+        // 检查并重置每日游学币
         checkAndResetDailyFatigue(user);
 
         Integer points = user.getFatiguePoints();
@@ -121,17 +128,17 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
     public boolean consumeFatiguePoints(Long userId, Integer userType, Integer points, Long relatedId) {
         if (!hasEnoughFatiguePoints(userId, userType, points)) {
             Integer currentPoints = getFatiguePoints(userId, userType);
-            log.warn("疲劳点数不足，无法消耗. UserId: {}, Required: {}, Current: {}",
+            log.warn("游学币不足，无法消耗. UserId: {}, Required: {}, Current: {}",
                     userId, points, currentPoints);
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "疲劳点数不足，无法消耗");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "游学币不足，无法消耗");
         }
 
         try {
-            updateFatiguePoints(userId, userType, 1, -points, relatedId, "GAME_SESSION", "游戏消耗疲劳点");
+            updateFatiguePoints(userId, userType, 1, -points, relatedId, "GAME_SESSION", "游戏消耗游学币");
             return true;
         } catch (Exception e) {
-            log.error("消耗疲劳点失败. UserId: {}, Points: {}", userId, points, e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "消耗疲劳点失败");
+            log.error("消耗游学币失败. UserId: {}, Points: {}", userId, points, e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "消耗游学币失败");
         }
     }
 
@@ -148,7 +155,7 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
 
         Integer todayAnswerPoints = user.getDailyAnswerPoints() != null ? user.getDailyAnswerPoints() : 0;
         if (todayAnswerPoints >= dailyAnswerLimit) {
-            log.info("今日答题积分已达上限，无法继续获得疲劳点. UserId: {}, TodayPoints: {}, Limit: {}",
+            log.info("今日答题积分已达上限，无法继续获得游学币. UserId: {}, TodayPoints: {}, Limit: {}",
                     userId, todayAnswerPoints, dailyAnswerLimit);
             return user.getFatiguePoints();
         }
@@ -156,8 +163,8 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
         // 计算实际可获得的点数
         Integer actualPoints = Math.min(points, dailyAnswerLimit - todayAnswerPoints);
 
-        // 更新疲劳点数
-        Integer newPoints = updateFatiguePoints(userId, userType, 2, actualPoints, relatedId, "QUESTION", "答题获得疲劳点");
+        // 更新游学币
+        Integer newPoints = updateFatiguePoints(userId, userType, 2, actualPoints, relatedId, "QUESTION", "答题获得游学币");
 
         // 更新今日答题积分
         LambdaUpdateWrapper<BaseUser> updateWrapper = new LambdaUpdateWrapper<>();
@@ -171,7 +178,7 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Integer resetDailyFatiguePoints(Long userId, Integer userType) {
-        // 1. 查询用户当前疲劳点数
+        // 1. 查询用户当前游学币
         BaseUser user = baseUserMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在");
@@ -180,26 +187,26 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
         // 2. 检查是否需要每日重置（跨天检测）
         checkAndResetDailyFatigue(user);
 
-        // 3. 获取当前疲劳点（如果为 null 则使用初始值）
+        // 3. 获取当前游学币（如果为 null 则使用初始值）
         Integer currentPoints = user.getFatiguePoints() != null ? user.getFatiguePoints() : initialFatiguePoints;
 
-        // 4. 只有当疲劳点低于初始值时，才重置到初始值
-        // 如果疲劳点 >= 初始值，说明用户通过购买、答题、任务等方式获得了额外疲劳点，不予重置
+        // 4. 只有当游学币低于初始值时，才重置到初始值
+        // 如果游学币 >= 初始值，说明用户通过购买、答题、任务等方式获得了额外游学币，不予重置
         if (currentPoints < initialFatiguePoints) {
-            log.info("每日重置疲劳点：UserId: {}, UserType: {}, CurrentPoints: {}, InitialPoints: {}",
+            log.info("每日重置游学币：UserId: {}, UserType: {}, CurrentPoints: {}, InitialPoints: {}",
                     userId, userType, currentPoints, initialFatiguePoints);
 
-            // 计算需要补充的疲劳点数
+            // 计算需要补充的游学币
             Integer resetPoints = initialFatiguePoints - currentPoints;
 
-            // 5. 更新用户疲劳点数
+            // 5. 更新用户游学币
             LambdaUpdateWrapper<BaseUser> updateWrapper = new LambdaUpdateWrapper<>();
             updateWrapper.eq(BaseUser::getUserId, userId);
             updateWrapper.set(BaseUser::getFatiguePoints, initialFatiguePoints);
             updateWrapper.set(BaseUser::getFatigueUpdateTime, System.currentTimeMillis());
             baseUserMapper.update(null, updateWrapper);
 
-            // 6. 记录疲劳点变化日志
+            // 6. 记录游学币变化日志
             FatiguePointsLog fatigueLog = new FatiguePointsLog();
             fatigueLog.setUserId(userId);
             fatigueLog.setChangeType(3); // 3-每日重置
@@ -207,17 +214,17 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
             fatigueLog.setCurrentPoints(initialFatiguePoints);
             fatigueLog.setRelatedId(null);
             fatigueLog.setRelatedType("DAILY_RESET");
-            fatigueLog.setRemark("每日自动重置疲劳点（补充至初始值）");
+            fatigueLog.setRemark("每日自动重置游学币（补充至初始值）");
             fatigueLog.setCreateTime(System.currentTimeMillis());
             fatiguePointsLogMapper.insert(fatigueLog);
 
-            log.info("每日重置疲劳点成功：UserId: {}, 补充点数：{}, 当前点数：{}",
+            log.info("每日重置游学币成功：UserId: {}, 补充点数：{}, 当前点数：{}",
                     userId, resetPoints, initialFatiguePoints);
 
             return initialFatiguePoints;
         } else {
-            // 疲劳点足够，不需要重置
-            log.info("疲劳点充足，无需重置：UserId: {}, UserType: {}, CurrentPoints: {}, InitialPoints: {}",
+            // 游学币足够，不需要重置
+            log.info("游学币充足，无需重置：UserId: {}, UserType: {}, CurrentPoints: {}, InitialPoints: {}",
                     userId, userType, currentPoints, initialFatiguePoints);
             return currentPoints;
         }
@@ -230,8 +237,8 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在");
         }
+        assertAllowedCoinChange(GameConstants.FatigueChangeType.INIT, initialPoints, "INIT");
 
-        // 更新用户疲劳点数
         LambdaUpdateWrapper<BaseUser> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(BaseUser::getUserId, userId);
         updateWrapper.set(BaseUser::getFatiguePoints, initialPoints);
@@ -239,23 +246,88 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
         updateWrapper.set(BaseUser::getFatigueUpdateTime, System.currentTimeMillis());
         baseUserMapper.update(null, updateWrapper);
 
-        // 记录初始化日志
         FatiguePointsLog initLog = new FatiguePointsLog();
         initLog.setUserId(userId);
-        initLog.setChangeType(4); // 4-初始化
+        initLog.setChangeType(GameConstants.FatigueChangeType.INIT);
         initLog.setChangePoints(initialPoints);
         initLog.setCurrentPoints(initialPoints);
-        initLog.setRelatedId(null);
         initLog.setRelatedType("INIT");
-        initLog.setRemark("用户初始化疲劳点数");
+        initLog.setRemark("用户初始化游学币（系统赠与）");
         initLog.setCreateTime(System.currentTimeMillis());
         fatiguePointsLogMapper.insert(initLog);
 
-        log.info("初始化用户疲劳点成功. UserId: {}, UserType: {}, InitialPoints: {}", userId, userType, initialPoints);
+        log.info("初始化用户游学币成功. UserId: {}, UserType: {}, InitialPoints: {}", userId, userType, initialPoints);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Integer grantStudyCoinsFromParent(Long parentId, Long kidId, Integer points, String remark) {
+        if (parentId == null || kidId == null || points == null || points <= 0) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ, "奖励参数无效");
+        }
+        if (points > 50) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ, "单次家长奖励不能超过 50 游学币");
+        }
+        if (!isParentBoundToKid(parentId, kidId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_OBJ, "未绑定该儿童，无法奖励游学币");
+        }
+        String note = remark != null && !remark.isBlank() ? remark.trim() : "家长奖励游学币";
+        return updateFatiguePoints(kidId, 0, GameConstants.FatigueChangeType.PARENT_REWARD, points,
+                parentId, "PARENT_REWARD", note);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Integer grantStudyCoinsBySystem(Long userId, Integer userType, Integer points, int changeType,
+                                           String relatedType, String remark, Long relatedId) {
+        if (userId == null || points == null || points <= 0) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ, "系统赠与参数无效");
+        }
+        if (changeType != GameConstants.FatigueChangeType.INIT
+                && changeType != GameConstants.FatigueChangeType.DAILY_RESET
+                && changeType != GameConstants.FatigueChangeType.SYSTEM_GRANT) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ, "非法的系统赠与类型");
+        }
+        return updateFatiguePoints(userId, userType, changeType, points, relatedId, relatedType, remark);
+    }
+
+    private boolean isParentBoundToKid(Long parentId, Long kidId) {
+        LambdaQueryWrapper<UserRelation> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserRelation::getUserA, parentId);
+        wrapper.eq(UserRelation::getUserB, kidId);
+        wrapper.eq(UserRelation::getRelationType, UserRelation.RelationType.PARENT_KID);
+        return userRelationMapper.selectCount(wrapper) > 0;
     }
 
     /**
-     * 检查并重置每日疲劳点
+     * 游学币增加仅允许：答题、家长奖励、系统赠与；游戏相关仅允许扣减
+     */
+    private void assertAllowedCoinChange(Integer changeType, Integer changePoints, String relatedType) {
+        if (changePoints == null || changePoints == 0) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ, "游学币变动数值无效");
+        }
+        int type = changeType != null ? changeType : -1;
+        if (changePoints > 0) {
+            if (type != GameConstants.FatigueChangeType.ANSWER_GET
+                    && type != GameConstants.FatigueChangeType.DAILY_RESET
+                    && type != GameConstants.FatigueChangeType.INIT
+                    && type != GameConstants.FatigueChangeType.PARENT_REWARD
+                    && type != GameConstants.FatigueChangeType.SYSTEM_GRANT) {
+                throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ, "游学币仅可通过答题、家长奖励或系统赠与获得");
+            }
+            if (type == GameConstants.FatigueChangeType.GAME_CONSUME
+                    || "GAME_SESSION".equals(relatedType) || "GAME_REWARD".equals(relatedType)) {
+                throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ, "游戏不能获得游学币");
+            }
+            return;
+        }
+        if (type != GameConstants.FatigueChangeType.GAME_CONSUME) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ, "扣减游学币仅允许游戏消耗等合法场景");
+        }
+    }
+
+    /**
+     * 检查并重置每日游学币
      * @param user 用户对象
      */
     private void checkAndResetDailyFatigue(BaseUser user) {
@@ -277,9 +349,9 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
         int updateDay = cal.get(Calendar.DAY_OF_YEAR);
         int updateYear = cal.get(Calendar.YEAR);
 
-        // 如果不是同一天，重置疲劳点
+        // 如果不是同一天，重置游学币
         if (todayDay != updateDay || todayYear != updateYear) {
-            log.info("检测到新的一天，重置用户疲劳点. UserId: {}, LastUpdateTime: {}",
+            log.info("检测到新的一天，重置用户游学币. UserId: {}, LastUpdateTime: {}",
                     user.getUserId(), user.getFatigueUpdateTime());
 
             LambdaUpdateWrapper<BaseUser> updateWrapper = new LambdaUpdateWrapper<>();
@@ -302,7 +374,7 @@ public class FatiguePointsServiceImpl implements FatiguePointsService {
             resetLog.setCurrentPoints(initialFatiguePoints);
             resetLog.setRelatedId(null);
             resetLog.setRelatedType("DAILY_RESET");
-            resetLog.setRemark("每日自动重置疲劳点");
+            resetLog.setRemark("每日自动重置游学币");
             resetLog.setCreateTime(System.currentTimeMillis());
             fatiguePointsLogMapper.insert(resetLog);
         }

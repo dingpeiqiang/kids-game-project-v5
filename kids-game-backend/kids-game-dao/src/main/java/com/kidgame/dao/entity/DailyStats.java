@@ -58,12 +58,12 @@ public class DailyStats {
     private Integer correctAnswerCount;
 
     /**
-     * 发放疲劳点总数
+     * 发放游学币总数
      */
     private Integer totalFatiguePoints;
 
     /**
-     * 消耗疲劳点总数
+     * 消耗游学币总数
      */
     private Integer totalConsumedPoints;
 

@@ -45,7 +45,7 @@ export const useKidStore = defineStore('kid', () => {
   }
 
   /**
-   * 更新疲劳度（简化版本，具体实现需要根据后端 API 调整）
+   * 更新游学币度（简化版本，具体实现需要根据后端 API 调整）
    */
   async function updateFatigue(level: number) {
     try {

@@ -1,12 +1,9 @@
 <template>
   <div class="login-container">
-    <!-- 背景装饰 -->
-    <div class="bg-decoration">
-      <!-- 游戏手柄 -->
+    <div class="bg-decoration" aria-hidden="true">
       <div class="gamepad gamepad-1">🎮</div>
       <div class="gamepad gamepad-2">🎮</div>
       <div class="gamepad gamepad-3">🎮</div>
-      <!-- 星星组合 -->
       <div class="star-group star-group-1">
         <span class="star small">✨</span>
         <span class="star medium">⭐</span>
@@ -29,30 +26,21 @@
     </div>
 
     <div class="login-wrapper">
-      <!-- 左侧插画 -->
       <div class="illustration-section">
         <div class="illustration-content">
           <div class="logo-display">
             <div class="logo-icon-wrapper">
-              <!-- 主游戏手柄 -->
               <span class="logo-gamepad">🎮</span>
-              <!-- 主星星 -->
               <span class="logo-star">⭐</span>
-              <!-- 装饰星星 1 -->
               <span class="logo-star-deco star-deco-1">✨</span>
-              <!-- 装饰星星 2 -->
               <span class="logo-star-deco star-deco-2">🌟</span>
-              <!-- 装饰星星 3 -->
               <span class="logo-star-deco star-deco-3">✨</span>
-              <!-- 装饰星星 4 -->
               <span class="logo-star-deco star-deco-4">⭐</span>
             </div>
             <h1 class="brand-name">星光游学</h1>
             <span class="brand-name-en">StarPlay</span>
           </div>
-          <p class="illustration-desc">
-            在游戏中学习，在挑战中成长
-          </p>
+          <p class="illustration-desc">在游戏中学习，在挑战中成长</p>
           <div class="feature-list">
             <div class="feature-item feature-1">
               <span class="feature-icon">🎮</span>
@@ -70,83 +58,55 @@
         </div>
       </div>
 
-      <!-- 右侧登录表单 -->
       <div class="login-form-section">
-        <div class="login-card">
-          <div class="card-header">
-            <div class="brand-logo">
-              <span class="brand-gamepad">🎮</span>
-              <span>星光游学</span>
-              <span class="brand-star">⭐</span>
-            </div>
-            <h1 class="welcome-title">欢迎回来，玩家!</h1>
-            <p class="welcome-subtitle">登录继续你的冒险之旅</p>
-          </div>
+        <div class="login-glass">
 
-          <!-- 错误提示 -->
+          <header v-show="false" class="login-panel__head">
+            <div class="login-panel__avatar" aria-hidden="true">��</div>
+            <h1 class="login-panel__title">欢迎回来，玩家!</h1>
+            <p class="login-panel__sub">登录继续你的冒险之旅</p>
+          </header>
+
+          <h2 class="login-glass__title">欢迎回来</h2>
+          <p class="login-glass__sub">登录继续冒险</p>
+
           <ErrorDisplay v-if="errorMessage" :message="errorMessage" @close="errorMessage = ''" />
-
-          <!-- 全屏Loading遮罩 -->
           <GlobalLoading :loading="isLoading" message="登录中..." />
 
-          <!-- 统一登录表单 -->
-          <form @submit.prevent="handleLogin" class="login-form">
-            <div class="form-group">
-              <label for="username">
-                <span class="label-icon">🎯</span>
-                玩家账号
-              </label>
-              <input
-                id="username"
-                v-model="formData.username"
-                type="text"
-                placeholder="输入你的游戏账号"
-                :disabled="isLoading"
-                class="form-input"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="password">
-                <span class="label-icon">🔐</span>
-                冒险密码
-              </label>
-              <input
-                id="password"
-                v-model="formData.password"
-                type="password"
-                placeholder="输入密码开始冒险"
-                :disabled="isLoading"
-                class="form-input"
-              />
-            </div>
-
-            <button type="submit" class="submit-btn" :disabled="isLoading || !formData.username || !formData.password">
-              <span class="btn-icon">🎮</span>
-              <span v-if="!isLoading">开始游戏</span>
-              <span v-else>正在登录...</span>
+          <form class="login-glass__form" @submit.prevent="handleLogin">
+            <label class="login-glass__label" for="username">账号</label>
+            <input
+              id="username"
+              v-model="formData.username"
+              type="text"
+              class="login-glass__input"
+              placeholder="用户名或手机号"
+              autocomplete="username"
+              :disabled="isLoading"
+            />
+            <label class="login-glass__label" for="password">密码</label>
+            <input
+              id="password"
+              v-model="formData.password"
+              type="password"
+              class="login-glass__input"
+              placeholder="请输入密码"
+              autocomplete="current-password"
+              :disabled="isLoading"
+            />
+            <button
+              type="submit"
+              class="login-glass__btn"
+              :disabled="isLoading || !formData.username || !formData.password"
+            >
+              {{ isLoading ? '登录中…' : '开始游戏' }}
             </button>
           </form>
 
-          <div class="divider">
-            <span class="divider-text">还没有账号?</span>
-          </div>
-          
-          <div class="register-section">
-            <p class="register-text">
-              <span class="register-icon">⭐</span>
-              <a @click="goToRegister" class="register-link">创建新角色，开启冒险之旅</a>
-            </p>
-          </div>
-
-          <!-- 游客试玩按钮（仅终端应用） -->
-          <div v-if="isPlayShell" class="guest-section">
-            <button @click="startGuestMode" class="guest-btn">
-              <span class="btn-icon">🎮</span>
-              <span>游客试玩（10分钟）</span>
-            </button>
-            <p class="guest-hint">无需注册，立即体验游戏乐趣！</p>
-          </div>
+          <p class="login-glass__foot">
+            没有账号？
+            <button type="button" class="login-glass__link" @click="goToRegister">注册</button>
+          </p>
         </div>
       </div>
     </div>
@@ -154,24 +114,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { getDefaultAdminLanding } from '@kids-game/shared';
 import { useUserStore } from '@/core/store/user.store';
+import GlobalLoading from '@/components/GlobalLoading.vue';
+import ErrorDisplay from '@/components/ErrorDisplay.vue';
+import { toast } from '@/services/toast.service';
+import { loadParentLoginUsername, saveParentLoginUsername } from '@/utils/auth-session';
 
 const APP_SHELL = import.meta.env.VITE_APP_SHELL || 'legacy';
 const isPlayShell = APP_SHELL === 'simple';
 const isAdminShell = APP_SHELL === 'admin';
 const ADMIN_URL = import.meta.env.VITE_ADMIN_URL || 'http://localhost:3000';
 const PLAY_URL = import.meta.env.VITE_PLAY_URL || 'http://localhost:3001';
-import GlobalLoading from '@/components/GlobalLoading.vue';
-import ErrorDisplay from '@/components/ErrorDisplay.vue';
-import { toast } from '@/services/toast.service';
 
 const router = useRouter();
 const userStore = useUserStore();
-
-// ===== 状态 =====
 
 const isLoading = ref(false);
 const errorMessage = ref('');
@@ -180,25 +139,19 @@ const formData = ref({
   password: '',
 });
 
-// ===== 生命周期 =====
-
 onMounted(() => {
-  // 尝试从本地存储加载家长登录信息
-  try {
-    const parentLoginInfo = localStorage.getItem('parentLoginInfo');
-    if (parentLoginInfo) {
-      const info = JSON.parse(parentLoginInfo);
-      // 只自动填充家长账号，不填充儿童账号
-      formData.value.username = info.username || '';
-      formData.value.password = info.password || '';
-      console.log('[Login] 已自动填充家长账号信息');
-    }
-  } catch (err) {
-    console.error('[Login] 加载家长登录信息失败:', err);
+  document.documentElement.classList.add('login-page-active');
+  document.body.classList.add('login-page-active');
+  const savedUsername = loadParentLoginUsername();
+  if (savedUsername) {
+    formData.value.username = savedUsername;
   }
 });
 
-// ===== 方法 =====
+onUnmounted(() => {
+  document.documentElement.classList.remove('login-page-active');
+  document.body.classList.remove('login-page-active');
+});
 
 async function handleLogin() {
   errorMessage.value = '';
@@ -215,13 +168,8 @@ async function handleLogin() {
 
   try {
     isLoading.value = true;
-    console.log('开始登录...', formData.value.username);
-
-    // 调用统一登录接口
     const result = await userStore.unifiedLogin(formData.value.username, formData.value.password);
-    console.log('登录成功:', result);
 
-    // 根据用户类型与应用壳跳转
     if (result.userType === 0) {
       if (isAdminShell) {
         toast.error('儿童账号请使用儿童游玩端登录');
@@ -236,29 +184,8 @@ async function handleLogin() {
         await router.push('/');
       }
     } else if (result.userType === 1) {
-      // 家长
       toast.success('家长登录成功！');
-      
-      // 保存家长账号密码（用于下次自动填充）
-      localStorage.setItem('parentLoginInfo', JSON.stringify({
-        username: formData.value.username,
-        password: formData.value.password,
-        lastLoginTime: Date.now(),
-      }));
-      
-      // 更新parentUser信息
-      userStore.parentUser = {
-        parentId: result.userId,
-        username: result.username,
-        nickname: result.nickname,
-        phone: result.phone,
-        token: result.token,
-        fatiguePoints: result.fatiguePoints || 10,
-        dailyAnswerPoints: result.dailyAnswerPoints || 0,
-      };
-      localStorage.setItem('parentInfo', JSON.stringify(userStore.parentUser));
-      
-      // 如果已设置图案解锁，跳转到图案解锁页面
+      saveParentLoginUsername(formData.value.username);
       if (isPlayShell) {
         toast.info('家长请使用管理端进行管控');
         userStore.logoutParent();
@@ -271,7 +198,6 @@ async function handleLogin() {
         await router.push(getDefaultAdminLanding('parent'));
       }
     } else if (result.userType === 2) {
-      // 管理员
       toast.success('管理员登录成功！');
       if (isPlayShell) {
         window.location.href = `${ADMIN_URL.replace(/\/$/, '')}${getDefaultAdminLanding('admin')}`;
@@ -294,197 +220,155 @@ async function handleLogin() {
 function goToRegister() {
   router.push('/register');
 }
-
-// 游客试玩模式
-function startGuestMode() {
-  // 显示提示信息
-  const confirmStart = confirm(
-    '欢迎体验游客模式！\n\n' +
-    '⏰ 您可以免费试玩10分钟\n' +
-    '🎮 时间到期后将自动跳转到登录/注册页面\n' +
-    '💡 建议注册账号以保存游戏进度\n\n' +
-    '是否开始试玩？'
-  );
-  
-  if (!confirmStart) {
-    return; // 用户取消
-  }
-  
-  // 设置游客标识和开始时间
-  localStorage.setItem('isGuest', 'true');
-  localStorage.setItem('guestStartTime', Date.now().toString());
-  
-  toast.info('已进入游客模式，限时10分钟！');
-  
-  // 跳转到游戏列表页面
-  router.push('/game');
-}
 </script>
 
 <style scoped>
+/* —— 一屏布局：固定视口，禁止整页滚动 —— */
 .login-container {
-  min-height: 100vh;
+  box-sizing: border-box;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: clamp(0.5rem, 1.5vh, 1.25rem) clamp(0.75rem, 2vw, 1.5rem);
   position: relative;
   overflow: hidden;
 }
 
-/* 背景装饰 - 游戏手柄 + 星星组合 */
 .bg-decoration {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   overflow: hidden;
   pointer-events: none;
 }
 
-/* 游戏手柄 */
 .gamepad {
   position: absolute;
-  font-size: 3rem;
-  opacity: 0.4;
+  opacity: 0.35;
   animation: floatGamepad 6s ease-in-out infinite;
 }
 
 .gamepad-1 {
-  top: 15%;
-  left: 8%;
+  top: 12%;
+  left: 6%;
+  font-size: clamp(2rem, 5vw, 3.5rem);
   animation-delay: 0s;
-  font-size: 4rem;
 }
 
 .gamepad-2 {
-  bottom: 20%;
-  right: 10%;
+  bottom: 18%;
+  right: 8%;
+  font-size: clamp(1.75rem, 4vw, 3rem);
   animation-delay: 2s;
-  font-size: 3.5rem;
 }
 
 .gamepad-3 {
-  top: 50%;
-  right: 25%;
+  top: 48%;
+  right: 22%;
+  font-size: clamp(1.25rem, 3vw, 2.25rem);
   animation-delay: 4s;
-  font-size: 2.5rem;
 }
 
 @keyframes floatGamepad {
-  0%, 100% {
-    opacity: 0.4;
+  0%,
+  100% {
+    opacity: 0.35;
     transform: translateY(0) rotate(-5deg);
   }
   50% {
-    opacity: 0.6;
-    transform: translateY(-20px) rotate(5deg);
+    opacity: 0.5;
+    transform: translateY(-12px) rotate(5deg);
   }
 }
 
-/* 星星组合 */
 .star-group {
   position: absolute;
   display: flex;
-  gap: 0.5rem;
-  opacity: 0.7;
+  gap: 0.35rem;
+  opacity: 0.65;
   animation: twinkleGroup 4s ease-in-out infinite;
 }
 
 .star-group-1 {
-  top: 10%;
-  right: 15%;
-  animation-delay: 0s;
+  top: 8%;
+  right: 12%;
 }
-
 .star-group-2 {
-  bottom: 25%;
-  left: 12%;
+  bottom: 22%;
+  left: 10%;
   animation-delay: 1s;
 }
-
 .star-group-3 {
-  top: 65%;
-  left: 5%;
+  top: 62%;
+  left: 4%;
   animation-delay: 2s;
 }
-
 .star-group-4 {
-  bottom: 10%;
-  right: 5%;
+  bottom: 8%;
+  right: 4%;
   animation-delay: 3s;
 }
 
 @keyframes twinkleGroup {
-  0%, 100% {
-    opacity: 0.5;
+  0%,
+  100% {
+    opacity: 0.45;
     transform: scale(1);
   }
   50% {
-    opacity: 1;
-    transform: scale(1.1);
+    opacity: 0.85;
+    transform: scale(1.08);
   }
 }
 
 .star {
   display: inline-block;
 }
-
 .star.small {
-  font-size: 1.5rem;
+  font-size: clamp(0.9rem, 2vh, 1.25rem);
   animation: twinkle 2s ease-in-out infinite;
 }
-
 .star.medium {
-  font-size: 2rem;
+  font-size: clamp(1.1rem, 2.5vh, 1.5rem);
   animation: twinkle 2.5s ease-in-out infinite;
 }
-
 .star.large {
-  font-size: 2.5rem;
+  font-size: clamp(1.35rem, 3vh, 1.85rem);
   animation: twinkle 3s ease-in-out infinite;
 }
 
-.star-group-1 .star:nth-child(1) { animation-delay: 0s; }
-.star-group-1 .star:nth-child(2) { animation-delay: 0.3s; }
-.star-group-1 .star:nth-child(3) { animation-delay: 0.6s; }
-
-.star-group-2 .star:nth-child(1) { animation-delay: 0.2s; }
-.star-group-2 .star:nth-child(2) { animation-delay: 0.5s; }
-.star-group-2 .star:nth-child(3) { animation-delay: 0.8s; }
-
-.star-group-3 .star:nth-child(1) { animation-delay: 0.4s; }
-.star-group-3 .star:nth-child(2) { animation-delay: 0.7s; }
-
-.star-group-4 .star:nth-child(1) { animation-delay: 0.1s; }
-.star-group-4 .star:nth-child(2) { animation-delay: 0.4s; }
-.star-group-4 .star:nth-child(3) { animation-delay: 0.7s; }
-
 @keyframes twinkle {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
     transform: scale(1) rotate(0deg);
   }
   50% {
     opacity: 1;
-    transform: scale(1.3) rotate(180deg);
+    transform: scale(1.2) rotate(180deg);
   }
 }
 
 .login-wrapper {
   display: flex;
-  gap: 3rem;
-  max-width: 1200px;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  max-width: 1180px;
   width: 100%;
+  max-height: 100%;
+  min-height: 0;
   position: relative;
   z-index: 1;
 }
 
-/* 左侧插画区 */
 .illustration-section {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -495,7 +379,7 @@ function startGuestMode() {
 @keyframes slideInLeft {
   from {
     opacity: 0;
-    transform: translateX(-50px);
+    transform: translateX(-40px);
   }
   to {
     opacity: 1;
@@ -505,518 +389,210 @@ function startGuestMode() {
 
 .illustration-content {
   text-align: center;
+  max-width: 100%;
 }
 
 .logo-display {
-  margin-bottom: 2rem;
-  animation: fadeInUp 1s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  margin-bottom: clamp(0.5rem, 1.5vh, 1.25rem);
 }
 
 .logo-icon-wrapper {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  position: relative;
-  margin-bottom: 1rem;
+  margin-bottom: clamp(0.35rem, 1vh, 0.75rem);
   animation: glow 2s ease-in-out infinite;
 }
 
 .logo-gamepad {
-  font-size: 7rem;
+  font-size: clamp(3rem, 11vh, 5.5rem);
   z-index: 1;
   animation: gamepadPulse 2s ease-in-out infinite;
+  line-height: 1;
 }
 
 .logo-star {
-  font-size: 3rem;
   position: absolute;
-  top: -10px;
-  right: 15px;
+  top: -6%;
+  right: 8%;
+  font-size: clamp(1.25rem, 3.5vh, 2.25rem);
   z-index: 2;
   animation: starPulse 1.5s ease-in-out infinite;
 }
 
-/* 装饰小星星 */
 .logo-star-deco {
   position: absolute;
-  font-size: 1.5rem;
+  font-size: clamp(0.85rem, 2vh, 1.25rem);
   z-index: 3;
   animation: starFloat 3s ease-in-out infinite;
 }
 
 .star-deco-1 {
-  top: -20px;
-  left: -20px;
-  animation-delay: 0s;
+  top: -12%;
+  left: -8%;
 }
-
 .star-deco-2 {
-  top: 50px;
-  left: -30px;
+  top: 55%;
+  left: -12%;
   animation-delay: 0.5s;
-  font-size: 1.8rem;
+  font-size: clamp(1rem, 2.2vh, 1.4rem);
 }
-
 .star-deco-3 {
-  bottom: -15px;
-  right: -10px;
+  bottom: -8%;
+  right: -4%;
   animation-delay: 1s;
 }
-
 .star-deco-4 {
-  top: 30px;
-  right: 30px;
+  top: 28%;
+  right: 12%;
   animation-delay: 1.5s;
-  font-size: 1.2rem;
-}
-
-/* 游戏道具装饰 */
-.game-props {
-  position: absolute;
-  font-size: 2rem;
-  z-index: 4;
-  animation: propBounce 4s ease-in-out infinite;
-  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
-}
-
-.props-1 {
-  top: -30px;
-  left: 30px;
-  animation-delay: 0s;
-  font-size: 2.2rem;
-}
-
-.props-2 {
-  bottom: -25px;
-  left: 10px;
-  animation-delay: 1s;
-  font-size: 1.8rem;
-}
-
-.props-3 {
-  top: 20px;
-  right: 0px;
-  animation-delay: 2s;
-  font-size: 1.6rem;
-}
-
-.props-4 {
-  bottom: 10px;
-  right: 45px;
-  animation-delay: 3s;
-  font-size: 1.5rem;
-}
-
-@keyframes propBounce {
-  0%, 100% {
-    opacity: 0.7;
-    transform: translateY(0) rotate(0deg) scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-15px) rotate(15deg) scale(1.1);
-  }
-}
-
-/* 粒子效果 */
-.particle {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: rgba(255, 215, 0, 0.8);
-  border-radius: 50%;
-  z-index: 5;
-  animation: particleFloat 3s ease-in-out infinite;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
-}
-
-.particle-1 {
-  top: -20px;
-  left: 0px;
-  animation-delay: 0s;
-}
-
-.particle-2 {
-  top: 60px;
-  left: -25px;
-  animation-delay: 0.5s;
-  background: rgba(255, 107, 107, 0.8);
-  box-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
-}
-
-.particle-3 {
-  top: -10px;
-  right: 25px;
-  animation-delay: 1s;
-  background: rgba(102, 126, 234, 0.8);
-  box-shadow: 0 0 10px rgba(102, 126, 234, 0.8);
-}
-
-.particle-4 {
-  bottom: -15px;
-  right: 20px;
-  animation-delay: 1.5s;
-  background: rgba(118, 75, 162, 0.8);
-  box-shadow: 0 0 10px rgba(118, 75, 162, 0.8);
-}
-
-.particle-5 {
-  bottom: 30px;
-  left: 15px;
-  animation-delay: 2s;
-  background: rgba(240, 147, 251, 0.8);
-  box-shadow: 0 0 10px rgba(240, 147, 251, 0.8);
-}
-
-.particle-6 {
-  top: 40px;
-  left: 50px;
-  animation-delay: 2.5s;
-  background: rgba(255, 215, 0, 0.8);
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
-}
-
-@keyframes particleFloat {
-  0%, 100% {
-    opacity: 0.4;
-    transform: translate(0, 0) scale(1);
-  }
-  25% {
-    opacity: 0.8;
-    transform: translate(8px, -12px) scale(1.2);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(0, -20px) scale(1);
-  }
-  75% {
-    opacity: 0.8;
-    transform: translate(-8px, -12px) scale(1.1);
-  }
 }
 
 @keyframes starFloat {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
-    transform: translate(0, 0) rotate(0deg) scale(1);
-  }
-  25% {
-    opacity: 1;
-    transform: translate(5px, -10px) rotate(90deg) scale(1.2);
+    transform: translate(0, 0) rotate(0deg);
   }
   50% {
-    opacity: 0.8;
-    transform: translate(0, -15px) rotate(180deg) scale(1);
-  }
-  75% {
     opacity: 1;
-    transform: translate(-5px, -10px) rotate(270deg) scale(1.1);
+    transform: translate(0, -10px) rotate(180deg);
   }
 }
 
 @keyframes gamepadPulse {
-  0%, 100% {
-    transform: scale(1) rotate(-10deg);
+  0%,
+  100% {
+    transform: scale(1) rotate(-8deg);
     filter: drop-shadow(0 0 10px rgba(255, 107, 107, 0.5));
   }
   50% {
-    transform: scale(1.05) rotate(10deg);
-    filter: drop-shadow(0 0 20px rgba(255, 107, 107, 0.8));
+    transform: scale(1.04) rotate(8deg);
+    filter: drop-shadow(0 0 18px rgba(255, 107, 107, 0.75));
   }
 }
 
 @keyframes starPulse {
-  0%, 100% {
-    transform: scale(1) rotate(0deg);
-    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.75));
   }
   50% {
-    transform: scale(1.2) rotate(20deg);
-    filter: drop-shadow(0 0 25px rgba(255, 215, 0, 1));
+    transform: scale(1.15) rotate(15deg);
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 1));
   }
 }
 
 @keyframes glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
+  0%,
+  100% {
+    filter: drop-shadow(0 0 16px rgba(255, 215, 0, 0.5));
   }
   50% {
-    filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.9));
+    filter: drop-shadow(0 0 24px rgba(255, 215, 0, 0.8));
   }
 }
 
 .brand-name {
-  font-size: 3rem;
+  font-size: clamp(1.6rem, 4.2vh, 2.75rem);
   font-weight: 800;
-  margin: 0.5rem 0;
+  margin: 0.25rem 0;
   background: linear-gradient(135deg, #ffd700 0%, #ff6b6b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
 }
 
 .brand-name-en {
-  font-size: 1.5rem;
+  font-size: clamp(0.75rem, 1.8vh, 1.15rem);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
-  letter-spacing: 0.3em;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
 }
 
-@keyframes scorePop {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-}
-
-/* 高亮卡片 */
-.highlight-box {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 107, 107, 0.3));
-  backdrop-filter: blur(10px);
-  padding: 1.2rem 1.8rem;
-  border-radius: 20px;
-  border: 2px solid rgba(255, 215, 0, 0.5);
-  margin-top: 2rem;
-  animation: highlightGlow 3s ease-in-out infinite;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.highlight-box:hover {
-  transform: scale(1.05);
-  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
-}
-
-@keyframes highlightGlow {
-  0%, 100% {
-    border-color: rgba(255, 215, 0, 0.5);
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-  }
-  50% {
-    border-color: rgba(255, 215, 0, 0.8);
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
-  }
-}
-
-.highlight-icon {
-  font-size: 2.5rem;
-  animation: rocketFloat 2s ease-in-out infinite;
-}
-
-@keyframes rocketFloat {
-  0%, 100% {
-    transform: translateY(0) rotate(-5deg);
-  }
-  50% {
-    transform: translateY(-8px) rotate(5deg);
-  }
-}
-
-.highlight-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.highlight-title {
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: white;
-}
-
-.highlight-subtitle {
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.9);
-  opacity: 0.9;
-}
-
 .illustration-desc {
-  font-size: 1.2rem;
-  margin-bottom: 3rem;
+  font-size: clamp(0.9rem, 1.8vh, 1.1rem);
+  margin: 0 auto clamp(0.5rem, 1.5vh, 1.25rem);
+  max-width: 22em;
   opacity: 0.95;
-  line-height: 1.6;
-  position: relative;
-}
-
-.typing-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1.2em;
-  background: #ffd700;
-  margin-left: 2px;
-  vertical-align: middle;
-  animation: cursorBlink 1s step-end infinite;
-}
-
-@keyframes cursorBlink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+  line-height: 1.5;
 }
 
 .feature-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: clamp(0.4rem, 1vh, 0.65rem);
   align-items: center;
 }
 
 .feature-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 1.1rem;
+  gap: 0.6rem;
+  font-size: clamp(0.85rem, 1.6vh, 1rem);
   font-weight: 600;
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(10px);
-  padding: 1rem 2rem;
+  padding: clamp(0.45rem, 1.2vh, 0.75rem) clamp(1rem, 2.5vw, 1.5rem);
   border-radius: 50px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   transition: all 0.3s;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  padding: 1rem 2rem;
-  border-radius: 50px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s;
-  position: relative;
-  overflow: hidden;
-}
-
-.feature-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.5s;
-}
-
-.feature-item:hover::before {
-  left: 100%;
-}
-
-.feature-1:hover {
-  border-color: #ffd700;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-}
-
-.feature-2:hover {
-  border-color: #ff6b6b;
-  box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
-}
-
-.feature-3:hover {
-  border-color: #667eea;
-  box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+  max-width: 100%;
 }
 
 .feature-item:hover {
   background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.feature-1:hover {
+  border-color: #ffd700;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.45);
+}
+.feature-2:hover {
+  border-color: #ff6b6b;
+}
+.feature-3:hover {
+  border-color: #667eea;
 }
 
 .feature-icon {
-  font-size: 1.5rem;
+  font-size: clamp(1.1rem, 2vh, 1.4rem);
   animation: iconBounce 2s ease-in-out infinite;
-}
-
-.feature-1 .feature-icon {
-  animation-delay: 0s;
 }
 
 .feature-2 .feature-icon {
   animation-delay: 0.5s;
 }
-
 .feature-3 .feature-icon {
   animation-delay: 1s;
 }
 
 @keyframes iconBounce {
-  0%, 100% {
-    transform: scale(1) rotate(0deg);
-  }
-  50% {
-    transform: scale(1.2) rotate(10deg);
-  }
-}
-
-.feature-score {
-  font-size: 0.85rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #ffd700, #ff6b6b);
-  color: white;
-  padding: 0.2rem 0.6rem;
-  border-radius: 20px;
-  margin-left: auto;
-  animation: scorePop 3s ease-in-out infinite;
-}
-
-.feature-1 .feature-score {
-  animation-delay: 0s;
-}
-
-.feature-2 .feature-score {
-  animation-delay: 1s;
-}
-
-.feature-3 .feature-score {
-  animation-delay: 2s;
-}
-
-@keyframes scorePop {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
-    transform: scale(1.1);
+    transform: scale(1.15) rotate(8deg);
   }
 }
 
-/* 右侧登录表单区 */
 .login-form-section {
-  flex: 0 0 480px;
+  flex: 0 1 440px;
+  width: 100%;
+  max-width: 440px;
+  min-height: 0;
   animation: slideInRight 0.8s ease-out;
 }
 
 @keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(50px);
+    transform: translateX(40px);
   }
   to {
     opacity: 1;
@@ -1024,317 +600,182 @@ function startGuestMode() {
   }
 }
 
-.login-card {
-  background: white;
-  border-radius: 24px;
-  padding: 3rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+/* 登录面板：毛玻璃，与渐变背景融合 */
+.login-glass {
+  padding: clamp(1.1rem, 2.8vh, 1.65rem) clamp(1.1rem, 2.5vw, 1.5rem);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  max-height: calc(100dvh - 2rem);
 }
 
-.card-header {
+.login-glass__title {
+  margin: 0 0 0.25rem;
   text-align: center;
-  margin-bottom: 2.5rem;
-}
-
-.brand-logo {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #667eea;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.welcome-title {
-  font-size: 2rem;
+  font-size: clamp(1.25rem, 3vh, 1.5rem);
   font-weight: 800;
-  margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
-.welcome-subtitle {
-  color: #666;
-  font-size: 1rem;
+.login-glass__sub {
+  margin: 0 0 clamp(0.85rem, 2vh, 1.15rem);
+  text-align: center;
+  font-size: clamp(0.8rem, 1.5vh, 0.9rem);
+  color: rgba(255, 255, 255, 0.82);
 }
 
-/* 表单样式 */
-.login-form {
-  margin-bottom: 2rem;
-}
-
-.form-group {
-  margin-bottom: 1.75rem;
-}
-
-.form-group label {
+.login-glass__form {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  font-weight: 600;
-  color: #333;
-  font-size: 0.95rem;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
-.label-icon {
-  font-size: 1.2rem;
-}
-
-.form-input {
-  width: 100%;
-  padding: 1rem 1.25rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 16px;
-  font-size: 1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #f9fafb;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-}
-
-.form-input::placeholder {
-  color: #9ca3af;
-}
-
-.form-input:disabled {
-  background: #f3f4f6;
-  cursor: not-allowed;
-}
-
-.submit-btn {
-  width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 16px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+.login-glass__label {
   margin-top: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  letter-spacing: 0.04em;
 }
 
-.btn-icon {
-  font-size: 1.3rem;
+.login-glass__label:first-of-type {
+  margin-top: 0;
 }
 
-.submit-btn:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+.login-glass__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.85rem;
+  font-size: 1rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
 }
 
-.submit-btn:active:not(:disabled) {
-  transform: translateY(-1px);
+.login-glass__input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
 }
 
-.submit-btn:disabled {
+.login-glass__input:focus {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.login-glass__input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  transform: none;
 }
 
-/* 分割线 */
-.divider {
-  display: flex;
-  align-items: center;
-  margin: 2rem 0;
-  color: #d1d5db;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(to right, transparent, #e5e7eb, transparent);
-}
-
-.divider-text {
-  padding: 0 1.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-/* 注册区域 */
-.register-section {
-  text-align: center;
-}
-
-.register-text {
-  color: #666;
-  font-size: 0.95rem;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.register-icon {
-  font-size: 1.2rem;
-  animation: registerStarBounce 2s ease-in-out infinite;
-}
-
-@keyframes registerStarBounce {
-  0%, 100% {
-    transform: scale(1) rotate(0deg);
-  }
-  50% {
-    transform: scale(1.3) rotate(20deg);
-  }
-}
-
-.register-link {
-  color: #667eea;
-  cursor: pointer;
-  font-weight: 700;
-  transition: all 0.3s;
-  text-decoration: none;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.register-link:hover {
-  transform: scale(1.05);
-  text-decoration: underline;
-}
-
-/* 游客试玩区域 */
-.guest-section {
-  margin-top: 1.5rem;
-  text-align: center;
-}
-
-.guest-btn {
+.login-glass__btn {
+  margin-top: 0.75rem;
   width: 100%;
-  padding: 0.875rem;
-  background: linear-gradient(135deg, #48dbfb 0%, #0abde3 100%);
-  color: white;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #5b4bb4;
+  background: rgba(255, 255, 255, 0.92);
   border: none;
   border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(72, 219, 251, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
 }
 
-.guest-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(72, 219, 251, 0.4);
+.login-glass__btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
 }
 
-.guest-btn:active {
-  transform: translateY(0);
+.login-glass__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.guest-hint {
-  margin-top: 0.5rem;
+.login-glass__foot {
+  margin: clamp(0.85rem, 2vh, 1rem) 0 0;
+  text-align: center;
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.75);
 }
 
-/* 响应式 */
-@media (max-width: 1024px) {
-  .login-wrapper {
-    flex-direction: column;
-    gap: 2rem;
-  }
+.login-glass__link {
+  padding: 0;
+  margin-left: 0.25rem;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
-  .illustration-section {
-    flex: none;
-  }
+.login-glass__link:hover {
+  color: #ffe082;
+}
 
-  .login-form-section {
-    flex: none;
-    width: 100%;
-    max-width: 480px;
-  }
-
-  .logo-icon-wrapper {
-    gap: 0;
-  }
-
-  .logo-gamepad {
-    font-size: 3.5rem;
-  }
-
-  .logo-star {
-    font-size: 2rem;
-    top: -8px;
-    right: 10px;
-  }
-
-  .brand-name {
-    font-size: 2.2rem;
-  }
-
-  .brand-name-en {
-    font-size: 1.2rem;
+/* 矮屏：减左侧高度，避免挤压右侧卡片 */
+@media (max-height: 780px) {
+  .feature-list {
+    display: none;
   }
 
   .illustration-desc {
-    font-size: 1rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .logo-gamepad {
+    font-size: clamp(2.5rem, 9vh, 4rem);
   }
 }
 
-@media (max-width: 768px) {
-  .login-container {
-    padding: 1rem;
-  }
-
-  .login-card {
-    padding: 2rem;
-    border-radius: 20px;
-  }
-
-  .logo-icon {
-    font-size: 3rem;
-  }
-
-  .brand-name {
-    font-size: 1.8rem;
-  }
-
+@media (max-height: 680px) {
   .brand-name-en {
-    font-size: 1rem;
+    display: none;
   }
 
-  .welcome-title {
-    font-size: 1.75rem;
+  .logo-star-deco {
+    display: none;
+  }
+
+  .login-glass {
+    padding: 1rem 1.1rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .login-wrapper {
+    flex-direction: column;
+    gap: clamp(0.65rem, 2vh, 1rem);
+    max-width: 440px;
+  }
+
+  .illustration-section {
+    flex: 0 0 auto;
+  }
+
+  .login-form-section {
+    flex: 0 0 auto;
+    max-width: 100%;
   }
 
   .feature-list {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
+    gap: 0.4rem;
   }
 
   .feature-item {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
+    padding: 0.4rem 0.85rem;
   }
 }
 
@@ -1343,44 +784,25 @@ function startGuestMode() {
     padding: 0.5rem;
   }
 
-  .login-card {
-    padding: 1.5rem;
+  .login-glass {
+    padding: 1rem 0.9rem;
     border-radius: 16px;
   }
+}
+</style>
 
-  .logo-gamepad {
-    font-size: 2rem;
-  }
+<style>
+html.login-page-active,
+body.login-page-active {
+  overflow: hidden !important;
+  height: 100%;
+  max-height: 100dvh;
+}
 
-  .logo-star {
-    font-size: 1.2rem;
-    top: -4px;
-    right: 6px;
-  }
-
-  .brand-name {
-    font-size: 1.5rem;
-  }
-
-  .brand-name-en {
-    font-size: 0.9rem;
-  }
-
-  .illustration-desc {
-    font-size: 0.9rem;
-  }
-
-  .form-input {
-    padding: 0.875rem 1rem;
-  }
-
-  .submit-btn {
-    padding: 0.875rem;
-  }
-
-  .feature-item {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-  }
+html.login-page-active #app {
+  min-height: 0;
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 </style>

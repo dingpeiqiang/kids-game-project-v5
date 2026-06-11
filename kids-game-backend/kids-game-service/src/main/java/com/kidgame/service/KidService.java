@@ -34,7 +34,7 @@ public interface KidService extends IService<Kid> {
     Kid getKidInfo(Long kidId);
 
     /**
-     * 更新儿童疲劳点数
+     * 更新儿童游学币
      * @param kidId 儿童ID
      * @param changeType 变化类型（1-消耗，2-获得，3-重置）
      * @param changePoints 变化点数
@@ -43,16 +43,16 @@ public interface KidService extends IService<Kid> {
     void updateFatiguePoints(Long kidId, Integer changeType, Integer changePoints, Long relatedId);
 
     /**
-     * 获取儿童当前疲劳点数
+     * 获取儿童当前游学币
      * @param kidId 儿童ID
-     * @return 疲劳点数
+     * @return 游学币
      */
     Integer getFatiguePoints(Long kidId);
 
     /**
-     * 重置每日疲劳点
+     * 重置每日游学币
      * @param kidId 儿童 ID
-     * @return 重置后的疲劳点数
+     * @return 重置后的游学币
      */
     Integer resetDailyFatiguePoints(Long kidId);
 

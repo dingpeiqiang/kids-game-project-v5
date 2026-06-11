@@ -510,7 +510,7 @@ export const useGameStore = defineStore('game', () => {
       })
       
       if (result.success) {
-        console.log('✅ 成绩上报成功，消耗疲劳点:', result.consumePoints)
+        console.log('✅ 成绩上报成功，消耗游学币:', result.consumePoints)
       } else {
         // ⭐ 非致命错误，仅提示不阻断游戏
         console.info('ℹ️ 成绩上报未成功（不影响游戏）:', result.message)

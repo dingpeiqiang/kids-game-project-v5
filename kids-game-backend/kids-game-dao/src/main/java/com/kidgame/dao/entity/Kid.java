@@ -99,7 +99,7 @@ public class Kid implements Serializable {
     @TableField(exist = false)
     private String deviceId;
 
-    // 疲劳点相关字段（从 UserProfile 中读取）
+    // 游学币相关字段（从 UserProfile 中读取）
     @TableField(exist = false)
     private Integer fatiguePoints;
 

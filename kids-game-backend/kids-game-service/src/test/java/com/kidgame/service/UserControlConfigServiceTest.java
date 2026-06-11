@@ -120,13 +120,13 @@ public class UserControlConfigServiceTest {
         config.setBlockedGames("{\"games\":[1,2]}");
         userControlConfigService.saveConfig(config);
 
-        // 未达到疲劳点
+        // 未达到游学币
         assertFalse(userControlConfigService.checkFatigue(kid.getUserId(), 20));
 
-        // 达到疲劳点
+        // 达到游学币
         assertTrue(userControlConfigService.checkFatigue(kid.getUserId(), 30));
 
-        // 超过疲劳点
+        // 超过游学币
         assertTrue(userControlConfigService.checkFatigue(kid.getUserId(), 40));
     }
 

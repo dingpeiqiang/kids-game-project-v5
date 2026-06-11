@@ -2,6 +2,7 @@
  * 家长相关 API 服务
  */
 import { BaseApiService } from './base-api.service';
+import { authApi } from './auth-api.service';
 import type { Parent, ParentLimit, Kid, GameRecord, AnswerRecord } from './api.types';
 import { API_CONSTANTS, USER_TYPE } from './api.types';
 
@@ -37,6 +38,11 @@ export class ParentApiService extends BaseApiService {
     localStorage.removeItem(API_CONSTANTS.PARENT_TOKEN_KEY);
   }
 
+  /** 与 userStore 登出约定一致 */
+  clearToken(): void {
+    this.clearParentToken();
+  }
+
   /**
    * 加载家长 Token
    */
@@ -55,11 +61,19 @@ export class ParentApiService extends BaseApiService {
    * 家长注册
    */
   async register(data: {
+    username: string;
     phone: string;
     password: string;
     nickname?: string;
+    realName?: string;
   }): Promise<Parent> {
-    return this.post<Parent>('/api/parent/register', data);
+    const result = await authApi.registerParent(data);
+    return {
+      userId: result.userId,
+      username: result.username,
+      nickname: result.nickname,
+      userType: USER_TYPE.PARENT,
+    } as Parent;
   }
 
   /**
@@ -218,7 +232,7 @@ export class ParentApiService extends BaseApiService {
   }
 
   /**
-   * 消耗家长疲劳点
+   * 消耗家长游学币
    * 后端使用 @RequestParam，需以 x-www-form-urlencoded 格式传参
    */
   async consumeFatiguePoints(parentId: number, points: number = 1): Promise<boolean> {
@@ -230,7 +244,7 @@ export class ParentApiService extends BaseApiService {
   }
 
   /**
-   * 获取家长疲劳点数
+   * 获取家长游学币
    */
   async getFatiguePoints(parentId: number): Promise<number> {
     return this.get<number>(`/api/user/fatigue/points?userId=${parentId}&userType=${USER_TYPE.PARENT}`);

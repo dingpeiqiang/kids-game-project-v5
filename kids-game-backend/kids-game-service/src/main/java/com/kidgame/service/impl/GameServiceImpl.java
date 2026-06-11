@@ -115,7 +115,7 @@ public class GameServiceImpl extends ServiceImpl<GameMapper, Game> implements Ga
             throw new BusinessException(ErrorCode.GAME_NOT_FOUND_OBJ);
         }
 
-        // 2. 检查疲劳点（所有用户都要限制）
+        // 2. 检查游学币（所有用户都要限制）
         Integer fatiguePoints = kidService.getFatiguePoints(dto.getUserId());
         if (fatiguePoints == null || fatiguePoints <= 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_FATIGUE_POINTS_OBJ);
@@ -259,12 +259,12 @@ public class GameServiceImpl extends ServiceImpl<GameMapper, Game> implements Ga
         session.setUpdateTime(System.currentTimeMillis());
         gameSessionMapper.updateById(session);
 
-        // 计算消耗的疲劳点
+        // 计算消耗的游学币
         Game game = getById(session.getGameId());
         int consumePoints = (int) (session.getDuration() / 60 * (game.getConsumePointsPerMinute() != null ? game.getConsumePointsPerMinute() : 1));
         session.setConsumePoints(consumePoints);
 
-        // 所有用户都创建游戏记录和更新疲劳点
+        // 所有用户都创建游戏记录和更新游学币
         Kid kid = kidService.getById(session.getUserId());
         if (kid != null) {
             // 儿童用户：创建详细记录
@@ -279,12 +279,12 @@ public class GameServiceImpl extends ServiceImpl<GameMapper, Game> implements Ga
             record.setCreateTime(System.currentTimeMillis());
             gameRecordMapper.insert(record);
 
-            // 更新儿童疲劳点
+            // 更新儿童游学币
             kidService.updateFatiguePoints(session.getUserId(), 1, -consumePoints, session.getSessionId());
         } else {
-            // 非儿童用户（家长）：也扣除疲劳点，但不创建游戏记录
+            // 非儿童用户（家长）：也扣除游学币，但不创建游戏记录
             kidService.updateFatiguePoints(session.getUserId(), 1, -consumePoints, session.getSessionId());
-            log.info("家长用户游戏结束，扣除疲劳点。UserId: {}, SessionId: {}, ConsumePoints: {}",
+            log.info("家长用户游戏结束，扣除游学币。UserId: {}, SessionId: {}, ConsumePoints: {}",
                     session.getUserId(), session.getSessionId(), consumePoints);
         }
 

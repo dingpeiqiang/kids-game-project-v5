@@ -33,15 +33,21 @@ public class GameConstants {
     }
 
     /**
-     * 疲劳点变化类型
+     * 游学币变化类型（入账仅允许：答题、家长奖励、系统赠与；游戏只可消耗不可获得）
      */
     public interface FatigueChangeType {
-        /** 游戏消耗 */
+        /** 游戏消耗（仅允许扣减） */
         int GAME_CONSUME = 1;
-        /** 答题获取 */
+        /** 答题获得 */
         int ANSWER_GET = 2;
-        /** 每日重置 */
+        /** 每日重置 / 系统补充至初始值 */
         int DAILY_RESET = 3;
+        /** 注册初始化（系统赠与） */
+        int INIT = 4;
+        /** 家长奖励 */
+        int PARENT_REWARD = 5;
+        /** 管理员或任务等系统赠与 */
+        int SYSTEM_GRANT = 6;
     }
 
     /**
@@ -56,13 +62,13 @@ public class GameConstants {
         String DEFAULT_TIME_START = "06:00";
         /** 默认允许结束时间 */
         String DEFAULT_TIME_END = "22:00";
-        /** 默认答题获得疲劳点数 */
+        /** 默认答题获得游学币 */
         int DEFAULT_ANSWER_GET_POINTS = 1;
         /** 默认每日答题限制 */
         int DEFAULT_DAILY_ANSWER_LIMIT = 10;
         /** 默认家长 PIN 码 */
         String DEFAULT_PARENT_PIN = "0000";
-        /** 默认疲劳点数 */
+        /** 默认游学币 */
         int DEFAULT_FATIGUE_POINTS = 10;
     }
 

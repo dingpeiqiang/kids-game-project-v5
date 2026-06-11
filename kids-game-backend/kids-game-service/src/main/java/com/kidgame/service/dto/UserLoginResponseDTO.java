@@ -33,10 +33,10 @@ public class UserLoginResponseDTO {
     @Schema(description = "Refresh Token")
     private String refreshToken;
 
-    @Schema(description = "疲劳点数")
+    @Schema(description = "游学币")
     private Integer fatiguePoints;
 
-    @Schema(description = "每日答题获得的疲劳点数")
+    @Schema(description = "每日答题获得的游学币")
     private Integer dailyAnswerPoints;
 
     @Schema(description = "年级（仅儿童）")

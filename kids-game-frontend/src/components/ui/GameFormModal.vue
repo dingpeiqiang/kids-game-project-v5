@@ -67,7 +67,7 @@
         </div>
 
         <div class="form-group">
-          <label>每分钟消耗疲劳点</label>
+          <label>每分钟消耗游学币</label>
           <input v-model.number="formData.consumePointsPerMinute" type="number" class="form-input" />
         </div>
       </div>

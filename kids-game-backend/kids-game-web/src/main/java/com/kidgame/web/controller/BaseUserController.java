@@ -1,7 +1,7 @@
 package com.kidgame.web.controller;
 
 import com.kidgame.common.model.Result;
-import com.kidgame.common.util.JwtUtil;
+
 import com.kidgame.dao.entity.BaseUser;
 import com.kidgame.dao.entity.UserProfile;
 import com.kidgame.service.UserService;
@@ -31,9 +31,6 @@ public class BaseUserController {
 
     @Autowired
     private com.kidgame.service.UserService userService;
-
-    @Autowired
-    private JwtUtil jwtUtil;
 
     @Operation(summary = "用户注册")
     @PostMapping("/register")
@@ -150,21 +147,10 @@ public class BaseUserController {
     public Result<Map<String, String>> refreshToken(
             @Parameter(description = "Refresh Token") @RequestParam String refreshToken) {
         try {
-            if (!jwtUtil.validateToken(refreshToken)) {
-                return Result.error("Refresh Token 已过期或无效");
-            }
-            
-            if (!jwtUtil.isRefreshToken(refreshToken)) {
-                return Result.error("无效的 Token 类型");
-            }
-            
-            String userId = jwtUtil.getUserId(refreshToken);
-            String newAccessToken = jwtUtil.generateToken(userId);
-            
+            String newAccessToken = userService.refreshAccessToken(refreshToken, null);
             Map<String, String> result = new HashMap<>();
             result.put("token", newAccessToken);
-            
-            log.info("用户 {} 刷新 Token 成功", userId);
+            result.put("accessToken", newAccessToken);
             return Result.success(result);
         } catch (Exception e) {
             log.error("刷新 Token 失败", e);

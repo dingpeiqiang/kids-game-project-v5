@@ -758,7 +758,7 @@ function generateWallId(): string {
 }
 
 // 城墙配置导入
-import { WALL_CONFIGS, MAX_TURRETS, GRID_SIZE, CANVAS_WIDTH, CANVAS_HEIGHT, SCALE_RATIO } from './config'
+import { WALL_CONFIGS } from './config'
 import type { Wall, WallType, GameState } from './types'
 
 // 检查是否可以建造城墙

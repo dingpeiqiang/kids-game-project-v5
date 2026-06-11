@@ -150,8 +150,11 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/game/:pathMatch(.*)*',
-    beforeEnter: () => {
-      window.location.href = PLAY_URL;
+    beforeEnter: (to) => {
+      const base = PLAY_URL.replace(/\/$/, '');
+      const path = to.path.startsWith('/') ? to.path : `/${to.path}`;
+      const query = to.fullPath.includes('?') ? to.fullPath.slice(to.fullPath.indexOf('?')) : '';
+      window.location.href = `${base}${path}${query}`;
       return false;
     },
     component: () => import('@/modules/login/index.vue'),

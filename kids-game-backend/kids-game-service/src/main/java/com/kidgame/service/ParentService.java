@@ -170,14 +170,14 @@ public interface ParentService extends IService<Parent> {
     Long requestBindKid(Long parentId, String kidUsername, Integer roleType, Boolean isPrimary);
 
     /**
-     * 获取家长疲劳点数
+     * 获取家长游学币
      * @param parentId 家长ID
-     * @return 疲劳点数
+     * @return 游学币
      */
     Integer getFatiguePoints(Long parentId);
 
     /**
-     * 更新家长疲劳点数
+     * 更新家长游学币
      * @param parentId 家长ID
      * @param changeType 变化类型（1-消耗，2-获得，3-重置）
      * @param changePoints 变化点数

@@ -47,7 +47,7 @@ public class GameReportController {
      */
     @Data
     public static class GameReportResponse {
-        @Parameter(description = "消耗的疲劳点数")
+        @Parameter(description = "消耗的游学币")
         private Integer consumePoints;
         
         @Parameter(description = "会话 ID")
@@ -60,7 +60,7 @@ public class GameReportController {
         private Long gameId;
     }
 
-    @Operation(summary = "游戏成绩上报", description = "独立部署模式的游戏向平台提交成绩，需要消耗疲劳点数")
+    @Operation(summary = "游戏成绩上报", description = "独立部署模式的游戏向平台提交成绩，需要消耗游学币")
     @PostMapping("/report")
     public Result<GameReportResponse> reportGameResult(@RequestBody GameReportRequest request) {
         try {
@@ -75,15 +75,15 @@ public class GameReportController {
             // TODO: 实现具体的成绩上报逻辑
             // 1. 验证 sessionToken 有效性
             // 2. 获取会话信息（userId, gameId, sessionId）
-            // 3. 检查用户疲劳度是否足够
-            // 4. 扣除疲劳度并记录成绩
+            // 3. 检查用户游学币度是否足够
+            // 4. 扣除游学币度并记录成绩
             // 5. 更新排行榜等信息
 
             // 临时实现：返回成功，但不实际处理
             log.warn("⚠️ 成绩上报功能暂未完全实现，仅返回成功响应");
             
             GameReportResponse response = new GameReportResponse();
-            response.setConsumePoints(0); // 暂时不消耗疲劳点
+            response.setConsumePoints(0); // 暂时不消耗游学币
             response.setSessionId(0L);
             response.setUserId(0L);
             response.setGameId(0L);

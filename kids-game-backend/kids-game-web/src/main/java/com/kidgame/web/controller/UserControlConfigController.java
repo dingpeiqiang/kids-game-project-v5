@@ -61,11 +61,11 @@ public class UserControlConfigController {
         return Result.success();
     }
 
-    @Operation(summary = "更新疲劳点设置")
+    @Operation(summary = "更新游学币设置")
     @PutMapping("/update-fatigue-point")
     public Result<Void> updateFatiguePoint(
             @Parameter(description = "用户ID（儿童）") @RequestParam Long userId,
-            @Parameter(description = "疲劳点阈值（分钟）") @RequestParam Integer fatiguePointMinutes,
+            @Parameter(description = "游学币阈值（分钟）") @RequestParam Integer fatiguePointMinutes,
             @Parameter(description = "强制休息时长（分钟）") @RequestParam Integer restDurationMinutes) {
         userControlConfigService.updateFatiguePoint(userId, fatiguePointMinutes, restDurationMinutes);
         return Result.success();
@@ -81,11 +81,11 @@ public class UserControlConfigController {
         return Result.success();
     }
 
-    @Operation(summary = "更新疲劳控制模式")
+    @Operation(summary = "更新游学币控制模式")
     @PutMapping("/update-fatigue-mode")
     public Result<Void> updateFatigueMode(
             @Parameter(description = "用户ID（儿童）") @RequestParam Long userId,
-            @Parameter(description = "疲劳控制模式：SOFT/HARD/OFF") @RequestParam String fatigueControlMode) {
+            @Parameter(description = "游学币控制模式：SOFT/HARD/OFF") @RequestParam String fatigueControlMode) {
         userControlConfigService.updateFatigueMode(userId, fatigueControlMode);
         return Result.success();
     }
@@ -106,7 +106,7 @@ public class UserControlConfigController {
         return Result.success(exceeded);
     }
 
-    @Operation(summary = "检查是否触发疲劳点")
+    @Operation(summary = "检查是否触发游学币")
     @GetMapping("/check-fatigue")
     public Result<Boolean> checkFatigue(
             @Parameter(description = "用户ID（儿童）") @RequestParam Long userId,

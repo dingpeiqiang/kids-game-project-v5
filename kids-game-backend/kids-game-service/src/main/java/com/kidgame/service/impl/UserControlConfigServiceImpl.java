@@ -185,10 +185,10 @@ public class UserControlConfigServiceImpl extends ServiceImpl<UserControlConfigM
 
     @Override
     public void updateFatiguePoint(Long userId, Integer fatiguePointMinutes, Integer restDurationMinutes) {
-        // 当前实体类没有疲劳点相关字段，暂时使用日志记录
-        log.info("更新疲劳点设置. UserId: {}, FatiguePointMinutes: {}, RestDurationMinutes: {}",
+        // 当前实体类没有游学币相关字段，暂时使用日志记录
+        log.info("更新游学币设置. UserId: {}, FatiguePointMinutes: {}, RestDurationMinutes: {}",
                 userId, fatiguePointMinutes, restDurationMinutes);
-        // TODO: 需要在实体类中添加疲劳点相关字段后实现
+        // TODO: 需要在实体类中添加游学币相关字段后实现
     }
 
     @Override
@@ -211,9 +211,9 @@ public class UserControlConfigServiceImpl extends ServiceImpl<UserControlConfigM
 
     @Override
     public void updateFatigueMode(Long userId, String fatigueControlMode) {
-        // 当前实体类没有疲劳控制模式字段，暂时使用日志记录
-        log.info("更新疲劳控制模式. UserId: {}, Mode: {}", userId, fatigueControlMode);
-        // TODO: 需要在实体类中添加疲劳控制模式字段后实现
+        // 当前实体类没有游学币控制模式字段，暂时使用日志记录
+        log.info("更新游学币控制模式. UserId: {}, Mode: {}", userId, fatigueControlMode);
+        // TODO: 需要在实体类中添加游学币控制模式字段后实现
     }
 
     @Override
@@ -247,8 +247,8 @@ public class UserControlConfigServiceImpl extends ServiceImpl<UserControlConfigM
 
     @Override
     public boolean checkFatigue(Long userId, Integer playedMinutes) {
-        // 当前实体类没有疲劳点相关字段，暂时返回 false
-        // TODO: 需要在实体类中添加疲劳点相关字段后实现
+        // 当前实体类没有游学币相关字段，暂时返回 false
+        // TODO: 需要在实体类中添加游学币相关字段后实现
         return false;
     }
 

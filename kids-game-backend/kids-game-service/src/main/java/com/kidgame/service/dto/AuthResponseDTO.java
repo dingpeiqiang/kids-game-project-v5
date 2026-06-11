@@ -50,7 +50,7 @@ public class AuthResponseDTO {
     @Schema(description = "角色列表")
     private List<String> roles;
 
-    @Schema(description = "疲劳点数")
+    @Schema(description = "游学币")
     private Integer fatiguePoints;
 
     @Schema(description = "每日答题点数")
@@ -61,4 +61,7 @@ public class AuthResponseDTO {
 
     @Schema(description = "家长 ID（仅儿童）")
     private Long parentId;
+
+    @Schema(description = "手机号（仅家长，来自 profile）")
+    private String phone;
 }

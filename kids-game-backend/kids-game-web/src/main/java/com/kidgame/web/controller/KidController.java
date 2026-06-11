@@ -45,7 +45,7 @@ public class KidController {
         return Result.success(kid);
     }
 
-    @Operation(summary = "获取疲劳点数")
+    @Operation(summary = "获取游学币")
     @GetMapping("/fatigue-points")
     public Result<Integer> getFatiguePoints(
             @Parameter(description = "儿童ID") @RequestParam Long kidId) {

@@ -9,6 +9,7 @@ import type { ApiResponse, PageData } from './api.types';
 import { API_CONSTANTS, isPageData } from './api.types';
 import { handleApiError, type ErrorHandlerOptions, type ApiError } from '@/utils/error-handler';
 import { envConfig } from '@/core/config/env';
+import { attachAuthHeaders, createAuthErrorHandler } from '@/core/network/auth-interceptor';
 
 /**
  * 请求配置选项
@@ -94,15 +95,7 @@ export class BaseApiService {
   private setupInterceptors(): void {
     // 请求拦截器
     this.axiosInstance.interceptors.request.use(
-      (config) => {
-        // 添加 token
-        const currentToken = this.getCurrentToken();
-        if (currentToken) {
-          config.headers.Authorization = `Bearer ${currentToken}`;
-        }
-        
-        return config;
-      },
+      (config) => attachAuthHeaders(config),
       (error) => {
         return Promise.reject(error);
       }
@@ -123,10 +116,16 @@ export class BaseApiService {
           new Error(data.msg || '请求失败') as ApiError & { code: number }
         );
       },
-      (error: AxiosError) => {
-        // 统一错误处理
-        return Promise.reject(error);
-      }
+      async (error: AxiosError) => {
+        const handler = createAuthErrorHandler((cfg) =>
+          this.axiosInstance.request(cfg),
+        );
+        try {
+          return await handler(error);
+        } catch (e) {
+          return Promise.reject(e);
+        }
+      },
     );
   }
 

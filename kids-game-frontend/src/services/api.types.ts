@@ -281,10 +281,14 @@ export interface Question {
   questionId: number;
   content: string;
   options: string;
-  correctAnswer: string;
+  correctAnswer?: string;
   analysis?: string;
   grade: string;
   type: string;
+  difficulty?: number;
+  status?: number;
+  createTime?: number;
+  updateTime?: number;
 }
 
 export interface AnswerRecord {

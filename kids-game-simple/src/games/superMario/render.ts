@@ -169,7 +169,7 @@ export function drawWorld(
     if (b.x + b.w < cam - 20 || b.x > cam + W + 20) continue
     drawBlock(ctx, b, level.theme.underground)
   }
-  for (const c of state.coins) {
+  for (const c of state.coinObjects) {
     if (c.x < cam - 20 || c.x > cam + W + 20) continue
     drawCoin(ctx, c, frame)
   }

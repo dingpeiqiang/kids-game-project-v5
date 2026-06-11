@@ -70,13 +70,13 @@ function loadLevelState(levelIndex: number, lives: number, score: number, coins:
     levelIndex,
     lives,
     score,
-    coins,
+    coins: coins + level.coins.length,
     timeLeft: level.timeLimit,
     cameraX: 0,
     player: createPlayer(level),
     blocks: cloneBlocks(level.blocks),
     pipes: level.pipes.map((p) => ({ ...p })),
-    coins: cloneCoins(level.coins),
+    coinObjects: cloneCoins(level.coins),
     enemies: spawnEnemies(level),
     powerups: [],
     particles: [],
@@ -326,7 +326,7 @@ function updateEnemies(state: MarioGameState, level: LevelData, engine: GameEngi
 
 function updateCoinsAndPowerups(state: MarioGameState, engine: GameEngine) {
   const p = state.player
-  for (const c of state.coins) {
+  for (const c of state.coinObjects) {
     if (!c.collected && aabb(p, c)) {
       c.collected = true
       state.coins += 1

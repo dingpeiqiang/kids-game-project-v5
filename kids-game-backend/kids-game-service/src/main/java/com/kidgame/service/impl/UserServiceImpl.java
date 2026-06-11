@@ -18,6 +18,7 @@ import com.kidgame.dao.mapper.UserLevelMapper;
 import com.kidgame.dao.mapper.UserProfileMapper;
 import com.kidgame.service.UserService;
 import com.kidgame.service.cache.UserCacheService;
+import com.kidgame.service.dto.AuthRegisterDTO;
 import com.kidgame.service.dto.AuthRequestDTO;
 import com.kidgame.service.dto.AuthResponseDTO;
 import com.kidgame.service.dto.UserLoginDTO;
@@ -152,11 +153,71 @@ public class UserServiceImpl implements UserService {
         // 初始化用户等级（所有用户）
         initializeUserLevel(user.getUserId());
 
-        // 如果是儿童用户，初始化疲劳点
+        // 如果是儿童用户，初始化游学币
         if (user.getUserType() != null && user.getUserType() == 0) {
             initializeFatiguePoints(user.getUserId());
         }
 
+        return user;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BaseUser registerPublic(AuthRegisterDTO dto) {
+        if (dto.getUserType() == null || dto.getUserType() != 1) {
+            throw new RuntimeException("当前仅支持家长注册，儿童请使用儿童注册接口并绑定监护人");
+        }
+        String username = dto.getUsername() != null ? dto.getUsername().trim() : "";
+        String phone = dto.getPhone() != null ? dto.getPhone().trim() : "";
+        if (username.length() < 2 || username.length() > 20) {
+            throw new RuntimeException("用户名长度为 2-20 个字符");
+        }
+        if (!phone.matches("^1[3-9]\\d{9}$")) {
+            throw new RuntimeException("手机号格式不正确");
+        }
+        if (dto.getPassword() == null || dto.getPassword().length() < 6) {
+            throw new RuntimeException("密码至少 6 位");
+        }
+
+        LambdaQueryWrapper<BaseUser> usernameWrap = new LambdaQueryWrapper<>();
+        usernameWrap.eq(BaseUser::getUsername, username).eq(BaseUser::getUserType, 1);
+        if (baseUserMapper.selectOne(usernameWrap) != null) {
+            throw new RuntimeException("该用户名已被注册");
+        }
+
+        LambdaQueryWrapper<BaseUser> phoneWrap = new LambdaQueryWrapper<>();
+        phoneWrap.eq(BaseUser::getUsername, phone).eq(BaseUser::getUserType, 1);
+        if (baseUserMapper.selectOne(phoneWrap) != null) {
+            throw new RuntimeException("该手机号已注册");
+        }
+
+        BaseUser user = new BaseUser();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setNickname(dto.getNickname() != null && !dto.getNickname().isBlank() ? dto.getNickname() : "家长");
+        user.setUserType(1);
+        user.setStatus(1);
+        long now = System.currentTimeMillis();
+        user.setCreateTime(now);
+        user.setUpdateTime(now);
+        baseUserMapper.insert(user);
+
+        JSONObject ext = new JSONObject();
+        ext.put("phone", phone);
+        if (dto.getRealName() != null && !dto.getRealName().isBlank()) {
+            ext.put("realName", dto.getRealName().trim());
+        }
+
+        UserProfile profile = new UserProfile();
+        profile.setUserId(user.getUserId());
+        profile.setProfileType(UserProfile.ProfileType.PARENT_INFO);
+        profile.setProfileData(ext.toJSONString());
+        profile.setCreateTime(now);
+        profile.setUpdateTime(now);
+        userProfileMapper.insert(profile);
+
+        initializeUserLevel(user.getUserId());
+        log.info("家长公开注册成功 userId={}, username={}", user.getUserId(), username);
         return user;
     }
 
@@ -180,11 +241,11 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * 初始化疲劳点（仅儿童用户）
+     * 初始化游学币（仅儿童用户）
      * @param userId 用户 ID
      */
     private void initializeFatiguePoints(Long userId) {
-        // 设置初始疲劳点为 10
+        // 设置初始游学币为 10
         BaseUser user = baseUserMapper.selectById(userId);
         if (user != null) {
             user.setFatiguePoints(10);
@@ -192,118 +253,47 @@ public class UserServiceImpl implements UserService {
             user.setFatigueUpdateTime(System.currentTimeMillis());
             baseUserMapper.updateById(user);
 
-            // 记录疲劳点日志
+            // 记录游学币日志
             FatiguePointsLog fatigueLog = new FatiguePointsLog();
             fatigueLog.setUserId(userId);
             fatigueLog.setChangeType(3); // 3-每日重置/初始赠送
             fatigueLog.setChangePoints(10);
             fatigueLog.setCurrentPoints(10);
             fatigueLog.setRelatedType("SYSTEM");
-            fatigueLog.setRemark("新用户注册赠送 10 点疲劳点");
+            fatigueLog.setRemark("新用户注册赠送 10 点游学币");
             fatigueLog.setCreateTime(System.currentTimeMillis());
 
             fatiguePointsLogMapper.insert(fatigueLog);
-            log.info("初始化儿童用户疲劳点成功。UserId: {}, Points: 10", userId);
+            log.info("初始化儿童用户游学币成功。UserId: {}, Points: 10", userId);
         }
     }
 
     @Override
     public UserLoginResponseDTO login(UserLoginDTO dto) {
-        log.info("用户登录请求：username={}", dto.getUsername());
-        
-        QueryWrapper<BaseUser> wrapper = new QueryWrapper<>();
-        wrapper.eq("username", dto.getUsername());
-        if (dto.getUserType() != null) {
-            wrapper.eq("user_type", convertUserTypeToInt(dto.getUserType()));
+        log.info("用户登录请求（兼容 /api/user/login）：username={}", dto.getUsername());
+        AuthRequestDTO authRequest = new AuthRequestDTO();
+        authRequest.setUsername(dto.getUsername());
+        authRequest.setPassword(dto.getPassword());
+        if (dto.getUserType() != null && !dto.getUserType().isBlank()) {
+            authRequest.setUserType(convertUserTypeToInt(dto.getUserType()));
         }
+        return toUserLoginResponse(authenticate(authRequest));
+    }
 
-        BaseUser user = baseUserMapper.selectOne(wrapper);
-        if (user == null) {
-            log.warn("用户不存在：username={}", dto.getUsername());
-            throw new RuntimeException("用户不存在");
-        }
-
-        if (user.getStatus() != 1) {
-            log.warn("用户已被禁用：username={}, status={}", dto.getUsername(), user.getStatus());
-            throw new RuntimeException("用户已被禁用");
-        }
-
-        if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            log.warn("密码错误：username={}", dto.getUsername());
-            throw new RuntimeException("密码错误");
-        }
-
-        // 准备 JWT claims，包含用户角色等信息
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("role", convertUserRoleToString(user.getUserType()));
-        
-        // 获取用户扩展信息
-        UserProfile profile = userProfileMapper.selectOne(
-                new QueryWrapper<UserProfile>().eq("user_id", user.getUserId())
-        );
-        if (profile != null && profile.getProfileData() != null) {
-            try {
-                JSONObject extInfo = JSON.parseObject(profile.getProfileData());
-                // 根据用户类型添加不同的 claims
-                if (user.getUserType() == 0) { // KID
-                    claims.put("kidId", user.getUserId().toString());
-                    claims.put("parentId", extInfo.getString("parentId"));
-                    claims.put("grade", extInfo.getString("grade"));
-                } else if (user.getUserType() == 1) { // PARENT
-                    claims.put("parentId", user.getUserId().toString());
-                } else if (user.getUserType() == 2) { // ADMIN
-                    claims.put("adminId", user.getUserId().toString());
-                }
-            } catch (Exception e) {
-                log.warn("解析用户扩展信息失败：{}", e.getMessage());
-            }
-        }
-
-        // 生成 JWT Token 和 Refresh Token（使用包含 claims 的版本）
-        String token = jwtUtil.generateToken(user.getUserId().toString(), claims);
-        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId().toString());
-
-        // 构建响应 DTO（不返回 password 字段）
-        UserLoginResponseDTO responseDTO = UserLoginResponseDTO.builder()
-                .userId(user.getUserId())
-                .userType(user.getUserType())
-                .username(user.getUsername())
-                .nickname(user.getNickname())
-                .avatar(user.getAvatar())
-                .fatiguePoints(user.getFatiguePoints() != null ? user.getFatiguePoints() : 10)
-                .dailyAnswerPoints(user.getDailyAnswerPoints() != null ? user.getDailyAnswerPoints() : 0)
-                .token(token)
-                .refreshToken(refreshToken)
+    private UserLoginResponseDTO toUserLoginResponse(AuthResponseDTO auth) {
+        return UserLoginResponseDTO.builder()
+                .userId(auth.getUserId())
+                .userType(auth.getUserType())
+                .username(auth.getUsername())
+                .nickname(auth.getNickname())
+                .avatar(auth.getAvatar())
+                .token(auth.getAccessToken())
+                .refreshToken(auth.getRefreshToken())
+                .fatiguePoints(auth.getFatiguePoints())
+                .dailyAnswerPoints(auth.getDailyAnswerPoints())
+                .grade(auth.getGrade())
+                .parentId(auth.getParentId())
                 .build();
-
-        // 根据用户类型获取额外信息（profile 已在上文获取）
-        if (user.getUserType() != null) {
-            switch (user.getUserType()) {
-                case 0: // KID
-                    // 从 UserProfile 中获取 grade 和 parentId
-                    if (profile != null && profile.getProfileData() != null) {
-                        try {
-                            JSONObject extInfo = JSON.parseObject(profile.getProfileData());
-                            responseDTO.setGrade(extInfo.getString("grade"));
-                            responseDTO.setParentId(extInfo.getLong("parentId"));
-                        } catch (Exception e) {
-                            log.warn("解析儿童扩展信息失败：{}", e.getMessage());
-                        }
-                    }
-                    break;
-                case 1: // PARENT
-                case 2: // ADMIN
-                    // 家长和管理员不需要额外信息
-                    break;
-            }
-        }
-
-        // 缓存用户信息
-        userCacheService.cacheUser(user);
-        
-        log.info("用户登录成功：username={}, userId={}", dto.getUsername(), user.getUserId());
-
-        return responseDTO;
     }
 
     @Override
@@ -519,14 +509,21 @@ public class UserServiceImpl implements UserService {
             .dailyAnswerPoints(user.getDailyAnswerPoints() != null ? user.getDailyAnswerPoints() : 0)
             .build();
         
-        // 7. 补充儿童信息
-        if (user.getUserType() == 0 && profile != null) {
+        // 7. 补充扩展信息
+        if (profile != null && profile.getProfileData() != null) {
             try {
                 JSONObject extInfo = JSON.parseObject(profile.getProfileData());
-                response.setGrade(extInfo.getString("grade"));
-                response.setParentId(extInfo.getLong("parentId"));
+                if (user.getUserType() == 0) {
+                    response.setGrade(extInfo.getString("grade"));
+                    response.setParentId(extInfo.getLong("parentId"));
+                } else if (user.getUserType() == 1) {
+                    String phone = extInfo.getString("phone");
+                    if (phone != null && !phone.isBlank()) {
+                        response.setPhone(phone);
+                    }
+                }
             } catch (Exception e) {
-                log.warn("解析儿童扩展信息失败：{}", e.getMessage());
+                log.warn("解析用户扩展信息失败：{}", e.getMessage());
             }
         }
         

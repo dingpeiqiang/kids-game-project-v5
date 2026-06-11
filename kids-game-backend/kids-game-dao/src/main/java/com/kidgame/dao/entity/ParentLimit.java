@@ -53,7 +53,7 @@ public class ParentLimit implements Serializable {
     private String allowedTimeEnd;
 
     /**
-     * 答对1题获得的疲劳点数
+     * 答对1题获得的游学币
      */
     private Integer answerGetPoints;
 

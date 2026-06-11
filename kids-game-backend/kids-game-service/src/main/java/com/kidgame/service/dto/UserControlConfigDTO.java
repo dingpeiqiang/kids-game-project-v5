@@ -20,13 +20,13 @@ public class UserControlConfigDTO {
     @Schema(description = "每日总时长限制（分钟）")
     private Integer dailyTimeLimitMinutes;
 
-    @Schema(description = "疲劳点阈值（分钟）")
+    @Schema(description = "游学币阈值（分钟）")
     private Integer fatiguePointMinutes;
 
     @Schema(description = "强制休息时长（分钟）")
     private Integer restDurationMinutes;
 
-    @Schema(description = "疲劳控制模式：SOFT/HARD/OFF")
+    @Schema(description = "游学币控制模式：SOFT/HARD/OFF")
     private String fatigueControlMode = "SOFT";
 
     @Schema(description = "允许开始时间 HH:mm:ss")

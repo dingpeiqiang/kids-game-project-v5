@@ -78,7 +78,7 @@ public class KidServiceImpl extends ServiceImpl<KidMapper, Kid> implements KidSe
         // 根据家长手机号查询家长并创建关系
         createParentRelation(kid.getKidId(), dto);
 
-        // 初始化疲劳点数
+        // 初始化游学币
         fatiguePointsService.initializeFatiguePoints(kid.getKidId(), 0, initialFatiguePoints);
 
         log.info("儿童注册成功. Username: {}, KidId: {}, ParentPhone: {}",
@@ -266,22 +266,30 @@ public class KidServiceImpl extends ServiceImpl<KidMapper, Kid> implements KidSe
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateFatiguePoints(Long kidId, Integer changeType, Integer changePoints, Long relatedId) {
-        // 使用统一的疲劳值服务
-        String relatedType = changeType == 1 ? "GAME_SESSION" : "QUESTION";
-        String remark = changeType == 1 ? "游戏消耗疲劳点" : "答题获得疲劳点";
-        fatiguePointsService.updateFatiguePoints(kidId, 0, changeType, changePoints, relatedId, relatedType, remark);
+        if (changeType != null && changeType == GameConstants.FatigueChangeType.ANSWER_GET
+                && changePoints != null && changePoints > 0) {
+            fatiguePointsService.addFatiguePoints(kidId, 0, changePoints, relatedId);
+            return;
+        }
+        if (changePoints != null && changePoints > 0) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ, "儿童游学币增加请走答题或家长奖励渠道");
+        }
+        String relatedType = "GAME_SESSION";
+        String remark = "游戏消耗游学币";
+        fatiguePointsService.updateFatiguePoints(kidId, 0, GameConstants.FatigueChangeType.GAME_CONSUME,
+                changePoints, relatedId, relatedType, remark);
     }
 
     @Override
     public Integer getFatiguePoints(Long kidId) {
-        // 使用统一的疲劳值服务
+        // 使用统一的游学币服务
         return fatiguePointsService.getFatiguePoints(kidId, 0);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Integer resetDailyFatiguePoints(Long kidId) {
-        // 使用统一的疲劳值服务
+        // 使用统一的游学币服务
         return fatiguePointsService.resetDailyFatiguePoints(kidId, 0);
     }
 

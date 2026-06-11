@@ -171,7 +171,7 @@
         <h3>{{ userStore.username }}</h3>
         <div class="stats">
           <div class="stat-item">
-            <span class="stat-label">疲劳点</span>
+            <span class="stat-label">游学币</span>
             <span class="stat-value" :class="{ low: !userStore.hasFatiguePoints }">
               {{ userStore.currentUser?.fatiguePoints || 0 }}
             </span>
@@ -182,7 +182,7 @@
           </div>
         </div>
         <div v-if="!userStore.hasFatiguePoints" class="points-notice">
-          <p>💡 疲劳点不足</p>
+          <p>💡 游学币不足</p>
           <button @click="goToAnswer" class="answer-btn">
             答题赚取
           </button>
@@ -304,15 +304,15 @@ const banners = ref([
   },
   {
     id: 2,
-    title: '答题赢疲劳点',
-    description: '每天答题，轻松获得疲劳点',
+    title: '答题赢游学币',
+    description: '每天答题，轻松获得游学币',
     btnText: '去答题',
     action: 'answer',
   },
   {
     id: 3,
     title: '周末活动',
-    description: '周末双倍疲劳点奖励！',
+    description: '周末双倍游学币奖励！',
     btnText: '了解更多',
     action: null,
   },
@@ -413,9 +413,9 @@ function clearSearch() {
 }
 
 async function startGame(game: any) {
-  // 检查疲劳点
+  // 检查游学币
   if (!userStore.hasFatiguePoints) {
-    showMessage('疲劳点不足，请先答题赚取！', 'warning');
+    showMessage('游学币不足，请先答题赚取！', 'warning');
     router.push('/answer');
     return;
   }
@@ -555,11 +555,11 @@ onMounted(async () => {
     return;
   }
 
-  // 刷新用户疲劳点数据
+  // 刷新用户游学币数据
   try {
     await userStore.refreshFatiguePoints();
   } catch (err) {
-    console.error('刷新疲劳点失败:', err);
+    console.error('刷新游学币失败:', err);
   }
 
   // 恢复最近游戏
@@ -573,10 +573,10 @@ onMounted(async () => {
     try {
       await webSocketService.initialize(userStore.currentUser.id);
 
-      // 监听疲劳点更新
+      // 监听游学币更新
       webSocketService.onFatiguePointsUpdate((points: number) => {
         userStore.updateFatiguePoints(points);
-        showMessage(`疲劳点更新：${points}`, 'info');
+        showMessage(`游学币更新：${points}`, 'info');
       });
 
       // 监听游戏暂停

@@ -75,7 +75,7 @@
                 <span class="stat-icon">⚡</span>
               </div>
               <div class="stat-info">
-                <span class="stat-label">疲劳点</span>
+                <span class="stat-label">游学币</span>
                 <span class="stat-value" :class="{ warning: fatiguePoints <= 3 }">
                   {{ fatiguePoints }}/10
                 </span>
@@ -594,7 +594,7 @@ function selectCategory(categoryId: string) {
 async function handleGameClick(game: any) {
   try {
     if (fatiguePoints.value <= 0) {
-      showToast('疲劳点不足，休息一下再来吧！', 'warning');
+      showToast('游学币不足，休息一下再来吧！', 'warning');
       return;
     }
 

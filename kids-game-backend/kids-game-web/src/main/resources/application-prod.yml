@@ -1,120 +1,142 @@
-# ========================================
-# 生产环境配置文件
-# 所有敏感信息通过环境变量注入
-# ========================================
-
 server:
-  port: ${SERVER_PORT:8080}
+  port: 8080
+
 
 spring:
   application:
     name: kids-game-platform
-  
-  # 数据库配置（从环境变量读取）
+  # 禁用 Redis 自动配置
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
+
+  # MySQL 数据库配置（支持环境变量覆盖）
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/kids_game?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectionAttributes=none}
-    username: ${SPRING_DATASOURCE_USERNAME:kidgame}
-    password: ${SPRING_DATASOURCE_PASSWORD:kidgame123}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/kidgame?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:minimalgame}
+    password: ${SPRING_DATASOURCE_PASSWORD:minimalgame123}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    # HikariCP 连接池配置
     hikari:
-      minimum-idle: ${DB_MIN_IDLE:5}
-      maximum-pool-size: ${DB_MAX_POOL:20}
+      minimum-idle: 5
+      maximum-pool-size: 20
       connection-timeout: 30000
-      idle-timeout: 300000
-      max-lifetime: 600000
+      idle-timeout: 300000          # 5 分钟（比 MySQL wait_timeout 短）
+      max-lifetime: 600000           # 10 分钟（确保在 MySQL 关闭连接前主动刷新）
       connection-test-query: SELECT 1
+  # 自动执行初始化脚本（已禁用，避免重复插入数据）
+  # sql:
+  #   init:
+  #     mode: always
+  #     schema-locations: classpath:schema.sql
+  #     data-locations: classpath:data.sql
 
-  # Redis 配置（可选）
-  data:
-    redis:
-      host: ${REDIS_HOST:redis}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      database: ${REDIS_DATABASE:0}
-      timeout: 30000ms
-      lettuce:
-        pool:
-          enabled: true
-          max-active: 8
-          max-wait: -1ms
-          max-idle: 8
-          min-idle: 0
 
+  # Redis 配置（已禁用）
+  # data:
+  #   redis:
+  #     host: 106.54.7.205
+  #     port: 6379
+  #     password: Kidsgame2026!Redis
+  #     database: 0
+  #     timeout: 30000ms
+  #     lettuce:
+  #       pool:
+  #         enabled: true
+  #         max-active: 8
+  #         max-wait: -1ms
+  #         max-idle: 8
+  #         min-idle: 0
+  #       shutdown-timeout: 100ms
+game:
+  rate-limit:
+    enabled: false  # 关闭限流，不需要 Redis
+    # enabled: true  # 开启限流，需要 Redis
 # JWT 安全配置
 security:
   jwt:
-    secret: ${JWT_SECRET:change-this-to-a-secure-random-string-at-least-32-chars}
-    expiration: ${JWT_EXPIRATION:604800000}  # 7 天
-    refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}  # 30 天
+    secret: ${JWT_SECRET:kids-game-platform-secret-key-for-jwt-token-generation-2024}
+    expiration: 604800000  # 7 天
+    refresh-expiration: 2592000000  # 30 天
 
 # MyBatis-Plus 配置
 mybatis-plus:
+  # 实体包路径
   type-aliases-package: com.kidgame.dao.entity
+  # Mapper XML 路径
   mapper-locations: classpath*:mapper/**/*.xml
+  # 全局配置
   global-config:
+    # 禁用 MyBatis-Plus 的 DDL 自动运行（使用 Spring Boot 的 sql.init）
     ddl-auto: false
     db-config:
+      # 主键类型（自增）
       id-type: auto
+      # 逻辑删除字段
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
+  # 配置日志
   configuration:
-    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.slf4j.Slf4jImpl}
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     map-underscore-to-camel-case: true
 
-# 游戏配置
-kidgame:
-  game:
-    time-limit: ${GAME_TIME_LIMIT:30}
-    fatigue-points:
-      initial: ${FATIGUE_INITIAL_POINTS:10}
-      daily-limit: ${FATIGUE_DAILY_LIMIT:10}
-      points-per-answer: ${FATIGUE_POINTS_PER_ANSWER:1}
-  parent:
-    default-pin: ${PARENT_DEFAULT_PIN:0000}
-    warning-thresholds: [5, 10, 15]
-  api:
-    rate-limit-per-minute: ${API_RATE_LIMIT:100}
-
-# 资源上传配置
-resource:
-  upload:
-    path: ${RESOURCE_UPLOAD_PATH:/app/uploads}
-  cdn:
-    domain: ${RESOURCE_CDN_DOMAIN:}
-
-# SFTP 配置（可选）
-sftp:
-  enabled: ${SFTP_ENABLED:false}
-  host: ${SFTP_HOST:}
-  port: ${SFTP_PORT:22}
-  username: ${SFTP_USERNAME:}
-  password: ${SFTP_PASSWORD:}
-  base-directory: ${SFTP_BASE_DIRECTORY:/upload}
-  base-url: ${SFTP_BASE_URL:}
-  connection-timeout: ${SFTP_CONNECTION_TIMEOUT:30000}
-  read-timeout: ${SFTP_READ_TIMEOUT:30000}
+# Knife4j 配置
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
 
 # 日志配置
 logging:
   level:
-    root: ${LOG_LEVEL_ROOT:INFO}
-    com.kidgame: ${LOG_LEVEL_APP:INFO}
-    com.baomidou.mybatisplus: ${LOG_LEVEL_MYBATIS:WARN}
+    com.kidgame: debug
+    com.baomidou.mybatisplus: debug
+    # 降低异常处理器的日志级别，避免打印 WebSocket 资源未找到的错误
+    com.kidgame.common.handler.GlobalExceptionHandler: info
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: ${LOG_FILE_PATH:/app/logs/application.log}
-    max-size: 10MB
-    max-history: 30
 
-# Actuator 监控端点
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
-  endpoint:
-    health:
-      show-details: when-authorized
+# 应用配置
+kidgame:
+  game:
+    # 全局游戏时长限制（分钟）
+    time-limit: 30
+    # 适龄规则配置
+    age-rules:
+      4: [puzzle, educational]
+      6: [puzzle, casual, educational]
+      8: [puzzle, casual, adventure, educational]
+  # 家长管控配置
+  parent:
+    # 默认PIN码
+    default-pin: "0000"
+    # 时长警告阈值（分钟）
+    warning-thresholds: [5, 10, 15]
+  # 疲劳点配置
+  fatigue-points:
+    # 初始点数
+    initial: 10
+# 资源上传配置
+resource:
+  upload:
+    # 本地上传路径
+    path: ./uploads
+  cdn:
+    # CDN 域名（可选）
+    domain:
+
+
+sftp:
+  enabled: ${SFTP_ENABLED:true}
+  host: ${SFTP_HOST:106.54.7.205}
+  port: ${SFTP_PORT:22}
+  username: ${SFTP_USERNAME:dingsftp}
+  password: ${SFTP_PASSWORD:dingsftp}
+  base-directory: ${SFTP_BASE_DIRECTORY:/upload}
+  base-url: ${SFTP_BASE_URL:http://106.54.7.205/files}
+  # 连接超时（毫秒）
+  connection-timeout: ${SFTP_CONNECTION_TIMEOUT:30000}
+  # 读取超时（毫秒）
+  read-timeout: ${SFTP_READ_TIMEOUT:30000}

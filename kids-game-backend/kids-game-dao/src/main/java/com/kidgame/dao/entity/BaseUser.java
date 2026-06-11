@@ -56,17 +56,17 @@ public class BaseUser implements Serializable {
     private Integer status;
 
     /**
-     * 疲劳点数（所有用户类型通用）
+     * 游学币（所有用户类型通用）
      */
     private Integer fatiguePoints;
 
     /**
-     * 每日答题获得的疲劳点数
+     * 每日答题获得的游学币
      */
     private Integer dailyAnswerPoints;
 
     /**
-     * 疲劳点最后更新时间（毫秒时间戳）
+     * 游学币最后更新时间（毫秒时间戳）
      */
     private Long fatigueUpdateTime;
 

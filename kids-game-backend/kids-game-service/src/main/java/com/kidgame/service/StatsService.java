@@ -37,12 +37,12 @@ public interface StatsService {
     void incrementAnswerStats(boolean isCorrect);
 
     /**
-     * 记录疲劳点发放
+     * 记录游学币发放
      */
     void recordFatiguePointsGranted(int points);
 
     /**
-     * 记录疲劳点消耗
+     * 记录游学币消耗
      */
     void recordFatiguePointsConsumed(int points);
 

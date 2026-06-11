@@ -20,7 +20,7 @@
 --   __THUMB_URL__         主题缩略图 URL（可留 ''）
 --   __CREATOR_ID__        创建人用户 ID（可留 NULL）
 --   __SORT_ORDER__        排序权重（默认 0，数字越大越靠前）
---   __CONSUME_POINTS__    每分钟消耗疲劳点（默认 1）
+--   __CONSUME_POINTS__    每分钟消耗游学币（默认 1）
 -- ============================================================
 -- ⚠️ 重要说明：
 --   - 主题表是 t_theme_info（有 t_ 前缀），时间字段为 DATETIME 类型（填 NOW()，不是毫秒）
@@ -80,8 +80,8 @@ VALUES (
     0,                                  -- * status            0=草稿（开发中），发布后改 2
     0,                                  --   sort_order        排序权重（越大越靠前）
     0,                                  --   is_featured       是否推荐：0=否，1=是
-    1,                                  --   consume_points_per_minute 每分钟消耗疲劳点
-    0,                                  --   min_fatigue_to_start      启动所需最低疲劳度
+    1,                                  --   consume_points_per_minute 每分钟消耗游学币
+    0,                                  --   min_fatigue_to_start      启动所需最低游学币度
     0,                                  --   online_count      在线人数（运行时自动维护）
     0,                                  --   total_play_count  累计游玩次数
     0,                                  --   total_play_duration 累计游玩时长（秒）

@@ -41,7 +41,7 @@ public class AnswerRecord implements Serializable {
     private Integer isCorrect;
 
     /**
-     * 获得疲劳点
+     * 获得游学币
      */
     private Integer getPoints;
 

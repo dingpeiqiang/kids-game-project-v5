@@ -37,6 +37,11 @@ Windows 一键（后端 + 双前端）：根目录 `start-dev-all.bat`
 
 生产构建：`build-production.bat` 或 `pnpm build`
 
+## 跨端跳转
+
+- 管理端（3000）访问 `/game/*`、`/answer`、`/home` 等儿童路径 → 重定向到 `VITE_PLAY_URL`（默认 3001），**保留完整 path 与 query**（如 `/game/snake/play`）。
+- 终端访问 `/admin/*` → `VITE_ADMIN_URL`。
+
 ## 认证
 
 `kids-game-frontend/src/utils/auth.ts` 转发至 `@kids-game/shared`，两应用逻辑一致。

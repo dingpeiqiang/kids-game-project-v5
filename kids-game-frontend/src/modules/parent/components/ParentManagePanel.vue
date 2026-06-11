@@ -279,24 +279,24 @@
                 </div>
               </div>
 
-              <!-- 疲劳点系统 -->
+              <!-- 游学币系统 -->
               <div class="rule-section">
                 <div class="rule-header">
                   <span class="rule-icon">⭐</span>
-                  <h5>疲劳点系统</h5>
+                  <h5>游学币系统</h5>
                 </div>
                 <div class="rule-content">
                   <div class="rule-item">
                     <label class="toggle-switch">
                       <input v-model="rules.enableFatiguePoints" type="checkbox" />
                       <span class="toggle-slider"></span>
-                      <span class="toggle-label">启用疲劳点系统</span>
+                      <span class="toggle-label">启用游学币系统</span>
                     </label>
                   </div>
                   <div v-if="rules.enableFatiguePoints" class="rule-item">
                     <label class="rule-label">
-                      每日疲劳点上限
-                      <span class="rule-value">{{ rules.maxFatiguePoints || 10 }} 点</span>
+                      每日游学币上限
+                      <span class="rule-value">{{ rules.maxFatiguePoints || 10 }} 游学币</span>
                     </label>
                     <input
                       v-model.number="rules.maxFatiguePoints"
@@ -305,7 +305,7 @@
                       max="20"
                       class="rule-slider"
                     />
-                    <p class="rule-hint">建议设置为 5-10 点</p>
+                    <p class="rule-hint">建议设置为 5-10 游学币</p>
                   </div>
                 </div>
               </div>

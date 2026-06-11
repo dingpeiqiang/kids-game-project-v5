@@ -49,12 +49,12 @@ public class AnswerDTO {
         private String analysis;
 
         /**
-         * 获得疲劳点
+         * 获得游学币
          */
         private Integer getPoints;
 
         /**
-         * 当前剩余疲劳点
+         * 当前剩余游学币
          */
         private Integer currentPoints;
     }

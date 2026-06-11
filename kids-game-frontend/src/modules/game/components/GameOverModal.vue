@@ -27,7 +27,7 @@ const emit = defineEmits<{
 const stats = [
   { label: '得分', value: props.score },
   { label: '时长', value: props.duration },
-  { label: '消耗疲劳点', value: 1 },
+  { label: '消耗游学币', value: 1 },
 ];
 
 const actions = [

@@ -8,6 +8,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { kidApi } from '@/services/kid-api.service';
 import { parentApi } from '@/services/parent-api.service';
+import { authApi } from '@/services/auth-api.service';
+import { persistAuthSession } from '@/utils/auth-session';
 import { API_CONSTANTS } from '@/services/api.types';
 import type { Kid, Parent } from '@/services/api.types';
 import {
@@ -44,7 +46,7 @@ export interface ParentUserInfo {
   avatar?: string;
   phone: string;
   token?: string;
-  fatiguePoints: number;  // 添加疲劳值支持
+  fatiguePoints: number;  // 添加游学币支持
   dailyAnswerPoints: number;  // 添加每日答题积分
 }
 
@@ -101,66 +103,33 @@ export const useUserStore = defineStore('user', () => {
     error.value = null;
 
     try {
-      console.log('[UserStore] 开始统一登录请求...');
-      const userData = await kidApi.unifiedLogin(username, password);
-      console.log('[UserStore] 登录响应数据:', userData);
+      const userData = await authApi.login(username, password);
+      persistAuthSession(userData);
 
-      // 保存 token（使用统一的 key）
-      if (userData.token) {
-        console.log('[UserStore] 保存 token:', userData.token);
-        // 根据用户类型保存到不同的 key
-        if (userData.userType === 1) {
-          // 家长使用 parentToken
-          localStorage.setItem(API_CONSTANTS.PARENT_TOKEN_KEY, userData.token);
-          parentApi.setParentToken(userData.token);
-        } else {
-          // 儿童和管理员使用 authToken
-          localStorage.setItem(API_CONSTANTS.TOKEN_KEY, userData.token);
-          kidApi.setToken(userData.token);
-        }
-      }
-
-      if (userData.refreshToken) {
-        console.log('[UserStore] 保存 refreshToken:', userData.refreshToken);
-        localStorage.setItem('refreshToken', userData.refreshToken);
-      }
-
-      // 根据用户类型保存不同的用户信息
       if (userData.userType === 0) {
-        // 儿童
         currentUser.value = {
           id: userData.userId,
           username: userData.username,
           nickname: userData.nickname,
           avatar: userData.avatar,
           grade: userData.grade || '1',
-          fatiguePoints: userData.fatiguePoints || 10,
-          dailyAnswerPoints: userData.dailyAnswerPoints || 0,
+          fatiguePoints: userData.fatiguePoints ?? 10,
+          dailyAnswerPoints: userData.dailyAnswerPoints ?? 0,
           parentId: userData.parentId,
           userType: 'KID',
         };
-
-        console.log('[UserStore] 保存儿童信息到 localStorage:', currentUser.value);
-        localStorage.setItem('userInfo', JSON.stringify(currentUser.value));
-        console.log('[UserStore] 儿童登录成功');
       } else if (userData.userType === 1) {
-        // 家长
         parentUser.value = {
           parentId: userData.userId,
           username: userData.username,
           nickname: userData.nickname,
           avatar: userData.avatar,
-          phone: userData.username,
+          phone: userData.phone || userData.username,
           token: userData.token,
-          fatiguePoints: userData.fatiguePoints || 10,
-          dailyAnswerPoints: userData.dailyAnswerPoints || 0,
+          fatiguePoints: userData.fatiguePoints ?? 10,
+          dailyAnswerPoints: userData.dailyAnswerPoints ?? 0,
         };
-
-        console.log('[UserStore] 保存家长信息到 localStorage:', parentUser.value);
-        localStorage.setItem('parentInfo', JSON.stringify(parentUser.value));
-        console.log('[UserStore] 家长登录成功');
       } else if (userData.userType === 2) {
-        // 管理员
         adminUser.value = {
           adminId: userData.userId,
           username: userData.username,
@@ -169,17 +138,12 @@ export const useUserStore = defineStore('user', () => {
           token: userData.token,
           userType: 'ADMIN',
         };
-
-        console.log('[UserStore] 保存管理员信息到 localStorage:', adminUser.value);
-        localStorage.setItem('adminInfo', JSON.stringify(adminUser.value));
-        console.log('[UserStore] 管理员登录成功');
       } else {
-        throw new Error('未知用户类型');
+        throw new Error('用户类型异常，请联系管理员');
       }
 
       return userData;
     } catch (err: any) {
-      console.error('[UserStore] 统一登录失败:', err);
       error.value = err.message || '登录失败';
       throw err;
     } finally {
@@ -249,7 +213,7 @@ export const useUserStore = defineStore('user', () => {
         avatar: parentData.avatar,
         phone: parentData.username,
         token: parentData.token,
-        fatiguePoints: parentData.fatiguePoints || 10, // 添加疲劳值，默认10点
+        fatiguePoints: parentData.fatiguePoints || 10, // 添加游学币，默认10点
         dailyAnswerPoints: parentData.dailyAnswerPoints || 0, // 添加每日答题积分
       };
 
@@ -265,49 +229,41 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  /** 调用服务端登出并清空本地会话 */
+  async function logoutAll(options?: { skipServer?: boolean }): Promise<void> {
+    if (!options?.skipServer) {
+      try {
+        await authApi.logout();
+      } catch {
+        /* ignore */
+      }
+    }
+    clearAllLogout();
+  }
+
   /**
    * 登出（儿童）
    */
-  function logoutKid(): void {
-    console.log('[UserStore] 开始儿童登出...');
-    // 清空用户信息
-    currentUser.value = null;
-    // 清除所有 localStorage 数据
-    localStorage.removeItem('userInfo');
-    localStorage.removeItem(API_CONSTANTS.TOKEN_KEY);
-    localStorage.removeItem('refreshToken');
-    // 清除 API 服务的 token
-    kidApi.clearToken();
-    console.log('[UserStore] 儿童登出完成');
+  async function logoutKid(): Promise<void> {
+    await logoutAll();
   }
 
   /**
    * 登出（家长）
    */
-  function logoutParent(): void {
-    console.log('[UserStore] 开始家长登出...');
-    // 清空家长用户信息
-    parentUser.value = null;
-    // 清除所有 localStorage 数据
-    localStorage.removeItem('parentInfo');
-    localStorage.removeItem(API_CONSTANTS.PARENT_TOKEN_KEY);
-    localStorage.removeItem('refreshToken');
-    // 清除 API 服务的 token
-    parentApi.clearToken();
-    console.log('[UserStore] 家长登出完成');
+  async function logoutParent(): Promise<void> {
+    await logoutAll();
   }
 
   /**
    * 登出（管理员）
    */
-  function logoutAdmin(): void {
-    adminUser.value = null;
-    localStorage.removeItem('adminInfo');
-    kidApi.clearToken();
+  async function logoutAdmin(): Promise<void> {
+    await logoutAll();
   }
 
   /**
-   * 更新疲劳点
+   * 更新游学币
    */
   function updateFatiguePoints(points: number): void {
     if (currentUser.value) {
@@ -398,7 +354,7 @@ export const useUserStore = defineStore('user', () => {
 
     try {
       console.log('[UserStore] 开始静默刷新 token...');
-      await kidApi.refreshToken();
+      await authApi.refreshAccessToken();
       console.log('[UserStore] Token 刷新成功');
       return true;
     } catch (error) {
@@ -459,7 +415,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * 刷新疲劳点
+   * 刷新游学币
    */
   async function refreshFatiguePoints(): Promise<void> {
     if (!currentUser.value) return;
@@ -468,12 +424,12 @@ export const useUserStore = defineStore('user', () => {
       const points = await kidApi.getFatiguePoints(currentUser.value.id);
       updateFatiguePoints(points);
     } catch (err) {
-      console.error('刷新疲劳点失败:', err);
+      console.error('刷新游学币失败:', err);
     }
   }
 
   /**
-   * 刷新家长疲劳点
+   * 刷新家长游学币
    */
   async function refreshParentFatiguePoints(): Promise<void> {
     if (!parentUser.value) return;
@@ -482,12 +438,12 @@ export const useUserStore = defineStore('user', () => {
       const points = await parentApi.getFatiguePoints(parentUser.value.parentId);
       updateParentFatiguePoints(points);
     } catch (err) {
-      console.error('刷新家长疲劳点失败:', err);
+      console.error('刷新家长游学币失败:', err);
     }
   }
 
   /**
-   * 更新家长疲劳点
+   * 更新家长游学币
    */
   function updateParentFatiguePoints(points: number): void {
     if (parentUser.value) {
@@ -497,7 +453,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * 检查当前用户（儿童或家长）是否有足够的疲劳点
+   * 检查当前用户（儿童或家长）是否有足够的游学币
    */
   function currentUserHasEnoughFatigue(required: number = 1): boolean {
     if (currentUser.value) {
@@ -510,7 +466,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * 获取当前用户的疲劳点（儿童或家长）
+   * 获取当前用户的游学币（儿童或家长）
    */
   function getCurrentUserFatiguePoints(): number {
     if (currentUser.value) {
@@ -523,7 +479,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * 扣除当前用户的疲劳点
+   * 扣除当前用户的游学币
    */
   async function consumeCurrentUserFatiguePoints(points: number = 1): Promise<boolean> {
     if (currentUser.value) {
@@ -693,6 +649,7 @@ export const useUserStore = defineStore('user', () => {
     consumeCurrentUserFatiguePoints,
     refreshTokenSilently,
     clearAllLogout,
+    logoutAll,
 
     // 图案解锁相关方法
     saveParentPatternLock,

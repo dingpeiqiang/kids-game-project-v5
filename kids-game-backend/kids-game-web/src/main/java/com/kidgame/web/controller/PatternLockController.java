@@ -36,7 +36,7 @@ public class PatternLockController {
         log.info("保存图案解锁接口调用, userId={}, userType={}", userId, userType);
 
         patternLockService.savePatternLock(userId, userType, pattern);
-        return ResponseEntity.ok(Result.success(null, "图案解锁保存成功"));
+        return ResponseEntity.ok(Result.success("图案解锁保存成功", (Void) null));
     }
 
     /**
@@ -98,7 +98,7 @@ public class PatternLockController {
         log.info("删除图案解锁接口调用, userId={}, userType={}", userId, userType);
 
         patternLockService.deletePatternLock(userId, userType);
-        return ResponseEntity.ok(Result.success(null, "图案解锁删除成功"));
+        return ResponseEntity.ok(Result.success("图案解锁删除成功", (Void) null));
     }
 
     /**
@@ -116,6 +116,6 @@ public class PatternLockController {
         log.info("更新图案解锁接口调用, userId={}, userType={}", userId, userType);
 
         patternLockService.updatePatternLock(userId, userType, pattern);
-        return ResponseEntity.ok(Result.success(null, "图案解锁更新成功"));
+        return ResponseEntity.ok(Result.success("图案解锁更新成功", (Void) null));
     }
 }

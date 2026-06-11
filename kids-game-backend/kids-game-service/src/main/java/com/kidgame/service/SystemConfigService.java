@@ -61,7 +61,7 @@ public interface SystemConfigService {
     void initDefaultConfigs();
 
     /**
-     * 获取疲劳点相关配置
+     * 获取游学币相关配置
      */
     Map<String, Object> getFatigueConfig();
 

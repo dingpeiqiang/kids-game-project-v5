@@ -654,7 +654,7 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
             parentLimitMapper.updateById(limit);
         }
 
-        // 疲劳点系统设置（根据enableFatiguePoints调整答题获取疲劳点）
+        // 游学币系统设置（根据enableFatiguePoints调整答题获取游学币）
         if (dto.getEnableFatiguePoints() != null) {
             limit.setAnswerGetPoints(dto.getEnableFatiguePoints() ? 1 : 0);
             limit.setDailyAnswerLimit(dto.getEnableFatiguePoints() ? 10 : 0);
@@ -848,16 +848,16 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
 
     @Override
     public Integer getFatiguePoints(Long parentId) {
-        // 使用统一的疲劳值服务
+        // 使用统一的游学币服务
         return fatiguePointsService.getFatiguePoints(parentId, 1);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateFatiguePoints(Long parentId, Integer changeType, Integer changePoints, Long relatedId) {
-        // 使用统一的疲劳值服务
+        // 使用统一的游学币服务
         String relatedType = changeType == 1 ? "GAME_SESSION" : "QUESTION";
-        String remark = changeType == 1 ? "游戏消耗疲劳点" : "答题获得疲劳点";
+        String remark = changeType == 1 ? "游戏消耗游学币" : "答题获得游学币";
         fatiguePointsService.updateFatiguePoints(parentId, 1, changeType, changePoints, relatedId, relatedType, remark);
     }
 }

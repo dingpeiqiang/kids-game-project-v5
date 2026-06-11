@@ -16,9 +16,9 @@ export interface UserTrendData {
 }
 
 export interface FatigueStats {
-  sufficient: number    // 疲劳点充足
-  insufficient: number  // 疲劳点不足
-  exhausted: number     // 疲劳点已耗尽
+  sufficient: number    // 游学币充足
+  insufficient: number  // 游学币不足
+  exhausted: number     // 游学币已耗尽
 }
 
 export interface GameTimeRank {
@@ -49,7 +49,7 @@ export function getUserActivityTrend(days: number = 7) {
 }
 
 /**
- * 获取疲劳点统计
+ * 获取游学币统计
  */
 export function getFatigueStats() {
   return request<FatigueStats[]>({

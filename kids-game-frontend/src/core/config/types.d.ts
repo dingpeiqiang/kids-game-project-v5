@@ -50,7 +50,7 @@ export interface GameConfig {
     hard: number;
   };
 
-  // 疲劳点规则
+  // 游学币规则
   fatigue: {
     initialPoints: number;
     pointsPerGame: number;

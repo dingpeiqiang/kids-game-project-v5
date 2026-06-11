@@ -4,7 +4,7 @@
       <button @click="goBack" class="back-btn">← 返回</button>
       <h1>📝 答题中心</h1>
       <div class="points-display">
-        <span class="points-label">疲劳点</span>
+        <span class="points-label">游学币</span>
         <span class="points-value">{{ userStore.currentUser?.fatiguePoints || 0 }}</span>
       </div>
     </header>
@@ -15,19 +15,19 @@
     <main class="answer-main">
       <div v-if="!currentQuestion" class="welcome-screen">
         <h2>🎉 欢迎来到答题中心</h2>
-        <p>通过答题获得疲劳点，解锁更多游戏！</p>
+        <p>通过答题获得游学币，解锁更多游戏！</p>
         <div class="stats-info">
           <div class="stat-item">
             <span class="stat-label">每题获得</span>
-            <span class="stat-value">+{{ parentStore.answerPointsPerQuestion }} 疲劳点</span>
+            <span class="stat-value">+{{ parentStore.answerPointsPerQuestion }} 游学币</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">今日剩余</span>
-            <span class="stat-value">{{ dailyAnswerLimit }} 次</span>
+            <span class="stat-label">今日还可获得</span>
+            <span class="stat-value">{{ dailyAnswerRemaining }} 游学币</span>
           </div>
         </div>
-        <button @click="startQuiz" class="start-btn" :disabled="dailyAnswerLimit === 0">
-          {{ dailyAnswerLimit === 0 ? '今日答题次数已用完' : '开始答题' }}
+        <button @click="startQuiz" class="start-btn" :disabled="dailyAnswerRemaining === 0">
+          {{ dailyAnswerRemaining === 0 ? '今日答题游学币已达上限' : '开始答题' }}
         </button>
       </div>
 
@@ -35,44 +35,61 @@
         <div class="question-card">
           <div class="question-header">
             <span class="question-number">题目 {{ currentQuestionIndex + 1 }}</span>
-            <span class="question-points">+{{ parentStore.answerPointsPerQuestion }} 疲劳点</span>
+            <span class="question-points">+{{ parentStore.answerPointsPerQuestion }} 游学币</span>
           </div>
           <div class="question-content">
             <h3 class="question-text">{{ currentQuestion.content }}</h3>
           </div>
-          <div class="question-options">
+          <div v-if="currentQuestion.type === 'fill'" class="fill-answer">
+            <input
+              v-model="fillAnswer"
+              type="text"
+              class="fill-input"
+              placeholder="请输入答案"
+              :disabled="showResult"
+              maxlength="200"
+            />
+          </div>
+          <div v-else class="question-options">
             <button
-              v-for="(option, index) in parseOptions(currentQuestion.options)"
+              v-for="(option, index) in displayOptions"
               :key="index"
               class="option-btn"
               :class="{
                 selected: selectedOption === index,
-                correct: showResult && isCorrect,
+                correct:
+                  showResult &&
+                  (isCorrect ? selectedOption === index : option === revealedCorrectAnswer),
                 wrong: showResult && !isCorrect && selectedOption === index,
               }"
               @click="selectOption(index)"
               :disabled="showResult"
             >
-              <span class="option-label">{{ ['A', 'B', 'C', 'D'][index] }}</span>
+              <span v-if="currentQuestion.type !== 'judgment'" class="option-label">
+                {{ ['A', 'B', 'C', 'D', 'E', 'F'][index] }}
+              </span>
               <span class="option-text">{{ option }}</span>
             </button>
           </div>
           <div v-if="showResult" class="result-message">
             <div v-if="isCorrect" class="result correct">
               <span class="result-icon">✅</span>
-              <span class="result-text">回答正确！获得 {{ parentStore.answerPointsPerQuestion }} 疲劳点</span>
+              <span class="result-text">
+                回答正确！{{ lastEarnedPoints > 0 ? `获得 ${lastEarnedPoints} 游学币` : '今日答题游学币已达上限' }}
+              </span>
             </div>
             <div v-else class="result wrong">
               <span class="result-icon">❌</span>
-              <span class="result-text">回答错误！正确答案是：{{ correctAnswerLetter }}</span>
+              <span class="result-text">回答错误！正确答案是：{{ correctAnswerDisplay }}</span>
             </div>
+            <p v-if="resultAnalysis" class="result-analysis">解析：{{ resultAnalysis }}</p>
           </div>
           <div class="question-actions">
             <button
               v-if="!showResult"
               @click="submitAnswer"
               class="action-btn submit-btn"
-              :disabled="selectedOption === null || isSubmitting"
+              :disabled="!canSubmit || isSubmitting"
             >
               {{ isSubmitting ? '提交中...' : '提交答案' }}
             </button>
@@ -103,7 +120,7 @@
       :stats="[
         { label: '答题数量', value: `${quizResults.length} 题` },
         { label: '正确数量', value: `${correctCount} 题` },
-        { label: '获得疲劳点', value: `+${totalPointsEarned}` }
+        { label: '获得游学币', value: `+${totalPointsEarned}` }
       ]"
       :actions="[
         { text: '返回首页', variant: 'primary', onClick: goBack }
@@ -121,8 +138,10 @@ import { questionApi } from '@/services/question-api.service';
 import { handleApiError } from '@/utils/error-handler.util';
 import { toast } from '@/services/toast.service';
 import GlobalLoading from '@/components/GlobalLoading.vue';
-import ErrorDisplay from '@/components/ErrorDisplay.vue';
+
 import KidUnifiedModalV2 from '@/components/ui/KidUnifiedModalV2.vue';
+import { optionsForQuestion } from '@/utils/question-options';
+import type { Question } from '@/services/api.types';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -130,31 +149,55 @@ const parentStore = useParentStore();
 
 // ===== 状态 =====
 
-const currentQuestion = ref<any>(null);
+const currentQuestion = ref<Question | null>(null);
 const currentQuestionIndex = ref(0);
 const selectedOption = ref<number | null>(null);
+const fillAnswer = ref('');
+const sessionQuestionIds = ref<number[]>([]);
 const showResult = ref(false);
 const isCorrect = ref(false);
+const lastEarnedPoints = ref(0);
 const isSubmitting = ref(false);
 const showCompleteModal = ref(false);
 
 const quizResults = ref<any[]>([]);
-const dailyAnswerCount = ref(0);
+const todayEarnedPoints = ref(0);
 
 // ===== 计算属性 =====
 
-const dailyAnswerLimit = computed(() => {
+/** 今日还可获得的答题游学币额度 */
+const dailyAnswerRemaining = computed(() => {
   const limit = parentStore.dailyAnswerLimit;
-  const remaining = limit - dailyAnswerCount.value;
-  return Math.max(0, remaining);
+  return Math.max(0, limit - todayEarnedPoints.value);
 });
 
-const correctAnswerLetter = computed(() => {
-  if (!currentQuestion.value) return '';
-  const correctIndex = parseOptions(currentQuestion.value.options).findIndex(
-    opt => opt === currentQuestion.value.correctAnswer
-  );
-  return ['A', 'B', 'C', 'D'][correctIndex] || '';
+const revealedCorrectAnswer = ref('');
+const resultAnalysis = ref('');
+
+const displayOptions = computed(() => {
+  if (!currentQuestion.value) return [];
+  return optionsForQuestion(currentQuestion.value.type, currentQuestion.value.options);
+});
+
+const correctAnswerDisplay = computed(() => {
+  if (!revealedCorrectAnswer.value) return '';
+  const q = currentQuestion.value;
+  if (!q || q.type === 'fill') return revealedCorrectAnswer.value;
+  const opts = displayOptions.value;
+  const idx = opts.findIndex((opt) => opt === revealedCorrectAnswer.value);
+  if (idx >= 0 && q.type !== 'judgment') {
+    const letter = ['A', 'B', 'C', 'D', 'E', 'F'][idx];
+    return `${letter}. ${revealedCorrectAnswer.value}`;
+  }
+  return revealedCorrectAnswer.value;
+});
+
+const canSubmit = computed(() => {
+  if (!currentQuestion.value) return false;
+  if (currentQuestion.value.type === 'fill') {
+    return fillAnswer.value.trim().length > 0;
+  }
+  return selectedOption.value !== null;
 });
 
 const isLastQuestion = computed(() => {
@@ -171,25 +214,27 @@ const totalPointsEarned = computed(() => {
 
 // ===== 方法 =====
 
-function parseOptions(options: string): string[] {
-  try {
-    return JSON.parse(options);
-  } catch {
-    return options.split(',').map(o => o.trim());
-  }
-}
-
 async function loadQuestion() {
   if (!userStore.currentUser) return;
 
   try {
-    currentQuestion.value = await questionApi.getRandom(userStore.currentUser.grade);
+    currentQuestion.value = await questionApi.getRandom(
+      userStore.currentUser.grade,
+      sessionQuestionIds.value,
+    );
+    const id = currentQuestion.value.questionId;
+    if (!sessionQuestionIds.value.includes(id)) {
+      sessionQuestionIds.value = [...sessionQuestionIds.value, id];
+    }
     selectedOption.value = null;
+    fillAnswer.value = '';
     showResult.value = false;
+    revealedCorrectAnswer.value = '';
+    resultAnalysis.value = '';
   } catch (err) {
     console.error('加载题目失败:', err);
     toast.error('加载题目失败');
-    exitQuiz();
+    currentQuestion.value = null;
   }
 }
 
@@ -199,34 +244,50 @@ function selectOption(index: number) {
 }
 
 async function submitAnswer() {
-  if (!currentQuestion.value || selectedOption.value === null) return;
+  if (!currentQuestion.value || !canSubmit.value) return;
   if (!userStore.currentUser) return;
 
   isSubmitting.value = true;
 
   try {
-    const options = parseOptions(currentQuestion.value.options);
-    const userAnswer = options[selectedOption.value];
+    const q = currentQuestion.value;
+    let userAnswer: string;
+    if (q.type === 'fill') {
+      userAnswer = fillAnswer.value.trim();
+    } else {
+      const options = displayOptions.value;
+      userAnswer = options[selectedOption.value!];
+    }
 
     const result = await questionApi.submitAnswer(
       userStore.currentUser.id,
-      currentQuestion.value.questionId,
-      userAnswer
+      q.questionId,
+      userAnswer,
     );
 
+    const earned = result.getPoints ?? result.points ?? 0;
+    lastEarnedPoints.value = earned;
     isCorrect.value = result.isCorrect;
     showResult.value = true;
+    revealedCorrectAnswer.value = result.correctAnswer ?? '';
+    resultAnalysis.value = result.analysis ?? '';
 
-    // 记录结果
     quizResults.value.push({
       questionId: currentQuestion.value.questionId,
       isCorrect: result.isCorrect,
-      points: result.points,
+      points: earned,
     });
 
-    // 更新疲劳点
-    if (result.isCorrect && result.points > 0) {
-      userStore.updateFatiguePoints((userStore.currentUser?.fatiguePoints || 0) + result.points);
+    if (typeof result.currentPoints === 'number') {
+      userStore.updateFatiguePoints(result.currentPoints);
+    } else if (result.isCorrect && earned > 0) {
+      userStore.updateFatiguePoints(
+        (userStore.currentUser?.fatiguePoints || 0) + earned,
+      );
+    }
+
+    if (earned > 0) {
+      todayEarnedPoints.value += earned;
     }
   } catch (err: any) {
     const error = handleApiError(err);
@@ -247,10 +308,21 @@ async function nextQuestion() {
   }
 }
 
+async function refreshTodayPoints() {
+  if (!userStore.currentUser?.id) return;
+  try {
+    todayEarnedPoints.value = await questionApi.getTodayAnswerPoints(
+      userStore.currentUser.id,
+    );
+  } catch {
+    todayEarnedPoints.value = userStore.currentUser.dailyAnswerPoints ?? 0;
+  }
+}
+
 function startQuiz() {
   currentQuestionIndex.value = 0;
   quizResults.value = [];
-  dailyAnswerCount.value = 0;
+  sessionQuestionIds.value = [];
   loadQuestion();
 }
 
@@ -276,6 +348,7 @@ onMounted(async () => {
   if (userStore.currentUser.id) {
     try {
       await parentStore.loadParentLimit(userStore.currentUser.id);
+      await refreshTodayPoints();
     } catch (err) {
       console.error('加载管控规则失败:', err);
     }
@@ -448,6 +521,34 @@ onUnmounted(() => {
   font-size: 1.3rem;
   color: #333;
   line-height: 1.6;
+}
+
+.fill-answer {
+  margin-bottom: 1.5rem;
+}
+
+.fill-input {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  font-size: 1.1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+
+.fill-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.result-analysis {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #4b5563;
+  text-align: left;
 }
 
 .question-options {

@@ -301,10 +301,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useUserStore } from '@/core/store/user.store';
-import { parentApi } from '@/services/parent-api.service';
+import { authApi } from '@/services/auth-api.service';
 import { kidApi } from '@/services/kid-api.service';
 import { handleApiError } from '@/utils/error-handler.util';
 import GlobalLoading from '@/components/GlobalLoading.vue';
@@ -590,16 +590,19 @@ async function handleParentRegister() {
   try {
     isLoading.value = true;
     // 先注册用户
-    const result = await parentApi.register(parentForm.value);
-    console.log('家长注册成功:', result);
-    
-    // 保存用户信息到store（用于保存图案解锁）
-    userStore.parentUser = {
-      parentId: result.userId || Date.now(),
+    const result = await authApi.registerParent({
       username: parentForm.value.username,
-      nickname: parentForm.value.nickname,
       phone: parentForm.value.phone,
-      token: result.token,
+      password: parentForm.value.password,
+      nickname: parentForm.value.nickname,
+      realName: parentForm.value.realName,
+    });
+
+    userStore.parentUser = {
+      parentId: result.userId,
+      username: result.username || parentForm.value.username,
+      nickname: parentForm.value.nickname || result.nickname || '家长',
+      phone: parentForm.value.phone,
       fatiguePoints: 10,
       dailyAnswerPoints: 0,
     };
@@ -607,21 +610,9 @@ async function handleParentRegister() {
     
     // 进入下一步：设置图案解锁
     currentStep.value = 2;
-  } catch (err: any) {
-    console.error('家长注册失败:', err);
-    if (err.response) {
-      if (err.response.data && err.response.data.msg) {
-        errorMessage.value = err.response.data.msg;
-      } else if (err.response.data) {
-        errorMessage.value = JSON.stringify(err.response.data);
-      } else {
-        errorMessage.value = `注册失败 (${err.response.status}): ${err.response.statusText}`;
-      }
-    } else if (err.request) {
-      errorMessage.value = '网络连接失败,请检查网络后重试';
-    } else {
-      errorMessage.value = err.message || '注册失败,请稍后重试';
-    }
+  } catch (err: unknown) {
+    const error = handleApiError(err);
+    errorMessage.value = error.message;
   } finally {
     isLoading.value = false;
   }
@@ -701,21 +692,30 @@ async function handleKidRegister() {
 // ===== 生命周期 =====
 
 onMounted(() => {
-  // 如果是家长注册，直接进入表单步骤
+  document.documentElement.classList.add('register-page-active');
+  document.body.classList.add('register-page-active');
   if (currentRole.value === 'parent') {
     currentStep.value = 1;
   }
+});
+
+onUnmounted(() => {
+  document.documentElement.classList.remove('register-page-active');
+  document.body.classList.remove('register-page-active');
 });
 </script>
 
 <style scoped>
 .register-container {
-  min-height: 100vh;
+  box-sizing: border-box;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: clamp(0.5rem, 2vh, 1.25rem) clamp(0.75rem, 3vw, 1.5rem);
   position: relative;
   overflow: hidden;
 }
@@ -741,16 +741,31 @@ onMounted(() => {
 }
 
 .register-content {
+  box-sizing: border-box;
   background: white;
-  border-radius: 24px;
-  padding: 3rem;
-  max-width: 520px;
+  border-radius: clamp(16px, 3vw, 24px);
+  padding: clamp(1rem, 3vh, 2rem) clamp(1rem, 4vw, 2.5rem);
+  padding-top: clamp(2.75rem, 6vh, 3.25rem);
+  max-width: min(520px, 100%);
   width: 100%;
+  max-height: calc(100dvh - 1.5rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   text-align: center;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   position: relative;
   z-index: 1;
   animation: slideUp 0.6s ease-out;
+}
+
+.register-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.register-content::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.35);
+  border-radius: 3px;
 }
 
 @keyframes slideUp {
@@ -766,14 +781,15 @@ onMounted(() => {
 
 .back-btn {
   position: absolute;
-  top: 1.5rem;
-  left: 1.5rem;
-  background: transparent;
+  top: clamp(0.65rem, 2vh, 1.25rem);
+  left: clamp(0.65rem, 2vw, 1.25rem);
+  z-index: 2;
+  background: rgba(243, 244, 246, 0.9);
   border: none;
   color: #666;
-  font-size: 1rem;
+  font-size: clamp(0.85rem, 2vw, 1rem);
   cursor: pointer;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 8px;
   transition: all 0.3s;
 }
@@ -803,8 +819,9 @@ onMounted(() => {
 .step-indicator {
   display: flex;
   justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: clamp(0.5rem, 2vw, 1rem);
+  margin-bottom: clamp(0.75rem, 2vh, 1.25rem);
 }
 
 .step {
@@ -854,26 +871,30 @@ onMounted(() => {
 }
 
 .register-title {
-  font-size: 2rem;
-  margin-bottom: 2rem;
+  font-size: clamp(1.35rem, 4vw, 2rem);
+  margin-bottom: clamp(1rem, 2.5vh, 1.75rem);
+  padding: 0 0.25rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   font-weight: 800;
+  line-height: 1.25;
 }
 
 /* 角色选择 */
 .role-selector {
   display: flex;
   justify-content: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: clamp(0.5rem, 2vw, 1rem);
+  margin-bottom: clamp(1rem, 2.5vh, 1.75rem);
 }
 
 .role-btn {
-  flex: 1;
-  padding: 1rem 2rem;
+  flex: 1 1 120px;
+  min-width: 0;
+  padding: clamp(0.75rem, 2vh, 1rem) clamp(1rem, 3vw, 1.5rem);
   background: white;
   color: #666;
   border: 2px solid #e5e7eb;
@@ -899,10 +920,10 @@ onMounted(() => {
 
 /* 成功提示 */
 .success-message {
-  padding: 1.2rem;
+  padding: clamp(0.75rem, 2vh, 1.2rem);
   background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
   border-radius: 16px;
-  margin-bottom: 1.5rem;
+  margin-bottom: clamp(0.75rem, 2vh, 1.25rem);
   text-align: center;
   display: flex;
   align-items: center;
@@ -949,27 +970,38 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.pattern-step :deep(.pattern-lock-container),
+.pattern-step :deep(canvas) {
+  max-width: 100%;
 }
 
 .pattern-step-title {
-  font-size: 1.5rem;
+  font-size: clamp(1.15rem, 3.5vw, 1.5rem);
   font-weight: 700;
   color: #333;
   margin: 0 0 0.5rem 0;
 }
 
 .pattern-step-desc {
-  font-size: 1rem;
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
   color: #666;
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 clamp(0.75rem, 2vh, 1.25rem) 0;
+  padding: 0 0.25rem;
 }
 
 .register-form {
   text-align: left;
+  width: 100%;
+  min-width: 0;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: clamp(0.85rem, 2vh, 1.35rem);
 }
 
 .form-group label {
@@ -982,11 +1014,13 @@ onMounted(() => {
 
 .form-group input,
 .form-group select {
+  box-sizing: border-box;
   width: 100%;
-  padding: 0.875rem 1rem;
+  max-width: 100%;
+  padding: clamp(0.65rem, 1.5vh, 0.875rem) 0.85rem;
   border: 2px solid #e5e7eb;
   border-radius: 12px;
-  font-size: 1rem;
+  font-size: 16px;
   transition: all 0.3s;
   background: #f9fafb;
 }
@@ -1025,14 +1059,14 @@ onMounted(() => {
 /* 头像选择网格 */
 .avatar-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(0.4rem, 2vw, 0.75rem);
 }
 
 .avatar-option {
-  font-size: 2rem;
+  font-size: clamp(1.35rem, 5vw, 2rem);
   text-align: center;
-  padding: 0.75rem;
+  padding: clamp(0.4rem, 1.5vw, 0.75rem);
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   cursor: pointer;
@@ -1136,13 +1170,14 @@ onMounted(() => {
 
 
 .register-btn {
+  box-sizing: border-box;
   width: 100%;
-  padding: 1rem;
+  padding: clamp(0.75rem, 2vh, 1rem);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 12px;
-  font-size: 1.1rem;
+  font-size: clamp(0.95rem, 2.5vw, 1.1rem);
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1171,30 +1206,82 @@ onMounted(() => {
 /* 响应式 */
 @media (max-width: 768px) {
   .register-content {
-    padding: 2rem;
-    border-radius: 20px;
+    max-height: calc(100dvh - 1rem);
+    padding-top: clamp(2.5rem, 7vh, 3rem);
   }
 
-  .register-title {
-    font-size: 1.75rem;
+  .role-btn {
+    font-size: clamp(0.9rem, 2.5vw, 1.05rem);
+  }
+
+  .success-message {
+    font-size: 0.95rem;
+    flex-wrap: wrap;
   }
 }
 
 @media (max-width: 480px) {
-  .register-content {
-    padding: 1.5rem;
+  .register-container {
+    padding: 0.35rem 0.5rem;
+    align-items: stretch;
   }
 
-  .register-title {
-    font-size: 1.5rem;
+  .register-content {
+    max-height: 100%;
+    margin: auto 0;
+    padding: 0.85rem 0.9rem;
+    padding-top: 2.65rem;
+    border-radius: 16px;
   }
 
   .avatar-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.35rem;
   }
 
   .step-label {
     display: none;
   }
+
+  .step-number {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .back-btn-secondary {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-height: 700px) {
+  .register-title {
+    margin-bottom: 0.65rem;
+  }
+
+  .role-selector {
+    margin-bottom: 0.75rem;
+  }
+
+  .form-group {
+    margin-bottom: 0.65rem;
+  }
+}
+</style>
+
+<style>
+html.register-page-active,
+body.register-page-active {
+  overflow: hidden;
+  height: 100%;
+  max-height: 100dvh;
+}
+
+html.register-page-active #app {
+  min-height: 0;
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 </style>

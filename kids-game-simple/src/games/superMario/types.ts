@@ -129,7 +129,7 @@ export interface MarioGameState {
   player: Player
   blocks: Block[]
   pipes: Pipe[]
-  coins: Coin[]
+  coinObjects: Coin[]
   enemies: Enemy[]
   powerups: Powerup[]
   particles: Particle[]

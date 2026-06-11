@@ -9,7 +9,12 @@
 | **游戏引擎封装** | `kids-game-simple/src/services/gameEngine.ts` | 画布、分数、生命周期 |
 | **主题桥接** | `kids-game-simple/src/games/gameThemeBridge.ts` | 按 `gameId` 加载 GTRS |
 
-终端路由 `@/modules/game/*` 走 **前端共用模块**；进入 `/game/:type/play` 时由前端 `index.vue` 决定 iframe URL 或（若接入）Canvas 容器。
+终端路由 `@/modules/game/*` 走 **前端共用模块**。`/game/:code/play` 由 `@simple/views/GamePlayHost.vue` 分流：
+
+- `gameRegistry` 有注册 → `CanvasGamePlay.vue`
+- 否则 → `@/modules/game/index.vue`（iframe）
+
+访问 `/game/:code` 时，若 code 为内置游戏，路由 `beforeEnter` 会直接跳到 `/play`。
 
 ## 注册与启动
 

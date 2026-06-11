@@ -67,7 +67,7 @@ public class UserControlConfig implements Serializable {
     private String allowedTimeEnd;
 
     /**
-     * 答对1题获得的疲劳点数
+     * 答对1题获得的游学币
      */
     private Integer answerGetPoints;
 
@@ -83,7 +83,7 @@ public class UserControlConfig implements Serializable {
     private String blockedGames;
     
     /**
-     * 疲劳点阈值（低于此值不能玩游戏）
+     * 游学币阈值（低于此值不能玩游戏）
      */
     private Integer fatiguePointThreshold;
     
@@ -93,7 +93,7 @@ public class UserControlConfig implements Serializable {
     private Integer restDuration;
     
     /**
-     * 疲劳控制模式：SOFT-软性，FORCED-强制，OFF-关闭
+     * 游学币控制模式：SOFT-软性，FORCED-强制，OFF-关闭
      */
     private String fatigueControlMode;
     
