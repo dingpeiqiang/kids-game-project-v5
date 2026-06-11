@@ -25,9 +25,9 @@
 
 ### 1.1 用户注册
 
-**接口**: `POST /api/user/register`
+**接口**: `POST /api/auth/register`
 
-**描述**: 注册新用户（儿童、家长或管理员）
+**描述**: 统一注册接口（当前支持家长注册；儿童请使用 `/api/kid/register` 绑定监护人）
 
 **请求参数**:
 ```json
@@ -35,11 +35,9 @@
   "username": "string",
   "password": "string",
   "nickname": "string",
-  "userType": "string",  // KID/PARENT/ADMIN
-  "email": "string",
-  "phoneNumber": "string",
-  "avatarUrl": "string",
-  "extInfoJson": "string"
+  "userType": 1,  // 1-PARENT
+  "phone": "string",
+  "realName": "string"
 }
 ```
 
@@ -50,10 +48,9 @@
   "message": "success",
   "data": {
     "userId": 1,
-    "username": "test_kid",
-    "nickname": "测试儿童",
-    "userType": "KID",
-    "status": "ACTIVE"
+    "username": "test_parent",
+    "nickname": "测试家长",
+    "userType": 1
   }
 }
 ```

@@ -63,6 +63,18 @@ public class AuthController {
         return Result.success(body);
     }
 
+    @Operation(summary = "检查用户名是否已存在")
+    @GetMapping("/check-username")
+    public Result<Map<String, Object>> checkUsername(
+            @Parameter(description = "用户名") 
+            @RequestParam String username) {
+        boolean exists = userService.existsUsername(username);
+        Map<String, Object> result = new HashMap<>();
+        result.put("exists", exists);
+        result.put("available", !exists);
+        return Result.success(result);
+    }
+
     @Operation(summary = "统一登录接口")
     @PostMapping("/login")
     public Result<AuthResponseDTO> login(@Valid @RequestBody AuthRequestDTO request) {

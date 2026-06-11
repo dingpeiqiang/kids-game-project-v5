@@ -46,10 +46,13 @@ export class KidApiService extends BaseApiService {
     nickname?: string;
     grade?: string;
     avatar?: string;
-    parentPhone: string;
+    parentPhone?: string;
     parentRoleType?: number;
   }): Promise<Kid> {
-    return this.post<Kid>('/api/kid/register', data);
+    console.log(`[KidApi] register 被调用 at ${new Date().toISOString()}, username=${data.username}`);
+    const result = await this.post<Kid>('/api/kid/register', data);
+    console.log(`[KidApi] register 返回 at ${new Date().toISOString()}`);
+    return result;
   }
 
   /**

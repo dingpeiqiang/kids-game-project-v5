@@ -89,9 +89,6 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
         if (dto.getUsername() == null || dto.getUsername().trim().isEmpty()) {
             throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ);
         }
-        if (dto.getPhone() == null || dto.getPhone().trim().isEmpty()) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ);
-        }
         if (dto.getPassword() == null || dto.getPassword().trim().isEmpty()) {
             throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ);
         }
@@ -102,26 +99,12 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
             throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ);
         }
 
-        // 手机号格式校验
-        String phone = dto.getPhone().trim();
-        if (!phone.matches("^1[3-9]\\d{9}$")) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR_OBJ);
-        }
-
         // 检查用户名是否已注册（家长）
         LambdaQueryWrapper<BaseUser> usernameWrapper = new LambdaQueryWrapper<>();
         usernameWrapper.eq(BaseUser::getUsername, username)
                 .eq(BaseUser::getUserType, 1); // 1-PARENT
         if (baseUserMapper.selectOne(usernameWrapper) != null) {
             throw new BusinessException("该用户名已被注册");
-        }
-
-        // 检查手机号是否已注册（家长）
-        LambdaQueryWrapper<BaseUser> phoneWrapper = new LambdaQueryWrapper<>();
-        phoneWrapper.eq(BaseUser::getUsername, phone)
-                .eq(BaseUser::getUserType, 1); // 1-PARENT
-        if (baseUserMapper.selectOne(phoneWrapper) != null) {
-            throw new BusinessException("该手机号已注册");
         }
 
         // 创建家长账号（使用 BaseUser）
@@ -140,6 +123,9 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
         // 注意：这里暂时不创建 Parent 记录，使用 BaseUser 作为主数据
         // Parent 表可能用于向后兼容或存储额外的家长特有信息
 
+        // 处理手机号（可选）
+        String phone = dto.getPhone() != null ? dto.getPhone().trim() : null;
+        
         log.info("家长注册成功. Username: {}, Phone: {}, UserId: {}", username, phone, baseUser.getUserId());
 
         // 返回 Parent 对象（兼容旧接口）

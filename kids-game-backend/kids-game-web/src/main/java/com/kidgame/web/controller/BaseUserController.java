@@ -7,7 +7,6 @@ import com.kidgame.dao.entity.UserProfile;
 import com.kidgame.service.UserService;
 import com.kidgame.service.dto.UserLoginDTO;
 import com.kidgame.service.dto.UserLoginResponseDTO;
-import com.kidgame.service.dto.UserRegisterDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,13 +14,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
  * 统一用户控制器 - 处理儿童、家长、管理员
+ * 
+ * 注意：注册接口已统一到 AuthController (/api/auth/register)
  */
 @Slf4j
 @Tag(name = "用户管理", description = "统一用户管理接口")
@@ -31,15 +30,6 @@ public class BaseUserController {
 
     @Autowired
     private com.kidgame.service.UserService userService;
-
-    @Operation(summary = "用户注册")
-    @PostMapping("/register")
-    public Result<BaseUser> register(@Valid @RequestBody UserRegisterDTO dto) {
-        log.info("Controller 接收到注册请求: username={}, userType={}, nickname={}", 
-            dto.getUsername(), dto.getUserType(), dto.getNickname());
-        BaseUser user = userService.register(dto);
-        return Result.success(user);
-    }
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")

@@ -34,7 +34,7 @@ public class KidRegisterDTO {
     private String avatar;
 
     /**
-     * 家长手机号（至少一个，用于自动绑定家长）
+     * 家长手机号（可选，用于自动绑定家长；为空则不绑定）
      */
     private String parentPhone;
 

@@ -172,9 +172,12 @@ public class UserServiceImpl implements UserService {
         if (username.length() < 2 || username.length() > 20) {
             throw new RuntimeException("用户名长度为 2-20 个字符");
         }
-        if (!phone.matches("^1[3-9]\\d{9}$")) {
+        
+        // 手机号改为可选，只有非空时才校验格式
+        if (!phone.isEmpty() && !phone.matches("^1[3-9]\\d{9}$")) {
             throw new RuntimeException("手机号格式不正确");
         }
+        
         if (dto.getPassword() == null || dto.getPassword().length() < 6) {
             throw new RuntimeException("密码至少 6 位");
         }
@@ -185,9 +188,8 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("该用户名已被注册");
         }
 
-        LambdaQueryWrapper<BaseUser> phoneWrap = new LambdaQueryWrapper<>();
-        phoneWrap.eq(BaseUser::getUsername, phone).eq(BaseUser::getUserType, 1);
-        if (baseUserMapper.selectOne(phoneWrap) != null) {
+        // 手机号改为可选，只有非空时才检查重复注册
+        if (!phone.isEmpty() && userProfileMapper.countByParentPhone(phone) > 0) {
             throw new RuntimeException("该手机号已注册");
         }
 
@@ -203,7 +205,10 @@ public class UserServiceImpl implements UserService {
         baseUserMapper.insert(user);
 
         JSONObject ext = new JSONObject();
-        ext.put("phone", phone);
+        // 只有手机号非空时才存储
+        if (!phone.isEmpty()) {
+            ext.put("phone", phone);
+        }
         if (dto.getRealName() != null && !dto.getRealName().isBlank()) {
             ext.put("realName", dto.getRealName().trim());
         }
@@ -351,6 +356,16 @@ public class UserServiceImpl implements UserService {
         return baseUserMapper.selectOne(
                 new QueryWrapper<BaseUser>().eq("username", username)
         );
+    }
+
+    @Override
+    public boolean existsUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return true;
+        }
+        return baseUserMapper.selectOne(
+                new QueryWrapper<BaseUser>().eq("username", username)
+        ) != null;
     }
 
     @Override

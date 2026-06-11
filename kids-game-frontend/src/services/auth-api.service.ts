@@ -152,6 +152,7 @@ export class AuthApiService extends BaseApiService {
 
   /** 家长注册（BaseUser + UserProfile） */
   async registerParent(data: ParentRegisterPayload): Promise<ParentRegisterResult> {
+    console.log(`[AuthApi] registerParent 被调用 at ${new Date().toISOString()}, username=${data.username}`);
     const raw = await this.post<ParentRegisterResult>('/api/auth/register', {
       username: data.username.trim(),
       phone: data.phone.trim(),
@@ -160,16 +161,25 @@ export class AuthApiService extends BaseApiService {
       realName: data.realName?.trim(),
       userType: 1,
     });
+    console.log(`[AuthApi] registerParent 返回 at ${new Date().toISOString()}`);
     if (!raw?.userId) {
       throw new Error('注册响应不完整');
     }
     return raw;
   }
+
+  /** 检查用户名是否已存在 */
+  async checkUsername(username: string): Promise<{ exists: boolean; available: boolean }> {
+    const result = await this.get<{ exists: boolean; available: boolean }>(
+      `/api/auth/check-username?username=${encodeURIComponent(username.trim())}`
+    );
+    return result;
+  }
 }
 
 export interface ParentRegisterPayload {
   username: string;
-  phone: string;
+  phone?: string;  // 改为可选
   password: string;
   nickname?: string;
   realName?: string;

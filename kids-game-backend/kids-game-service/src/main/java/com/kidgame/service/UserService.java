@@ -83,6 +83,11 @@ public interface UserService {
     BaseUser registerPublic(AuthRegisterDTO dto);
 
     /**
+     * 检查用户名是否已存在
+     */
+    boolean existsUsername(String username);
+
+    /**
      * 统一认证（支持儿童/家长/管理员）
      */
     AuthResponseDTO authenticate(AuthRequestDTO request);

@@ -25,7 +25,7 @@ export class BaseApiService {
   protected axiosInstance: AxiosInstance;
   protected baseUrl: string;
   protected token: string | null = null;
-  private retryCount: number = 3;
+  private retryCount: number = 0;
   private retryDelay: number = 1000;
 
   constructor() {

@@ -75,8 +75,10 @@ public class KidServiceImpl extends ServiceImpl<KidMapper, Kid> implements KidSe
         Kid kid = createNewKid(dto);
         kidMapper.insert(kid);
 
-        // 根据家长手机号查询家长并创建关系
-        createParentRelation(kid.getKidId(), dto);
+        // 如果提供了家长手机号，则创建家长-孩子关系
+        if (dto.getParentPhone() != null && !dto.getParentPhone().trim().isEmpty()) {
+            createParentRelation(kid.getKidId(), dto);
+        }
 
         // 初始化游学币
         fatiguePointsService.initializeFatiguePoints(kid.getKidId(), 0, initialFatiguePoints);
@@ -96,9 +98,6 @@ public class KidServiceImpl extends ServiceImpl<KidMapper, Kid> implements KidSe
         if (dto.getPassword() == null || dto.getPassword().trim().isEmpty()) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, GameConstants.ErrorMessage.PASSWORD_EMPTY);
         }
-        if (dto.getParentPhone() == null || dto.getParentPhone().trim().isEmpty()) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "请提供家长手机号");
-        }
 
         String username = dto.getUsername().trim();
         if (username.length() < GameConstants.Validation.USERNAME_MIN_LENGTH
@@ -106,10 +105,12 @@ public class KidServiceImpl extends ServiceImpl<KidMapper, Kid> implements KidSe
             throw new BusinessException(ErrorCode.PARAM_ERROR, GameConstants.ErrorMessage.USERNAME_LENGTH_INVALID);
         }
 
-        // 验证家长手机号格式
-        String parentPhone = dto.getParentPhone().trim();
-        if (!parentPhone.matches("^1[3-9]\\d{9}$")) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "家长手机号格式不正确");
+        // 如果提供了家长手机号，则验证格式
+        if (dto.getParentPhone() != null && !dto.getParentPhone().trim().isEmpty()) {
+            String parentPhone = dto.getParentPhone().trim();
+            if (!parentPhone.matches("^1[3-9]\\d{9}$")) {
+                throw new BusinessException(ErrorCode.PARAM_ERROR, "家长手机号格式不正确");
+            }
         }
     }
 
@@ -151,6 +152,12 @@ public class KidServiceImpl extends ServiceImpl<KidMapper, Kid> implements KidSe
      * 创建家长-孩子关系（通过家长手机号查询）
      */
     private void createParentRelation(Long kidId, KidRegisterDTO dto) {
+        // 防御性检查：没有家长手机号则跳过
+        if (dto.getParentPhone() == null || dto.getParentPhone().trim().isEmpty()) {
+            log.warn("家长手机号为空，跳过创建家长-孩子关系. KidId: {}", kidId);
+            return;
+        }
+
         // 根据家长手机号查询家长
         String parentPhone = dto.getParentPhone().trim();
         LambdaQueryWrapper<Parent> parentWrapper = new LambdaQueryWrapper<>();
