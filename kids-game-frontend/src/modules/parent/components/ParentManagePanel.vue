@@ -12,318 +12,280 @@
         <p>加载中...</p>
       </div>
 
+      <!-- 无孩子时的提示 -->
+      <div v-else-if="!children || children.length === 0" class="no-kid-selected">
+        <span class="empty-icon">👶</span>
+        <p>还没有绑定孩子</p>
+        <button @click="$emit('bindChild')" class="add-kid-btn">添加孩子</button>
+      </div>
+
+      <!-- 管理内容 -->
       <div v-else class="modal-body">
-        <!-- 左侧：孩子列表 -->
-        <aside class="kids-sidebar">
-          <div class="sidebar-title">
-            <span>👶</span>
-            <span>我的孩子</span>
+        <!-- 孩子信息栏 -->
+        <div class="kid-info-bar">
+          <div class="kid-info-main">
+            <div class="kid-avatar-medium">{{ selectedKid?.avatar || '👦' }}</div>
+            <div class="kid-details">
+              <h4 class="kid-name-large">{{ selectedKid?.nickname || selectedKid?.username }}</h4>
+              <p class="kid-username">@{{ selectedKid?.username }}</p>
+            </div>
           </div>
-
-          <div v-if="children && children.length > 0" class="kids-list">
-            <div
-              v-for="kid in children"
-              :key="kid.kidId"
-              class="kid-card"
-              :class="{ active: selectedKidId === kid.kidId }"
-              @click="selectKid(kid)"
-            >
-              <div class="kid-avatar-large">{{ kid.avatar || '👦' }}</div>
-              <div class="kid-info">
-                <div class="kid-name">{{ kid.nickname || kid.username }}</div>
-                <div class="kid-stats">
-                  <span class="stat-badge authorized">
-                    ✓ {{ getAuthorizedCount(kid.kidId) }}个游戏
-                  </span>
-                  <span class="stat-badge blocked" v-if="getBlockedCount(kid.kidId) > 0">
-                    ✕ {{ getBlockedCount(kid.kidId) }}个屏蔽
-                  </span>
-                </div>
+          <div class="kid-summary">
+            <div class="summary-item">
+              <span class="summary-icon">🎮</span>
+              <div class="summary-content">
+                <span class="summary-value">{{ allGames.length }}</span>
+                <span class="summary-label">全部游戏</span>
+              </div>
+            </div>
+            <div class="summary-item">
+              <span class="summary-icon authorized">✓</span>
+              <div class="summary-content">
+                <span class="summary-value authorized">{{ getAuthorizedCount(selectedKid?.kidId || 0) }}</span>
+                <span class="summary-label">已授权</span>
+              </div>
+            </div>
+            <div class="summary-item">
+              <span class="summary-icon blocked">✕</span>
+              <div class="summary-content">
+                <span class="summary-value blocked">{{ getBlockedCount(selectedKid?.kidId || 0) }}</span>
+                <span class="summary-label">已屏蔽</span>
               </div>
             </div>
           </div>
+        </div>
 
-          <div v-else class="empty-kids">
-            <span>📋</span>
-            <p>还没有绑定孩子</p>
-            <button @click="$emit('bindChild')" class="add-kid-btn">添加孩子</button>
-          </div>
-        </aside>
+        <!-- 管理标签页 -->
+        <div class="manage-tabs">
+          <button
+            v-for="tab in manageTabs"
+            :key="tab.id"
+            class="manage-tab"
+            :class="{ active: currentManageTab === tab.id }"
+            @click="currentManageTab = tab.id"
+          >
+            <span class="tab-icon">{{ tab.icon }}</span>
+            <span class="tab-label">{{ tab.label }}</span>
+          </button>
+        </div>
 
-        <!-- 右侧：管理内容 -->
-        <main class="manage-content" v-if="selectedKid">
-          <!-- 孩子信息栏 -->
-          <div class="kid-info-bar">
-            <div class="kid-info-main">
-              <div class="kid-avatar-medium">{{ selectedKid.avatar || '👦' }}</div>
-              <div class="kid-details">
-                <h4 class="kid-name-large">{{ selectedKid.nickname || selectedKid.username }}</h4>
-                <p class="kid-username">@{{ selectedKid.username }}</p>
-              </div>
+        <!-- 游戏授权管理 -->
+        <div v-show="currentManageTab === 'games'" class="tab-content games-tab">
+          <!-- 操作栏 -->
+          <div class="action-bar">
+            <div class="search-box">
+              <input
+                v-model="searchKeyword"
+                type="text"
+                placeholder="搜索游戏..."
+                class="search-input"
+              />
             </div>
-            <div class="kid-summary">
-              <div class="summary-item">
-                <span class="summary-icon">🎮</span>
-                <div class="summary-content">
-                  <span class="summary-value">{{ allGames.length }}</span>
-                  <span class="summary-label">全部游戏</span>
-                </div>
-              </div>
-              <div class="summary-item">
-                <span class="summary-icon authorized">✓</span>
-                <div class="summary-content">
-                  <span class="summary-value authorized">{{ getAuthorizedCount(selectedKid.kidId) }}</span>
-                  <span class="summary-label">已授权</span>
-                </div>
-              </div>
-              <div class="summary-item">
-                <span class="summary-icon blocked">✕</span>
-                <div class="summary-content">
-                  <span class="summary-value blocked">{{ getBlockedCount(selectedKid.kidId) }}</span>
-                  <span class="summary-label">已屏蔽</span>
-                </div>
-              </div>
+            <div class="filter-buttons">
+              <button
+                @click="filterMode = 'all'"
+                class="filter-btn"
+                :class="{ active: filterMode === 'all' }"
+              >
+                全部 ({{ allGames.length }})
+              </button>
+              <button
+                @click="filterMode = 'authorized'"
+                class="filter-btn"
+                :class="{ active: filterMode === 'authorized' }"
+              >
+                已授权 ({{ getAuthorizedCount(selectedKid?.kidId || 0) }})
+              </button>
+              <button
+                @click="filterMode = 'blocked'"
+                class="filter-btn"
+                :class="{ active: filterMode === 'blocked' }"
+              >
+                已屏蔽 ({{ getBlockedCount(selectedKid?.kidId || 0) }})
+              </button>
             </div>
-          </div>
-
-          <!-- 管理标签页 -->
-          <div class="manage-tabs">
             <button
-              v-for="tab in manageTabs"
-              :key="tab.id"
-              class="manage-tab"
-              :class="{ active: currentManageTab === tab.id }"
-              @click="currentManageTab = tab.id"
+              v-if="filterMode !== 'all'"
+              @click="batchToggleGames"
+              class="batch-btn"
+              :disabled="filteredGames.length === 0"
             >
-              <span class="tab-icon">{{ tab.icon }}</span>
-              <span class="tab-label">{{ tab.label }}</span>
+              {{ filterMode === 'blocked' ? '🔓 批量解锁' : '🔒 批量屏蔽' }}
             </button>
           </div>
 
-          <!-- 游戏授权管理 -->
-          <div v-show="currentManageTab === 'games'" class="tab-content games-tab">
-            <!-- 操作栏 -->
-            <div class="action-bar">
-              <div class="search-box">
-                <input
-                  v-model="searchKeyword"
-                  type="text"
-                  placeholder="搜索游戏..."
-                  class="search-input"
-                />
+          <!-- 游戏列表 -->
+          <div class="games-list">
+            <div
+              v-for="game in filteredGames"
+              :key="game.gameId"
+              class="game-item"
+              :class="{ blocked: isGameBlocked(selectedKid?.kidId || 0, game.gameId) }"
+            >
+              <div class="game-cover">
+                <span class="game-emoji">{{ getGameEmoji(game.category) }}</span>
+                <div v-if="isGameBlocked(selectedKid?.kidId || 0, game.gameId)" class="blocked-badge">已屏蔽</div>
               </div>
-              <div class="filter-buttons">
+              <div class="game-details">
+                <h5 class="game-title">{{ game.gameName }}</h5>
+                <div class="game-meta">
+                  <span class="game-category">{{ getCategoryName(game.category) }}</span>
+                  <span class="game-grade">{{ getGradeName(game.grade) }}</span>
+                </div>
+                <div class="game-progress">
+                  <div class="progress-bar">
+                    <div
+                      class="progress-fill"
+                      :class="{
+                        authorized: !isGameBlocked(selectedKid?.kidId || 0, game.gameId),
+                        blocked: isGameBlocked(selectedKid?.kidId || 0, game.gameId)
+                      }"
+                      :style="{ width: isGameBlocked(selectedKid?.kidId || 0, game.gameId) ? '0%' : '100%' }"
+                    ></div>
+                  </div>
+                  <span class="progress-text">
+                    {{ isGameBlocked(selectedKid?.kidId || 0, game.gameId) ? '已屏蔽' : '已授权' }}
+                  </span>
+                </div>
+              </div>
+              <div class="game-action">
                 <button
-                  @click="filterMode = 'all'"
-                  class="filter-btn"
-                  :class="{ active: filterMode === 'all' }"
+                  @click="toggleGameBlock(game.gameId)"
+                  class="toggle-btn"
+                  :class="{
+                    blocked: isGameBlocked(selectedKid?.kidId || 0, game.gameId),
+                    authorized: !isGameBlocked(selectedKid?.kidId || 0, game.gameId)
+                  }"
                 >
-                  全部 ({{ allGames.length }})
-                </button>
-                <button
-                  @click="filterMode = 'authorized'"
-                  class="filter-btn"
-                  :class="{ active: filterMode === 'authorized' }"
-                >
-                  已授权 ({{ getAuthorizedCount(selectedKid.kidId) }})
-                </button>
-                <button
-                  @click="filterMode = 'blocked'"
-                  class="filter-btn"
-                  :class="{ active: filterMode === 'blocked' }"
-                >
-                  已屏蔽 ({{ getBlockedCount(selectedKid.kidId) }})
+                  <span class="toggle-icon">
+                    {{ isGameBlocked(selectedKid?.kidId || 0, game.gameId) ? '🔓' : '🔒' }}
+                  </span>
+                  <span class="toggle-text">
+                    {{ isGameBlocked(selectedKid?.kidId || 0, game.gameId) ? '解锁' : '屏蔽' }}
+                  </span>
                 </button>
               </div>
-              <button
-                v-if="filterMode !== 'all'"
-                @click="batchToggleGames"
-                class="batch-btn"
-                :disabled="filteredGames.length === 0"
-              >
-                {{ filterMode === 'blocked' ? '🔓 批量解锁' : '🔒 批量屏蔽' }}
+            </div>
+
+            <div v-if="filteredGames.length === 0" class="empty-games">
+              <span class="empty-icon">🎮</span>
+              <p>{{ getEmptyText() }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 规则设置 -->
+        <div v-show="currentManageTab === 'rules'" class="tab-content rules-tab">
+          <div class="rules-container">
+            <!-- 时长限制 -->
+            <div class="rule-section">
+              <div class="rule-header">
+                <span class="rule-icon">⏱️</span>
+                <h5>时长限制</h5>
+              </div>
+              <div class="rule-content">
+                <div class="rule-item">
+                  <label class="rule-label">
+                    每日游戏时长
+                    <span class="rule-value">{{ rules.dailyDuration || 0 }} 分钟</span>
+                  </label>
+                  <input
+                    v-model.number="rules.dailyDuration"
+                    type="range"
+                    min="0"
+                    max="720"
+                    step="15"
+                    class="rule-slider"
+                  />
+                </div>
+                <div class="rule-item">
+                  <label class="rule-label">
+                    单次游戏时长
+                    <span class="rule-value">{{ rules.singleDuration || 0 }} 分钟</span>
+                  </label>
+                  <input
+                    v-model.number="rules.singleDuration"
+                    type="range"
+                    min="0"
+                    max="120"
+                    step="5"
+                    class="rule-slider"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- 时间段限制 -->
+            <div class="rule-section">
+              <div class="rule-header">
+                <span class="rule-icon">🕐</span>
+                <h5>时间段限制</h5>
+              </div>
+              <div class="rule-content">
+                <div class="rule-item">
+                  <label class="rule-label">允许游戏时段</label>
+                  <div class="time-range-inputs">
+                    <div class="time-input-wrapper">
+                      <label>开始</label>
+                      <input
+                        v-model="rules.startTime"
+                        type="time"
+                        class="time-input"
+                      />
+                    </div>
+                    <span class="time-separator">至</span>
+                    <div class="time-input-wrapper">
+                      <label>结束</label>
+                      <input
+                        v-model="rules.endTime"
+                        type="time"
+                        class="time-input"
+                      />
+                    </div>
+                  </div>
+                  <p class="rule-hint">留空则不限制</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 游学币系统 -->
+            <div class="rule-section">
+              <div class="rule-header">
+                <span class="rule-icon">⭐</span>
+                <h5>游学币系统</h5>
+              </div>
+              <div class="rule-content">
+                <div class="rule-item">
+                  <label class="toggle-switch">
+                    <input v-model="rules.enableFatiguePoints" type="checkbox" />
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">启用游学币系统</span>
+                  </label>
+                </div>
+                <div v-if="rules.enableFatiguePoints" class="rule-item">
+                  <label class="rule-label">
+                    每日游学币上限
+                    <span class="rule-value">{{ rules.maxFatiguePoints || 10 }} 游学币</span>
+                  </label>
+                  <input
+                    v-model.number="rules.maxFatiguePoints"
+                    type="range"
+                    min="1"
+                    max="20"
+                    class="rule-slider"
+                  />
+                  <p class="rule-hint">建议设置为 5-10 游学币</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 保存按钮 -->
+            <div class="rules-actions">
+              <button @click="saveRules" class="save-rules-btn" :disabled="isSaving">
+                {{ isSaving ? '保存中...' : '💾 保存设置' }}
               </button>
             </div>
-
-            <!-- 游戏列表 -->
-            <div class="games-list">
-              <div
-                v-for="game in filteredGames"
-                :key="game.gameId"
-                class="game-item"
-                :class="{ blocked: isGameBlocked(selectedKid.kidId, game.gameId) }"
-              >
-                <div class="game-cover">
-                  <span class="game-emoji">{{ getGameEmoji(game.category) }}</span>
-                  <div v-if="isGameBlocked(selectedKid.kidId, game.gameId)" class="blocked-badge">已屏蔽</div>
-                </div>
-                <div class="game-details">
-                  <h5 class="game-title">{{ game.gameName }}</h5>
-                  <div class="game-meta">
-                    <span class="game-category">{{ getCategoryName(game.category) }}</span>
-                    <span class="game-grade">{{ getGradeName(game.grade) }}</span>
-                  </div>
-                  <div class="game-progress">
-                    <div class="progress-bar">
-                      <div
-                        class="progress-fill"
-                        :class="{
-                          authorized: !isGameBlocked(selectedKid.kidId, game.gameId),
-                          blocked: isGameBlocked(selectedKid.kidId, game.gameId)
-                        }"
-                        :style="{ width: isGameBlocked(selectedKid.kidId, game.gameId) ? '0%' : '100%' }"
-                      ></div>
-                    </div>
-                    <span class="progress-text">
-                      {{ isGameBlocked(selectedKid.kidId, game.gameId) ? '已屏蔽' : '已授权' }}
-                    </span>
-                  </div>
-                </div>
-                <div class="game-action">
-                  <button
-                    @click="toggleGameBlock(game.gameId)"
-                    class="toggle-btn"
-                    :class="{
-                      blocked: isGameBlocked(selectedKid.kidId, game.gameId),
-                      authorized: !isGameBlocked(selectedKid.kidId, game.gameId)
-                    }"
-                  >
-                    <span class="toggle-icon">
-                      {{ isGameBlocked(selectedKid.kidId, game.gameId) ? '🔓' : '🔒' }}
-                    </span>
-                    <span class="toggle-text">
-                      {{ isGameBlocked(selectedKid.kidId, game.gameId) ? '解锁' : '屏蔽' }}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="filteredGames.length === 0" class="empty-games">
-                <span class="empty-icon">🎮</span>
-                <p>{{ getEmptyText() }}</p>
-              </div>
-            </div>
           </div>
-
-          <!-- 规则设置 -->
-          <div v-show="currentManageTab === 'rules'" class="tab-content rules-tab">
-            <div class="rules-container">
-              <!-- 时长限制 -->
-              <div class="rule-section">
-                <div class="rule-header">
-                  <span class="rule-icon">⏱️</span>
-                  <h5>时长限制</h5>
-                </div>
-                <div class="rule-content">
-                  <div class="rule-item">
-                    <label class="rule-label">
-                      每日游戏时长
-                      <span class="rule-value">{{ rules.dailyDuration || 0 }} 分钟</span>
-                    </label>
-                    <input
-                      v-model.number="rules.dailyDuration"
-                      type="range"
-                      min="0"
-                      max="720"
-                      step="15"
-                      class="rule-slider"
-                    />
-                  </div>
-                  <div class="rule-item">
-                    <label class="rule-label">
-                      单次游戏时长
-                      <span class="rule-value">{{ rules.singleDuration || 0 }} 分钟</span>
-                    </label>
-                    <input
-                      v-model.number="rules.singleDuration"
-                      type="range"
-                      min="0"
-                      max="120"
-                      step="5"
-                      class="rule-slider"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- 时间段限制 -->
-              <div class="rule-section">
-                <div class="rule-header">
-                  <span class="rule-icon">🕐</span>
-                  <h5>时间段限制</h5>
-                </div>
-                <div class="rule-content">
-                  <div class="rule-item">
-                    <label class="rule-label">允许游戏时段</label>
-                    <div class="time-range-inputs">
-                      <div class="time-input-wrapper">
-                        <label>开始</label>
-                        <input
-                          v-model="rules.startTime"
-                          type="time"
-                          class="time-input"
-                        />
-                      </div>
-                      <span class="time-separator">至</span>
-                      <div class="time-input-wrapper">
-                        <label>结束</label>
-                        <input
-                          v-model="rules.endTime"
-                          type="time"
-                          class="time-input"
-                        />
-                      </div>
-                    </div>
-                    <p class="rule-hint">留空则不限制</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 游学币系统 -->
-              <div class="rule-section">
-                <div class="rule-header">
-                  <span class="rule-icon">⭐</span>
-                  <h5>游学币系统</h5>
-                </div>
-                <div class="rule-content">
-                  <div class="rule-item">
-                    <label class="toggle-switch">
-                      <input v-model="rules.enableFatiguePoints" type="checkbox" />
-                      <span class="toggle-slider"></span>
-                      <span class="toggle-label">启用游学币系统</span>
-                    </label>
-                  </div>
-                  <div v-if="rules.enableFatiguePoints" class="rule-item">
-                    <label class="rule-label">
-                      每日游学币上限
-                      <span class="rule-value">{{ rules.maxFatiguePoints || 10 }} 游学币</span>
-                    </label>
-                    <input
-                      v-model.number="rules.maxFatiguePoints"
-                      type="range"
-                      min="1"
-                      max="20"
-                      class="rule-slider"
-                    />
-                    <p class="rule-hint">建议设置为 5-10 游学币</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 保存按钮 -->
-              <div class="rules-actions">
-                <button @click="saveRules" class="save-rules-btn" :disabled="isSaving">
-                  {{ isSaving ? '保存中...' : '💾 保存设置' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
-
-        <!-- 未选择孩子时的提示 -->
-        <div v-else class="no-kid-selected">
-          <span class="empty-icon">👶</span>
-          <p>请从左侧选择一个孩子开始管理</p>
         </div>
       </div>
     </div>
@@ -373,7 +335,6 @@ const emit = defineEmits<{
 }>();
 
 const selectedKid = ref<Kid | null>(null);
-const selectedKidId = ref<number | null>(null);
 const currentManageTab = ref('games');
 const filterMode = ref<'all' | 'authorized' | 'blocked'>('all');
 const searchKeyword = ref('');
@@ -432,10 +393,9 @@ const filteredGames = computed(() => {
   return games;
 });
 
-// 选择孩子
-function selectKid(kid: Kid) {
+// 设置选中的孩子
+function setSelectedKid(kid: Kid) {
   selectedKid.value = kid;
-  selectedKidId.value = kid.kidId;
   // 初始化该孩子的屏蔽列表（如果还没有）
   if (!kidBlockedGames.value.has(kid.kidId)) {
     kidBlockedGames.value.set(kid.kidId, []);
@@ -553,7 +513,7 @@ function getEmptyText(): string {
 // 监听children变化，自动选择第一个孩子
 watch(() => props.children, (newChildren) => {
   if (newChildren && newChildren.length > 0 && !selectedKid.value) {
-    selectKid(newChildren[0]);
+    setSelectedKid(newChildren[0]);
   }
 }, { immediate: true });
 </script>

@@ -3,7 +3,7 @@
  */
 export const ADMIN_PATHS = {
   dashboard: '/admin/dashboard',
-  parent: '/admin/parent',
+  parent: '/parent',
   creatorCenter: '/admin/creator-center',
   gtrsEditor: '/admin/creator-center/gtrs-editor',
 } as const;

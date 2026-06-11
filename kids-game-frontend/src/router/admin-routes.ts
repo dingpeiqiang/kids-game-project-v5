@@ -47,7 +47,9 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/parent',
-    redirect: '/admin/parent',
+    name: 'Parent',
+    component: () => import('@/modules/parent/index.vue'),
+    meta: { title: '家长中心', requiresAuth: true },
   },
   {
     path: '/admin',
@@ -63,11 +65,6 @@ const routes: RouteRecordRaw[] = [
         path: 'dashboard',
         meta: { title: '仪表盘', menuId: 'dashboard' },
         component: () => import('@/modules/admin/components/DashboardOverview.vue'),
-      },
-      {
-        path: 'parent',
-        meta: { title: '家长中心', menuId: 'parent-home' },
-        component: () => import('@/modules/parent/index.vue'),
       },
       {
         path: 'users',

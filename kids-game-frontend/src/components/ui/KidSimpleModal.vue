@@ -97,6 +97,7 @@ function handleCancel() {
 
 function handleConfirm() {
   emit('confirm');
+  handleClose();
 }
 </script>
 

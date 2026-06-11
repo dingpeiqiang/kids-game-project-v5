@@ -25,7 +25,7 @@ const ADMIN_ONLY_IDS = new Set([
 
 export const ALL_ADMIN_MENU_ITEMS: AdminMenuItemDef[] = [
   { id: 'dashboard', name: '仪表盘', icon: '📊', path: '/admin/dashboard', roles: ['admin', 'parent'] },
-  { id: 'parent-home', name: '家长中心', icon: '👨‍👩‍👧', path: '/admin/parent', roles: ['parent', 'admin'] },
+  { id: 'parent-home', name: '家长中心', icon: '👨‍👩‍👧', path: '/parent', roles: ['parent', 'admin'] },
   { id: 'users', name: '用户管理', icon: '👥', path: '/admin/users' },
   { id: 'relations', name: '关系管理', icon: '🔗', path: '/admin/relations' },
   { id: 'configs', name: '管控配置', icon: '⚙️', path: '/admin/configs', roles: ['admin', 'parent'] },
@@ -61,6 +61,6 @@ export function isPathAllowedForRole(path: string, role: AdminPortalRole): boole
 }
 
 export function getDefaultAdminLanding(role: AdminPortalRole): string {
-  if (role === 'parent') return '/admin/parent';
+  if (role === 'parent') return '/parent';
   return '/admin/dashboard';
 }

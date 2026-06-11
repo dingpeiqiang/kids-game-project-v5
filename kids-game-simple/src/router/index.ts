@@ -85,7 +85,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/parent',
     beforeEnter: () => {
-      window.location.href = `${DEFAULT_ADMIN_URL.replace(/\/$/, '')}/admin/parent`;
+      window.location.href = `${DEFAULT_ADMIN_URL.replace(/\/$/, '')}/parent`;
       return false;
     },
     component: () => import('@/modules/login/index.vue'),

@@ -835,8 +835,8 @@ function logout() {
   showLogoutConfirm.value = true;
 }
 
-function confirmLogout() {
-  userStore.logoutParent();
+async function confirmLogout() {
+  await userStore.logoutParent();
   showLogoutConfirm.value = false;
   router.push('/login');
 }
