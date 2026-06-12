@@ -679,8 +679,24 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
 
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.fillRect(0, 0, W, 60);
-
+  const levelConfigEarly = LEVELS[state.currentLevel - 1];
+  const levelNameEarly = levelConfigEarly?.name || `第${state.currentLevel}关`;
+  const timeColorHud = state.timeRemaining <= 10 ? '#E74C3C' : '#FFFFFF';
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.beginPath();
+  ctx.roundRect(10, 8, W - 20, 40, 10);
+  ctx.fill();
+  ctx.fillStyle = timeColorHud;
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const comboHud = state.combo >= 3 ? ` · 🔥${state.combo}` : '';
+  ctx.fillText(
+    `${levelNameEarly} · 💰${state.coinsCollected} · ⏱${state.timeRemaining}s${comboHud}`,
+    W / 2,
+    28,
+  );
+  if (false) {
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'left';

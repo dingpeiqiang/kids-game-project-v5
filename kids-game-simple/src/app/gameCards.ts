@@ -462,54 +462,63 @@ export function renderFavoritesPage(ctx: PlatformContext) {
   if (favoritesGameList) {
     favoritesGameList.innerHTML = ''
     if (favoriteGames.length > 0) {
-      // 获取收藏游戏的排名（与首页保持一致）
-      const rankMap = new Map<string, number>()
+      // 立即渲染卡片（与首页保持一致，先显示再更新排名）
+      const gamesToPreview: Game[] = []
+      favoriteGames.forEach((game) => {
+        const best = ctx.store.bestScores[game.id] || 0
+        const card = createGameCard(ctx, game, best, null)
+        favoritesGameList.appendChild(card)
+        gamesToPreview.push(game)
+      })
+      if (noFavorites) noFavorites.style.display = 'none'
+
+      // 预览动画（与首页保持一致，统一延迟50ms）
+      setTimeout(() => {
+        gamesToPreview.forEach(game => ctx.renderPreview(game))
+      }, 50)
+
+      // 异步获取排名并更新卡片显示（后台更新，不阻塞UI）
       if (userService.isLoggedIn && userService.current) {
         const uid = String(userService.current.id)
         Promise.all(favoriteGames.map(async game => {
           try {
             const rankInfo = await getUserRank(game.id, uid)
             if (rankInfo && rankInfo.rank !== null) {
-              rankMap.set(game.id, rankInfo.rank)
+              const card = favoritesGameList.querySelector(`[data-game-id="${game.id}"]`)
+              if (card) {
+                const rankEl = card.querySelector('.card-rank')
+                if (rankEl) {
+                  rankEl.innerHTML = getRankIcon(rankInfo.rank) + ' 第' + rankInfo.rank + '名'
+                  rankEl.className = 'card-rank ' + getRankClass(rankInfo.rank)
+                }
+              }
             }
           } catch (e) {
             // ignore
           }
-        })).then(() => {
-          // 重新渲染卡片（带排名）
-          favoritesGameList.innerHTML = ''
-          const gamesToPreview: Game[] = []
-          favoriteGames.forEach((game) => {
-            const best = ctx.store.bestScores[game.id] || 0
-            const rank = rankMap.get(game.id) ?? null
-            const card = createGameCard(ctx, game, best, rank)
-            favoritesGameList.appendChild(card)
-            gamesToPreview.push(game)
-          })
-          // 预览动画（与首页保持一致，统一延迟50ms）
-          setTimeout(() => {
-            gamesToPreview.forEach(game => ctx.renderPreview(game))
-          }, 50)
-        })
-      } else {
-        // 未登录时直接渲染（无排名）
-        const gamesToPreview: Game[] = []
-        favoriteGames.forEach((game) => {
-          const best = ctx.store.bestScores[game.id] || 0
-          const card = createGameCard(ctx, game, best, null)
-          favoritesGameList.appendChild(card)
-          gamesToPreview.push(game)
-        })
-        setTimeout(() => {
-          gamesToPreview.forEach(game => ctx.renderPreview(game))
-        }, 50)
+        }))
       }
-      if (noFavorites) noFavorites.style.display = 'none'
     } else {
       console.log('[App] renderFavoritesPage: No favorite games to display')
       if (noFavorites) noFavorites.style.display = 'flex'
     }
   }
+}
+
+// 辅助函数：获取排名图标
+function getRankIcon(rank: number): string {
+  if (rank === 1) return '🥇'
+  if (rank === 2) return '🥈'
+  if (rank === 3) return '🥉'
+  return '🏅'
+}
+
+// 辅助函数：获取排名样式类
+function getRankClass(rank: number): string {
+  if (rank === 1) return 'rank-gold'
+  if (rank === 2) return 'rank-silver'
+  if (rank === 3) return 'rank-bronze'
+  return ''
 }
 
 // ==================== 分数刷新 ====================
