@@ -103,7 +103,6 @@ export class AuthModal {
 
     if (isLogin) {
       document.getElementById('btnDoLogin')?.addEventListener('click', () => this.doLogin())
-      document.getElementById('btnGuest')?.addEventListener('click', () => this.doGuest())
       document.getElementById('ugp-login-pass')?.addEventListener('keydown', (e) => {
         if ((e as KeyboardEvent).key === 'Enter') this.doLogin()
       })
@@ -209,14 +208,6 @@ export class AuthModal {
       </div>
       <div class="ugp-error" id="authError"></div>
       <button class="ugp-btn ugp-btn-primary" id="btnDoLogin">登录</button>
-      <div class="ugp-guest-notice">
-        <div class="ugp-guest-icon">⚠️</div>
-        <div class="ugp-guest-text">
-          <div class="ugp-guest-title">游客试玩模式</div>
-          <div class="ugp-guest-desc">游戏数据仅保存在当前设备，清除缓存或更换设备后将丢失。建议注册账号以永久保存进度。</div>
-        </div>
-      </div>
-      <button class="ugp-btn ugp-btn-ghost" id="btnGuest">👤 游客试玩（数据不保存）</button>
     `
   }
 
@@ -367,13 +358,6 @@ export class AuthModal {
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '立即注册' }
     }
-  }
-
-  private doGuest() {
-    userService.guestLogin()
-    this.close()
-    this.onSuccess?.()
-    showToast('⚠️ 游客模式：游戏数据仅保存在当前设备，清除缓存后将丢失', 'info')
   }
 }
 
@@ -573,18 +557,12 @@ export class MePanel {
         <div class="ugp-nl-title">尚未登录</div>
         <div class="ugp-nl-desc">登录后可保存游戏数据、查看成就和排行</div>
         <button class="ugp-btn ugp-btn-primary" id="btnNlLogin">登录 / 注册</button>
-        <button class="ugp-btn ugp-btn-ghost" id="btnNlGuest" style="margin-top:8px">游客模式</button>
         <button class="ugp-btn ugp-btn-ghost2" id="btnNlClose" style="margin-top:8px">关闭</button>
       </div>
     `
     document.getElementById('btnNlLogin')?.addEventListener('click', () => {
       this.close()
       this.authModal.open(() => { this.open() })
-    })
-    document.getElementById('btnNlGuest')?.addEventListener('click', () => {
-      userService.guestLogin()
-      showToast('游客模式已进入', 'info')
-      this.render()
     })
     document.getElementById('btnNlClose')?.addEventListener('click', () => this.close())
   }

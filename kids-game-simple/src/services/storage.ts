@@ -93,9 +93,6 @@ export class StorageService {
 
     this.data.dailyRewardCollected = today
     this.data.coins += coins
-    if (days >= 3) {
-      // 连续3天以上额外奖励经验（游客模式不处理经验）
-    }
 
     localStorage.setItem(KEYS.dailyRewardCollected, today)
     localStorage.setItem(KEYS.coins, String(this.data.coins))

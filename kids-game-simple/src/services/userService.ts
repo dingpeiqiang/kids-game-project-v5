@@ -31,9 +31,10 @@ import {
   type SignInInfoData
 } from './apiClient'
 
-// ─────────────────────────────────────────────
-// 本地游戏数据存储 key（与认证无关，纯前端）
-// ─────────────────────────────────────────────
+// 架构说明：
+//   认证层（登录/注册/Token）  → kids-game-backend API（/api/auth、/api/user）
+//   排行榜（分数同步/排名查询） → kids-game-backend API（/api/leaderboard）
+//   其他游戏数据（签到/道具）   → localStorage
 const LOCAL_KEYS = {
   // 账号缓存（本地快速切换用，不含密码）
   accounts: 'ugp_accounts',
@@ -244,26 +245,6 @@ class UserService {
     return { ok: true, msg: res.msg }
   }
 
-  // ── 游客登录（自动创建本地账号，不与后端交互）────────────────
-  guestLogin(): UserAccount {
-    const guestId = 'guest_' + Date.now().toString(36)
-    const username = '游客' + Math.floor(Math.random() * 9000 + 1000)
-    const gd = defaultGameData()
-
-    const account: UserAccount = {
-      id: guestId,
-      username,
-      password: '',
-      avatar: pickAvatar(),
-      createdAt: new Date().toISOString(),
-      ...gd,
-    }
-
-    this._current = account
-    // 游客不存入本地账号列表，也不写 Token
-    return account
-  }
-
   // ── 登出 ──────────────────────────────────────────────────────
   async logout() {
     await apiClient.logout()  // 通知后端（忽略失败）
@@ -347,8 +328,8 @@ class UserService {
 
   // ── 手动签到领奖 ──────────────────────────────────────────────
   async collectDailyReward(): Promise<{ ok: boolean; msg: string; coins?: number }> {
-    if (!this._current) return { ok: false, msg: '请先登录或进入游客模式' }
-    
+    if (!this._current) return { ok: false, msg: '请先登录' }
+
     const today = new Date().toDateString()
     if (this._current.dailyRewardCollected === today) return { ok: false, msg: '今日已领取' }
 
@@ -393,7 +374,7 @@ class UserService {
       }
     }
 
-    // 本地模式（兼容游客或后端不可用时）
+    // 本地模式（后端不可用时）
     const days = this._current.consecutiveLoginDays
     const baseCoins = 50
     const bonus = Math.min(days - 1, 6) * 10

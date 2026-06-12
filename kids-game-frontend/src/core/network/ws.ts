@@ -14,7 +14,7 @@ export type WSMessageHandler = (data: any) => void;
 class WebSocketClient {
   private ws: WebSocket | null = null;
   private baseUrl: string;
-  private userId: string = 'guest';
+  private userId: string = '';
   private reconnectDelay: number = 3000;
   private maxReconnect: number = 5;
   private reconnectCount: number = 0;
