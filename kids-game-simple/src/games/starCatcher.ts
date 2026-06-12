@@ -15,7 +15,6 @@ export function initStarCatcher(engine: GameEngine, onEnd: () => void) {
   const stars: any[] = []
   const obstacles: any[] = []
   const particles: any[] = []
-  let combo = 0
   let lastSpawn = 0
   let gameStartTime = Date.now()
   const GAME_DURATION = 60000
@@ -178,27 +177,20 @@ export function initStarCatcher(engine: GameEngine, onEnd: () => void) {
       ctx.globalAlpha = 1
     })
 
-    // 分数
-    ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 40px sans-serif'
+    const elapsedHud = Date.now() - gameStartTime
+    const remainingHud = Math.max(0, GAME_DURATION - elapsedHud)
+    const secondsHud = Math.ceil(remainingHud / 1000)
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 40, 10)
+    ctx.fill()
+    ctx.fillStyle = secondsHud <= 10 ? '#FF4444' : '#FFD700'
+    ctx.font = 'bold 16px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(String(engine.getScore()), W / 2, 50)
-    
-    if (combo >= 3) {
-      ctx.fillStyle = '#FF69B4'
-      ctx.font = 'bold 24px sans-serif'
-      ctx.fillText(`${combo} 连击!`, W / 2, 90)
-    }
-
-    // 时间
-    const elapsed = Date.now() - gameStartTime
-    const remaining = Math.max(0, GAME_DURATION - elapsed)
-    const seconds = Math.ceil(remaining / 1000)
-    
-    ctx.fillStyle = seconds <= 10 ? '#FF4444' : '#fff'
-    ctx.font = 'bold 22px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`${seconds}s`, W - 15, 45)
+    ctx.textBaseline = 'middle'
+    const streak = engine.getCombo()
+    const comboLabel = streak >= 3 ? ` · 🔥${streak}连击` : ''
+    ctx.fillText(`⏱ 剩余 ${secondsHud} 秒${comboLabel}`, W / 2, 28)
 
     // 提示
     ctx.fillStyle = 'rgba(255,255,255,0.4)'
@@ -221,9 +213,8 @@ export function initStarCatcher(engine: GameEngine, onEnd: () => void) {
       // 碰撞检测
       const dist = Math.hypot(player.x - s.x, player.y - s.y)
       if (dist < player.size + s.size / 2) {
-        combo++
-        const score = s.type === 'gold' ? 20 : 10
-        engine.addScore(score * combo, s.x, s.y)
+        const base = s.type === 'gold' ? 20 : 10
+        engine.addScore(base, s.x, s.y)
         audioService.win()
         
         // 收集特效
@@ -239,14 +230,14 @@ export function initStarCatcher(engine: GameEngine, onEnd: () => void) {
           })
         }
         
-        if (combo >= 5) engine.triggerRandomBuff()
+        if (engine.getCombo() >= 5) engine.triggerRandomBuff()
         stars.splice(i, 1)
         continue
       }
 
       // 超出屏幕
       if (s.y > H + 50) {
-        combo = 0
+        engine.breakCombo()
         stars.splice(i, 1)
       }
     }
@@ -260,7 +251,7 @@ export function initStarCatcher(engine: GameEngine, onEnd: () => void) {
       const dist = Math.hypot(player.x - o.x, player.y - o.y)
       if (dist < player.size + o.size / 2) {
         engine.addScore(-30, player.x, player.y)
-        combo = 0
+        engine.breakCombo()
         audioService.lose()
         
         // 碰撞特效

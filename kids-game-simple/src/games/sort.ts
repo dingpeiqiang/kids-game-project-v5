@@ -401,15 +401,18 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
     
     ctx.restore()
     
-    // UI层
-    ctx.fillStyle = '#fff'
-    ctx.font = 'bold 28px sans-serif'
+    const nowHud = Date.now()
+    const remainingHud = Math.max(0, 120000 - (nowHud - gameStartTime))
+    const secondsHud = Math.ceil(remainingHud / 1000)
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 40, 10)
+    ctx.fill()
+    ctx.fillStyle = secondsHud <= 20 ? '#FF6B6B' : '#DDA0DD'
+    ctx.font = 'bold 15px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(`${score}`, W / 2, 35)
-    
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'
-    ctx.font = '14px sans-serif'
-    ctx.fillText(`步数: ${moves}`, W / 2, 55)
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`步数 ${moves} · ⏱ ${secondsHud} 秒`, W / 2, 28)
     
     // 操作提示（胜利动画时不显示）
     if (!winAnimation) {
@@ -424,17 +427,6 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
       }
     }
     
-    // 倒计时
-    const now = Date.now()
-    const remaining = Math.max(0, 120000 - (now - gameStartTime))
-    const seconds = Math.ceil(remaining / 1000)
-    
-    if (seconds <= 20) {
-      ctx.fillStyle = seconds <= 5 ? '#FF6B6B' : '#FFD93D'
-      ctx.font = 'bold 18px sans-serif'
-      ctx.textAlign = 'right'
-      ctx.fillText(`⏱️ ${seconds}s`, W - 20, 35)
-    }
   }
   
   // 更新
@@ -466,7 +458,8 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
     // 检查胜利
     if (checkWin()) {
       winAnimation = true
-      engine.addScore(score + 100, W / 2, H / 2)
+      engine.addScore(100, W / 2, H / 2)
+      engine.setVictory(true)
       audioService.win()
       
       // 添加胜利文字

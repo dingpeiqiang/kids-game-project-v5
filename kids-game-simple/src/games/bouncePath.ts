@@ -13,8 +13,6 @@ export function initBouncePath(engine: GameEngine, onEnd: () => void) {
   let ball = { x: W / 2, y: H - 80, vx: 0, vy: 0, r: 15, color: BALL_COLORS[0] }
   const stars: any[] = []
   const particles: any[] = []
-  let score = 0
-  let combo = 0
   let gameStartTime = Date.now()
   const GAME_DURATION = 60000
   let gameEnded = false
@@ -166,27 +164,20 @@ export function initBouncePath(engine: GameEngine, onEnd: () => void) {
     ctx.fill()
     ctx.shadowBlur = 0
 
-    // 绘制分数
-    ctx.fillStyle = '#fff'
-    ctx.font = 'bold 32px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(String(score), W / 2, 40)
-    
-    if (combo >= 2) {
-      ctx.fillStyle = '#FF6B6B'
-      ctx.font = 'bold 18px sans-serif'
-      ctx.fillText(`🔥 ${combo}x`, W / 2, 65)
-    }
-
-    // 剩余时间
-    const elapsed = Date.now() - gameStartTime
-    const remaining = Math.max(0, GAME_DURATION - elapsed)
-    const seconds = Math.ceil(remaining / 1000)
-    
-    ctx.fillStyle = seconds <= 10 ? '#FF6B6B' : 'rgba(255,255,255,0.7)'
+    const elapsedHud = Date.now() - gameStartTime
+    const remainingHud = Math.max(0, GAME_DURATION - elapsedHud)
+    const secondsHud = Math.ceil(remainingHud / 1000)
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 40, 10)
+    ctx.fill()
+    ctx.fillStyle = secondsHud <= 10 ? '#FF6B6B' : '#4ECDC4'
     ctx.font = 'bold 16px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`${seconds}s`, W - 20, 35)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const streak = engine.getCombo()
+    const comboLabel = streak >= 2 ? ` · 🔥${streak}` : ''
+    ctx.fillText(`⏱ 剩余 ${secondsHud} 秒${comboLabel}`, W / 2, 28)
 
     // 绘制粒子
     particles.forEach((p, i) => {
@@ -261,10 +252,9 @@ export function initBouncePath(engine: GameEngine, onEnd: () => void) {
       const dist = Math.hypot(ball.x - s.x, ball.y - s.y)
       if (dist < ball.r + s.size / 2) {
         s.collected = true
-        combo++
-        const points = ((window as any).bounceScore2x && Date.now() < (window as any).bounceScore2x) ? 40 * combo : 20 * combo
-        score += points
-        engine.addScore(points, s.x, s.y)
+        let base = 20
+        if ((window as any).bounceScore2x && Date.now() < (window as any).bounceScore2x) base *= 2
+        engine.addScore(base, s.x, s.y)
         audioService.win()
         
         // 粒子爆炸
@@ -280,7 +270,7 @@ export function initBouncePath(engine: GameEngine, onEnd: () => void) {
           })
         }
         
-        if (combo >= 3) engine.triggerRandomBuff()
+        if (engine.getCombo() >= 3) engine.triggerRandomBuff()
       }
     })
     

@@ -16,8 +16,6 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
   let coins: any[] = []
   let particles: any[] = []
   let speed = 3
-  let score = 0
-  let combo = 0
   let gameStartTime = Date.now()
   let gameEnded = false
   let lastObs = 0
@@ -204,23 +202,24 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
       ctx.globalAlpha = 1
     })
 
-    // 分数
-    ctx.fillStyle = '#fff'
-    ctx.font = 'bold 28px sans-serif'
+    const elapsedHud = Date.now() - gameStartTime
+    const remainSec = Math.max(0, Math.ceil((180000 - elapsedHud) / 1000))
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 40, 10)
+    ctx.fill()
+    ctx.fillStyle = remainSec <= 30 ? '#FF6B6B' : '#E0E7FF'
+    ctx.font = 'bold 15px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(String(score), W / 2, 40)
-    
-    if (combo >= 3) {
-      ctx.fillStyle = '#FFD700'
-      ctx.font = 'bold 16px sans-serif'
-      ctx.fillText(`🔥 ${combo} 连击`, W / 2, 65)
-    }
+    ctx.textBaseline = 'middle'
+    const streak = engine.getCombo()
+    const comboLabel = streak >= 3 ? ` · 🔥${streak}` : ''
+    ctx.fillText(
+      `速度 ${speed.toFixed(1)} · ⏱ ${remainSec}s${comboLabel}`,
+      W / 2,
+      28,
+    )
 
-    // 速度指示
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'
-    ctx.font = '14px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`速度: ${speed.toFixed(1)}`, W - 20, 35)
   }
 
   function update() {
@@ -240,7 +239,7 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
           o.lane === playerLane && 
           o.y + o.h > playerY - 25 && 
           o.y < playerY + 25) {
-        combo = 0
+        engine.breakCombo()
         invincible = 60
         audioService.lose()
         
@@ -263,10 +262,9 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
       
       if (o.y > H + 100) {
         obstacles.splice(i, 1)
-        const points = score2xActive ? 20 : 10
-        score += points
-        combo++
-        if (combo >= 5) engine.triggerRandomBuff()
+        const base = score2xActive ? 20 : 10
+        engine.addScore(base, px, playerY)
+        if (engine.getCombo() >= 5) engine.triggerRandomBuff()
       }
     }
 
@@ -293,11 +291,9 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
       if (!c.collected && c.lane === playerLane && 
           Math.abs(c.y - playerY) < 40) {
         c.collected = true
-        combo++
-        const basePoints = 20 * combo
-        const points = score2xActive ? basePoints * 2 : basePoints
-        score += points
-        engine.addScore(points, c.x, c.y)
+        let base = 20
+        if (score2xActive) base *= 2
+        engine.addScore(base, c.x, c.y)
         audioService.win()
         
         for (let j = 0; j < 10; j++) {
@@ -329,7 +325,7 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
     }
     
     // 道具自动获取：每500分获得一个道具
-    const powerupThreshold = Math.floor(score / 500)
+    const powerupThreshold = Math.floor(engine.getScore() / 500)
     if (powerupThreshold > 0 && powerupThreshold !== (window as any).neonLastPowerupGiven) {
       ;(window as any).neonLastPowerupGiven = powerupThreshold
       const powerups = ['invincible', 'slow', 'magnet', 'score2x']

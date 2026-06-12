@@ -581,17 +581,6 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
     ctx.roundRect(barX, barY, barWidth * progress, barHeight, 4)
     ctx.fill()
     
-    ctx.fillStyle = '#333'
-    ctx.font = 'bold 14px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(`${seconds}s`, W / 2, barY + 25)
-
-    if (combo > 1) {
-      ctx.fillStyle = `rgba(255, 193, 7, ${0.8})`
-      ctx.font = `bold ${24 + combo * 4}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.fillText(`${combo} COMBO!`, W / 2, H / 2)
-    }
   }
 
   function getScaledPos(e: MouseEvent | Touch) {
@@ -894,10 +883,9 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
       if (specialTriggered) return
 
       const points = matches.length * 20 * (combo + 1)
-      score += points
       engine.addScore(points, W / 2, H / 2)
-      
-      if (score >= targetScore) {
+
+      if (engine.getScore() >= targetScore) {
         level++
         targetScore = Math.floor(targetScore * 1.5)
         audioService.buff()

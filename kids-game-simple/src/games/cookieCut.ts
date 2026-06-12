@@ -20,7 +20,6 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
   const cookies: any[] = []
   const particles: any[] = []
   const slices: any[] = []
-  let combo = 0
   let lastSpawn = 0
   let gameStartTime = Date.now()
   const GAME_DURATION = 60000
@@ -179,28 +178,20 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
       ctx.globalAlpha = 1
     })
 
-    // 分数
-    ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 40px sans-serif'
+    const elapsedHud = Date.now() - gameStartTime
+    const remainingHud = Math.max(0, GAME_DURATION - elapsedHud)
+    const secondsHud = Math.ceil(remainingHud / 1000)
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 40, 10)
+    ctx.fill()
+    ctx.fillStyle = secondsHud <= 10 ? '#FF4444' : '#D2691E'
+    ctx.font = 'bold 16px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(String(engine.getScore()), W / 2, 55)
-    
-    // 连击
-    if (combo >= 2) {
-      ctx.fillStyle = '#FF9F43'
-      ctx.font = 'bold 28px sans-serif'
-      ctx.fillText(`${combo} 连击!`, W / 2, 100)
-    }
-
-    // 时间
-    const elapsed = Date.now() - gameStartTime
-    const remaining = Math.max(0, GAME_DURATION - elapsed)
-    const seconds = Math.ceil(remaining / 1000)
-    
-    ctx.fillStyle = seconds <= 10 ? '#FF4444' : '#fff'
-    ctx.font = 'bold 24px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`${seconds}s`, W - 15, 50)
+    ctx.textBaseline = 'middle'
+    const streak = engine.getCombo()
+    const comboLabel = streak >= 2 ? ` · 🔥${streak}连击` : ''
+    ctx.fillText(`⏱ 剩余 ${secondsHud} 秒${comboLabel}`, W / 2, 28)
 
     // 提示
     ctx.fillStyle = 'rgba(255,255,255,0.5)'
@@ -258,8 +249,7 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
       
       if (dist < c.size / 2 + 25) {
         c.sliced = true
-        combo++
-        engine.addScore(15 * combo, c.x, c.y)
+        const earned = engine.addScore(15, c.x, c.y)
         audioService.win()
         
         // 饼干碎屑
@@ -275,7 +265,7 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
           })
         }
         
-        if (combo >= 3) engine.triggerRandomBuff()
+        if (engine.getCombo() >= 3) engine.triggerRandomBuff()
         cookies.splice(i, 1)
       }
     }

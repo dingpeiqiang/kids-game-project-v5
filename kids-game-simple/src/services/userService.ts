@@ -44,6 +44,7 @@ const LOCAL_KEYS = {
 // 游戏数据结构（存 localStorage）
 interface LocalGameData {
   coins: number
+  studyCoins: number   // 游学币（来自后端 fatiguePoints）
   exp: number
   bestScores: Record<string, number>
   gameRecords: GameRecord[]
@@ -71,6 +72,7 @@ function defaultGameData(): LocalGameData {
   const today = new Date().toDateString()
   return {
     coins: 0,
+    studyCoins: 0,
     exp: 0,
     bestScores: {},
     gameRecords: [],
@@ -176,6 +178,12 @@ class UserService {
     if (gd.todayDate !== today) {
       gd.todayGames = 0
       gd.todayDate = today
+    }
+
+    // 同步后端的游学币（fatiguePoints）到本地
+    if ('fatiguePoints' in info && typeof info.fatiguePoints === 'number') {
+      gd.studyCoins = info.fatiguePoints
+      saveGameData(uid, gd)
     }
 
     const account: UserAccount = {
@@ -606,11 +614,29 @@ class UserService {
       .slice(0, limit)
   }
 
+  // ── 刷新游学币（从后端同步）───────────────────────────────────
+  async refreshStudyCoins(): Promise<void> {
+    if (!this._current || !this.isLoggedIn) return
+    try {
+      const info = await apiClient.getCurrentUser()
+      if (info && 'fatiguePoints' in info) {
+        this._current.studyCoins = info.fatiguePoints
+        const gd = loadGameData(this._current.id)
+        gd.studyCoins = info.fatiguePoints
+        saveGameData(this._current.id, gd)
+        window.dispatchEvent(new CustomEvent('ugp:userChange'))
+      }
+    } catch (e) {
+      console.warn('[UserService] 刷新游学币失败', e)
+    }
+  }
+
   // ── 持久化 ──────────────────────────────────────────────────────
   saveUser(account: UserAccount) {
     const uid = account.id
     const gd: LocalGameData = {
       coins: account.coins,
+      studyCoins: account.studyCoins,
       exp: account.exp,
       bestScores: account.bestScores,
       gameRecords: account.gameRecords,

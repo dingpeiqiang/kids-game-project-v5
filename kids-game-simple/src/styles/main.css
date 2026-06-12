@@ -147,7 +147,7 @@ body{
 .coin-display{
   display:flex;
   align-items:center;
-  gap:5px;
+  gap:8px;
   background:rgba(255,215,0,0.15);
   border:1.5px solid rgba(255,215,0,0.4);
   border-radius:20px;
@@ -157,6 +157,16 @@ body{
   color:#FFD93D;
   flex-shrink: 0;
   backdrop-filter: blur(4px);
+}
+.coin-item {
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.coin-divider {
+  width:1px;
+  height:14px;
+  background:rgba(255,215,0,0.4);
 }
 .coin-icon{
   width:16px;
@@ -168,6 +178,12 @@ body{
   justify-content:center;
   font-size:9px;
   color:#fff;
+}
+.study-coin {
+  color:#7EC8E3;
+}
+.study-coin .coin-icon {
+  background:#7EC8E3;
 }
 .user-avatar{
   width:36px;

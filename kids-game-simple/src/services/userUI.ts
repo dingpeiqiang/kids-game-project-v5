@@ -383,6 +383,7 @@ export class AuthModal {
 export class MePanel {
   private el: HTMLElement | null = null
   private authModal: AuthModal
+  private eventsBound = false
 
   constructor(authModal: AuthModal) {
     this.authModal = authModal
@@ -589,49 +590,70 @@ export class MePanel {
   }
 
   private bindMeEvents() {
-    document.getElementById('btnCloseMe2')?.addEventListener('click', () => this.close())
+    if (!this.el || this.eventsBound) return
 
-    document.getElementById('btnSignIn')?.addEventListener('click', async () => {
-      const res = await userService.collectDailyReward()
-      if (res.ok) {
-        showToast(res.msg!, 'success')
-        this.render()
-      } else {
-        showToast(res.msg, 'info')
+    this.eventsBound = true
+
+    // 使用事件委托，绑定到容器元素，避免重复绑定和元素丢失问题
+    this.el.addEventListener('click', async (e) => {
+      const target = e.target as HTMLElement
+
+      // 关闭按钮
+      if (target.closest('#btnCloseMe2')) {
+        this.close()
+        return
       }
-    })
 
-    document.getElementById('btnMeResetGuide')?.addEventListener('click', () => {
-      if (confirm('确定重置所有游戏引导吗？')) {
-        const u = userService.current
-        if (u) {
-          u.guideSkipped = {}
-          userService.saveUser(u)
-          showToast('引导已重置', 'success')
-        }
-      }
-    })
-
-    document.getElementById('btnMeLogout')?.addEventListener('click', async () => {
-      if (confirm('确定退出登录？')) {
-        await userService.logout()
-        showToast('已退出登录', 'info')
-        this.render()
-        // 触发顶部栏更新
-        window.dispatchEvent(new CustomEvent('ugp:userChange'))
-      }
-    })
-
-    document.getElementById('btnMeClearData')?.addEventListener('click', () => {
-      if (confirm('警告：将清除该账号所有游戏数据！此操作不可撤销！')) {
-        const u = userService.current
-        if (u) {
-          u.coins = 0; u.exp = 0; u.bestScores = {}
-          u.gameRecords = []; u.achievements = []; u.items = {}
-          userService.saveUser(u)
-          showToast('数据已清除', 'success')
+      // 签到按钮
+      if (target.closest('#btnSignIn')) {
+        const res = await userService.collectDailyReward()
+        if (res.ok) {
+          showToast(res.msg!, 'success')
           this.render()
+        } else {
+          showToast(res.msg, 'info')
         }
+        return
+      }
+
+      // 重置引导按钮
+      if (target.closest('#btnMeResetGuide')) {
+        if (confirm('确定重置所有游戏引导吗？')) {
+          const u = userService.current
+          if (u) {
+            u.guideSkipped = {}
+            userService.saveUser(u)
+            showToast('引导已重置', 'success')
+          }
+        }
+        return
+      }
+
+      // 退出登录按钮
+      if (target.closest('#btnMeLogout')) {
+        if (confirm('确定退出登录？')) {
+          await userService.logout()
+          showToast('已退出登录', 'info')
+          this.render()
+          // 触发顶部栏更新
+          window.dispatchEvent(new CustomEvent('ugp:userChange'))
+        }
+        return
+      }
+
+      // 清除数据按钮
+      if (target.closest('#btnMeClearData')) {
+        if (confirm('警告：将清除该账号所有游戏数据！此操作不可撤销！')) {
+          const u = userService.current
+          if (u) {
+            u.coins = 0; u.exp = 0; u.bestScores = {}
+            u.gameRecords = []; u.achievements = []; u.items = {}
+            userService.saveUser(u)
+            showToast('数据已清除', 'success')
+            this.render()
+          }
+        }
+        return
       }
     })
   }

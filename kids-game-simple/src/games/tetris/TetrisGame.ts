@@ -551,28 +551,23 @@ export class TetrisGame {
   
   private drawUI() {
     const W = this.canvas.width
-    
-    // 分数显示
-    this.ctx.fillStyle = '#fff'
-    this.ctx.font = 'bold 24px sans-serif'
+
+    this.ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    this.ctx.beginPath()
+    this.ctx.roundRect(10, 8, W - 20, 40, 10)
+    this.ctx.fill()
+    const comboLabel = this.combo > 1 ? ` · ${this.combo}连击` : ''
+    this.ctx.fillStyle = '#4D96FF'
+    this.ctx.font = 'bold 15px sans-serif'
     this.ctx.textAlign = 'center'
-    this.ctx.fillText(String(this.score), W / 4, 35)
-    
-    this.ctx.font = '14px sans-serif'
-    this.ctx.fillText(`行: ${this.lines}`, W / 4, 55)
-    this.ctx.fillText(`等级: ${this.level}`, W / 4, 75)
-    
-    // 显示连击
-    if (this.combo > 1) {
-      this.ctx.fillStyle = `hsl(${(this.combo * 30) % 360}, 100%, 60%)`
-      this.ctx.font = `bold ${20 + this.combo * 2}px sans-serif`
-      this.ctx.shadowBlur = 15
-      this.ctx.shadowColor = this.ctx.fillStyle
-      this.ctx.fillText(`${this.combo}x COMBO!`, W / 2, 100)
-      this.ctx.shadowBlur = 0
-    }
-    
-    // 显示激活的道具状态
+    this.ctx.textBaseline = 'middle'
+    this.ctx.fillText(
+      `等级 ${this.level} · 消行 ${this.lines}${comboLabel}`,
+      W / 2,
+      28,
+    )
+
+    // 显示激活的道具状态（左侧小字，避免挡棋盘）
     const now = Date.now()
     let statusY = 95
     

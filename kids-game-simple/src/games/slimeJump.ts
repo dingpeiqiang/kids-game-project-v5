@@ -301,45 +301,23 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
       ctx.globalAlpha = 1
     })
 
-    // 分数
-    ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 36px sans-serif'
+    const elapsedHud = Date.now() - gameStartTime
+    const remainingHud = Math.max(0, GAME_DURATION - elapsedHud)
+    const secondsHud = Math.ceil(remainingHud / 1000)
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 40, 10)
+    ctx.fill()
+    ctx.fillStyle = secondsHud <= 10 ? '#FF4444' : '#6BCB77'
+    ctx.font = 'bold 15px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(String(engine.getScore()), W / 2, 45)
-    
-    if (combo >= 3) {
-      ctx.fillStyle = '#9B59B6'
-      ctx.font = 'bold 22px sans-serif'
-      ctx.fillText(`${combo} 跳!`, W / 2, 80)
-    }
-
-    // 高度
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'
-    ctx.font = '16px sans-serif'
-    ctx.textAlign = 'left'
-    ctx.fillText(`高度: ${score}m`, 15, 45)
-    
-    // 难度显示
-    ctx.fillStyle = '#FF6B6B'
-    ctx.font = 'bold 14px sans-serif'
-    ctx.fillText(`难度: Lv.${difficulty}`, 15, 65)
-    
-    // 最大连击
-    if (maxCombo >= 3) {
-      ctx.fillStyle = '#9B59B6'
-      ctx.font = '14px sans-serif'
-      ctx.fillText(`最高连击: ${maxCombo}`, 15, 82)
-    }
-
-    // 时间
-    const elapsed = Date.now() - gameStartTime
-    const remaining = Math.max(0, GAME_DURATION - elapsed)
-    const seconds = Math.ceil(remaining / 1000)
-    
-    ctx.fillStyle = seconds <= 10 ? '#FF4444' : '#fff'
-    ctx.font = 'bold 20px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`${seconds}s`, W - 15, 45)
+    ctx.textBaseline = 'middle'
+    const jumpLabel = combo >= 3 ? ` · 🔥${combo}跳` : ''
+    ctx.fillText(
+      `高度 ${score}m · Lv.${difficulty} · ⏱ ${secondsHud}s${jumpLabel}`,
+      W / 2,
+      28,
+    )
 
     // 提示 - 根据难度显示不同提示
     ctx.fillStyle = 'rgba(255,255,255,0.4)'

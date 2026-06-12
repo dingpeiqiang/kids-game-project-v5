@@ -35,7 +35,8 @@ export interface UserAccount {
   password: string      // 简单密码（MD5 hash）
   avatar: string        // emoji 头像
   createdAt: string     // 注册时间
-  coins: number
+  coins: number         // 金币（游戏积分兑换/系统任务赠送）
+  studyCoins: number    // 游学币（答题奖励获得）
   exp: number           // 经验值
   bestScores: Record<string, number>
   gameRecords: GameRecord[]       // 最近100条战绩

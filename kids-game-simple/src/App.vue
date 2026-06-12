@@ -1,9 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { storageService } from './services/storage'
 import { userService } from './services/userService'
 import type { PlatformContext } from './app/types'
 import type { Game } from './types'
+import { AuthModal, MePanel, injectUserStyles } from './services/userUI'
+import { renderUI, showDailyPop, closeDailyPop } from './app/ui'
+import { renderGameCards, createGameCard, renderPreview, getFavorites, toggleFavorite, refreshCurrentPage, performSearch, switchToHome, showSearchResults, renderFavoritesPage, refreshBestScores, showScoreFly } from './app/gameCards'
+import { launchGame, showGameGuide, closeGuide, cancelGuide, startGame, endGame, showResult, syncScoreAsync, closeResult, replayGame, exitGame, setRating, submitComment, renderComments, updateCommentStats, formatTime } from './app/gameSession'
+import { showRank, showRankForGame, closeRank, initRankGameSelector, renderRank, calculateRank, convertGameIdToNumber, clearRankCache } from './app/rank'
+import { bindEvents, bindGameCallbacks } from './app/events'
+import { setupCustomPowerupBar, removePowerupBar } from './app/powerup'
+import './styles/main.css'
+
+// 创建用户系统实例
+const authModal = new AuthModal()
+const mePanel = new MePanel(authModal)
 
 // 状态
 const isLoading = ref(true)
@@ -19,6 +31,7 @@ const guideSkipped = ref(false)
 const store = computed(() => userService.isLoggedIn ? userService.current! : storageService.get())
 const avatarContent = computed(() => userService.current?.avatar || '我')
 const coinVal = computed(() => userService.current?.coins || store.value.coins)
+const studyCoinVal = computed(() => userService.current?.studyCoins ?? 0)
 const loginDays = computed(() => userService.current?.consecutiveLoginDays || store.value.loginDays)
 const todayGames = computed(() => userService.current?.todayGames || store.value.todayGames)
 
@@ -39,24 +52,85 @@ const buildContext = (): PlatformContext => {
     set selectedRating(v) { selectedRating.value = v },
     get guideSkipped() { return guideSkipped.value },
     set guideSkipped(v) { guideSkipped.value = v },
-    authModal: {} as any,
-    mePanel: {} as any,
+    authModal: authModal,
+    mePanel: mePanel,
     get store() { return store.value },
     get userServiceCurrent() { return userService.current },
+    orientationManager: null as any,
+
+    // 方法绑定
+    renderGameCards: () => renderGameCards(buildContext()),
+    createGameCard: (game, best, rank) => createGameCard(buildContext(), game, best, rank),
+    renderPreview: (game, retryCount) => renderPreview(buildContext(), game, retryCount),
+    getFavorites: () => getFavorites(buildContext()),
+    toggleFavorite: (gameId) => toggleFavorite(buildContext(), gameId),
+    refreshCurrentPage: () => refreshCurrentPage(buildContext()),
+    performSearch: (keyword: string) => performSearch(buildContext(), keyword),
+    switchToHome: () => switchToHome(buildContext()),
+    showSearchResults: (results: Game[]) => showSearchResults(buildContext(), results),
+    showRankForGame: (gameId) => showRankForGame(buildContext(), gameId),
+    showRank: () => showRank(buildContext()),
+    closeRank: () => closeRank(),
+    renderFavoritesPage: () => renderFavoritesPage(buildContext()),
+    refreshBestScores: () => refreshBestScores(),
+    showScoreFly: (score, x, y, isCrit, isCombo) => showScoreFly(score, x, y, isCrit, isCombo),
+    renderComments: () => renderComments(buildContext()),
+    setRating: (rating) => setRating(buildContext(), rating),
+    submitComment: () => submitComment(buildContext()),
+    onUserChange: () => onUserChange(),
+    convertGameIdToNumber: (gameId) => convertGameIdToNumber(gameId),
+    clearRankCache: (gameId) => clearRankCache(buildContext(), gameId),
+    launchGame: (game) => launchGame(buildContext(), game),
+    closeResult: () => closeResult(buildContext()),
+    replayGame: () => replayGame(buildContext()),
+    exitGame: () => exitGame(buildContext()),
+    startGame: () => startGame(buildContext()),
+    closeGuide: () => closeGuide(buildContext()),
+    closeDailyPop: () => closeDailyPop(),
+    setupCustomPowerupBar: (gameId, powerups, inventory, onUse) => setupCustomPowerupBar(buildContext(), gameId, powerups, inventory, onUse),
+    removePowerupBar: () => removePowerupBar(),
   }
 }
 
 // 生命周期
-onMounted(() => {
-  // 模拟加载过程，3秒后隐藏loading
+onMounted(async () => {
+  // 等待 DOM 就绪后再初始化
+  await nextTick()
+
+  // 注入用户系统样式
+  injectUserStyles()
+
+  // 绑定事件
+  bindEvents(buildContext())
+  bindGameCallbacks()
+
+  // 渲染游戏卡片
+  renderGameCards(buildContext())
+
+  // 监听用户变更事件
+  window.addEventListener('ugp:userChange', () => onUserChange())
+
+  // 检查每日奖励
+  const data = storageService.get()
+  if (data.hasDoubleCard) {
+    setTimeout(() => showDailyPop(), 800)
+  }
+
+  // 隐藏 loading
   setTimeout(() => {
     isLoading.value = false
-  }, 1000)
+  }, 500)
 })
 
 onUnmounted(() => {
   // 清理逻辑
 })
+
+// 用户登录/退出后刷新
+function onUserChange() {
+  refreshBestScores()
+  renderGameCards(buildContext())
+}
 </script>
 
 <template>
@@ -80,8 +154,15 @@ onUnmounted(() => {
           <button class="search-btn" id="searchBtn">🔍</button>
         </div>
         <div class="coin-display">
-          <div class="coin-icon">★</div>
-          <span id="coinCount">{{ coinVal }}</span>
+          <div class="coin-item">
+            <div class="coin-icon">★</div>
+            <span id="coinCount">{{ coinVal }}</span>
+          </div>
+          <div class="coin-divider"></div>
+          <div class="coin-item study-coin">
+            <div class="coin-icon">🎓</div>
+            <span id="studyCoinCount">{{ studyCoinVal }}</span>
+          </div>
         </div>
         <div class="user-avatar" id="userAvatar" :title="userService.current?.username || '点击登录'">
           {{ avatarContent }}
@@ -291,7 +372,3 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
-
-<style>
-@import './styles/main.css';
-</style>
