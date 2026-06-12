@@ -9,13 +9,7 @@ import { isEmbeddedCanvasGame } from '@simple/games/embeddedCanvasGames';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'SimpleHome',
-    component: () => import('@simple/views/SimpleHome.vue'),
-    meta: { title: '趣玩乐园', requiresAuth: true },
-  },
-  {
-    path: '/home',
-    redirect: '/',
+    redirect: '/login',
   },
   {
     path: '/game/:type',
@@ -99,7 +93,7 @@ const router = createRouter({
 
 router.beforeEach((to, _from, next) => {
   if (to.meta.title) {
-    document.title = `${to.meta.title} - 趣玩乐园`;
+    document.title = `${to.meta.title} - 星光游学`;
   }
 
   const requiresAuth = to.meta.requiresAuth !== false;

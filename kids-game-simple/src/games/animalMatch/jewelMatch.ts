@@ -45,7 +45,7 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
   let gameEnded = false
   let hintGem: { x: number; y: number; time: number } | null = null
   
-  let score = 0
+
   let level = 1
   let targetScore = 500
   
@@ -475,50 +475,23 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
     
     drawClouds()
 
-    const infoPanelHeight = 50
-    const panelY = 10
-    
-    // 背景面板
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'
-    ctx.shadowBlur = 15
-    ctx.shadowColor = 'rgba(0,0,0,0.15)'
+    const elapsedHud = Date.now() - lastMoveTime
+    const remainingHud = Math.max(0, MOVE_TIMEOUT - elapsedHud)
+    const secondsHud = Math.ceil(remainingHud / 1000)
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'
     ctx.beginPath()
-    ctx.roundRect(10, panelY, W - 20, infoPanelHeight, 12)
+    ctx.roundRect(10, 8, W - 20, 40, 10)
     ctx.fill()
-    ctx.shadowBlur = 0
-    
-    // 分数显示 - 左侧
-    ctx.fillStyle = '#333'
-    ctx.font = 'bold 12px sans-serif'
-    ctx.textAlign = 'left'
-    ctx.fillText('分数', 20, panelY + 18)
-    
-    ctx.fillStyle = '#FF6B6B'
-    ctx.font = 'bold 22px sans-serif'
-    ctx.textAlign = 'left'
-    ctx.fillText(`${score}`, 20, panelY + 40)
-    
-    // 关卡显示 - 中间
-    ctx.fillStyle = '#333'
-    ctx.font = 'bold 12px sans-serif'
+    ctx.fillStyle = secondsHud <= 10 ? '#FF6B6B' : '#5D4037'
+    ctx.font = 'bold 15px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('关卡', W/2, panelY + 18)
-    
-    ctx.fillStyle = '#FF9800'
-    ctx.font = 'bold 22px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(`${level}`, W/2, panelY + 40)
-    
-    // 目标显示 - 右侧
-    ctx.fillStyle = '#333'
-    ctx.font = 'bold 12px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText('目标', W - 20, panelY + 18)
-    
-    ctx.fillStyle = '#4CAF50'
-    ctx.font = 'bold 22px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`${targetScore}`, W - 20, panelY + 40)
+    ctx.textBaseline = 'middle'
+    const chainLabel = combo > 1 ? ` · 连锁×${combo}` : ''
+    ctx.fillText(
+      `关卡 ${level} · 目标 ${targetScore} · ⏱ ${secondsHud}s${chainLabel}`,
+      W / 2,
+      28,
+    )
 
     const boardW = COLS * (GEM_SIZE + GAP) + 30
     const boardH = ROWS * (GEM_SIZE + GAP) + 30

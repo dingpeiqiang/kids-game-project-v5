@@ -196,6 +196,7 @@ export class BubbleShooterGame {
           this.loadLevel(this.currentLevel + 1)
         } else {
           this.gameEnded = true
+          this.engine.setVictory(true)
           this.engine.setMessage('🎉 恭喜通关！')
           setTimeout(() => {
             this.engine.endGame()
@@ -217,6 +218,7 @@ export class BubbleShooterGame {
         const elapsed = now - this.gameStartTime
         if (elapsed > this.currentLevelConfig.timeLimit * 1000) {
           this.gameEnded = true
+          this.engine.setVictory(false)
           this.engine.setMessage('⏰ 时间到！游戏结束')
           setTimeout(() => {
             this.engine.endGame()
@@ -688,6 +690,7 @@ export class BubbleShooterGame {
     
     // 如果棋盘已满，游戏结束
     this.gameEnded = true
+    this.engine.setVictory(false)
     this.engine.setMessage('💥 棋盘已满！游戏结束')
     setTimeout(() => {
       this.engine.endGame()

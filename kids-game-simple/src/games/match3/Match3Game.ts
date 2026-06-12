@@ -42,7 +42,7 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
   let selected: { x: number; y: number } | null = null
   let animating = false
   let particles: any[] = []
-  let combo = 0
+  let matchChain = 0
   let lastMoveTime = Date.now()
   const MOVE_TIMEOUT = 45000
   let gameEnded = false
@@ -196,44 +196,21 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
   
   // 绘制UI
   function drawUI() {
-    // 顶部标题栏
-    ctx.fillStyle = 'rgba(255,255,255,0.08)'
-    ctx.fillRect(0, 0, W, 75)
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(0, 75)
-    ctx.lineTo(W, 75)
-    ctx.stroke()
-    
-    // 分数显示
-    ctx.shadowBlur = 20
-    ctx.shadowColor = '#FFD700'
-    ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 42px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(String(engine.getScore()), W / 2, 45)
+    const elapsedHud = Date.now() - lastMoveTime
+    const remainingHud = Math.max(0, MOVE_TIMEOUT - elapsedHud)
+    const secondsHud = Math.ceil(remainingHud / 1000)
     ctx.shadowBlur = 0
-    
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'
-    ctx.font = '12px sans-serif'
-    ctx.fillText('SCORE', W / 2, 65)
-    
-    // 连击显示
-    if (combo >= 2) {
-      const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.1
-      ctx.save()
-      ctx.translate(W / 2, 95)
-      ctx.scale(pulse, pulse)
-      ctx.shadowBlur = 15
-      ctx.shadowColor = '#FF6B6B'
-      ctx.fillStyle = '#FF6B6B'
-      ctx.font = 'bold 24px sans-serif'
-      ctx.fillText(`🔥 ${combo} COMBO!`, 0, 0)
-      ctx.restore()
-      ctx.shadowBlur = 0
-    }
-    
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 36, 10)
+    ctx.fill()
+    ctx.fillStyle = secondsHud <= 10 ? '#FF6B6B' : '#A29BFE'
+    ctx.font = 'bold 15px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const chainLabel = matchChain >= 2 ? ` · 连锁 ×${matchChain}` : ''
+    ctx.fillText(`⏱ 无操作 ${secondsHud} 秒${chainLabel}`, W / 2, 26)
+
     // 棋盘背景
     const boardW = COLS * (GEM_SIZE + GAP) + 30
     const boardH = ROWS * (GEM_SIZE + GAP) + 30
@@ -340,11 +317,6 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
     ctx.roundRect(barX, barY, barWidth * progress, barHeight, 4)
     ctx.fill()
     
-    ctx.fillStyle = seconds <= 10 ? '#FF4444' : 'rgba(255,255,255,0.9)'
-    ctx.font = 'bold 18px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(`${seconds}s`, W / 2, barY - 8)
-    
     // 底部提示
     ctx.fillStyle = 'rgba(255,255,255,0.4)'
     ctx.font = '13px sans-serif'
@@ -407,7 +379,7 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
     const matches = findMatches()
     if (matches.length > 0) {
       lastMoveTime = Date.now()
-      combo++
+      matchChain = 1
       audioService.win()
       return true
     }
@@ -447,7 +419,8 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
     gem2.offsetX = 0
     gem2.offsetY = 0
     
-    combo = 0
+    matchChain = 0
+    engine.breakCombo()
     audioService.lose()
     return false
   }
@@ -481,11 +454,15 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
   }
   
   // 处理匹配消除
-  async function processMatches() {
+  async function processMatches(isCascade = false) {
     const matches = findMatches()
-    if (matches.length === 0) return
-    
-    const points = matches.length * 20 * combo
+    if (matches.length === 0) {
+      matchChain = 0
+      return
+    }
+    if (isCascade) matchChain++
+
+    const points = matches.length * 20 * Math.max(1, matchChain)
     engine.addScore(points, W / 2, H / 2)
     
     // 消除动画
@@ -520,7 +497,7 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
       }
     })
     
-    if (combo >= 3) engine.triggerRandomBuff()
+    if (matchChain >= 3) engine.triggerRandomBuff()
     
     await new Promise(r => setTimeout(r, 200))
     
@@ -576,7 +553,7 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
     validateBoard()
     
     await new Promise(r => setTimeout(r, 150))
-    processMatches()
+    processMatches(true)
   }
   
   // 点击处理
@@ -615,6 +592,7 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
   function checkTimeout() {
     if (gameEnded) return
     if (Date.now() - lastMoveTime > MOVE_TIMEOUT) {
+      engine.setVictory(false)
       engine.endGame()
       gameEnded = true
       audioService.lose()

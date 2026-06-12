@@ -22,9 +22,7 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
 
   let currentColor = 0
   let currentShape = 0
-  let score = 0
-  let combo = 0
-  let timeLeft = 30 // 每轮30秒
+  let timeLeft = 30 // 每轮30秒（道具加时）
   let roundTime = Date.now()
   let particles: any[] = []
   let gameEnded = false
@@ -133,16 +131,25 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
     ctx.fillStyle = '#1a1a2e'
     ctx.fillRect(0, 0, W, H)
 
-    // 顶部标题
-    ctx.fillStyle = '#fff'
-    ctx.font = 'bold 28px sans-serif'
+    // 局内 HUD：得分/连击由 CanvasGamePlay 顶栏展示
+    const elapsedHud = Date.now() - gameStartTime
+    const remainingHud = Math.max(0, TOTAL_TIME - elapsedHud)
+    const secondsHud = Math.ceil(remainingHud / 1000)
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 40, 10)
+    ctx.fill()
+    ctx.fillStyle = secondsHud <= 10 ? '#FF4444' : '#FFD700'
+    ctx.font = 'bold 20px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('🎯 颜色Tap', W / 2, 40)
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`⏱ 剩余 ${secondsHud} 秒`, W / 2, 28)
 
     // 目标提示
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
     ctx.font = '22px sans-serif'
-    ctx.fillText(`目标: ${COLORS[currentColor].name}`, W / 2, 90)
+    ctx.textAlign = 'center'
+    ctx.fillText(`目标: ${COLORS[currentColor].name}`, W / 2, 78)
 
     // 绘制当前形状
     const shapeX = W / 2
@@ -217,28 +224,6 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
       ctx.globalAlpha = 1
     })
 
-    // 分数
-    ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 42px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(String(engine.getScore()), W / 2, H - 100)
-    
-    if (combo >= 3) {
-      ctx.fillStyle = '#FF6B6B'
-      ctx.font = 'bold 24px sans-serif'
-      ctx.fillText(`${combo} 连击!`, W / 2, H - 60)
-    }
-
-    // 倒计时
-    const elapsed = Date.now() - gameStartTime
-    const remaining = Math.max(0, TOTAL_TIME - elapsed)
-    const seconds = Math.ceil(remaining / 1000)
-    
-    ctx.fillStyle = seconds <= 10 ? '#FF4444' : '#fff'
-    ctx.font = 'bold 22px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`${seconds}s`, W - 15, 35)
-
     // 提示
     ctx.fillStyle = 'rgba(255,255,255,0.5)'
     ctx.font = '16px sans-serif'
@@ -289,10 +274,8 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
       
       if (dist < btnSize / 2) {
         if (i === currentColor) {
-          // 正确！
-          combo++
-          const baseScore = 10 * combo
-          engine.addScore(baseScore, bx, btnY)
+          const streak = engine.getCombo() + 1
+          engine.addScore(10 * streak, bx, btnY)
           
           // 控制音效播放频率，避免声音重叠
           const now = Date.now()
@@ -314,13 +297,12 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
             })
           }
           
-          if (combo >= 5) engine.triggerRandomBuff()
+          if (engine.getCombo() >= 5) engine.triggerRandomBuff()
           
           // 下一个
           spawnChallenge()
         } else {
-          // 错误
-          combo = 0
+          engine.breakCombo()
           
           // 控制音效播放频率
           const now = Date.now()

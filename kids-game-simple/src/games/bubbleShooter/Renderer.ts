@@ -450,75 +450,23 @@ export class Renderer {
     })
   }
 
-  // 绘制 UI
-  private drawUI(ctx: CanvasRenderingContext2D, score: number, gameStartTime: number, GAME_DURATION: number, currentLevel: number = 1, totalLevels: number = 10, currentPowerup: string | null = null) {
-    const TOP_Y = 12
-    const PADDING = 12
-    
-    // 左上角：分数面板
-    const scorePanelW = 90
-    drawPanel(ctx, PADDING, TOP_Y, scorePanelW, 45)
-    
-    ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 24px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.shadowColor = '#FFD700'
-    ctx.shadowBlur = 6
-    ctx.fillText(String(score), PADDING + scorePanelW / 2, TOP_Y + 32)
-    ctx.shadowBlur = 0
-    
-    // 标签
-    ctx.fillStyle = '#9CA3AF'
-    ctx.font = '9px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('分数', PADDING + scorePanelW / 2, TOP_Y + 14)
-    
-    // 中上：关卡显示
-    const levelPanelW = 80
-    const levelPanelX = (this.W - levelPanelW) / 2
-    drawPanel(ctx, levelPanelX, TOP_Y, levelPanelW, 45, 'rgba(99, 102, 241, 0.25)')
-    
-    ctx.fillStyle = '#818CF8'
-    ctx.font = 'bold 22px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.shadowColor = '#818CF8'
-    ctx.shadowBlur = 6
-    ctx.fillText(`${currentLevel}/${totalLevels}`, levelPanelX + levelPanelW / 2, TOP_Y + 32)
-    ctx.shadowBlur = 0
-    
-    // 标签
-    ctx.fillStyle = '#9CA3AF'
-    ctx.font = '9px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('关卡', levelPanelX + levelPanelW / 2, TOP_Y + 14)
-
-    // 右上角：时间面板
+  // 绘制 UI（得分由 CanvasGamePlay 顶栏展示）
+  private drawUI(ctx: CanvasRenderingContext2D, _score: number, gameStartTime: number, GAME_DURATION: number, currentLevel: number = 1, totalLevels: number = 10, currentPowerup: string | null = null) {
     const elapsed = Date.now() - gameStartTime
     const remaining = Math.max(0, GAME_DURATION - elapsed)
     const seconds = Math.ceil(remaining / 1000)
-    
-    const timePanelW = 70
-    const timePanelX = this.W - timePanelW - PADDING
     const isWarning = seconds <= 10
-    
-    // 根据剩余时间选择面板颜色
-    const timePanelColor = isWarning ? 'rgba(255, 68, 68, 0.25)' : 'rgba(15, 25, 45, 0.85)'
-    drawPanel(ctx, timePanelX, TOP_Y, timePanelW, 45, timePanelColor)
-    
-    const timeText = `${seconds}s`
-    ctx.fillStyle = isWarning ? '#FF4444' : '#fff'
-    ctx.font = 'bold 20px sans-serif'
+
+    drawPanel(ctx, 10, 8, this.W - 20, 40, 'rgba(15, 25, 45, 0.88)')
+    ctx.fillStyle = isWarning ? '#FF6B6B' : '#E0E7FF'
+    ctx.font = 'bold 16px sans-serif'
     ctx.textAlign = 'center'
-    ctx.shadowColor = isWarning ? '#FF4444' : '#fff'
-    ctx.shadowBlur = 6
-    ctx.fillText(timeText, timePanelX + timePanelW / 2, TOP_Y + 32)
-    ctx.shadowBlur = 0
-    
-    // 标签
-    ctx.fillStyle = '#9CA3AF'
-    ctx.font = '9px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('时间', timePanelX + timePanelW / 2, TOP_Y + 14)
+    ctx.textBaseline = 'middle'
+    ctx.fillText(
+      `关卡 ${currentLevel}/${totalLevels} · ⏱ 剩余 ${seconds} 秒`,
+      this.W / 2,
+      28,
+    )
     
     // 底部：道具状态显示
     if (currentPowerup) {

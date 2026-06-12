@@ -843,29 +843,25 @@ export class StackGame {
   }
 
   private drawHUD() {
-    this.ctx.fillStyle = '#fff'
-    this.ctx.font = 'bold 32px sans-serif'
-    this.ctx.textAlign = 'left'
-    this.ctx.shadowColor = 'rgba(0,0,0,0.5)'
-    this.ctx.shadowBlur = 4
-    this.ctx.fillText(String(this.engine.getScore()), 15, 38)
-    this.ctx.shadowBlur = 0
+    const layers = this.layers.length - 1
+    const perfectLabel =
+      this.comboPerfect >= 2 ? ` · 连续完美 ${this.comboPerfect}` : ''
+    const multLabel = this.scoreMultiplier > 1 ? ` · ⭐×${this.scoreMultiplier}` : ''
+    const shieldLabel = this.hasShield ? ' · 🛡️' : ''
 
-    this.ctx.font = 'bold 20px sans-serif'
-    this.ctx.textAlign = 'right'
-    this.ctx.fillText(`${this.layers.length - 1} 层`, this.W - 15, 35)
-
-    if (this.comboPerfect >= 2) {
-      this.ctx.save()
-      this.ctx.fillStyle = this.comboPerfect >= 5 ? '#FF6B6B' : this.comboPerfect >= 3 ? '#FF8E53' : '#FFD700'
-      this.ctx.font = 'bold 18px sans-serif'
-      this.ctx.textAlign = 'center'
-      this.ctx.shadowColor = this.ctx.fillStyle
-      this.ctx.shadowBlur = 8
-      this.ctx.fillText(`🔥 ${this.comboPerfect}x 连续完美`, this.W / 2, 35)
-      this.ctx.shadowBlur = 0
-      this.ctx.restore()
-    }
+    this.ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    this.ctx.beginPath()
+    this.ctx.roundRect(10, 8, this.W - 20, 40, 10)
+    this.ctx.fill()
+    this.ctx.fillStyle = '#A8E6CF'
+    this.ctx.font = 'bold 16px sans-serif'
+    this.ctx.textAlign = 'center'
+    this.ctx.textBaseline = 'middle'
+    this.ctx.fillText(
+      `已叠 ${layers} 层${perfectLabel}${multLabel}${shieldLabel}`,
+      this.W / 2,
+      28,
+    )
 
     if (!this.gameStarted) {
       this.ctx.fillStyle = 'rgba(0,0,0,0.3)'
@@ -879,23 +875,6 @@ export class StackGame {
       this.ctx.font = '14px sans-serif'
       this.ctx.fillStyle = 'rgba(255,255,255,0.7)'
       this.ctx.fillText('⭐ 奖励方块 +500分 | 🍀 幸运方块 | 📐 加宽方块', this.W / 2, this.H / 2 + 45)
-    }
-
-    if (this.scoreMultiplier > 1) {
-      this.ctx.save()
-      this.ctx.fillStyle = '#FFD700'
-      this.ctx.font = 'bold 16px sans-serif'
-      this.ctx.textAlign = 'right'
-      this.ctx.fillText(`⭐ x${this.scoreMultiplier}`, this.W - 15, 60)
-      this.ctx.restore()
-    }
-
-    if (this.hasShield) {
-      this.ctx.save()
-      this.ctx.font = '20px sans-serif'
-      this.ctx.textAlign = 'left'
-      this.ctx.fillText('🛡️', 15, 65)
-      this.ctx.restore()
     }
   }
 

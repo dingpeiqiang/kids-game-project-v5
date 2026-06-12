@@ -400,36 +400,31 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
     if (magnet > 0) activeItems.push({ icon: '🧲', time: magnet, color: '#FF6B6B' })
     if (double > 0) activeItems.push({ icon: '✨', time: double, color: '#FFD93D' })
     
-    activeItems.forEach((item, i) => {
+  activeItems.forEach((item, i) => {
       ctx.fillStyle = item.color
       ctx.font = '14px sans-serif'
       ctx.textAlign = 'left'
-      ctx.fillText(`${item.icon} ${item.time.toFixed(1)}s`, 10 + i * 70, 25)
+      ctx.fillText(`${item.icon} ${item.time.toFixed(1)}s`, 10 + i * 70, 52)
     })
-    
-    // 分数显示
-    ctx.fillStyle = '#fff'
-    ctx.shadowBlur = 10
-    ctx.shadowColor = '#FFD700'
-    ctx.font = 'bold 32px sans-serif'
+
+    // 局内 HUD：得分/连击由 CanvasGamePlay 顶栏展示
+    const buffBits: string[] = []
+    if (double > 0) buffBits.push('✨双倍')
+    if (shield > 0) buffBits.push('🛡️')
+    if (magnet > 0) buffBits.push('🧲')
+    if (ghost > 0) buffBits.push('👻')
+    if (slow > 0) buffBits.push('❄️')
+    const buffLabel = buffBits.length ? ` · ${buffBits.join(' ')}` : ''
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 36, 10)
+    ctx.fill()
+    ctx.fillStyle = '#4ECDC4'
+    ctx.font = 'bold 15px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(String(engine.getScore()), W / 2, 55)
-    ctx.shadowBlur = 0
-    
-    // 双倍积分指示
-    if (double > 0) {
-      ctx.fillStyle = '#FFD93D'
-      ctx.font = 'bold 14px sans-serif'
-      ctx.fillText('✨ 双倍积分 ✨', W / 2, 75)
-    }
-    
-    // 连击显示
-    if (engine.getCombo() >= 3) {
-      ctx.fillStyle = '#FF6B6B'
-      ctx.font = 'bold 16px sans-serif'
-      ctx.fillText(`🔥 ${engine.getCombo()} 连击`, W / 2, 75 + (double > 0 ? 15 : 0))
-    }
-    
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`速度 Lv.${speedLevel}${buffLabel}`, W / 2, 26)
+
     // 道具状态栏（顶部右侧）
     const activeBuffs: { icon: string; time: number; name: string }[] = []
     if (shield > 0) activeBuffs.push({ icon: '🛡️', time: shield, name: '护盾' })
@@ -638,6 +633,7 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
             audioService.click()
           } else {
             audioService.fail()
+            engine.setVictory(false)
             engine.endGame()
             onEnd()
             return

@@ -99,8 +99,6 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
 
   // 游戏状态
   let alive = false  // 初始为false，等待用户开始
-  let score = 0
-  let combo = 0
   let comboTimer = 0
   let speedLevel = 1
   let moveInterval = 150 // 毫秒
@@ -215,9 +213,8 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     nextDir = { x: 1, y: 0 }
     growCount = 0
     alive = false  // 初始为false，等待用户开始
-    score = 0
-    combo = 0
     comboTimer = 0
+    engine.setScore(0)
     speedLevel = 1
     moveInterval = 150
     lastMoveTime = 0
@@ -396,20 +393,12 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
           pts *= 2
         }
 
-        // 连击
         comboTimer = 120
-        combo++
-        if (combo >= 3) {
-          pts *= 1 + (combo - 2) * 0.3
-          if (combo % 5 === 0) {
-            engine.triggerRandomBuff?.()
-          }
-        }
-
-        // 加分
         const finalPts = Math.round(pts)
         engine.addScore(finalPts, head.x * CELL + OFFSET_X, head.y * CELL + OFFSET_Y)
-        score += finalPts
+        if (engine.getCombo() >= 5 && engine.getCombo() % 5 === 0) {
+          engine.triggerRandomBuff?.()
+        }
 
         // 特效
         addParticles(head.x, head.y, food.color, food.type === 'bonus' ? 20 : 12)
@@ -458,7 +447,8 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     }
     audioService.pop()
 
-    // 调用统一的结束回调，显示结束页面
+    engine.setVictory(snake.length >= 10)
+    engine.endGame()
     setTimeout(() => onEnd(), 500)
   }
 
@@ -588,7 +578,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     // 连击计时
     if (comboTimer > 0) {
       comboTimer--
-      if (comboTimer === 0) combo = 0
+      if (comboTimer === 0) engine.breakCombo()
     }
 
     // 更新道具效果计时器
@@ -670,7 +660,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     }
     
     // 道具自动获取：每300分获得一个道具
-    const powerupThreshold = Math.floor(score / 300)
+    const powerupThreshold = Math.floor(engine.getScore() / 300)
     if (powerupThreshold > 0 && powerupThreshold !== (window as any).snakeLastPowerupGiven) {
       ;(window as any).snakeLastPowerupGiven = powerupThreshold
       const powerups = ['invincible', 'magnet', 'slow', 'score2x']
@@ -894,30 +884,18 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     // 绘制道具粒子
     powerupManager.drawParticles(ctx)
 
-    // HUD - 顶部信息栏
-    ctx.fillStyle = 'rgba(0, 20, 10, 0.7)'
-    ctx.fillRect(0, 0, W, 30)
-
-    // 分数
+    // 局内 HUD：得分/连击由 CanvasGamePlay 顶栏展示
+    ctx.fillStyle = 'rgba(0, 20, 10, 0.75)'
+    roundedRect(ctx, 10, 8, W - 20, 40, 10)
+    ctx.fill()
     ctx.fillStyle = palette.primary
-    ctx.font = 'bold 13px sans-serif'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(`🐍 长度: ${snake.length}`, 10, 15)
-
-    ctx.fillStyle = palette.accent
+    ctx.font = 'bold 18px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(`⭐ ${score}`, W / 2, 15)
+    ctx.textBaseline = 'middle'
+    const speedLabel = slowActive ? ' · 减速中' : moveInterval < 100 ? ' · 加速' : ''
+    ctx.fillText(`长度 ${snake.length}${speedLabel}`, W / 2, 28)
 
-    // 连击
-    if (combo >= 3) {
-      ctx.fillStyle = '#FF6B6B'
-      ctx.textAlign = 'right'
-      ctx.fillText(`🔥 连击 x${combo}`, W - 10, 15)
-    }
-    
-    // 绘制激活的道具效果
-    powerupManager.drawUI(ctx, 10, 35)
+    powerupManager.drawUI(ctx, 10, 52)
 
     // 底部操作提示
     ctx.fillStyle = 'rgba(255,255,255,0.3)'

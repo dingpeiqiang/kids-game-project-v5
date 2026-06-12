@@ -10,7 +10,7 @@ export default defineConfig({
     'import.meta.env.VITE_APP_SHELL': JSON.stringify('simple'),
   },
   plugins: [vue()],
-  publicDir: resolve(__dirname, '../kids-game-frontend/public'),
+  publicDir: resolve(__dirname, 'public'),
   css: {
     preprocessorOptions: {
       scss: {

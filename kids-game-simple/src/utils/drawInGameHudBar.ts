@@ -1,4 +1,39 @@
-/** 局内顶条（不含得分，得分由 CanvasGamePlay 壳层展示） */
+/**
+ * Canvas 局内 HUD 条（不含得分，得分由 GamePlayShellHeader 展示）
+ */
+export interface InGameHudBarOptions {
+  width: number;
+  /** 条高度，默认 44 */
+  height?: number;
+  /** 距顶偏移，默认 8 */
+  top?: number;
+  /** 水平内边距，默认 10 */
+  padX?: number;
+}
+
+export function drawInGameHudBar(
+  ctx: CanvasRenderingContext2D,
+  opts: InGameHudBarOptions,
+): { barY: number; barH: number; centerY: number; leftX: number; rightX: number } {
+  const height = opts.height ?? 44;
+  const top = opts.top ?? 8;
+  const padX = opts.padX ?? 10;
+  const barW = opts.width - padX * 2;
+  const barY = top;
+  const centerY = barY + height / 2;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  roundRect(ctx, padX, barY, barW, height, 12);
+  ctx.fill();
+
+  return {
+    barY,
+    barH: height,
+    centerY,
+    leftX: padX + 14,
+    rightX: opts.width - padX - 14,
+  };
+}
 
 export function roundRect(
   ctx: CanvasRenderingContext2D,
@@ -8,65 +43,15 @@ export function roundRect(
   h: number,
   r: number,
 ) {
-  const rr = Math.min(r, w / 2, h / 2)
-  ctx.beginPath()
-  ctx.moveTo(x + rr, y)
-  ctx.lineTo(x + w - rr, y)
-  ctx.quadraticCurveTo(x + w, y, x + w, y + rr)
-  ctx.lineTo(x + w, y + h - rr)
-  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h)
-  ctx.lineTo(x + rr, y + h)
-  ctx.quadraticCurveTo(x, y + h, x, y + h - rr)
-  ctx.lineTo(x, y + rr)
-  ctx.quadraticCurveTo(x, y, x + rr, y)
-  ctx.closePath()
-}
-
-export interface InGameHudBarOptions {
-  canvasWidth: number
-  /** 条顶 y，默认 8 */
-  top?: number
-  /** 条高，默认 44 */
-  height?: number
-  /** 主文案（如倒计时） */
-  primaryText: string
-  /** 主色 */
-  primaryColor?: string
-  /** 居中副文案（如 Buff） */
-  centerText?: string
-  centerColor?: string
-  /** 右对齐副文案（如关卡） */
-  rightText?: string
-  rightColor?: string
-}
-
-export function drawInGameHudBar(ctx: CanvasRenderingContext2D, opts: InGameHudBarOptions) {
-  const W = opts.canvasWidth
-  const top = opts.top ?? 8
-  const h = opts.height ?? 44
-  const yMid = top + h / 2
-
-  ctx.fillStyle = 'rgba(0,0,0,0.45)'
-  roundRect(ctx, 10, top, W - 20, h, 12)
-  ctx.fill()
-
-  ctx.textBaseline = 'middle'
-  ctx.font = 'bold 20px sans-serif'
-  ctx.fillStyle = opts.primaryColor ?? '#FFD700'
-  ctx.textAlign = 'left'
-  ctx.fillText(opts.primaryText, 22, yMid)
-
-  if (opts.centerText) {
-    ctx.font = 'bold 15px sans-serif'
-    ctx.fillStyle = opts.centerColor ?? '#FF6B9D'
-    ctx.textAlign = 'center'
-    ctx.fillText(opts.centerText, W / 2, yMid)
-  }
-
-  if (opts.rightText) {
-    ctx.font = 'bold 18px sans-serif'
-    ctx.fillStyle = opts.rightColor ?? '#fff'
-    ctx.textAlign = 'right'
-    ctx.fillText(opts.rightText, W - 18, yMid)
-  }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }

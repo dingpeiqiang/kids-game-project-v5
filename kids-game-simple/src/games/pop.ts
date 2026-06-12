@@ -168,29 +168,21 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     ctx.fillStyle = barColor
     ctx.fillRect(20, 8, barWidth, 6)
     
-    // 绘制倒计时数字
-    if (seconds <= 8) {
-      ctx.fillStyle = seconds <= 3 ? '#FF6B6B' : '#FF8E53'
-      ctx.font = 'bold 20px sans-serif'
-      ctx.textAlign = 'right'
-      ctx.fillText(`⏱️ ${seconds}s`, W - 20, 35)
-      
-      // 最后3秒闪烁效果
-      if (seconds <= 3 && Math.floor(now / 150) % 2 === 0) {
-        ctx.fillStyle = 'rgba(255,107,107,0.15)'
-        ctx.fillRect(0, 0, W, H)
-      }
+    if (seconds <= 3 && Math.floor(now / 150) % 2 === 0) {
+      ctx.fillStyle = 'rgba(255,107,107,0.12)'
+      ctx.fillRect(0, 0, W, H)
     }
 
-    ctx.fillStyle = '#333'
-    ctx.font = 'bold 28px sans-serif'
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'
+    ctx.beginPath()
+    ctx.roundRect(10, 18, W - 20, 34, 10)
+    ctx.fill()
+    ctx.fillStyle = seconds <= 8 ? '#FF6B6B' : '#333'
+    ctx.font = 'bold 15px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(String(engine.getScore()), W / 2, 45)
-    if (engine.getCombo() >= 3) {
-      ctx.fillStyle = '#FF6B6B'
-      ctx.font = '14px sans-serif'
-      ctx.fillText(`🔥${engine.getCombo()}连击`, W / 2, 62)
-    }
+    ctx.textBaseline = 'middle'
+    const comboLabel = engine.getCombo() >= 3 ? ` · 🔥${engine.getCombo()}连击` : ''
+    ctx.fillText(`⏱ 无操作 ${seconds} 秒${comboLabel}`, W / 2, 35)
 
     // 绘制气球（带摆动和光泽效果）
     BALLOONS.forEach(b => {

@@ -60,14 +60,12 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
   let totalPairs = 0
   let gameStartTime = 0
   let gameEnded = false
-  let combo = 0
   let maxCombo = 0
   let isProcessing = false  // 翻牌动画进行中，锁定点击
   let particles: Particle[] = []
   let floatingTexts: FloatText[] = []
   let screenShake = 0
   let levelStartTime = 0
-  let totalScore = 0
 
   interface Card {
     x: number
@@ -99,7 +97,6 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
     matchedPairs = 0
     flippedCards = []
     isProcessing = false
-    combo = 0
     levelStartTime = Date.now()
 
     // 选图案
@@ -192,15 +189,11 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
           cards[a].isMatched = true
           cards[b].isMatched = true
           matchedPairs++
-          combo++
-          if (combo > maxCombo) maxCombo = combo
 
-          // 积分
           const baseScore = 10 + currentLevel * 5
-          const comboBonus = combo >= 3 ? combo * 5 : 0
-          const score = baseScore + comboBonus
-          engine.addScore(score, cards[a].x + cards[a].w / 2, cards[a].y)
-          totalScore += score
+          const earned = engine.addScore(baseScore, cards[a].x + cards[a].w / 2, cards[a].y)
+          const streak = engine.getCombo()
+          if (streak > maxCombo) maxCombo = streak
 
           // 粒子效果
           const ct = ALL_TYPES[cards[a].typeIdx]
@@ -208,12 +201,12 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
           spawnParticles(cards[b].x + cards[b].w / 2, cards[b].y + cards[b].h / 2, ct.color, 12)
 
           // 浮动文字
-          let txt = `+${score}`
-          if (combo >= 3) txt += ` x${combo}连击!`
+          let txt = `+${earned}`
+          if (streak >= 3) txt += ` x${streak}连击!`
           addFloatText(
             (cards[a].x + cards[b].x) / 2 + cards[a].w / 2,
             (cards[a].y + cards[b].y) / 2,
-            txt, combo >= 5 ? '#FFD93D' : combo >= 3 ? '#FECA57' : '#fff'
+            txt, streak >= 5 ? '#FFD93D' : streak >= 3 ? '#FECA57' : '#fff'
           )
 
           audioService.combo()
@@ -228,7 +221,7 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
         }, 300)
       } else {
         // 配对失败
-        combo = 0
+        engine.breakCombo()
         setTimeout(() => {
           cards[a].isFlipped = false
           cards[b].isFlipped = false
@@ -262,6 +255,8 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
       // 全部通关！
       setTimeout(() => {
         gameEnded = true
+        engine.setVictory(true)
+        engine.endGame()
         onEnd()
       }, 1500)
     }
@@ -435,29 +430,19 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
     }
     ctx.globalAlpha = 1
 
-    // 顶部信息栏
-    ctx.fillStyle = 'rgba(255,255,255,0.95)'
-    ctx.font = 'bold 20px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(`🃏 关卡 ${currentLevel + 1}/${LEVELS.length}`, W / 2, 30)
-
-    // 剩余配对
+    // 局内 HUD：得分/连击由 CanvasGamePlay 顶栏展示
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    roundRect(ctx, 10, 8, W - 20, 44, 10)
+    ctx.fill()
     ctx.fillStyle = '#A29BFE'
-    ctx.font = '13px sans-serif'
-    ctx.fillText(`已配对 ${matchedPairs}/${totalPairs}`, W / 2, 50)
-
-    // 总分
-    ctx.fillStyle = '#FFD93D'
-    ctx.textAlign = 'right'
-    ctx.fillText(`★ ${totalScore}`, W - 15, 30)
-
-    // 连击
-    if (combo >= 3) {
-      ctx.fillStyle = '#FECA57'
-      ctx.font = 'bold 14px sans-serif'
-      ctx.textAlign = 'right'
-      ctx.fillText(`🔥 x${combo}`, W - 15, 50)
-    }
+    ctx.font = 'bold 18px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(
+      `关卡 ${currentLevel + 1}/${LEVELS.length} · 已配对 ${matchedPairs}/${totalPairs}`,
+      W / 2,
+      30,
+    )
 
     // 绘制所有卡牌
     cards.forEach(card => drawCard(card))

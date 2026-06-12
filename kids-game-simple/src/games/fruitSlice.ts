@@ -23,7 +23,6 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   const particles: any[] = []
   const slices: any[] = []
   const sliceEffects: any[] = [] // 切割特效
-  let combo = 0
   let lastSpawn = Date.now()
   let gameStartTime = Date.now()
   const GAME_DURATION = 60000
@@ -381,43 +380,19 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       ctx.restore()
     }
 
-    // 分数
-    ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 42px sans-serif'
+    const elapsedHud = Date.now() - gameStartTime
+    const remainingHud = Math.max(0, GAME_DURATION - elapsedHud)
+    const secondsHud = Math.ceil(remainingHud / 1000)
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.beginPath()
+    ctx.roundRect(10, 8, W - 20, 40, 10)
+    ctx.fill()
+    ctx.fillStyle = secondsHud <= 10 ? '#FF4444' : '#FFD700'
+    ctx.font = 'bold 16px sans-serif'
     ctx.textAlign = 'center'
-    ctx.shadowColor = 'rgba(255,215,0,0.5)'
-    ctx.shadowBlur = 10
-    ctx.fillText(String(engine.getScore()), W / 2, 55)
-    ctx.shadowBlur = 0
-    
-    // 连击
-    if (combo >= 2) {
-      ctx.fillStyle = combo >= 5 ? '#FFD700' : '#FF6B6B'
-      ctx.font = `bold ${26 + Math.min(combo, 10) * 2}px sans-serif`
-      ctx.shadowColor = combo >= 5 ? 'rgba(255,215,0,0.8)' : 'rgba(255,107,107,0.8)'
-      ctx.shadowBlur = 15
-      const bounce = Math.sin(Date.now() / 100) * 3
-      ctx.fillText(`${combo} 连击!`, W / 2, 100 + bounce)
-      ctx.shadowBlur = 0
-    }
-
-    // 漏掉
-    if (missedCount > 0) {
-      ctx.fillStyle = 'rgba(255,255,255,0.7)'
-      ctx.font = 'bold 18px sans-serif'
-      ctx.textAlign = 'left'
-      ctx.fillText(`漏:${missedCount}`, 15, 50)
-    }
-
-    // 时间
-    const elapsed = Date.now() - gameStartTime
-    const remaining = Math.max(0, GAME_DURATION - elapsed)
-    const seconds = Math.ceil(remaining / 1000)
-    
-    ctx.fillStyle = seconds <= 10 ? '#FF4444' : '#fff'
-    ctx.font = 'bold 26px sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`${seconds}s`, W - 15, 50)
+    ctx.textBaseline = 'middle'
+    const missLabel = missedCount > 0 ? ` · 漏切 ${missedCount}` : ''
+    ctx.fillText(`⏱ 剩余 ${secondsHud} 秒${missLabel}`, W / 2, 28)
 
     // 提示
     ctx.fillStyle = 'rgba(255,255,255,0.35)'
@@ -470,7 +445,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       if (f.y < -f.size * 2 || f.y > H + f.size * 2) {
         if (!f.sliced) {
           missedCount++
-          combo = 0
+          engine.breakCombo()
         }
         fruits.splice(i, 1)
       }
@@ -478,13 +453,13 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
 
     // 生成（较高频率，更容易切割）
     const now = Date.now()
-    const spawnInterval = Math.max(800, 1500 - combo * 50) // 连击越高生成越快
+    const streakSpawn = engine.getCombo()
+    const spawnInterval = Math.max(800, 1500 - streakSpawn * 50)
     if (now - lastSpawn > spawnInterval && fruits.length < 5) {
       spawnFruit()
       lastSpawn = now
       
-      // 随机双水果生成
-      if (Math.random() < 0.3 + combo * 0.02) {
+      if (Math.random() < 0.3 + streakSpawn * 0.02) {
         setTimeout(spawnFruit, 150)
       }
     }
@@ -510,9 +485,8 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
         
         // 检查是不是陷阱！
         if (f.isTrap) {
-          // 切到陷阱的惩罚效果
-          combo = 0 // 清空连击
-          engine.addScore(-50, f.x, f.y) // 扣分50
+          engine.breakCombo()
+          engine.addScore(-50, f.x, f.y)
           
           // 爆炸粒子特效
           for (let j = 0; j < 40; j++) {
@@ -542,23 +516,19 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
           scorePopups.push(popup)
           
         } else {
-          // 普通水果
-          combo++
+          const streak = engine.getCombo() + 1
+          const earned = engine.addScore(10, f.x, f.y)
           
-          const score = 10 * combo
-          engine.addScore(score, f.x, f.y)
-          
-          // 根据连击数播放不同音效
-          if (combo >= 5) {
+          if (streak >= 5) {
             audioService.crit()
-          } else if (combo >= 3) {
-            audioService.sliceCombo(combo)
+          } else if (streak >= 3) {
+            audioService.sliceCombo(streak)
           } else {
             audioService.slice()
           }
           
           // 优化粒子效果（限制数量，使用对象池）
-          const maxParticles = Math.min(20 + combo * 3, 150 - particles.length)
+          const maxParticles = Math.min(20 + streak * 3, 150 - particles.length)
           const particleCount = Math.max(8, maxParticles)
           for (let j = 0; j < particleCount; j++) {
             const angle = (Math.PI * 2 / particleCount) * j + Math.random() * 0.3
@@ -601,14 +571,14 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
           const popup = getScorePopup()
           popup.x = f.x
           popup.y = f.y
-          popup.text = `+${score}`
-          popup.color = combo >= 5 ? '#FFD700' : combo >= 3 ? '#FF6B6B' : '#6BCB77'
-          popup.size = combo >= 5 ? 32 : combo >= 3 ? 28 : 24
+          popup.text = `+${earned}`
+          popup.color = streak >= 5 ? '#FFD700' : streak >= 3 ? '#FF6B6B' : '#6BCB77'
+          popup.size = streak >= 5 ? 32 : streak >= 3 ? 28 : 24
           popup.life = 1
           scorePopups.push(popup)
           
           // 高连击时的特殊效果 - 限制星星数量
-          if (combo >= 5) {
+          if (streak >= 5) {
             // 添加星星特效，最多4个
             const starCount = Math.min(4, 50 - sliceEffects.length)
             for (let j = 0; j < starCount; j++) {
@@ -625,11 +595,11 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
               sliceEffects.push(se)
             }
             audioService.combo()
-          } else if (combo === 3) {
+          } else if (streak === 3) {
             audioService.combo()
           }
           
-          if (combo >= 3) engine.triggerRandomBuff()
+          if (streak >= 3) engine.triggerRandomBuff()
           
           // 切水果时有概率获得道具
           if (Math.random() < 0.15) { // 15%概率获得道具
