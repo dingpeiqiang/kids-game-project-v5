@@ -72,8 +72,7 @@ export async function renderRank(ctx: PlatformContext, type: string, gameId?: st
 
   if (gameId && userService.isLoggedIn) {
     try {
-      const numericGameId = convertGameIdToNumber(gameId)
-      console.log('[App] 转换后的 gameId:', numericGameId)
+      console.log('[App] 获取排行榜...', { gameId, isLoggedIn: userService.isLoggedIn })
 
       let rankType: 'ALL' | 'DAILY' | 'MONTHLY' | 'YEARLY' = 'ALL'
       if (type === 'daily') rankType = 'DAILY'
@@ -88,8 +87,8 @@ export async function renderRank(ctx: PlatformContext, type: string, gameId?: st
         leaderboardData = ctx.rankCache.get(cacheKey)!
         console.log('[App] 使用缓存的排行榜数据:', cacheKey, '条数:', leaderboardData.length)
       } else {
-        console.log('[App] 从后端获取排行榜...', { gameId: numericGameId, rankType })
-        const result = await getTopList(numericGameId, rankType, 50)
+        console.log('[App] 从后端获取排行榜...', { gameId, rankType })
+        const result = await getTopList(gameId, rankType, 50)
         leaderboardData = result.list
         ctx.rankCache.set(cacheKey, leaderboardData)
         setTimeout(() => ctx.rankCache.delete(cacheKey), 30000)

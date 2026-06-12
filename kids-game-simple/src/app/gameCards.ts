@@ -99,8 +99,9 @@ export function createGameCard(ctx: PlatformContext, game: Game, best: number, r
   card.className = 'game-card'
   card.dataset.gameId = game.id
 
-  // 检查是否已收藏
-  const favorites = ctx.getFavorites()
+  // 检查是否已登录和是否已收藏
+  const isLoggedIn = userService.isLoggedIn
+  const favorites = isLoggedIn ? (userService.current?.favorites || []) : []
   const isFavorited = favorites.includes(game.id)
 
   // 排名显示
@@ -125,14 +126,19 @@ export function createGameCard(ctx: PlatformContext, game: Game, best: number, r
       `
   }
 
+  // 只有登录用户才显示收藏按钮
+  const favoriteBtnHtml = isLoggedIn ? `
+        <button class="favorite-btn ${isFavorited ? 'favorited' : ''}" data-game-id="${game.id}" title="${isFavorited ? '取消收藏' : '加入收藏'}">
+          ${isFavorited ? '❤️' : '🤍'}
+        </button>
+      ` : ''
+
   card.innerHTML = `
       <div class="card-cover">
         <canvas id="preview_${game.id}" width="320" height="200"></canvas>
         <div class="card-tag">${game.tag}</div>
         ${getGameDisplayConfig(game.id).badge ? `<div class="card-badge">${getGameDisplayConfig(game.id).badge}</div>` : ''}
-        <button class="favorite-btn ${isFavorited ? 'favorited' : ''}" data-game-id="${game.id}" title="${isFavorited ? '取消收藏' : '加入收藏'}">
-          ${isFavorited ? '❤️' : '🤍'}
-        </button>
+        ${favoriteBtnHtml}
       </div>
       <div class="card-info">
         <div class="card-name">${game.name}</div>
@@ -147,12 +153,14 @@ export function createGameCard(ctx: PlatformContext, game: Game, best: number, r
       </div>
     `
 
-  // 绑定收藏按钮事件
-  const favBtn = card.querySelector('.favorite-btn')
-  favBtn?.addEventListener('click', (e) => {
-    e.stopPropagation()
-    ctx.toggleFavorite(game.id)
-  })
+  // 绑定收藏按钮事件（仅登录用户）
+  if (isLoggedIn) {
+    const favBtn = card.querySelector('.favorite-btn')
+    favBtn?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      ctx.toggleFavorite(game.id)
+    })
+  }
 
   // 绑定排名点击事件
   const bestEl = card.querySelector('.card-best')
@@ -324,9 +332,10 @@ export async function toggleFavorite(ctx: PlatformContext, gameId: string) {
     showToast('已取消收藏')
   }
 
-  const u = userService.current
-  if (u) {
-    // 同步到后端 API
+  // 优先使用 isLoggedIn 判断，同时检查 userService.current
+  const isUserLoggedIn = userService.isLoggedIn && userService.current
+  if (isUserLoggedIn) {
+    // 已登录用户，同步到后端 API
     const numericGameId = ctx.convertGameIdToNumber(gameId)
     try {
       if (isAdding) {
@@ -337,7 +346,11 @@ export async function toggleFavorite(ctx: PlatformContext, gameId: string) {
     } catch (e) {
       console.error('[App] 同步收藏到后端失败:', e)
     }
+    // 同步更新本地 userService.current 的 favorites
+    userService.current!.favorites = favorites
+    userService.saveUser(userService.current!)
   } else {
+    // 未登录用户，保存到本地存储
     const data = storageService.get()
     data.favorites = favorites
     storageService.save(data)
@@ -463,6 +476,14 @@ export function showSearchResults(ctx: PlatformContext, results: Game[]) {
 
 export function renderFavoritesPage(ctx: PlatformContext) {
   console.log('[App] renderFavoritesPage: Starting to render favorites page')
+
+  // 收藏页面需要登录才能访问
+  if (!userService.isLoggedIn) {
+    showToast('请先登录后再查看收藏')
+    switchToHome(ctx)
+    return
+  }
+
   const homeContent = document.getElementById('homeContent')
   const favoritesContent = document.getElementById('favoritesContent')
   const favoritesCount = document.getElementById('favoritesCount')

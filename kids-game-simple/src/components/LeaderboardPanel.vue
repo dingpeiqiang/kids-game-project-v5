@@ -80,7 +80,7 @@ import { tokenStore } from '../services/apiClient'
 // Props
 const props = defineProps<{
   visible: boolean
-  gameId: number
+  gameId: string
 }>()
 
 // Emits

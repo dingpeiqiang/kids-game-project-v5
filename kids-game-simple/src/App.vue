@@ -111,6 +111,9 @@ onMounted(async () => {
   // 监听用户变更事件
   window.addEventListener('ugp:userChange', () => onUserChange())
 
+  // 检查登录状态，未登录则弹出登录弹窗
+  checkLoginRequired()
+
   // 检查每日奖励
   const data = storageService.get()
   if (data.hasDoubleCard) {
@@ -131,6 +134,13 @@ onUnmounted(() => {
 function onUserChange() {
   refreshBestScores()
   renderGameCards(buildContext())
+}
+
+// 检查登录状态，未登录则弹出登录弹窗
+function checkLoginRequired() {
+  if (!userService.isLoggedIn) {
+    authModal.open(() => onUserChange())
+  }
 }
 </script>
 

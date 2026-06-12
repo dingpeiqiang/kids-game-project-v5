@@ -57,17 +57,17 @@ export interface SubmitScoreResponse {
 
 /**
  * 获取排行榜 TOP N
- * @param gameId 游戏ID
+ * @param gameCode 游戏代码（如 'sort', 'eliminate'）
  * @param type   排行类型：ALL/DAILY/MONTHLY/YEARLY
  * @param limit  返回数量，默认 20
  */
 export async function getTopList(
-  gameId: number,
+  gameCode: string,
   type: 'ALL' | 'DAILY' | 'MONTHLY' | 'YEARLY' = 'ALL',
   limit = 20
 ): Promise<LeaderboardResponse> {
   const params = new URLSearchParams({
-    gameId: String(gameId),
+    gameCode: gameCode,
     type,
     limit: String(limit)
   })
@@ -98,15 +98,15 @@ export async function getTopList(
 
 /**
  * 获取用户在指定游戏中的排名
- * @param gameId 游戏ID
- * @param accessToken 访问令牌
+ * @param gameCode 游戏代码（如 'sort', 'eliminate'）
+ * @param accessToken 访问令牌（用户ID）
  */
 export async function getUserRank(
-  gameId: number,
+  gameCode: string,
   accessToken: string
 ): Promise<UserRankInfo> {
   const params = new URLSearchParams({
-    gameId: String(gameId),
+    gameCode: gameCode,
     accessToken
   })
 

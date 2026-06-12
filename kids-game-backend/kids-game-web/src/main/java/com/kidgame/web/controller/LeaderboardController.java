@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kidgame.common.model.Result;
 import com.kidgame.common.util.JwtUtil;
 import com.kidgame.dao.entity.BaseUser;
+import com.kidgame.dao.entity.Game;
 import com.kidgame.dao.mapper.BaseUserMapper;
+import com.kidgame.service.GameService;
 import com.kidgame.service.LeaderboardService;
 import com.kidgame.service.dto.BatchRankRequest;
 import com.kidgame.service.vo.UserRankVO;
@@ -36,6 +38,9 @@ public class LeaderboardController {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private GameService gameService;
 
     /**
      * 排行榜条目VO
@@ -110,35 +115,52 @@ public class LeaderboardController {
     /**
      * 1. 获取排行榜 TOP N（公开接口）
      * GET /api/leaderboard/top?gameId={gameId}&type={type}&limit={limit}
+     * 或者 GET /api/leaderboard/top?gameCode={gameCode}&type={type}&limit={limit}
      *
-     * @param gameId 游戏ID
-     * @param type   排行类型：ALL/DAILY/MONTHLY/YEARLY（默认 ALL）
-     * @param limit  返回数量（默认 20，最大 100）
+     * @param gameId   游戏ID（可选，与 gameCode 二选一）
+     * @param gameCode 游戏代码（可选，如 'sort', 'eliminate'）
+     * @param type     排行类型：ALL/DAILY/MONTHLY/YEARLY（默认 ALL）
+     * @param limit    返回数量（默认 20，最大 100）
      */
     @GetMapping("/top")
     public Result<LeaderboardResponse> getTopList(
-            @RequestParam Long gameId,
+            @RequestParam(required = false) Long gameId,
+            @RequestParam(required = false) String gameCode,
             @RequestParam(defaultValue = "ALL") String type,
             @RequestParam(defaultValue = "20") Integer limit
     ) {
         try {
+            // 解析 gameId：如果提供了 gameCode，则通过 gameService 获取对应的 gameId
+            Long resolvedGameId = gameId;
+            if (resolvedGameId == null && gameCode != null && !gameCode.isEmpty()) {
+                Game game = gameService.getGameByCode(gameCode);
+                if (game == null) {
+                    return Result.error("游戏不存在：" + gameCode);
+                }
+                resolvedGameId = game.getGameId();
+            }
+
+            if (resolvedGameId == null) {
+                return Result.error("游戏ID或游戏代码不能为空");
+            }
+
             // 限制最大数量
             limit = Math.min(limit, 100);
 
             List<Map<String, Object>> rawList;
             switch (type.toUpperCase()) {
                 case "DAILY":
-                    rawList = leaderboardService.getDailyTop(gameId, limit);
+                    rawList = leaderboardService.getDailyTop(resolvedGameId, limit);
                     break;
                 case "MONTHLY":
-                    rawList = leaderboardService.getMonthlyTop(gameId, limit);
+                    rawList = leaderboardService.getMonthlyTop(resolvedGameId, limit);
                     break;
                 case "YEARLY":
-                    rawList = leaderboardService.getYearlyTop(gameId, limit);
+                    rawList = leaderboardService.getYearlyTop(resolvedGameId, limit);
                     break;
                 case "ALL":
                 default:
-                    rawList = leaderboardService.getAllTimeTop(gameId, limit);
+                    rawList = leaderboardService.getAllTimeTop(resolvedGameId, limit);
                     type = "ALL";
                     break;
             }
@@ -167,10 +189,12 @@ public class LeaderboardController {
     /**
      * 2. 获取用户排名（需要登录）
      * GET /api/leaderboard/user-rank?gameId={gameId}&accessToken={token}
+     * 或者 GET /api/leaderboard/user-rank?gameCode={gameCode}&accessToken={token}
      */
     @GetMapping("/user-rank")
     public Result<UserRankVO> getUserRank(
-            @RequestParam Long gameId,
+            @RequestParam(required = false) Long gameId,
+            @RequestParam(required = false) String gameCode,
             @RequestParam String accessToken
     ) {
         try {
@@ -180,7 +204,21 @@ public class LeaderboardController {
                 return Result.error("请先登录");
             }
 
-            Map<String, Object> rankInfo = leaderboardService.getUserRank(user.getUserId(), gameId);
+            // 解析 gameId：如果提供了 gameCode，则通过 gameService 获取对应的 gameId
+            Long resolvedGameId = gameId;
+            if (resolvedGameId == null && gameCode != null && !gameCode.isEmpty()) {
+                Game game = gameService.getGameByCode(gameCode);
+                if (game == null) {
+                    return Result.error("游戏不存在：" + gameCode);
+                }
+                resolvedGameId = game.getGameId();
+            }
+
+            if (resolvedGameId == null) {
+                return Result.error("游戏ID或游戏代码不能为空");
+            }
+
+            Map<String, Object> rankInfo = leaderboardService.getUserRank(user.getUserId(), resolvedGameId);
             if (rankInfo == null || rankInfo.isEmpty() || rankInfo.get("userRank") == null) {
                 return Result.success(new UserRankVO(null, 0L, false));
             }
@@ -192,11 +230,10 @@ public class LeaderboardController {
 
             return Result.success(new UserRankVO(rank, score, true));
         } catch (Exception e) {
-            log.error("[Leaderboard] 获取用户排名失败: gameId={}", gameId, e);
-            return Result.error("获取排名失败");
+            log.error("获取用户排名失败", e);
+            return Result.error("获取排名失败：" + e.getMessage());
         }
     }
-
     /**
      * 3. 提交游戏分数（需要登录）
      * POST /api/leaderboard/submit

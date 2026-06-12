@@ -14,6 +14,7 @@ import { apiClient, tokenStore } from './apiClient'
 import type { AuthResponseData, UserInfoData } from './apiClient'
 import { getLevelByExp, ALL_ACHIEVEMENTS } from '../types/user'
 import type { UserAccount, UserSession, GameRecord } from '../types/user'
+import { GAMES } from '../games/gameRegistry'
 
 import {
   submitScore,
@@ -27,6 +28,7 @@ import {
   apiGetSignInInfo,
   apiHasSignedInToday,
   apiGetFavoriteList,
+  apiAddFavorite,
   type SignInResponseData,
   type SignInInfoData
 } from './apiClient'
@@ -300,14 +302,35 @@ class UserService {
       if (res.ok && res.data) {
         // 将后端返回的数字 ID 转换为游戏 ID
         const gameIdMap = this._buildGameIdMap()
-        const favorites: string[] = []
+        const backendFavorites: string[] = []
         for (const numericId of res.data) {
           const gameId = gameIdMap[numericId]
-          if (gameId) favorites.push(gameId)
+          if (gameId) backendFavorites.push(gameId)
         }
-        this._current.favorites = favorites
+
+        // 合并本地和后端的收藏数据（去重）
+        const localFavorites = this._current.favorites || []
+        const mergedFavorites = [...new Set([...localFavorites, ...backendFavorites])]
+
+        this._current.favorites = mergedFavorites
         this.saveUser(this._current)
-        console.log('[UserService] 从后端加载收藏列表:', favorites.length, '个')
+        console.log('[UserService] 从后端加载收藏列表:', backendFavorites.length, '个，合并后:', mergedFavorites.length, '个')
+
+        // 如果本地有后端没有的收藏，同步到后端
+        const localOnly = localFavorites.filter(f => !backendFavorites.includes(f))
+        if (localOnly.length > 0) {
+          console.log('[UserService] 同步本地收藏到后端:', localOnly.length, '个')
+          for (const gameId of localOnly) {
+            const numericId = this.convertGameIdToNumber(gameId)
+            if (numericId) {
+              try {
+                await apiAddFavorite(numericId)
+              } catch (e) {
+                console.warn('[UserService] 同步收藏失败:', gameId, e)
+              }
+            }
+          }
+        }
       }
     } catch (e) {
       console.warn('[UserService] 从后端加载收藏失败:', e)
@@ -316,8 +339,6 @@ class UserService {
 
   // ── 构建数字ID到游戏ID的映射 ────────────────────────────────────
   private _buildGameIdMap(): Record<number, string> {
-    // 从 GAMES 导出游戏 ID 映射
-    const { GAMES } = require('../games/gameRegistry')
     const map: Record<number, string> = {}
     for (const game of GAMES) {
       const numericId = this.convertGameIdToNumber(game.id)
@@ -472,12 +493,12 @@ class UserService {
 
   // ── 获取游戏排行榜 ────────────────────────────────────────────
   async getGameLeaderboard(
-    gameId: number,
+    gameCode: string,
     type: 'ALL' | 'DAILY' | 'MONTHLY' | 'YEARLY' = 'ALL',
     limit = 20
   ): Promise<LeaderboardEntry[]> {
     try {
-      const response = await getTopList(gameId, type, limit)
+      const response = await getTopList(gameCode, type, limit)
       return response.list
     } catch (e) {
       console.warn('[UserService] 获取排行榜失败:', e)
@@ -486,12 +507,12 @@ class UserService {
   }
 
   // ── 获取用户在游戏中的排名 ────────────────────────────────────
-  async getMyGameRank(gameId: number): Promise<UserRankInfo | null> {
+  async getMyGameRank(gameCode: string): Promise<UserRankInfo | null> {
     const accessToken = tokenStore.getAccess()
     if (!accessToken) return null
 
     try {
-      return await getUserRank(gameId, accessToken)
+      return await getUserRank(gameCode, accessToken)
     } catch (e) {
       console.warn('[UserService] 获取排名失败:', e)
       return null
