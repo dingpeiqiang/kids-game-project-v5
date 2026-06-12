@@ -449,6 +449,7 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
     
     // 检查超时
     if (now - gameStartTime > 120000) {
+      engine.setVictory(false)
       engine.endGame()
       audioService.lose()
       onEnd()

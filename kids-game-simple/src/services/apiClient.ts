@@ -517,6 +517,100 @@ export async function apiHasSignedInToday(): Promise<{ ok: boolean; data?: boole
 }
 
 // ─────────────────────────────────────────────
+// 收藏 API
+// ─────────────────────────────────────────────
+
+/**
+ * 添加收藏
+ * POST /api/favorite/add
+ */
+export async function apiAddFavorite(gameId: number): Promise<{ ok: boolean; msg?: string }> {
+  try {
+    const res = await request<void>(
+      '/favorite/add',
+      {
+        method: 'POST',
+        body: JSON.stringify({ gameId }),
+      }
+    )
+    
+    if (res.code === 200) {
+      return { ok: true }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 添加收藏失败:', error)
+    return { ok: false, msg: String(error) }
+  }
+}
+
+/**
+ * 取消收藏
+ * POST /api/favorite/remove
+ */
+export async function apiRemoveFavorite(gameId: number): Promise<{ ok: boolean; msg?: string }> {
+  try {
+    const res = await request<void>(
+      '/favorite/remove',
+      {
+        method: 'POST',
+        body: JSON.stringify({ gameId }),
+      }
+    )
+    
+    if (res.code === 200) {
+      return { ok: true }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 取消收藏失败:', error)
+    return { ok: false, msg: String(error) }
+  }
+}
+
+/**
+ * 获取收藏列表
+ * GET /api/favorite/list
+ */
+export async function apiGetFavoriteList(): Promise<{ ok: boolean; data?: number[]; msg?: string }> {
+  try {
+    const res = await request<number[]>(
+      '/favorite/list',
+      { method: 'GET' }
+    )
+    
+    if (res.code === 200) {
+      return { ok: true, data: res.data || [] }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 获取收藏列表失败:', error)
+    return { ok: false, msg: String(error) }
+  }
+}
+
+/**
+ * 检查是否已收藏
+ * GET /api/favorite/check?gameId=xxx
+ */
+export async function apiCheckFavorite(gameId: number): Promise<{ ok: boolean; data?: boolean; msg?: string }> {
+  try {
+    const res = await request<boolean>(
+      `/favorite/check?gameId=${gameId}`,
+      { method: 'GET' }
+    )
+    
+    if (res.code === 200) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, msg: res.msg }
+  } catch (error) {
+    console.error('[API] 检查收藏状态失败:', error)
+    return { ok: false, msg: String(error) }
+  }
+}
+
+// ─────────────────────────────────────────────
 // 兼容旧版 apiClient 接口（供 userService 调用）
 // ─────────────────────────────────────────────
 class ApiClient {
@@ -558,6 +652,22 @@ class ApiClient {
 
   async healthCheck() {
     return apiHealthCheck()
+  }
+
+  async addFavorite(gameId: number) {
+    return apiAddFavorite(gameId)
+  }
+
+  async removeFavorite(gameId: number) {
+    return apiRemoveFavorite(gameId)
+  }
+
+  async getFavoriteList() {
+    return apiGetFavoriteList()
+  }
+
+  async checkFavorite(gameId: number) {
+    return apiCheckFavorite(gameId)
   }
 }
 

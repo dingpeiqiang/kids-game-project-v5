@@ -4,7 +4,7 @@ import { GAMES, GAME_CATEGORIES } from '../games/gameRegistry'
 import { isGameVisible, getGameDisplayConfig } from '../games/gameRegistry'
 import { storageService } from '../services/storage'
 import { userService } from '../services/userService'
-import { apiGetBatchUserRank, tokenStore } from '../services/apiClient'
+import { apiGetBatchUserRank, tokenStore, apiAddFavorite, apiRemoveFavorite } from '../services/apiClient'
 import { getUserRank } from '../services/leaderboardService'
 import { showToast } from '../services/userUI'
 
@@ -311,21 +311,32 @@ export function getFavorites(ctx: PlatformContext): string[] {
   return data.favorites || []
 }
 
-export function toggleFavorite(ctx: PlatformContext, gameId: string) {
+export async function toggleFavorite(ctx: PlatformContext, gameId: string) {
   const favorites = getFavorites(ctx)
   const index = favorites.indexOf(gameId)
+  const isAdding = index === -1
 
-  if (index > -1) {
-    favorites.splice(index, 1)
-    showToast('已取消收藏')
-  } else {
+  if (isAdding) {
     favorites.push(gameId)
     showToast('已加入收藏 ❤️')
+  } else {
+    favorites.splice(index, 1)
+    showToast('已取消收藏')
   }
 
   const u = userService.current
   if (u) {
-    // TODO: 调用后端 API 更新收藏
+    // 同步到后端 API
+    const numericGameId = ctx.convertGameIdToNumber(gameId)
+    try {
+      if (isAdding) {
+        await apiAddFavorite(numericGameId)
+      } else {
+        await apiRemoveFavorite(numericGameId)
+      }
+    } catch (e) {
+      console.error('[App] 同步收藏到后端失败:', e)
+    }
   } else {
     const data = storageService.get()
     data.favorites = favorites

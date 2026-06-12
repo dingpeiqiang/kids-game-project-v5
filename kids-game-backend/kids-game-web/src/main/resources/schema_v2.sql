@@ -1060,3 +1060,18 @@ CREATE TABLE `t_theme_assets` (
                                   KEY `idx_asset_key` (`asset_key`),
                                   CONSTRAINT `fk_theme_assets_theme` FOREIGN KEY (`theme_id`) REFERENCES `t_theme_info` (`theme_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='主题资源文件表';
+
+
+-- kidgame.t_user_favorite definition
+
+CREATE TABLE `t_user_favorite` (
+                                  `favorite_id` bigint NOT NULL AUTO_INCREMENT COMMENT '收藏 ID',
+                                  `user_id` bigint NOT NULL COMMENT '用户 ID',
+                                  `game_id` bigint NOT NULL COMMENT '游戏 ID',
+                                  `create_time` bigint NOT NULL COMMENT '创建时间（时间戳）',
+                                  `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除：0-未删除，1-已删除',
+                                  PRIMARY KEY (`favorite_id`),
+                                  UNIQUE KEY `uk_user_game` (`user_id`,`game_id`) COMMENT '每个用户对每个游戏只能收藏一次',
+                                  KEY `idx_user_id` (`user_id`),
+                                  KEY `idx_game_id` (`game_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户收藏表';

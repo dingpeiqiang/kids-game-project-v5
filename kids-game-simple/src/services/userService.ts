@@ -26,6 +26,7 @@ import {
   apiCollectDailyReward,
   apiGetSignInInfo,
   apiHasSignedInToday,
+  apiGetFavoriteList,
   type SignInResponseData,
   type SignInInfoData
 } from './apiClient'
@@ -157,6 +158,7 @@ class UserService {
       const info = await apiClient.getCurrentUser()
       if (info) {
         this._buildCurrentFromBackend(info)
+        await this._loadFavoritesFromBackend()
       } else {
         tokenStore.clear()
       }
@@ -238,6 +240,7 @@ class UserService {
 
     this._buildCurrentFromBackend(res.data)
     this._dailyCheckIn()
+    await this._loadFavoritesFromBackend()
     return { ok: true, msg: res.msg }
   }
 
@@ -306,6 +309,40 @@ class UserService {
 
     this.saveUser(u)
     this._checkAchievements(u)
+  }
+
+  // ── 从后端加载收藏列表 ──────────────────────────────────────────
+  private async _loadFavoritesFromBackend(): Promise<void> {
+    if (!this._current) return
+    try {
+      const res = await apiGetFavoriteList()
+      if (res.ok && res.data) {
+        // 将后端返回的数字 ID 转换为游戏 ID
+        const gameIdMap = this._buildGameIdMap()
+        const favorites: string[] = []
+        for (const numericId of res.data) {
+          const gameId = gameIdMap[numericId]
+          if (gameId) favorites.push(gameId)
+        }
+        this._current.favorites = favorites
+        this.saveUser(this._current)
+        console.log('[UserService] 从后端加载收藏列表:', favorites.length, '个')
+      }
+    } catch (e) {
+      console.warn('[UserService] 从后端加载收藏失败:', e)
+    }
+  }
+
+  // ── 构建数字ID到游戏ID的映射 ────────────────────────────────────
+  private _buildGameIdMap(): Record<number, string> {
+    // 从 GAMES 导出游戏 ID 映射
+    const { GAMES } = require('../games/gameRegistry')
+    const map: Record<number, string> = {}
+    for (const game of GAMES) {
+      const numericId = this.convertGameIdToNumber(game.id)
+      if (numericId) map[numericId] = game.id
+    }
+    return map
   }
 
   // ── 手动签到领奖 ──────────────────────────────────────────────

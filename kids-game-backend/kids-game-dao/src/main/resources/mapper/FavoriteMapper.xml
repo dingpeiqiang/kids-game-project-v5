@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kidgame.dao.mapper.FavoriteMapper">
+
+    <select id="selectGameIdsByUserId" resultType="java.lang.Long">
+        SELECT game_id FROM t_user_favorite
+        WHERE user_id = #{userId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="countByUserIdAndGameId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM t_user_favorite
+        WHERE user_id = #{userId} AND game_id = #{gameId} AND deleted = 0
+    </select>
+
+</mapper>

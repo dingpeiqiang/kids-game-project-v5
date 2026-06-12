@@ -678,7 +678,6 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.fillRect(0, 0, W, H);
   }
 
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
   const levelConfigEarly = LEVELS[state.currentLevel - 1];
   const levelNameEarly = levelConfigEarly?.name || `第${state.currentLevel}关`;
   const timeColorHud = state.timeRemaining <= 10 ? '#E74C3C' : '#FFFFFF';
@@ -697,7 +696,6 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
     28,
   );
   if (false) {
-  ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
@@ -722,7 +720,8 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fillStyle = '#FFD700';
   ctx.font = '12px sans-serif';
   ctx.fillText(`${colorEmoji} 车辆`, W / 2, 32);
-  
+  }
+
   // 添加操作提示（仅在前10秒显示）
   if (state.frameCount < 600) { // 60fps * 10s = 600帧
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -761,17 +760,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.textAlign = 'center';
   ctx.fillText(`${Math.floor(state.distance)}m / ${currentLevelConfig.distanceGoal}m`, W / 2, 52);
 
-  const timeColor = state.timeRemaining <= 10 ? '#E74C3C' : '#FFFFFF';
-  ctx.fillStyle = timeColor;
-  ctx.font = 'bold 18px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText(`⏱️ ${state.timeRemaining}s`, W - 15, 25);
-
-  ctx.fillStyle = '#00CED1';
-  ctx.font = '12px sans-serif';
-  ctx.fillText(`📍 ${SCENES[state.currentScene].name}`, W - 15, 48);
-
-  if (state.combo >= 3) {
+  if (false && state.combo >= 3) {
     ctx.fillStyle = '#E74C3C';
     ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'center';
