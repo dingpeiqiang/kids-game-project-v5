@@ -5,6 +5,7 @@ import { isGameVisible, getGameDisplayConfig } from '../games/gameRegistry'
 import { storageService } from '../services/storage'
 import { userService } from '../services/userService'
 import { apiGetBatchUserRank, tokenStore } from '../services/apiClient'
+import { getUserRank } from '../services/leaderboardService'
 import { showToast } from '../services/userUI'
 
 // ==================== 游戏卡片渲染 ====================
@@ -461,23 +462,49 @@ export function renderFavoritesPage(ctx: PlatformContext) {
   if (favoritesGameList) {
     favoritesGameList.innerHTML = ''
     if (favoriteGames.length > 0) {
-      const gamesToPreview: Game[] = []
-      favoriteGames.forEach((game, index) => {
-        const best = ctx.store.bestScores[game.id] || 0
-        const card = createGameCard(ctx, game, best, null)
-        card.style.animationDelay = `${index * 55}ms`
-        favoritesGameList.appendChild(card)
-        gamesToPreview.push(game)
-      })
-      console.log('[App] renderFavoritesPage: Created', gamesToPreview.length, 'cards, starting previews')
-      if (noFavorites) noFavorites.style.display = 'none'
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          gamesToPreview.forEach((game, i) => {
-            setTimeout(() => renderPreview(ctx, game), i * 30)
+      // 获取收藏游戏的排名（与首页保持一致）
+      const rankMap = new Map<string, number>()
+      if (userService.isLoggedIn && userService.current) {
+        const uid = String(userService.current.id)
+        Promise.all(favoriteGames.map(async game => {
+          try {
+            const rankInfo = await getUserRank(game.id, uid)
+            if (rankInfo && rankInfo.rank !== null) {
+              rankMap.set(game.id, rankInfo.rank)
+            }
+          } catch (e) {
+            // ignore
+          }
+        })).then(() => {
+          // 重新渲染卡片（带排名）
+          favoritesGameList.innerHTML = ''
+          const gamesToPreview: Game[] = []
+          favoriteGames.forEach((game) => {
+            const best = ctx.store.bestScores[game.id] || 0
+            const rank = rankMap.get(game.id) ?? null
+            const card = createGameCard(ctx, game, best, rank)
+            favoritesGameList.appendChild(card)
+            gamesToPreview.push(game)
           })
+          // 预览动画（与首页保持一致，统一延迟50ms）
+          setTimeout(() => {
+            gamesToPreview.forEach(game => ctx.renderPreview(game))
+          }, 50)
         })
-      })
+      } else {
+        // 未登录时直接渲染（无排名）
+        const gamesToPreview: Game[] = []
+        favoriteGames.forEach((game) => {
+          const best = ctx.store.bestScores[game.id] || 0
+          const card = createGameCard(ctx, game, best, null)
+          favoritesGameList.appendChild(card)
+          gamesToPreview.push(game)
+        })
+        setTimeout(() => {
+          gamesToPreview.forEach(game => ctx.renderPreview(game))
+        }, 50)
+      }
+      if (noFavorites) noFavorites.style.display = 'none'
     } else {
       console.log('[App] renderFavoritesPage: No favorite games to display')
       if (noFavorites) noFavorites.style.display = 'flex'

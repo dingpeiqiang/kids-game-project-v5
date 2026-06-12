@@ -727,7 +727,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   const progressBarWidth = 200;
   const progressBarHeight = 8;
   const progressBarX = (W - progressBarWidth) / 2;
-  const progressBarY = 38;
+  const progressBarY = 52;
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
   ctx.beginPath();
