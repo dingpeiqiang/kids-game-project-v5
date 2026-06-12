@@ -750,6 +750,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     if (now - gameStartTime > GAME_DURATION) {
       cleanup()
       gameEnded = true
+      engine.setVictory(false)
       engine.endGame()
       onEnd()
       return

@@ -313,6 +313,7 @@ export function initBouncePath(engine: GameEngine, onEnd: () => void) {
     const elapsed = Date.now() - gameStartTime
     if (elapsed > GAME_DURATION) {
       gameEnded = true
+      engine.setVictory(false)
       engine.endGame()
       onEnd()
       return

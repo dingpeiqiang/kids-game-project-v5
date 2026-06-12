@@ -5,7 +5,8 @@ import com.kidgame.service.FavoriteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,42 +17,42 @@ import java.util.List;
 @Tag(name = "收藏管理", description = "用户收藏游戏相关接口")
 @RestController
 @RequestMapping("/api/favorite")
+@RequiredArgsConstructor
 public class FavoriteController {
 
-    @Autowired
-    private FavoriteService favoriteService;
+    private final FavoriteService favoriteService;
 
     @Operation(summary = "添加收藏")
     @PostMapping("/add")
-    public Result<Boolean> addFavorite(
-            @Parameter(description = "用户ID") @RequestParam Long userId,
+    public Result<Boolean> addFavorite(HttpServletRequest request,
             @Parameter(description = "游戏ID") @RequestParam Long gameId) {
+        Long userId = Long.valueOf((String) request.getAttribute("userId"));
         boolean success = favoriteService.addFavorite(userId, gameId);
         return Result.success(success);
     }
 
     @Operation(summary = "取消收藏")
     @PostMapping("/remove")
-    public Result<Boolean> removeFavorite(
-            @Parameter(description = "用户ID") @RequestParam Long userId,
+    public Result<Boolean> removeFavorite(HttpServletRequest request,
             @Parameter(description = "游戏ID") @RequestParam Long gameId) {
+        Long userId = Long.valueOf((String) request.getAttribute("userId"));
         boolean success = favoriteService.removeFavorite(userId, gameId);
         return Result.success(success);
     }
 
     @Operation(summary = "获取用户收藏列表")
     @GetMapping("/list")
-    public Result<List<Long>> getUserFavorites(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    public Result<List<Long>> getUserFavorites(HttpServletRequest request) {
+        Long userId = Long.valueOf((String) request.getAttribute("userId"));
         List<Long> favorites = favoriteService.getUserFavorites(userId);
         return Result.success(favorites);
     }
 
     @Operation(summary = "检查是否已收藏")
     @GetMapping("/check")
-    public Result<Boolean> isFavorited(
-            @Parameter(description = "用户ID") @RequestParam Long userId,
+    public Result<Boolean> isFavorited(HttpServletRequest request,
             @Parameter(description = "游戏ID") @RequestParam Long gameId) {
+        Long userId = Long.valueOf((String) request.getAttribute("userId"));
         boolean favorited = favoriteService.isFavorited(userId, gameId);
         return Result.success(favorited);
     }

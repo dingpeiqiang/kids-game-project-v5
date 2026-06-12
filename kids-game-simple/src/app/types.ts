@@ -35,6 +35,7 @@ export interface PlatformContext {
   refreshCurrentPage(): void
   performSearch(keyword: string): void
   switchToHome(): void
+  switchToRank(): void
   showSearchResults(results: Game[]): void
   showRankForGame(gameId: string): void
   showRank(): void

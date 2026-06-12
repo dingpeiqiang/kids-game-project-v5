@@ -695,33 +695,6 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
     W / 2,
     28,
   );
-  if (false) {
-  ctx.font = 'bold 22px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.shadowBlur = 3;
-  ctx.shadowColor = '#000';
-  ctx.fillText(`🏆 ${state.score}`, 15, 25);
-
-  ctx.fillStyle = '#F1C40F';
-  ctx.font = '16px sans-serif';
-  ctx.fillText(`💰 ${state.coinsCollected}`, 15, 48);
-
-  const levelConfig = LEVELS[state.currentLevel - 1];
-  const levelName = levelConfig?.name || `第${state.currentLevel}关`;
-  
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`🎮 ${levelName}`, W / 2, 18);
-  
-  // 显示车辆颜色提示
-  const colorEmoji = state.carColor === 'red' ? '🔴' : state.carColor === 'blue' ? '🔵' : '🟡';
-  ctx.fillStyle = '#FFD700';
-  ctx.font = '12px sans-serif';
-  ctx.fillText(`${colorEmoji} 车辆`, W / 2, 32);
-  }
-
   // 添加操作提示（仅在前10秒显示）
   if (state.frameCount < 600) { // 60fps * 10s = 600帧
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -760,7 +733,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.textAlign = 'center';
   ctx.fillText(`${Math.floor(state.distance)}m / ${currentLevelConfig.distanceGoal}m`, W / 2, 52);
 
-  if (false && state.combo >= 3) {
+  if (false) { void state.combo;
     ctx.fillStyle = '#E74C3C';
     ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'center';

@@ -457,6 +457,7 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
           console.log('[史莱姆跳] 护盾抵挡障碍物')
         } else {
           gameEnded = true
+          engine.setVictory(false)
           engine.endGame()
           cleanup()
           if (typeof app !== 'undefined' && app.removePowerupBar) {
@@ -543,6 +544,7 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
       } else {
         // 没有护盾，游戏结束
         gameEnded = true
+        engine.setVictory(false)
         engine.endGame()
         
         // 设置游戏统计数据
@@ -606,6 +608,7 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
     
     if (Date.now() - gameStartTime > GAME_DURATION) {
       gameEnded = true
+      engine.setVictory(false)
       engine.endGame()
       
       // 设置游戏统计数据

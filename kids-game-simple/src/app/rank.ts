@@ -8,8 +8,7 @@ import { getTopList, type LeaderboardEntry } from '../services/leaderboardServic
 // ==================== 排行榜显示 ====================
 
 export function showRank(ctx: PlatformContext) {
-  document.getElementById('rank-overlay')!.classList.add('show')
-
+  ctx.currentPage = 'rank'
   initRankGameSelector(ctx)
 
   const bestScores = userService.isLoggedIn
@@ -29,8 +28,7 @@ export function showRank(ctx: PlatformContext) {
 }
 
 export function showRankForGame(ctx: PlatformContext, gameId: string) {
-  document.getElementById('rank-overlay')!.classList.add('show')
-
+  ctx.currentPage = 'rank'
   initRankGameSelector(ctx)
 
   const select = document.getElementById('rankGameSelect') as HTMLSelectElement
@@ -40,7 +38,7 @@ export function showRankForGame(ctx: PlatformContext, gameId: string) {
 }
 
 export function closeRank() {
-  document.getElementById('rank-overlay')!.classList.remove('show')
+  // 页面模式不需要操作，由页面切换控制
 }
 
 export function initRankGameSelector(ctx: PlatformContext) {

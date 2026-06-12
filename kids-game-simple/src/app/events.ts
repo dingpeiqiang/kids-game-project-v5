@@ -33,7 +33,7 @@ export function bindEvents(ctx: PlatformContext) {
       item.classList.add('active')
 
       if (page === 'rank') {
-        ctx.showRank()
+        ctx.switchToRank()
       } else if (page === 'favorites') {
         ctx.currentPage = 'favorites'
         ctx.renderFavoritesPage()

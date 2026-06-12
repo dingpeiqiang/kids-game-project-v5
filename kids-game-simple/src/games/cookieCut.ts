@@ -315,6 +315,7 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
     
     if (Date.now() - gameStartTime > GAME_DURATION) {
       gameEnded = true
+      engine.setVictory(false)
       engine.endGame()
       onEnd()
       return

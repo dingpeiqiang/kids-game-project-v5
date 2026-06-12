@@ -6,7 +6,7 @@ import type { PlatformContext } from './app/types'
 import type { Game } from './types'
 import { AuthModal, MePanel, injectUserStyles } from './services/userUI'
 import { renderUI, showDailyPop, closeDailyPop } from './app/ui'
-import { renderGameCards, createGameCard, renderPreview, getFavorites, toggleFavorite, refreshCurrentPage, performSearch, switchToHome, showSearchResults, renderFavoritesPage, refreshBestScores, showScoreFly } from './app/gameCards'
+import { renderGameCards, createGameCard, renderPreview, getFavorites, toggleFavorite, refreshCurrentPage, performSearch, switchToHome, switchToRank, showSearchResults, renderFavoritesPage, refreshBestScores, showScoreFly } from './app/gameCards'
 import { launchGame, showGameGuide, closeGuide, cancelGuide, startGame, endGame, showResult, syncScoreAsync, closeResult, replayGame, exitGame, setRating, submitComment, renderComments, updateCommentStats, formatTime } from './app/gameSession'
 import { showRank, showRankForGame, closeRank, initRankGameSelector, renderRank, calculateRank, convertGameIdToNumber, clearRankCache } from './app/rank'
 import { bindEvents, bindGameCallbacks } from './app/events'
@@ -67,6 +67,7 @@ const buildContext = (): PlatformContext => {
     refreshCurrentPage: () => refreshCurrentPage(buildContext()),
     performSearch: (keyword: string) => performSearch(buildContext(), keyword),
     switchToHome: () => switchToHome(buildContext()),
+    switchToRank: () => switchToRank(buildContext()),
     showSearchResults: (results: Game[]) => showSearchResults(buildContext(), results),
     showRankForGame: (gameId) => showRankForGame(buildContext(), gameId),
     showRank: () => showRank(buildContext()),
@@ -214,6 +215,37 @@ function onUserChange() {
           <div class="no-favorites-hint">点击游戏卡片上的 ❤️ 图标即可收藏</div>
         </div>
       </div>
+
+      <!-- 排行榜页面 -->
+      <div id="rankContent" class="rank-page" style="display:none;">
+        <div class="rank-page-panel">
+          <div class="rank-header">
+            <div class="rank-title">🏆 排行榜</div>
+          </div>
+          <div class="rank-game-selector">
+            <select id="rankGameSelect" class="rank-game-select">
+              <option value="">-- 选择游戏 --</option>
+            </select>
+          </div>
+          <div class="rank-tabs">
+            <div class="rank-tab active" data-tab="global">全局</div>
+            <div class="rank-tab" data-tab="daily">今日</div>
+            <div class="rank-tab" data-tab="friend">好友</div>
+          </div>
+          <div class="my-rank-card" id="myRankCard" style="display:none;">
+            <div class="my-rank-info">
+              <div class="my-rank-label">我的排名</div>
+              <div class="my-rank-value" id="myRankPosition">-</div>
+            </div>
+            <div class="my-rank-score">
+              <div class="my-rank-label">分数</div>
+              <div class="my-rank-value" id="myRankScore">0</div>
+            </div>
+            <button class="my-rank-btn" id="btnScrollToMyRank">📍 定位到我的排名</button>
+          </div>
+          <div class="rank-list" id="rankList"></div>
+        </div>
+      </div>
     </div>
 
     <!-- 底部导航 -->
@@ -287,38 +319,6 @@ function onUserChange() {
         <div style="margin-top:12px">
           <a href="#" id="btnResetGuide" style="font-size:11px;color:#bbb;text-decoration:none">重看游戏引导</a>
         </div>
-      </div>
-    </div>
-
-    <!-- 排行榜 -->
-    <div id="rank-overlay">
-      <div class="rank-panel">
-        <div class="rank-header">
-          <div class="rank-title">🏆 排行榜</div>
-          <div class="rank-close" id="rankClose">✕</div>
-        </div>
-        <div class="rank-game-selector">
-          <select id="rankGameSelect" class="rank-game-select">
-            <option value="">-- 选择游戏 --</option>
-          </select>
-        </div>
-        <div class="rank-tabs">
-          <div class="rank-tab active" data-tab="global">全局</div>
-          <div class="rank-tab" data-tab="daily">今日</div>
-          <div class="rank-tab" data-tab="friend">好友</div>
-        </div>
-        <div class="my-rank-card" id="myRankCard" style="display:none;">
-          <div class="my-rank-info">
-            <div class="my-rank-label">我的排名</div>
-            <div class="my-rank-value" id="myRankPosition">-</div>
-          </div>
-          <div class="my-rank-score">
-            <div class="my-rank-label">分数</div>
-            <div class="my-rank-value" id="myRankScore">0</div>
-          </div>
-          <button class="my-rank-btn" id="btnScrollToMyRank">📍 定位到我的排名</button>
-        </div>
-        <div class="rank-list" id="rankList"></div>
       </div>
     </div>
 

@@ -377,13 +377,32 @@ export function switchToHome(ctx: PlatformContext) {
   const homeContent = document.getElementById('homeContent')
   const searchResults = document.getElementById('searchResults')
   const favoritesContent = document.getElementById('favoritesContent')
+  const rankContent = document.getElementById('rankContent')
 
   if (homeContent) homeContent.style.display = 'block'
   if (searchResults) searchResults.style.display = 'none'
   if (favoritesContent) favoritesContent.style.display = 'none'
+  if (rankContent) rankContent.style.display = 'none'
 
   ctx.currentPage = 'home'
   renderGameCards(ctx)
+}
+
+export function switchToRank(ctx: PlatformContext) {
+  // 隐藏其它页面
+  const homeContent = document.getElementById('homeContent')
+  const searchResults = document.getElementById('searchResults')
+  const favoritesContent = document.getElementById('favoritesContent')
+  const rankContent = document.getElementById('rankContent')
+
+  if (homeContent) homeContent.style.display = 'none'
+  if (searchResults) searchResults.style.display = 'none'
+  if (favoritesContent) favoritesContent.style.display = 'none'
+  if (rankContent) rankContent.style.display = 'block'
+
+  ctx.currentPage = 'rank'
+  // 初始化并渲染排行榜
+  ctx.showRank()
 }
 
 export function showSearchResults(ctx: PlatformContext, results: Game[]) {
@@ -392,6 +411,7 @@ export function showSearchResults(ctx: PlatformContext, results: Game[]) {
   const searchCount = document.getElementById('searchCount')
   const searchGameList = document.getElementById('searchGameList')
   const noResults = document.getElementById('noResults')
+  const rankContent = document.getElementById('rankContent')
 
   if (!homeContent || !searchResults) return
 
@@ -405,6 +425,7 @@ export function showSearchResults(ctx: PlatformContext, results: Game[]) {
 
   homeContent.style.display = 'none'
   searchResults.style.display = 'block'
+  if (rankContent) rankContent.style.display = 'none'
   void searchResults.offsetHeight
 
   if (searchCount) {
@@ -452,6 +473,8 @@ export function renderFavoritesPage(ctx: PlatformContext) {
 
   homeContent.style.display = 'none'
   favoritesContent.style.display = 'block'
+  const rankContent = document.getElementById('rankContent')
+  if (rankContent) rankContent.style.display = 'none'
   void favoritesContent.offsetHeight
 
   ctx.previewAnimFrames.forEach((rafId) => cancelAnimationFrame(rafId))

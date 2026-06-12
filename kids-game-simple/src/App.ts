@@ -10,7 +10,7 @@ import { AuthModal, MePanel, injectUserStyles } from './services/userUI'
 import { OrientationManager } from './utils/orientation'
 
 import { renderUI, showDailyPop, closeDailyPop } from './app/ui'
-import { renderGameCards, createGameCard, renderPreview, getFavorites, toggleFavorite, refreshCurrentPage, performSearch, switchToHome, showSearchResults, renderFavoritesPage, refreshBestScores, showScoreFly } from './app/gameCards'
+import { renderGameCards, createGameCard, renderPreview, getFavorites, toggleFavorite, refreshCurrentPage, performSearch, switchToHome, switchToRank, showSearchResults, renderFavoritesPage, refreshBestScores, showScoreFly } from './app/gameCards'
 import { launchGame, showGameGuide, closeGuide, cancelGuide, startGame, endGame, showResult, syncScoreAsync, closeResult, replayGame, exitGame, setRating, submitComment, renderComments, updateCommentStats, formatTime } from './app/gameSession'
 import { showRank, showRankForGame, closeRank, initRankGameSelector, renderRank, calculateRank, convertGameIdToNumber, clearRankCache } from './app/rank'
 import { bindEvents, bindGameCallbacks } from './app/events'
@@ -75,6 +75,7 @@ class App {
       refreshCurrentPage: () => refreshCurrentPage(this.buildContext()),
       performSearch: (keyword: string) => performSearch(this.buildContext(), keyword),
       switchToHome: () => switchToHome(this.buildContext()),
+      switchToRank: () => switchToRank(this.buildContext()),
       showSearchResults: (results: Game[]) => showSearchResults(this.buildContext(), results),
       showRankForGame: (gameId) => showRankForGame(this.buildContext(), gameId),
       showRank: () => showRank(this.buildContext()),
