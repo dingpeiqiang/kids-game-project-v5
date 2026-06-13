@@ -1,6 +1,6 @@
 // RPG Shooter 塔防融合版 - 敌人系统
 
-import { GameState, Enemy, EnemyType, Turret, Wall } from './types'
+import type { GameState, Enemy, EnemyType, Turret, Wall } from './types'
 import { ENEMY_BASE_STATS, ENEMY_SHOOT_CONFIGS, CANVAS_WIDTH, CANVAS_HEIGHT } from './config'
 import { addCrystals, addExp, addCombo, resetCombo, playerHit } from './state'
 import { playSound } from './sounds'

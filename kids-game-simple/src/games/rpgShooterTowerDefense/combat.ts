@@ -1,6 +1,6 @@
 // RPG Shooter 塔防融合版 - 战斗系统
 
-import { GameState, Projectile, Enemy } from './types'
+import type { GameState, Projectile, Enemy } from './types'
 import { enemyHit, applySlow, applyFreeze, explodeDamage } from './enemies'
 import { SCALE_RATIO } from './config'
 import { playSound } from './sounds'

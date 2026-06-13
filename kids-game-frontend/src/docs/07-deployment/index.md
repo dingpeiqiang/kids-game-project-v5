@@ -86,7 +86,7 @@ start-all-games.bat
 # 数据库配置
 DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=kids_game
+DB_NAME=kidgame
 DB_USERNAME=root
 DB_PASSWORD=your_password
 

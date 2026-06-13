@@ -1,6 +1,6 @@
 // 游戏状态管理
 import { GAME_CONFIG } from './config';
-import { GameState, Star } from './types';
+import type { GameState, Star } from './types';
 
 // 初始化游戏状态
 export function createInitialState(): GameState {

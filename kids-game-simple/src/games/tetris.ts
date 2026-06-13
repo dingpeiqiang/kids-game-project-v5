@@ -1,7 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { createPowerupManager, ActivePowerup } from '../services/powerupManager'
-import { app } from '../App'
+import { createPowerupManager } from '../services/powerupManager'
+import { app } from '../services/appBridge'
 
 export function initTetris(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement

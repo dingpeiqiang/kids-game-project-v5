@@ -507,7 +507,7 @@ docker-compose ps mysql
 docker-compose logs mysql
 
 # 测试连接
-docker-compose exec mysql mysql -ukidgame -p kids_game
+docker-compose exec mysql mysql -ukidgame -p kidgame
 ```
 
 ### 问题 4：内存不足
@@ -543,7 +543,7 @@ docker-compose logs -f frontend   # 查看前端日志
 
 # === 进入容器 ===
 docker-compose exec backend sh    # 进入后端容器
-docker-compose exec mysql mysql -ukidgame -p kids_game  # 进入数据库
+docker-compose exec mysql mysql -ukidgame -p kidgame  # 进入数据库
 
 # === 构建和更新 ===
 docker-compose build              # 重新构建

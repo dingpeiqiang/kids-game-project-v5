@@ -1,4 +1,4 @@
-import { FloatingScore } from './types'
+import type { FloatingScore } from './types'
 
 export class ComboSystem {
   private combo: number = 0

@@ -135,9 +135,9 @@ backup_database() {
     local backup_dir="./backups/$(date +%Y%m%d_%H%M%S)"
     mkdir -p "$backup_dir"
     
-    docker-compose exec -T mysql mysqldump -ukidgame -p${MYSQL_PASSWORD:-kidgame123} kids_game > "$backup_dir/kids_game.sql"
+    docker-compose exec -T mysql mysqldump -ukidgame -p${MYSQL_PASSWORD:-kidgame123} kidgame > "$backup_dir/kidgame.sql"
     
-    log_info "数据库备份完成：$backup_dir/kids_game.sql"
+    log_info "数据库备份完成：$backup_dir/kidgame.sql"
 }
 
 # 显示帮助信息

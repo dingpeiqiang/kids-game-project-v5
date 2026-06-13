@@ -1,6 +1,6 @@
 // RPG Shooter 塔防融合版 - 陷阱系统
 
-import { GameState, Trap, TrapType } from './types'
+import type { GameState, Trap, TrapType } from './types'
 import { TRAP_CONFIGS, MAX_TRAPS, GRID_SIZE } from './config'
 import { explodeDamage, applySlow } from './enemies'
 import { spendCrystals } from './state'

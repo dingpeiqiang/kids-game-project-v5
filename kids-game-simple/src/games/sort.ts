@@ -1,7 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../data/items'
-import { app } from '../App'
+import { app } from '../services/appBridge'
 import { bindCanvasEvents, getPointerPos, resizeCanvasForMobile } from '../utils/mobileHelper'
 
 export function initSort(engine: GameEngine, onEnd: () => void) {

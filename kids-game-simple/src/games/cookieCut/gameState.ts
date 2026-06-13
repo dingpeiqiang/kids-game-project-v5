@@ -5,7 +5,7 @@
 import type { Cookie, Particle, Slice, Shockwave, ScorePopup, LevelTransition } from './types'
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
-import { app } from '../../App'
+import { app } from '../../services/appBridge'
 import { POWERUP_ICONS } from './config'
 import { createFallingCrumbs } from './particles'
 

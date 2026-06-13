@@ -1,6 +1,6 @@
 // RPG Shooter 塔防融合版 - 波次管理系统
 
-import { GameState, EnemyType } from './types'
+import type { GameState, EnemyType } from './types'
 import { getWaveConfig, TOTAL_WAVES } from './config'
 import { spawnEnemyFromEdge } from './enemies'
 import { startWave, startBreak } from './state'

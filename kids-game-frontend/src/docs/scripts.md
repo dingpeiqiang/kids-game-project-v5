@@ -247,7 +247,7 @@ set-env-vars.bat
 
 # 2. 初始化数据库
 cd kids-game-backend
-mysql -u root -p kids_game < src/main/resources/schema.sql
+mysql -u root -p kidgame < src/main/resources/schema.sql
 
 # 3. 启动后端
 start-backend.bat

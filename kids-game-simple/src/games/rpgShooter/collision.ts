@@ -1,6 +1,6 @@
 // 碰撞检测模块
 import { GAME_CONFIG } from './config';
-import { GameState, Enemy, Drop } from './types';
+import type { GameState, Enemy, Drop } from './types';
 import { playerHit, levelUp } from './player';
 import { spawnEnemyBullet } from './bullets';
 

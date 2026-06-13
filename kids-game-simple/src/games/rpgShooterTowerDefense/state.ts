@@ -1,6 +1,6 @@
 // RPG Shooter 塔防融合版 - 状态管理
 
-import { GameState, Resources, Player, BuildMode } from './types'
+import type { GameState, Resources, Player, BuildMode } from './types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, PLAYER_INITIAL, getExpToLevel, getPlayerStatsAtLevel } from './config'
 import { playSound } from './sounds'
 

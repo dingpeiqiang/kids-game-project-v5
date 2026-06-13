@@ -1,5 +1,5 @@
 // 粒子特效模块
-import { GameState, Particle } from './types';
+import type { GameState, Particle } from './types';
 
 // 创建爆炸特效
 export function createExplosion(

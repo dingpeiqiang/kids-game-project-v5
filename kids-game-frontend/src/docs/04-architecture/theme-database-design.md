@@ -55,19 +55,19 @@
 
 ```bash
 cd kids-game-backend
-mysql -u root -p kids_game < theme-system-migration-v3.sql
+mysql -u root -p kidgame < theme-system-migration-v3.sql
 ```
 
 ### 2. 执行初始化脚本（推荐）
 
 ```bash
-mysql -u root -p kids_game < theme-init-data.sql
+mysql -u root -p kidgame < theme-init-data.sql
 ```
 
 ### 3. 执行测试脚本（可选 - 仅开发环境）
 
 ```bash
-mysql -u root -p kids_game < theme-test-data.sql
+mysql -u root -p kidgame < theme-test-data.sql
 ```
 
 ---

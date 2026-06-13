@@ -194,7 +194,7 @@ SET @GAME_EMOJI = '🎮';
 
 ```bash
 # 在数据库中执行
-mysql -u root -p kids_game < register-game.sql
+mysql -u root -p kidgame < register-game.sql
 ```
 
 ## 第七步：生成资源

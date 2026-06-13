@@ -1,6 +1,6 @@
 // 子弹系统模块
 import { GAME_CONFIG } from './config';
-import { GameState, PlayerBullet, EnemyBullet, Enemy } from './types';
+import type { GameState, PlayerBullet, EnemyBullet, Enemy } from './types';
 
 // 玩家射击
 export function shoot(state: GameState): void {

@@ -38,7 +38,7 @@ notepad set-env-vars.ps1
 # 设置环境变量
 export DB_HOST=localhost
 export DB_PORT=3306
-export DB_NAME=kids_game
+export DB_NAME=kidgame
 export DB_USERNAME=root
 export DB_PASSWORD=your_password
 export REDIS_HOST=localhost
@@ -68,11 +68,11 @@ redis-server
 cd kids-game-backend
 
 # 创建数据库
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS kids_game CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS kidgame CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # 执行初始化脚本
-mysql -u root -p kids_game < src/main/resources/schema.sql
-mysql -u root -p kids_game < src/main/resources/data.sql
+mysql -u root -p kidgame < src/main/resources/schema.sql
+mysql -u root -p kidgame < src/main/resources/data.sql
 ```
 
 ### 3. 启动后端服务

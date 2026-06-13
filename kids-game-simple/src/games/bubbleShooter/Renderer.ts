@@ -1,4 +1,4 @@
-import { Shooter, Projectile, BubblePosition, SpecialBubbleType } from './types'
+import type { Shooter, Projectile, BubblePosition, SpecialBubbleType } from './types'
 import { ParticleSystem } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
 

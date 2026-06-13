@@ -86,7 +86,7 @@ Write-Host "OK: Gradle wrapper found" -ForegroundColor Green
 # [2/4] Build web project
 Write-Host "`n[2/4] Building web project..."
 Write-Host "Running pnpm run build..."
-pnpm run build 2>&1 | Select-Object -First 20
+pnpm run build 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "WARN: Web build failed, trying with existing dist..." -ForegroundColor Yellow
 } else {

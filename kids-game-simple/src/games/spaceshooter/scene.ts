@@ -1,4 +1,5 @@
-import { Scene, Textures, Input, Math as PhaserMath, GameObjects } from 'phaser'
+import { Scene, Math as PhaserMath } from 'phaser'
+import type { Textures, Input, GameObjects } from 'phaser'
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
 import type { Bullet, Enemy, EnemyBullet, Particle, Shockwave, FloatText, Powerup, Star, SceneState, Turret, TransformState, TransformType } from './types'

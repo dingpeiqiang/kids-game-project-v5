@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-kids_game}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kidgame}
       MYSQL_USER: ${MYSQL_USER:-kidgame}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-kidgame123}
     ports:
@@ -49,7 +49,7 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/kids_game?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/kidgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-kidgame}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-kidgame123}
       SPRING_REDIS_HOST: redis

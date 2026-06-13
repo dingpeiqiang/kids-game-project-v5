@@ -178,9 +178,9 @@ set timestamp=%timestamp: =0%
 set backup_dir=backups\%timestamp%
 if not exist %backup_dir% mkdir %backup_dir%
 
-docker-compose exec -T mysql mysqldump -ukidgame -p%MYSQL_PASSWORD% kids_game > %backup_dir%\kids_game.sql
+docker-compose exec -T mysql mysqldump -ukidgame -p%MYSQL_PASSWORD% kidgame > %backup_dir%\kidgame.sql
 
-echo [INFO] 数据库备份完成：%backup_dir%\kids_game.sql
+echo [INFO] 数据库备份完成：%backup_dir%\kidgame.sql
 pause
 goto menu
 

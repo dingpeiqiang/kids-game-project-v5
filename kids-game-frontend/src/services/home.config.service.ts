@@ -234,7 +234,7 @@ export class HomeConfigService {
    */
   public getUserPreference(): UserGamePreference {
     try {
-      const stored = localStorage.getItem('kids_game_user_preference');
+      const stored = localStorage.getItem('kidgame_user_preference');
       if (stored) {
         return JSON.parse(stored);
       }
@@ -256,7 +256,7 @@ export class HomeConfigService {
    */
   public saveUserPreference(preference: UserGamePreference): void {
     try {
-      localStorage.setItem('kids_game_user_preference', JSON.stringify(preference));
+      localStorage.setItem('kidgame_user_preference', JSON.stringify(preference));
     } catch (error) {
       console.error('保存用户偏好失败:', error);
     }

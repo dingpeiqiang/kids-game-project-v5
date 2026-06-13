@@ -400,7 +400,7 @@ docker-compose ps mysql
 docker-compose logs mysql
 
 # 测试连接
-docker-compose exec mysql mysql -ukidgame -p kids_game
+docker-compose exec mysql mysql -ukidgame -p kidgame
 ```
 
 ### Q3: 前端无法访问后端 API

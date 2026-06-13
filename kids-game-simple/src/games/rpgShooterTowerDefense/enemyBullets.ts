@@ -1,6 +1,6 @@
 // RPG Shooter 塔防融合版 - 敌人子弹系统
 
-import { GameState, EnemyBullet } from './types'
+import type { GameState, EnemyBullet } from './types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, SCALE_RATIO } from './config'
 import { playerHit } from './state'
 import { wallHit } from './turrets'

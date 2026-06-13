@@ -3,7 +3,7 @@
 -- 使用方法：在 MySQL 客户端中执行此脚本
 -- ========================================
 
-USE kids_game;
+USE kidgame;
 
 -- 如果表已存在则先删除
 DROP TABLE IF EXISTS t_game_comment;

@@ -1,6 +1,6 @@
 // 玩家逻辑模块
 import { GAME_CONFIG, LEVEL_STATS } from './config';
-import { GameState, Particle, FloatText } from './types';
+import type { GameState, Particle, FloatText } from './types';
 
 // 初始化玩家属性
 export function initPlayerStats(state: GameState): void {

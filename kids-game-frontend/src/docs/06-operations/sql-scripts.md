@@ -72,13 +72,13 @@ kids-game-backend/
 
 ```bash
 # MySQL 命令行执行
-mysql -u root -p123456 kids_game < script.sql
+mysql -u root -p123456 kidgame < script.sql
 
 # 执行特定脚本
-mysql -u root -p123456 kids_game < init-snake-themes.sql
+mysql -u root -p123456 kidgame < init-snake-themes.sql
 
 # 管道执行
-cat script.sql | mysql -u root -p123456 kids_game
+cat script.sql | mysql -u root -p123456 kidgame
 ```
 
 ### 2. Navicat/Workbench 执行
@@ -105,24 +105,24 @@ run-migration.bat init-snake-themes.sql
 
 ```bash
 # 1. 执行数据库初始化脚本
-mysql -u root -p123456 kids_game < schema.sql
-mysql -u root -p123456 kids_game < data.sql
+mysql -u root -p123456 kidgame < schema.sql
+mysql -u root -p123456 kidgame < data.sql
 
 # 2. 执行游戏初始化脚本
-mysql -u root -p123456 kids_game < init-real-games.sql
-mysql -u root -p123456 kids_game < init-snake-shooter.sql
+mysql -u root -p123456 kidgame < init-real-games.sql
+mysql -u root -p123456 kidgame < init-snake-shooter.sql
 
 # 3. 执行主题初始化脚本（可选）
-mysql -u root -p123456 kids_game < init-snake-themes.sql
+mysql -u root -p123456 kidgame < init-snake-themes.sql
 ```
 
 ### 主题系统升级
 
 ```bash
 # 按顺序执行升级脚本
-mysql -u root -p123456 kids_game < theme-system-migration.sql
-mysql -u root -p123456 kids_game < theme-system-migration-v2.sql
-mysql -u root -p123456 kids_game < theme-system-unified-migration.sql
+mysql -u root -p123456 kidgame < theme-system-migration.sql
+mysql -u root -p123456 kidgame < theme-system-migration-v2.sql
+mysql -u root -p123456 kidgame < theme-system-unified-migration.sql
 ```
 
 ---
@@ -133,7 +133,7 @@ mysql -u root -p123456 kids_game < theme-system-unified-migration.sql
 
 ```bash
 # 备份数据库
-mysqldump -u root -p123456 kids_game > backup_$(date +%Y%m%d).sql
+mysqldump -u root -p123456 kidgame > backup_$(date +%Y%m%d).sql
 ```
 
 ### 事务处理
@@ -149,7 +149,7 @@ mysqldump -u root -p123456 kids_game > backup_$(date +%Y%m%d).sql
 
 ```bash
 # UTF-8 编码执行
-mysql -u root -p123456 --default-character-set=utf8mb4 kids_game < script.sql
+mysql -u root -p123456 --default-character-set=utf8mb4 kidgame < script.sql
 ```
 
 ---

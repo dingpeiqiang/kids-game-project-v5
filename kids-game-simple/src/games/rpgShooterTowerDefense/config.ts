@@ -1,6 +1,6 @@
 // RPG Shooter 塔防融合版 - 游戏配置
 
-import { TurretConfig, WaveInfo } from './types'
+import type { TurretConfig, WaveInfo } from './types'
 
 // ============================================
 // 固定设计尺寸（类似 dragonShooter）

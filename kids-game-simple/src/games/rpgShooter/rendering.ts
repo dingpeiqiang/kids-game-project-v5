@@ -1,6 +1,6 @@
 // 渲染系统模块
 import { GAME_CONFIG, LEVEL_STATS } from './config';
-import { GameState } from './types';
+import type { GameState } from './types';
 import { drawEnemy } from './enemies';
 
 // 绘制背景

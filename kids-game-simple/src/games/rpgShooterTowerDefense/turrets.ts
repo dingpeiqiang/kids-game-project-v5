@@ -1,6 +1,6 @@
 // RPG Shooter 塔防融合版 - 炮台系统
 
-import { GameState, Turret, TurretType, Enemy } from './types'
+import type { GameState, Turret, TurretType, Enemy } from './types'
 import { TURRET_CONFIGS, MAX_TURRETS, GRID_SIZE, CANVAS_WIDTH, CANVAS_HEIGHT, SCALE_RATIO } from './config'
 import { spendCrystals } from './state'
 import { playSound } from './sounds'

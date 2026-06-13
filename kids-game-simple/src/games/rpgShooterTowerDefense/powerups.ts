@@ -1,5 +1,5 @@
 // RPG Shooter 塔防融合版 - 道具系统
-import { GameState, Powerup } from './types'
+import type { GameState, Powerup } from './types'
 import { playSound } from './sounds'
 
 // 道具配置

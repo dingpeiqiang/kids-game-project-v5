@@ -18,7 +18,7 @@ spring:
   
   # 数据库配置（请根据实际情况修改）
   datasource:
-    url: jdbc:mysql://localhost:3306/kids_game?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    url: jdbc:mysql://localhost:3306/kidgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
     username: root
     password: your-password
     driver-class-name: com.mysql.cj.jdbc.Driver

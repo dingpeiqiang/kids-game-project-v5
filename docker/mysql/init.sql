@@ -5,11 +5,11 @@
 -- ========================================
 
 -- 创建数据库
-CREATE DATABASE IF NOT EXISTS kids_game 
+CREATE DATABASE IF NOT EXISTS kidgame
 DEFAULT CHARACTER SET utf8mb4 
 DEFAULT COLLATE utf8mb4_unicode_ci;
 
-USE kids_game;
+USE kidgame;
 
 -- ================================================
 -- 1. 用户体系（简化版）

@@ -1,6 +1,6 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
+import { app } from '../services/appBridge'
 
 export function initCookieCut(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement

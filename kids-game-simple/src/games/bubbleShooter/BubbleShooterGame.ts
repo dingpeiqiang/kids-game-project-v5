@@ -3,7 +3,7 @@ import { audioService } from '../../services/audio'
 import { ParticleSystem } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
 import { Renderer } from './Renderer'
-import { Shooter, Projectile, MatchPosition, PowerupType, SpecialBubbleType } from './types'
+import type { Shooter, Projectile, MatchPosition, PowerupType, SpecialBubbleType } from './types'
 import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../../utils/canvasMobileUtils'
 
 interface LevelConfig {

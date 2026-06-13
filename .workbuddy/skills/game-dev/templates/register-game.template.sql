@@ -1,6 +1,6 @@
 -- =============================================
 -- 游戏注册脚本
--- 执行方式: mysql -u root -p kids_game < register-game.sql
+-- 执行方式: mysql -u root -p kidgame < register-game.sql
 -- =============================================
 
 -- 游戏配置变量（修改这里）

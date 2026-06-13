@@ -41,7 +41,7 @@ init-houses-games.bat
 
 或在 MySQL 客户端执行：
 ```bash
-mysql -u root -p kids_game < init-houses-games.sql
+mysql -u root -p kidgame < init-houses-games.sql
 ```
 
 ### 2. 安装依赖

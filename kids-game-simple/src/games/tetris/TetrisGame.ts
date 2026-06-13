@@ -1,7 +1,7 @@
 // Tetris 游戏主类
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
-import { createPowerupManager, ActivePowerup } from '../../services/powerupManager'
+import { createPowerupManager } from '../../services/powerupManager'
 import { app } from '../../services/appBridge'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 import { ParticleSystem } from './ParticleSystem'

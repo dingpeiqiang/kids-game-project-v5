@@ -9,7 +9,7 @@ export interface PreparedGameTheme {
   loaded: boolean
 }
 
-const ACTIVE_THEME_KEY = 'kids_game_selected_theme_id'
+const ACTIVE_THEME_KEY = 'kidgame_selected_theme_id'
 
 let lastPrepared: PreparedGameTheme | null = null
 

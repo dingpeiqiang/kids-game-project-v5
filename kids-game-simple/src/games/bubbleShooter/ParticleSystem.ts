@@ -1,4 +1,4 @@
-import { Particle } from './types'
+import type { Particle } from './types'
 
 export class ParticleSystem {
   private particles: Particle[] = []

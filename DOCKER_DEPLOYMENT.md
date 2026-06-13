@@ -155,13 +155,13 @@ docker-compose up -d --no-deps --build backend
 ### 数据库操作
 ```bash
 # 进入 MySQL 容器
-docker-compose exec mysql mysql -ukidgame -p kids_game
+docker-compose exec mysql mysql -ukidgame -p kidgame
 
 # 备份数据库
 ./deploy.sh backup
 
 # 恢复数据库
-docker-compose exec -T mysql mysql -ukidgame -p kids_game < backup.sql
+docker-compose exec -T mysql mysql -ukidgame -p kidgame < backup.sql
 ```
 
 ### 清理和维护
@@ -212,7 +212,7 @@ docker-compose ps mysql
 docker-compose logs mysql
 
 # 测试连接
-docker-compose exec mysql mysql -ukidgame -p kids_game
+docker-compose exec mysql mysql -ukidgame -p kidgame
 ```
 
 ### 前端无法访问后端

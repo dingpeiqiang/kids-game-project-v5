@@ -10,7 +10,7 @@ export interface StorageOptions {
 }
 
 class StorageUtil {
-  private PREFIX = 'kids_game_';
+  private PREFIX = 'kidgame_';
 
   /**
    * 设置 localStorage

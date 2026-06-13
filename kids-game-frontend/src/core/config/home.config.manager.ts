@@ -324,7 +324,7 @@ const DEFAULT_HOME_CONFIG: HomePageConfig = {
 export class HomeConfigManager {
   private static instance: HomeConfigManager;
   private config: HomePageConfig;
-  private readonly CONFIG_KEY = 'kids_game_home_config';
+  private readonly CONFIG_KEY = 'kidgame_home_config';
 
   private constructor() {
     this.config = this.loadConfig();

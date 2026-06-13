@@ -1,4 +1,4 @@
-import { app } from '../../App'
+import { app } from '../../services/appBridge'
 import { audioService } from '../../services/audio'
 
 export class PowerupSystem {

@@ -1,6 +1,6 @@
 // 敌人系统模块
 import { GAME_CONFIG, ENEMY_TYPES } from './config';
-import { GameState, Enemy } from './types';
+import type { GameState, Enemy } from './types';
 import { spawnEnemyBullet } from './bullets';
 
 // 生成敌人

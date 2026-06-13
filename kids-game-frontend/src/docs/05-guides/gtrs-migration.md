@@ -17,7 +17,7 @@
 
 ```bash
 # MySQL 备份
-mysqldump -u root -p kids_game_db > kids_game_db_backup_$(date +%Y%m%d).sql
+mysqldump -u root -p kidgame_db > kidgame_db_backup_$(date +%Y%m%d).sql
 
 # 或通过数据库管理工具导出 theme_info 表
 ```
@@ -87,7 +87,7 @@ curl -X POST http://localhost:8080/api/theme/validate-gtrs \
 #### 1. 执行迁移 SQL
 
 ```bash
-mysql -u root -p kids_game_db < migrate_theme_to_gtrs.sql
+mysql -u root -p kidgame_db < migrate_theme_to_gtrs.sql
 ```
 
 #### 2. 验证迁移结果
@@ -232,7 +232,7 @@ curl -X POST http://localhost:8080/api/theme/validate-gtrs \
 
 ```bash
 # 恢复整个数据库
-mysql -u root -p kids_game_db < kids_game_db_backup_20250318.sql
+mysql -u root -p kidgame_db < kidgame_db_backup_20250318.sql
 ```
 
 ### 方式二：从备份表恢复

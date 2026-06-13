@@ -3,7 +3,7 @@ import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
 import { storageService } from '../../services/storage'
 import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../../data/items'
-import { app } from '../../App'
+import { app } from '../../services/appBridge'
 import { EliminateGame } from './EliminateGame'
 
 export function initEliminate(engine: GameEngine, onEnd: () => void) {

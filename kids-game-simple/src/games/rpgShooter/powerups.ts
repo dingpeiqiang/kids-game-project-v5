@@ -1,5 +1,5 @@
 // 道具系统模块
-import { GameState, Drop } from './types';
+import type { GameState, Drop } from './types';
 import { levelUp } from './player';
 import { GAME_CONFIG } from './config';
 
