@@ -169,15 +169,6 @@ onMounted(async () => {
   window.addEventListener('ugp:userChange', () => onUserChange())
   window.addEventListener('ugp:tasksRefresh', () => loadBannerTasks())
 
-  // 首日登录奖励
-  const today = new Date().toDateString()
-  const alreadyCollected = userService.isLoggedIn
-    ? userService.current?.dailyRewardCollected === today
-    : storageService.get().dailyRewardCollected === today
-  if (!alreadyCollected) {
-    setTimeout(() => showDailyPop(), 800)
-  }
-
   // 隐藏 loading
   setTimeout(() => {
     isLoading.value = false
@@ -193,6 +184,13 @@ function onUserChange() {
   refreshBestScores()
   renderGameCards(buildContext())
   void loadBannerTasks()
+
+  // 登录成功后弹出每日签到（仅已登录用户）
+  if (!userService.isLoggedIn) return
+  const today = new Date().toDateString()
+  if (userService.current?.dailyRewardCollected !== today) {
+    setTimeout(() => showDailyPop(), 1200)
+  }
 }
 </script>
 

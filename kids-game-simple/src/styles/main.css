@@ -300,6 +300,10 @@ body{
   .main-container {
     top: 52px;
   }
+
+  .game-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* 主界面 */
