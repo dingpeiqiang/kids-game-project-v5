@@ -1,6 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
+import { app } from '../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../utils/canvasMobileUtils'
 
 export function initStarCatcher(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -284,26 +285,30 @@ export function initStarCatcher(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  function getPos(e: MouseEvent | TouchEvent) {
-    const rect = canvas.getBoundingClientRect()
-    if ('touches' in e) {
-      return { x: (e.touches[0].clientX - rect.left) * (W / rect.width) }
-    }
-    return { x: (e.clientX - rect.left) * (W / rect.width) }
-  }
-
-  canvas.onmousemove = canvas.ontouchmove = (e) => {
-    mouseX = getPos(e as any).x
-  }
-  canvas.onmousedown = canvas.ontouchstart = (e) => {
-    mouseX = getPos(e as any).x
-  }
+  applyCanvasMobileStyles(canvas)
+  const unbindPointer = bindCanvasPointerTapAndMove(
+    canvas,
+    (x) => {
+      mouseX = x
+    },
+    (x) => {
+      mouseX = x
+    },
+  )
 
   function loop() {
-    if (!document.getElementById('mainGameCanvas') || gameEnded) return
-    
+    if (!document.getElementById('mainGameCanvas')) {
+      unbindPointer()
+      return
+    }
+    if (gameEnded) {
+      unbindPointer()
+      return
+    }
+
     if (Date.now() - gameStartTime > GAME_DURATION) {
       gameEnded = true
+      unbindPointer()
       engine.setVictory(false)
       engine.endGame()
       onEnd()

@@ -21,6 +21,9 @@ export async function renderGameCards(ctx: PlatformContext) {
     ctx.previewObserver = null
   }
 
+  // 移除其他隐藏页面中的旧 canvas，避免 ID 冲突
+  document.querySelectorAll('#searchResults canvas[id^="preview_"], #favoritesContent canvas[id^="preview_"]')
+    .forEach(el => el.remove())
   // 清空现有内容，避免重复渲染
   container.innerHTML = ''
 
@@ -456,6 +459,9 @@ export function showSearchResults(ctx: PlatformContext, results: Game[]) {
         searchGameList.appendChild(card)
         gamesToPreview.push(game)
       })
+      // 移除隐藏首页的旧 canvas 避免 ID 冲突
+      document.querySelectorAll('#homeContent canvas[id^="preview_"]')
+        .forEach(el => el.remove())
       console.log('[App] showSearchResults: Created', gamesToPreview.length, 'cards, starting previews')
       if (noResults) noResults.style.display = 'none'
       requestAnimationFrame(() => {
@@ -504,6 +510,9 @@ export function renderFavoritesPage(ctx: PlatformContext) {
     ctx.previewObserver.disconnect()
     ctx.previewObserver = null
   }
+  // 移除隐藏页面中的旧 canvas，避免与收藏页面的 canvas ID 冲突
+  document.querySelectorAll('#homeContent canvas[id^="preview_"], #searchResults canvas[id^="preview_"]')
+    .forEach(el => el.remove())
   console.log('[App] renderFavoritesPage: Cleared all animations and observer')
 
   const favoriteIds = getFavorites(ctx)

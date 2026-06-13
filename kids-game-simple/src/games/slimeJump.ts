@@ -1,6 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
+import { app } from '../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../utils/canvasMobileUtils'
 
 export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -567,27 +568,19 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  function getPos(e: MouseEvent | TouchEvent) {
-    const rect = canvas.getBoundingClientRect()
-    if ('touches' in e) {
-      return { x: (e.touches[0].clientX - rect.left) * (W / rect.width) }
-    }
-    return { x: (e.clientX - rect.left) * (W / rect.width) }
-  }
+  applyCanvasMobileStyles(canvas)
+  const unbindPointer = bindCanvasPointerTapAndMove(
+    canvas,
+    (x) => {
+      mouseX = x
+    },
+    (x) => {
+      mouseX = x
+    },
+  )
 
-  canvas.onmousemove = canvas.ontouchmove = (e) => {
-    mouseX = getPos(e as any).x
-  }
-  canvas.onmousedown = canvas.ontouchstart = (e) => {
-    mouseX = getPos(e as any).x
-  }
-
-  // 清理函数 - 在游戏结束时移除事件监听器
   const cleanup = () => {
-    canvas.onmousemove = null
-    canvas.ontouchmove = null
-    canvas.onmousedown = null
-    canvas.ontouchstart = null
+    unbindPointer()
   }
 
   function loop(currentTime: number) {

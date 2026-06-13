@@ -46,7 +46,6 @@ export interface UserAccount {
   lastLoginDate: string
   todayGames: number
   todayDate: string
-  hasDoubleCard: boolean
   items: Record<string, number>
   guideSkipped: Record<string, boolean>
   favorites: string[]             // 收藏的游戏ID列表

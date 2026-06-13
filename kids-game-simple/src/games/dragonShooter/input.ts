@@ -10,6 +10,7 @@ import {
   STORAGE_KEY
 } from './constants'
 import { audioService } from '../../services/audio'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
 export interface InputCallbacks {
   onRouteEditorClear: () => void
@@ -381,41 +382,61 @@ export function createInputHandler(
     }
   }
 
-  // 绑定事件
-  canvas.addEventListener('touchstart', (e) => {
+  applyCanvasMobileStyles(canvas)
+
+  const onTouchStart = (e: TouchEvent) => {
     e.preventDefault()
-    const pos = state.phase === 'routeEdit' ? getCanvasPos(e.touches[0]) : getPos(e.touches[0])
+    const t = e.touches[0]
+    if (!t) return
+    const pos = state.phase === 'routeEdit' ? getCanvasPos(t) : getPos(t)
     handleDown(pos.x, pos.y)
-  }, { passive: false })
+  }
 
-  canvas.addEventListener('touchmove', (e) => {
+  const onTouchMove = (e: TouchEvent) => {
     e.preventDefault()
-    const pos = state.phase === 'routeEdit' ? getCanvasPos(e.touches[0]) : getPos(e.touches[0])
+    const t = e.touches[0]
+    if (!t) return
+    const pos = state.phase === 'routeEdit' ? getCanvasPos(t) : getPos(t)
     handleMove(pos.x, pos.y)
-  }, { passive: false })
+  }
 
+  const onMouseDown = (e: MouseEvent) => {
+    const pos = state.phase === 'routeEdit' ? getCanvasPos(e) : getPos(e)
+    handleDown(pos.x, pos.y)
+  }
+
+  const onMouseMove = (e: MouseEvent) => {
+    const pos = state.phase === 'routeEdit' ? getCanvasPos(e) : getPos(e)
+    handleMove(pos.x, pos.y)
+  }
+
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+  canvas.addEventListener('touchmove', onTouchMove, { passive: false })
   canvas.addEventListener('touchend', handleUp)
-
-  canvas.addEventListener('mousedown', (e) => {
-    // 路线编辑模式用画布坐标（任意位置绘制），其他模式用游戏坐标
-    const pos = state.phase === 'routeEdit' ? getCanvasPos(e) : getPos(e)
-    handleDown(pos.x, pos.y)
-  })
-
-  canvas.addEventListener('mousemove', (e) => {
-    const pos = state.phase === 'routeEdit' ? getCanvasPos(e) : getPos(e)
-    handleMove(pos.x, pos.y)
-  })
-
+  canvas.addEventListener('touchcancel', handleUp)
+  canvas.addEventListener('mousedown', onMouseDown)
+  canvas.addEventListener('mousemove', onMouseMove)
   canvas.addEventListener('mouseup', handleUp)
   canvas.addEventListener('mouseleave', handleUp)
 
-  // 监听窗口大小变化，更新缓存
   const handleResize = () => {
     cachedRect = null
     lastResizeTime = Date.now()
   }
   window.addEventListener('resize', handleResize)
 
-  return { getPos, getCanvasPos, handleDown, handleMove, handleUp }
+  const dispose = () => {
+    canvas.removeEventListener('touchstart', onTouchStart)
+    canvas.removeEventListener('touchmove', onTouchMove)
+    canvas.removeEventListener('touchend', handleUp)
+    canvas.removeEventListener('touchcancel', handleUp)
+    canvas.removeEventListener('mousedown', onMouseDown)
+    canvas.removeEventListener('mousemove', onMouseMove)
+    canvas.removeEventListener('mouseup', handleUp)
+    canvas.removeEventListener('mouseleave', handleUp)
+    window.removeEventListener('resize', handleResize)
+    delete (canvas as HTMLCanvasElement & { __invalidateTouchRect?: () => void }).__invalidateTouchRect
+  }
+
+  return { getPos, getCanvasPos, handleDown, handleMove, handleUp, dispose }
 }

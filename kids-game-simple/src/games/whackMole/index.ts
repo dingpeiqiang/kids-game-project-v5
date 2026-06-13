@@ -1,6 +1,7 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
-import { app } from '../../App'
+import { app } from '../../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 
 // ——————————————————————————————————————————————
 //  打地鼠  Whack-a-Mole
@@ -735,6 +736,7 @@ export function initWhackMole(engine: GameEngine, onEnd: () => void) {
       updateDifficulty()
       if (timeLeft <= 0) {
         gameEnded = true
+        engine.setVictory(false)
         engine.endGame()
         onEnd()
         return
@@ -840,16 +842,6 @@ export function initWhackMole(engine: GameEngine, onEnd: () => void) {
   }
 
   // —— 输入事件 ——
-  function getCanvasPos(clientX: number, clientY: number) {
-    const rect = cvs.getBoundingClientRect()
-    const scaleX = cvs.width / rect.width
-    const scaleY = cvs.height / rect.height
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
-    }
-  }
-
   function checkHit(cx: number, cy: number) {
     for (let i = 0; i < HOLE_COUNT; i++) {
       const m = moles[i]
@@ -866,25 +858,21 @@ export function initWhackMole(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  function onMouseDown(e: MouseEvent) {
-    const pos = getCanvasPos(e.clientX, e.clientY)
-    checkHit(pos.x, pos.y)
-  }
-  function onTouchStart(e: TouchEvent) {
-    e.preventDefault()
-    const t = e.touches[0]
-    const pos = getCanvasPos(t.clientX, t.clientY)
-    checkHit(pos.x, pos.y)
-  }
-
-  cvs.addEventListener('mousedown', onMouseDown)
-  cvs.addEventListener('touchstart', onTouchStart, { passive: false })
+  applyCanvasMobileStyles(cvs)
+  const unbindPointer = bindCanvasPointerInput(cvs, (x, y) => checkHit(x, y))
 
   // —— 启动 ——
   engine.start()
 
   function loop() {
-    if (!document.getElementById('mainGameCanvas') || gameEnded) return
+    if (!document.getElementById('mainGameCanvas')) {
+      unbindPointer()
+      return
+    }
+    if (gameEnded) {
+      unbindPointer()
+      return
+    }
     update()
     draw()
     requestAnimationFrame(loop)

@@ -63,10 +63,7 @@ export class AuthModal {
     this.el.id = 'ugp-auth-overlay'
     document.body.appendChild(this.el)
 
-    // 点击背景关闭
-    this.el.addEventListener('click', (e) => {
-      if (e.target === this.el) this.close()
-    })
+    // 登录成功前不允许关闭
   }
 
   private renderPanel() {
@@ -77,8 +74,7 @@ export class AuthModal {
     this.el.innerHTML = `
       <div class="ugp-auth-card">
         <div class="ugp-auth-header">
-          <div class="ugp-auth-logo">🎮 解压竞技</div>
-          <div class="ugp-auth-close" id="authClose">✕</div>
+          <div class="ugp-auth-logo" style="flex:1;text-align:center">🎮 解压竞技</div>
         </div>
 
         <div class="ugp-auth-tabs">
@@ -91,8 +87,6 @@ export class AuthModal {
         </div>
       </div>
     `
-
-    document.getElementById('authClose')?.addEventListener('click', () => this.close())
 
     this.el.querySelectorAll('.ugp-tab').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -615,6 +609,10 @@ export class MePanel {
           this.render()
           // 触发顶部栏更新
           window.dispatchEvent(new CustomEvent('ugp:userChange'))
+          // 退出后自动弹出登录面板
+          this.authModal.open(() => {
+            window.dispatchEvent(new CustomEvent('ugp:userChange'))
+          })
         }
         return
       }

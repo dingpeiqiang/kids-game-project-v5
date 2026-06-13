@@ -1,7 +1,8 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
 import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../../data/items'
-import { app } from '../../App'
+import { app } from '../../services/appBridge'
+import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils'
 import { Block } from './Block'
 import { ParticleSystem, Particle } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
@@ -386,6 +387,7 @@ export class EliminateGame {
       // 防止重复调用 endGame
       if (!this.isGameOver) {
         this.isGameOver = true
+        this.teardownInput()
         this.engine.endGame()
         this.onEnd()
       }
@@ -417,6 +419,7 @@ export class EliminateGame {
       // 防止重复调用 endGame
       if (!this.isGameOver) {
         this.isGameOver = true
+        this.teardownInput()
         this.engine.endGame()
         audioService.lose()
         this.onEnd()
@@ -573,27 +576,23 @@ export class EliminateGame {
     })
   }
   
-  private setupEventListeners() {
-    // 清除旧的事件监听器
+  private teardownInput() {
     this.canvas.onclick = null
     this.canvas.removeEventListener('touchstart', this.handleTouchStart)
     this.canvas.removeEventListener('touchmove', this.handleTouchMove)
     this.canvas.removeEventListener('touchend', this.handleTouchEnd)
-    
-    // 绑定点击事件（桌面端）
+  }
+
+  private setupEventListeners() {
+    this.teardownInput()
+    applyCanvasMobileStyles(this.canvas)
+
     this.canvas.onclick = (e: MouseEvent) => {
       this.lastActionTime = Date.now()
-      
-      const rect = this.canvas.getBoundingClientRect()
-      const scaleX = this.W / rect.width
-      const scaleY = this.H / rect.height
-      const mx = (e.clientX - rect.left) * scaleX
-      const my = (e.clientY - rect.top) * scaleY
-      
+      const { x: mx, y: my } = clientToCanvas(this.canvas, e.clientX, e.clientY)
       this.handleClick(mx, my)
     }
-    
-    // 绑定触摸事件（移动端）
+
     this.canvas.addEventListener('touchstart', this.handleTouchStart, { passive: false })
     this.canvas.addEventListener('touchmove', this.handleTouchMove, { passive: false })
     this.canvas.addEventListener('touchend', this.handleTouchEnd, { passive: false })
@@ -611,13 +610,8 @@ export class EliminateGame {
     
     // 如果没有选中任何宝石，尝试选中触摸位置的宝石
     if (!this.selectedBlock && !this.isAnimating) {
-      const rect = this.canvas.getBoundingClientRect()
-      const scaleX = this.canvas.width / rect.width
-      const scaleY = this.canvas.height / rect.height
-      
-      const mx = (touch.clientX - rect.left) * scaleX
-      const my = (touch.clientY - rect.top) * scaleY
-      
+      const { x: mx, y: my } = clientToCanvas(this.canvas, touch.clientX, touch.clientY)
+
       const col = Math.floor((mx - this.PADDING) / this.CELL)
       const row = Math.floor((my - this.TOP) / this.CELL)
       const idx = row * this.COLS + col
@@ -676,13 +670,8 @@ export class EliminateGame {
       
       // 如果检测到有效的拖拽交换
       if (targetIdx !== null && this.blocks[targetIdx]) {
-        // 获取触摸位置用于显示特效
-        const rect = this.canvas.getBoundingClientRect()
-        const scaleX = this.canvas.width / rect.width
-        const scaleY = this.canvas.height / rect.height
-        const mx = (touch.clientX - rect.left) * scaleX
-        const my = (touch.clientY - rect.top) * scaleY
-        
+        const { x: mx, y: my } = clientToCanvas(this.canvas, touch.clientX, touch.clientY)
+
         // 标记已执行滑动
         this.hasSwiped = true
         
@@ -712,13 +701,7 @@ export class EliminateGame {
     
     // 如果滑动距离很小，视为点击
     if (dx < this.SWIPE_THRESHOLD && dy < this.SWIPE_THRESHOLD) {
-      const rect = this.canvas.getBoundingClientRect()
-      const scaleX = this.canvas.width / rect.width
-      const scaleY = this.canvas.height / rect.height
-      
-      const mx = (touch.clientX - rect.left) * scaleX
-      const my = (touch.clientY - rect.top) * scaleY
-      
+      const { x: mx, y: my } = clientToCanvas(this.canvas, touch.clientX, touch.clientY)
       this.handleClick(mx, my)
     }
     

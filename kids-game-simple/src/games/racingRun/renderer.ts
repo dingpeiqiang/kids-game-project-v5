@@ -733,7 +733,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.textAlign = 'center';
   ctx.fillText(`${Math.floor(state.distance)}m / ${currentLevelConfig.distanceGoal}m`, W / 2, 52);
 
-  if (false) { void state.combo;
+  if (false as boolean) { void state.combo; void 0;
     ctx.fillStyle = '#E74C3C';
     ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'center';

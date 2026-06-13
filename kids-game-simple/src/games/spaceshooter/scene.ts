@@ -361,33 +361,58 @@ export class SpaceShooterScene extends Scene {
     this.gameTexture.refresh()
   }
 
-  // === 输入处理 ===
+  private inputBound = false
+
+  // === 输入处理（触摸拖动战机，逻辑坐标 BASE_W×BASE_H）===
   private setupInput() {
-    this.input.on('pointerdown', (pointer: Input.Pointer) => {
-      if (this.gameEnded) return
+    if (this.inputBound) return
+    this.inputBound = true
+
+    const applyPointer = (pointer: Input.Pointer) => {
       const pos = this.screenToLogical(pointer)
       this.playerX = pos.x
       this.playerY = pos.y - TOUCH_OFFSET_Y
       this.clampPlayer()
+    }
+
+    const onDown = (pointer: Input.Pointer) => {
+      if (this.gameEnded) return
       this.mouseDown = true
+      applyPointer(pointer)
       if (!this.gameStarted) {
         this.gameStarted = true
         this.startTime = Date.now()
       }
-    })
-    this.input.on('pointermove', (pointer: Input.Pointer) => {
-      if (this.gameEnded || !pointer.isDown) return
-      const pos = this.screenToLogical(pointer)
-      this.playerX = pos.x
-      this.playerY = pos.y - TOUCH_OFFSET_Y
-      this.clampPlayer()
-    })
-    this.input.on('pointerup', () => { this.mouseDown = false })
-    
     }
+
+    const onMove = (pointer: Input.Pointer) => {
+      if (this.gameEnded || !pointer.isDown) return
+      applyPointer(pointer)
+    }
+
+    const onUp = () => {
+      this.mouseDown = false
+    }
+
+    this.input.on('pointerdown', onDown)
+    this.input.on('pointermove', onMove)
+    this.input.on('pointerup', onUp)
+    this.input.on('pointerupoutside', onUp)
+    this.input.on('pointercancel', onUp)
+
+    this.events.once('shutdown', () => {
+      this.input.off('pointerdown', onDown)
+      this.input.off('pointermove', onMove)
+      this.input.off('pointerup', onUp)
+      this.input.off('pointerupoutside', onUp)
+      this.input.off('pointercancel', onUp)
+      this.inputBound = false
+    })
+  }
 
   private screenToLogical(pointer: Input.Pointer): { x: number; y: number } {
     const cam = this.cameras.main
+    // Phaser FIT 缩放下 pointer 已在相机空间，减去 scroll 即逻辑坐标
     return { x: pointer.x - cam.scrollX, y: pointer.y - cam.scrollY }
   }
 

@@ -64,7 +64,8 @@ export async function initKingBaby(engine: GameEngine, onEnd: () => void): Promi
       score: state.score,
       kills: state.kills,
     })
-    cancelAnimationFrame(raf)
+    activeDispose?.()
+    activeDispose = null
     onEnd()
   }
 

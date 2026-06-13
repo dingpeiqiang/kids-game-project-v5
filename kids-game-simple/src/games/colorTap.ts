@@ -1,7 +1,8 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
-import { bindCanvasEvents, getPointerPos, resizeCanvasForMobile } from '../utils/mobileHelper'
+import { app } from '../services/appBridge'
+import { resizeCanvasForMobile } from '../utils/mobileHelper'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../utils/canvasMobileUtils'
 
 export function initColorTap(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -328,28 +329,20 @@ export function initColorTap(engine: GameEngine, onEnd: () => void) {
     })
   }
 
-  // 初始化Canvas尺寸（移动端适配）
   resizeCanvasForMobile(canvas)
-  
-  // 统一的事件处理函数
-  const handleGameClick = (e: MouseEvent | TouchEvent) => {
-    const pos = getPointerPos(e, canvas)
-    handleClick(pos.x, pos.y)
-  }
-  
-  // 清除旧的事件监听器
-  canvas.onclick = null
-  canvas.ontouchend = null
-  
-  // 绑定事件
-  bindCanvasEvents(canvas, handleGameClick as any)
+  applyCanvasMobileStyles(canvas)
+
+  const unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+    handleClick(x, y)
+  })
 
   function loop() {
     if (!document.getElementById('mainGameCanvas') || gameEnded) return
-    
+
     const elapsed = Date.now() - gameStartTime
     if (elapsed > TOTAL_TIME) {
       gameEnded = true
+      unbindPointer()
       engine.endGame()
       onEnd()
       return

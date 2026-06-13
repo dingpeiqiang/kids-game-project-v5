@@ -2,7 +2,7 @@ import { Vector3 } from '@babylonjs/core'
 import type { GameEngine } from '../../services/gameEngine'
 import { createEngine3d } from '../../engine3d/createEngine3d'
 import { cellKindAt } from './config'
-import { bindCanvasInput } from './input'
+import { bindCanvasInput, clientToPickCoords } from './input'
 import {
   applyBuffChoice,
   canBuildAt,
@@ -85,6 +85,8 @@ export async function initHappyDefense(engine: GameEngine, onEnd: () => void): P
       bestScore: state.records.bestScore,
       fastestClearSec: state.records.fastestClearSec,
     })
+    activeDispose?.()
+    activeDispose = null
     onEnd()
   }
 
@@ -140,8 +142,8 @@ export async function initHappyDefense(engine: GameEngine, onEnd: () => void): P
   })
 
   const onMove = (ev: PointerEvent) => {
-    const rect = ctx3d.canvas.getBoundingClientRect()
-    const pick = ctx3d.scene.pick(ev.clientX - rect.left, ev.clientY - rect.top)
+    const { x, y } = clientToPickCoords(ctx3d.canvas, ev.clientX, ev.clientY)
+    const pick = ctx3d.scene.pick(x, y)
     const meta = pick?.pickedMesh?.metadata as { gx?: number; gz?: number } | undefined
     if (meta?.gx != null && meta?.gz != null) {
       hoverGx = meta.gx

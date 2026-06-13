@@ -1,3 +1,4 @@
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 import { BASE_H, BASE_W, GAME_CONFIG, PLANT_CARD_ORDER } from './config'
 import { PlantKind } from './types'
 import type { GameState } from './types'
@@ -141,8 +142,13 @@ export function bindPzd2dInput(
   getState: () => GameState,
   onTap: (result: ReturnType<typeof handleTap>) => void,
 ): () => void {
+  applyCanvasMobileStyles(canvas)
+
   const onPointerDown = (e: PointerEvent) => {
+    if (e.button !== 0) return
+    e.preventDefault()
     const rect = canvas.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
     const sx = ((e.clientX - rect.left) / rect.width) * canvas.width
     const sy = ((e.clientY - rect.top) / rect.height) * canvas.height
     const state = getState()
@@ -150,7 +156,7 @@ export function bindPzd2dInput(
     onTap(r)
   }
 
-  canvas.addEventListener('pointerdown', onPointerDown)
+  canvas.addEventListener('pointerdown', onPointerDown, { passive: false })
   return () => canvas.removeEventListener('pointerdown', onPointerDown)
 }
 

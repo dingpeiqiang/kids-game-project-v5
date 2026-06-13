@@ -11,6 +11,7 @@ import {
   addSkillParticles, addFloatText, grantExp, updateTowers, rectCollision,
 } from './logic/combat'
 import { renderGame } from './render/index'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
 let gameInstance: WangzheRpgGame | null = null
 
@@ -215,6 +216,7 @@ export class WangzheRpgGame {
    * 设置触控监听
    */
   private setupTouchControls(): void {
+    applyCanvasMobileStyles(this.canvas)
     this.boundTouchStart = (e: TouchEvent) => this.onTouchStart(e)
     this.boundTouchMove = (e: TouchEvent) => this.onTouchMove(e)
     this.boundTouchEnd = (e: TouchEvent) => this.onTouchEnd(e)

@@ -29,6 +29,7 @@ import {
   apiHasSignedInToday,
   apiGetFavoriteList,
   apiAddFavorite,
+  apiGameSettle,
   type SignInResponseData,
   type SignInInfoData
 } from './apiClient'
@@ -58,7 +59,6 @@ interface LocalGameData {
   lastLoginDate: string
   todayGames: number
   todayDate: string
-  hasDoubleCard: boolean
   items: Record<string, number>
   guideSkipped: Record<string, boolean>
   favorites: string[]
@@ -86,7 +86,6 @@ function defaultGameData(): LocalGameData {
     lastLoginDate: today,
     todayGames: 0,
     todayDate: today,
-    hasDoubleCard: true,  // 注册礼包
     items: {},
     guideSkipped: {},
     favorites: [],
@@ -107,7 +106,12 @@ interface LocalAccountMeta {
 }
 
 function loadLocalAccounts(): LocalAccountMeta[] {
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEYS.accounts) || '[]') }
+  try {
+    const list: LocalAccountMeta[] = JSON.parse(localStorage.getItem(LOCAL_KEYS.accounts) || '[]')
+    const cleaned = list.filter(a => a.id && a.id !== 'undefined' && a.id !== 'null')
+    if (cleaned.length !== list.length) saveLocalAccounts(cleaned)
+    return cleaned
+  }
   catch { return [] }
 }
 
@@ -175,7 +179,12 @@ class UserService {
 
   /** 从后端用户信息构建 current 对象 */
   private _buildCurrentFromBackend(info: UserInfoData | AuthResponseData) {
-    const uid = String('userId' in info ? info.userId : (info as AuthResponseData).userId)
+    const rawUid = 'userId' in info ? info.userId : (info as AuthResponseData).userId
+    if (rawUid == null) {
+      console.warn('[UserService] userId is null/undefined in backend response, aborting')
+      return
+    }
+    const uid = String(rawUid)
     const gd = loadGameData(uid)
     const today = new Date().toDateString()
 
@@ -185,11 +194,16 @@ class UserService {
       gd.todayDate = today
     }
 
-    // 同步后端的游学币（fatiguePoints）到本地
     if ('fatiguePoints' in info && typeof info.fatiguePoints === 'number') {
       gd.studyCoins = info.fatiguePoints
-      saveGameData(uid, gd)
     }
+    if ('coins' in info && typeof (info as AuthResponseData).coins === 'number') {
+      gd.coins = (info as AuthResponseData).coins!
+    }
+    if ('exp' in info && typeof (info as AuthResponseData).exp === 'number') {
+      gd.exp = (info as AuthResponseData).exp!
+    }
+    saveGameData(uid, gd)
 
     const account: UserAccount = {
       id: uid,
@@ -288,8 +302,6 @@ class UserService {
     u.todayGames = 0
     u.todayDate = today
 
-    if (!u.hasDoubleCard && Math.random() < 0.5) u.hasDoubleCard = true
-
     this.saveUser(u)
     this._checkAchievements(u)
   }
@@ -370,20 +382,26 @@ class UserService {
             return { ok: false, msg: '今日已签到' }
           }
           
-          // 使用后端返回的奖励数据
-          const coins = backendData.coinsReward || 50
+          const coins = backendData.coinsReward || 0
           const exp = backendData.expReward || 0
+          const study = backendData.studyCoinsReward || 0
           const consecutiveDays = backendData.consecutiveDays || this._current.consecutiveLoginDays
-          
-          // 更新本地数据
+          const wallet = backendData.wallet
+
           this._current.dailyRewardCollected = today
-          this._current.coins += coins
-          if (exp > 0) this._current.exp += exp
+          if (wallet) {
+            this._current.coins = wallet.coins
+            this._current.studyCoins = wallet.studyCoins
+            this._current.exp = wallet.exp
+          } else {
+            this._current.coins += coins
+            if (exp > 0) this._current.exp += exp
+            if (study > 0) this._current.studyCoins += study
+          }
           this._current.consecutiveLoginDays = consecutiveDays
-          
           this.saveUser(this._current)
-          
-          console.log('[UserService] 签到成功同步到后端', { coins, exp, consecutiveDays })
+
+          console.log('[UserService] 签到成功同步到后端', { coins, exp, study, consecutiveDays })
           return { ok: true, msg: backendData.message || `签到成功！获得 ${coins} 金币`, coins }
         } else {
           console.warn('[UserService] 后端签到失败，使用本地模式:', result.msg)
@@ -427,18 +445,37 @@ class UserService {
     u.gameRecords.unshift(record)
     if (u.gameRecords.length > 100) u.gameRecords.pop()
 
-    const coins = Math.round(score / 10)
-    const exp = Math.max(5, Math.round(score / 50))
+    const levelReached = gameStats?.level ?? 0
+    u.todayGames += 1
+    this.saveUser(u)
+
+    if (this.isLoggedIn) {
+      const numericGameId = this.convertGameIdToNumber(gameId)
+      if (numericGameId != null) {
+        try {
+          const settle = await apiGameSettle(numericGameId, score, levelReached)
+          if (settle.ok && settle.data?.success !== false) {
+            const d = settle.data!
+            if (d.coins != null) u.coins = d.coins
+            if (d.studyCoins != null) u.studyCoins = d.studyCoins
+            if (d.exp != null) u.exp = d.exp
+            this.saveUser(u)
+            this._checkAchievements(u)
+            return { synced: true, rank: d.rank ?? undefined }
+          }
+        } catch (e) {
+          console.warn('[UserService] 游戏结算失败，使用本地记录', e)
+        }
+      }
+    }
+
+    const coins = Math.min(8, Math.max(1, Math.round(score / 200)))
+    const exp = Math.min(10, Math.max(2, Math.round(score / 300)))
     u.coins += coins
     u.exp += exp
-    u.todayGames += 1
-
     this.saveUser(u)
     this._checkAchievements(u)
-
-    console.log('[UserService] 本地数据已更新，准备同步到后端...')
-    // 同步分数到后端排行榜（传递游戏统计数据）
-    return await this.syncScoreToBackend(gameId, score, gameStats)
+    return { synced: false }
   }
 
   // ── 同步分数到后端排行榜 ─────────────────────────────────────
@@ -572,12 +609,6 @@ class UserService {
     this.saveUser(this._current)
   }
 
-  useDoubleCard() {
-    if (!this._current) return
-    this._current.hasDoubleCard = false
-    this.saveUser(this._current)
-  }
-
   incrementGames() {
     if (!this._current) return
     this._current.todayGames++
@@ -685,7 +716,6 @@ class UserService {
       lastLoginDate: account.lastLoginDate,
       todayGames: account.todayGames,
       todayDate: account.todayDate,
-      hasDoubleCard: account.hasDoubleCard,
       items: account.items,
       guideSkipped: account.guideSkipped,
       favorites: account.favorites || [],

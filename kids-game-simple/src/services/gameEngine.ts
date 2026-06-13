@@ -129,13 +129,6 @@ export class GameEngine {
       audioService.crit()
     }
 
-    // 双倍卡
-    const data = storageService.get()
-    if (data.hasDoubleCard) {
-      earned *= 2
-      storageService.useDoubleCard()
-    }
-
     // Buff 加成
     Object.values(this.state.buffs).forEach(b => {
       earned = Math.round(earned * b.mult)

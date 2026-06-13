@@ -5,7 +5,6 @@ const KEYS = {
   best: 'platform_best',
   todayGames: 'platform_today_games',
   todayDate: 'platform_today_date',
-  doubleCard: 'platform_double_card',
   history: 'platform_history',
   loginDays: 'platform_login_days',
   lastLogin: 'platform_last_login',
@@ -42,10 +41,6 @@ export class StorageService {
         : 1
       localStorage.setItem(KEYS.consecutiveLoginDays, String(consecutiveLoginDays))
       
-      // 50%概率给双倍卡
-      if (localStorage.getItem(KEYS.doubleCard) !== '1' && Math.random() < 0.5) {
-        localStorage.setItem(KEYS.doubleCard, '1')
-      }
       localStorage.setItem(KEYS.lastLogin, today)
       // 重置每日签到奖励领取状态
       localStorage.setItem(KEYS.dailyRewardCollected, '')
@@ -57,7 +52,6 @@ export class StorageService {
       bestScores: JSON.parse(localStorage.getItem(KEYS.best) || '{}'),
       todayGames: parseInt(localStorage.getItem(KEYS.todayGames) || '0'),
       todayDate: localStorage.getItem(KEYS.todayDate) || today,
-      hasDoubleCard: localStorage.getItem(KEYS.doubleCard) === '1',
       playHistory: JSON.parse(localStorage.getItem(KEYS.history) || '[]'),
       loginDays: parseInt(localStorage.getItem(KEYS.loginDays) || '1'),
       lastLogin: localStorage.getItem(KEYS.lastLogin) || '',
@@ -116,11 +110,6 @@ export class StorageService {
   incrementGames() {
     this.data.todayGames++
     localStorage.setItem(KEYS.todayGames, String(this.data.todayGames))
-  }
-
-  useDoubleCard() {
-    this.data.hasDoubleCard = false
-    localStorage.setItem(KEYS.doubleCard, '0')
   }
 
   skipGuide(gameId: string) {

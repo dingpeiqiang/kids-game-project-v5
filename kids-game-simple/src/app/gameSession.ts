@@ -9,6 +9,14 @@ import { gameEngine } from '../services/gameEngine'
 import { showToast } from '../services/userUI'
 import { apiSubmitComment, apiGetComments } from '../services/apiClient'
 import { OrientationManager } from '../utils/orientation'
+import {
+  applyCanvasMobileStyles,
+  computeLandscapeCanvasDisplaySize,
+  computePortraitCanvasDisplaySize,
+} from '../utils/canvasMobileUtils'
+import { isMobileDevice } from '../utils/mobileEnv'
+import { setPlatformContextForGames } from '../services/appBridge'
+import { removePowerupBar } from './powerup'
 import { calculateRank } from './rank'
 import { refreshBestScores } from './gameCards'
 
@@ -91,8 +99,34 @@ export function cancelGuide(ctx: PlatformContext, overlay: HTMLElement, handler:
 
 // ==================== 游戏开始/结束 ====================
 
+let portraitCanvasResizeHandler: (() => void) | null = null
+
+function clearPortraitCanvasResizeListener() {
+  if (portraitCanvasResizeHandler) {
+    window.removeEventListener('resize', portraitCanvasResizeHandler)
+    window.visualViewport?.removeEventListener('resize', portraitCanvasResizeHandler)
+    portraitCanvasResizeHandler = null
+  }
+}
+
+function fitPortraitMainCanvas(
+  gameW: number,
+  gameH: number,
+  heightRatio: number,
+) {
+  const el = document.getElementById('mainGameCanvas') as HTMLCanvasElement | null
+  if (!el) return
+  const { displayW, displayH } = computePortraitCanvasDisplaySize(gameW, gameH, heightRatio)
+  el.style.width = `${displayW}px`
+  el.style.height = `${displayH}px`
+  applyCanvasMobileStyles(el)
+}
+
 export async function startGame(ctx: PlatformContext) {
   if (!ctx.currentGame) return
+
+  setPlatformContextForGames(ctx)
+  clearPortraitCanvasResizeListener()
 
   gameEngine.start()
 
@@ -101,16 +135,6 @@ export async function startGame(ctx: PlatformContext) {
   document.getElementById('topBar')!.style.display = 'none'
   document.getElementById('bottomNav')!.style.display = 'none'
   document.getElementById('mainView')!.style.display = 'none'
-
-  const hasDoubleCard = userService.isLoggedIn
-    ? userService.current?.hasDoubleCard
-    : storageService.get().hasDoubleCard
-
-  if (hasDoubleCard) {
-    setTimeout(() => {
-      gameEngine.triggerRandomBuff()
-    }, 500)
-  }
 
   const canvas = document.getElementById('gameCanvas')!
   const isSpaceShooter = ctx.currentGame.id === 'spaceShooter'
@@ -153,11 +177,9 @@ export async function startGame(ctx: PlatformContext) {
     const isLandscapeGame = isContraRpg || isWangzheRpg || isPlantsVsZombies || isDnfRpg
 
     if (isLandscapeGame) {
-      const heightRatio = window.innerHeight / gameH
-      const widthRatio = window.innerWidth / gameW
-      const scale = Math.min(widthRatio, heightRatio)
-      displayW = Math.floor(gameW * scale * 100) / 100
-      displayH = Math.floor(gameH * scale * 100) / 100
+      const sized = computeLandscapeCanvasDisplaySize(gameW, gameH)
+      displayW = sized.displayW
+      displayH = sized.displayH
 
       canvas.style.display = 'flex'
       canvas.style.alignItems = 'center'
@@ -165,20 +187,24 @@ export async function startGame(ctx: PlatformContext) {
       canvas.style.width = '100%'
       canvas.style.height = '100%'
     } else {
-      const heightRatio = isRacingRun ? window.innerHeight * 0.95 / gameH : window.innerHeight * 0.85 / gameH
-      const widthRatio = window.innerWidth / gameW
-      const scale = Math.min(widthRatio, heightRatio)
-      displayW = Math.floor(gameW * scale * 100) / 100
-      displayH = Math.floor(gameH * scale * 100) / 100
+      const portraitHeightRatio = isRacingRun ? 0.95 : 0.88
+      const sized = computePortraitCanvasDisplaySize(gameW, gameH, portraitHeightRatio)
+      displayW = sized.displayW
+      displayH = sized.displayH
 
-      if (window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        canvas.style.display = 'flex'
-        canvas.style.alignItems = 'center'
-        canvas.style.justifyContent = 'center'
-        canvas.style.width = '100%'
-        canvas.style.height = '100%'
-      }
+      canvas.style.display = 'flex'
+      canvas.style.alignItems = 'center'
+      canvas.style.justifyContent = 'center'
+      canvas.style.width = '100%'
+      canvas.style.height = '100%'
     }
+  }
+
+  const gameLayerEl = document.getElementById('game-layer')!
+  if (isMobileDevice()) {
+    gameLayerEl.classList.add('is-mobile')
+  } else {
+    gameLayerEl.classList.remove('is-mobile')
   }
 
   if (!isSpaceShooter) {
@@ -187,6 +213,16 @@ export async function startGame(ctx: PlatformContext) {
       canvas.innerHTML = `<canvas id="mainGameCanvas" width="${gameW}" height="${gameH}" style="display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
     } else {
       canvas.innerHTML = `<canvas id="mainGameCanvas" width="${gameW}" height="${gameH}" style="width:${displayW}px;height:${displayH}px;display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
+    }
+    const mainCvs = document.getElementById('mainGameCanvas') as HTMLCanvasElement | null
+    if (mainCvs) {
+      applyCanvasMobileStyles(mainCvs)
+    }
+    if (!isLandscapeGame && !isSpaceShooter) {
+      const portraitHeightRatio = isRacingRun ? 0.95 : 0.88
+      portraitCanvasResizeHandler = () => fitPortraitMainCanvas(gameW, gameH, portraitHeightRatio)
+      window.addEventListener('resize', portraitCanvasResizeHandler)
+      window.visualViewport?.addEventListener('resize', portraitCanvasResizeHandler)
     }
   }
 
@@ -200,8 +236,7 @@ export async function startGame(ctx: PlatformContext) {
     ctx.orientationManager.tryLockLandscape()
     const ratio = gameH / gameW
     gameLayer.style.setProperty('--game-ratio', ratio.toString())
-    const isMobile = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    if (isMobile) {
+    if (isMobileDevice()) {
       gameLayer.classList.add('force-landscape')
     }
   }
@@ -223,6 +258,10 @@ export async function endGame(ctx: PlatformContext) {
   gameEngine.stop()
   gameEngine.endGame()
 
+  clearPortraitCanvasResizeListener()
+  setPlatformContextForGames(null)
+  removePowerupBar()
+
   // 退出游戏时恢复竖屏
   if (ctx.orientationManager) {
     ctx.orientationManager.tryLockPortrait()
@@ -233,6 +272,7 @@ export async function endGame(ctx: PlatformContext) {
   const canvas = document.getElementById('gameCanvas')!
   gameLayer.classList.remove('landscape-mode')
   gameLayer.classList.remove('force-landscape')
+  gameLayer.classList.remove('is-mobile')
   gameLayer.style.display = ''
   gameLayer.style.alignItems = ''
   gameLayer.style.justifyContent = ''
@@ -260,11 +300,9 @@ export async function endGame(ctx: PlatformContext) {
 export function showResult(ctx: PlatformContext, gameId: string, score: number, prevBest: number) {
   const gameStats = gameEngine.getGameStats()
 
-  const coinsEarned = Math.round(score / 10)
-  if (userService.isLoggedIn) {
-    userService.addCoins(coinsEarned)
-    userService.incrementGames()
-  } else {
+  let coinsEarned = 0
+  if (!userService.isLoggedIn) {
+    coinsEarned = Math.min(8, Math.max(1, Math.round(score / 200)))
     storageService.addCoins(coinsEarned)
     storageService.incrementGames()
   }
@@ -362,6 +400,14 @@ export async function syncScoreAsync(ctx: PlatformContext, gameId: string, score
       console.log('[App] 调用 userService.recordGameResult...')
       const result = await userService.recordGameResult(gameId, score, gameStats)
       console.log('[App] recordGameResult 返回结果:', result)
+      const dispCoins = userService.current!.coins
+      document.getElementById('coinCount')!.textContent = String(dispCoins)
+      document.getElementById('todayGames')!.textContent = String(userService.current!.todayGames)
+      const earnedEl = document.getElementById('resultScore')
+      if (earnedEl && result.synced) {
+        const cur = earnedEl.textContent || ''
+        if (!cur.includes('金币')) earnedEl.textContent = score + ' (已同步奖励)'
+      }
       if (result.synced && result.rank) {
         const rankEl = document.getElementById('resultRank')
         const rankBadgeEl = document.getElementById('rankBadge')
@@ -383,19 +429,13 @@ export async function syncScoreAsync(ctx: PlatformContext, gameId: string, score
     storageService.updateBest(gameId, score)
   }
 
-  const coinsEarned = Math.round(score / 10)
-  if (userService.isLoggedIn) {
-    userService.addCoins(coinsEarned)
-    userService.incrementGames()
-  } else {
-    storageService.addCoins(coinsEarned)
+  if (!userService.isLoggedIn) {
     storageService.incrementGames()
+    const dispCoins = storageService.get().coins
+    const dispGames = storageService.get().todayGames
+    document.getElementById('coinCount')!.textContent = String(dispCoins)
+    document.getElementById('todayGames')!.textContent = String(dispGames)
   }
-
-  const dispCoins = userService.isLoggedIn ? userService.current!.coins : storageService.get().coins
-  const dispGames = userService.isLoggedIn ? userService.current!.todayGames : storageService.get().todayGames
-  document.getElementById('coinCount')!.textContent = String(dispCoins)
-  document.getElementById('todayGames')!.textContent = String(dispGames)
 }
 
 export function closeResult(ctx: PlatformContext) {

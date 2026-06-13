@@ -103,9 +103,14 @@ export async function initCuteTankBattle(engine: GameEngine, onEnd: () => void):
   canvas.addEventListener('click', onPointerTap)
 
   const loop = (ts: number) => {
-    if (ended || !document.getElementById('mainGameCanvas')) {
+    if (!document.getElementById('mainGameCanvas')) {
+      ended = true
+      cancelAnimationFrame(raf)
+      canvas.removeEventListener('click', onPointerTap)
+      input.dispose()
       return
     }
+    if (ended) return
 
     const dt = Math.min(0.033, (ts - lastTs) / 1000)
     lastTs = ts

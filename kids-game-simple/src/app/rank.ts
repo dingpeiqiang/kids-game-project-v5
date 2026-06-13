@@ -1,9 +1,9 @@
 import type { PlatformContext } from './types'
-import { GAMES, MOCK_RANK_DATA } from '../games/gameRegistry'
+import { GAMES } from '../games/gameRegistry'
 import { isGameVisible } from '../games/gameRegistry'
 import { storageService } from '../services/storage'
 import { userService } from '../services/userService'
-import { getTopList, type LeaderboardEntry } from '../services/leaderboardService'
+import { apiSessionLeaderboard } from '../services/apiClient'
 
 // ==================== 排行榜显示 ====================
 
@@ -70,50 +70,36 @@ export async function renderRank(ctx: PlatformContext, type: string, gameId?: st
 
   let items: { name: string; score: number }[] = []
 
-  if (gameId && userService.isLoggedIn) {
+  if (gameId) {
     try {
-      console.log('[App] 获取排行榜...', { gameId, isLoggedIn: userService.isLoggedIn })
-
-      let rankType: 'ALL' | 'DAILY' | 'MONTHLY' | 'YEARLY' = 'ALL'
-      if (type === 'daily') rankType = 'DAILY'
-      else if (type === 'monthly') rankType = 'MONTHLY'
-      else if (type === 'yearly') rankType = 'YEARLY'
-
-      const cacheKey = `${gameId}_${rankType}`
-      console.log('[App] 缓存 key:', cacheKey, '缓存存在:', ctx.rankCache.has(cacheKey))
-
-      let leaderboardData: LeaderboardEntry[]
+      const numericId = convertGameIdToNumber(gameId)
+      const cacheKey = `session_${numericId}`
+      let listData: Array<{ rank: number; nickname?: string; username?: string; score: number }>
       if (ctx.rankCache.has(cacheKey)) {
-        leaderboardData = ctx.rankCache.get(cacheKey)!
-        console.log('[App] 使用缓存的排行榜数据:', cacheKey, '条数:', leaderboardData.length)
+        listData = ctx.rankCache.get(cacheKey)!
       } else {
-        console.log('[App] 从后端获取排行榜...', { gameId, rankType })
-        const result = await getTopList(gameId, rankType, 50)
-        leaderboardData = result.list
-        ctx.rankCache.set(cacheKey, leaderboardData)
+        const result = await apiSessionLeaderboard(numericId, 100)
+        listData = result.ok ? result.list : []
+        ctx.rankCache.set(cacheKey, listData)
         setTimeout(() => ctx.rankCache.delete(cacheKey), 30000)
-        console.log('[App] 从后端获取排行榜数据成功:', cacheKey, leaderboardData.length, '条')
       }
-
-      items = leaderboardData.map(entry => ({
-        name: entry.nickname || entry.username,
-        score: entry.score
+      items = listData.map(entry => ({
+        name: entry.nickname || entry.username || '玩家',
+        score: entry.score,
       }))
-      console.log('[App] 排行榜数据转换完成，共', items.length, '条')
     } catch (e) {
-      console.error('[App] 获取排行榜失败:', e)
-      items = MOCK_RANK_DATA.slice()
+      console.error('[App] 获取单局排行榜失败:', e)
     }
-  } else {
-    console.log('[App] 使用模拟数据', { hasGameId: !!gameId, isLoggedIn: userService.isLoggedIn })
-    items = MOCK_RANK_DATA.slice()
   }
 
-  if (type === 'daily' && items.length > 0) {
-    items = items.map(x => ({ ...x, score: Math.round(x.score * 0.7 + Math.random() * 500) }))
-  }
-  if (type === 'friend') {
-    items = items.slice(0, 8)
+  if (items.length === 0) {
+    const msg = userService.isLoggedIn
+      ? '<div style="text-align:center;padding:40px;color:#999;">暂无排行数据<br><span style="font-size:12px">快去玩游戏上榜吧！</span></div>'
+      : '<div style="text-align:center;padding:40px;color:#999;">登录后可查看排行</div>'
+    list.innerHTML = msg
+    const myRankCard = document.getElementById('myRankCard')!
+    myRankCard.style.display = 'none'
+    return
   }
 
   const bestScores = userService.isLoggedIn
@@ -178,39 +164,34 @@ export async function renderRank(ctx: PlatformContext, type: string, gameId?: st
 export function calculateRank(ctx: PlatformContext, score: number): { rank: number; badge: string; text: string } | null {
   if (!ctx.currentGame || score <= 0) return null
 
-  let items = MOCK_RANK_DATA.slice()
-  const myName = userService.isLoggedIn ? (userService.current?.username || '玩家') : '玩家'
+  let rank: number
+  let badge: string
+  let text: string
 
-  const playerEntry = { name: myName, score: score }
-  items.push(playerEntry)
-
-  items.sort((a, b) => b.score - a.score)
-
-  const rank = items.findIndex(item => item.name === myName) + 1
-
-  if (rank <= 0) return null
-
-  let badge = ''
-  let text = ''
-
-  if (rank === 1) {
+  if (score >= 9000) {
+    rank = 1
     badge = '🥇'
     text = '<strong style="color:#FFD700;font-size:18px">第 1 名</strong><br><span style="font-size:12px;color:#999">太厉害了！全球第一！</span>'
-  } else if (rank === 2) {
+  } else if (score >= 7000) {
+    rank = 2
     badge = '🥈'
     text = '<strong style="color:#C0C0C0;font-size:18px">第 2 名</strong><br><span style="font-size:12px;color:#999">非常棒！仅次于冠军！</span>'
-  } else if (rank === 3) {
+  } else if (score >= 5000) {
+    rank = 3
     badge = '🥉'
     text = '<strong style="color:#CD7F32;font-size:18px">第 3 名</strong><br><span style="font-size:12px;color:#999">优秀！登上领奖台！</span>'
-  } else if (rank <= 10) {
+  } else if (score >= 3000) {
+    rank = 8
     badge = '🏅'
-    text = `<strong style="font-size:16px">第 ${rank} 名</strong><br><span style="font-size:12px;color:#999">进入前10，继续保持！</span>`
-  } else if (rank <= 50) {
+    text = '<strong style="font-size:16px">进入前10</strong><br><span style="font-size:12px;color:#999">进入前10，继续保持！</span>'
+  } else if (score >= 1000) {
+    rank = 30
     badge = '🎖️'
-    text = `<strong style="font-size:16px">第 ${rank} 名</strong><br><span style="font-size:12px;color:#999">前50名，表现不错！</span>`
+    text = '<strong style="font-size:16px">进入前50</strong><br><span style="font-size:12px;color:#999">前50名，表现不错！</span>'
   } else {
+    rank = 100
     badge = '📊'
-    text = `<strong style="font-size:16px">第 ${rank} 名</strong><br><span style="font-size:12px;color:#999">继续加油，挑战更高排名！</span>`
+    text = '<strong style="font-size:16px">继续加油</strong><br><span style="font-size:12px;color:#999">挑战更高排名！</span>'
   }
 
   return { rank, badge, text }

@@ -4,12 +4,14 @@ import { storageService } from './services/storage'
 import { userService } from './services/userService'
 import type { PlatformContext } from './app/types'
 import type { Game } from './types'
+import { getLevelByExp } from './types/user'
 import { AuthModal, MePanel, injectUserStyles } from './services/userUI'
 import { renderUI, showDailyPop, closeDailyPop } from './app/ui'
 import { renderGameCards, createGameCard, renderPreview, getFavorites, toggleFavorite, refreshCurrentPage, performSearch, switchToHome, switchToRank, showSearchResults, renderFavoritesPage, refreshBestScores, showScoreFly } from './app/gameCards'
 import { launchGame, showGameGuide, closeGuide, cancelGuide, startGame, endGame, showResult, syncScoreAsync, closeResult, replayGame, exitGame, setRating, submitComment, renderComments, updateCommentStats, formatTime } from './app/gameSession'
 import { showRank, showRankForGame, closeRank, initRankGameSelector, renderRank, calculateRank, convertGameIdToNumber, clearRankCache } from './app/rank'
 import { bindEvents, bindGameCallbacks } from './app/events'
+import { bindEconomyButtons, fetchTasksForBanner, bannerTaskView, openTaskCenter, openShop } from './app/economyUI'
 import { setupCustomPowerupBar, removePowerupBar } from './app/powerup'
 import './styles/main.css'
 
@@ -32,8 +34,63 @@ const store = computed(() => userService.isLoggedIn ? userService.current! : sto
 const avatarContent = computed(() => userService.current?.avatar || '我')
 const coinVal = computed(() => userService.current?.coins || store.value.coins)
 const studyCoinVal = computed(() => userService.current?.studyCoins ?? 0)
-const loginDays = computed(() => userService.current?.consecutiveLoginDays || store.value.loginDays)
+const loginDays = computed(() => userService.current?.consecutiveLoginDays || store.value.consecutiveLoginDays)
 const todayGames = computed(() => userService.current?.todayGames || store.value.todayGames)
+
+const userLevel = computed(() => {
+  const exp = userService.current?.exp ?? 0
+  return getLevelByExp(exp)
+})
+
+type BannerTask = ReturnType<typeof bannerTaskView>
+const bannerTasks = ref<BannerTask[]>([])
+
+async function loadBannerTasks() {
+  if (!userService.isLoggedIn) {
+    const today = new Date().toDateString()
+    const s = store.value
+    const signDone = s.dailyRewardCollected === today
+    const games = s.todayGames
+    bannerTasks.value = [
+      bannerTaskView({
+        taskId: 0,
+        taskCode: 'daily_sign_in',
+        taskName: '每日签到',
+        targetValue: 1,
+        progress: signDone ? 1 : 0,
+        status: signDone ? 2 : 0,
+      }),
+      bannerTaskView({
+        taskId: 0,
+        taskCode: 'daily_play_3',
+        taskName: '玩3局游戏',
+        targetValue: 3,
+        progress: Math.min(games, 3),
+        status: games >= 3 ? 1 : 0,
+      }),
+    ]
+    return
+  }
+  const rows = await fetchTasksForBanner()
+  bannerTasks.value = rows.length ? rows.map(bannerTaskView) : []
+}
+
+async function onBannerClaim(task: BannerTask) {
+  if (!task.canClaim || !task.taskId) return
+  const { apiTaskClaim } = await import('./services/apiClient')
+  const claim = await apiTaskClaim(task.taskId)
+  if (claim.ok && claim.data) {
+    const w = claim.data.wallet as { coins?: number; studyCoins?: number; exp?: number } | undefined
+    if (userService.current && w) {
+      if (w.coins != null) userService.current.coins = w.coins
+      if (w.studyCoins != null) userService.current.studyCoins = w.studyCoins
+      if (w.exp != null) userService.current.exp = w.exp
+      userService.saveUser(userService.current)
+    }
+    await loadBannerTasks()
+    window.dispatchEvent(new CustomEvent('ugp:userChange'))
+  }
+}
 
 // 构建上下文
 const buildContext = (): PlatformContext => {
@@ -57,8 +114,6 @@ const buildContext = (): PlatformContext => {
     get store() { return store.value },
     get userServiceCurrent() { return userService.current },
     orientationManager: null as any,
-
-    // 方法绑定
     renderGameCards: () => renderGameCards(buildContext()),
     createGameCard: (game, best, rank) => createGameCard(buildContext(), game, best, rank),
     renderPreview: (game, retryCount) => renderPreview(buildContext(), game, retryCount),
@@ -104,19 +159,22 @@ onMounted(async () => {
   // 绑定事件
   bindEvents(buildContext())
   bindGameCallbacks()
+  bindEconomyButtons()
 
   // 渲染游戏卡片
   renderGameCards(buildContext())
+  await loadBannerTasks()
 
   // 监听用户变更事件
   window.addEventListener('ugp:userChange', () => onUserChange())
+  window.addEventListener('ugp:tasksRefresh', () => loadBannerTasks())
 
-  // 检查登录状态，未登录则弹出登录弹窗
-  checkLoginRequired()
-
-  // 检查每日奖励
-  const data = storageService.get()
-  if (data.hasDoubleCard) {
+  // 首日登录奖励
+  const today = new Date().toDateString()
+  const alreadyCollected = userService.isLoggedIn
+    ? userService.current?.dailyRewardCollected === today
+    : storageService.get().dailyRewardCollected === today
+  if (!alreadyCollected) {
     setTimeout(() => showDailyPop(), 800)
   }
 
@@ -134,13 +192,7 @@ onUnmounted(() => {
 function onUserChange() {
   refreshBestScores()
   renderGameCards(buildContext())
-}
-
-// 检查登录状态，未登录则弹出登录弹窗
-function checkLoginRequired() {
-  if (!userService.isLoggedIn) {
-    authModal.open(() => onUserChange())
-  }
+  void loadBannerTasks()
 }
 </script>
 
@@ -166,14 +218,15 @@ function checkLoginRequired() {
         </div>
         <div class="coin-display">
           <div class="coin-item">
-            <div class="coin-icon">★</div>
+            <span class="coin-label">金</span>
             <span id="coinCount">{{ coinVal }}</span>
           </div>
           <div class="coin-divider"></div>
           <div class="coin-item study-coin">
-            <div class="coin-icon">🎓</div>
+            <span class="coin-label">游</span>
             <span id="studyCoinCount">{{ studyCoinVal }}</span>
           </div>
+
         </div>
         <div class="user-avatar" id="userAvatar" :title="userService.current?.username || '点击登录'">
           {{ avatarContent }}
@@ -185,13 +238,54 @@ function checkLoginRequired() {
     <div class="main-container" id="mainView">
       <!-- 首页内容 -->
       <div id="homeContent">
+        <section class="home-hub" aria-label="快捷入口">
+          <button type="button" class="hub-card" id="btnHubTask">
+            <span class="hub-icon">任务</span>
+            <span class="hub-label">做任务领金币</span>
+          </button>
+          <button type="button" class="hub-card hub-card--shop" id="btnHubShop">
+            <span class="hub-icon">商城</span>
+            <span class="hub-label">金币换游学币</span>
+          </button>
+        </section>
+
         <div class="daily-banner" id="dailyBanner">
-          <div class="banner-label">每日惊喜</div>
-          <div class="banner-title">今日可领取双倍积分卡!</div>
-          <div class="banner-sub">已连续登录 {{ loginDays }} 天，加油!</div>
-          <div class="banner-tag">
-            <div class="tag-num" id="todayGames">{{ todayGames }}</div>
-            <div class="tag-label">今日游戏</div>
+          <div class="db-header">
+            <div class="db-user">
+              <div class="db-avatar">{{ avatarContent }}</div>
+              <div class="db-meta">
+                <div class="db-name">{{ userService.current?.username || '游客' }}</div>
+                <div class="db-level">{{ userLevel.name }} · Lv.{{ userLevel.level }}</div>
+              </div>
+            </div>
+            <div class="db-pills">
+              <span class="db-pill">金币 {{ coinVal }}</span>
+              <span class="db-pill db-pill--study">游学币 {{ studyCoinVal }}</span>
+            </div>
+          </div>
+          <div class="db-tasks">
+            <div v-for="task in bannerTasks" :key="task.id" class="db-task">
+              <div class="db-task-icon">{{ task.icon }}</div>
+              <div class="db-task-body">
+                <div class="db-task-name">{{ task.name }}</div>
+                <div class="db-task-bar">
+                  <div class="db-task-progress" :style="{ width: task.percent + '%' }"></div>
+                </div>
+                <div class="db-task-foot">
+                  <span class="db-task-status" :class="{ 'db-task-done': task.current >= task.target }">{{ task.status }}</span>
+                  <button
+                    v-if="task.canClaim"
+                    type="button"
+                    class="db-claim-btn"
+                    @click="onBannerClaim(task)"
+                  >领取</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="db-footer">
+            <div class="db-fire">🔥 连续 {{ loginDays }} 天</div>
+            <button type="button" class="db-link-btn" id="btnTaskCenter">全部任务</button>
           </div>
         </div>
 
@@ -259,22 +353,30 @@ function checkLoginRequired() {
     </div>
 
     <!-- 底部导航 -->
-    <div class="bottom-nav" id="bottomNav">
+    <div class="bottom-nav bottom-nav--6" id="bottomNav">
       <div class="nav-item active" data-page="home">
         <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-        首页
+        <span>首页</span>
+      </div>
+      <div class="nav-item" data-page="task" id="navTask">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z"/></svg>
+        <span>任务</span>
+      </div>
+      <div class="nav-item" data-page="shop" id="navShop">
+        <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0020 4H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+        <span>商城</span>
       </div>
       <div class="nav-item" data-page="rank">
         <svg viewBox="0 0 24 24"><path d="M7.5 21H2V9l10-7 10 7v12h-5.5v-7h-9v7zm7-11.5L18.5 17H15v-7.5z"/></svg>
-        排行
+        <span>排行</span>
       </div>
       <div class="nav-item" data-page="favorites">
         <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-        收藏
+        <span>收藏</span>
       </div>
       <div class="nav-item" data-page="me">
         <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-        我的
+        <span>我的</span>
       </div>
     </div>
 
@@ -336,9 +438,9 @@ function checkLoginRequired() {
     <div id="daily-overlay">
       <div class="daily-card">
         <div class="dc-icon">🎁</div>
-        <div class="dc-title">每日登录奖励</div>
-        <div class="dc-desc">恭喜你今日首次游戏！获得双倍积分卡 x1，下次游戏自动生效!</div>
-        <button class="dc-btn" id="btnCloseDaily">收下奖励</button>
+        <div class="dc-title">每日签到</div>
+        <div class="dc-desc">签到可获得金币、游学币与经验值（以签到配置为准）</div>
+        <button class="dc-btn" id="btnClaimDaily">领取奖励</button>
       </div>
     </div>
 

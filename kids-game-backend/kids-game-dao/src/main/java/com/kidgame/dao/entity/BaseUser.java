@@ -61,6 +61,16 @@ public class BaseUser implements Serializable {
     private Integer fatiguePoints;
 
     /**
+     * 金币
+     */
+    private Integer coins;
+
+    /**
+     * 经验值
+     */
+    private Integer exp;
+
+    /**
      * 每日答题获得的游学币
      */
     private Integer dailyAnswerPoints;

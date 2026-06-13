@@ -54,6 +54,7 @@ export async function initBeatDragon(engine: GameEngine, onEnd: () => void): Pro
       score: state.score,
     })
     cancelAnimationFrame(raf)
+    unbind()
     onEnd()
   }
 

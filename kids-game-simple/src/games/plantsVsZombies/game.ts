@@ -10,6 +10,7 @@ import { drawPlants } from './render/plants'
 import { drawZombies } from './render/zombies'
 import { drawUI, drawSuns, drawProjectiles, drawParticles, drawFloatingTexts, drawGameOver, drawStartScreen } from './render/ui'
 import { createSunPickupEffect, createZombieDeathEffect, updateParticles, createFloatingText, updateFloatingTexts } from './render/effects'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 
 export class PlantsVsZombiesGame {
   private canvas: HTMLCanvasElement
@@ -21,8 +22,7 @@ export class PlantsVsZombiesGame {
   private particles: Particle[] = []
   private floatingTexts: FloatingText[] = []
   
-  private boundHandleClick!: (e: MouseEvent) => void
-  private boundHandleTouch!: (e: TouchEvent) => void
+  private unbindPointer: (() => void) | null = null
   
   private sun: number = 200
   private lives: number = 5
@@ -54,26 +54,11 @@ export class PlantsVsZombiesGame {
   }
   
   private setupEventListeners() {
-    this.boundHandleClick = this.handleClick.bind(this)
-    this.boundHandleTouch = this.handleTouch.bind(this)
-    this.canvas.addEventListener('click', this.boundHandleClick)
-    this.canvas.addEventListener('touchstart', this.boundHandleTouch, { passive: false })
-  }
-  
-  private handleClick(e: MouseEvent) {
-    const rect = this.canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    this.handleInput(x, y)
-  }
-  
-  private handleTouch(e: TouchEvent) {
-    e.preventDefault()
-    const touch = e.touches[0]
-    const rect = this.canvas.getBoundingClientRect()
-    const x = touch.clientX - rect.left
-    const y = touch.clientY - rect.top
-    this.handleInput(x, y)
+    applyCanvasMobileStyles(this.canvas)
+    this.unbindPointer?.()
+    this.unbindPointer = bindCanvasPointerInput(this.canvas, (x, y) => {
+      this.handleInput(x, y)
+    })
   }
   
   private handleInput(x: number, y: number) {
@@ -382,7 +367,7 @@ export class PlantsVsZombiesGame {
   
   public destroy() {
     cancelAnimationFrame(this.animId)
-    this.canvas.removeEventListener('click', this.boundHandleClick)
-    this.canvas.removeEventListener('touchstart', this.boundHandleTouch)
+    this.unbindPointer?.()
+    this.unbindPointer = null
   }
 }

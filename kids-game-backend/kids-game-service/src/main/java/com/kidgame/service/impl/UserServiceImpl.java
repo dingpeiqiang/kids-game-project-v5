@@ -16,6 +16,7 @@ import com.kidgame.dao.mapper.BaseUserMapper;
 import com.kidgame.dao.mapper.FatiguePointsLogMapper;
 import com.kidgame.dao.mapper.UserLevelMapper;
 import com.kidgame.dao.mapper.UserProfileMapper;
+import com.kidgame.service.EconomyWalletService;
 import com.kidgame.service.UserService;
 import com.kidgame.service.cache.UserCacheService;
 import com.kidgame.service.dto.AuthRegisterDTO;
@@ -68,6 +69,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserCacheService userCacheService;
+
+    @Autowired
+    private EconomyWalletService economyWalletService;
 
     /**
      * 将用户类型整数转换为字符串角色
@@ -521,6 +525,9 @@ public class UserServiceImpl implements UserService {
             .avatar(user.getAvatar())
             .roles(Arrays.asList(convertUserRoleToString(user.getUserType())))
             .fatiguePoints(user.getFatiguePoints() != null ? user.getFatiguePoints() : 10)
+            .coins(user.getCoins() != null ? user.getCoins() : 0)
+            .exp(user.getExp() != null ? user.getExp() : 0)
+            .level(economyWalletService.getLevelByExp(user.getExp() != null ? user.getExp() : 0))
             .dailyAnswerPoints(user.getDailyAnswerPoints() != null ? user.getDailyAnswerPoints() : 0)
             .build();
         

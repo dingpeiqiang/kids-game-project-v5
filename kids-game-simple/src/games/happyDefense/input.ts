@@ -1,15 +1,29 @@
 import type { ArcRotateCamera, Scene } from '@babylonjs/core'
 import { worldToGrid } from './config'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
 export interface PointerPick {
   gx: number
   gz: number
 }
 
-export function pickGridAt(scene: Scene, canvas: HTMLCanvasElement, clientX: number, clientY: number): PointerPick | null {
+/** 将 client 坐标转为 Babylon pick 用的画布像素坐标（含 CSS 缩放） */
+export function clientToPickCoords(
+  canvas: HTMLCanvasElement,
+  clientX: number,
+  clientY: number,
+): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect()
-  const x = clientX - rect.left
-  const y = clientY - rect.top
+  const scaleX = canvas.width / rect.width
+  const scaleY = canvas.height / rect.height
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY,
+  }
+}
+
+export function pickGridAt(scene: Scene, canvas: HTMLCanvasElement, clientX: number, clientY: number): PointerPick | null {
+  const { x, y } = clientToPickCoords(canvas, clientX, clientY)
   const pick = scene.pick(x, y)
   if (!pick?.hit || !pick.pickedMesh) return null
   const meta = pick.pickedMesh.metadata as { gx?: number; gz?: number } | undefined
@@ -30,11 +44,14 @@ export function bindCanvasInput(
     onTap: (pick: PointerPick | null) => void
   },
 ): () => void {
+  applyCanvasMobileStyles(canvas)
+
   const onPointer = (ev: PointerEvent) => {
     if (ev.button !== 0) return
+    ev.preventDefault()
     const pick = pickGridAt(scene, canvas, ev.clientX, ev.clientY)
     handlers.onTap(pick)
   }
-  canvas.addEventListener('pointerdown', onPointer, { passive: true })
+  canvas.addEventListener('pointerdown', onPointer, { passive: false })
   return () => canvas.removeEventListener('pointerdown', onPointer)
 }

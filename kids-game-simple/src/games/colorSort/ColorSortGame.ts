@@ -1,6 +1,7 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
-import { getPointerPos, resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
+import { resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 import { COLOR_SORT_LEVELS, getLevelColors } from './levelConfig'
 import { loadProgress, completeLevel, recordFailure } from './progressManager'
 
@@ -445,17 +446,14 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
   
   resizeCanvasForMobile(canvas)
   injectMobileStyles()
-  
-  const handleClick = (e: MouseEvent | TouchEvent) => {
+  applyCanvasMobileStyles(canvas)
+
+  const handleTapAt = (mx: number, my: number) => {
     if (animatingBall || winAnimation) return
-    
+
     const now = Date.now()
     if (now - lastClickTime < 300) return
     lastClickTime = now
-    
-    const pos = getPointerPos(e, canvas)
-    const mx = pos.x
-    const my = pos.y
     
     const tubeSpacing = (W - 60) / (tubes.length - 1)
     
@@ -579,20 +577,10 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
     requestAnimationFrame(loop)
   }
   
-  canvas.onclick = null
-  canvas.onmousedown = null
-  canvas.onmousemove = null
-  canvas.ontouchstart = null
-  canvas.ontouchmove = null
-  
-  const handleInteraction = (e: MouseEvent | TouchEvent) => {
-    e.preventDefault()
-    handleClick(e)
-  }
-  
-  canvas.addEventListener('click', handleInteraction)
-  canvas.addEventListener('touchstart', handleInteraction, { passive: false })
-  
+  bindCanvasPointerInput(canvas, (x, y) => {
+    handleTapAt(x, y)
+  })
+
   initLevel()
   loop()
 }

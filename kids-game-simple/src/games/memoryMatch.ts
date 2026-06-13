@@ -1,7 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
 import { resizeCanvasForMobile } from '../utils/mobileHelper'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../utils/canvasMobileUtils'
 
 export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -149,18 +149,10 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
     })
   }
 
-  function getCanvasPos(clientX: number, clientY: number) {
-    const rect = canvas.getBoundingClientRect()
-    return {
-      x: (clientX - rect.left) / rect.width * W,
-      y: (clientY - rect.top) / rect.height * H,
-    }
-  }
-
-  function handleTap(clientX: number, clientY: number) {
+  function handleTap(mx: number, my: number) {
     if (gameEnded || isProcessing) return
 
-    const pos = getCanvasPos(clientX, clientY)
+    const pos = { x: mx, y: my }
     audioService.click()
 
     for (let i = 0; i < cards.length; i++) {
@@ -500,15 +492,12 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
     })
   }
 
-  // --- 事件 ---
+  resizeCanvasForMobile(canvas)
+  applyCanvasMobileStyles(canvas)
 
-  function onPointerDown(e: MouseEvent | TouchEvent) {
-    e.preventDefault()
-    const touch = e instanceof TouchEvent ? e.touches[0] : e
-    handleTap(touch.clientX, touch.clientY)
-  }
-
-  canvas.addEventListener('pointerdown', onPointerDown)
+  const unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+    handleTap(x, y)
+  })
 
   // --- 主循环 ---
 
@@ -522,17 +511,12 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
   // 开始游戏
   initLevel(0)
   gameStartTime = Date.now()
-  
-  // 初始化Canvas尺寸（移动端适配）
-  resizeCanvasForMobile(canvas)
-  
-  // 首次绘制
+
   draw()
   loop()
 
-  // 清理
   return () => {
     gameEnded = true
-    canvas.removeEventListener('pointerdown', onPointerDown)
+    unbindPointer()
   }
 }

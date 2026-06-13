@@ -970,15 +970,6 @@ class App {
     // 玩法引导
     document.getElementById('btnStartGame')?.addEventListener('click', () => this.closeGuide())
 
-    // 用户头像 — 已登录打开我的页面，未登录弹登录框
-    document.getElementById('userAvatar')?.addEventListener('click', () => {
-      if (userService.isLoggedIn) {
-        this.mePanel.open()
-      } else {
-        this.authModal.open(() => this.onUserChange())
-      }
-    })
-
     // 评论区评分星星点击
     document.querySelectorAll('.rating-stars .star').forEach(star => {
       star.addEventListener('click', (e) => {

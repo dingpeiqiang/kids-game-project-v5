@@ -176,6 +176,8 @@ export async function initVoxelRealm(engine: GameEngine, onEnd: () => void): Pro
       bestBuild,
       bestRaceMs: bestRaceMs < 999999 ? bestRaceMs : 0,
     })
+    activeDispose?.()
+    activeDispose = null
     onEnd()
   }
 

@@ -1,6 +1,7 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
-import { bindCanvasEvents, getPointerPos, resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
+import { resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 
 export function initMatch3(engine: GameEngine, onEnd: () => void) {
   console.log('[Match3] 游戏初始化开始')
@@ -556,14 +557,9 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
     processMatches(true)
   }
   
-  // 点击处理
-  const handleClick = async (e: MouseEvent | TouchEvent) => {
+  const handleClickAt = async (mx: number, my: number) => {
     if (animating || gameEnded) return
-    
-    const pos = getPointerPos(e, canvas)
-    const mx = pos.x
-    const my = pos.y
-    
+
     const x = Math.floor((mx - OFFSET_X) / (GEM_SIZE + GAP))
     const y = Math.floor((my - OFFSET_Y) / (GEM_SIZE + GAP))
     
@@ -589,9 +585,14 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
   }
   
   // 检查超时
+  const unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+    void handleClickAt(x, y)
+  })
+
   function checkTimeout() {
     if (gameEnded) return
     if (Date.now() - lastMoveTime > MOVE_TIMEOUT) {
+      unbindPointer()
       engine.setVictory(false)
       engine.endGame()
       gameEnded = true
@@ -599,26 +600,27 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
       onEnd()
     }
   }
-  
-  // 游戏循环
+
   function loop() {
-    if (!document.getElementById('mainGameCanvas') || gameEnded) return
-    
+    if (!document.getElementById('mainGameCanvas')) {
+      unbindPointer()
+      return
+    }
+    if (gameEnded) return
+
     checkTimeout()
     draw()
     requestAnimationFrame(loop)
   }
-  
-  // 初始化
+
   resizeCanvasForMobile(canvas)
   injectMobileStyles()
-  
+  applyCanvasMobileStyles(canvas)
+
   engine.start()
   initBoard()
   lastMoveTime = Date.now()
-  
-  bindCanvasEvents(canvas, handleClick as any)
-  
+
   loop()
   
   console.log('[Match3] 游戏初始化完成')

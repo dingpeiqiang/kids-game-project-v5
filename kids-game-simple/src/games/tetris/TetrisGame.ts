@@ -2,7 +2,8 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
 import { createPowerupManager, ActivePowerup } from '../../services/powerupManager'
-import { app } from '../../App'
+import { app } from '../../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 import { ParticleSystem } from './ParticleSystem'
 
 export class TetrisGame {
@@ -109,58 +110,79 @@ export class TetrisGame {
     }
   }
   
+  private unbindPointer: (() => void) | null = null
+
+  private handleCanvasTap(mx: number, my: number) {
+    if (this.gameEnded) return
+    const W = this.canvas.width
+    const H = this.canvas.height
+
+    if (my > H * 0.72) {
+      if (this.canPlace(this.currentPiece, 0, 1)) {
+        this.currentPiece.y++
+        this.score += 1
+      }
+      return
+    }
+
+    if (mx < W / 3 && this.canPlace(this.currentPiece, -1, 0)) {
+      this.currentPiece.x--
+      audioService.collect()
+    } else if (mx > (W * 2) / 3 && this.canPlace(this.currentPiece, 1, 0)) {
+      this.currentPiece.x++
+      audioService.collect()
+    } else {
+      this.rotate()
+    }
+  }
+
+  private teardownInput() {
+    this.unbindPointer?.()
+    this.unbindPointer = null
+    document.onkeydown = null
+  }
+
   private setupEventListeners() {
-    // 键盘控制
+    this.teardownInput()
+    applyCanvasMobileStyles(this.canvas)
+
     document.onkeydown = (e) => {
       if (this.gameEnded) return
       switch (e.key) {
         case 'ArrowLeft':
-          if (this.canPlace(this.currentPiece, -1, 0)) { 
+          if (this.canPlace(this.currentPiece, -1, 0)) {
             this.currentPiece.x--
-            audioService.collect() 
+            audioService.collect()
           }
           break
         case 'ArrowRight':
-          if (this.canPlace(this.currentPiece, 1, 0)) { 
+          if (this.canPlace(this.currentPiece, 1, 0)) {
             this.currentPiece.x++
-            audioService.collect() 
+            audioService.collect()
           }
           break
         case 'ArrowDown':
-          if (this.canPlace(this.currentPiece, 0, 1)) { 
+          if (this.canPlace(this.currentPiece, 0, 1)) {
             this.currentPiece.y++
-            this.score += 1 
+            this.score += 1
           }
           break
         case 'ArrowUp':
           this.rotate()
           break
         case ' ':
-          while (this.canPlace(this.currentPiece, 0, 1)) { 
+          while (this.canPlace(this.currentPiece, 0, 1)) {
             this.currentPiece.y++
-            this.score += 2 
+            this.score += 2
           }
           this.placePiece()
           break
       }
     }
-    
-    // 触摸/点击控制
-    this.canvas.onclick = (e) => {
-      const rect = this.canvas.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
-      
-      if (x < this.canvas.width / 3 && this.canPlace(this.currentPiece, -1, 0)) { 
-        this.currentPiece.x--
-        audioService.collect() 
-      } else if (x > this.canvas.width * 2 / 3 && this.canPlace(this.currentPiece, 1, 0)) { 
-        this.currentPiece.x++
-        audioService.collect() 
-      } else {
-        this.rotate()
-      }
-    }
+
+    this.unbindPointer = bindCanvasPointerInput(this.canvas, (x, y) => {
+      this.handleCanvasTap(x, y)
+    })
   }
   
   private canPlace(shape: any, dx = 0, dy = 0): boolean {
@@ -215,6 +237,7 @@ export class TetrisGame {
     
     // 检查游戏结束
     if (!this.canPlace(this.currentPiece)) {
+      this.teardownInput()
       this.engine.endGame()
       this.gameEnded = true
       this.onEnd()
@@ -281,6 +304,7 @@ export class TetrisGame {
       audioService.win()
       
       if (this.lines >= 50) {
+        this.teardownInput()
         this.engine.endGame()
         this.gameEnded = true
         this.onEnd()

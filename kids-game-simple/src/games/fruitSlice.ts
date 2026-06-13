@@ -1,6 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
+import { app } from '../services/appBridge'
+import { applyCanvasMobileStyles, clientToCanvas } from '../utils/canvasMobileUtils'
 
 export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -8,6 +9,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     console.error('Canvas not found!')
     return
   }
+  applyCanvasMobileStyles(canvas)
   
   const W = 400, H = 600
   const ctx = canvas.getContext('2d')!
@@ -623,20 +625,20 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   }
 
   function getPos(e: MouseEvent | TouchEvent) {
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = W / rect.width
-    const scaleY = H / rect.height
+    let clientX: number
+    let clientY: number
     if ('touches' in e && e.touches.length > 0) {
-      return {
-        x: (e.touches[0].clientX - rect.left) * scaleX,
-        y: (e.touches[0].clientY - rect.top) * scaleY
-      }
+      clientX = e.touches[0].clientX
+      clientY = e.touches[0].clientY
+    } else if ('changedTouches' in e && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX
+      clientY = e.changedTouches[0].clientY
+    } else {
+      const me = e as MouseEvent
+      clientX = me.clientX
+      clientY = me.clientY
     }
-    const mouseEvent = e as MouseEvent
-    return {
-      x: (mouseEvent.clientX - rect.left) * scaleX,
-      y: (mouseEvent.clientY - rect.top) * scaleY
-    }
+    return clientToCanvas(canvas, clientX, clientY)
   }
 
   canvas.onmousedown = null
@@ -706,14 +708,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   // 添加全局事件监听，即使鼠标滑出Canvas也能继续切割
   const handleGlobalMove = (e: MouseEvent) => {
     if (!isSlicing) return
-    
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = W / rect.width
-    const scaleY = H / rect.height
-    const pos = {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY
-    }
+    const pos = clientToCanvas(canvas, e.clientX, e.clientY)
     
     const s = getSlice()
     s.x1 = lastX
@@ -732,8 +727,29 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     isSlicing = false
   }
   
+  const handleGlobalTouchMove = (e: TouchEvent) => {
+    if (!isSlicing) return
+    const t = e.touches[0]
+    if (!t) return
+    e.preventDefault()
+    const pos = clientToCanvas(canvas, t.clientX, t.clientY)
+    const s = getSlice()
+    s.x1 = lastX
+    s.y1 = lastY
+    s.x2 = pos.x
+    s.y2 = pos.y
+    s.life = 1
+    slices.push(s)
+    checkSlice(lastX, lastY, pos.x, pos.y)
+    lastX = pos.x
+    lastY = pos.y
+  }
+
   document.addEventListener('mousemove', handleGlobalMove)
   document.addEventListener('mouseup', handleGlobalUp)
+  document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false })
+  document.addEventListener('touchend', handleGlobalUp)
+  document.addEventListener('touchcancel', handleGlobalUp)
 
   function loop() {
     if (!document.getElementById('mainGameCanvas') || gameEnded) return
@@ -765,6 +781,9 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
   function cleanup() {
     document.removeEventListener('mousemove', handleGlobalMove)
     document.removeEventListener('mouseup', handleGlobalUp)
+    document.removeEventListener('touchmove', handleGlobalTouchMove)
+    document.removeEventListener('touchend', handleGlobalUp)
+    document.removeEventListener('touchcancel', handleGlobalUp)
     // 清空数组释放内存
     fruits.length = 0
     particles.length = 0

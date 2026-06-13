@@ -48,6 +48,11 @@ public class UserSignIn implements Serializable {
     private Integer expReward;
 
     /**
+     * 获得的游学币奖励
+     */
+    private Integer studyCoinsReward;
+
+    /**
      * 创建时间
      */
     private Long createTime;

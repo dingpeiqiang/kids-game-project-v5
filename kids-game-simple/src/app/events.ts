@@ -6,6 +6,8 @@ import { userService } from '../services/userService'
 import { storageService } from '../services/storage'
 import { renderRank } from './rank'
 import { showScoreFly } from './gameCards'
+import { showToast } from '../services/userUI'
+import { openShop, openTaskCenter } from './economyUI'
 
 /**
  * 绑定所有 UI 事件监听器
@@ -32,6 +34,14 @@ export function bindEvents(ctx: PlatformContext) {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
       item.classList.add('active')
 
+      if (page === 'task') {
+        void openTaskCenter()
+        return
+      }
+      if (page === 'shop') {
+        void openShop()
+        return
+      }
       if (page === 'rank') {
         ctx.switchToRank()
       } else if (page === 'favorites') {
@@ -106,20 +116,36 @@ export function bindEvents(ctx: PlatformContext) {
     }
   })
 
-  // 每日奖励
-  document.getElementById('btnCloseDaily')?.addEventListener('click', () => ctx.closeDailyPop())
+  // 每日签到
+  document.getElementById('btnClaimDaily')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnClaimDaily') as HTMLButtonElement | null
+    if (btn) btn.disabled = true
+    if (userService.isLoggedIn) {
+      const res = await userService.collectDailyReward()
+      if (res.ok) {
+        showToast(res.msg || '签到成功', 'success')
+        ctx.closeDailyPop()
+        window.dispatchEvent(new CustomEvent('ugp:tasksRefresh'))
+        window.dispatchEvent(new CustomEvent('ugp:userChange'))
+      } else {
+        showToast(res.msg || '签到失败', 'info')
+        if (res.msg?.includes('已')) ctx.closeDailyPop()
+      }
+    } else {
+      const res = await userService.collectDailyReward()
+      if (res.ok) {
+        showToast(res.msg || '签到成功', 'success')
+        ctx.closeDailyPop()
+      } else {
+        showToast('请先登录后签到', 'info')
+        ctx.authModal.open(() => ctx.onUserChange())
+      }
+    }
+    if (btn) btn.disabled = false
+  })
 
   // 玩法引导
   document.getElementById('btnStartGame')?.addEventListener('click', () => ctx.closeGuide())
-
-  // 用户头像
-  document.getElementById('userAvatar')?.addEventListener('click', () => {
-    if (userService.isLoggedIn) {
-      ctx.mePanel.open()
-    } else {
-      ctx.authModal.open(() => ctx.onUserChange())
-    }
-  })
 
   // 评论区评分星星点击
   document.querySelectorAll('.rating-stars .star').forEach(star => {

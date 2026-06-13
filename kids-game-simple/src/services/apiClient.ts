@@ -43,6 +43,9 @@ export interface AuthResponseData {
   avatar: string
   roles: string[]
   fatiguePoints: number
+  coins?: number
+  exp?: number
+  level?: number
   dailyAnswerPoints: number
   grade?: string
   parentId?: number
@@ -57,6 +60,8 @@ export interface UserInfoData {
   avatar: string
   status: number
   fatiguePoints: number
+  coins?: number
+  exp?: number
   lastLoginTime: number
   createTime: number
 }
@@ -92,9 +97,11 @@ export interface SignInResponseData {
   success: boolean
   message: string
   coinsReward?: number
+  studyCoinsReward?: number
   expReward?: number
   consecutiveDays?: number
   alreadySignedIn?: boolean
+  wallet?: { coins: number; studyCoins: number; exp: number; level: number }
 }
 
 // 签到信息数据 DTO
@@ -134,6 +141,27 @@ export const tokenStore = new TokenStore()
 // ─────────────────────────────────────────────
 // HTTP 基础工具
 // ─────────────────────────────────────────────
+
+/** snake_case → camelCase 字符串转换 */
+function snakeToCamel(s: string): string {
+  return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
+}
+
+/** 递归将对象/数组的所有 key 从 snake_case 转为 camelCase */
+function deepCamelize<T>(val: unknown): T {
+  if (val === null || val === undefined) return val as T
+  if (Array.isArray(val)) return val.map(deepCamelize) as unknown as T
+  if (typeof val === 'object' && !(val instanceof Date)) {
+    const obj = val as Record<string, unknown>
+    const result: Record<string, unknown> = {}
+    for (const key of Object.keys(obj)) {
+      result[snakeToCamel(key)] = deepCamelize(obj[key])
+    }
+    return result as T
+  }
+  return val as T
+}
+
 async function request<T = any>(
   path: string,
   options: RequestInit = {},
@@ -151,8 +179,8 @@ async function request<T = any>(
 
   try {
     const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
-    const json: BackendResult<T> = await res.json()
-    return json
+    const json = await res.json()
+    return deepCamelize(json)
   } catch (err) {
     console.error('[apiClient] 请求失败:', path, err)
     return { code: -1, msg: '网络请求失败' }
@@ -522,16 +550,13 @@ export async function apiHasSignedInToday(): Promise<{ ok: boolean; data?: boole
 
 /**
  * 添加收藏
- * POST /api/favorite/add
+ * POST /api/favorite/add?gameId=xxx
  */
 export async function apiAddFavorite(gameId: number): Promise<{ ok: boolean; msg?: string }> {
   try {
     const res = await request<void>(
-      '/favorite/add',
-      {
-        method: 'POST',
-        body: JSON.stringify({ gameId }),
-      }
+      `/favorite/add?gameId=${gameId}`,
+      { method: 'POST' }
     )
     
     if (res.code === 200) {
@@ -546,16 +571,13 @@ export async function apiAddFavorite(gameId: number): Promise<{ ok: boolean; msg
 
 /**
  * 取消收藏
- * POST /api/favorite/remove
+ * POST /api/favorite/remove?gameId=xxx
  */
 export async function apiRemoveFavorite(gameId: number): Promise<{ ok: boolean; msg?: string }> {
   try {
     const res = await request<void>(
-      '/favorite/remove',
-      {
-        method: 'POST',
-        body: JSON.stringify({ gameId }),
-      }
+      `/favorite/remove?gameId=${gameId}`,
+      { method: 'POST' }
     )
     
     if (res.code === 200) {
@@ -608,6 +630,79 @@ export async function apiCheckFavorite(gameId: number): Promise<{ ok: boolean; d
     console.error('[API] 检查收藏状态失败:', error)
     return { ok: false, msg: String(error) }
   }
+}
+
+export interface GameSettleResult {
+  success?: boolean
+  message?: string
+  coinsEarned?: number
+  expEarned?: number
+  studyCoinsSpent?: number
+  coins?: number
+  studyCoins?: number
+  exp?: number
+  level?: number
+  rank?: number | null
+  sessionScore?: number
+}
+
+/** POST /api/game/settle — 游戏结束结算（扣游学币、发关卡奖励、单局排行） */
+export async function apiGameSettle(
+  gameId: number,
+  score: number,
+  levelReached: number
+): Promise<{ ok: boolean; data?: GameSettleResult; msg?: string }> {
+  const res = await request<GameSettleResult>('/game/settle', {
+    method: 'POST',
+    body: JSON.stringify({ gameId, score, levelReached }),
+  })
+  if (res.code === 200 && res.data) return { ok: true, data: res.data }
+  return { ok: false, msg: res.msg }
+}
+
+/** GET /api/shop/products */
+export async function apiShopProducts(): Promise<{ ok: boolean; data?: Array<Record<string, unknown>> }> {
+  const res = await request<Array<Record<string, unknown>>>('/shop/products', { method: 'GET' }, false)
+  if (res.code === 200) return { ok: true, data: res.data || [] }
+  return { ok: false }
+}
+
+/** POST /api/shop/purchase */
+export async function apiShopPurchase(productId: number, quantity = 1) {
+  const res = await request<Record<string, unknown>>('/shop/purchase', {
+    method: 'POST',
+    body: JSON.stringify({ productId, quantity }),
+  })
+  if (res.code === 200 && res.data) return { ok: true, data: res.data }
+  return { ok: false, msg: res.msg }
+}
+
+/** GET /api/task/list */
+export async function apiTaskList() {
+  const res = await request<Array<Record<string, unknown>>>('/task/list')
+  if (res.code === 200) return { ok: true, data: res.data || [] }
+  return { ok: false, msg: res.msg }
+}
+
+/** POST /api/task/claim */
+export async function apiTaskClaim(taskId: number) {
+  const res = await request<Record<string, unknown>>('/task/claim', {
+    method: 'POST',
+    body: JSON.stringify({ taskId }),
+  })
+  if (res.code === 200 && res.data) return { ok: true, data: res.data }
+  return { ok: false, msg: res.msg }
+}
+
+/** GET /api/leaderboard/session-top — 单局得分前100 */
+export async function apiSessionLeaderboard(gameId: number, limit = 100) {
+  const res = await request<{ list: Array<{ rank: number; nickname?: string; username?: string; score: number }> }>(
+    `/leaderboard/session-top?gameId=${gameId}&limit=${limit}`,
+    { method: 'GET' },
+    false
+  )
+  if (res.code === 200 && res.data) return { ok: true, list: res.data.list || [] }
+  return { ok: false, list: [] as Array<{ rank: number; nickname?: string; username?: string; score: number }> }
 }
 
 // ─────────────────────────────────────────────

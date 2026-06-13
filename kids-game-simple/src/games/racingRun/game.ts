@@ -6,6 +6,7 @@ import { spawnObstacle, spawnCoin, spawnPowerup } from './spawner';
 import { spawnExplosion, spawnFloatText, activatePowerup } from './effects';
 import { drawRoad, drawPlayer, drawObstacles, drawCoins, drawPowerups, drawParticles, drawBullets, drawHUD, drawFloatTexts } from './renderer';
 import { H, W, LEVELS, SPEED_RECOVERY_RATE, OBSTACLE_CONFIG, SCENES, SCENE_SWITCH_DISTANCE, COLLISION_SLOW_DURATION } from './config';
+import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils';
 
 export function initRacingRun(engine: GameEngine, onEnd: () => void, carColor: 'red' | 'blue' | 'yellow' = 'blue'): void {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement;
@@ -22,9 +23,26 @@ export function initRacingRun(engine: GameEngine, onEnd: () => void, carColor: '
 }
 
 function setupInput(canvas: HTMLCanvasElement, state: GameState): () => void {
+  applyCanvasMobileStyles(canvas);
+
   const LANE_XS = [80, 200, 320];
   const MIN_X = 50;
   const MAX_X = W - 50;
+
+  const snapToNearestLane = (canvasX: number): void => {
+    let closestLane = 0;
+    let minDistance = Math.abs(canvasX - LANE_XS[0]);
+    for (let i = 1; i < LANE_XS.length; i++) {
+      const distance = Math.abs(canvasX - LANE_XS[i]);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestLane = i;
+      }
+    }
+    state.targetX = LANE_XS[closestLane];
+    state.currentLane = closestLane;
+    audioService.collect();
+  };
 
   const switchLane = (direction: number): void => {
     const newLane = Math.max(0, Math.min(2, state.currentLane + direction));
@@ -82,19 +100,15 @@ function setupInput(canvas: HTMLCanvasElement, state: GameState): () => void {
   };
 
   let touchStartX = 0;
-  let touchStartY = 0;
   let hasMoved = false;
   let isDragging = false;
 
   canvas.ontouchstart = (e: TouchEvent): void => {
     e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const touchX = (e.touches[0].clientX - rect.left) * scaleX;
-    const touchY = (e.touches[0].clientY - rect.top) * scaleX;
-
-    touchStartX = touchX;
-    touchStartY = touchY;
+    const t = e.touches[0];
+    if (!t) return;
+    const { x } = clientToCanvas(canvas, t.clientX, t.clientY);
+    touchStartX = x;
     hasMoved = false;
     isDragging = true;
   };
@@ -102,107 +116,71 @@ function setupInput(canvas: HTMLCanvasElement, state: GameState): () => void {
   canvas.ontouchmove = (e: TouchEvent): void => {
     e.preventDefault();
     if (!isDragging) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const curX = (e.touches[0].clientX - rect.left) * scaleX;
+    const t = e.touches[0];
+    if (!t) return;
+    const { x: curX } = clientToCanvas(canvas, t.clientX, t.clientY);
     const dx = curX - touchStartX;
 
-    if (Math.abs(dx) > 10) { // 轻微移动就开始跟随
+    if (Math.abs(dx) > 10) {
       hasMoved = true;
-      // 直接设置目标位置为手指位置（限制在屏幕范围内）
       state.targetX = Math.max(40, Math.min(W - 40, curX));
+    }
+  };
+
+  const finishTouch = (clientX: number, clientY: number): void => {
+    isDragging = false;
+    const { x: endX } = clientToCanvas(canvas, clientX, clientY);
+    if (!hasMoved) {
+      if (endX < W / 2) switchLane(-1);
+      else switchLane(1);
+    } else {
+      snapToNearestLane(endX);
     }
   };
 
   canvas.ontouchend = (e: TouchEvent): void => {
     e.preventDefault();
-    isDragging = false;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    finishTouch(t.clientX, t.clientY);
+  };
 
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const endX = (e.changedTouches[0].clientX - rect.left) * scaleX;
-
-    if (!hasMoved) {
-      // 没有滑动，点击切换车道
-      if (endX < canvas.width / 2) {
-        switchLane(-1);
-      } else {
-        switchLane(1);
-      }
-    } else {
-      // 滑动结束，吸附到最近的车道
-      let closestLane = 0;
-      let minDistance = Math.abs(endX - LANE_XS[0]);
-      
-      for (let i = 1; i < LANE_XS.length; i++) {
-        const distance = Math.abs(endX - LANE_XS[i]);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestLane = i;
-        }
-      }
-      
-      // 吸附到最近的车道
-      state.targetX = LANE_XS[closestLane];
-      state.currentLane = closestLane;
-      audioService.collect(); // 变道音效
-    }
+  canvas.ontouchcancel = (e: TouchEvent): void => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    if (t) finishTouch(t.clientX, t.clientY);
+    else isDragging = false;
   };
 
   let mouseDown = false;
   canvas.onmousedown = (e: MouseEvent): void => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const { x: mx } = clientToCanvas(canvas, e.clientX, e.clientY);
     touchStartX = mx;
     mouseDown = true;
     hasMoved = false;
   };
   canvas.onmousemove = (e: MouseEvent): void => {
     if (!mouseDown) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const { x: mx } = clientToCanvas(canvas, e.clientX, e.clientY);
     const dx = mx - touchStartX;
 
-    if (Math.abs(dx) > 10) { // 轻微移动就开始跟随
+    if (Math.abs(dx) > 10) {
       hasMoved = true;
-      // 直接设置目标位置为鼠标位置（限制在屏幕范围内）
       state.targetX = Math.max(40, Math.min(W - 40, mx));
     }
   };
   canvas.onmouseup = (): void => {
     mouseDown = false;
-
     if (hasMoved) {
-      // 滑动结束，吸附到最近的车道
-      let closestLane = 0;
-      let minDistance = Math.abs(state.targetX - LANE_XS[0]);
-      
-      for (let i = 1; i < LANE_XS.length; i++) {
-        const distance = Math.abs(state.targetX - LANE_XS[i]);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestLane = i;
-        }
-      }
-      
-      // 吸附到最近的车道
-      state.targetX = LANE_XS[closestLane];
-      state.currentLane = closestLane;
-      audioService.collect(); // 变道音效
+      snapToNearestLane(state.targetX);
     }
   };
 
   canvas.onclick = (e: MouseEvent): void => {
     if (hasMoved) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    if (x < rect.width / 2) {
-      switchLane(-1);
-    } else {
-      switchLane(1);
-    }
+    const { x } = clientToCanvas(canvas, e.clientX, e.clientY);
+    if (x < W / 2) switchLane(-1);
+    else switchLane(1);
   };
   
   // 返回清理函数
@@ -213,6 +191,7 @@ function setupInput(canvas: HTMLCanvasElement, state: GameState): () => void {
     canvas.ontouchstart = null;
     canvas.ontouchmove = null;
     canvas.ontouchend = null;
+    canvas.ontouchcancel = null;
     canvas.onmousedown = null;
     canvas.onmousemove = null;
     canvas.onmouseup = null;

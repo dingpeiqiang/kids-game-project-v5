@@ -60,6 +60,8 @@ export async function initPlantZombieDefense2d(
       score: state.score,
     })
     cancelAnimationFrame(raf)
+    unbind()
+    window.removeEventListener('resize', onResize)
     onEnd()
   }
 

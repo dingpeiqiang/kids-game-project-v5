@@ -5,6 +5,7 @@
 
 import * as C from '../config'
 import type { InputState } from '../types'
+import { applyCanvasMobileStyles } from '../../../utils/canvasMobileUtils'
 
 export interface TouchButtonState {
   id: string
@@ -46,6 +47,12 @@ export class InputManager {
 
   private keydownHandler: ((e: KeyboardEvent) => void) | null = null
   private keyupHandler: ((e: KeyboardEvent) => void) | null = null
+  private boundTouchStart: ((e: TouchEvent) => void) | null = null
+  private boundTouchMove: ((e: TouchEvent) => void) | null = null
+  private boundTouchEnd: ((e: TouchEvent) => void) | null = null
+  private boundMouseDown: ((e: MouseEvent) => void) | null = null
+  private boundMouseUp: ((e: MouseEvent) => void) | null = null
+  private boundMouseMove: ((e: MouseEvent) => void) | null = null
 
   constructor(canvas: HTMLCanvasElement, callbacks: InputManagerCallbacks) {
     this.canvas = canvas
@@ -131,23 +138,60 @@ export class InputManager {
     }
     document.addEventListener('keyup', this.keyupHandler)
 
-    // 触屏
-    canvas.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false })
-    canvas.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false })
-    canvas.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false })
-    canvas.addEventListener('touchcancel', (e) => this.onTouchEnd(e), { passive: false })
-    canvas.addEventListener('mousedown', (e) => this.onMouseDown(e))
-    canvas.addEventListener('mouseup', (e) => this.onMouseUp(e))
-    canvas.addEventListener('mouseleave', (e) => this.onMouseUp(e))
-    canvas.addEventListener('mousemove', (e) => this.onMouseMove(e))
+    applyCanvasMobileStyles(canvas)
+
+    this.boundTouchStart = (e) => this.onTouchStart(e)
+    this.boundTouchMove = (e) => this.onTouchMove(e)
+    this.boundTouchEnd = (e) => this.onTouchEnd(e)
+    this.boundMouseDown = (e) => this.onMouseDown(e)
+    this.boundMouseUp = (e) => this.onMouseUp(e)
+    this.boundMouseMove = (e) => this.onMouseMove(e)
+
+    canvas.addEventListener('touchstart', this.boundTouchStart, { passive: false })
+    canvas.addEventListener('touchmove', this.boundTouchMove, { passive: false })
+    canvas.addEventListener('touchend', this.boundTouchEnd, { passive: false })
+    canvas.addEventListener('touchcancel', this.boundTouchEnd, { passive: false })
+    canvas.addEventListener('mousedown', this.boundMouseDown)
+    canvas.addEventListener('mouseup', this.boundMouseUp)
+    canvas.addEventListener('mouseleave', this.boundMouseUp)
+    canvas.addEventListener('mousemove', this.boundMouseMove)
   }
 
   cleanup(): void {
     if (this.keydownHandler) {
       document.removeEventListener('keydown', this.keydownHandler)
+      this.keydownHandler = null
     }
     if (this.keyupHandler) {
       document.removeEventListener('keyup', this.keyupHandler)
+      this.keyupHandler = null
+    }
+    const canvas = this.canvas
+    if (this.boundTouchStart) {
+      canvas.removeEventListener('touchstart', this.boundTouchStart)
+      this.boundTouchStart = null
+    }
+    if (this.boundTouchMove) {
+      canvas.removeEventListener('touchmove', this.boundTouchMove)
+      this.boundTouchMove = null
+    }
+    if (this.boundTouchEnd) {
+      canvas.removeEventListener('touchend', this.boundTouchEnd)
+      canvas.removeEventListener('touchcancel', this.boundTouchEnd)
+      this.boundTouchEnd = null
+    }
+    if (this.boundMouseDown) {
+      canvas.removeEventListener('mousedown', this.boundMouseDown)
+      this.boundMouseDown = null
+    }
+    if (this.boundMouseUp) {
+      canvas.removeEventListener('mouseup', this.boundMouseUp)
+      canvas.removeEventListener('mouseleave', this.boundMouseUp)
+      this.boundMouseUp = null
+    }
+    if (this.boundMouseMove) {
+      canvas.removeEventListener('mousemove', this.boundMouseMove)
+      this.boundMouseMove = null
     }
   }
 

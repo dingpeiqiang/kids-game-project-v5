@@ -1,7 +1,8 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
-import { bindCanvasEvents, getPointerPos, resizeCanvasForMobile } from '../utils/mobileHelper'
+import { app } from '../services/appBridge'
+import { resizeCanvasForMobile } from '../utils/mobileHelper'
+import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../utils/canvasMobileUtils'
 
 export function initBouncePath(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -282,37 +283,30 @@ export function initBouncePath(engine: GameEngine, onEnd: () => void) {
 
   // 初始化Canvas尺寸（移动端适配）
   resizeCanvasForMobile(canvas)
-  
-  // 统一的事件处理函数
-  const handleMove = (e: MouseEvent | TouchEvent) => {
-    const pos = getPointerPos(e, canvas)
-    targetX = pos.x
-  }
-  
-  const handleClick = (e: MouseEvent | TouchEvent) => {
-    const pos = getPointerPos(e, canvas)
-    targetX = pos.x
-    ball.vy = -8 // 点击给一个向上的力
-    audioService.collect()
-  }
-  
-  // 清除旧的事件监听器
-  canvas.onmousemove = null
-  canvas.ontouchmove = null
-  canvas.onclick = null
-  
-  // 绑定事件
-  canvas.addEventListener('mousemove', handleMove)
-  canvas.addEventListener('touchmove', handleMove, { passive: false })
-  canvas.addEventListener('click', handleClick)
-  canvas.addEventListener('touchstart', handleClick, { passive: false })
+  applyCanvasMobileStyles(canvas)
+
+  const unbindPointer = bindCanvasPointerTapAndMove(
+    canvas,
+    (x) => {
+      targetX = x
+    },
+    (x) => {
+      targetX = x
+      ball.vy = -8
+      audioService.collect()
+    },
+  )
 
   function loop() {
-    if (!document.getElementById('mainGameCanvas') || gameEnded) return
-    
+    if (!document.getElementById('mainGameCanvas') || gameEnded) {
+      unbindPointer()
+      return
+    }
+
     const elapsed = Date.now() - gameStartTime
     if (elapsed > GAME_DURATION) {
       gameEnded = true
+      unbindPointer()
       engine.setVictory(false)
       engine.endGame()
       onEnd()

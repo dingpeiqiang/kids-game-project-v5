@@ -1,6 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
+import { app } from '../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../utils/canvasMobileUtils'
 import { RPG_SHOOTER_POWERUPS } from '../data/powerups'
 
 export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
@@ -496,32 +497,22 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
 
   // === 输入 ===
   let targetX = W / 2, targetY = H / 2
-  let touchX: number | null = null
   let keys: { [key: string]: boolean } = {}
 
-  function handleMove(e: MouseEvent | Touch) {
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = W / rect.width
-    const scaleY = H / rect.height
-    const clientX = 'clientX' in e ? e.clientX : 0
-    const clientY = 'clientY' in e ? e.clientY : 0
-    targetX = (clientX - rect.left) * scaleX
-    targetY = (clientY - rect.top) * scaleY
+  const onPointerAt = (x: number, y: number) => {
+    targetX = x
+    targetY = y
   }
 
-  function handleTap(e: MouseEvent | Touch) {
+  const onPointerTap = () => {
     if (!gameStarted) {
       gameStarted = true
       startTime = Date.now()
     } else if (gameEnded) {
-      // 重新开始游戏
       location.reload()
-      return
     }
-    handleMove(e)
   }
 
-  // 键盘输入
   document.onkeydown = (e) => {
     keys[e.key.toLowerCase()] = true
     if (!gameStarted) {
@@ -533,21 +524,13 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
     keys[e.key.toLowerCase()] = false
   }
 
-  canvas.onclick = (e) => handleTap(e)
-  canvas.onmousemove = (e) => handleMove(e)
-  canvas.ontouchstart = (e) => {
-    e.preventDefault()
-    if (e.touches.length > 0) {
-      handleTap(e.touches[0])
-      handleMove(e.touches[0])
-    }
-  }
-  canvas.ontouchmove = (e) => {
-    e.preventDefault()
-    if (e.touches.length > 0) handleMove(e.touches[0])
-  }
-  canvas.ontouchend = (e) => {
-    e.preventDefault()
+  applyCanvasMobileStyles(canvas)
+  const unbindPointer = bindCanvasPointerTapAndMove(canvas, onPointerAt, onPointerTap)
+
+  const teardownInput = () => {
+    unbindPointer()
+    document.onkeydown = null
+    document.onkeyup = null
   }
 
   // === 绘制函数 ===
@@ -1022,6 +1005,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
 
       if (elapsed >= GAME_DURATION) {
         gameEnded = true
+        teardownInput()
         engine.endGame()
         setTimeout(() => onEnd(), 600)
         return
@@ -1265,6 +1249,7 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
         enemies.splice(i, 1)
         if (playerHP <= 0) {
           gameEnded = true
+          teardownInput()
           engine.endGame()
           explode(playerX, playerY, '#FF4757', 40, 8)
           setTimeout(() => onEnd(), 800)
@@ -1571,7 +1556,10 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
   }
 
   function loop() {
-    if (!document.getElementById('mainGameCanvas')) return
+    if (!document.getElementById('mainGameCanvas')) {
+      teardownInput()
+      return
+    }
 
     update()
     render()

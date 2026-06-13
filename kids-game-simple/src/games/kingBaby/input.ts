@@ -1,3 +1,4 @@
+import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils'
 import { BASE_H, BASE_W } from './config'
 import type { GameState } from './types'
 
@@ -51,35 +52,31 @@ export function bindKingBabyInput(
   state: GameState,
   onPointer: (canvasX: number, canvasY: number, ui: UiHit | null) => void,
 ): () => void {
-  const toCanvas = (clientX: number, clientY: number) => {
-    const rect = canvas.getBoundingClientRect()
-    const x = ((clientX - rect.left) / rect.width) * canvas.width
-    const y = ((clientY - rect.top) / rect.height) * canvas.height
-    return { x, y }
-  }
+  applyCanvasMobileStyles(canvas)
 
   const onPointerDown = (e: PointerEvent) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return
+    e.preventDefault()
     input.pointerDown = true
-    const { x, y } = toCanvas(e.clientX, e.clientY)
+    const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY)
     input.moveX = x
     input.moveY = y
     onPointer(x, y, hitTestUi(canvas.width, canvas.height, x, y, state))
   }
 
   const onPointerMove = (e: PointerEvent) => {
-    const { x, y } = toCanvas(e.clientX, e.clientY)
-    if (input.pointerDown || e.pointerType === 'touch') {
-      input.moveX = x
-      input.moveY = y
-    }
+    if (!input.pointerDown && e.pointerType !== 'touch') return
+    const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY)
+    input.moveX = x
+    input.moveY = y
   }
 
   const onPointerUp = () => {
     input.pointerDown = false
   }
 
-  canvas.addEventListener('pointerdown', onPointerDown)
-  canvas.addEventListener('pointermove', onPointerMove)
+  canvas.addEventListener('pointerdown', onPointerDown, { passive: false })
+  canvas.addEventListener('pointermove', onPointerMove, { passive: false })
   canvas.addEventListener('pointerup', onPointerUp)
   canvas.addEventListener('pointercancel', onPointerUp)
 

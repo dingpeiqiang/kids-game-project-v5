@@ -1,4 +1,5 @@
 import type { Dir } from './types'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
 export interface InputSnapshot {
   moveDir: Dir | null
@@ -7,6 +8,8 @@ export interface InputSnapshot {
 }
 
 export function createInputController(canvas: HTMLCanvasElement) {
+  applyCanvasMobileStyles(canvas)
+
   let moveDir: Dir | null = null
   let fireQueued = false
   let spaceHeld = false

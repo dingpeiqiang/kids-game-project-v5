@@ -1,5 +1,6 @@
 import { BASE_W } from './config'
 import type { GameState } from './types'
+import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils'
 
 export interface InputState {
   pointerX: number | null
@@ -15,25 +16,23 @@ export function bindBeatDragonInput(
   input: InputState,
   onTap: (x: number, y: number) => void,
 ): () => void {
-  const toGame = (clientX: number): number => {
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    return (clientX - rect.left) * scaleX
-  }
+  applyCanvasMobileStyles(canvas)
 
   const onPointerDown = (e: PointerEvent) => {
+    e.preventDefault()
     input.pointerDown = true
-    input.pointerX = toGame(e.clientX)
-    const y = ((e.clientY - canvas.getBoundingClientRect().top) * canvas.height) / canvas.getBoundingClientRect().height
-    onTap(toGame(e.clientX), y)
+    const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY)
+    input.pointerX = x
+    onTap(x, y)
   }
 
   const onPointerMove = (e: PointerEvent) => {
+    const { x } = clientToCanvas(canvas, e.clientX, e.clientY)
     if (!input.pointerDown && e.pointerType === 'mouse') {
-      input.pointerX = toGame(e.clientX)
+      input.pointerX = x
       return
     }
-    if (input.pointerDown) input.pointerX = toGame(e.clientX)
+    if (input.pointerDown) input.pointerX = x
   }
 
   const onPointerUp = () => {

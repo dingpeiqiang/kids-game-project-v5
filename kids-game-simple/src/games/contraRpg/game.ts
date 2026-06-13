@@ -15,6 +15,7 @@ import { updateBullets, updatePowerups, updateParticles, updateShockwaves, updat
 import { updateCamera } from './logic/progression'
 import { createTraps, updateTraps, resetTrapIdCounter } from './logic/traps'
 import { VirtualJoystick } from './joystick'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
 export class ContraRpgGame {
   private canvas: HTMLCanvasElement
@@ -222,6 +223,7 @@ export class ContraRpgGame {
   private boundHandlers: { el: EventTarget; type: string; handler: EventListenerOrEventListenerObject; options?: any }[] = []
 
   private setupMobileControls() {
+    applyCanvasMobileStyles(this.canvas)
     this.addListener(this.canvas, 'touchstart', (e) => this.onTouchStart(e as TouchEvent), { passive: false })
     this.addListener(this.canvas, 'touchmove', (e) => this.onTouchMove(e as TouchEvent), { passive: false })
     this.addListener(this.canvas, 'touchend', (e) => this.onTouchEnd(e as TouchEvent), { passive: false })

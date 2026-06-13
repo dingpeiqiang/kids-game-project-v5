@@ -1,5 +1,6 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 
 export function createGame(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -583,16 +584,6 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
     
   }
 
-  function getScaledPos(e: MouseEvent | Touch) {
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY
-    }
-  }
-
   function getGemAtPos(x: number, y: number) {
     const gemX = Math.floor((x - OFFSET_X) / (GEM_SIZE + GAP))
     const gemY = Math.floor((y - OFFSET_Y) / (GEM_SIZE + GAP))
@@ -636,49 +627,7 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  async function handleClick(e: MouseEvent | TouchEvent) {
-    e.preventDefault()
-    
-    if (animating || gameEnded) return
-    
-    let pos: { x: number; y: number }
-    
-    if ('touches' in e) {
-      const touch = e.changedTouches[0]
-      pos = getScaledPos(touch)
-    } else {
-      pos = getScaledPos(e)
-    }
-    
-    const gem = getGemAtPos(pos.x, pos.y)
-    if (!gem) return
-    
-    if (!selected) {
-      selected = gem
-      audioService.click()
-    } else if (selected.x === gem.x && selected.y === gem.y) {
-      selected = null
-    } else {
-      const dx = Math.abs(selected.x - gem.x)
-      const dy = Math.abs(selected.y - gem.y)
-      
-      if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
-        animating = true
-        const success = await trySwap(selected.x, selected.y, gem.x, gem.y)
-        selected = null
-        animating = false
-        
-        if (success) {
-          combo = 0
-          await processMatches()
-          combo = 0
-        }
-      } else {
-        selected = gem
-        audioService.click()
-      }
-    }
-  }
+  let unbindPointer: (() => void) | null = null
 
   async function trySwap(x1: number, y1: number, x2: number, y2: number): Promise<boolean> {
     const gem1 = board[y1][x1]
@@ -949,16 +898,18 @@ export function createGame(engine: GameEngine, onEnd: () => void) {
     initBoard()
     lastMoveTime = Date.now()
     gameEnded = false
-    
-    canvas.addEventListener('click', handleClick)
-    canvas.addEventListener('touchend', handleClick, { passive: false })
-    
+
+    applyCanvasMobileStyles(canvas)
+    unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+      void handleClick(x, y)
+    })
+
     gameLoop()
   }
 
   function destroy() {
-    canvas.removeEventListener('click', handleClick)
-    canvas.removeEventListener('touchend', handleClick)
+    unbindPointer?.()
+    unbindPointer = null
     gameEnded = true
     onEnd()
   }

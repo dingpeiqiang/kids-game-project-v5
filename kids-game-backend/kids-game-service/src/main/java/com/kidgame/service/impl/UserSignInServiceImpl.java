@@ -1,8 +1,16 @@
 package com.kidgame.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.kidgame.common.constant.GameConstants;
+import com.kidgame.dao.entity.BaseUser;
+import com.kidgame.dao.entity.SignInRewardConfig;
 import com.kidgame.dao.entity.UserSignIn;
+import com.kidgame.dao.mapper.BaseUserMapper;
+import com.kidgame.dao.mapper.SignInRewardConfigMapper;
 import com.kidgame.dao.mapper.UserSignInMapper;
+import com.kidgame.service.EconomyWalletService;
+import com.kidgame.service.FatiguePointsService;
+import com.kidgame.service.TaskProgressService;
 import com.kidgame.service.UserSignInService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +35,21 @@ public class UserSignInServiceImpl implements UserSignInService {
     @Autowired
     private UserSignInMapper userSignInMapper;
 
+    @Autowired
+    private SignInRewardConfigMapper signInRewardConfigMapper;
+
+    @Autowired
+    private EconomyWalletService economyWalletService;
+
+    @Autowired
+    private FatiguePointsService fatiguePointsService;
+
+    @Autowired
+    private BaseUserMapper baseUserMapper;
+
+    @Autowired
+    private TaskProgressService taskProgressService;
+
     /**
      * 用户签到
      * @param userId 用户ID
@@ -49,36 +72,56 @@ public class UserSignInServiceImpl implements UserSignInService {
             return result;
         }
         
-        // 计算连续签到天数
         int consecutiveDays = calculateConsecutiveDays(userId);
-        
-        // 计算奖励
-        int baseCoins = 50;
-        int bonus = Math.min(consecutiveDays - 1, 6) * 10; // 最多奖励7天
-        int coinsReward = baseCoins + bonus;
-        int expReward = consecutiveDays >= 3 ? 20 : 0; // 连续3天及以上额外给经验
-        
-        // 创建签到记录
+        int dayIndex = ((consecutiveDays - 1) % 7) + 1;
+        SignInRewardConfig cfg = signInRewardConfigMapper.selectOne(
+                new LambdaQueryWrapper<SignInRewardConfig>()
+                        .eq(SignInRewardConfig::getDayIndex, dayIndex)
+                        .eq(SignInRewardConfig::getEnabled, 1));
+        int coinsReward = cfg != null && cfg.getCoinsReward() != null ? cfg.getCoinsReward() : 30;
+        int studyCoinsReward = cfg != null && cfg.getStudyCoinsReward() != null ? cfg.getStudyCoinsReward() : 0;
+        int expReward = cfg != null && cfg.getExpReward() != null ? cfg.getExpReward() : 10;
+
+        economyWalletService.addCoins(userId, coinsReward, "每日签到");
+        if (expReward > 0) {
+            economyWalletService.addExp(userId, expReward);
+        }
+        if (studyCoinsReward > 0) {
+            BaseUser user = baseUserMapper.selectById(userId);
+            int userType = user != null && user.getUserType() != null ? user.getUserType() : 0;
+            fatiguePointsService.grantStudyCoinsBySystem(
+                    userId, userType, studyCoinsReward,
+                    GameConstants.FatigueChangeType.SYSTEM_GRANT,
+                    "SIGN_IN", "签到奖励游学币", null);
+        }
+
         UserSignIn signIn = new UserSignIn();
         signIn.setUserId(userId);
         signIn.setSignInDate(today);
         signIn.setConsecutiveDays(consecutiveDays);
         signIn.setCoinsReward(coinsReward);
         signIn.setExpReward(expReward);
+        signIn.setStudyCoinsReward(studyCoinsReward);
         signIn.setCreateTime(System.currentTimeMillis());
         signIn.setUpdateTime(System.currentTimeMillis());
-        
         userSignInMapper.insert(signIn);
-        
-        // 返回结果
+
+        taskProgressService.onMetric(userId, "SIGN_IN", 1);
+
+        StringBuilder msg = new StringBuilder("签到成功！获得 ").append(coinsReward).append(" 金币");
+        if (studyCoinsReward > 0) msg.append("、").append(studyCoinsReward).append(" 游学币");
+        if (expReward > 0) msg.append("、").append(expReward).append(" 经验值");
+
         result.put("success", true);
-        result.put("message", "签到成功！获得 " + coinsReward + " 金币" + (expReward > 0 ? " 和 " + expReward + " 经验值" : ""));
+        result.put("message", msg.toString());
         result.put("coinsReward", coinsReward);
+        result.put("studyCoinsReward", studyCoinsReward);
         result.put("expReward", expReward);
         result.put("consecutiveDays", consecutiveDays);
-        
-        log.info("用户 {} 签到成功，连续签到 {} 天，获得 {} 金币，{} 经验值", 
-                userId, consecutiveDays, coinsReward, expReward);
+        result.put("wallet", economyWalletService.getWallet(userId));
+
+        log.info("用户 {} 签到成功 dayIndex={} coins={} study={} exp={}",
+                userId, dayIndex, coinsReward, studyCoinsReward, expReward);
         
         return result;
     }

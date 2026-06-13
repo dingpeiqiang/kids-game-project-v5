@@ -35,22 +35,10 @@ export function bindCanvasEvents(
     handler(e)
   })
 
-  // 绑定触摸事件（移动端）
+  // 绑定触摸事件（移动端）— 与 click 同逻辑，避免重复触发时由游戏内防抖
   canvas.addEventListener('touchstart', (e: TouchEvent) => {
     if (preventDefault) e.preventDefault()
     handler(e)
-  }, { passive })
-
-  // 绑定鼠标移动事件（桌面端）
-  canvas.addEventListener('mousemove', (e: MouseEvent) => {
-    if (preventDefault) e.preventDefault()
-    ;(handler as any)(e)
-  })
-
-  // 绑定触摸移动事件（移动端）
-  canvas.addEventListener('touchmove', (e: TouchEvent) => {
-    if (preventDefault) e.preventDefault()
-    ;(handler as any)(e)
   }, { passive })
 }
 

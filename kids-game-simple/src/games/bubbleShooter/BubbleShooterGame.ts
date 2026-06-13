@@ -4,6 +4,7 @@ import { ParticleSystem } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
 import { Renderer } from './Renderer'
 import { Shooter, Projectile, MatchPosition, PowerupType, SpecialBubbleType } from './types'
+import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../../utils/canvasMobileUtils'
 
 interface LevelConfig {
   level: number
@@ -199,6 +200,7 @@ export class BubbleShooterGame {
           this.engine.setVictory(true)
           this.engine.setMessage('🎉 恭喜通关！')
           setTimeout(() => {
+            this.teardownInput()
             this.engine.endGame()
             this.onEnd()
           }, 3000)
@@ -221,6 +223,7 @@ export class BubbleShooterGame {
           this.engine.setVictory(false)
           this.engine.setMessage('⏰ 时间到！游戏结束')
           setTimeout(() => {
+            this.teardownInput()
             this.engine.endGame()
             this.onEnd()
           }, 2000)
@@ -358,42 +361,32 @@ export class BubbleShooterGame {
     return Math.floor(Math.random() * Math.min(this.currentLevelConfig.bubbleColors, this.COLORS.length))
   }
 
+  private unbindPointer: (() => void) | null = null
+
+  private aimAt(mx: number, my: number) {
+    this.mouseX = mx
+    const dx = mx - this.shooter.x
+    const dy = my - this.shooter.y
+    this.shooter.angle = Math.atan2(dy, dx)
+    if (this.shooter.angle > -0.1) this.shooter.angle = -0.1
+    if (this.shooter.angle < -Math.PI + 0.1) this.shooter.angle = -Math.PI + 0.1
+  }
+
+  private teardownInput() {
+    this.unbindPointer?.()
+    this.unbindPointer = null
+  }
+
   private setupEventListeners() {
-    this.canvas.onmousemove = (e: MouseEvent) => {
-      const rect = this.canvas.getBoundingClientRect()
-      this.mouseX = e.clientX - rect.left
-      const mouseY = e.clientY - rect.top
-      
-      const dx = this.mouseX - this.shooter.x
-      const dy = mouseY - this.shooter.y
-      this.shooter.angle = Math.atan2(dy, dx)
-      
-      if (this.shooter.angle > -0.1) this.shooter.angle = -0.1
-      if (this.shooter.angle < -Math.PI + 0.1) this.shooter.angle = -Math.PI + 0.1
-    }
-
-    this.canvas.ontouchmove = (e: TouchEvent) => {
-      e.preventDefault()
-      const rect = this.canvas.getBoundingClientRect()
-      const touch = e.touches[0] || e.changedTouches[0]
-      this.mouseX = touch.clientX - rect.left
-      const mouseY = touch.clientY - rect.top
-      
-      const dx = this.mouseX - this.shooter.x
-      const dy = mouseY - this.shooter.y
-      this.shooter.angle = Math.atan2(dy, dx)
-      
-      if (this.shooter.angle > -0.1) this.shooter.angle = -0.1
-      if (this.shooter.angle < -Math.PI + 0.1) this.shooter.angle = -Math.PI + 0.1
-    }
-
-    this.canvas.onclick = () => {
-      this.shoot()
-    }
-
-    this.canvas.ontouchend = () => {
-      this.shoot()
-    }
+    this.teardownInput()
+    applyCanvasMobileStyles(this.canvas)
+    this.unbindPointer = bindCanvasPointerTapAndMove(
+      this.canvas,
+      (x, y) => this.aimAt(x, y),
+      () => {
+        if (!this.gameEnded && !this.levelTransitioning) this.shoot()
+      },
+    )
   }
 
   private shoot() {
@@ -693,6 +686,7 @@ export class BubbleShooterGame {
     this.engine.setVictory(false)
     this.engine.setMessage('💥 棋盘已满！游戏结束')
     setTimeout(() => {
+      this.teardownInput()
       this.engine.endGame()
       this.onEnd()
     }, 2000)

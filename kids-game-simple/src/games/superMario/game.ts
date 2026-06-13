@@ -450,7 +450,8 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
     if (ended) return
     ended = true
     engine.setScore(state.score)
-    cancelAnimationFrame(raf)
+    activeDispose?.()
+    activeDispose = null
     onEnd()
   }
 

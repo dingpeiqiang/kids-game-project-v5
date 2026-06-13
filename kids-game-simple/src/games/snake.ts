@@ -1,7 +1,8 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { createPowerupManager, ActivePowerup } from '../services/powerupManager'
-import { app } from '../App'
+import { app } from '../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../utils/canvasMobileUtils'
 import { getCanvasPaletteForGame } from '../utils/GTRSThemeApplier'
 
 interface Point { x: number; y: number }
@@ -449,6 +450,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
 
     engine.setVictory(snake.length >= 10)
     engine.endGame()
+    cleanupSnakeInput()
     setTimeout(() => onEnd(), 500)
   }
 
@@ -462,48 +464,26 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     console.log('[贪吃蛇] 游戏重新开始！alive=true, gameStarted=true')
   }
 
-  // ====== 点击方向控制 ======
-  function handleClick(e: MouseEvent | TouchEvent) {
-    // 如果游戏还未开始，则开始游戏
+  // ====== 点击方向控制（画布坐标，移动端 touchstart + 桌面 pointer） ======
+  function handleTapOnCanvas(mx: number, my: number) {
     if (!gameStarted) {
       gameStarted = true
       alive = true
       isFirstStart = false
-      console.log('[贪吃蛇] 游戏首次开始！alive=true, gameStarted=true')
       audioService.click()
       return
     }
-    
-    // 游戏进行中才响应方向控制
     if (!alive) return
-    const rect = cvs.getBoundingClientRect()
-    const scaleX = W / rect.width
-    const scaleY = H / rect.height
-    let clientX: number, clientY: number
-    if ('touches' in e) {
-      if (e.touches.length === 0) return
-      clientX = e.touches[0].clientX
-      clientY = e.touches[0].clientY
-    } else {
-      clientX = e.clientX
-      clientY = e.clientY
-    }
-    const mx = (clientX - rect.left) * scaleX
-    const my = (clientY - rect.top) * scaleY
 
-    // 蛇头屏幕位置
     const headX = snake[0].x * CELL + OFFSET_X + CELL / 2
     const headY = snake[0].y * CELL + OFFSET_Y + CELL / 2
     const dx = mx - headX
     const dy = my - headY
 
-    // 根据点击相对蛇头的方向决定转向
     if (Math.abs(dx) > Math.abs(dy)) {
-      // 左右
       if (dx > 0 && dir.x !== -1) nextDir = { x: 1, y: 0 }
       else if (dx < 0 && dir.x !== 1) nextDir = { x: -1, y: 0 }
     } else {
-      // 上下
       if (dy > 0 && dir.y !== -1) nextDir = { x: 0, y: 1 }
       else if (dy < 0 && dir.y !== 1) nextDir = { x: 0, y: -1 }
     }
@@ -531,10 +511,14 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  const gameLayer = document.getElementById('gameCanvas')!
-  gameLayer.addEventListener('click', handleClick as EventListener)
-  gameLayer.addEventListener('touchstart', handleClick as EventListener, { passive: true })
+  applyCanvasMobileStyles(cvs)
+  const unbindSnakePointer = bindCanvasPointerInput(cvs, (x, y) => handleTapOnCanvas(x, y))
   document.addEventListener('keydown', handleKey)
+
+  const cleanupSnakeInput = () => {
+    unbindSnakePointer()
+    document.removeEventListener('keydown', handleKey)
+  }
 
   // ====== 主循环 ======
   let lastTime = performance.now()
@@ -936,8 +920,6 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
   // 清理
   return () => {
     cancelAnimationFrame(rafId)
-    gameLayer.removeEventListener('click', handleClick as EventListener)
-    gameLayer.removeEventListener('touchstart', handleClick as EventListener)
-    document.removeEventListener('keydown', handleKey)
+    cleanupSnakeInput()
   }
 }

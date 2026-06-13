@@ -1,5 +1,6 @@
 import { VirtualJoystick } from '../contraRpg/joystick'
 import { MARIO_CONFIG } from './config'
+import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils'
 
 export interface MarioInput {
   left: boolean
@@ -25,6 +26,8 @@ export function bindMarioInput(
   joystick: VirtualJoystick,
   onJumpTap: () => void,
 ): () => void {
+  applyCanvasMobileStyles(canvas)
+
   const key = (e: KeyboardEvent, down: boolean) => {
     switch (e.code) {
       case 'ArrowLeft':
@@ -57,16 +60,6 @@ export function bindMarioInput(
 
   let jumpTouchId = -1
 
-  const toCanvas = (clientX: number, clientY: number) => {
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
-    }
-  }
-
   const jumpBtn = {
     cx: MARIO_CONFIG.VIEW_W - 58,
     cy: MARIO_CONFIG.VIEW_H - 72,
@@ -82,7 +75,7 @@ export function bindMarioInput(
   const onTouchStart = (e: TouchEvent) => {
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i]
-      const p = toCanvas(t.clientX, t.clientY)
+      const p = clientToCanvas(canvas, t.clientX, t.clientY)
       if (p.x < MARIO_CONFIG.VIEW_W * 0.45) {
         joystick.activate(p.x, p.y, t.identifier)
         e.preventDefault()

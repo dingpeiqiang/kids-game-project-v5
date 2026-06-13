@@ -1,3 +1,5 @@
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+
 export interface InputSnapshot {
   moveX: number
   moveY: number
@@ -8,6 +10,7 @@ export function createInputController(canvas: HTMLCanvasElement): {
   getSnapshot: () => InputSnapshot
   dispose: () => void
 } {
+  applyCanvasMobileStyles(canvas)
   const keys = new Set<string>()
   let pointerDown = false
   let lastX = 0

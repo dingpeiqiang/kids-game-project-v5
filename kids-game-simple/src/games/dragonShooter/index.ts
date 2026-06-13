@@ -152,6 +152,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       }
     }
     
+    inputHandler.dispose()
     disposeViewport?.()
     performanceMonitor.destroy()
     onEnd()
@@ -421,7 +422,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     onNextLevel: () => startNextLevel(state)
   }
 
-  createInputHandler(canvas, ctx, state, routeEditorRef, customRoutes, inputCallbacks)
+  const inputHandler = createInputHandler(canvas, ctx, state, routeEditorRef, customRoutes, inputCallbacks)
 
   // ===== 游戏主循环 =====
   let lastTime = performance.now()

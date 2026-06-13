@@ -24,6 +24,10 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     overflow: hidden;
     margin: 0;
     padding: 0;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
   `
   document.body.appendChild(phaserParent)
 
@@ -35,7 +39,25 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     phaserParent.style.aspectRatio = BASE_W + '/' + BASE_H
   }
 
-  const phaserGame = new Phaser.Game({
+  let phaserGame: Phaser.Game
+  const handleResize = () => { if (phaserGame?.scale) phaserGame.scale.refresh() }
+
+  const wrappedOnEnd = () => {
+    window.removeEventListener('resize', handleResize)
+    if (isMobile) {
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.height = ''
+    }
+    phaserGame?.destroy(true)
+    const phaserDiv = document.getElementById('phaser-space-shooter')
+    if (phaserDiv) phaserDiv.remove()
+    onEnd()
+  }
+
+  phaserGame = new Phaser.Game({
     type: Phaser.CANVAS,
     width: BASE_W,
     height: BASE_H,
@@ -49,14 +71,13 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
       min: { width: BASE_W, height: BASE_H },
       max: { width: BASE_W * 4, height: BASE_H * 4 },
     },
-    scene: [new SpaceShooterScene(engine, onEnd)],
+    scene: [new SpaceShooterScene(engine, wrappedOnEnd)],
     input: { touch: { capture: true } },
     render: { antialias: true, pixelArt: false, roundPixels: true },
     audio: { noAudio: true },
     banner: false,
   })
 
-  const handleResize = () => { if (phaserGame.scale) phaserGame.scale.refresh() }
   window.addEventListener('resize', handleResize)
 
   if (isMobile) {
@@ -65,22 +86,6 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     document.body.style.position = 'fixed'
     document.body.style.width = '100%'
     document.body.style.height = '100%'
-  }
-
-  const originalOnEnd = onEnd
-  onEnd = () => {
-    window.removeEventListener('resize', handleResize)
-    if (isMobile) {
-      document.body.style.overflow = ''
-      document.body.style.touchAction = ''
-      document.body.style.position = ''
-      document.body.style.width = ''
-      document.body.style.height = ''
-    }
-    phaserGame.destroy(true)
-    const phaserDiv = document.getElementById('phaser-space-shooter')
-    if (phaserDiv) phaserDiv.remove()
-    originalOnEnd()
   }
 
   engine.start()

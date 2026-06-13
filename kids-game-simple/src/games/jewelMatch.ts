@@ -1,7 +1,8 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
-import { bindCanvasEvents, getPointerPos, resizeCanvasForMobile, injectMobileStyles } from '../utils/mobileHelper'
+import { app } from '../services/appBridge'
+import { resizeCanvasForMobile, injectMobileStyles } from '../utils/mobileHelper'
+import { bindCanvasPointerInput } from '../utils/canvasMobileUtils'
 
 export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
   console.log('[JewelMatch] 游戏初始化开始')
@@ -985,45 +986,8 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     processMatches()
   }
 
-  canvas.onclick = null
-  canvas.onmousedown = null
-  
-  // 获取正确的点击坐标（考虑Canvas缩放）
-  function getScaledPos(e: MouseEvent | TouchEvent): { x: number; y: number } {
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    
-    if ('touches' in e && e.touches.length > 0) {
-      const touch = e.touches[0]
-      return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY
-      }
-    } else if ('changedTouches' in e && e.changedTouches.length > 0) {
-      const touch = e.changedTouches[0]
-      return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY
-      }
-    } else if ('clientX' in e) {
-      return {
-        x: ((e as MouseEvent).clientX - rect.left) * scaleX,
-        y: ((e as MouseEvent).clientY - rect.top) * scaleY
-      }
-    }
-    return { x: 0, y: 0 }
-  }
-
-  // 统一的事件处理函数（兼容鼠标和触摸）
-  const handleClick = async (e: MouseEvent | TouchEvent) => {
-    e.preventDefault()
-    
+  async function handleClickAt(mx: number, my: number) {
     if (animating || gameEnded) return
-
-    const pos = getScaledPos(e)
-    const mx = pos.x
-    const my = pos.y
 
     const x = Math.floor((mx - OFFSET_X) / (GEM_SIZE + GAP))
     const y = Math.floor((my - OFFSET_Y) / (GEM_SIZE + GAP))
@@ -1056,22 +1020,14 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  // 清除所有旧的事件监听器
-  canvas.removeEventListener('click', handleClick)
-  canvas.removeEventListener('touchend', handleClick)
-  canvas.removeEventListener('touchstart', handleClick)
-  canvas.removeEventListener('mousemove', handleClick)
-  canvas.removeEventListener('touchmove', handleClick)
-  
-  // 只绑定点击事件（避免鼠标移动触发音频）
-  // 桌面端：click
-  // 移动端：touchend
-  canvas.addEventListener('click', handleClick)
-  canvas.addEventListener('touchend', handleClick, { passive: false })
+  const unbindJewel = bindCanvasPointerInput(canvas, (x, y) => {
+    void handleClickAt(x, y)
+  })
 
   function checkTimeout() {
     if (gameEnded) return
     if (Date.now() - lastMoveTime > MOVE_TIMEOUT) {
+      unbindJewel()
       engine.endGame()
       gameEnded = true
       audioService.lose()

@@ -1,4 +1,5 @@
 import type { InputSnapshot } from './types'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
 export interface InputController {
   snapshot: InputSnapshot
@@ -14,6 +15,7 @@ const emptySnap = (): InputSnapshot => ({
 })
 
 export function createInputController(canvas: HTMLCanvasElement): InputController {
+  applyCanvasMobileStyles(canvas)
   const snapshot = emptySnap()
   const keys = new Set<string>()
 
@@ -36,7 +38,13 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     const rect = canvas.getBoundingClientRect()
     const lx = e.clientX - rect.left
     const ly = e.clientY - rect.top
+    if (lx >= rect.width * 0.58 && ly > rect.height * 0.42) {
+      e.preventDefault()
+      snapshot.jump = true
+      return
+    }
     if (lx < rect.width * 0.45 && ly > rect.height * 0.35) {
+      e.preventDefault()
       stickId = e.pointerId
       stickOx = lx
       stickOy = ly
@@ -73,12 +81,13 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     }
   }
 
+  let pollRaf = 0
+  let disposed = false
   const pollKeys = () => {
-    let mx = snapshot.moveX
-    let mz = snapshot.moveZ
+    if (disposed) return
     if (stickId == null) {
-      mx = 0
-      mz = 0
+      let mx = 0
+      let mz = 0
       if (keys.has('ArrowLeft') || keys.has('KeyA')) mx -= 1
       if (keys.has('ArrowRight') || keys.has('KeyD')) mx += 1
       if (keys.has('ArrowUp') || keys.has('KeyW')) mz += 1
@@ -91,9 +100,9 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
       snapshot.moveX = mx
       snapshot.moveZ = mz
     }
-    requestAnimationFrame(pollKeys)
+    pollRaf = requestAnimationFrame(pollKeys)
   }
-  requestAnimationFrame(pollKeys)
+  pollRaf = requestAnimationFrame(pollKeys)
 
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
@@ -105,6 +114,8 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
   return {
     snapshot,
     dispose: () => {
+      disposed = true
+      cancelAnimationFrame(pollRaf)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       canvas.removeEventListener('pointerdown', onPointerDown)

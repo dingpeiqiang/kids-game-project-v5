@@ -43,8 +43,7 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void, startLevel:
   // 初始化道具栏
   updateHTMLPowerupBar(state.inventory)
 
-  // 设置输入监听
-  setupInputListeners(canvas, inputState, (x1, y1, x2, y2) => {
+  const unbindInput = setupInputListeners(canvas, inputState, (x1, y1, x2, y2) => {
     // 添加切割轨迹
     state.slices.push({ x1, y1, x2, y2, life: 1 })
     
@@ -56,7 +55,10 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void, startLevel:
 
   // 游戏主循环
   function loop() {
-    if (!document.getElementById('mainGameCanvas')) return
+    if (!document.getElementById('mainGameCanvas')) {
+      unbindInput()
+      return
+    }
     
     // 更新过渡动画
     if (state.transition.active) {

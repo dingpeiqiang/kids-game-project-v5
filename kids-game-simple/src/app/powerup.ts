@@ -42,7 +42,8 @@ function createPowerupContainer(): HTMLElement {
 
   const container = document.createElement('div')
   container.id = 'powerupBarContainer'
-  container.style.cssText = 'position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:12px;'
+  const bottom = 'calc(16px + env(safe-area-inset-bottom, 0px))'
+  container.style.cssText = `position:absolute;bottom:${bottom};left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:10px;max-width:96vw;overflow-x:auto;padding:0 8px;-webkit-overflow-scrolling:touch;`
   document.getElementById('game-layer')!.appendChild(container)
   return container
 }
@@ -54,10 +55,10 @@ function createPowerupBarHTML(
   return powerups.map(p => {
     const count = inventory.filter(id => id === p.id).length
     return `
-        <div class="powerup-btn" data-powerup="${p.id}" title="${p.name}">
-          <span class="powerup-icon">${p.icon}</span>
-          <span class="powerup-count">${count}</span>
-        </div>
+        <button type="button" class="powerup-btn" data-powerup="${p.id}" title="${p.name}" style="min-width:52px;min-height:52px;border:none;border-radius:14px;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);color:#fff;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;">
+          <span class="powerup-icon" style="font-size:22px;line-height:1">${p.icon}</span>
+          <span class="powerup-count" style="font-size:11px;font-weight:700">${count}</span>
+        </button>
       `
   }).join('')
 }

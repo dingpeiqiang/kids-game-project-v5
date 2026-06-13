@@ -7,6 +7,7 @@ import type { GameState } from './types'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, TURRET_CONFIGS, WALL_CONFIGS } from './config'
 import { placeTurret, placeWall, upgradeTurret, sellTurret, canPlaceWall } from './turrets'
 import type { JoystickState, MobileButtons } from './renderer'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
 // ==================== 类型定义 ====================
 
@@ -255,6 +256,8 @@ export function initInput(params: InputInitParams): () => void {
     selectedTurretForUpgradeRef, upgradeDialogPosRef, mobileButtonsRef
   } = params
 
+  applyCanvasMobileStyles(canvas)
+
   let lastTouchTime = 0
   let lastPlaceTime = 0           // 上次放置炮台的时间戳
   let touchStartedOnButton = false // 本次触摸是否始于按钮区域
@@ -323,9 +326,8 @@ export function initInput(params: InputInitParams): () => void {
       touchId: joystick.touchId
     }
 
-    // 更新鼠标位置（用于瞄准，scaleX 已在上方定义）
-    mousePos.x = joystick.currentX * scaleX
-    mousePos.y = joystick.currentY * scaleY
+    mousePos.x = joystick.currentX
+    mousePos.y = joystick.currentY
     state.buildMode.previewX = mousePos.x
     state.buildMode.previewY = mousePos.y
   }
@@ -413,20 +415,21 @@ export function initInput(params: InputInitParams): () => void {
     // 3. 其他触摸 → 地图点击（触摸结束时才执行放置）
   }
 
+  const releaseJoystickIfNeeded = (e: TouchEvent) => {
+    if (!joystick.active) return
+    const touch = Array.from(e.changedTouches).find(t => t.identifier === joystick.touchId)
+    if (touch) {
+      joystick.active = false
+      state.joystick = { active: false, dx: 0, dy: 0, baseX: 0, baseY: 0, touchId: null }
+    }
+  }
+
   // ---------- 触摸结束 ----------
   const handleTouchEnd = (e: TouchEvent) => {
     e.preventDefault()
+    releaseJoystickIfNeeded(e)
 
-    // 停止摇杆
-    if (joystick.active) {
-      const touch = Array.from(e.changedTouches).find(t => t.identifier === joystick.touchId)
-      if (touch) {
-        joystick.active = false
-        state.joystick = { active: false, dx: 0, dy: 0, baseX: 0, baseY: 0, touchId: null }
-      }
-    }
-
-    // 摇杆触摸 → 不做其他处理
+    // 摇杆/按钮区域开始的触摸 → 不做地图放置
     if (touchStartedOnButton) return
 
     // ✅ 防抖：距上次操作太近则跳过
@@ -537,9 +540,16 @@ export function initInput(params: InputInitParams): () => void {
   canvas.addEventListener('mousemove', handleMouseMove)
   canvas.addEventListener('click', handleClick)
   canvas.addEventListener('contextmenu', handleRightClick)
+  const handleTouchCancel = (e: TouchEvent) => {
+    e.preventDefault()
+    releaseJoystickIfNeeded(e)
+    touchStartedOnButton = false
+  }
+
   canvas.addEventListener('touchmove', handleTouchMove, { passive: false })
   canvas.addEventListener('touchstart', handleTouchStart, { passive: false })
   canvas.addEventListener('touchend', handleTouchEnd, { passive: false })
+  canvas.addEventListener('touchcancel', handleTouchCancel, { passive: false })
 
   // ========== 清理函数 ==========
   return () => {
@@ -549,6 +559,7 @@ export function initInput(params: InputInitParams): () => void {
     canvas.removeEventListener('touchmove', handleTouchMove)
     canvas.removeEventListener('touchstart', handleTouchStart)
     canvas.removeEventListener('touchend', handleTouchEnd)
+    canvas.removeEventListener('touchcancel', handleTouchCancel)
   }
 }
 

@@ -8,7 +8,8 @@ import { drawBackground, drawHUD, drawGameOver } from './HUD'
 import { drawPath, drawTowers, drawEnemies, drawBullets, drawParticles, drawFloats, drawWaveCountdown, drawInstructions, drawFlashEffect } from './renderer'
 import { pixelToGrid, isInHUD, isInGameArea, getTowerTypeAt, getTowerAt, isOnPath, getSpecialSkillButtonBounds } from './input'
 import { audioService } from '../../services/audio'
-import { app } from '../../App'
+import { app } from '../../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 import { userService } from '../../services/userService'
 import { apiSubmitGameResult, apiStartGameSession } from '../../services/apiClient'
 
@@ -283,10 +284,15 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     }
   }
 
+  function teardownInput() {
+    unbindPointer()
+  }
+
   async function endGame(isWinParam: boolean = false) {
     isGameOver = true
     isVictory = isWinParam
     cancelAnimationFrame(animId)
+    teardownInput()
 
     const duration = Math.floor((Date.now() - gameStartTime) / 1000)
 
@@ -625,21 +631,10 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     }
   }
 
-  canvas.addEventListener('click', e => {
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = W / rect.width
-    const scaleY = H / rect.height
-    handleClick((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY)
+  applyCanvasMobileStyles(canvas)
+  const unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+    handleClick(x, y)
   })
-
-  canvas.addEventListener('touchstart', e => {
-    e.preventDefault()
-    const touch = e.touches[0]
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = W / rect.width
-    const scaleY = H / rect.height
-    handleClick((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY)
-  }, { passive: false })
 
   initGameSession()
   loop()

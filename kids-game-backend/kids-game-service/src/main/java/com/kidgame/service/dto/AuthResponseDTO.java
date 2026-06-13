@@ -53,6 +53,15 @@ public class AuthResponseDTO {
     @Schema(description = "游学币")
     private Integer fatiguePoints;
 
+    @Schema(description = "金币")
+    private Integer coins;
+
+    @Schema(description = "经验值")
+    private Integer exp;
+
+    @Schema(description = "等级（由经验值计算）")
+    private Integer level;
+
     @Schema(description = "每日答题点数")
     private Integer dailyAnswerPoints;
 

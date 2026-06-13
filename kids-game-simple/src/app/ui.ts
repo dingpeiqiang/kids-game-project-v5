@@ -202,9 +202,9 @@ export function renderUI(ctx: PlatformContext) {
       <div id="daily-overlay">
         <div class="daily-card">
           <div class="dc-icon">🎁</div>
-          <div class="dc-title">每日登录奖励</div>
-          <div class="dc-desc">恭喜你今日首次游戏！获得双倍积分卡 x1，下次游戏自动生效!</div>
-          <button class="dc-btn" id="btnCloseDaily">收下奖励</button>
+          <div class="dc-title">首日登录奖励</div>
+          <div class="dc-desc">今日首次登录！获得 🎓 游学币 x1</div>
+          <button class="dc-btn" id="btnClaimDaily">领取奖励</button>
         </div>
       </div>
 
@@ -267,16 +267,10 @@ export function renderUI(ctx: PlatformContext) {
   ctx.renderGameCards()
 }
 
-/**
- * 显示每日奖励弹窗
- */
 export function showDailyPop() {
   document.getElementById('daily-overlay')!.classList.add('show')
 }
 
-/**
- * 关闭每日奖励弹窗
- */
 export function closeDailyPop() {
   document.getElementById('daily-overlay')!.classList.remove('show')
 }

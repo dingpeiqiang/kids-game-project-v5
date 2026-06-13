@@ -1,6 +1,7 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { app } from '../App'
+import { app } from '../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasLaneTap } from '../utils/canvasMobileUtils'
 
 export function initNeonRun(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -350,29 +351,46 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  // 触摸控制
-  canvas.onclick = canvas.ontouchstart = (e) => {
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX || e.touches[0].clientX
-    const clickX = x - rect.left
-    
-    if (clickX < W / 3 && playerLane > 0) {
-      playerLane--
-      audioService.collect()
-    } else if (clickX > W * 2 / 3 && playerLane < lanes - 1) {
-      playerLane++
-      audioService.collect()
-    }
+  applyCanvasMobileStyles(canvas)
+  const unbindLaneTap = bindCanvasLaneTap(
+    canvas,
+    W,
+    () => {
+      if (playerLane > 0) {
+        playerLane--
+        audioService.collect()
+      }
+    },
+    () => {
+      if (playerLane < lanes - 1) {
+        playerLane++
+        audioService.collect()
+      }
+    },
+  )
+
+  const finishRun = () => {
+    unbindLaneTap()
+    document.onkeydown = null
   }
 
   function loop() {
-    if (!document.getElementById('mainGameCanvas') || gameEnded) return
-    
+    if (!document.getElementById('mainGameCanvas')) {
+      finishRun()
+      return
+    }
+    if (gameEnded) {
+      finishRun()
+      return
+    }
+
     // 检查超时（3分钟）
     const elapsedTime = Date.now() - gameStartTime
     if (elapsedTime > 180000) { // 3分钟 = 180000毫秒
       console.log('[NeonRun] 游戏超时，结束游戏')
       gameEnded = true
+      finishRun()
+      engine.setVictory(false)
       engine.endGame()
       audioService.lose()
       onEnd()

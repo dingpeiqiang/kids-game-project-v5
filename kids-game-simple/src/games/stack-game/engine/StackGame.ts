@@ -1,5 +1,6 @@
 import type { GameEngine } from '../../../services/gameEngine'
 import { audioService } from '../../../services/audio'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../../utils/canvasMobileUtils'
 import { GAME_CONFIG, BLOCK_COLORS, BG_STAGES, SPECIAL_BLOCK_CONFIG, WEATHER_CONFIG, CHARACTER_CONFIG, BUBBLE_COLORS, RAINBOW_COLORS } from '../config/gameConfig'
 import { POWERUP_CONFIGS, POWERUP_COMBOS, POWERUP_DROP_CHANCES } from '../config/powerupConfig'
 import { ACHIEVEMENTS, ACHIEVEMENT_REWARDS } from '../config/achievementConfig'
@@ -542,6 +543,8 @@ export class StackGame {
     }
 
     this.gameEnded = true
+    this.unbindPointer?.()
+    this.unbindPointer = null
     this.engine.endGame()
     setTimeout(() => this.onEnd(), 800)
   }
@@ -934,9 +937,11 @@ export class StackGame {
 
   private updateFallingPieces() {}
 
+  private unbindPointer: (() => void) | null = null
+
   start() {
-    this.canvas.onclick = () => this.handleTap()
-    this.canvas.ontouchend = (e) => { e.preventDefault(); this.handleTap() }
+    this.unbindPointer?.()
+    this.unbindPointer = bindCanvasPointerInput(this.canvas, () => this.handleTap())
     this.engine.start()
     this.draw()
     this.loop()

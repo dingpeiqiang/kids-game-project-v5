@@ -1,8 +1,8 @@
 /**
- * 切饼干游戏 - 输入处理
+ * 切饼干游戏 - 输入处理（移动端 + 桌面）
  */
 
-import type { GameEngine } from '../../services/gameEngine'
+import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils'
 
 export interface InputState {
   isSlicing: boolean
@@ -10,44 +10,32 @@ export interface InputState {
   lastY: number
 }
 
-/**
- * 获取鼠标/触摸位置（考虑画布缩放）
- */
-export function getPos(
-  e: MouseEvent | TouchEvent,
-  canvas: HTMLCanvasElement,
-  canvasWidth: number,
-  canvasHeight: number
-): { x: number; y: number } {
-  const rect = canvas.getBoundingClientRect()
-  const scaleX = canvasWidth / rect.width
-  const scaleY = canvasHeight / rect.height
-  
-  if ('touches' in e) {
-    return {
-      x: (e.touches[0].clientX - rect.left) * scaleX,
-      y: (e.touches[0].clientY - rect.top) * scaleY
-    }
+function clientFromEvent(e: MouseEvent | TouchEvent): { clientX: number; clientY: number } {
+  if ('touches' in e && e.touches.length > 0) {
+    return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }
   }
-  
-  return {
-    x: (e.clientX - rect.left) * scaleX,
-    y: (e.clientY - rect.top) * scaleY
+  if ('changedTouches' in e && e.changedTouches.length > 0) {
+    return { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY }
   }
+  const me = e as MouseEvent
+  return { clientX: me.clientX, clientY: me.clientY }
 }
 
 /**
- * 设置输入事件监听
+ * 设置输入事件监听，返回清理函数
  */
 export function setupInputListeners(
   canvas: HTMLCanvasElement,
   inputState: InputState,
-  onSliceMove: (x1: number, y1: number, x2: number, y2: number) => void
-): void {
+  onSliceMove: (x1: number, y1: number, x2: number, y2: number) => void,
+): () => void {
+  applyCanvasMobileStyles(canvas)
+
   const handleStart = (e: MouseEvent | TouchEvent) => {
     e.preventDefault()
     inputState.isSlicing = true
-    const pos = getPos(e as any, canvas, 400, 600)
+    const { clientX, clientY } = clientFromEvent(e)
+    const pos = clientToCanvas(canvas, clientX, clientY)
     inputState.lastX = pos.x
     inputState.lastY = pos.y
   }
@@ -55,10 +43,9 @@ export function setupInputListeners(
   const handleMove = (e: MouseEvent | TouchEvent) => {
     if (!inputState.isSlicing) return
     e.preventDefault()
-    
-    const pos = getPos(e as any, canvas, 400, 600)
+    const { clientX, clientY } = clientFromEvent(e, canvas)
+    const pos = clientToCanvas(canvas, clientX, clientY)
     onSliceMove(inputState.lastX, inputState.lastY, pos.x, pos.y)
-    
     inputState.lastX = pos.x
     inputState.lastY = pos.y
   }
@@ -67,12 +54,52 @@ export function setupInputListeners(
     inputState.isSlicing = false
   }
 
-  canvas.onmousedown = handleStart
-  canvas.ontouchstart = handleStart
-  canvas.onmousemove = handleMove
-  canvas.ontouchmove = handleMove
-  canvas.onmouseup = handleEnd
-  canvas.ontouchend = handleEnd
-  canvas.onmouseleave = handleEnd
-  canvas.ontouchcancel = handleEnd
+  const onGlobalMove = (e: MouseEvent) => {
+    if (!inputState.isSlicing) return
+    const pos = clientToCanvas(canvas, e.clientX, e.clientY)
+    onSliceMove(inputState.lastX, inputState.lastY, pos.x, pos.y)
+    inputState.lastX = pos.x
+    inputState.lastY = pos.y
+  }
+
+  const onGlobalTouchMove = (e: TouchEvent) => {
+    if (!inputState.isSlicing) return
+    const t = e.touches[0]
+    if (!t) return
+    e.preventDefault()
+    const pos = clientToCanvas(canvas, t.clientX, t.clientY)
+    onSliceMove(inputState.lastX, inputState.lastY, pos.x, pos.y)
+    inputState.lastX = pos.x
+    inputState.lastY = pos.y
+  }
+
+  canvas.addEventListener('mousedown', handleStart)
+  canvas.addEventListener('mousemove', handleMove)
+  canvas.addEventListener('mouseup', handleEnd)
+  canvas.addEventListener('mouseleave', handleEnd)
+  canvas.addEventListener('touchstart', handleStart, { passive: false })
+  canvas.addEventListener('touchmove', handleMove, { passive: false })
+  canvas.addEventListener('touchend', handleEnd)
+  canvas.addEventListener('touchcancel', handleEnd)
+  document.addEventListener('mousemove', onGlobalMove)
+  document.addEventListener('mouseup', handleEnd)
+  document.addEventListener('touchmove', onGlobalTouchMove, { passive: false })
+  document.addEventListener('touchend', handleEnd)
+  document.addEventListener('touchcancel', handleEnd)
+
+  return () => {
+    canvas.removeEventListener('mousedown', handleStart)
+    canvas.removeEventListener('mousemove', handleMove)
+    canvas.removeEventListener('mouseup', handleEnd)
+    canvas.removeEventListener('mouseleave', handleEnd)
+    canvas.removeEventListener('touchstart', handleStart)
+    canvas.removeEventListener('touchmove', handleMove)
+    canvas.removeEventListener('touchend', handleEnd)
+    canvas.removeEventListener('touchcancel', handleEnd)
+    document.removeEventListener('mousemove', onGlobalMove)
+    document.removeEventListener('mouseup', handleEnd)
+    document.removeEventListener('touchmove', onGlobalTouchMove)
+    document.removeEventListener('touchend', handleEnd)
+    document.removeEventListener('touchcancel', handleEnd)
+  }
 }

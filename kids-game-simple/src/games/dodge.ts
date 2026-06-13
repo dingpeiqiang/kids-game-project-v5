@@ -1,7 +1,8 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { DODGE_POWERUPS } from '../data/powerups'
-import { app } from '../App'
+import { app } from '../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasHorizontalDrag } from '../utils/canvasMobileUtils'
 
 export function initDodge(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -22,8 +23,7 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
   let showLevelUp = 0  // 等级提升提示计时器
   let invincible = 0
   let obsTimer = 0
-  let dragging = false
-  let lastMx = 0
+
   
   // 道具效果状态
   let shield = 0 // 护盾
@@ -635,6 +635,7 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
             audioService.fail()
             engine.setVictory(false)
             engine.endGame()
+            unbindDrag()
             onEnd()
             return
           }
@@ -656,48 +657,22 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
     speed = 1.2 + (speedLevel - 1) * 0.5
   }
   
-  // 事件监听
-  canvas.onmousedown = null
-  canvas.onmousemove = null
-  canvas.onmouseup = null
-  canvas.ontouchstart = null
-  canvas.ontouchmove = null
-  
-  canvas.onmousedown = (e) => { 
-    e.preventDefault()
-    dragging = true
-    lastMx = e.clientX 
-  }
-  canvas.onmousemove = (e) => {
-    if (!dragging) return
-    e.preventDefault()
-    const dx = e.clientX - lastMx
-    px += dx
-    px = Math.max(pSize, Math.min(W - pSize, px))
-    lastMx = e.clientX
-    TRAIL.push({ x: px, y: py, life: 1 })
-  }
-  canvas.onmouseup = () => { dragging = false }
-
-  canvas.ontouchstart = (e) => {
-    e.preventDefault()
-    dragging = true
-    lastMx = e.touches[0].clientX
-  }
-  canvas.ontouchmove = (e) => {
-    if (!dragging) return
-    e.preventDefault()
-    const dx = e.touches[0].clientX - lastMx
-    px += dx
-    px = Math.max(pSize, Math.min(W - pSize, px))
-    lastMx = e.touches[0].clientX
-    TRAIL.push({ x: px, y: py, life: 1 })
-  }
-  canvas.ontouchend = () => { dragging = false }
+  applyCanvasMobileStyles(canvas)
+  const unbindDrag = bindCanvasHorizontalDrag(
+    canvas,
+    (deltaX) => {
+      px += deltaX
+      px = Math.max(pSize, Math.min(W - pSize, px))
+      TRAIL.push({ x: px, y: py, life: 1 })
+    },
+  )
 
   let last = 0
   function loop(ts: number) {
-    if (!document.getElementById('mainGameCanvas')) return
+    if (!document.getElementById('mainGameCanvas')) {
+      unbindDrag()
+      return
+    }
     const dt = ts - last
     last = ts
     update(dt)

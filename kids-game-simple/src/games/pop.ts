@@ -1,7 +1,8 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../data/items'
-import { app } from '../App'
+import { app } from '../services/appBridge'
+import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../utils/canvasMobileUtils'
 
 export function initPop(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
@@ -273,32 +274,18 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     })
   }
 
-  // 清除旧事件并绑定新事件
-  canvas.onclick = null
-  canvas.ontouchstart = null
-  
-  canvas.onclick = (e) => {
-    lastActionTime = Date.now() // 更新最后操作时间
-    const rect = canvas.getBoundingClientRect()
-    const sx = W / rect.width
-    const sy = H / rect.height
-    const mx = (e.clientX - rect.left) * sx
-    const my = (e.clientY - rect.top) * sy
-
+  function handleTapAt(mx: number, my: number) {
+    lastActionTime = Date.now()
     for (let i = BALLOONS.length - 1; i >= 0; i--) {
       const b = BALLOONS[i]
       if (Math.hypot(mx - b.x - Math.sin(b.wobble) * 5, my - b.y) < b.r + 5) {
         engine.addScore(10 + Math.round(b.r), b.x, b.y)
         if (engine.getCombo() >= 2) engine.triggerRandomBuff()
-        
-        // 收集道具：如果气球有道具
+
         if (b.item) {
           itemCharge[b.item] = (itemCharge[b.item] || 0) + 1
-          
-          // 显示收集提示
           const itemData = GAME_ITEMS.find(item => item.id === b.item)
           if (itemData) {
-            // 创建特殊粒子效果
             for (let j = 0; j < 10; j++) {
               PARTICLES.push({
                 x: b.x,
@@ -307,17 +294,14 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
                 vy: (Math.random() - 0.5) * 8 - 3,
                 life: 1,
                 color: '#FFD93D',
-                size: 3 + Math.random() * 3
+                size: 3 + Math.random() * 3,
               })
             }
           }
-          
-          // 更新道具栏显示
           updateItemBar()
           audioService.buff()
         }
-        
-        // 创建爆炸粒子效果
+
         for (let j = 0; j < 15; j++) {
           PARTICLES.push({
             x: b.x,
@@ -326,10 +310,10 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
             vy: (Math.random() - 0.5) * 10,
             life: 1,
             color: b.color,
-            size: 2 + Math.random() * 4
+            size: 2 + Math.random() * 4,
           })
         }
-        
+
         BALLOONS.splice(i, 1)
         audioService.pop()
         break
@@ -337,62 +321,10 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  canvas.ontouchstart = null
-  canvas.ontouchstart = (e) => {
-    lastActionTime = Date.now() // 更新最后操作时间
-    const rect = canvas.getBoundingClientRect()
-    const sx = W / rect.width
-    const sy = H / rect.height
-    const mx = (e.touches[0].clientX - rect.left) * sx
-    const my = (e.touches[0].clientY - rect.top) * sy
-
-    for (let i = BALLOONS.length - 1; i >= 0; i--) {
-      const b = BALLOONS[i]
-      if (Math.hypot(mx - b.x - Math.sin(b.wobble) * 5, my - b.y) < b.r + 5) {
-        engine.addScore(10 + Math.round(b.r), b.x, b.y)
-        if (engine.getCombo() >= 2) engine.triggerRandomBuff()
-        
-        // 收集道具：如果气球有道具
-        if (b.item) {
-          itemCharge[b.item] = (itemCharge[b.item] || 0) + 1
-          
-          // 创建特殊粒子效果
-          for (let j = 0; j < 10; j++) {
-            PARTICLES.push({
-              x: b.x,
-              y: b.y,
-              vx: (Math.random() - 0.5) * 8,
-              vy: (Math.random() - 0.5) * 8 - 3,
-              life: 1,
-              color: '#FFD93D',
-              size: 3 + Math.random() * 3
-            })
-          }
-          
-          updateItemBar()
-          audioService.buff()
-        }
-        
-        // 创建爆炸粒子效果
-        for (let j = 0; j < 15; j++) {
-          PARTICLES.push({
-            x: b.x,
-            y: b.y,
-            vx: (Math.random() - 0.5) * 10,
-            vy: (Math.random() - 0.5) * 10,
-            life: 1,
-            color: b.color,
-            size: 2 + Math.random() * 4
-          })
-        }
-        
-        BALLOONS.splice(i, 1)
-        audioService.pop()
-        break
-      }
-    }
-    e.preventDefault()
-  }
+  applyCanvasMobileStyles(canvas)
+  const unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+    handleTapAt(x, y)
+  })
   
   // 更新道具栏显示
   function updateItemBar() {
@@ -460,12 +392,15 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
   }
 
   function loop(ts: number) {
-    if (!document.getElementById('mainGameCanvas')) return
-    
-    // 检查玩家长时间无操作
+    if (!document.getElementById('mainGameCanvas')) {
+      unbindPointer()
+      return
+    }
+
     const now = Date.now()
     if (now - lastActionTime > INACTIVITY_TIMEOUT) {
-      // 玩家长时间未操作，判定失败
+      unbindPointer()
+      engine.setVictory(false)
       engine.endGame()
       audioService.lose()
       onEnd()
@@ -478,5 +413,4 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     requestAnimationFrame(loop)
   }
   requestAnimationFrame(loop)
-  
-    }
+}

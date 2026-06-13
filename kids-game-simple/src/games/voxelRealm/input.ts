@@ -1,4 +1,5 @@
 import type { InputSnapshot } from './types'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
 export interface InputController {
   snapshot: InputSnapshot
@@ -6,7 +7,15 @@ export interface InputController {
   dispose: () => void
 }
 
+const isMobileDevice = (): boolean =>
+  'ontouchstart' in window ||
+  navigator.maxTouchPoints > 0 ||
+  window.innerWidth < 768
+
 export function createInputController(canvas: HTMLCanvasElement): InputController {
+  applyCanvasMobileStyles(canvas)
+  const mobile = isMobileDevice()
+
   const keys = new Set<string>()
   const snapshot: InputSnapshot = {
     forward: false,
@@ -24,6 +33,7 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
 
   let breakHeld = false
   let placeHeld = false
+  let jumpHeld = false
 
   const onKeyDown = (e: KeyboardEvent) => {
     keys.add(e.code)
@@ -46,8 +56,116 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
   }
 
   const onClick = () => {
+    if (mobile) return
     if (document.pointerLockElement !== canvas) {
       canvas.requestPointerLock?.()
+    }
+  }
+
+  // --- 移动端：左下摇杆 + 右下跳跃 / 破坏 / 放置 ---
+  let stickTouchId: number | null = null
+  let stickOx = 0
+  let stickOy = 0
+  const STICK_R = 52
+  let mobileFwd = false
+  let mobileBack = false
+  let mobileLeft = false
+  let mobileRight = false
+  const touchRoles = new Map<number, 'jump' | 'break' | 'place' | 'stick'>()
+
+  const localFromTouch = (t: Touch) => {
+    const rect = canvas.getBoundingClientRect()
+    return {
+      lx: (t.clientX - rect.left) / rect.width,
+      ly: (t.clientY - rect.top) / rect.height,
+      px: t.clientX - rect.left,
+      py: t.clientY - rect.top,
+    }
+  }
+
+  const inJumpZone = (lx: number, ly: number) => lx > 0.78 && ly > 0.68
+  const inBreakZone = (lx: number, ly: number) => lx > 0.58 && lx < 0.76 && ly > 0.68
+  const inPlaceZone = (lx: number, ly: number) => lx > 0.78 && ly > 0.48 && ly < 0.66
+  const inStickZone = (lx: number, ly: number) => lx < 0.42 && ly > 0.42
+
+  const updateStickFromPos = (px: number, py: number) => {
+    let dx = px - stickOx
+    let dy = py - stickOy
+    const d = Math.hypot(dx, dy)
+    if (d > STICK_R) {
+      dx = (dx / d) * STICK_R
+      dy = (dy / d) * STICK_R
+    }
+    const ndx = dx / STICK_R
+    const ndy = dy / STICK_R
+    const dead = 0.2
+    mobileFwd = ndy < -dead
+    mobileBack = ndy > dead
+    mobileLeft = ndx < -dead
+    mobileRight = ndx > dead
+  }
+
+  const clearMobileMove = () => {
+    mobileFwd = mobileBack = mobileLeft = mobileRight = false
+  }
+
+  const onTouchStart = (e: TouchEvent) => {
+    if (!mobile) return
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i]
+      const { lx, ly, px, py } = localFromTouch(t)
+      if (inJumpZone(lx, ly)) {
+        touchRoles.set(t.identifier, 'jump')
+        jumpHeld = true
+        e.preventDefault()
+        continue
+      }
+      if (inBreakZone(lx, ly)) {
+        touchRoles.set(t.identifier, 'break')
+        breakHeld = true
+        e.preventDefault()
+        continue
+      }
+      if (inPlaceZone(lx, ly)) {
+        touchRoles.set(t.identifier, 'place')
+        placeHeld = true
+        e.preventDefault()
+        continue
+      }
+      if (inStickZone(lx, ly) && stickTouchId === null) {
+        stickTouchId = t.identifier
+        touchRoles.set(t.identifier, 'stick')
+        stickOx = px
+        stickOy = py
+        e.preventDefault()
+      }
+    }
+  }
+
+  const onTouchMove = (e: TouchEvent) => {
+    if (!mobile || stickTouchId === null) return
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i]
+      if (t.identifier !== stickTouchId) continue
+      const { px, py } = localFromTouch(t)
+      updateStickFromPos(px, py)
+      e.preventDefault()
+    }
+  }
+
+  const onTouchEnd = (e: TouchEvent) => {
+    if (!mobile) return
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i]
+      const role = touchRoles.get(t.identifier)
+      touchRoles.delete(t.identifier)
+      if (role === 'jump') jumpHeld = false
+      if (role === 'break') breakHeld = false
+      if (role === 'place') placeHeld = false
+      if (role === 'stick' && t.identifier === stickTouchId) {
+        stickTouchId = null
+        clearMobileMove()
+      }
     }
   }
 
@@ -58,13 +176,30 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
   canvas.addEventListener('contextmenu', onContext)
   document.addEventListener('pointerlockchange', onLockChange)
   canvas.addEventListener('click', onClick)
+  if (mobile) {
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false })
+    canvas.addEventListener('touchend', onTouchEnd, { passive: false })
+    canvas.addEventListener('touchcancel', onTouchEnd, { passive: false })
+  }
 
   const tick = () => {
-    snapshot.forward = keys.has('KeyW') || keys.has('ArrowUp')
-    snapshot.back = keys.has('KeyS') || keys.has('ArrowDown')
-    snapshot.left = keys.has('KeyA') || keys.has('ArrowLeft')
-    snapshot.right = keys.has('KeyD') || keys.has('ArrowRight')
-    snapshot.jump = keys.has('Space')
+    const kbFwd = keys.has('KeyW') || keys.has('ArrowUp')
+    const kbBack = keys.has('KeyS') || keys.has('ArrowDown')
+    const kbLeft = keys.has('KeyA') || keys.has('ArrowLeft')
+    const kbRight = keys.has('KeyD') || keys.has('ArrowRight')
+    if (mobile) {
+      snapshot.forward = mobileFwd || kbFwd
+      snapshot.back = mobileBack || kbBack
+      snapshot.left = mobileLeft || kbLeft
+      snapshot.right = mobileRight || kbRight
+    } else {
+      snapshot.forward = kbFwd
+      snapshot.back = kbBack
+      snapshot.left = kbLeft
+      snapshot.right = kbRight
+    }
+    snapshot.jump = keys.has('Space') || jumpHeld
     snapshot.sprint = keys.has('ShiftLeft') || keys.has('ShiftRight')
     snapshot.breakBlock = breakHeld
     snapshot.placeBlock = placeHeld
@@ -80,6 +215,10 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     canvas.removeEventListener('contextmenu', onContext)
     document.removeEventListener('pointerlockchange', onLockChange)
     canvas.removeEventListener('click', onClick)
+    canvas.removeEventListener('touchstart', onTouchStart)
+    canvas.removeEventListener('touchmove', onTouchMove)
+    canvas.removeEventListener('touchend', onTouchEnd)
+    canvas.removeEventListener('touchcancel', onTouchEnd)
     if (document.pointerLockElement === canvas) document.exitPointerLock()
   }
 
