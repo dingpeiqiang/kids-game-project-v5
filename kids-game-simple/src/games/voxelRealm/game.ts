@@ -224,6 +224,7 @@ export async function initVoxelRealm(engine: GameEngine, onEnd: () => void): Pro
 
   const onUpdate = () => {
     if (ended || !state.worldReady) return
+    if (engine.isPaused()) return
 
     const dt = Math.min(0.05, ctx3d.engine.getDeltaTime() / 1000)
     input.tick()

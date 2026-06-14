@@ -44,7 +44,12 @@ function createPowerupContainer(): HTMLElement {
   container.id = 'powerupBarContainer'
   const bottom = 'calc(16px + env(safe-area-inset-bottom, 0px))'
   container.style.cssText = `position:absolute;bottom:${bottom};left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:10px;max-width:96vw;overflow-x:auto;padding:0 8px;-webkit-overflow-scrolling:touch;`
-  document.getElementById('game-layer')!.appendChild(container)
+  const slot = document.getElementById('gameShellPowerupSlot')
+  const parent = slot || document.getElementById('game-layer')
+  parent!.appendChild(container)
+  if (slot) {
+    container.style.cssText = `position:relative;bottom:auto;left:auto;transform:none;z-index:1;display:flex;gap:10px;max-width:100%;overflow-x:auto;padding:0;-webkit-overflow-scrolling:touch;`
+  }
   return container
 }
 

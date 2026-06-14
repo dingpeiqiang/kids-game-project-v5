@@ -14,7 +14,7 @@ export interface PlatformContext {
   authModal: AuthModal
   mePanel: MePanel
   rankCache: Map<string, LeaderboardEntry[]>
-  currentPage: 'home' | 'rank' | 'favorites' | 'me'
+  currentPage: 'home' | 'rank' | 'favorites' | 'me' | 'task' | 'shop'
   searchKeyword: string
   previewAnimFrames: Map<string, number>
   previewObserver: IntersectionObserver | null
@@ -36,6 +36,9 @@ export interface PlatformContext {
   performSearch(keyword: string): void
   switchToHome(): void
   switchToRank(): void
+  switchToTask(): void
+  switchToShop(): void
+  switchToMe(): void
   showSearchResults(results: Game[]): void
   showRankForGame(gameId: string): void
   showRank(): void

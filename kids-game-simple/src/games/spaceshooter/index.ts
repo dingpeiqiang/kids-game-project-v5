@@ -14,12 +14,11 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
   const phaserParent = document.createElement('div')
   phaserParent.id = 'phaser-space-shooter'
   phaserParent.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 1000;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
     background: linear-gradient(to bottom, #0a0a2e 0%, #1a1a3e 50%, #0a0a2e 100%);
     overflow: hidden;
     margin: 0;
@@ -29,13 +28,12 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     user-select: none;
     -webkit-user-select: none;
   `
-  document.body.appendChild(phaserParent)
+  gameContainer.appendChild(phaserParent)
 
   if (!isMobile) {
     phaserParent.style.maxWidth = '420px'
     phaserParent.style.maxHeight = '760px'
-    phaserParent.style.width = '100%'
-    phaserParent.style.height = '100%'
+    phaserParent.style.margin = '0 auto'
     phaserParent.style.aspectRatio = BASE_W + '/' + BASE_H
   }
 

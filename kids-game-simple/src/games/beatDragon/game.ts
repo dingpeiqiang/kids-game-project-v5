@@ -73,6 +73,12 @@ export async function initBeatDragon(engine: GameEngine, onEnd: () => void): Pro
 
   const loop = (ts: number) => {
     if (ended) return
+    if (!engine.canTick()) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      drawFrame(ctx, state, assets)
+      raf = requestAnimationFrame(loop)
+      return
+    }
     const dt = Math.min(0.05, (ts - lastTs) / 1000)
     lastTs = ts
 

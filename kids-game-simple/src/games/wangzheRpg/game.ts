@@ -479,6 +479,11 @@ export class WangzheRpgGame {
   }
 
   private loop = (now: number): void => {
+    if (!this.engine.canTick()) {
+      this.render()
+      this.animFrameId = requestAnimationFrame(this.loop)
+      return
+    }
     const deltaMs = Math.min(now - this.lastTime, 50)
     this.lastTime = now
 

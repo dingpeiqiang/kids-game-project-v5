@@ -90,6 +90,12 @@ export async function initKingBaby(engine: GameEngine, onEnd: () => void): Promi
 
   const loop = (ts: number) => {
     if (ended) return
+    if (!engine.canTick()) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      drawFrame(ctx, state, assets, canvas.width, canvas.height)
+      raf = requestAnimationFrame(loop)
+      return
+    }
     const dt = Math.min(0.05, (ts - lastTs) / 1000)
     lastTs = ts
 

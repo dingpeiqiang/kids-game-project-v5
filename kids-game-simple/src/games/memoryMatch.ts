@@ -503,6 +503,11 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
 
   function loop() {
     if (gameEnded) return
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
     update()
     draw()
     requestAnimationFrame(loop)

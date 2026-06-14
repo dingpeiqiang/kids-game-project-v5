@@ -1561,6 +1561,12 @@ export function initRpgShooter(engine: GameEngine, onEnd: () => void) {
       return
     }
 
+    if (!engine.canTick()) {
+      render()
+      requestAnimationFrame(loop)
+      return
+    }
+
     update()
     render()
     requestAnimationFrame(loop)

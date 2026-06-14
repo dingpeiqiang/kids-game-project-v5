@@ -154,6 +154,7 @@ export async function initHappyDefense(engine: GameEngine, onEnd: () => void): P
 
   const onUpdate = function onHappyDefenseUpdate() {
     if (ended) return
+    if (engine.isPaused()) return
     const dt = Math.min(0.05, ctx3d.engine.getDeltaTime() / 1000)
     const prevScore = state.score
     updateSimulation(state, dt)

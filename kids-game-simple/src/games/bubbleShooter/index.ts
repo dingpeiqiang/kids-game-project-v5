@@ -18,10 +18,16 @@ export function initBubbleShooter(engine: GameEngine, onEnd: () => void) {
   // 启动游戏循环
   function gameLoop() {
     if (!document.getElementById('mainGameCanvas')) return
-    
+
+    if (!engine.canTick()) {
+      game.render()
+      requestAnimationFrame(gameLoop)
+      return
+    }
+
     game.update()
     game.render()
-    
+
     requestAnimationFrame(gameLoop)
   }
   

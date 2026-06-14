@@ -799,6 +799,11 @@ export class ContraRpgGame {
 
   private gameLoop = () => {
     if (this.destroyed) return
+    if (!this.engine.canTick()) {
+      this.render()
+      requestAnimationFrame(this.gameLoop)
+      return
+    }
     if (this.state.gameOver || this.state.victory) {
       this.render()
     } else {

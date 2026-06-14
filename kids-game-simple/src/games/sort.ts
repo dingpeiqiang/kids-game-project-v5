@@ -662,6 +662,11 @@ export function initSort(engine: GameEngine, onEnd: () => void) {
   // 主循环
   function loop() {
     if (!document.getElementById('mainGameCanvas')) return
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
     update()
     draw()
     requestAnimationFrame(loop)

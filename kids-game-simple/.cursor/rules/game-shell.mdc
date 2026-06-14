@@ -1,0 +1,16 @@
+---
+description: 统一游戏容器壳层接入规范（kids-game-simple）
+globs: kids-game-simple/src/games/**,kids-game-simple/src/app/gameShell.ts,kids-game-simple/src/games/gameLayout.ts
+---
+# 游戏壳层接入
+
+- 游戏 DOM 只挂在 `#gameCanvas`（[App.vue](mdc:kids-game-simple/src/App.vue) 内 `game-viewport`），不要 `document.body.appendChild` 全屏盖住顶栏。
+- 布局在 [gameLayout.ts](mdc:kids-game-simple/src/games/gameLayout.ts) 的 `LAYOUT_OVERRIDES` 或 [gameRegistry.ts](mdc:kids-game-simple/src/games/gameRegistry.ts) 的 `layout` 声明：`designWidth/Height`、`orientation`、`externalCanvas`、`hidePlatformScore`。
+- 2D 默认由壳层创建 `#mainGameCanvas`；`externalCanvas: true` 时游戏自管 WebGL/Phaser，壳层只清空容器。
+- 主循环须尊重平台暂停：`engine.canTick()` 或 `!engine.isPaused()`；暂停时 2D 可只重绘当前帧（见 kingBaby）。
+- 得分：用 `engine.addScore` / `engine.setScore`；自绘 HUD 时设 `hidePlatformScore: true`。
+- 道具栏通过 `setupCustomPowerupBar` 挂到 `#gameShellPowerupSlot`。
+- 启动/退出由 [gameSession.ts](mdc:kids-game-simple/src/app/gameSession.ts) 的 `mountGameShell` / `unmountGameShell` 负责。
+- 3D Babylon 游戏在 `onBeforeRender` 开头加 `if (engine.isPaused()) return`（与壳层暂停一致；游戏内自有暂停菜单的仍可用 `togglePause`）。
+- 自绘 HUD 的游戏在 [gameLayout.ts](mdc:kids-game-simple/src/games/gameLayout.ts) 设 `hidePlatformScore: true`；游戏内已有暂停菜单可加 `hidePlatformPause: true`；横屏 3D 可加 `compactFooter: true`。
+- 真机抽测见 [GAME_SHELL_QA.md](mdc:kids-game-simple/docs/GAME_SHELL_QA.md)。

@@ -219,6 +219,12 @@ function loop(
     return;
   }
 
+  if (!engine.canTick()) {
+    draw(ctx, state);
+    requestAnimationFrame(() => loop(canvas, ctx, state, engine, onEnd, cleanup));
+    return;
+  }
+
   update(state, engine, onEnd);
   draw(ctx, state);
 

@@ -383,6 +383,11 @@ export function initNeonRun(engine: GameEngine, onEnd: () => void) {
       finishRun()
       return
     }
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
 
     // 检查超时（3分钟）
     const elapsedTime = Date.now() - gameStartTime

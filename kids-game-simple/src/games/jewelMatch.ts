@@ -1037,6 +1037,11 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
 
   function loop() {
     if (!document.getElementById('mainGameCanvas') || gameEnded) return
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
 
     checkTimeout()
     draw()

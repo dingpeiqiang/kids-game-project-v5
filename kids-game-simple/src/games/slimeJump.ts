@@ -595,6 +595,12 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
       return
     }
     
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
+
     // 帧率控制
     const deltaTime = Math.min((currentTime - lastTime) / FRAME_TIME, 2) // 限制最大增量
     lastTime = currentTime

@@ -7,6 +7,7 @@ import { userService } from '../services/userService'
 import { apiGetBatchUserRank, tokenStore, apiAddFavorite, apiRemoveFavorite } from '../services/apiClient'
 import { getUserRank } from '../services/leaderboardService'
 import { showToast } from '../services/userUI'
+import { closeTaskCenter, closeShop, renderTaskList as renderTaskListFn, renderShopProducts as renderShopProductsFn } from './economyUI'
 
 // ==================== 游戏卡片渲染 ====================
 
@@ -390,46 +391,99 @@ export function performSearch(ctx: PlatformContext, keyword: string) {
 }
 
 export function switchToHome(ctx: PlatformContext) {
-  const homeContent = document.getElementById('homeContent')
-  const searchResults = document.getElementById('searchResults')
-  const favoritesContent = document.getElementById('favoritesContent')
-  const rankContent = document.getElementById('rankContent')
+  closeAllOverlays()
+  hideAllPageContainers()
 
+  const homeContent = document.getElementById('homeContent')
   if (homeContent) homeContent.style.display = 'block'
-  if (searchResults) searchResults.style.display = 'none'
-  if (favoritesContent) favoritesContent.style.display = 'none'
-  if (rankContent) rankContent.style.display = 'none'
 
   ctx.currentPage = 'home'
   renderGameCards(ctx)
 }
 
 export function switchToRank(ctx: PlatformContext) {
-  // 隐藏其它页面
-  const homeContent = document.getElementById('homeContent')
-  const searchResults = document.getElementById('searchResults')
-  const favoritesContent = document.getElementById('favoritesContent')
-  const rankContent = document.getElementById('rankContent')
+  closeAllOverlays()
+  hideAllPageContainers()
 
-  if (homeContent) homeContent.style.display = 'none'
-  if (searchResults) searchResults.style.display = 'none'
-  if (favoritesContent) favoritesContent.style.display = 'none'
+  const rankContent = document.getElementById('rankContent')
   if (rankContent) rankContent.style.display = 'block'
 
   ctx.currentPage = 'rank'
-  // 初始化并渲染排行榜
   ctx.showRank()
 }
 
+function closeAllOverlays() {
+  closeTaskCenter()
+  closeShop()
+}
+
+function hideAllPageContainers() {
+  const ids = ['homeContent','searchResults','favoritesContent','rankContent','taskContent','shopContent','meContent']
+  ids.forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.style.display = 'none'
+  })
+}
+
+export function switchToTask(ctx: PlatformContext) {
+  closeAllOverlays()
+  hideAllPageContainers()
+
+  const taskContent = document.getElementById('taskContent')
+  if (!taskContent) return
+  taskContent.style.display = 'block'
+
+  ctx.currentPage = 'task'
+  void renderTaskListFn('taskPageList')
+}
+
+export function switchToShop(ctx: PlatformContext) {
+  closeAllOverlays()
+  hideAllPageContainers()
+
+  const shopContent = document.getElementById('shopContent')
+  if (!shopContent) return
+  shopContent.style.display = 'block'
+
+  ctx.currentPage = 'shop'
+  void renderShopProductsFn('shopPageList')
+}
+
+export function switchToMe(ctx: PlatformContext) {
+  closeAllOverlays()
+  hideAllPageContainers()
+
+  const meContent = document.getElementById('meContent')
+  if (!meContent) return
+  meContent.style.display = 'block'
+
+  ctx.currentPage = 'me'
+  ctx.mePanel.renderInto('meContent')
+
+  // Override close button to navigate home in page mode
+  const closeBtn = document.getElementById('btnCloseMe2')
+  if (closeBtn) {
+    const parent = closeBtn.parentElement
+    if (parent) {
+      const btn = document.createElement('button')
+      btn.className = 'ugp-me-close-btn'
+      btn.id = 'btnCloseMe2'
+      btn.textContent = '返回首页'
+      parent.replaceChild(btn, closeBtn)
+      btn.addEventListener('click', () => ctx.switchToHome())
+    }
+  }
+}
+
 export function showSearchResults(ctx: PlatformContext, results: Game[]) {
-  const homeContent = document.getElementById('homeContent')
   const searchResults = document.getElementById('searchResults')
   const searchCount = document.getElementById('searchCount')
   const searchGameList = document.getElementById('searchGameList')
   const noResults = document.getElementById('noResults')
-  const rankContent = document.getElementById('rankContent')
 
-  if (!homeContent || !searchResults) return
+  if (!searchResults) return
+
+  hideAllPageContainers()
 
   // 停止所有预览动画 + 断开旧 Observer
   ctx.previewAnimFrames.forEach((rafId) => cancelAnimationFrame(rafId))
@@ -439,9 +493,7 @@ export function showSearchResults(ctx: PlatformContext, results: Game[]) {
     ctx.previewObserver = null
   }
 
-  homeContent.style.display = 'none'
   searchResults.style.display = 'block'
-  if (rankContent) rankContent.style.display = 'none'
   void searchResults.offsetHeight
 
   if (searchCount) {
@@ -490,18 +542,16 @@ export function renderFavoritesPage(ctx: PlatformContext) {
     return
   }
 
-  const homeContent = document.getElementById('homeContent')
   const favoritesContent = document.getElementById('favoritesContent')
   const favoritesCount = document.getElementById('favoritesCount')
   const favoritesGameList = document.getElementById('favoritesGameList')
   const noFavorites = document.getElementById('noFavorites')
 
-  if (!homeContent || !favoritesContent) return
+  if (!favoritesContent) return
 
-  homeContent.style.display = 'none'
+  hideAllPageContainers()
+
   favoritesContent.style.display = 'block'
-  const rankContent = document.getElementById('rankContent')
-  if (rankContent) rankContent.style.display = 'none'
   void favoritesContent.offsetHeight
 
   ctx.previewAnimFrames.forEach((rafId) => cancelAnimationFrame(rafId))
@@ -511,7 +561,7 @@ export function renderFavoritesPage(ctx: PlatformContext) {
     ctx.previewObserver = null
   }
   // 移除隐藏页面中的旧 canvas，避免与收藏页面的 canvas ID 冲突
-  document.querySelectorAll('#homeContent canvas[id^="preview_"], #searchResults canvas[id^="preview_"]')
+  document.querySelectorAll('canvas[id^="preview_"]')
     .forEach(el => el.remove())
   console.log('[App] renderFavoritesPage: Cleared all animations and observer')
 

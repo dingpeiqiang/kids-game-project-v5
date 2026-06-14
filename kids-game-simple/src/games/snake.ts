@@ -532,11 +532,18 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
       console.log('[贪吃蛇] 游戏已结束，停止渲染循环')
       return
     }
-    
-    const delta = time - lastTime
-    lastTime = time
-    frameCount++
-    gameTime += delta / 1000
+
+    let delta = 0
+    if (engine.canTick()) {
+      delta = time - lastTime
+      lastTime = time
+      frameCount++
+      gameTime += delta / 1000
+    } else {
+      lastTime = time
+    }
+
+    if (delta > 0) {
     
     // 道具效果检查（放在最前面）
     const slowActive = (window as any).snakeSlow && Date.now() < (window as any).snakeSlow
@@ -652,6 +659,7 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
       const random = powerups[Math.floor(Math.random() * powerups.length)]
       inventory.push(random)
             console.log('[道具] 获得道具:', random)
+    }
     }
 
     // ====== 渲染 ======

@@ -312,6 +312,11 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void) {
 
   function loop() {
     if (!document.getElementById('mainGameCanvas') || gameEnded) return
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
     
     if (Date.now() - gameStartTime > GAME_DURATION) {
       gameEnded = true

@@ -397,6 +397,12 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
       return
     }
 
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
+
     const now = Date.now()
     if (now - lastActionTime > INACTIVITY_TIMEOUT) {
       unbindPointer()

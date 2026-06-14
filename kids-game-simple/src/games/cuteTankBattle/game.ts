@@ -112,6 +112,12 @@ export async function initCuteTankBattle(engine: GameEngine, onEnd: () => void):
     }
     if (ended) return
 
+    if (!engine.canTick()) {
+      renderFrame(ctx, W, H, state, assets, hudTop)
+      raf = requestAnimationFrame(loop)
+      return
+    }
+
     const dt = Math.min(0.033, (ts - lastTs) / 1000)
     lastTs = ts
 

@@ -112,6 +112,7 @@ export async function initSkyFrenzy(engine: GameEngine, onEnd: () => void): Prom
 
   const onUpdate = () => {
     if (ended) return
+    if (engine.isPaused()) return
     const dt = Math.min(0.033, ctx3d.engine.getDeltaTime() / 1000)
     const prevScore = state.score
     const snap = input.getSnapshot()

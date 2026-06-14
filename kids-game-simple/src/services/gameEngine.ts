@@ -9,6 +9,7 @@ type BuffCallback = (buff: Buff) => void
 type ComboCallback = (combo: number) => void
 type ComboBreakCallback = () => void
 type MessageCallback = (message: string) => void
+type ScoreChangeCallback = (score: number) => void
 
 export class GameEngine {
   private state: GameState = {
@@ -39,6 +40,18 @@ export class GameEngine {
   private onComboShow?: ComboCallback
   private onComboBreak?: ComboBreakCallback
   private onMessage?: MessageCallback
+  private scoreChangeListeners = new Set<ScoreChangeCallback>()
+
+  /** 壳层 HUD 订阅总分变化 */
+  onScoreChange(cb: ScoreChangeCallback): () => void {
+    this.scoreChangeListeners.add(cb)
+    return () => this.scoreChangeListeners.delete(cb)
+  }
+
+  private emitScoreChange() {
+    const s = this.state.score
+    this.scoreChangeListeners.forEach(fn => fn(s))
+  }
 
   setCallbacks(cb: {
     onScoreFly?: ScoreCallback
@@ -69,6 +82,7 @@ export class GameEngine {
     this._paused = false
     this._isVictory = false
     this._gameStats = null
+    this.emitScoreChange()
   }
 
   stop() {
@@ -102,6 +116,7 @@ export class GameEngine {
   /** 3D 停车等整局结算类游戏直接写入最终得分 */
   setScore(score: number) {
     this.state.score = Math.max(0, Math.round(score))
+    this.emitScoreChange()
   }
 
   getCombo() {
@@ -145,6 +160,7 @@ export class GameEngine {
     earned = Math.round(earned * comboMult)
 
     this.state.score += earned
+    this.emitScoreChange()
 
     // 飘字
     this.onScoreFly?.(earned, x, y, isCrit, isCombo)
@@ -154,6 +170,7 @@ export class GameEngine {
     if (this.state.combo >= 3) {
       this.onComboShow?.(this.state.combo)
     }
+    this.emitScoreChange()
 
     return earned
   }
@@ -164,6 +181,7 @@ export class GameEngine {
       this.onComboBreak?.()
     }
     this.state.combo = 0
+    this.emitScoreChange()
   }
 
   triggerRandomBuff() {

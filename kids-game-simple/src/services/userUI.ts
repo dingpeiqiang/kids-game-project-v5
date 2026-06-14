@@ -230,7 +230,7 @@ export class AuthModal {
           <div class="ugp-user-type-option" data-type="KID" id="userTypeKid">
             <div class="ugp-type-icon">👶</div>
             <div class="ugp-type-name">儿童</div>
-            <div class="ugp-type-desc">玩游戏、赚积分</div>
+            <div class="ugp-type-desc">玩游戏、赚金币</div>
           </div>
           <div class="ugp-user-type-option" data-type="PARENT" id="userTypeParent">
             <div class="ugp-type-icon">👨‍👩‍👧</div>
@@ -239,7 +239,7 @@ export class AuthModal {
           </div>
         </div>
       </div>
-      <div class="ugp-reg-gift">🎁 注册即送新手双倍积分卡 x1</div>
+      <div class="ugp-reg-gift">🎁 注册即送金币 x50、游学币 x5</div>
       <div class="ugp-error" id="authError"></div>
       <button class="ugp-btn ugp-btn-primary" id="btnDoRegister">立即注册</button>
     `
@@ -362,12 +362,14 @@ export class MePanel {
   private el: HTMLElement | null = null
   private authModal: AuthModal
   private eventsBound = false
+  private pageContainerId: string | null = null
 
   constructor(authModal: AuthModal) {
     this.authModal = authModal
   }
 
   open() {
+    this.pageContainerId = null
     if (!this.el) this.mount()
     this.el!.classList.add('show')
     this.render()
@@ -377,6 +379,29 @@ export class MePanel {
     this.el?.classList.remove('show')
   }
 
+  renderInto(containerId: string) {
+    this.pageContainerId = containerId
+    const container = document.getElementById(containerId)
+    if (!container) return
+    const u = userService.current
+    if (!u) {
+      container.innerHTML = `
+        <div class="ugp-me-container ugp-not-login">
+          <div class="ugp-nl-icon">👤</div>
+          <div class="ugp-nl-title">尚未登录</div>
+          <div class="ugp-nl-desc">登录后可保存游戏数据、查看成就和排行</div>
+          <button class="ugp-btn ugp-btn-primary" id="btnNlLoginPage">登录 / 注册</button>
+        </div>
+      `
+      document.getElementById('btnNlLoginPage')?.addEventListener('click', () => {
+        this.authModal.open(() => { this.renderInto(containerId) })
+      })
+      return
+    }
+    container.innerHTML = this.getContentHTML()
+    this.bindPageEvents(container)
+  }
+
   private mount() {
     this.el = document.createElement('div')
     this.el.id = 'ugp-me-panel'
@@ -384,21 +409,14 @@ export class MePanel {
     document.body.appendChild(this.el)
   }
 
-  render() {
-    if (!this.el) return
-    const u = userService.current
-    if (!u) {
-      this.renderNotLogin()
-      return
-    }
-
+  private getContentHTML(): string {
+    const u = userService.current!
     const lv = getLevelByExp(u.exp)
     const lvProgress = getLevelProgress(u.exp)
     const nextLv = lv.level < 8 ? ` → Lv.${lv.level + 1}` : ''
     const today = new Date().toDateString()
     const canSign = u.dailyRewardCollected !== today
 
-    // 活跃度图
     const activity = userService.getRecentActivity(7)
     const maxCount = Math.max(...activity.map(a => a.count), 1)
     const activityBars = activity.map(a => {
@@ -409,7 +427,6 @@ export class MePanel {
       </div>`
     }).join('')
 
-    // 游戏数据 Top5
     const topGames = userService.getTopGames(5)
     const topGameRows = topGames.map((g, i) => {
       const info = GAMES.find(x => x.id === g.gameId)
@@ -420,12 +437,10 @@ export class MePanel {
       </div>`
     }).join('') || '<div class="no-data">暂无游戏记录</div>'
 
-    // 成就
     const achievements = userService.getAchievements()
     const unlockedAch = achievements.filter(a => a.unlocked)
     const lockedAch = achievements.filter(a => !a.unlocked)
 
-    // 最近战绩
     const recentRecords = (u.gameRecords || []).slice(0, 8)
     const recordRows = recentRecords.map(r => {
       const info = GAMES.find(x => x.id === r.gameId)
@@ -442,11 +457,10 @@ export class MePanel {
     const bestScore = Math.max(...Object.values(u.bestScores || {}), 0)
     const gamesCount = Object.keys(u.bestScores || {}).length
 
-    this.el.innerHTML = `
+    return `
       <div class="ugp-me-container">
         <div class="ugp-me-content">
 
-          <!-- 用户信息卡 -->
           <div class="ugp-me-hero">
             <div class="ugp-me-ava">${u.avatar}</div>
             <div class="ugp-me-hero-info">
@@ -460,7 +474,6 @@ export class MePanel {
             <div class="ugp-me-coins-badge">💰 ${u.coins}</div>
           </div>
 
-          <!-- 统计数字 -->
           <div class="ugp-stats-row">
             <div class="ugp-stat"><div class="ugp-stat-val">${totalPlays}</div><div class="ugp-stat-lbl">总局数</div></div>
             <div class="ugp-stat"><div class="ugp-stat-val">${gamesCount}</div><div class="ugp-stat-lbl">游戏种类</div></div>
@@ -468,7 +481,6 @@ export class MePanel {
             <div class="ugp-stat"><div class="ugp-stat-val">${u.consecutiveLoginDays}</div><div class="ugp-stat-lbl">连续登录</div></div>
           </div>
 
-          <!-- 每日签到 -->
           <div class="ugp-section">
             <div class="ugp-section-title">📅 每日签到</div>
             <div class="ugp-sign-card">
@@ -491,25 +503,21 @@ export class MePanel {
             </div>
           </div>
 
-          <!-- 近7日活跃 -->
           <div class="ugp-section">
             <div class="ugp-section-title">📊 近7日游戏</div>
             <div class="ugp-activity">${activityBars}</div>
           </div>
 
-          <!-- Top5 游戏 -->
           <div class="ugp-section">
             <div class="ugp-section-title">🏆 我的最高分 Top5</div>
             <div class="ugp-top-games">${topGameRows}</div>
           </div>
 
-          <!-- 最近战绩 -->
           <div class="ugp-section">
             <div class="ugp-section-title">🕹️ 最近战绩</div>
             <div class="ugp-records">${recordRows}</div>
           </div>
 
-          <!-- 成就 -->
           <div class="ugp-section">
             <div class="ugp-section-title">🏅 成就 ${unlockedAch.length}/${achievements.length}</div>
             <div class="ugp-ach-grid">
@@ -523,7 +531,6 @@ export class MePanel {
             </div>
           </div>
 
-          <!-- 设置 -->
           <div class="ugp-section">
             <div class="ugp-section-title">⚙️ 设置</div>
             <div class="ugp-settings">
@@ -539,7 +546,16 @@ export class MePanel {
         </div>
       </div>
     `
+  }
 
+  render() {
+    if (!this.el) return
+    const u = userService.current
+    if (!u) {
+      this.renderNotLogin()
+      return
+    }
+    this.el.innerHTML = this.getContentHTML()
     this.bindMeEvents()
   }
 
@@ -561,34 +577,31 @@ export class MePanel {
     document.getElementById('btnNlClose')?.addEventListener('click', () => this.close())
   }
 
-  private bindMeEvents() {
-    if (!this.el || this.eventsBound) return
+  private reRender() {
+    if (this.pageContainerId) {
+      this.renderInto(this.pageContainerId)
+    } else {
+      this.render()
+    }
+  }
 
-    this.eventsBound = true
-
-    // 使用事件委托，绑定到容器元素，避免重复绑定和元素丢失问题
-    this.el.addEventListener('click', async (e) => {
+  private bindPageEvents(container: HTMLElement) {
+    container.addEventListener('click', async (e) => {
       const target = e.target as HTMLElement
 
-      // 关闭按钮
-      if (target.closest('#btnCloseMe2')) {
-        this.close()
-        return
-      }
+      if (target.closest('#btnCloseMe2')) return
 
-      // 签到按钮
       if (target.closest('#btnSignIn')) {
         const res = await userService.collectDailyReward()
         if (res.ok) {
           showToast(res.msg!, 'success')
-          this.render()
+          this.reRender()
         } else {
           showToast(res.msg, 'info')
         }
         return
       }
 
-      // 重置引导按钮
       if (target.closest('#btnMeResetGuide')) {
         if (confirm('确定重置所有游戏引导吗？')) {
           const u = userService.current
@@ -601,15 +614,12 @@ export class MePanel {
         return
       }
 
-      // 退出登录按钮
       if (target.closest('#btnMeLogout')) {
         if (confirm('确定退出登录？')) {
           await userService.logout()
           showToast('已退出登录', 'info')
-          this.render()
-          // 触发顶部栏更新
+          this.reRender()
           window.dispatchEvent(new CustomEvent('ugp:userChange'))
-          // 退出后自动弹出登录面板
           this.authModal.open(() => {
             window.dispatchEvent(new CustomEvent('ugp:userChange'))
           })
@@ -617,7 +627,6 @@ export class MePanel {
         return
       }
 
-      // 清除数据按钮
       if (target.closest('#btnMeClearData')) {
         if (confirm('警告：将清除该账号所有游戏数据！此操作不可撤销！')) {
           const u = userService.current
@@ -626,7 +635,72 @@ export class MePanel {
             u.gameRecords = []; u.achievements = []; u.items = {}
             userService.saveUser(u)
             showToast('数据已清除', 'success')
-            this.render()
+            this.reRender()
+          }
+        }
+        return
+      }
+    })
+  }
+
+  private bindMeEvents() {
+    if (!this.el || this.eventsBound) return
+
+    this.eventsBound = true
+
+    this.el.addEventListener('click', async (e) => {
+      const target = e.target as HTMLElement
+
+      if (target.closest('#btnCloseMe2')) {
+        this.close()
+        return
+      }
+
+      if (target.closest('#btnSignIn')) {
+        const res = await userService.collectDailyReward()
+        if (res.ok) {
+          showToast(res.msg!, 'success')
+          this.reRender()
+        } else {
+          showToast(res.msg, 'info')
+        }
+        return
+      }
+
+      if (target.closest('#btnMeResetGuide')) {
+        if (confirm('确定重置所有游戏引导吗？')) {
+          const u = userService.current
+          if (u) {
+            u.guideSkipped = {}
+            userService.saveUser(u)
+            showToast('引导已重置', 'success')
+          }
+        }
+        return
+      }
+
+      if (target.closest('#btnMeLogout')) {
+        if (confirm('确定退出登录？')) {
+          await userService.logout()
+          showToast('已退出登录', 'info')
+          this.reRender()
+          window.dispatchEvent(new CustomEvent('ugp:userChange'))
+          this.authModal.open(() => {
+            window.dispatchEvent(new CustomEvent('ugp:userChange'))
+          })
+        }
+        return
+      }
+
+      if (target.closest('#btnMeClearData')) {
+        if (confirm('警告：将清除该账号所有游戏数据！此操作不可撤销！')) {
+          const u = userService.current
+          if (u) {
+            u.coins = 0; u.exp = 0; u.bestScores = {}
+            u.gameRecords = []; u.achievements = []; u.items = {}
+            userService.saveUser(u)
+            showToast('数据已清除', 'success')
+            this.reRender()
           }
         }
         return
@@ -657,15 +731,17 @@ export function injectUserStyles() {
 .ugp-auth-overlay.show{display:flex}
 .ugp-auth-card{background:#fff;border-radius:24px;width:min(380px,92vw);padding:0 0 24px;
   box-shadow:0 20px 60px rgba(0,0,0,0.2);animation:slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)}
-.ugp-auth-header{display:flex;align-items:center;justify-content:space-between;
-  padding:20px 24px 0;border-bottom:1px solid #f0f0f0;padding-bottom:16px}
-.ugp-auth-logo{font-size:18px;font-weight:700;color:#5b9bd5}
+.ugp-auth-header{display:flex;align-items:center;justify-content:center;
+  padding:24px 24px 0}
+.ugp-auth-logo{font-size:20px;font-weight:700;color:#5b9bd5;letter-spacing:0.5px}
 .ugp-auth-close{width:28px;height:28px;border-radius:50%;background:#f5f5f5;display:flex;
   align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:#888}
-.ugp-auth-tabs{display:flex;padding:16px 24px 0;gap:4px}
-.ugp-tab{flex:1;text-align:center;padding:8px;border-radius:10px;cursor:pointer;
-  font-size:14px;font-weight:600;color:#999;transition:all 0.2s}
-.ugp-tab.active{background:#f0f6ff;color:#5b9bd5}
+.ugp-auth-tabs{display:flex;margin:16px 24px 0;gap:0;border-radius:12px;overflow:hidden;
+  background:#f5f6f8;padding:3px}
+.ugp-tab{flex:1;text-align:center;padding:10px 8px;cursor:pointer;
+  font-size:14px;font-weight:600;color:#888;transition:all 0.25s;
+  border-radius:10px;border:none;background:transparent;user-select:none}
+.ugp-tab.active{color:#5b9bd5;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
 .ugp-auth-body{padding:16px 24px 0;display:flex;flex-direction:column;gap:12px}
 .ugp-field{display:flex;flex-direction:column;gap:6px}
 .ugp-field label{font-size:13px;font-weight:600;color:#555;display:flex;align-items:center;gap:6px}

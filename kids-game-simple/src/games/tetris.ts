@@ -741,6 +741,11 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
 
   function loop() {
     if (!document.getElementById('mainGameCanvas')) return
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
     if (!gameEnded) {
       update()
     }

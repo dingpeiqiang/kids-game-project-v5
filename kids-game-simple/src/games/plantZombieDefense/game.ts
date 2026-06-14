@@ -152,6 +152,7 @@ export async function initPlantZombieDefense(engine: GameEngine, onEnd: () => vo
 
   const onUpdate = function onPlantZombieUpdate() {
     if (ended) return
+    if (engine.isPaused()) return
     const dt = Math.min(0.05, ctx3d.engine.getDeltaTime() / 1000)
     const prevScore = state.score
     updateSimulation(state, dt)

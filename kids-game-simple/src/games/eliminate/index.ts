@@ -23,14 +23,20 @@ export function initEliminate(engine: GameEngine, onEnd: () => void) {
   let lastTime = 0
   function gameLoop(timestamp: number) {
     if (!document.getElementById('mainGameCanvas')) return
-    
+
+    if (!engine.canTick()) {
+      game.render()
+      requestAnimationFrame(gameLoop)
+      return
+    }
+
     const deltaTime = timestamp - lastTime
     if (deltaTime >= 16) { // 约60fps
       game.update(deltaTime)
       game.render()
       lastTime = timestamp
     }
-    
+
     requestAnimationFrame(gameLoop)
   }
   

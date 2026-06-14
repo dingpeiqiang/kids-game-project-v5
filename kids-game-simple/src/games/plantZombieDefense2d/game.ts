@@ -113,6 +113,11 @@ export async function initPlantZombieDefense2d(
   const loop = (ts: number) => {
     if (ended) return
     resizeCanvasToDisplay(canvas)
+    if (!engine.canTick()) {
+      drawFrame(ctx, canvas.width, canvas.height, state, assets)
+      raf = requestAnimationFrame(loop)
+      return
+    }
     const dt = Math.min(0.05, (ts - lastTs) / 1000)
     lastTs = ts
     updateSimulation(state, dt)

@@ -89,8 +89,8 @@ export function closeShop() {
   document.getElementById('shop-overlay')?.classList.remove('show')
 }
 
-async function renderShopProducts() {
-  const listEl = document.getElementById('shopProductList')
+export async function renderShopProducts(containerId = 'shopProductList') {
+  const listEl = document.getElementById(containerId)
   if (!listEl) return
   listEl.innerHTML = '<div class="econ-loading">加载商品...</div>'
   const res = await apiShopProducts()
@@ -197,12 +197,16 @@ export function bannerTaskView(t: TaskRow) {
   }
 }
 
-async function renderTaskList() {
-  const listEl = document.getElementById('taskCenterList')
+export async function renderTaskList(containerId = 'taskCenterList') {
+  const listEl = document.getElementById(containerId)
   if (!listEl) return
   listEl.innerHTML = '<div class="econ-loading">加载任务...</div>'
   const res = await apiTaskList()
-  if (!res.ok || !res.data?.length) {
+  if (!res.ok) {
+    listEl.innerHTML = `<div class="econ-empty">${res.msg || '加载失败，请稍后重试'}</div>`
+    return
+  }
+  if (!res.data?.length) {
     listEl.innerHTML = '<div class="econ-empty">暂无任务</div>'
     return
   }
@@ -237,8 +241,8 @@ async function renderTaskList() {
       b.disabled = true
       const claim = await apiTaskClaim(taskId)
       b.disabled = false
-      if (claim.ok && claim.data) {
-        const w = claim.data.wallet as { coins?: number; studyCoins?: number; exp?: number } | undefined
+      if (claim.ok && claim.data && (claim.data as Record<string, unknown>).success === true) {
+        const w = (claim.data as Record<string, unknown>).wallet as { coins?: number; studyCoins?: number; exp?: number } | undefined
         if (userService.current && w) {
           if (w.coins != null) userService.current.coins = w.coins
           if (w.studyCoins != null) userService.current.studyCoins = w.studyCoins
@@ -247,10 +251,10 @@ async function renderTaskList() {
         }
         syncWalletDom()
         showToast('任务奖励已领取', 'success')
-        await renderTaskList()
+        await renderTaskList(containerId)
         window.dispatchEvent(new CustomEvent('ugp:tasksRefresh'))
       } else {
-        showToast(String(claim.data?.message ?? claim.msg ?? '领取失败'), 'error')
+        showToast(String((claim.data as Record<string, unknown>)?.message ?? claim.msg ?? '领取失败'), 'error')
       }
     })
   })

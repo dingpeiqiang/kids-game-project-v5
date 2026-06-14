@@ -168,6 +168,11 @@ export class DnfRpgGame {
 
   private gameLoop(): void {
     if (this.destroyed) return
+    if (!this.engine.canTick()) {
+      this.render()
+      requestAnimationFrame(() => this.gameLoop())
+      return
+    }
     this.update()
     this.render()
     requestAnimationFrame(() => this.gameLoop())

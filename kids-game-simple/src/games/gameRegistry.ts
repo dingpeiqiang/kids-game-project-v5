@@ -1,5 +1,6 @@
 import type { Game, GameGuide, GameCategoryDef } from '../types'
 import { GameEngine } from '../services/gameEngine'
+import type { GameLayoutConfig } from './gameLayout'
 
 export const GAME_CATEGORIES: GameCategoryDef[] = [
   { id: 'logic', label: '🧠 逻辑思维', icon: '💡', color: '#4D96FF', desc: '培养分析推理、因果判断与逻辑思维能力' },
@@ -99,6 +100,8 @@ export interface GameRegistration {
   /** 退出/重开前释放 WebGL 等资源 */
   destroy?: () => void
   isSpecial?: boolean
+  /** 壳层画布与横竖屏策略（可与 gameLayout 默认合并，见 gameLayout.ts） */
+  layout?: Partial<GameLayoutConfig>
   setup?: (canvas: HTMLDivElement) => { gameW: number; gameH: number; displayW: number; displayH: number }
 }
 
@@ -455,6 +458,9 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '金色星星分值更高！碰到乌云会扣分，连续收集触发连击！',
       bg: '#FFD700'
     },
+    destroy: () => {
+      void import('./starCatcher').then(m => m.destroyStarCatcher())
+    },
     init: async (engine, onEnd) => {
       const { initStarCatcher } = await import('./starCatcher')
       initStarCatcher(engine, onEnd)
@@ -473,10 +479,13 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '弹珠会自动弹跳，点击给一个向上的力，连续收集星星触发连击！',
       bg: '#4ECDC4'
     },
+    destroy: () => {
+      void import('./bouncePath').then(m => m.destroyBouncePath())
+    },
     init: async (engine, onEnd) => {
       const { initBouncePath } = await import('./bouncePath')
       initBouncePath(engine, onEnd)
-    }
+    },
   },
 
   stack: {
@@ -554,7 +563,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
     init: async (engine, onEnd) => {
       const { initPlantsVsZombies } = await import('./plantsVsZombies')
       initPlantsVsZombies(engine, onEnd)
-    }
+    },
+    destroy: () => {
+      void import('./plantsVsZombies').then(m => m.destroyPlantsVsZombies())
+    },
   },
 
   rpgShooter: {

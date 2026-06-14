@@ -673,6 +673,11 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
       unbindDrag()
       return
     }
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
     const dt = ts - last
     last = ts
     update(dt)

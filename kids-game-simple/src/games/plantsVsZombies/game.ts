@@ -11,10 +11,14 @@ import { drawZombies } from './render/zombies'
 import { drawUI, drawSuns, drawProjectiles, drawParticles, drawFloatingTexts, drawGameOver, drawStartScreen } from './render/ui'
 import { createSunPickupEffect, createZombieDeathEffect, updateParticles, createFloatingText, updateFloatingTexts } from './render/effects'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import type { GameEngine } from '../../services/gameEngine'
 
 export class PlantsVsZombiesGame {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
+  private engine: GameEngine | null = null
+  private onEnd: (() => void) | null = null
+  private endedReported = false
   private plants: Plant[] = []
   private zombies: Zombie[] = []
   private projectiles: Projectile[] = []
@@ -40,8 +44,10 @@ export class PlantsVsZombiesGame {
   
   private animId: number = 0
   
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, engine?: GameEngine, onEnd?: () => void) {
     this.canvas = canvas
+    this.engine = engine ?? null
+    this.onEnd = onEnd ?? null
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('Failed to get canvas context')
     this.ctx = ctx
@@ -197,10 +203,16 @@ export class PlantsVsZombiesGame {
   
   private gameLoop() {
     if (this.isGameOver) return
-    
+
+    if (this.engine && !this.engine.canTick()) {
+      this.render()
+      this.animId = requestAnimationFrame(() => this.gameLoop())
+      return
+    }
+
     this.update()
     this.render()
-    
+
     this.animId = requestAnimationFrame(() => this.gameLoop())
   }
   
@@ -249,6 +261,7 @@ export class PlantsVsZombiesGame {
         } else {
           this.isGameOver = true
           this.isVictory = true
+          this.reportEndToPlatform()
         }
       }
     }
@@ -291,6 +304,7 @@ export class PlantsVsZombiesGame {
       if (this.lives <= 0) {
         this.isGameOver = true
         this.isVictory = false
+        this.reportEndToPlatform()
       }
     }
     
@@ -306,6 +320,20 @@ export class PlantsVsZombiesGame {
     this.floatingTexts = updateFloatingTexts(this.floatingTexts)
   }
   
+  private reportEndToPlatform() {
+    if (this.endedReported || !this.engine) return
+    this.endedReported = true
+    this.engine.setScore(this.score)
+    this.engine.setVictory(this.isVictory)
+    this.engine.setGameStats({
+      wave: this.wave,
+      score: this.score,
+      victory: this.isVictory,
+    })
+    this.engine.endGame()
+    queueMicrotask(() => this.onEnd?.())
+  }
+
   private applyZombieKillRewards(zombie: Zombie) {
     this.score += zombie.reward * 10
     this.sun = Math.min(this.sun + zombie.reward, LEVELS[this.currentLevel].sunLimit)

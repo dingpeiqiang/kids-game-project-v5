@@ -9,16 +9,22 @@ import { gameEngine } from '../services/gameEngine'
 import { showToast } from '../services/userUI'
 import { apiSubmitComment, apiGetComments } from '../services/apiClient'
 import { OrientationManager } from '../utils/orientation'
-import {
-  applyCanvasMobileStyles,
-  computeLandscapeCanvasDisplaySize,
-  computePortraitCanvasDisplaySize,
-} from '../utils/canvasMobileUtils'
-import { isMobileDevice } from '../utils/mobileEnv'
 import { setPlatformContextForGames } from '../services/appBridge'
 import { removePowerupBar } from './powerup'
+import { mountGameShell, unmountGameShell, dismissGamePauseOverlay } from './gameShell'
+import { getGameLayoutConfig, isLandscapeLayout } from '../games/gameLayout'
 import { calculateRank } from './rank'
 import { refreshBestScores } from './gameCards'
+import {
+  installGameEventBridge,
+  uninstallGameEventBridge,
+  setGameEndHandler,
+  clearAllPools,
+  inputManager,
+} from '../platform'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+
+let activeLifecycleHost: GameLifecycle | null = null
 
 // ==================== 游戏启动 ====================
 
@@ -109,137 +115,8 @@ function clearPortraitCanvasResizeListener() {
   }
 }
 
-function fitPortraitMainCanvas(
-  gameW: number,
-  gameH: number,
-  heightRatio: number,
-) {
-  const el = document.getElementById('mainGameCanvas') as HTMLCanvasElement | null
-  if (!el) return
-  const { displayW, displayH } = computePortraitCanvasDisplaySize(gameW, gameH, heightRatio)
-  el.style.width = `${displayW}px`
-  el.style.height = `${displayH}px`
-  applyCanvasMobileStyles(el)
-}
-
 export async function startGame(ctx: PlatformContext) {
   if (!ctx.currentGame) return
-
-  setPlatformContextForGames(ctx)
-  clearPortraitCanvasResizeListener()
-
-  gameEngine.start()
-
-  document.getElementById('game-layer')!.classList.add('show')
-  document.documentElement.classList.add('game-active')
-  document.getElementById('topBar')!.style.display = 'none'
-  document.getElementById('bottomNav')!.style.display = 'none'
-  document.getElementById('mainView')!.style.display = 'none'
-
-  const canvas = document.getElementById('gameCanvas')!
-  const isSpaceShooter = ctx.currentGame.id === 'spaceShooter'
-  const isRacingRun = ctx.currentGame.id === 'racingRun'
-  const isContraRpg = ctx.currentGame.id === 'contraRpg'
-  const isWangzheRpg = ctx.currentGame.id === 'wangzheRpg'
-  const isPlantsVsZombies = ctx.currentGame.id === 'plantsVsZombies'
-  const isDnfRpg = ctx.currentGame.id === 'dnfRpg'
-  const isCuteTankBattle = ctx.currentGame.id === 'cuteTankBattle'
-
-  let gameW = 400
-  let gameH = 600
-
-  if (isContraRpg) {
-    gameW = 680
-    gameH = 320
-  } else if (isWangzheRpg) {
-    gameW = 660
-    gameH = 360
-  } else if (isRacingRun) {
-    gameH = 720
-  } else if (isPlantsVsZombies) {
-    gameW = 720
-    gameH = 600
-  } else if (isDnfRpg) {
-    gameW = 880
-    gameH = 440
-  } else if (isCuteTankBattle) {
-    gameW = 750
-    gameH = 1334
-  }
-
-  let displayW: number = gameW
-  let displayH: number = gameH
-
-  if (isSpaceShooter) {
-    canvas.innerHTML = ''
-    console.log('[App] spaceShooter 使用 Phaser ENVELOP 模式，设计分辨率 400x600')
-  } else {
-    const isLandscapeGame = isContraRpg || isWangzheRpg || isPlantsVsZombies || isDnfRpg
-
-    if (isLandscapeGame) {
-      const sized = computeLandscapeCanvasDisplaySize(gameW, gameH)
-      displayW = sized.displayW
-      displayH = sized.displayH
-
-      canvas.style.display = 'flex'
-      canvas.style.alignItems = 'center'
-      canvas.style.justifyContent = 'center'
-      canvas.style.width = '100%'
-      canvas.style.height = '100%'
-    } else {
-      const portraitHeightRatio = isRacingRun ? 0.95 : 0.88
-      const sized = computePortraitCanvasDisplaySize(gameW, gameH, portraitHeightRatio)
-      displayW = sized.displayW
-      displayH = sized.displayH
-
-      canvas.style.display = 'flex'
-      canvas.style.alignItems = 'center'
-      canvas.style.justifyContent = 'center'
-      canvas.style.width = '100%'
-      canvas.style.height = '100%'
-    }
-  }
-
-  const gameLayerEl = document.getElementById('game-layer')!
-  if (isMobileDevice()) {
-    gameLayerEl.classList.add('is-mobile')
-  } else {
-    gameLayerEl.classList.remove('is-mobile')
-  }
-
-  if (!isSpaceShooter) {
-    const isLandscapeGame = isContraRpg || isWangzheRpg || isPlantsVsZombies || isDnfRpg
-    if (isLandscapeGame) {
-      canvas.innerHTML = `<canvas id="mainGameCanvas" width="${gameW}" height="${gameH}" style="display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
-    } else {
-      canvas.innerHTML = `<canvas id="mainGameCanvas" width="${gameW}" height="${gameH}" style="width:${displayW}px;height:${displayH}px;display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
-    }
-    const mainCvs = document.getElementById('mainGameCanvas') as HTMLCanvasElement | null
-    if (mainCvs) {
-      applyCanvasMobileStyles(mainCvs)
-    }
-    if (!isLandscapeGame && !isSpaceShooter) {
-      const portraitHeightRatio = isRacingRun ? 0.95 : 0.88
-      portraitCanvasResizeHandler = () => fitPortraitMainCanvas(gameW, gameH, portraitHeightRatio)
-      window.addEventListener('resize', portraitCanvasResizeHandler)
-      window.visualViewport?.addEventListener('resize', portraitCanvasResizeHandler)
-    }
-  }
-
-  if (isContraRpg || isWangzheRpg || isPlantsVsZombies || isDnfRpg) {
-    const gameLayer = document.getElementById('game-layer')!
-    gameLayer.classList.add('landscape-mode')
-
-    if (!ctx.orientationManager) {
-      ctx.orientationManager = new OrientationManager()
-    }
-    ctx.orientationManager.tryLockLandscape()
-    const ratio = gameH / gameW
-    gameLayer.style.setProperty('--game-ratio', ratio.toString())
-    if (isMobileDevice()) {
-      gameLayer.classList.add('force-landscape')
-    }
-  }
 
   const registration = getGameRegistration(ctx.currentGame.id)
   if (!registration) {
@@ -247,9 +124,39 @@ export async function startGame(ctx: PlatformContext) {
     return
   }
 
-  if (registration.isSpecial) {
-    canvas.innerHTML = ''
+  setPlatformContextForGames(ctx)
+  clearPortraitCanvasResizeListener()
+  gameEngine.start()
+
+  if (isLandscapeLayout(getGameLayoutConfig(ctx.currentGame.id, registration.layout))) {
+    if (!ctx.orientationManager) {
+      ctx.orientationManager = new OrientationManager()
+    }
   }
+
+  const { layout, portraitResizeHandler } = mountGameShell({
+    game: ctx.currentGame,
+    registration,
+    orientationManager: ctx.orientationManager,
+    onExit: () => exitGame(ctx),
+  })
+
+  if (portraitResizeHandler) {
+    portraitCanvasResizeHandler = portraitResizeHandler
+    window.addEventListener('resize', portraitCanvasResizeHandler)
+    window.visualViewport?.addEventListener('resize', portraitCanvasResizeHandler)
+  }
+
+  if (layout.externalCanvas) {
+    console.log(`[App] ${ctx.currentGame.id} 使用外部画布容器（Phaser/自管 DOM）`)
+  }
+
+  installGameEventBridge()
+  setGameEndHandler(() => {
+    if (ctx.currentGame) destroyGame(ctx.currentGame.id)
+    activeLifecycleHost = null
+    void endGame(ctx)
+  })
 
   await initGame(ctx.currentGame.id, gameEngine, () => endGame(ctx))
 }
@@ -262,28 +169,9 @@ export async function endGame(ctx: PlatformContext) {
   setPlatformContextForGames(null)
   removePowerupBar()
 
-  // 退出游戏时恢复竖屏
-  if (ctx.orientationManager) {
-    ctx.orientationManager.tryLockPortrait()
-  }
-
-  // 移除横屏样式
-  const gameLayer = document.getElementById('game-layer')!
-  const canvas = document.getElementById('gameCanvas')!
-  gameLayer.classList.remove('landscape-mode')
-  gameLayer.classList.remove('force-landscape')
-  gameLayer.classList.remove('is-mobile')
-  gameLayer.style.display = ''
-  gameLayer.style.alignItems = ''
-  gameLayer.style.justifyContent = ''
-  gameLayer.style.width = ''
-  gameLayer.style.height = ''
-  gameLayer.style.left = ''
-  gameLayer.style.top = ''
-  canvas.style.transform = ''
-  canvas.style.transformOrigin = ''
-
   if (!ctx.currentGame) return
+
+  dismissGamePauseOverlay()
 
   const gameId = ctx.currentGame.id
   const score = gameEngine.getScore()
@@ -445,23 +333,36 @@ export function closeResult(ctx: PlatformContext) {
 
 export function replayGame(ctx: PlatformContext) {
   document.getElementById('result-overlay')!.classList.remove('show')
-  if (ctx.currentGame) destroyGame(ctx.currentGame.id)
+  dismissGamePauseOverlay()
+  const gameToReplay = ctx.currentGame
+  if (gameToReplay) destroyGame(gameToReplay.id)
   document.getElementById('phaser-space-shooter')?.remove()
-  document.getElementById('gameCanvas')!.innerHTML = ''
+  document.getElementById('dragon-shooter-wrapper')?.remove()
+  document.getElementById('rpg-game-wrapper')?.remove()
+  ;(window as unknown as { _rpgTowerDefenseResizeHandler?: () => void })._rpgTowerDefenseResizeHandler?.()
+  unmountGameShell(ctx.orientationManager)
+  ctx.currentGame = gameToReplay
   ctx.startGame()
 }
 
 export function exitGame(ctx: PlatformContext) {
   if (ctx.currentGame) destroyGame(ctx.currentGame.id)
+  activeLifecycleHost = null
+  uninstallGameEventBridge()
+  setGameEndHandler(null)
+  clearAllPools()
+  inputManager.stop()
 
-  document.getElementById('game-layer')!.classList.remove('show')
-  document.documentElement.classList.remove('game-active')
-  document.getElementById('gameCanvas')!.innerHTML = ''
+  clearPortraitCanvasResizeListener()
+  setPlatformContextForGames(null)
+  removePowerupBar()
+
   document.getElementById('phaser-space-shooter')?.remove()
   document.getElementById('dragon-shooter-wrapper')?.remove()
-  document.getElementById('topBar')!.style.display = 'flex'
-  document.getElementById('bottomNav')!.style.display = 'flex'
-  document.getElementById('mainView')!.style.display = 'block'
+  document.getElementById('rpg-game-wrapper')?.remove()
+  ;(window as unknown as { _rpgTowerDefenseResizeHandler?: () => void })._rpgTowerDefenseResizeHandler?.()
+
+  unmountGameShell(ctx.orientationManager)
   ctx.currentGame = null
 
   refreshBestScores()

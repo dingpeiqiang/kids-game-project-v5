@@ -583,7 +583,10 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
 
   function loop() {
     animId = requestAnimationFrame(loop)
-    update()
+    const platformEngine = engine as import('../../services/gameEngine').GameEngine
+    if (platformEngine.canTick?.()) {
+      update()
+    }
 
     ctx.save()
     if (screenShake > 0) {

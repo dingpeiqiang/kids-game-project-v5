@@ -148,6 +148,7 @@ async function runSession(
 
   const observer = ctx3d.scene.onBeforeRenderObservable.add(() => {
     if (ended) return
+    if (engine.isPaused()) return
     const dt = Math.min(0.033, ctx3d.engine.getDeltaTime() / 1000)
     timeSec += dt
 

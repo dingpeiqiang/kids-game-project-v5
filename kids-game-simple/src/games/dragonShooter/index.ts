@@ -85,7 +85,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     window.addEventListener('orientationchange', updateCanvasScale)
 
     wrapper.appendChild(canvas)
-    document.body.appendChild(wrapper)
+    container.appendChild(wrapper)
     lockMobilePageScroll()
 
     disposeViewport = () => {
@@ -432,7 +432,13 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     const dt = Math.min(0.033, (timestamp - lastTime) / 1000)
     lastTime = timestamp
 
-    if (state.phase === 'playing' && !state.isPaused) {
+    if (engine.isPaused()) {
+      state.isPaused = true
+    } else if (state.isPaused && engine.canTick()) {
+      state.isPaused = false
+    }
+
+    if (state.phase === 'playing' && !state.isPaused && engine.canTick()) {
       // 计时器更新
       if (state.invincibleTimer > 0) state.invincibleTimer -= dt
       if (state.freezeTimer > 0)    state.freezeTimer    -= dt

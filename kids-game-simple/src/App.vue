@@ -7,13 +7,14 @@ import type { Game } from './types'
 import { getLevelByExp } from './types/user'
 import { AuthModal, MePanel, injectUserStyles } from './services/userUI'
 import { renderUI, showDailyPop, closeDailyPop } from './app/ui'
-import { renderGameCards, createGameCard, renderPreview, getFavorites, toggleFavorite, refreshCurrentPage, performSearch, switchToHome, switchToRank, showSearchResults, renderFavoritesPage, refreshBestScores, showScoreFly } from './app/gameCards'
+import { renderGameCards, createGameCard, renderPreview, getFavorites, toggleFavorite, refreshCurrentPage, performSearch, switchToHome, switchToRank, switchToTask, switchToShop, switchToMe, showSearchResults, renderFavoritesPage, refreshBestScores, showScoreFly } from './app/gameCards'
 import { launchGame, showGameGuide, closeGuide, cancelGuide, startGame, endGame, showResult, syncScoreAsync, closeResult, replayGame, exitGame, setRating, submitComment, renderComments, updateCommentStats, formatTime } from './app/gameSession'
 import { showRank, showRankForGame, closeRank, initRankGameSelector, renderRank, calculateRank, convertGameIdToNumber, clearRankCache } from './app/rank'
 import { bindEvents, bindGameCallbacks } from './app/events'
 import { bindEconomyButtons, fetchTasksForBanner, bannerTaskView, openTaskCenter, openShop } from './app/economyUI'
 import { setupCustomPowerupBar, removePowerupBar } from './app/powerup'
 import './styles/main.css'
+import './styles/game-shell.css'
 
 // 创建用户系统实例
 const authModal = new AuthModal()
@@ -24,7 +25,7 @@ const isLoading = ref(true)
 const currentGame = ref<Game | null>(null)
 const previewAnimFrames = ref<Map<string, number>>(new Map())
 const previewObserver = ref<IntersectionObserver | null>(null)
-const currentPage = ref<'home' | 'rank' | 'favorites' | 'me'>('home')
+const currentPage = ref<'home' | 'rank' | 'favorites' | 'me' | 'task' | 'shop'>('home')
 const searchKeyword = ref('')
 const selectedRating = ref(0)
 const guideSkipped = ref(false)
@@ -79,8 +80,8 @@ async function onBannerClaim(task: BannerTask) {
   if (!task.canClaim || !task.taskId) return
   const { apiTaskClaim } = await import('./services/apiClient')
   const claim = await apiTaskClaim(task.taskId)
-  if (claim.ok && claim.data) {
-    const w = claim.data.wallet as { coins?: number; studyCoins?: number; exp?: number } | undefined
+  if (claim.ok && claim.data && (claim.data as Record<string, unknown>).success === true) {
+    const w = (claim.data as Record<string, unknown>).wallet as { coins?: number; studyCoins?: number; exp?: number } | undefined
     if (userService.current && w) {
       if (w.coins != null) userService.current.coins = w.coins
       if (w.studyCoins != null) userService.current.studyCoins = w.studyCoins
@@ -89,6 +90,9 @@ async function onBannerClaim(task: BannerTask) {
     }
     await loadBannerTasks()
     window.dispatchEvent(new CustomEvent('ugp:userChange'))
+  } else {
+    const { showToast } = await import('./services/userUI')
+    showToast(String((claim.data as Record<string, unknown>)?.message ?? claim.msg ?? '领取失败'), 'error')
   }
 }
 
@@ -123,6 +127,9 @@ const buildContext = (): PlatformContext => {
     performSearch: (keyword: string) => performSearch(buildContext(), keyword),
     switchToHome: () => switchToHome(buildContext()),
     switchToRank: () => switchToRank(buildContext()),
+    switchToTask: () => switchToTask(buildContext()),
+    switchToShop: () => switchToShop(buildContext()),
+    switchToMe: () => switchToMe(buildContext()),
     showSearchResults: (results: Game[]) => showSearchResults(buildContext(), results),
     showRankForGame: (gameId) => showRankForGame(buildContext(), gameId),
     showRank: () => showRank(buildContext()),
@@ -173,6 +180,13 @@ onMounted(async () => {
   setTimeout(() => {
     isLoading.value = false
   }, 500)
+
+  // 等待会话恢复后检查登录状态，未登录则自动弹出登录/注册框
+  setTimeout(() => {
+    if (!userService.isLoggedIn) {
+      authModal.open(() => onUserChange())
+    }
+  }, 800)
 })
 
 onUnmounted(() => {
@@ -348,6 +362,26 @@ function onUserChange() {
           <div class="rank-list" id="rankList"></div>
         </div>
       </div>
+
+      <!-- 任务中心页面 -->
+      <div id="taskContent" class="page-content" style="display:none;">
+        <div class="page-header">
+          <div class="page-title">📋 任务中心</div>
+        </div>
+        <div id="taskPageList" class="task-list"></div>
+      </div>
+
+      <!-- 商城页面 -->
+      <div id="shopContent" class="page-content" style="display:none;">
+        <div class="page-header">
+          <div class="page-title">🛒 商城</div>
+        </div>
+        <p class="page-hint">100 金币可兑换 1 游学币，金币主要通过完成任务获得</p>
+        <div id="shopPageList" class="shop-list"></div>
+      </div>
+
+      <!-- 我的页面 -->
+      <div id="meContent" class="page-content" style="display:none;"></div>
     </div>
 
     <!-- 底部导航 -->
@@ -394,8 +428,57 @@ function onUserChange() {
       <div class="combo-label">连击</div>
     </div>
 
-    <!-- 游戏画布层 -->
-    <div id="game-layer"><div id="gameCanvas"></div></div>
+    <!-- 统一游戏容器壳层（操作层统一，内容区 #gameCanvas 个性化） -->
+    <div id="game-layer" class="game-layer-root">
+      <div id="game-shell" class="game-shell">
+        <header class="game-shell-chrome" id="gameShellChrome">
+          <button type="button" class="game-shell-btn game-shell-btn--back" id="gameShellBack" aria-label="返回">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <div class="game-shell-title-wrap">
+            <span class="game-shell-title" id="gameShellTitle">游戏</span>
+            <span class="game-shell-combo" id="gameShellCombo"></span>
+          </div>
+          <div class="game-shell-hud">
+            <div class="game-shell-score" aria-live="polite">
+              <span class="game-shell-score-label">得分</span>
+              <span class="game-shell-score-value" id="gameShellScore">0</span>
+            </div>
+            <button type="button" class="game-shell-btn game-shell-btn--pause" id="gameShellPause" aria-label="暂停">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="game-shell-body">
+          <div class="game-viewport" id="game-viewport">
+            <div id="gameCanvas" class="game-canvas-host"></div>
+          </div>
+          <footer class="game-shell-footer">
+            <div class="game-shell-powerup-slot" id="gameShellPowerupSlot"></div>
+          </footer>
+        </div>
+      </div>
+      <div class="game-pause-overlay" id="gamePauseOverlay" role="dialog" aria-modal="true" aria-labelledby="gamePauseTitle">
+        <div class="game-pause-card">
+          <div class="game-pause-title" id="gamePauseTitle">游戏暂停</div>
+          <p class="game-pause-hint">休息一下，准备好了再继续</p>
+          <div class="game-pause-actions">
+            <button type="button" class="btn btn-primary" id="gamePauseResume">继续游戏</button>
+            <button type="button" class="btn btn-secondary" id="gamePauseQuit">退出本局</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-pause-overlay game-exit-overlay" id="gameExitConfirmOverlay" role="dialog" aria-modal="true" aria-labelledby="gameExitConfirmTitle">
+        <div class="game-pause-card">
+          <div class="game-pause-title" id="gameExitConfirmTitle">退出游戏？</div>
+          <p class="game-pause-hint">本局进度将不会保存到结算</p>
+          <div class="game-pause-actions">
+            <button type="button" class="btn btn-primary" id="gameExitStay">继续玩</button>
+            <button type="button" class="btn btn-secondary" id="gameExitConfirm">退出到大厅</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 横屏旋转提示 -->
     <div id="rotate-overlay">

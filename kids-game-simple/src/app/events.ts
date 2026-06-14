@@ -7,7 +7,6 @@ import { storageService } from '../services/storage'
 import { renderRank } from './rank'
 import { showScoreFly } from './gameCards'
 import { showToast } from '../services/userUI'
-import { openShop, openTaskCenter } from './economyUI'
 
 /**
  * 绑定所有 UI 事件监听器
@@ -35,11 +34,11 @@ export function bindEvents(ctx: PlatformContext) {
       item.classList.add('active')
 
       if (page === 'task') {
-        void openTaskCenter()
+        ctx.switchToTask()
         return
       }
       if (page === 'shop') {
-        void openShop()
+        ctx.switchToShop()
         return
       }
       if (page === 'rank') {
@@ -48,7 +47,7 @@ export function bindEvents(ctx: PlatformContext) {
         ctx.currentPage = 'favorites'
         ctx.renderFavoritesPage()
       } else if (page === 'me') {
-        ctx.mePanel.open()
+        ctx.switchToMe()
       } else {
         ctx.closeRank()
         ctx.switchToHome()

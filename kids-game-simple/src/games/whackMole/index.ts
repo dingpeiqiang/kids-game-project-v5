@@ -873,6 +873,11 @@ export function initWhackMole(engine: GameEngine, onEnd: () => void) {
       unbindPointer()
       return
     }
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
     update()
     draw()
     requestAnimationFrame(loop)

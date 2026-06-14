@@ -753,6 +753,11 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
 
   function loop() {
     if (!document.getElementById('mainGameCanvas') || gameEnded) return
+    if (!engine.canTick()) {
+      draw()
+      requestAnimationFrame(loop)
+      return
+    }
     
     // 性能优化 - 帧率监控
     frameCount++

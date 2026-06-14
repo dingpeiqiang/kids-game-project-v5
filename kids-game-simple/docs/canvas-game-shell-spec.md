@@ -44,7 +44,8 @@
 
 ## 参考实现
 
-- 壳层：`src/components/CanvasGamePlay.vue`
+- **当前主站壳层**：`App.vue` 内 `#game-layer` + `src/app/gameShell.ts` + `src/app/gameSession.ts`（见 `docs/GameRegistry.md`）
+- 壳层（历史/组件化）：`src/components/CanvasGamePlay.vue`
 - 常量：`src/constants/gamePlayShell.ts`
 - 会话状态：`src/composables/useCanvasGameSession.ts`
 - HUD 迁移示例：`src/games/whackMole/index.ts` 的 `drawHUD`

@@ -913,6 +913,12 @@ export class StackGame {
       return
     }
 
+    if (!this.engine.canTick()) {
+      this.draw()
+      requestAnimationFrame(() => this.loop())
+      return
+    }
+
     if (!this.timeStopped) {
       this.currentBlock.x += this.currentBlock.dir
       if (this.currentBlock.x + this.currentBlock.w > this.W) this.currentBlock.dir = -Math.abs(this.currentBlock.dir)

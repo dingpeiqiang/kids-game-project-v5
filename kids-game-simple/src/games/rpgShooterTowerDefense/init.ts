@@ -56,13 +56,14 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     const wrapper = document.createElement('div')
     wrapper.id = 'rpg-game-wrapper'
     wrapper.style.cssText = `
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      width: 100vw; height: 100vh;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       touch-action: none;
       margin: 0; padding: 0;
-      z-index: 9999;
+      z-index: 1;
       background: #0a0f1a;
       display: flex;
       align-items: center;
@@ -93,26 +94,20 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     window.addEventListener('resize', updateCanvasScale)
     window.addEventListener('orientationchange', () => setTimeout(updateCanvasScale, 200))
 
+    const host = document.getElementById('gameCanvas')
     const parent = canvas.parentNode
-    if (parent) {
+    if (parent && host) {
       parent.removeChild(canvas)
       wrapper.appendChild(canvas)
-      parent.appendChild(wrapper)
+      host.appendChild(wrapper)
     }
-
-    // 禁止页面滚动和缩放
-    document.documentElement.style.overflow = 'hidden'
-    document.body.style.cssText = 'overflow:hidden;touch-action:none;position:fixed;width:100%;height:100%;margin:0;padding:0;background:#0a0f1a'
 
     ;(window as any)._rpgTowerDefenseResizeHandler = () => {
       window.visualViewport?.removeEventListener('resize', updateCanvasScale)
       window.removeEventListener('resize', updateCanvasScale)
-      // 恢复 body 样式
       const w = document.getElementById('rpg-game-wrapper')
-      if (w) { w.parentNode?.removeChild(w) }
-      parent?.appendChild(canvas)
-      document.documentElement.style.overflow = ''
-      document.body.style.cssText = ''
+      if (w) w.remove()
+      host?.appendChild(canvas)
     }
   } else {
     canvas.style.width = `${CANVAS_WIDTH}px`
@@ -243,8 +238,8 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     const dt = Math.min((currentTime - lastTime) / 1000, 0.1)
     lastTime = currentTime
 
-    // 更新逻辑
-    if (state.gameStarted && !state.gameEnded) {
+    // 更新逻辑（尊重壳层暂停）
+    if (state.gameStarted && !state.gameEnded && engine.canTick()) {
       updateGame(state, dt, currentTime, playSound, handleGameOver, cleanup)
     }
 
