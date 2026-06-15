@@ -1,20 +1,53 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { app } from '../services/appBridge'
+import { gameActions } from '../platform/gameBridge'
+import { resolveGtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../platform/GameLifecycle'
+import { createLifecycleContext } from '../platform/frameworkSession'
+import { hostCanvas2D } from '../platform/hostCanvas2D'
 import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../utils/canvasMobileUtils'
 
+let activeHost: GameLifecycle | null = null
+
+export function destroySlimeJump(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
+
 export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) {
-    console.error('[史莱姆跳] Canvas 元素不存在')
+  destroySlimeJump()
+  const lifecycleCtx = createLifecycleContext('slimeJump', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
     return
   }
-  
-  const W = 400, H = 600
+  activeHost = startSlimeJumpLifecycle(lifecycleCtx)
+}
+
+function startSlimeJumpLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
+
+  const W = 400
+  const H = 600
+  const SLIME_FALLBACK = {
+    primary: '#6BCB77',
+    background: '#1a1a2e',
+    backgroundDark: '#0a0a1a',
+    bgGradMid: '#151536',
+    text: '#FFFFFF',
+    accent: '#FF9F43',
+    hudBg: 'rgba(0,0,0,0.45)',
+    danger: '#FF4757',
+    muted: '#9B59B6',
+    palette: ['#6BCB77', '#FF9F43', '#9B59B6', '#FF4757'],
+  }
+  const gtrs = resolveGtrsCanvasStyle('slimeJump', SLIME_FALLBACK)
   const ctx = canvas.getContext('2d')!
   if (!ctx) {
-    console.error('[史莱姆跳] 无法获取 Canvas 上下文')
-    return
+    throw new Error('[史莱姆跳] 无法获取 Canvas 上下文')
   }
   ctx.imageSmoothingEnabled = false
 
@@ -91,35 +124,30 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
     if (index === -1) return false
     
     inventory.splice(index, 1)
-    console.log('[道具] 使用道具:', type)
     
     switch (type) {
       case 'jetpack':
         // 喷气背包 - 向上冲刺
         player.vy = -15
         audioService.win()
-        console.log('[道具] 喷气背包生效')
         break
         
       case 'shield':
         // 护盾 - 免疫一次掉落
         ;(window as any).slimeShield = true
         audioService.win()
-        console.log('[道具] 护盾已准备')
         break
         
       case 'magnet':
         // 磁铁 - 自动吸引星星，持续8秒
         ;(window as any).slimeMagnet = Date.now() + 8000
         audioService.win()
-        console.log('[道具] 磁铁生效，持续8秒')
         break
         
       case 'slow':
         // 减速 - 重力减半，持续8秒
         ;(window as any).slimeSlow = Date.now() + 8000
         audioService.collect()
-        console.log('[道具] 减速生效，持续8秒')
         break
     }
     
@@ -184,13 +212,13 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
 
   function draw() {
     // 背景
-    ctx.fillStyle = '#1a1a2e'
+    ctx.fillStyle = gtrs.background
     ctx.fillRect(0, 0, W, H)
 
     // 渐变天空
     const skyGrad = ctx.createLinearGradient(0, -cameraY, 0, H - cameraY)
-    skyGrad.addColorStop(0, '#0a0a1a')
-    skyGrad.addColorStop(1, '#1a1a2e')
+    skyGrad.addColorStop(0, gtrs.backgroundDark)
+    skyGrad.addColorStop(1, gtrs.background)
     ctx.fillStyle = skyGrad
     ctx.fillRect(0, 0, W, H)
 
@@ -212,26 +240,26 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
       if (p.type === 'normal') {
         // 普通平台 - 绿色
         const grad = ctx.createLinearGradient(p.x, py, p.x, py + p.height)
-        grad.addColorStop(0, '#6BCB77')
-        grad.addColorStop(1, '#4CAF50')
+        grad.addColorStop(0, gtrs.primary)
+        grad.addColorStop(1, gtrs.primary)
         ctx.fillStyle = grad
-        ctx.shadowColor = '#6BCB77'
+        ctx.shadowColor = gtrs.primary
         ctx.shadowBlur = 8
       } else if (p.type === 'spring') {
         // 弹簧平台 - 橙色
         const grad = ctx.createLinearGradient(p.x, py, p.x, py + p.height)
-        grad.addColorStop(0, '#FF9F43')
-        grad.addColorStop(1, '#E67E22')
+        grad.addColorStop(0, gtrs.accent)
+        grad.addColorStop(1, gtrs.accent)
         ctx.fillStyle = grad
-        ctx.shadowColor = '#FF9F43'
+        ctx.shadowColor = gtrs.accent
         ctx.shadowBlur = 12
       } else {
         // 移动平台 - 紫色
         const grad = ctx.createLinearGradient(p.x, py, p.x, py + p.height)
-        grad.addColorStop(0, '#9B59B6')
-        grad.addColorStop(1, '#8E44AD')
+        grad.addColorStop(0, gtrs.muted)
+        grad.addColorStop(1, gtrs.muted)
         ctx.fillStyle = grad
-        ctx.shadowColor = '#9B59B6'
+        ctx.shadowColor = gtrs.muted
         ctx.shadowBlur = 10
       }
       
@@ -258,8 +286,8 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
       ctx.save()
       if (obs.type === 'spike') {
         // 尖刺障碍物
-        ctx.fillStyle = '#FF4757'
-        ctx.shadowColor = '#FF4757'
+        ctx.fillStyle = gtrs.danger
+        ctx.shadowColor = gtrs.danger
         ctx.shadowBlur = 10
         ctx.beginPath()
         ctx.moveTo(obs.x, oy + obs.height)
@@ -284,7 +312,7 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
     // 挤压变形
     ctx.scale(1 / player.squash, player.squash)
     
-    ctx.shadowColor = '#9B59B6'
+    ctx.shadowColor = gtrs.muted
     ctx.shadowBlur = 15
     ctx.font = `${player.size}px sans-serif`
     ctx.textAlign = 'center'
@@ -309,7 +337,7 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
     ctx.beginPath()
     ctx.roundRect(10, 8, W - 20, 40, 10)
     ctx.fill()
-    ctx.fillStyle = secondsHud <= 10 ? '#FF4444' : '#6BCB77'
+    ctx.fillStyle = secondsHud <= 10 ? gtrs.danger : gtrs.primary
     ctx.font = 'bold 15px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -332,6 +360,31 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
     } else {
       ctx.fillText('🔥 高难度挑战！保持专注！', W / 2, H - 25)
     }
+  }
+
+  let unbindPointer: (() => void) | null = null
+
+  const cleanup = () => {
+    unbindPointer?.()
+    unbindPointer = null
+  }
+
+  const slimeStats = () => ({
+    height: score,
+    difficulty,
+    maxCombo,
+    totalJumps,
+    duration: Math.floor((Date.now() - gameStartTime) / 1000),
+  })
+
+  const endSlime = (victory: boolean) => {
+    if (gameEnded) return
+    gameEnded = true
+    cleanup()
+    if (typeof app !== 'undefined' && app.removePowerupBar) {
+      app.removePowerupBar()
+    }
+    gameActions.gameOver({ victory, score: engine.getScore(), stats: slimeStats() })
   }
 
   function update(deltaTime: number) {
@@ -455,16 +508,8 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
           // 移除障碍物
           obstacles.splice(obstacles.indexOf(obs), 1)
           audioService.win()
-          console.log('[史莱姆跳] 护盾抵挡障碍物')
         } else {
-          gameEnded = true
-          engine.setVictory(false)
-          engine.endGame()
-          cleanup()
-          if (typeof app !== 'undefined' && app.removePowerupBar) {
-            app.removePowerupBar()
-          }
-          onEnd()
+          endSlime(false)
           return
         }
       }
@@ -480,7 +525,6 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
       totalJumps++
       if (totalJumps % 10 === 0 && difficulty < 10) {
         difficulty++
-        console.log('[史莱姆跳] 难度提升至:', difficulty)
       }
     }
     
@@ -541,116 +585,56 @@ export function initSlimeJump(engine: GameEngine, onEnd: () => void) {
         player.vy = 0
         player.x = W / 2
         audioService.win()
-        console.log('[史莱姆跳] 护盾生效，免疫掉落')
       } else {
-        // 没有护盾，游戏结束
-        gameEnded = true
-        engine.setVictory(false)
-        engine.endGame()
-        
-        // 设置游戏统计数据
-        engine.setGameStats({
-          height: score,
-          difficulty: difficulty,
-          maxCombo: maxCombo,
-          totalJumps: totalJumps,
-          duration: Math.floor((Date.now() - gameStartTime) / 1000)
-        })
-        
-        cleanup()
-        // 清理道具栏
-        if (typeof app !== 'undefined' && app.removePowerupBar) {
-          app.removePowerupBar()
-        }
-        onEnd()
+        endSlime(false)
         return
       }
     }
   }
 
-  applyCanvasMobileStyles(canvas)
-  const unbindPointer = bindCanvasPointerTapAndMove(
-    canvas,
-    (x) => {
-      mouseX = x
-    },
-    (x) => {
-      mouseX = x
-    },
-  )
-
-  const cleanup = () => {
-    unbindPointer()
-  }
-
-  function loop(currentTime: number) {
-    // 检查 Canvas 是否存在
-    const currentCanvas = document.getElementById('mainGameCanvas')
-    if (!currentCanvas || gameEnded) {
-      cleanup()
-      // 清理道具栏
-      if (typeof app !== 'undefined' && app.removePowerupBar) {
-        app.removePowerupBar()
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      applyCanvasMobileStyles(canvas)
+      platforms.push({ x: W / 2 - 50, y: H - 100, width: 100, height: 15, type: 'normal' })
+      for (let i = 0; i < 10; i++) {
+        spawnPlatform(H - 200 - i * 70)
       }
-      return
-    }
-    
-    if (!engine.canTick()) {
+      cameraY = 0
+      targetCameraY = 0
+      lastHeight = player.y
+      gameStartTime = Date.now()
+      updateHTMLPowerupBar()
+      unbindPointer = bindCanvasPointerTapAndMove(
+        canvas,
+        x => {
+          mouseX = x
+        },
+        x => {
+          mouseX = x
+        },
+      )
+      lastTime = performance.now()
+    },
+    onUpdate(_dtSec) {
+      if (gameEnded) return
+      const currentTime = performance.now()
+      if (!engine.canTick()) return
+      const deltaTime = Math.min((currentTime - lastTime) / FRAME_TIME, 2)
+      lastTime = currentTime
+      if (Date.now() - gameStartTime > GAME_DURATION) {
+        endSlime(score >= 50)
+        return
+      }
+      update(deltaTime)
+    },
+    onRender() {
       draw()
-      requestAnimationFrame(loop)
-      return
-    }
-
-    // 帧率控制
-    const deltaTime = Math.min((currentTime - lastTime) / FRAME_TIME, 2) // 限制最大增量
-    lastTime = currentTime
-    
-    if (Date.now() - gameStartTime > GAME_DURATION) {
-      gameEnded = true
-      engine.setVictory(false)
-      engine.endGame()
-      
-      // 设置游戏统计数据
-      engine.setGameStats({
-        height: score,
-        difficulty: difficulty,
-        maxCombo: maxCombo,
-        totalJumps: totalJumps,
-        duration: Math.floor((Date.now() - gameStartTime) / 1000)
-      })
-      
+    },
+    onDestroy() {
       cleanup()
-      // 清理道具栏
       if (typeof app !== 'undefined' && app.removePowerupBar) {
         app.removePowerupBar()
       }
-      onEnd()
-      return
-    }
-    
-    update(deltaTime)
-    draw()
-    requestAnimationFrame(loop)
-  }
-
-  engine.start()
-  
-  // 初始平台 - 确保玩家在第一个平台上
-  platforms.push({ x: W / 2 - 50, y: H - 100, width: 100, height: 15, type: 'normal' })
-  // 生成更多平台，确保有足够的跳跃空间
-  for (let i = 0; i < 10; i++) {
-    spawnPlatform(H - 200 - i * 70)
-  }
-  
-  // 初始化相机位置
-  cameraY = 0
-  targetCameraY = 0
-  lastHeight = player.y
-  
-  // 更新道具栏显示
-  updateHTMLPowerupBar()
-      
-  // 启动游戏循环，传入初始时间
-  lastTime = performance.now()
-  loop(lastTime)
+    },
+  })
 }

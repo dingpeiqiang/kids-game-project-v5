@@ -430,7 +430,6 @@ export function updateActiveBuffs(state: GameState, dt: number) {
   // 🎯 关键修复：倒序删除，并在删除前清除对应效果
   for (let i = toRemove.length - 1; i >= 0; i--) {
     const expiredBuff = state.activeBuffs[toRemove[i]]
-    console.log(`⏰ Buff过期: ${expiredBuff.name}, 类型: ${expiredBuff.type}`)
     
     // 清除对应buff的效果
     removeBuffEffect(state, expiredBuff.type)
@@ -454,7 +453,6 @@ function removeBuffEffect(state: GameState, buffType: string) {
       if (S.rapidFireStacks === 0) {
         // 恢复到基础射速（350ms）
         state.shootCooldown = 350
-        console.log('🔄 恢复基础射速: 350ms')
       } else {
         // 还有层数，重新计算射速
         state.shootCooldown = Math.max(60, 350 * Math.pow(0.6, S.rapidFireStacks))
@@ -465,7 +463,6 @@ function removeBuffEffect(state: GameState, buffType: string) {
       S.multiShotStacks = Math.max(0, (S.multiShotStacks || 1) - 1)
       if (S.multiShotStacks === 0) {
         state.bulletCount = 1  // 恢复基础1发
-        console.log('🔄 恢复基础弹道: 1发')
       } else {
         state.bulletCount = Math.min(10, 1 + S.multiShotStacks * 2)
       }
@@ -475,7 +472,6 @@ function removeBuffEffect(state: GameState, buffType: string) {
       S.armorPierceStacks = Math.max(0, (S.armorPierceStacks || 1) - 1)
       if (S.armorPierceStacks === 0) {
         state.bulletPierce = 1  // 恢复基础穿透
-        console.log('🔄 恢复基础穿透: 1')
       } else {
         state.bulletPierce = 1 + S.armorPierceStacks * 3
       }
@@ -486,7 +482,6 @@ function removeBuffEffect(state: GameState, buffType: string) {
       if (S.heavyHitStacks === 0) {
         // 需要重新计算基础伤害（考虑其他buff）
         recalculateBaseDamage(state)
-        console.log('🔄 恢复基础伤害')
       }
       // 注意：damage是累积乘法，无法精确恢复，依赖recalculateBaseDamage
       break
@@ -495,7 +490,6 @@ function removeBuffEffect(state: GameState, buffType: string) {
       S.rapidBurstStacks = Math.max(0, (S.rapidBurstStacks || 1) - 1)
       if (S.rapidBurstStacks === 0) {
         recalculateBaseCooldown(state)
-        console.log('🔄 恢复基础冷却')
       }
       break
       
@@ -628,7 +622,6 @@ function recalculateBasePierce(state: GameState) {
   }
   
   state.bulletPierce = pierce
-  console.log(`🎯 重新计算穿透: ${state.bulletPierce} (armorPierce=${S.armorPierceStacks || 0}, autoAim=${S.autoAimStacks || 0})`)
 }
 
 /** 给 state 添加或刷新一个 activeBuff（叠加或刷新时间） */
@@ -1011,7 +1004,6 @@ function handleSegmentDeath(state: GameState, dragon: Dragon, segmentIndex: numb
     ft.vy = -0.5
     ft.size = 20
     state.floatTexts.push(ft)
-    console.log(`✅ 龙被消灭! 关卡进度: ${state.levelProgress}/${state.levelTarget}`)
   }
   // 无分裂机制：龙被纯击打消灭，不再产生新龙
 }
@@ -1289,7 +1281,6 @@ export function spawnDragons(state: GameState) {
 
   // 调试日志（只在首次生成时打印）
   if (state.dragonsSpawnedInLevel === 0) {
-    console.log(`🐉 关卡 ${state.level} 开始：共 ${allRoutes.length} 条路线`)
   }
 
   // 一次性生成所有龙（每条路线一条龙）
@@ -1586,7 +1577,12 @@ export function updateTimer(state: GameState, dt: number) {
     if (state.timeLeft <= 0) {
       state.timeLeft = 0
       // 时间到通关
-      state.phase = 'gameOver'
+      if (state.phase !== 'gameOver') {
+        state.phase = 'gameOver'
+        setTimeout(() => {
+          _gameOverCallback?.()
+        }, 1500)
+      }
     }
   }
 }
@@ -1601,7 +1597,6 @@ export function checkLevelUp(state: GameState): boolean {
   
   // 检查是否所有路线的龙都已消灭
   if (state.levelProgress >= state.levelTarget && routeCount > 0) {
-    console.log(`✅ 第${state.level}关完成！共${routeCount}条路线，已消灭${state.levelProgress}条龙`)
     
     // 🎯 关键修复：保存本关的统计数据
     state.levelCompleteScore = state.score
@@ -1629,12 +1624,10 @@ export function checkLevelUp(state: GameState): boolean {
     state.levelTransition = true
     state.levelTransitionTimer = 1.5  // 1.5秒过渡时间（让玩家看清统计信息）
     
-    console.log(`🚀 自动进入第${state.level}关...`)
     
     // 延迟执行关卡初始化，等待过渡动画播放
     setTimeout(() => {
       const nextRoutes = routeLoader.getRoutesForLevel(state.level)
-      console.log(`📊 获取到 ${nextRoutes.length} 条路线`)
 
       // 清除旧数据
       state.dragons = []
@@ -1657,20 +1650,17 @@ export function checkLevelUp(state: GameState): boolean {
         state.playerY = firstRoute.playerStartY
         state.playerStartX = firstRoute.playerStartX
         state.playerStartY = firstRoute.playerStartY
-        console.log(`🎯 使用自定义起点: (${state.playerX}, ${state.playerY})`)
       } else {
         state.playerX = BASE_W / 2
         state.playerY = BASE_H - 55
         state.playerStartX = BASE_W / 2
         state.playerStartY = BASE_H - 55
-        console.log(`🎯 使用默认起点: (${state.playerX}, ${state.playerY})`)
       }
 
       state.phase = 'playing'
       state.levelTransition = false  // 清除过渡状态
       state.isPaused = false
       
-      console.log(`✅ 关卡初始化完成: phase=${state.phase}, levelTarget=${state.levelTarget}`)
       
       // 显示关卡开始提示
       state.floatTexts.push({
@@ -1690,19 +1680,16 @@ export function checkLevelUp(state: GameState): boolean {
  * 开始下一关（从关卡完成界面调用）
  */
 export function startNextLevel(state: GameState) {
-  console.log(`🚀 startNextLevel 被调用, 当前关卡: ${state.level}, phase: ${state.phase}`)
   
   // 🎯 关键修复：先启用过渡动画，延迟初始化关卡
   state.levelTransition = true
   state.levelTransitionTimer = 1.0  // 1秒过渡时间
   state.isPaused = false
   
-  console.log(`✅ 进入过渡状态: levelTransition=${state.levelTransition}, timer=${state.levelTransitionTimer}`)
   
   // 延迟执行关卡初始化，等待过渡动画播放
   setTimeout(() => {
     const nextRoutes = routeLoader.getRoutesForLevel(state.level)
-    console.log(`📊 获取到 ${nextRoutes.length} 条路线`)
 
     // 清除旧数据
     state.dragons = []
@@ -1722,7 +1709,6 @@ export function startNextLevel(state: GameState) {
     const levelBonus = Math.pow(1.12, state.level - 1)  // 第1关1.0, 第2关1.12, 第3关1.25...
     const newDamage = Math.floor(15 * levelBonus)
     state.bulletDamage = newDamage
-    console.log(`⚔️ 第${state.level}关 玩家伤害: ${state.bulletDamage} (倍率: ${levelBonus.toFixed(2)}x)`)
 
     // 🎯 显示伤害升级飘字反馈
     const ftDmg = getFloatTextFromPool()
@@ -1742,19 +1728,16 @@ export function startNextLevel(state: GameState) {
       state.playerY = firstRoute.playerStartY
       state.playerStartX = firstRoute.playerStartX
       state.playerStartY = firstRoute.playerStartY
-      console.log(`🎯 使用自定义起点: (${state.playerX}, ${state.playerY})`)
     } else {
       state.playerX = BASE_W / 2
       state.playerY = BASE_H - 55
       state.playerStartX = BASE_W / 2
       state.playerStartY = BASE_H - 55
-      console.log(`🎯 使用默认起点: (${state.playerX}, ${state.playerY})`)
     }
 
     state.phase = 'playing'
     state.levelTransition = false  // 清除过渡状态
     
-    console.log(`✅ 关卡初始化完成: phase=${state.phase}, levelTarget=${state.levelTarget}`)
     
     // 显示关卡开始提示
     state.floatTexts.push({
@@ -1783,7 +1766,6 @@ export function loadCustomRoutes(customRoutes: CustomRoute[]): void {
       if (Array.isArray(routes)) {
         customRoutes.length = 0
         customRoutes.push(...routes)
-        console.log(`✅ 已加载 ${customRoutes.length} 条自定义路线`)
       }
     }
   } catch (error) {
@@ -1795,7 +1777,6 @@ export function loadCustomRoutes(customRoutes: CustomRoute[]): void {
 export function saveCustomRoutes(customRoutes: CustomRoute[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customRoutes))
-    console.log(`✅ 已保存 ${customRoutes.length} 条自定义路线`)
   } catch (error) {
     console.error('❌ 保存自定义路线失败:', error)
   }

@@ -1,5 +1,6 @@
 import { Vector3 } from '@babylonjs/core'
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
 import { createInputController } from './input'
 import {
@@ -24,7 +25,6 @@ export function destroySkyFrenzy(): void {
 
 export async function initSkyFrenzy(engine: GameEngine, onEnd: () => void): Promise<void> {
   destroySkyFrenzy()
-  engine.start()
   engine.setOrientation('landscape')
 
   const parent = document.getElementById('gameCanvas')
@@ -66,16 +66,21 @@ export async function initSkyFrenzy(engine: GameEngine, onEnd: () => void): Prom
     if (ended) return
     ended = true
     persistRecords(state)
-    engine.setScore(finalScore)
-    engine.setGameStats({
-      grade: state.phase === 'victory' ? gradeFromState(state) : 'lose',
-      waves: state.waveIndex + 1,
-      flawless: state.flawless,
-      elapsedSec: state.elapsedSec,
-      bestScore: state.records.bestScore,
-      fastestClearSec: state.records.fastestClearSec,
+    const victory = state.phase === 'victory'
+    gameActions.gameOver({
+      victory,
+      score: finalScore,
+      stats: {
+        grade: victory ? gradeFromState(state) : 'lose',
+        waves: state.waveIndex + 1,
+        flawless: state.flawless,
+        elapsedSec: state.elapsedSec,
+        bestScore: state.records.bestScore,
+        fastestClearSec: state.records.fastestClearSec,
+      },
     })
-    onEnd()
+    activeDispose?.()
+    activeDispose = null
   }
 
   function gradeFromState(s: GameState): string {

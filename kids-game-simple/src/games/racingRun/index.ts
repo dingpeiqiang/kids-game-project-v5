@@ -1,1 +1,1 @@
-export { initRacingRun } from './game';
+export { initRacingRun, destroyRacingRun } from './game';

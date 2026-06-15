@@ -1,35 +1,51 @@
-// bubbleShooter 游戏主入口文件
 import type { GameEngine } from '../../services/gameEngine'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { BubbleShooterGame } from './BubbleShooterGame'
 
+let activeHost: GameLifecycle | null = null
+let activeGame: BubbleShooterGame | null = null
+
+export function destroyBubbleShooter(): void {
+  activeGame?.destroy()
+  activeGame = null
+  activeHost?.destroy()
+  activeHost = null
+}
+
 export function initBubbleShooter(engine: GameEngine, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) return
-  
-  const ctx = canvas.getContext('2d')!
-  ctx.imageSmoothingEnabled = false
-  
-  // 创建游戏实例
-  const game = new BubbleShooterGame(canvas, ctx, engine, onEnd)
-  
-  // 初始化游戏
-  game.init()
-  
-  // 启动游戏循环
-  function gameLoop() {
-    if (!document.getElementById('mainGameCanvas')) return
-
-    if (!engine.canTick()) {
-      game.render()
-      requestAnimationFrame(gameLoop)
-      return
-    }
-
-    game.update()
-    game.render()
-
-    requestAnimationFrame(gameLoop)
+  destroyBubbleShooter()
+  const lifecycleCtx = createLifecycleContext('bubbleShooter', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
+    return
   }
-  
-  requestAnimationFrame(gameLoop)
+
+  const canvas = lifecycleCtx.canvas
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    onEnd()
+    return
+  }
+  ctx.imageSmoothingEnabled = false
+
+  const game = new BubbleShooterGame(canvas, ctx, engine, onEnd)
+  activeGame = game
+
+  activeHost = hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      game.init()
+    },
+    onUpdate(_dt) {
+      game.update()
+    },
+    onRender() {
+      game.render()
+    },
+    onDestroy() {
+      game.destroy()
+      activeGame = null
+    },
+  })
 }

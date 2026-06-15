@@ -1,6 +1,7 @@
 import type { GTRSTheme } from '../types/gtrs-theme'
 import { getCachedGTRSTheme } from '../services/gtrsThemeLoader'
 import { darkenHex } from './gtrsColor'
+import { readGtrsSceneList, readGtrsSceneMeta } from './gtrsSceneMeta'
 
 /** Canvas 2D 游戏常用调色板（从 GTRS globalStyle + scene 元数据推导） */
 export interface CanvasGamePalette {
@@ -37,30 +38,6 @@ const DEFAULT_PALETTE: CanvasGamePalette = {
   star: '#A8E6CF',
 }
 
-function readSceneMeta(theme: GTRSTheme | undefined, key: string): string | undefined {
-  const raw = theme?.resources?.images?.scene?.[key]
-  if (!raw || typeof raw !== 'object' || !('src' in raw)) return undefined
-  const src = String(raw.src)
-  if (src.startsWith('[')) return undefined
-  if (/\.(png|jpg|jpeg|webp|gif|svg|mp3)$/i.test(src)) return undefined
-  if (src.startsWith('#') || src.startsWith('rgb')) return src
-  return undefined
-}
-
-function readSceneList(theme: GTRSTheme | undefined, key: string): string[] | undefined {
-  const raw = theme?.resources?.images?.scene?.[key]
-  if (!raw || typeof raw !== 'object' || !('src' in raw)) return undefined
-  const src = String(raw.src)
-  if (!src.startsWith('[')) return undefined
-  try {
-    const arr = JSON.parse(src) as unknown
-    if (Array.isArray(arr) && arr.every(x => typeof x === 'string')) return arr as string[]
-  } catch {
-    /* ignore */
-  }
-  return undefined
-}
-
 export function paletteFromGTRS(theme: GTRSTheme | undefined, fallback = DEFAULT_PALETTE): CanvasGamePalette {
   if (!theme) return { ...fallback }
 
@@ -69,9 +46,9 @@ export function paletteFromGTRS(theme: GTRSTheme | undefined, fallback = DEFAULT
   const secondary = g.secondaryColor ?? fallback.secondary
   const bg = g.bgColor ?? fallback.background
 
-  const head0 = readSceneMeta(theme, 'snake_head_light') ?? secondary
-  const head1 = readSceneMeta(theme, 'snake_head_dark') ?? darkenHex(primary, 0.15)
-  const body = readSceneMeta(theme, 'snake_body') ?? primary
+  const head0 = readGtrsSceneMeta(theme, 'snake_head_light') ?? secondary
+  const head1 = readGtrsSceneMeta(theme, 'snake_head_dark') ?? darkenHex(primary, 0.15)
+  const body = readGtrsSceneMeta(theme, 'snake_body') ?? primary
 
   return {
     primary,
@@ -79,15 +56,15 @@ export function paletteFromGTRS(theme: GTRSTheme | undefined, fallback = DEFAULT
     background: bg,
     backgroundDark: darkenHex(bg, 0.35),
     text: g.textColor ?? fallback.text,
-    accent: readSceneMeta(theme, 'accent') ?? g.secondaryColor ?? fallback.accent,
-    grid: readSceneMeta(theme, 'grid') ?? fallback.grid,
-    border: readSceneMeta(theme, 'border') ?? fallback.border,
+    accent: readGtrsSceneMeta(theme, 'accent') ?? g.secondaryColor ?? fallback.accent,
+    grid: readGtrsSceneMeta(theme, 'grid') ?? fallback.grid,
+    border: readGtrsSceneMeta(theme, 'border') ?? fallback.border,
     snakeHead: [head0, head1],
     snakeBody: body,
-    foodColors: readSceneList(theme, 'food_palette') ?? fallback.foodColors,
-    bonusColor: readSceneMeta(theme, 'food_bonus') ?? fallback.bonusColor,
-    speedColor: readSceneMeta(theme, 'food_speed') ?? fallback.speedColor,
-    star: readSceneMeta(theme, 'star') ?? fallback.star,
+    foodColors: readGtrsSceneList(theme, 'food_palette') ?? fallback.foodColors,
+    bonusColor: readGtrsSceneMeta(theme, 'food_bonus') ?? fallback.bonusColor,
+    speedColor: readGtrsSceneMeta(theme, 'food_speed') ?? fallback.speedColor,
+    star: readGtrsSceneMeta(theme, 'star') ?? fallback.star,
   }
 }
 

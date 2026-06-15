@@ -1,0 +1,48 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "colorTap_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "缤纷点色",
+    "isDefault": true,
+    "gameId": "colorTap",
+    "description": "kids-game-simple colorTap 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#6BCB77",
+    "secondaryColor": "#4ECDC4",
+    "bgColor": "#1a1a2e",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "accent": { "src": "#FFD700", "type": "png", "alias": "强调色" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD 底" },
+        "danger": { "src": "#FF4444", "type": "png", "alias": "倒计时警告" },
+        "muted": { "src": "#666666", "type": "png", "alias": "错误粒子" },
+        "game_palette": {
+          "src": "[\"#FF6B6B\",\"#4ECDC4\",\"#FFD93D\",\"#6BCB77\",\"#9B59B6\",\"#FF9F43\"]",
+          "type": "png",
+          "alias": "按钮色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": {
+      "bgm": {},
+      "effect": {},
+      "voice": {}
+    },
+    "video": {}
+  }
+}

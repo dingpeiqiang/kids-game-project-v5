@@ -121,35 +121,30 @@ export function initWhackMole(engine: GameEngine, onEnd: () => void) {
     if (index === -1) return false
     
     inventory.splice(index, 1)
-    console.log('[道具] 使用道具:', type)
     
     switch (type) {
       case 'time_plus':
         // 加时 - 增加15秒
         timeLeft += 15
         audioService.win()
-        console.log('[道具] 加时15秒，剩余:', timeLeft)
         break
         
       case 'slow':
         // 减速 - 地鼠出现速度减半，持续10秒
         ;(window as any).moleSlow = Date.now() + 10000
         audioService.collect()
-        console.log('[道具] 减速生效，持续10秒')
         break
         
       case 'score2x':
         // 双倍分数 - 10秒内×2
         ;(window as any).moleScore2x = Date.now() + 10000
         audioService.win()
-        console.log('[道具] 双倍分数生效，持续10秒')
         break
         
       case 'auto_hit':
         // 自动击中 - 5秒内自动打中所有地鼠
         ;(window as any).moleAutoHit = Date.now() + 5000
         audioService.win()
-        console.log('[道具] 自动击生效，持续5秒')
         break
     }
     

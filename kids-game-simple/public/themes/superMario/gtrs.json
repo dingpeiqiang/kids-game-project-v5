@@ -1,0 +1,57 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "superMario_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "蘑菇王国",
+    "isDefault": true,
+    "gameId": "superMario",
+    "description": "kids-game-simple superMario 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#E52521",
+    "secondaryColor": "#FFD700",
+    "bgColor": "#5c94fc",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "sky": { "src": "#5c94fc", "type": "png", "alias": "天空" },
+        "skyUnderground": { "src": "#000000", "type": "png", "alias": "地下天空" },
+        "skyCastle": { "src": "#1a0a1a", "type": "png", "alias": "城堡天空" },
+        "hill": { "src": "#00a800", "type": "png", "alias": "山丘" },
+        "ground": { "src": "#c84c0c", "type": "png", "alias": "地面" },
+        "groundTop": { "src": "#80d010", "type": "png", "alias": "地面顶部" },
+        "brick": { "src": "#b85c38", "type": "png", "alias": "砖块" },
+        "question": { "src": "#f8b800", "type": "png", "alias": "问号块" },
+        "pipe": { "src": "#00a800", "type": "png", "alias": "管道" },
+        "pipeDark": { "src": "#006800", "type": "png", "alias": "管道阴影" },
+        "cloud": { "src": "#ffffff", "type": "png", "alias": "云朵" },
+        "marioRed": { "src": "#e52521", "type": "png", "alias": "马里奥红" },
+        "marioBlue": { "src": "#049cd8", "type": "png", "alias": "马里奥蓝" },
+        "marioSkin": { "src": "#f8b080", "type": "png", "alias": "肤色" },
+        "goomba": { "src": "#9c4a00", "type": "png", "alias": "栗宝宝" },
+        "coin": { "src": "#ffd700", "type": "png", "alias": "金币" },
+        "flag": { "src": "#00e676", "type": "png", "alias": "旗帜" },
+        "game_palette": {
+          "src": "[\"#5c94fc\",\"#00a800\",\"#c84c0c\",\"#b85c38\",\"#f8b800\",\"#00e676\",\"#e52521\",\"#049cd8\"]",
+          "type": "png",
+          "alias": "玩法色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

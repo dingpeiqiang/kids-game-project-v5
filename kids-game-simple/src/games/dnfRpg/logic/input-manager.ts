@@ -325,7 +325,6 @@ export class InputManager {
       hitBtn.pressed = true
       this.touchActions.set(id, hitBtn.id)
       this.setInput(hitBtn.id, true)
-      console.log(`[INPUT] 触摸按钮按下: ${hitBtn.id} (${hitBtn.label})`)
       return
     }
   }

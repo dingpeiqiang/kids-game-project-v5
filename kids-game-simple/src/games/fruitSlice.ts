@@ -1,23 +1,67 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { app } from '../services/appBridge'
+import { gameActions } from '../platform/gameBridge'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../platform/GameLifecycle'
+import { createLifecycleContext } from '../platform/frameworkSession'
+import { hostCanvas2D } from '../platform/hostCanvas2D'
 import { applyCanvasMobileStyles, clientToCanvas } from '../utils/canvasMobileUtils'
+import { getCachedGTRSTheme } from '../services/gtrsThemeLoader'
+import { resolveGtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
+import { readGtrsSceneList } from '../utils/gtrsSceneMeta'
+
+let activeHost: GameLifecycle | null = null
+
+export function destroyFruitSlice(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
 
 export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) {
-    console.error('Canvas not found!')
+  destroyFruitSlice()
+  const lifecycleCtx = createLifecycleContext('fruitSlice', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
     return
   }
+  activeHost = startFruitSliceLifecycle(lifecycleCtx)
+}
+
+function startFruitSliceLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
   applyCanvasMobileStyles(canvas)
-  
-  const W = 400, H = 600
+
+  const W = 400
+  const H = 600
   const ctx = canvas.getContext('2d')!
   if (!ctx) {
-    console.error('Cannot get 2D context!')
-    return
+    throw new Error('fruitSlice: no 2d context')
   }
   ctx.imageSmoothingEnabled = false
+
+  const FRUIT_FALLBACK = {
+    primary: '#FFD700',
+    background: '#1a1a2e',
+    backgroundDark: '#0f3460',
+    bgGradMid: '#16213e',
+    text: '#FFFFFF',
+    accent: '#FFD700',
+    hudBg: 'rgba(0,0,0,0.45)',
+    danger: '#FF4444',
+    muted: '#666666',
+    palette: ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF9F43', '#FF69B4', '#9932CC'],
+  }
+  const gtrs = resolveGtrsCanvasStyle('fruitSlice', FRUIT_FALLBACK)
+  const theme = getCachedGTRSTheme('fruitSlice')
+  const fruitParticleColors = readGtrsSceneList(theme, 'game_palette') ?? [...gtrs.palette]
+  const trapParticleColors = readGtrsSceneList(theme, 'trap_palette') ?? [
+    '#FF0000',
+    '#FF4400',
+    '#FF8800',
+    '#FFFF00',
+  ]
 
   const FRUITS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍑', '🍒', '🥝', '🍉', '🍌', '🥭', '🍍']
   const TRAPS = ['💣', '💥'] // 陷阱：炸弹、爆炸
@@ -110,7 +154,6 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     if (index === -1) return false
     
     inventory.splice(index, 1)
-    console.log('[道具] 使用道具:', type)
     
     switch (type) {
       case 'slow':
@@ -121,7 +164,6 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
           f.gravity *= 0.3
         })
         audioService.win()
-        console.log('[道具] 减速生效，持续8秒')
         
         // 8秒后恢复
         setTimeout(() => {
@@ -137,14 +179,12 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
         // 磁铁 - 水果向中心聚集，持续6秒
         ;(window as any).fruitMagnet = Date.now() + 6000
         audioService.collect()
-        console.log('[道具] 磁铁生效，持续6秒')
         break
         
       case 'double':
         // 双倍分数 - 10秒内分数翻倍
         ;(window as any).fruitDoubleScore = Date.now() + 10000
         audioService.win()
-        console.log('[道具] 双倍分数生效，持续10秒')
         break
         
       case 'bomb':
@@ -163,7 +203,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
               p.vx = (Math.random() - 0.5) * 12
               p.vy = (Math.random() - 0.5) * 12
               p.life = 1
-              p.color = '#FF4444'
+              p.color = gtrs.danger
               p.size = 6
               particles.push(p)
             }
@@ -171,7 +211,6 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
         })
         engine.addScore(bombCount * 10, W / 2, H / 2)
         audioService.win()
-        console.log('[道具] 炸弹消除', bombCount, '个水果')
         break
     }
     
@@ -219,9 +258,9 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       
       // 绘制背景到缓存
       const gradient = backgroundCtx.createLinearGradient(0, 0, 0, H)
-      gradient.addColorStop(0, '#1a1a2e')
-      gradient.addColorStop(0.5, '#16213e')
-      gradient.addColorStop(1, '#0f3460')
+      gradient.addColorStop(0, gtrs.background)
+      gradient.addColorStop(0.5, gtrs.bgGradMid ?? gtrs.backgroundDark)
+      gradient.addColorStop(1, gtrs.backgroundDark)
       backgroundCtx.fillStyle = gradient
       backgroundCtx.fillRect(0, 0, W, H)
       
@@ -287,7 +326,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
       
       // 陷阱水果有特殊的红色警告发光效果
       if (f.isTrap) {
-        ctx.shadowColor = 'rgba(255,50,50,0.95)'
+        ctx.shadowColor = gtrs.danger
         ctx.shadowBlur = 25
         ctx.shadowOffsetY = 3
       } else {
@@ -385,11 +424,11 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     const elapsedHud = Date.now() - gameStartTime
     const remainingHud = Math.max(0, GAME_DURATION - elapsedHud)
     const secondsHud = Math.ceil(remainingHud / 1000)
-    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.fillStyle = gtrs.hudBg
     ctx.beginPath()
     ctx.roundRect(10, 8, W - 20, 40, 10)
     ctx.fill()
-    ctx.fillStyle = secondsHud <= 10 ? '#FF4444' : '#FFD700'
+    ctx.fillStyle = secondsHud <= 10 ? gtrs.danger : gtrs.accent
     ctx.font = 'bold 16px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -500,7 +539,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
             p.vx = Math.cos(angle) * speed
             p.vy = Math.sin(angle) * speed
             p.life = 1
-            p.color = ['#FF0000', '#FF4400', '#FF8800', '#FFFF00'][Math.floor(Math.random() * 4)]
+            p.color = trapParticleColors[Math.floor(Math.random() * trapParticleColors.length)]!
             p.size = 5 + Math.random() * 10
             particles.push(p)
           }
@@ -512,7 +551,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
           popup.x = f.x
           popup.y = f.y
           popup.text = '-50 陷阱!'
-          popup.color = '#FF0000'
+          popup.color = gtrs.danger
           popup.size = 30
           popup.life = 1
           scorePopups.push(popup)
@@ -541,7 +580,7 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
             p.vx = Math.cos(angle) * speed
             p.vy = Math.sin(angle) * speed
             p.life = 1
-            p.color = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF9F43', '#FF69B4', '#9932CC'][Math.floor(Math.random() * 7)]
+            p.color = fruitParticleColors[Math.floor(Math.random() * fruitParticleColors.length)]!
             p.size = 4 + Math.random() * 8
             particles.push(p)
           }
@@ -574,7 +613,8 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
           popup.x = f.x
           popup.y = f.y
           popup.text = `+${earned}`
-          popup.color = streak >= 5 ? '#FFD700' : streak >= 3 ? '#FF6B6B' : '#6BCB77'
+          popup.color =
+            streak >= 5 ? gtrs.accent : streak >= 3 ? (fruitParticleColors[0] ?? gtrs.danger) : gtrs.primary
           popup.size = streak >= 5 ? 32 : streak >= 3 ? 28 : 24
           popup.life = 1
           scorePopups.push(popup)
@@ -609,7 +649,6 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
             const randomPowerup = powerupTypes[Math.floor(Math.random() * powerupTypes.length)]
             inventory.push(randomPowerup)
             updateHTMLPowerupBar()
-            console.log('[道具] 获得道具:', randomPowerup)
           }
         }
         
@@ -745,41 +784,12 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     lastY = pos.y
   }
 
-  document.addEventListener('mousemove', handleGlobalMove)
-  document.addEventListener('mouseup', handleGlobalUp)
-  document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false })
-  document.addEventListener('touchend', handleGlobalUp)
-  document.addEventListener('touchcancel', handleGlobalUp)
-
-  function loop() {
-    if (!document.getElementById('mainGameCanvas') || gameEnded) return
-    if (!engine.canTick()) {
-      draw()
-      requestAnimationFrame(loop)
-      return
-    }
-    
-    // 性能优化 - 帧率监控
-    frameCount++
-    const now = Date.now()
-    if (now - lastFpsUpdate >= 1000) {
-      currentFps = frameCount
-      frameCount = 0
-      lastFpsUpdate = now
-    }
-    
-    if (now - gameStartTime > GAME_DURATION) {
-      cleanup()
-      gameEnded = true
-      engine.setVictory(false)
-      engine.endGame()
-      onEnd()
-      return
-    }
-    
-    update()
-    draw()
-    requestAnimationFrame(loop)
+  function bindGlobalSliceInput() {
+    document.addEventListener('mousemove', handleGlobalMove)
+    document.addEventListener('mouseup', handleGlobalUp)
+    document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false })
+    document.addEventListener('touchend', handleGlobalUp)
+    document.addEventListener('touchcancel', handleGlobalUp)
   }
 
   // 性能优化 - 游戏结束时清理资源
@@ -798,22 +808,40 @@ export function initFruitSlice(engine: GameEngine, onEnd: () => void) {
     // 保留对象池以便复用
   }
 
-  // 初始化游戏
-  engine.start()
-  
-  // 初始化道具库存 - 添加一些初始道具
-  inventory = ['bomb', 'slow', 'double'] // 炸弹、减速、双倍分数各一个
-  updateHTMLPowerupBar()
-  
-  // 生成初始水果
-  spawnFruit()
-  setTimeout(spawnFruit, 400)
-  setTimeout(spawnFruit, 800)
-  
-      
-  // 首次绘制（避免黑屏）
-  draw()
-  
-  // 启动游戏循环
-  loop()
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      gameStartTime = Date.now()
+      inventory = ['bomb', 'slow', 'double']
+      updateHTMLPowerupBar()
+      bindGlobalSliceInput()
+      spawnFruit()
+      setTimeout(spawnFruit, 400)
+      setTimeout(spawnFruit, 800)
+      draw()
+    },
+    onUpdate(_dt) {
+      if (gameEnded) return
+      frameCount++
+      const now = Date.now()
+      if (now - lastFpsUpdate >= 1000) {
+        currentFps = frameCount
+        frameCount = 0
+        lastFpsUpdate = now
+      }
+      if (now - gameStartTime > GAME_DURATION) {
+        cleanup()
+        gameEnded = true
+        gameActions.gameOver({ victory: missedCount < 5, score: engine.getScore() })
+        return
+      }
+      update()
+    },
+    onRender() {
+      draw()
+    },
+    onDestroy() {
+      cleanup()
+      app.removePowerupBar?.()
+    },
+  })
 }

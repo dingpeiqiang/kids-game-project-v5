@@ -36,7 +36,6 @@ export class PowerupSystem {
   addPowerup(type: string) {
     if (!this.inventory.includes(type)) {
       this.inventory.push(type)
-      console.log('[道具] 获得道具:', type)
     }
   }
 
@@ -46,7 +45,6 @@ export class PowerupSystem {
     if (index === -1) return false
     
     this.inventory.splice(index, 1)
-    console.log('[道具] 使用道具:', type)
     onUse(type)
     
     return true

@@ -1,0 +1,46 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "slimeJump_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "史莱姆跳跃",
+    "isDefault": true,
+    "gameId": "slimeJump",
+    "description": "kids-game-simple slimeJump 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#6BCB77",
+    "secondaryColor": "#FF9F43",
+    "bgColor": "#1a1a2e",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "background_dark": { "src": "#0a0a1a", "type": "png", "alias": "背景底" },
+        "bg_grad_mid": { "src": "#151536", "type": "png", "alias": "背景中层" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "danger": { "src": "#FF4757", "type": "png", "alias": "危险" },
+        "accent": { "src": "#FF9F43", "type": "png", "alias": "强调" },
+        "muted": { "src": "#9B59B6", "type": "png", "alias": "辅助色" },
+        "game_palette": {
+          "src": "[\"#6BCB77\",\"#FF9F43\",\"#9B59B6\",\"#FF4757\"]",
+          "type": "png",
+          "alias": "玩法色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

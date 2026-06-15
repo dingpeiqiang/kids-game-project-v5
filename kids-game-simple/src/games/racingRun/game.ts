@@ -1,4 +1,9 @@
 import type { GameEngine } from '../../services/gameEngine';
+import { gameActions } from '../../platform/gameBridge';
+import type { GameLifecycle } from '../../platform/GameLifecycle';
+import type { GameLifecycleContext } from '../../platform/GameLifecycle';
+import { createLifecycleContext } from '../../platform/frameworkSession';
+import { hostCanvas2D } from '../../platform/hostCanvas2D';
 import { audioService } from '../../services/audio';
 import type { GameState } from './state';
 import { createInitialState } from './state';
@@ -8,18 +13,71 @@ import { drawRoad, drawPlayer, drawObstacles, drawCoins, drawPowerups, drawParti
 import { H, W, LEVELS, SPEED_RECOVERY_RATE, OBSTACLE_CONFIG, SCENES, SCENE_SWITCH_DISTANCE, COLLISION_SLOW_DURATION } from './config';
 import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils';
 
-export function initRacingRun(engine: GameEngine, onEnd: () => void, carColor: 'red' | 'blue' | 'yellow' = 'blue'): void {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement;
+let activeHost: GameLifecycle | null = null;
+
+export function destroyRacingRun(): void {
+  activeHost?.destroy();
+  activeHost = null;
+}
+
+export function initRacingRun(
+  engine: GameEngine,
+  onEnd: () => void,
+  carColor: 'red' | 'blue' | 'yellow' = 'blue',
+): void {
+  destroyRacingRun();
+  const lifecycleCtx = createLifecycleContext('racingRun', engine, onEnd);
+  if (!lifecycleCtx?.canvas) {
+    onEnd();
+    return;
+  }
+  activeHost = startRacingRunLifecycle(lifecycleCtx, carColor);
+}
+
+function startRacingRunLifecycle(
+  lifecycleCtx: GameLifecycleContext,
+  carColor: 'red' | 'blue' | 'yellow',
+): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!;
+  const engine = lifecycleCtx.engine;
   const ctx = canvas.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
 
   const state = createInitialState(carColor);
+  let cleanupInput: (() => void) | null = null;
 
-  // 设置输入并获取清理函数
-  const cleanup = setupInput(canvas, state);
+  const finishRace = (victory: boolean) => {
+    if (state.gameEnded) return;
+    state.gameEnded = true;
+    cleanupInput?.();
+    cleanupInput = null;
+    gameActions.gameOver({
+      victory,
+      score: engine.getScore(),
+      stats: {
+        distance: Math.floor(state.distance),
+        level: state.currentLevel,
+        coins: state.coinsCollected,
+      },
+    });
+  };
 
-  engine.start();
-  loop(canvas, ctx, state, engine, onEnd, cleanup);
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      cleanupInput = setupInput(canvas, state);
+    },
+    onUpdate(_dt) {
+      if (state.gameEnded) return;
+      update(state, engine, finishRace);
+    },
+    onRender() {
+      draw(ctx, state);
+    },
+    onDestroy() {
+      cleanupInput?.();
+      cleanupInput = null;
+    },
+  });
 }
 
 function setupInput(canvas: HTMLCanvasElement, state: GameState): () => void {
@@ -205,33 +263,11 @@ function setupInput(canvas: HTMLCanvasElement, state: GameState): () => void {
   };
 }
 
-function loop(
-  canvas: HTMLCanvasElement,
-  ctx: CanvasRenderingContext2D,
+function update(
   state: GameState,
   engine: GameEngine,
-  onEnd: () => void,
-  cleanup?: () => void
+  finishRace: (victory: boolean) => void,
 ): void {
-  if (!document.getElementById('mainGameCanvas') || state.gameEnded) {
-    // 游戏结束时执行清理
-    if (cleanup) cleanup();
-    return;
-  }
-
-  if (!engine.canTick()) {
-    draw(ctx, state);
-    requestAnimationFrame(() => loop(canvas, ctx, state, engine, onEnd, cleanup));
-    return;
-  }
-
-  update(state, engine, onEnd);
-  draw(ctx, state);
-
-  requestAnimationFrame(() => loop(canvas, ctx, state, engine, onEnd, cleanup));
-}
-
-function update(state: GameState, engine: GameEngine, onEnd: () => void): void {
   const py = H - 240;
 
   state.frameCount++;
@@ -288,8 +324,7 @@ function update(state: GameState, engine: GameEngine, onEnd: () => void): void {
   if (state.frameCount % 60 === 0 && !state.levelComplete) {
     state.timeRemaining -= 1;
     if (state.timeRemaining <= 0) {
-      state.gameEnded = true;
-      onEnd();
+      finishRace(false);
       return;
     }
   }
@@ -299,8 +334,7 @@ function update(state: GameState, engine: GameEngine, onEnd: () => void): void {
     spawnFloatText(state, W / 2, H / 2, `🎉 第${state.currentLevel}关完成!`, '#00FF00');
     if (state.currentLevel >= LEVELS.length) {
       state.gameWon = true;
-      state.gameEnded = true;
-      onEnd();
+      finishRace(true);
       return;
     } else {
       // 暂停游戏元素的生成

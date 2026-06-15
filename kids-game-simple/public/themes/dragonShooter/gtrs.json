@@ -1,0 +1,46 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "dragonShooter_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "龙之射手",
+    "isDefault": true,
+    "gameId": "dragonShooter",
+    "description": "kids-game-simple dragonShooter 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#FF6B6B",
+    "secondaryColor": "#FFD93D",
+    "bgColor": "#1a1a2e",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "background": { "src": "#1a1a2e", "type": "png", "alias": "背景" },
+        "background_dark": { "src": "#0f0f1a", "type": "png", "alias": "深背景" },
+        "bg_grad_mid": { "src": "#2d2d5e", "type": "png", "alias": "中背景" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "高亮" },
+        "danger": { "src": "#FF4757", "type": "png", "alias": "危险" },
+        "game_palette": {
+          "src": "[\"#FF6B6B\",\"#FFD93D\",\"#4ECDC4\",\"#9B59B6\",\"#FF8E53\"]",
+          "type": "png",
+          "alias": "龙色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

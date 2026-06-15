@@ -1,0 +1,46 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "racingRun_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "霓虹竞速",
+    "isDefault": true,
+    "gameId": "racingRun",
+    "description": "kids-game-simple racingRun 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#FFD700",
+    "secondaryColor": "#FF6B6B",
+    "bgColor": "#1a1a2e",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "background": { "src": "#1a1a2e", "type": "png", "alias": "背景" },
+        "background_dark": { "src": "#0f0c29", "type": "png", "alias": "深背景" },
+        "bg_grad_mid": { "src": "#302b63", "type": "png", "alias": "中背景" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "accent": { "src": "#FFD700", "type": "png", "alias": "高亮" },
+        "danger": { "src": "#FF4757", "type": "png", "alias": "危险" },
+        "game_palette": {
+          "src": "[\"#FF4757\",\"#FF6B6B\",\"#FFD700\",\"#4ECDC4\",\"#9B59B6\"]",
+          "type": "png",
+          "alias": "竞速色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

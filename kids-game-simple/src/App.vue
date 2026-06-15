@@ -339,15 +339,15 @@ function onUserChange() {
             <div class="rank-title">🏆 排行榜</div>
           </div>
           <div class="rank-game-selector">
-            <select id="rankGameSelect" class="rank-game-select">
-              <option value="">-- 选择游戏 --</option>
-            </select>
+            <span class="selector-icon">🎮</span>
+            <select id="rankGameSelect" class="rank-game-select"></select>
           </div>
           <div class="rank-tabs">
-            <div class="rank-tab active" data-tab="global">全局</div>
-            <div class="rank-tab" data-tab="daily">今日</div>
-            <div class="rank-tab" data-tab="friend">好友</div>
+            <div class="rank-tab active" data-tab="global">🌐 全局</div>
+            <div class="rank-tab" data-tab="daily">📅 今日</div>
+            <div class="rank-tab" data-tab="friend">👥 好友</div>
           </div>
+          <div class="rank-podium" id="rankPodium"></div>
           <div class="my-rank-card" id="myRankCard" style="display:none;">
             <div class="my-rank-info">
               <div class="my-rank-label">我的排名</div>

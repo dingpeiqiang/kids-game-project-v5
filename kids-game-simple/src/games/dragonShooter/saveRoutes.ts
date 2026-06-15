@@ -37,11 +37,9 @@ function processInbox(): void {
   const files = fs.readdirSync(INBOX_DIR).filter(f => f.endsWith('.json'))
   
   if (files.length === 0) {
-    console.log('📭 Inbox 为空，没有待处理的路线文件')
     return
   }
   
-  console.log(`📥 发现 ${files.length} 个待处理的路线文件`)
   
   files.forEach(file => {
     const filepath = path.join(INBOX_DIR, file)
@@ -56,13 +54,11 @@ function processInbox(): void {
         const existingRoutes = loadLevelRoutes()
         const mergedRoutes = { ...existingRoutes, ...data.levelSpecificRoutes }
         saveLevelRoutes(mergedRoutes)
-        console.log(`✅ 已处理关卡路线: ${file}`)
       } else if (data.customRoutes) {
         // 自定义路线
         const existingRoutes = loadCustomRoutes()
         const mergedRoutes = [...existingRoutes, ...data.customRoutes]
         saveCustomRoutes(mergedRoutes)
-        console.log(`✅ 已处理自定义路线: ${file}`)
       } else {
         console.warn(`⚠️  未知格式的文件: ${file}`)
       }
@@ -76,7 +72,6 @@ function processInbox(): void {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const processedFile = path.join(processedDir, file.replace('.json', `_${timestamp}.json`))
       fs.renameSync(filepath, processedFile)
-      console.log(`📦 已归档: ${file}`)
       
     } catch (error) {
       console.error(`❌ 处理文件失败 ${file}:`, error)
@@ -123,8 +118,6 @@ function generateTypeScriptCode(): void {
   // 写入文件
   const outputFile = path.join(__dirname, 'generated_routes.ts')
   fs.writeFileSync(outputFile, code, 'utf8')
-  console.log(`✅ 已生成 TypeScript 代码: ${outputFile}`)
-  console.log(`   包含 ${levels.length} 个关卡路线`)
 }
 
 // 主函数
@@ -133,12 +126,9 @@ function main() {
   
   if (args.length === 0) {
     // 默认行为：处理 inbox 并生成代码
-    console.log('🐉 Dragon Shooter 路线保存工具\n')
     processInbox()
-    console.log()
     generateTypeScriptCode()
   } else if (args[0] === '--help' || args[0] === '-h') {
-    console.log(`
 Dragon Shooter 路线保存工具
 
 用法:
@@ -169,18 +159,15 @@ Dragon Shooter 路线保存工具
     ensureDirs()
     const { listRouteFiles } = require('./routeManager')
     const files = listRouteFiles()
-    console.log('📁 可用的路线文件:')
     files.forEach((file: string) => {
       const stats = fs.statSync(path.join(ROUTES_DIR, file))
       const size = (stats.size / 1024).toFixed(2)
-      console.log(`   - ${file} (${size} KB)`)
     })
   } else if (args[0] === '--backup') {
     const { backupRoutes } = require('./routeManager')
     backupRoutes()
   } else {
     console.error('❌ 未知参数:', args[0])
-    console.log('使用 --help 查看帮助')
   }
 }
 

@@ -6,27 +6,32 @@ import { runCanvasLifecycle, type GameLifecycle } from '../platform/GameLifecycl
 import { requireMainGameCanvas } from '../platform/canvasHost'
 import { resizeCanvasForMobile } from '../utils/mobileHelper'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../utils/canvasMobileUtils'
+import { resolveGtrsCanvasStyle, type GtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
 
 const W = 400
 const H = 600
 const TOTAL_TIME = 90_000
 
-const COLORS = [
-  { name: '红', hex: '#FF6B6B', emoji: '🔴' },
-  { name: '蓝', hex: '#4ECDC4', emoji: '🔵' },
-  { name: '黄', hex: '#FFD93D', emoji: '🟡' },
-  { name: '绿', hex: '#6BCB77', emoji: '🟢' },
-  { name: '紫', hex: '#9B59B6', emoji: '🟣' },
-  { name: '橙', hex: '#FF9F43', emoji: '��' },
-]
+const COLOR_NAMES = ['红', '蓝', '黄', '绿', '紫', '橙'] as const
+const COLOR_EMOJI = ['��', '��', '��', '🟢', '🟣', '🟠'] as const
 
 const SHAPES = ['circle', 'square', 'triangle', 'star'] as const
+
+function buildColorTapColors(gtrs: GtrsCanvasStyle) {
+  return COLOR_NAMES.map((name, i) => ({
+    name,
+    hex: gtrs.palette[i % gtrs.palette.length],
+    emoji: COLOR_EMOJI[i],
+  }))
+}
 
 export function startColorTapLifecycle(ctx: GameLifecycleContext): GameLifecycle {
   const canvas = ctx.canvas ?? requireMainGameCanvas()
   const g = canvas.getContext('2d')!
   g.imageSmoothingEnabled = false
   const engine = ctx.engine
+  const gtrsStyle = resolveGtrsCanvasStyle('colorTap')
+  const COLORS = buildColorTapColors(gtrsStyle)
 
   let currentColor = 0
   let currentShape = 0
@@ -141,7 +146,7 @@ export function startColorTapLifecycle(ctx: GameLifecycleContext): GameLifecycle
   }
 
   function draw() {
-    g.fillStyle = '#1a1a2e'
+    g.fillStyle = gtrsStyle.background
     g.fillRect(0, 0, W, H)
 
     const win = window as unknown as Record<string, number>
@@ -149,11 +154,11 @@ export function startColorTapLifecycle(ctx: GameLifecycleContext): GameLifecycle
     const bonus = win.colorTimeBonus ?? 0
     const remainingHud = Math.max(0, TOTAL_TIME + bonus - elapsedHud)
     const secondsHud = Math.ceil(remainingHud / 1000)
-    g.fillStyle = 'rgba(0,0,0,0.45)'
+    g.fillStyle = gtrsStyle.hudBg
     g.beginPath()
     g.roundRect(10, 8, W - 20, 40, 10)
     g.fill()
-    g.fillStyle = secondsHud <= 10 ? '#FF4444' : '#FFD700'
+    g.fillStyle = secondsHud <= 10 ? gtrsStyle.danger : gtrsStyle.accent
     g.font = 'bold 20px sans-serif'
     g.textAlign = 'center'
     g.textBaseline = 'middle'
@@ -285,7 +290,7 @@ export function startColorTapLifecycle(ctx: GameLifecycleContext): GameLifecycle
             vx: (Math.random() - 0.5) * 8,
             vy: (Math.random() - 0.5) * 8,
             life: 1,
-            color: '#666',
+            color: gtrsStyle.muted,
             size: 4 + Math.random() * 4,
           })
         }

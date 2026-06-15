@@ -103,16 +103,12 @@ function generateLevelRoutes() {
   const outputPath = path.join(__dirname, 'routes', 'level_routes.json')
   fs.writeFileSync(outputPath, JSON.stringify(routes, null, 2), 'utf8')
   
-  console.log(`✅ 已生成关卡路线文件: ${outputPath}`)
-  console.log(`   包含 ${Object.keys(routes.routes).length} 个关卡`)
-  console.log(`   每个关卡 ${TOTAL_POINTS + 1} 个点`)
   
   // 统计总点数
   let totalPoints = 0
   Object.values(routes.routes).forEach((route: any) => {
     totalPoints += route.points.length
   })
-  console.log(`   总计 ${totalPoints} 个点`)
 }
 
 // 生成空的自定义路线文件
@@ -128,25 +124,16 @@ function generateCustomRoutes() {
   // 如果文件不存在才创建
   if (!fs.existsSync(outputPath)) {
     fs.writeFileSync(outputPath, JSON.stringify(customRoutes, null, 2), 'utf8')
-    console.log(`✅ 已创建空的自定义路线文件: ${outputPath}`)
   } else {
-    console.log(`⚠️  自定义路线文件已存在，跳过: ${outputPath}`)
   }
 }
 
 // 主函数
 function main() {
-  console.log('🐉 生成 Dragon Shooter 路线文件\n')
   
   generateLevelRoutes()
-  console.log()
   generateCustomRoutes()
   
-  console.log('\n✅ 所有文件生成完成！')
-  console.log('\n下一步：')
-  console.log('1. 启动游戏: npm run dev')
-  console.log('2. 游戏会自动加载 routes/ 目录中的 JSON 文件')
-  console.log('3. 修改 JSON 文件后刷新浏览器即可看到效果')
 }
 
 main()

@@ -1,4 +1,4 @@
-import type { PlayerData, GameComment, GameComments } from '../types'
+import type { PlayerData, GameComment, GameComments, PlayRecord } from '../types'
 
 const KEYS = {
   coins: 'platform_coins',
@@ -191,6 +191,17 @@ export class StorageService {
     if (comments.length === 0) return 0
     const total = comments.reduce((sum, c) => sum + c.score, 0)
     return Math.round(total / comments.length * 10) / 10
+  }
+
+  // ── 游玩历史 ────────────────────────────────────────────────
+  recordPlay(gameId: string) {
+    this.data.playHistory.unshift({ gameId, playedAt: new Date().toISOString() })
+    if (this.data.playHistory.length > 50) this.data.playHistory.length = 50
+    localStorage.setItem(KEYS.history, JSON.stringify(this.data.playHistory))
+  }
+
+  getPlayHistory(): PlayRecord[] {
+    return this.data.playHistory || []
   }
 }
 

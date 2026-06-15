@@ -335,7 +335,6 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
   // 3. 🎯 保底机制：至少2个道具（确保每条龙都有足够的道具掉落）
   fixedAttachCount = Math.max(2, fixedAttachCount)
   
-  console.log(`🎁 关卡 ${level}, 龙类型: ${type}, 固定道具数: ${fixedAttachCount} (基础 + 关卡加成${levelBonus})`)
 
   const attachedIndices = new Set<number>()
   
@@ -345,7 +344,6 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
     // 在龙头附近（第3-8个节段）放置第一个道具
     const nearHeadIndex = Math.floor(Math.random() * 6) + 3  // 3-8之间
     attachedIndices.add(nearHeadIndex)
-    console.log(`🎁 龙头附近道具: 节段 #${nearHeadIndex}`)
   }
   
   // 🎯 剩余道具均匀分布：将龙身分成若干区间，每个区间最多放一个道具
@@ -371,7 +369,6 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
             idx = Math.floor(Math.random() * (intervalEnd - intervalStart)) + intervalStart
           } while (attachedIndices.has(idx))  // 避免重复
           attachedIndices.add(idx)
-          console.log(`🎁 均匀分布道具: 节段 #${idx} (区间 ${intervalStart}-${intervalEnd})`)
         }
       }
     }
@@ -385,7 +382,6 @@ export function createDragon(x: number, type: keyof typeof DRAGON_CONFIGS, route
   const availableForRandom = segmentCount - 3 - attachedIndices.size  // 排除龙头附近和已占用的
   const expectedRandomCount = Math.floor(availableForRandom * levelProbabilityBonus)
   
-  console.log(`🎲 随机道具概率: ${(levelProbabilityBonus * 100).toFixed(1)}% (基础${POWERUP_SEGMENT_CHANCE * 100}% + 关卡加成), 期望数量: ${expectedRandomCount}`)
   
   if (expectedRandomCount > 0) {
     // 将可用区域分成 expectedRandomCount 个区间
@@ -555,12 +551,10 @@ export function killDragonSegment(dragon: Dragon, segIdx: number): void {
     rf.setProgress(ss.target / pixelLen)
   }
 
-  console.log(`💀 节段 #${segIdx} 死亡, 回退 ${retractPixels.toFixed(0)}px, 平滑过渡中...`)
 
   // 5. 检查是否整条龙死亡
   if (dragon.segments.length <= 1) {
     dragon.alive = false
-    console.log(`🎉 龙 #${dragon.id} 完全消灭!`)
   }
 }
 

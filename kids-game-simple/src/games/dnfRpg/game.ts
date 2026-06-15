@@ -1,4 +1,8 @@
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import * as C from './config'
 import type { Player, Enemy, Bullet, DropItem, Equipment, ScreenShake } from './types'
 import { DungeonManager } from './logic/dungeon'
@@ -14,12 +18,22 @@ import { level2Config } from './levels/level2'
 import { level3Config } from './levels/level3'
 import { level4Config } from './levels/level4'
 
+let activeHost: GameLifecycle | null = null
+let activeGame: DnfRpgGame | null = null
+
+export function destroyDnfRpg(): void {
+  activeGame?.destroy()
+  activeGame = null
+  activeHost?.destroy()
+  activeHost = null
+}
+
 export class DnfRpgGame {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private engine: GameEngine
-  private onEnd: () => void
   private destroyed = false
+  private platformEnded = false
 
   private dungeon: DungeonManager
   private player!: Player
@@ -60,10 +74,9 @@ export class DnfRpgGame {
   private cameraX = 0
   private targetCameraX = 0
 
-  constructor(engine: GameEngine, onEnd: () => void) {
+  constructor(engine: GameEngine, canvas: HTMLCanvasElement) {
     this.engine = engine
-    this.onEnd = () => { this.cleanup(); onEnd() }
-    this.canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
+    this.canvas = canvas
     this.ctx = this.canvas.getContext('2d')!
     this.ctx.imageSmoothingEnabled = false
 
@@ -73,7 +86,7 @@ export class DnfRpgGame {
     const callbacks: InputManagerCallbacks = {
       onSelectClass: (classType) => this.selectClass(classType),
       onSelectClassByIndex: (index) => this.selectClassByIndex(index),
-      onEnd: () => this.onEnd(),
+      onEnd: () => this.finishFromOverlay(),
       getInCharSelect: () => this.inCharSelect,
       getGameOver: () => this.gameOver,
       getVictory: () => this.victory,
@@ -82,8 +95,50 @@ export class DnfRpgGame {
     this.inputManager = new InputManager(this.canvas, callbacks)
     this.inputManager.setup()
     this.input = this.inputManager.input
+  }
 
-    this.gameLoop()
+  beginPlay(): void {
+    this.lastFrameTime = 0
+  }
+
+  destroy(): void {
+    this.cleanup()
+  }
+
+  runHostUpdate(): void {
+    if (this.destroyed || this.platformEnded) return
+    if (this.inCharSelect) return
+    this.update()
+  }
+
+  runHostRender(): void {
+    if (this.destroyed) return
+    this.render()
+  }
+
+  private finishFromOverlay(): void {
+    if (this.platformEnded) return
+    this.finishPlatform(this.victory, 0)
+  }
+
+  private finishPlatform(victory: boolean, delayMs: number): void {
+    const run = () => {
+      if (this.platformEnded) return
+      this.platformEnded = true
+      this.victory = victory
+      this.gameOver = !victory
+      gameActions.gameOver({
+        victory,
+        score: this.score,
+        stats: { gold: this.gold, maxCombo: this.maxCombo, combo: this.combo },
+      })
+    }
+    if (delayMs > 0) setTimeout(run, delayMs)
+    else run()
+  }
+
+  private getPlatformFinishCallback(): (victory: boolean, delayMs: number) => void {
+    return (victory, delayMs) => this.finishPlatform(victory, delayMs)
   }
 
   private selectClassByIndex(idx: number): void {
@@ -166,18 +221,6 @@ export class DnfRpgGame {
     this.inputManager.cleanup()
   }
 
-  private gameLoop(): void {
-    if (this.destroyed) return
-    if (!this.engine.canTick()) {
-      this.render()
-      requestAnimationFrame(() => this.gameLoop())
-      return
-    }
-    this.update()
-    this.render()
-    requestAnimationFrame(() => this.gameLoop())
-  }
-
   private lastFrameTime = 0
   private lastFrameTimeRef = { value: 0 }
 
@@ -217,7 +260,15 @@ export class DnfRpgGame {
       screenShake: this.screenShake,
     }
 
-    updateGameLogic(state, this.input, dt, this.engine, this.dungeon, this.onEnd, this.lastFrameTimeRef)
+    updateGameLogic(
+      state,
+      this.input,
+      dt,
+      this.engine,
+      this.dungeon,
+      this.getPlatformFinishCallback(),
+      this.lastFrameTimeRef,
+    )
 
     this.player = state.player
     this.enemies = state.enemies
@@ -280,8 +331,31 @@ export class DnfRpgGame {
 }
 
 export function initDnfRpg(engine: GameEngine, onEnd: () => void): void {
+  destroyDnfRpg()
+  const lifecycleCtx = createLifecycleContext('dnfRpg', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
+    return
+  }
   try {
-    new DnfRpgGame(engine, onEnd)
+    const game = new DnfRpgGame(engine, lifecycleCtx.canvas)
+    activeGame = game
+    activeHost = hostCanvas2D(lifecycleCtx, {
+      onInit() {
+        game.beginPlay()
+      },
+      onUpdate(_dt) {
+        if (!engine.canTick()) return
+        game.runHostUpdate()
+      },
+      onRender() {
+        game.runHostRender()
+      },
+      onDestroy() {
+        game.destroy()
+        activeGame = null
+      },
+    })
   } catch (error) {
     console.error('Failed to initialize DnfRpgGame:', error)
     onEnd()

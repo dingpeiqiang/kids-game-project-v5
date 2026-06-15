@@ -34,6 +34,7 @@ export function removePowerupBar() {
   if (container) {
     container.remove()
   }
+  document.getElementById('game-shell')?.classList.remove('game-shell--powerup-active')
 }
 
 function createPowerupContainer(): HTMLElement {

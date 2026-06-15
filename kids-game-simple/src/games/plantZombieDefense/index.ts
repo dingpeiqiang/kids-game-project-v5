@@ -1,1 +1,2 @@
-export { initPlantZombieDefense, destroyPlantZombieDefense } from './game'
+export { initPlantZombieDefense, destroyPlantZombieDefense } from '../plantZombieDefense.lifecycle'
+export { startPlantZombieDefenseLifecycle } from './game'

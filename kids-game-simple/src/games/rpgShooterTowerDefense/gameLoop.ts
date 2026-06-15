@@ -95,7 +95,6 @@ export function updateGame(
   // 游戏结束检查
   if (state.gameEnded && !state.gameEndProcessed) {
     state.gameEndProcessed = true
-    if (cleanup) cleanup()
     if (onEnd) setTimeout(onEnd, 2000)
   }
 }

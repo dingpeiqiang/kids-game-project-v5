@@ -1,44 +1,58 @@
-// eliminate 游戏主入口文件
 import type { GameEngine } from '../../services/gameEngine'
-import { audioService } from '../../services/audio'
-import { storageService } from '../../services/storage'
-import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../../data/items'
-import { app } from '../../services/appBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { EliminateGame } from './EliminateGame'
 
+let activeHost: GameLifecycle | null = null
+let activeGame: EliminateGame | null = null
+
+export function destroyEliminate(): void {
+  activeGame?.destroy()
+  activeGame = null
+  activeHost?.destroy()
+  activeHost = null
+}
+
 export function initEliminate(engine: GameEngine, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) return
-  
-  const ctx = canvas.getContext('2d')!
-  ctx.imageSmoothingEnabled = false
-  
-  // 创建游戏实例
-  const game = new EliminateGame(canvas, ctx, engine, onEnd)
-  
-  // 初始化游戏
-  game.init()
-  
-  // 启动游戏循环
-  let lastTime = 0
-  function gameLoop(timestamp: number) {
-    if (!document.getElementById('mainGameCanvas')) return
-
-    if (!engine.canTick()) {
-      game.render()
-      requestAnimationFrame(gameLoop)
-      return
-    }
-
-    const deltaTime = timestamp - lastTime
-    if (deltaTime >= 16) { // 约60fps
-      game.update(deltaTime)
-      game.render()
-      lastTime = timestamp
-    }
-
-    requestAnimationFrame(gameLoop)
+  destroyEliminate()
+  const lifecycleCtx = createLifecycleContext('eliminate', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
+    return
   }
-  
-  requestAnimationFrame(gameLoop)
+
+  const canvas = lifecycleCtx.canvas
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    onEnd()
+    return
+  }
+  ctx.imageSmoothingEnabled = false
+
+  const game = new EliminateGame(canvas, ctx, engine, onEnd)
+  activeGame = game
+
+  let lastMs = 0
+  activeHost = hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      game.init()
+      lastMs = performance.now()
+    },
+    onUpdate(_dtSec) {
+      const now = performance.now()
+      const deltaMs = lastMs > 0 ? now - lastMs : 16
+      lastMs = now
+      if (deltaMs >= 16) {
+        game.update(deltaMs)
+      }
+    },
+    onRender() {
+      game.render()
+    },
+    onDestroy() {
+      game.destroy()
+      activeGame = null
+    },
+  })
 }

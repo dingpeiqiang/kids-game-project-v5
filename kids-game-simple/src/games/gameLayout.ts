@@ -17,8 +17,13 @@ export interface GameLayoutConfig {
   hidePlatformScore?: boolean
   /** 游戏内已有暂停菜单时隐藏壳层暂停按钮（返回仍保留） */
   hidePlatformPause?: boolean
-  /** 横屏/3D 时收起底栏道具槽占位（道具仍可通过 setupCustomPowerupBar 挂 slot） */
+  /** 横屏/3D 时底栏更矮（仅当游戏已启用道具挂载时有效） */
   compactFooter?: boolean
+  /**
+   * 是否在壳层预留底栏挂载点（默认 false）。
+   * 道具属于游戏玩法，推荐在 canvas 内自绘；仅遗留 HTML 道具栏游戏可设为 true。
+   */
+  showPowerupSlot?: boolean
 }
 
 const DEFAULT_LAYOUT: GameLayoutConfig = {

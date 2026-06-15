@@ -43,7 +43,8 @@ export const GAME_DISPLAY_CONFIG: GameDisplayConfig[] = [
   { id: 'eliminate',     visible: true,  order: 1,  badge: '热门' },
   { id: 'tetris',        visible: true,  order: 2,  badge: '' },
   { id: 'jewelMatch',    visible: true,  order: 3,  badge: '' },
-  { id: 'bubbleShooter', visible: true,  order: 4,  badge: '' },
+  { id: 'match3',        visible: true,  order: 4,  badge: '' },
+  { id: 'bubbleShooter', visible: true,  order: 5,  badge: '' },
   { id: 'pop',           visible: true,  order: 1,  badge: '' },
   { id: 'whackMole',     visible: true,  order: 2,  badge: '推荐' },
   { id: 'colorTap',      visible: true,  order: 3,  badge: '' },
@@ -93,12 +94,81 @@ export function isGameVisible(gameId: string): boolean {
   return getGameDisplayConfig(gameId).visible
 }
 
+/** 已接入 GameLifecycle + runCanvasLifecycle 的游戏 id */
+export const FRAMEWORK_LIFECYCLE_GAME_IDS = [
+  'bouncePath',
+  'starCatcher',
+  'colorTap',
+  'cookieCut',
+  'neonRun',
+  'dodge',
+  'eliminate',
+  'pop',
+  'whackMole',
+  'fruitSlice',
+  'snake',
+  'tetris',
+  'memoryMatch',
+  'jewelMatch',
+  'bubbleShooter',
+  'sort',
+  'slimeJump',
+  'stack',
+  'match3',
+  'racingRun',
+  'superMario',
+  'spaceShooter',
+  'dragonShooter',
+  'towerDefense',
+  'beatDragon',
+  'kingBaby',
+  'rpgShooter',
+  'rpgShooterTD',
+  'contraRpg',
+  'wangzheRpg',
+  'dnfRpg',
+  'happyDefense',
+  'plantsVsZombies',
+  'plantZombieDefense2d',
+  'plantZombieDefense',
+  'cuteTankBattle',
+  'skyFrenzy',
+  'cloudBallRush3d',
+  'voxelRealm',
+] as const
+
+export type FrameworkLifecycleGameId = (typeof FRAMEWORK_LIFECYCLE_GAME_IDS)[number]
+
+export function isFrameworkLifecycleGame(gameId: string): gameId is FrameworkLifecycleGameId {
+  return (FRAMEWORK_LIFECYCLE_GAME_IDS as readonly string[]).includes(gameId)
+}
+
+/** 开发环境：FRAMEWORK_LIFECYCLE_GAME_IDS 须与 GAME_REGISTRY 中 frameworkLifecycle 条目一致 */
+export function assertFrameworkRegistryConsistency(): void {
+  if (import.meta.env?.PROD) return
+  const registryIds = Object.entries(GAME_REGISTRY)
+    .filter(([, reg]) => reg.frameworkLifecycle)
+    .map(([id]) => id)
+    .sort()
+  const listIds = [...FRAMEWORK_LIFECYCLE_GAME_IDS].sort()
+  const missingInList = registryIds.filter(id => !listIds.includes(id))
+  const missingInRegistry = listIds.filter(id => !registryIds.includes(id))
+  if (missingInList.length || missingInRegistry.length) {
+    console.error('[GameRegistry] frameworkLifecycle mismatch', {
+      missingInList,
+      missingInRegistry,
+    })
+  }
+}
+
 export interface GameRegistration {
   game: Game
   guide?: GameGuide
   init: (engine: GameEngine, onEnd: () => void) => Promise<void>
   /** 退出/重开前释放 WebGL 等资源 */
   destroy?: () => void
+  /** 使用 platform/GameLifecycle 托管循环（见 FRAMEWORK_LIFECYCLE_GAME_IDS） */
+  frameworkLifecycle?: boolean
   isSpecial?: boolean
   /** 壳层画布与横竖屏策略（可与 gameLayout 默认合并，见 gameLayout.ts） */
   layout?: Partial<GameLayoutConfig>
@@ -107,6 +177,10 @@ export interface GameRegistration {
 
 export const GAME_REGISTRY: Record<string, GameRegistration> = {
   eliminate: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./eliminate').then(m => m.destroyEliminate())
+    },
     game: { id: 'eliminate', name: '极速消除', desc: '点击同色方块，触发连锁爆炸！', type: '2d', category: 'logic', tag: '消除', color: '#FF6B6B,#FF8E53', players: 2847, best: 0, preview: 'eliminate' },
     guide: {
       icon: '💥', name: '极速消除', desc: '找出相同的彩色方块，点击3个及以上连成一线即可消除！',
@@ -125,6 +199,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   tetris: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./tetris').then(m => m.destroyTetris())
+    },
     game: { id: 'tetris', name: '方块消除', desc: '经典俄罗斯方块，益智又上瘾！', type: '2d', category: 'logic', tag: '消除', color: '#4D96FF,#FF8E53', players: 2341, best: 0, preview: 'tetris' },
     guide: {
       icon: '🧱', name: '方块消除', desc: '经典俄罗斯方块，消除满行得分，消灭50行获胜！',
@@ -144,6 +222,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   jewelMatch: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./jewelMatch').then(m => m.destroyJewelMatch())
+    },
     game: { id: 'jewelMatch', name: '宠物消消乐', desc: '交换宠物消除，3个以上连成一线！', type: '2d', category: 'logic', tag: '消除', color: '#FFD700,#9B59B6', players: 1876, best: 0, preview: 'jewelMatch' },
     guide: {
       icon: '🐾', name: '宠物消消乐', desc: '点击交换相邻宠物，3个以上相同宠物连线消除！',
@@ -156,12 +238,51 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       bg: '#FFD700'
     },
     init: async (engine, onEnd) => {
-      const { initAnimalMatch } = await import('./animalMatch')
-      initAnimalMatch(engine, onEnd)
+      const { initJewelMatch } = await import('./jewelMatch')
+      initJewelMatch(engine, onEnd)
     }
   },
 
+  match3: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./match3').then(m => m.destroyMatch3())
+    },
+    game: {
+      id: 'match3',
+      name: '宝石三消',
+      desc: '交换相邻宝石，三连消除得分！',
+      type: '2d',
+      category: 'logic',
+      tag: '消除',
+      color: '#9B59B6,#E74C3C',
+      players: 1420,
+      best: 0,
+      preview: 'match3',
+    },
+    guide: {
+      icon: '��',
+      name: '宝石三消',
+      desc: '点击选中宝石，再点相邻格交换，三个及以上同色连线消除！',
+      ops: [
+        { icon: '👆', text: '<b>点击</b>选中一颗宝石' },
+        { icon: '��', text: '再<b>点击</b>相邻格交换' },
+      ],
+      tipsTitle: '�� 小技巧',
+      tips: '连锁消除分数更高！长时间不操作会结束游戏。',
+      bg: '#9B59B6',
+    },
+    init: async (engine, onEnd) => {
+      const { initMatch3 } = await import('./match3')
+      initMatch3(engine, onEnd)
+    },
+  },
+
   bubbleShooter: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./bubbleShooter').then(m => m.destroyBubbleShooter())
+    },
     game: { id: 'bubbleShooter', name: '泡泡龙', desc: '经典泡泡龙射击，3个以上相同颜色消除！', type: '2d', category: 'logic', tag: '消除', color: '#4ECDC4,#FF69B4', players: 2134, best: 0, preview: 'bubbleShooter' },
     guide: {
       icon: '🫧', name: '泡泡龙', desc: '10关闯关模式！发射泡泡匹配消除，在限定时间内清空棋盘！',
@@ -183,6 +304,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   sort: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./colorSort').then(m => m.destroyColorSort())
+    },
     game: { id: 'sort', name: '色彩排序', desc: '10关卡渐进难度，液体排序超治愈！', type: '2d', category: 'logic', tag: '益智', color: '#DDA0DD,#BA55D3', players: 1532, best: 0, preview: 'sort' },
     guide: {
       icon: '🎨', name: '色彩排序', desc: '点击交换两个管子顶部的彩色球，将相同颜色的球排在一起即完成！',
@@ -201,6 +326,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   memoryMatch: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./memoryMatch').then(m => m.destroyMemoryMatch())
+    },
     game: { id: 'memoryMatch', name: '翻牌配对', desc: '翻开卡牌找到相同图案，考验你的记忆力！', type: '2d', category: 'memory', tag: '记忆', color: '#0f0c29,#A29BFE', players: 1800, best: 0, preview: 'memoryMatch' },
     guide: {
       icon: '🃏', name: '翻牌配对', desc: '翻开卡牌找到相同图案，考验你的记忆力！共5个关卡，难度递增。',
@@ -220,6 +349,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   colorTap: {
+    frameworkLifecycle: true,
     game: { id: 'colorTap', name: '颜色Tap', desc: '快速点击匹配颜色，测试你的反应力！', type: '2d', category: 'attention', tag: '反应', color: '#FF6B6B,#4ECDC4', players: 1456, best: 0, preview: 'colorTap' },
     guide: {
       icon: '🎨', name: '颜色Tap', desc: '快速点击匹配颜色，测试你的反应力！',
@@ -231,13 +361,20 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '反应越快得分越高！连续正确匹配触发连击加成！',
       bg: '#FF6B6B'
     },
+    destroy: () => {
+      void import('./colorTap').then(m => m.destroyColorTap())
+    },
     init: async (engine, onEnd) => {
       const { initColorTap } = await import('./colorTap')
       initColorTap(engine, onEnd)
-    }
+    },
   },
 
   whackMole: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./whackMole').then(m => m.destroyWhackMole())
+    },
     game: { id: 'whackMole', name: '打地鼠', desc: '快速敲击出洞的地鼠，金色鼠得分多，小心炸弹！', type: '2d', category: 'attention', tag: '反应', color: '#8B5E3C,#FFD700', players: 2760, best: 0, preview: 'whackMole' },
     guide: {
       icon: '🔨', name: '打地鼠', desc: '地鼠从洞里冒出来，快速点击砸中得分！60秒内拿到最高分！',
@@ -257,6 +394,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   pop: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./pop').then(m => m.destroyPop())
+    },
     game: { id: 'pop', name: '气球砰砰', desc: '疯狂点击气球，炸出高分！', type: '2d', category: 'reaction', tag: '点击', color: '#FF69B4,#FF1493', players: 2108, best: 0, preview: 'pop' },
     guide: {
       icon: '🎈', name: '气球砰砰', desc: '疯狂点击屏幕上飘起的气球，气球越大点击得分越高！',
@@ -275,6 +416,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   fruitSlice: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./fruitSlice').then(m => m.destroyFruitSlice())
+    },
     game: { id: 'fruitSlice', name: '水果切切', desc: '划动切割水果，果汁飞溅超解压！', type: '2d', category: 'coordination', tag: '切割', color: '#FF6B6B,#FFD93D', players: 1654, best: 0, preview: 'fruitSlice' },
     guide: {
       icon: '🍉', name: '水果切切', desc: '滑动手指切割飞起的水果，果汁四溅超解压！',
@@ -293,6 +438,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   cookieCut: {
+    frameworkLifecycle: true,
     game: { id: 'cookieCut', name: '切饼干', desc: '滑动切割飞起的饼干，碎屑四溅超有趣！', type: '2d', category: 'coordination', tag: '切割', color: '#D2691E,#FFD700', players: 1567, best: 0, preview: 'cookieCut' },
     guide: {
       icon: '🍪', name: '切饼干', desc: '滑动切割飞起的饼干，碎屑四溅超有趣！',
@@ -304,13 +450,20 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '饼干从底部飞起，碰到墙壁会反弹！连续切割触发连击加成！',
       bg: '#D2691E'
     },
+    destroy: () => {
+      void import('./cookieCut').then(m => m.destroyCookieCut())
+    },
     init: async (engine, onEnd) => {
       const { initCookieCut } = await import('./cookieCut')
-      initCookieCut(engine, onEnd, 1)
-    }
+      initCookieCut(engine, onEnd)
+    },
   },
 
   dodge: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./dodge').then(m => m.destroyDodge())
+    },
     game: { id: 'dodge', name: '轻量躲避', desc: '滑动躲避障碍，收集加分道具', type: '2d', category: 'coordination', tag: '躲避', color: '#4ECDC4,#45B7AA', players: 3215, best: 0, preview: 'dodge' },
     guide: {
       icon: '🏃', name: '轻量躲避', desc: '控制角色左右移动，躲避下落的障碍物，收集金色道具加分！',
@@ -329,6 +482,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   neonRun: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./neonRun').then(m => m.destroyNeonRun())
+    },
     game: { id: 'neonRun', name: '霓虹跑酷', desc: '躲避障碍收集金币，无尽奔跑！', type: '2d', category: 'coordination', tag: '跑酷', color: '#9B59B6,#FF69B4', players: 1987, best: 0, preview: 'neonRun' },
     guide: {
       icon: '🏃', name: '霓虹跑酷', desc: '三道跑酷，左右切换躲避障碍，收集金币！',
@@ -347,6 +504,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   slimeJump: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./slimeJump').then(m => m.destroySlimeJump())
+    },
     game: { id: 'slimeJump', name: '史莱姆跳', desc: '控制史莱姆不断往上跳，收集星星得高分！', type: '2d', category: 'coordination', tag: '跳跃', color: '#6BCB77,#9B59B6', players: 987, best: 0, preview: 'slimeJump' },
     guide: {
       icon: '🟢', name: '史莱姆跳', desc: '控制史莱姆不断往上跳，收集星星得高分！',
@@ -366,6 +527,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   superMario: {
+    frameworkLifecycle: true,
     game: {
       id: 'superMario',
       name: '超级玛丽',
@@ -402,6 +564,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   snake: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./snake').then(m => m.destroySnake())
+    },
     game: { id: 'snake', name: '贪吃蛇', desc: '控制小蛇吃食物，别撞墙和自己的尾巴！', type: '2d', category: 'coordination', tag: '经典', color: '#2ECC71,#27AE60', players: 3500, best: 0, preview: 'snake' },
     guide: {
       icon: '🐍', name: '贪吃蛇', desc: '经典贪吃蛇！控制小蛇吃食物长大，别撞墙和自己的身体！',
@@ -421,6 +587,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   racingRun: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./racingRun').then(m => m.destroyRacingRun())
+    },
     game: { id: 'racingRun', name: '极速赛车', desc: '飙车躲障碍！拾取道具触发火焰加速、护盾、磁铁吸分，超爽！', type: '2d', category: 'coordination', tag: '赛车', color: '#FF6B00,#FFD700', players: 3180, best: 0, preview: 'racingRun' },
     guide: {
       icon: '🏎️', name: '极速赛车', desc: '在高速公路飙车躲避来车！12种超级道具让你爽到飞起：氮气冲刺、护盾、无敌星魂、时间凝固、狂怒毁灭、幽灵穿墙！',
@@ -446,6 +616,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   starCatcher: {
+    frameworkLifecycle: true,
     game: { id: 'starCatcher', name: '星星捕手', desc: '控制小精灵收集星星，躲避乌云袭击！', type: '2d', category: 'coordination', tag: '益智', color: '#FFD700,#9B59B6', players: 1234, best: 0, preview: 'starCatcher' },
     guide: {
       icon: '🧚', name: '星星捕手', desc: '控制小精灵收集星星，躲避乌云袭击！',
@@ -468,6 +639,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   bouncePath: {
+    frameworkLifecycle: true,
     game: { id: 'bouncePath', name: '弹珠迷宫', desc: '控制弹珠收集星星，弹跳乐趣多！', type: '2d', category: 'spatial', tag: '益智', color: '#4ECDC4,#FFD93D', players: 1432, best: 0, preview: 'bouncePath' },
     guide: {
       icon: '⚽', name: '弹珠迷宫', desc: '控制弹珠在迷宫中弹跳，收集星星获得高分！',
@@ -489,6 +661,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   stack: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./stack').then(m => m.destroyStack())
+    },
     game: { id: 'stack', name: '叠叠乐', desc: '精准堆叠方块，叠得越高分数越高！', type: '2d', category: 'spatial', tag: '堆叠', color: '#A8E6CF,#6BCB77', players: 2100, best: 0, preview: 'stack' },
     guide: {
       icon: '🏗️', name: '叠叠乐', desc: '左右摆动的方块从顶部落下，精准对齐堆叠！',
@@ -507,6 +683,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   spaceShooter: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./spaceshooter').then(m => m.destroySpaceShooter())
+    },
     game: { id: 'spaceShooter', name: '太空射击', desc: '驾驶飞船消灭外星入侵者，躲避弹幕！', type: '2d', category: 'strategy', tag: '射击', color: '#0d1b2a,#45B7D1', players: 3200, best: 0, preview: 'spaceShooter' },
     guide: {
       icon: '🔫', name: '太空射击', desc: '驾驶战机消灭外星入侵者，收集道具强化火力！',
@@ -527,6 +707,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   towerDefense: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./towerDefense').then(m => m.destroyTowerDefense())
+    },
     game: { id: 'towerDefense', name: '星际塔防', desc: '放置防御塔拦截外星入侵者，守住防线！', type: '2d', category: 'strategy', tag: '塔防', color: '#0d1b2a,#5352ED', players: 2500, best: 0, preview: 'towerDefense' },
     guide: {
       icon: '🏰', name: '星际塔防', desc: '在路径旁放置防御塔，自动攻击沿路前进的外星敌人！',
@@ -546,6 +730,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   plantsVsZombies: {
+    frameworkLifecycle: true,
     game: { id: 'plantsVsZombies', name: '植物大战僵尸', desc: '种植植物抵御僵尸入侵，保护你的家园！', type: '2d', category: 'strategy', tag: '塔防', color: '#7CB342,#FFD700', players: 0, best: 0, preview: 'plantsVsZombies' },
     guide: {
       icon: '🌱', name: '植物大战僵尸', desc: '种植植物抵御僵尸入侵，保护家园！',
@@ -570,6 +755,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   rpgShooter: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./rpgShooter').then(m => m.destroyRpgShooter())
+    },
     game: { id: 'rpgShooter', name: '星际猎手', desc: 'RPG移动射击！击杀敌人获得经验升级，提升属性挑战波次！', type: '2d', category: 'strategy', tag: 'RPG射击', color: '#5352ED,#9B59B6', players: 2100, best: 0, preview: 'rpgShooter' },
     guide: {
       icon: '🎮', name: '星际猎手', desc: '自由移动的RPG射击游戏！击杀敌人获得经验升级，拾取道具提升属性，挑战无尽波次！',
@@ -591,6 +780,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   dragonShooter: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./dragonShooter').then(m => m.destroyDragonShooter())
+    },
     game: { id: 'dragonShooter', name: '打龙小游戏', desc: '国产爆款！滑动控制自动射击，龙体分裂爽感无限！', type: '2d', category: 'strategy', tag: '射击', color: '#FFD700,#FF5722', players: 9999, best: 0, preview: 'dragonShooter' },
     guide: {
       icon: '🐉', name: '打龙小游戏', desc: '国产爆款！国风卡通风格，自动射击，龙体分裂，越打越多越爽！',
@@ -612,6 +805,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   beatDragon: {
+    frameworkLifecycle: true,
     game: {
       id: 'beatDragon',
       name: '打了个龙',
@@ -647,6 +841,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   kingBaby: {
+    frameworkLifecycle: true,
     game: {
       id: 'kingBaby',
       name: '王者萌斗',
@@ -682,6 +877,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   rpgShooterTD: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./rpgShooterTowerDefense/init').then(m => m.destroyRpgShooterTD())
+    },
     game: { id: 'rpgShooterTD', name: 'RPG塔防射击', desc: '双系统战斗！建造炮台防御+角色移动射击，策略与操作并重！', type: '2d', category: 'strategy', tag: '塔防射击', color: '#4ECDC4,#FF6B6B', players: 1500, best: 0, preview: 'rpgShooterTowerDefense' },
     guide: {
       icon: '🏰', name: 'RPG塔防射击', desc: '双系统战斗！建造炮台防御+角色移动射击，策略与操作并重！',
@@ -702,6 +901,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   contraRpg: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./contraRpg').then(m => m.destroyContraRpg())
+    },
     game: { id: 'contraRpg', name: '魂斗罗RPG', desc: '经典横版射击闯关！击败敌人收集道具，挑战最终BOSS！', type: '2d', category: 'strategy', tag: '射击RPG', color: '#1a2f1a,#4a90d9', players: 2000, best: 0, preview: 'contraRpg' },
     guide: {
       icon: '🔫', name: '魂斗罗RPG', desc: '经典横版射击闯关！击败敌人收集道具，挑战最终BOSS！',
@@ -725,6 +928,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   wangzheRpg: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./wangzheRpg').then(m => m.destroyWangzheRpg())
+    },
     game: { id: 'wangzheRpg', name: '王者荣耀', desc: '横版对战！摇杆移动+技能释放，击杀敌方3次获胜！', type: '2d', category: 'strategy', tag: '对战', color: '#1a1a2e,#ffd700', players: 5000, best: 0, preview: 'wangzheRpg' },
     guide: {
       icon: '⚔️', name: '王者荣耀', desc: '横版对战！摇杆移动+技能释放，击杀敌方3次获胜！',
@@ -747,6 +954,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   happyDefense: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./happyDefense').then(m => m.destroyHappyDefense())
+    },
     game: {
       id: 'happyDefense',
       name: '欢乐防线大作战',
@@ -774,12 +985,6 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
       tips: '爆米花塔清小怪群，冰霜塔减速，闪电塔链式清屏，穿刺塔打BOSS！连击加分冲最高纪录，满血快通拿S评级。',
       bg: '#6BCB77',
     },
-    isSpecial: true,
-    destroy: () => {
-      void import('./happyDefense').then(m => {
-        m.destroyHappyDefense()
-      })
-    },
     init: async (engine, onEnd) => {
       const { initHappyDefense } = await import('./happyDefense')
       await initHappyDefense(engine, onEnd)
@@ -787,6 +992,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   plantZombieDefense: {
+    frameworkLifecycle: true,
     game: {
       id: 'plantZombieDefense',
       name: '萌趣植物僵尸3D防线',
@@ -825,6 +1031,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   plantZombieDefense2d: {
+    frameworkLifecycle: true,
     game: {
       id: 'plantZombieDefense2d',
       name: '萌植防线 2D',
@@ -860,6 +1067,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   cloudBallRush3d: {
+    frameworkLifecycle: true,
     game: {
       id: 'cloudBallRush3d',
       name: '云端滚球大冒险',
@@ -900,6 +1108,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   voxelRealm: {
+    frameworkLifecycle: true,
     game: {
       id: 'voxelRealm',
       name: '方块幻境',
@@ -940,6 +1149,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   skyFrenzy: {
+    frameworkLifecycle: true,
     game: {
       id: 'skyFrenzy',
       name: '天际狂潮',
@@ -980,6 +1190,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   cuteTankBattle: {
+    frameworkLifecycle: true,
     game: {
       id: 'cuteTankBattle',
       name: '萌趣坦克大作战',
@@ -1016,6 +1227,10 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
   },
 
   dnfRpg: {
+    frameworkLifecycle: true,
+    destroy: () => {
+      void import('./dnfRpg').then(m => m.destroyDnfRpg())
+    },
     game: { id: 'dnfRpg', name: '地下城勇士', desc: '高仿DNF！选择职业闯荡地下城，连招浮空击败BOSS！', type: '2d', category: 'strategy', tag: '格斗RPG', color: '#8B4513,#FFD700', players: 0, best: 0, preview: 'dnfRpg' },
     guide: {
       icon: '⚔️', name: '地下城勇士', desc: '高仿DNF！选择职业闯荡地下城，连招浮空击败BOSS！',
@@ -1074,4 +1289,7 @@ export async function initGame(gameId: string, engine: GameEngine, onEnd: () => 
 
   await registration.init(engine, onEnd)
   return true
+}
+
+assertFrameworkRegistryConsistency()
 }

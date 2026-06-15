@@ -1,17 +1,108 @@
 import type { PlatformContext } from './types'
-import type { Game } from '../types'
+import type { Game, PlayRecord } from '../types'
+import type { GameRecord } from '../types/user'
 import { GAMES, GAME_CATEGORIES } from '../games/gameRegistry'
 import { isGameVisible, getGameDisplayConfig } from '../games/gameRegistry'
 import { storageService } from '../services/storage'
 import { userService } from '../services/userService'
-import { apiGetBatchUserRank, tokenStore, apiAddFavorite, apiRemoveFavorite } from '../services/apiClient'
+import { apiGetBatchUserRank, tokenStore, apiAddFavorite, apiRemoveFavorite, apiGetGameRecords } from '../services/apiClient'
 import { getUserRank } from '../services/leaderboardService'
 import { showToast } from '../services/userUI'
 import { closeTaskCenter, closeShop, renderTaskList as renderTaskListFn, renderShopProducts as renderShopProductsFn } from './economyUI'
 
+// ==================== 游玩历史辅助 ====================
+
+let playRecordsCache: { gameId: string; playedAt: string }[] | null = null
+export function clearPlayRecordsCache() { playRecordsCache = null }
+
+function buildNumericGameIdMap(): Map<number, string> {
+  const map = new Map<number, string>()
+  for (const g of GAMES) {
+    const numId = convertGameIdToNumberSimple(g.id)
+    if (numId !== -1) map.set(numId, g.id)
+  }
+  return map
+}
+
+function convertGameIdToNumberSimple(gameId: string): number {
+  let hash = 0
+  for (let i = 0; i < gameId.length; i++) {
+    hash = ((hash << 5) - hash) + gameId.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash) % 10000 + 1
+}
+
+async function getPlayRecords(): Promise<{ gameId: string; playedAt: string }[]> {
+  if (playRecordsCache) return playRecordsCache
+
+  // 已登录用户优先从后台获取
+  if (userService.isLoggedIn) {
+    try {
+      const res = await apiGetGameRecords()
+      if (res.ok && res.data && res.data.length > 0) {
+        const numToId = buildNumericGameIdMap()
+        playRecordsCache = res.data
+          .map(r => ({
+            gameId: numToId.get(r.gameId) || String(r.gameId),
+            playedAt: r.playedAt,
+          }))
+          .filter(r => !!r.gameId)
+        return playRecordsCache
+      }
+    } catch { /* 后端接口未实现，降级到本地数据 */ }
+  }
+
+  // 降级：本地数据
+  const local = userService.isLoggedIn && userService.current
+    ? userService.current.gameRecords.map((r: GameRecord) => ({
+        gameId: r.gameId,
+        playedAt: r.playedAt,
+      }))
+    : storageService.getPlayHistory()
+  playRecordsCache = local
+  return local
+}
+
+async function getRecentlyPlayedGames(max: number): Promise<Game[]> {
+  const records = await getPlayRecords()
+  const seen = new Set<string>()
+  const result: Game[] = []
+  for (const r of records) {
+    if (seen.has(r.gameId)) continue
+    seen.add(r.gameId)
+    const game = GAMES.find(g => g.id === r.gameId && isGameVisible(g.id))
+    if (game) {
+      result.push(game)
+      if (result.length >= max) break
+    }
+  }
+  return result
+}
+
+async function getFrequentlyPlayedGames(max: number): Promise<Game[]> {
+  const records = await getPlayRecords()
+  const countMap = new Map<string, number>()
+  for (const r of records) {
+    countMap.set(r.gameId, (countMap.get(r.gameId) || 0) + 1)
+  }
+  const sorted = [...countMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+  const result: Game[] = []
+  for (const [gameId] of sorted) {
+    const game = GAMES.find(g => g.id === gameId && isGameVisible(g.id))
+    if (game) {
+      result.push(game)
+      if (result.length >= max) break
+    }
+  }
+  return result
+}
+
 // ==================== 游戏卡片渲染 ====================
 
 export async function renderGameCards(ctx: PlatformContext) {
+  clearPlayRecordsCache()
   const container = document.getElementById('categorySections')!
 
   // 停止所有预览动画 + 断开旧 Observer
@@ -65,6 +156,46 @@ export async function renderGameCards(ctx: PlatformContext) {
     } catch (e) {
       console.error('[App] 获取排名失败:', e)
     }
+  }
+
+  // ── 常用游戏（最近游玩） ─────────────────────────────
+  const recentlyPlayed = await getRecentlyPlayedGames(6)
+  if (recentlyPlayed.length > 0) {
+    const sec = document.createElement('div')
+    sec.className = 'section-quick'
+    sec.innerHTML = `<div class="section-title"><span class="cat-label" style="--cat-color:#667eea">🕐 最近游玩</span></div>`
+    const grid = document.createElement('div')
+    grid.className = 'game-grid'
+    const toPreview: Game[] = []
+    recentlyPlayed.forEach(game => {
+      const best = bestScores[game.id] || 0
+      const rank = rankMap[game.id] !== undefined ? rankMap[game.id] : null
+      grid.appendChild(createGameCard(ctx, game, best, rank))
+      toPreview.push(game)
+    })
+    sec.appendChild(grid)
+    container.appendChild(sec)
+    setTimeout(() => toPreview.forEach(game => ctx.renderPreview(game)), 50)
+  }
+
+  // ── 常玩游戏（按游玩次数） ──────────────────────────
+  const frequentGames = await getFrequentlyPlayedGames(6)
+  if (frequentGames.length > 0 && frequentGames.length !== recentlyPlayed.length) {
+    const sec = document.createElement('div')
+    sec.className = 'section-quick'
+    sec.innerHTML = `<div class="section-title"><span class="cat-label" style="--cat-color:#f093fb">🔥 常玩游戏</span></div>`
+    const grid = document.createElement('div')
+    grid.className = 'game-grid'
+    const toPreview: Game[] = []
+    frequentGames.forEach(game => {
+      const best = bestScores[game.id] || 0
+      const rank = rankMap[game.id] !== undefined ? rankMap[game.id] : null
+      grid.appendChild(createGameCard(ctx, game, best, rank))
+      toPreview.push(game)
+    })
+    sec.appendChild(grid)
+    container.appendChild(sec)
+    setTimeout(() => toPreview.forEach(game => ctx.renderPreview(game)), 50)
   }
 
   GAME_CATEGORIES.forEach(cat => {

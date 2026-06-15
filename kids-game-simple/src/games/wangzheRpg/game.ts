@@ -1,6 +1,10 @@
 import { GAME_CONFIG, SKILL_CONFIG, TOWER_LAYOUTS } from './config'
 import type { GameState, ButtonState, JoystickInput, Tower } from './types'
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { updatePlayer, updatePlayerRespawn, updateSkillCooldowns } from './logic/player'
 import { updateEnemy, updateEnemyRespawn } from './logic/enemy'
 import { spawnMinionWave, updateMinions } from './logic/minion'
@@ -13,26 +17,54 @@ import {
 import { renderGame } from './render/index'
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
-let gameInstance: WangzheRpgGame | null = null
+let activeHost: GameLifecycle | null = null
+let activeGame: WangzheRpgGame | null = null
 
-export function initWangzheRpg(engine: GameEngine, onEnd: () => void): WangzheRpgGame {
-  gameInstance = new WangzheRpgGame(engine, onEnd)
-  gameInstance.start()
-  return gameInstance
+export function destroyWangzheRpg(): void {
+  activeGame?.stop()
+  activeGame = null
+  activeHost?.destroy()
+  activeHost = null
+}
+
+export function initWangzheRpg(engine: GameEngine, onEnd: () => void): void {
+  destroyWangzheRpg()
+  const lifecycleCtx = createLifecycleContext('wangzheRpg', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
+    return
+  }
+  const game = new WangzheRpgGame(engine, lifecycleCtx.canvas)
+  activeGame = game
+  activeHost = hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      game.beginPlay()
+    },
+    onUpdate(dt) {
+      if (!engine.canTick()) return
+      game.runHostUpdate(dt * 1000)
+    },
+    onRender() {
+      game.runHostRender()
+    },
+    onDestroy() {
+      game.stop()
+      activeGame = null
+    },
+  })
 }
 
 export function getWangzheRpgGame(): WangzheRpgGame | null {
-  return gameInstance
+  return activeGame
 }
 
 export class WangzheRpgGame {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private engine: GameEngine
-  private onEnd: () => void
   private state: GameState
-  private animFrameId: number = 0
   private lastTime: number = 0
+  private platformEnded = false
   private canvasWidth: number = 0
   private canvasHeight: number = 0
   private cameraX: number = 0
@@ -61,11 +93,10 @@ export class WangzheRpgGame {
   private boundKeyDown: ((e: KeyboardEvent) => void) | null = null
   private boundKeyUp: ((e: KeyboardEvent) => void) | null = null
 
-  constructor(engine: GameEngine, onEnd: () => void) {
-    this.canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
+  constructor(engine: GameEngine, canvas: HTMLCanvasElement) {
+    this.canvas = canvas
     this.ctx = this.canvas.getContext('2d')!
     this.engine = engine
-    this.onEnd = onEnd
     this.canvasWidth = this.canvas.width
     this.canvasHeight = this.canvas.height
     this.state = this.createInitialState()
@@ -196,20 +227,24 @@ export class WangzheRpgGame {
     }
   }
 
-  start(): void {
+  beginPlay(): void {
     this.lastTime = performance.now()
     this.setupTouchControls()
     this.setupKeyboardControls()
-    this.loop(this.lastTime)
   }
 
   stop(): void {
-    if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId)
-      this.animFrameId = 0
-    }
     this.removeTouchControls()
     this.removeKeyboardControls()
+  }
+
+  runHostUpdate(deltaMs: number): void {
+    const now = performance.now()
+    this.update(deltaMs, now)
+  }
+
+  runHostRender(): void {
+    this.render()
   }
 
   /**
@@ -476,21 +511,6 @@ export class WangzheRpgGame {
 
   setButton(button: keyof ButtonState, pressed: boolean): void {
     this.buttons[button] = pressed
-  }
-
-  private loop = (now: number): void => {
-    if (!this.engine.canTick()) {
-      this.render()
-      this.animFrameId = requestAnimationFrame(this.loop)
-      return
-    }
-    const deltaMs = Math.min(now - this.lastTime, 50)
-    this.lastTime = now
-
-    this.update(deltaMs, now)
-    this.render()
-
-    this.animFrameId = requestAnimationFrame(this.loop)
   }
 
   private update(deltaMs: number, now: number): void {
@@ -782,9 +802,20 @@ export class WangzheRpgGame {
   }
 
   private endGame(victory: boolean, reason: string): void {
+    if (this.platformEnded) return
     this.state.gameOver = true
     this.state.victory = victory
     this.state.gameOverReason = reason
+    this.platformEnded = true
+    gameActions.gameOver({
+      victory,
+      score: this.engine.getScore(),
+      stats: {
+        playerKills: this.state.playerKills,
+        enemyKills: this.state.enemyKills,
+        reason,
+      },
+    })
   }
 
   restart(): void {

@@ -1,9 +1,10 @@
 package com.kidgame.web.controller;
 
 import com.kidgame.common.model.Result;
-
+import com.kidgame.common.util.JwtUtil;
 import com.kidgame.dao.entity.BaseUser;
 import com.kidgame.dao.entity.UserProfile;
+import com.kidgame.service.GameRecordService;
 import com.kidgame.service.UserService;
 import com.kidgame.service.dto.UserLoginDTO;
 import com.kidgame.service.dto.UserLoginResponseDTO;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,6 +33,12 @@ public class BaseUserController {
 
     @Autowired
     private com.kidgame.service.UserService userService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private GameRecordService gameRecordService;
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
@@ -146,6 +154,21 @@ public class BaseUserController {
         } catch (Exception e) {
             log.error("刷新 Token 失败", e);
             return Result.error("刷新 Token 失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "获取用户游玩记录（每个游戏最近一次）")
+    @GetMapping("/game-records")
+    public Result<List<Map<String, Object>>> getGameRecords(
+            @RequestHeader("Authorization") String authorization) {
+        try {
+            String token = authorization.replace("Bearer ", "");
+            Long userId = Long.parseLong(jwtUtil.getUserId(token));
+            List<Map<String, Object>> records = gameRecordService.getUserGameRecords(userId);
+            return Result.success(records);
+        } catch (Exception e) {
+            log.error("获取游戏记录失败", e);
+            return Result.error("获取游戏记录失败：" + e.getMessage());
         }
     }
 }

@@ -1,0 +1,45 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "starCatcher_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "星空追星",
+    "isDefault": true,
+    "gameId": "starCatcher",
+    "description": "kids-game-simple starCatcher 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#87CEEB",
+    "secondaryColor": "#FFD700",
+    "bgColor": "#0a0a1a",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "star_normal": { "src": "#87CEEB", "type": "png", "alias": "普通星星" },
+        "player_glow": { "src": "#FF69B4", "type": "png", "alias": "玩家光晕" },
+        "hud_bg": { "src": "rgba(0,0,0,0.4)", "type": "png", "alias": "HUD" },
+        "danger": { "src": "#FF4444", "type": "png", "alias": "警告" },
+        "accent": { "src": "#FFD700", "type": "png", "alias": "高亮" },
+        "game_palette": {
+          "src": "[\"#87CEEB\",\"#FFD700\",\"#FF69B4\"]",
+          "type": "png",
+          "alias": "玩法色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

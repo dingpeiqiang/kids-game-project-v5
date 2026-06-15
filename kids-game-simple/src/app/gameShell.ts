@@ -27,6 +27,7 @@ let scoreUnsub: (() => void) | null = null
 let pauseOverlayBound = false
 let exitConfirmBound = false
 let shellActionsBound = false
+let shellChromeAbort: AbortController | null = null
 let shellKeydownHandler: ((e: KeyboardEvent) => void) | null = null
 let shellOnExit: (() => void) | null = null
 let shellHidePlatformPause = false
@@ -112,6 +113,8 @@ export function unmountGameShell(orientationManager: OrientationManager | null) 
   const canvasHost = el('gameCanvas')
   const pauseOverlay = el('gamePauseOverlay')
 
+  shellChromeAbort?.abort()
+  shellChromeAbort = null
   unbindShellKeyboard()
   dismissGamePauseOverlay()
   shellHidePlatformPause = false
@@ -120,6 +123,7 @@ export function unmountGameShell(orientationManager: OrientationManager | null) 
     'game-shell--hide-score',
     'game-shell--hide-pause',
     'game-shell--compact-footer',
+    'game-shell--powerup-active',
   )
   shell?.removeAttribute('data-orientation')
   shell?.removeAttribute('data-game-id')
@@ -161,14 +165,47 @@ function handleShellBack() {
 
 function handleShellPause() {
   audioService.click()
+  if (!shellLayerActive()) return
   if (!gameEngine.isRunning()) return
   gameEngine.pause()
   el('gamePauseOverlay')?.classList.add('show')
 }
 
+function bindShellChromeControls() {
+  shellChromeAbort?.abort()
+  shellChromeAbort = new AbortController()
+  const signal = shellChromeAbort.signal
+  const opts = { signal, passive: false as const }
+
+  const bindShellBtn = (id: string, handler: () => void) => {
+    const btn = el<HTMLButtonElement>(id)
+    if (!btn) return
+    const fire = (e: PointerEvent) => {
+      if (!shellLayerActive()) return
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      e.preventDefault()
+      e.stopPropagation()
+      handler()
+    }
+    btn.addEventListener('pointerup', fire, opts)
+    btn.addEventListener('click', e => {
+      e.preventDefault()
+      e.stopPropagation()
+    }, opts)
+  }
+
+  bindShellBtn('gameShellBack', handleShellBack)
+  bindShellBtn('gameShellPause', handleShellPause)
+}
+
 function bindShellActions(opts: GameShellMountOptions) {
   shellOnExit = opts.onExit
-  if (shellActionsBound) return
+  bindShellChromeControls()
+
+  if (shellActionsBound) {
+    bindExitConfirmActions()
+    return
+  }
   shellActionsBound = true
 
   const layer = el('game-layer')
@@ -177,30 +214,18 @@ function bindShellActions(opts: GameShellMountOptions) {
   layer.addEventListener('click', e => {
     if (!shellLayerActive()) return
     const t = e.target as HTMLElement
-    const back = t.closest('#gameShellBack')
-    const pauseBtn = t.closest('#gameShellPause')
     const resumeBtn = t.closest('#gamePauseResume')
     const quitBtn = t.closest('#gamePauseQuit')
-    if (back) {
-      e.preventDefault()
-      e.stopPropagation()
-      handleShellBack()
-      return
-    }
-    if (pauseBtn) {
-      e.preventDefault()
-      e.stopPropagation()
-      handleShellPause()
-      return
-    }
     if (resumeBtn) {
       e.preventDefault()
+      audioService.click()
       gameEngine.resume()
       el('gamePauseOverlay')?.classList.remove('show')
       return
     }
     if (quitBtn) {
       e.preventDefault()
+      audioService.click()
       el('gamePauseOverlay')?.classList.remove('show')
       shellOnExit?.()
       return

@@ -8,6 +8,10 @@
 //   - 音效 → sounds.ts
 
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { createInitialState, resetCombo } from './state'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, TURRET_CONFIGS, initCanvasSize } from './config'
 import { apiSubmitGameResult, apiStartGameSession } from '../../services/apiClient'
@@ -19,9 +23,21 @@ import { updateGame } from './gameLoop'
 import { initInput, initKeyboard, type PlaySoundFn } from './input'
 import type { JoystickState, MobileButtons } from './renderer'
 
+let activeHost: GameLifecycle | null = null
+
+export function destroyRpgShooterTD(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
+
 export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
-  console.log('🏰 启动RPG塔防射击游戏...')
-  console.log('GameEngine:', engine)
+  destroyRpgShooterTD()
+  const lifecycleCtx = createLifecycleContext('rpgShooterTD', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
+    return
+  }
+
 
   // 🎯 游戏会话管理
   let sessionId: number | null = null
@@ -31,11 +47,7 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   // ==================== Canvas 初始化 ====================
   initCanvasSize()
 
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) {
-    console.error('❌ 未找到Canvas元素 (mainGameCanvas)')
-    return
-  }
+  const canvas = lifecycleCtx.canvas
 
   const ctx = canvas.getContext('2d')
   if (!ctx) {
@@ -43,7 +55,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     return
   }
 
-  console.log(`Canvas 尺寸: ${CANVAS_WIDTH}x${CANVAS_HEIGHT}`)
 
   // ==================== 移动端全屏适配 ====================
   const isMobile = window.innerWidth < 768 || 'ontouchstart' in window
@@ -122,7 +133,6 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   state.buildMode.selectedTurret = null
   state.buildMode.buildTab = 'turret'
 
-  let animationId: number
   let lastTime = performance.now()
 
   // 鼠标位置（用于 PC 端瞄准和炮台放置）
@@ -177,9 +187,7 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
 
   const cleanupKeyboard = initKeyboard(state, selectedTurretForUpgradeRef)
 
-  // ==================== 游戏循环 ====================
-  const cleanup = () => {
-    cancelAnimationFrame(animationId)
+  const teardownResources = () => {
     cleanupInput()
     cleanupKeyboard()
     if (isMobile) {
@@ -188,86 +196,58 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
       document.body.style.position = ''
       document.body.style.width = ''
       document.body.style.height = ''
-      const handler = (window as any)._rpgTowerDefenseResizeHandler
+      const handler = (window as { _rpgTowerDefenseResizeHandler?: () => void })._rpgTowerDefenseResizeHandler
       if (handler) handler()
     }
   }
 
-  // 🎯 游戏结束回调 - 提交分数
   const handleGameOver = async () => {
-    // 关键修复：游戏结束时打印最终分数，确保分数已累积
-    console.log('[RPG塔防] 游戏结束，最终分数:', state.resources.score)
-    
-    // 🎯 提交游戏积分到后台
+
     if (userService.isLoggedIn && userService.current && sessionId && sessionToken) {
       try {
-        const duration = Math.floor((Date.now() - gameStartTime) / 1000)  // 秒
-        
+        const duration = Math.floor((Date.now() - gameStartTime) / 1000)
         const result = await apiSubmitGameResult({
-          sessionId: sessionId,
-          sessionToken: sessionToken,
+          sessionId,
+          sessionToken,
           score: state.resources.score,
-          duration: duration,
+          duration,
           level: state.wave,
-          isWin: state.wave >= 8,  // 如果到达第8波则胜利
+          isWin: state.wave >= 8,
           details: {
             kills: state.resources.kills,
             maxCombo: state.combo.maxCombo,
             crystals: state.resources.crystals,
             playerLevel: state.player.level,
-          }
+          },
         })
-        
-        if (result.ok) {
-          console.log('[RPG塔防] 分数提交成功')
-        } else {
+        if (!result.ok) {
           console.warn('[RPG塔防] 分数提交失败:', result.msg)
         }
       } catch (error) {
         console.error('[RPG塔防] 提交分数异常:', error)
       }
-    } else {
-      console.log('[RPG塔防] 未登录或无session，跳过分数提交')
-    }
-    
-    // 调用原有的onEnd回调
-    onEnd()
-  }
-
-  const gameLoop = (currentTime: number) => {
-    const dt = Math.min((currentTime - lastTime) / 1000, 0.1)
-    lastTime = currentTime
-
-    // 更新逻辑（尊重壳层暂停）
-    if (state.gameStarted && !state.gameEnded && engine.canTick()) {
-      updateGame(state, dt, currentTime, playSound, handleGameOver, cleanup)
     }
 
-    // 渲染（调用 renderer.ts 的 render 函数）
-    render(ctx, {
-      state,
-      joystick,
-      selectedTurretForUpgrade: selectedTurretForUpgradeRef.current,
-      upgradeDialogPos: upgradeDialogPosRef.current,
-      mobileButtonsRef
+    gameActions.gameOver({
+      victory: state.wave >= 8,
+      score: state.resources.score,
+      stats: {
+        wave: state.wave,
+        kills: state.resources.kills,
+        maxCombo: state.combo.maxCombo,
+        playerLevel: state.player.level,
+      },
     })
-
-    animationId = requestAnimationFrame(gameLoop)
   }
 
-  // 🎯 初始化游戏会话
   const initGameSession = async () => {
     if (userService.isLoggedIn && userService.current) {
       try {
-        const GAME_ID = 1  // RPG塔防射击的游戏ID
+        const GAME_ID = 1
         const result = await apiStartGameSession(GAME_ID)
-
         if (result.ok && result.data) {
           sessionId = result.data.sessionId
           sessionToken = result.data.sessionToken
-          console.log('[RPG塔防] 游戏会话创建成功:', sessionId)
-        } else {
-          console.warn('[RPG塔防] 创建游戏会话失败:', result.msg)
         }
       } catch (error) {
         console.error('[RPG塔防] 创建游戏会话异常:', error)
@@ -275,14 +255,31 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  // 启动会话初始化
-  initGameSession()
+  activeHost = hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      void initGameSession()
+      lastTime = performance.now()
+    },
+    onUpdate(dt) {
+      const currentTime = performance.now()
+      const step = Math.min(dt, 0.1)
+      lastTime = currentTime
+      if (state.gameStarted && !state.gameEnded && engine.canTick()) {
+        updateGame(state, step, currentTime, playSound, handleGameOver)
+      }
+    },
+    onRender() {
+      render(ctx, {
+        state,
+        joystick,
+        selectedTurretForUpgrade: selectedTurretForUpgradeRef.current,
+        upgradeDialogPos: upgradeDialogPosRef.current,
+        mobileButtonsRef,
+      })
+    },
+    onDestroy() {
+      teardownResources()
+    },
+  })
 
-  // 启动循环
-  animationId = requestAnimationFrame(gameLoop)
-
-  console.log('✅ RPG塔防射击游戏已启动！')
-  console.log('📝 操作说明：')
-  console.log('  - 手机端：左下角摇杆移动，右下角选择炮台，点击放置')
-  console.log('  - PC端：鼠标移动瞄准，底部按钮选炮台，点击放置，ESC取消')
 }

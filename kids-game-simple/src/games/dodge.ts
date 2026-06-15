@@ -1,17 +1,62 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
-import { DODGE_POWERUPS } from '../data/powerups'
 import { app } from '../services/appBridge'
+import { gameActions } from '../platform/gameBridge'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../platform/GameLifecycle'
+import { createLifecycleContext } from '../platform/frameworkSession'
+import { hostCanvas2D } from '../platform/hostCanvas2D'
 import { applyCanvasMobileStyles, bindCanvasHorizontalDrag } from '../utils/canvasMobileUtils'
+import { resolveGtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
+import { getCachedGTRSTheme } from '../services/gtrsThemeLoader'
+import { readGtrsSceneMeta } from '../utils/gtrsSceneMeta'
+
+let activeHost: GameLifecycle | null = null
+
+export function destroyDodge(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
 
 export function initDodge(engine: GameEngine, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) return
-  
-  const W = 400, H = 600
-  const ctx = canvas.getContext('2d')!
-  ctx.imageSmoothingEnabled = false
-  
+  destroyDodge()
+  const ctx = createLifecycleContext('dodge', engine, onEnd)
+  if (!ctx) {
+    onEnd()
+    return
+  }
+  activeHost = startDodgeLifecycle(ctx)
+}
+
+function startDodgeLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
+
+  const W = 400
+  const H = 600
+  const g = canvas.getContext('2d')!
+  g.imageSmoothingEnabled = false
+  const ctx = g
+
+  const DODGE_FALLBACK = {
+    primary: '#4ECDC4',
+    background: '#1a1a4e',
+    backgroundDark: '#1a1a3e',
+    bgGradMid: '#2d1b4e',
+    text: '#FFFFFF',
+    accent: '#FFD93D',
+    hudBg: 'rgba(0,0,0,0.45)',
+    danger: '#FF4757',
+    muted: '#A855F7',
+    palette: ['#FF4757', '#A855F7', '#FFD700', '#4ECDC4'],
+  }
+  const gtrs = resolveGtrsCanvasStyle('dodge', DODGE_FALLBACK)
+  const theme = getCachedGTRSTheme('dodge')
+  const playerBase = readGtrsSceneMeta(theme, 'player') ?? gtrs.primary
+  const coinColor = readGtrsSceneMeta(theme, 'coin') ?? gtrs.accent
+  const obsDanger = gtrs.danger
+  const obsMuted = gtrs.muted
+
   // 游戏状态
   let px = W / 2, py = H - 100, pSize = 20
   let score = 0
@@ -74,7 +119,6 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
     if (index === -1) return false
     
     inventory.splice(index, 1)
-    console.log('[道具] 使用道具:', type)
     
     // 找到对应的配置
     const config = ALL_POWERUP_TYPES.find(p => p.type === type)
@@ -170,9 +214,9 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
   function draw() {
     // 渐变背景（更鲜艳）
     const grad = ctx.createLinearGradient(0, 0, 0, H)
-    grad.addColorStop(0, '#1a1a4e')
-    grad.addColorStop(0.5, '#2d1b4e')
-    grad.addColorStop(1, '#1a1a3e')
+    grad.addColorStop(0, gtrs.background)
+    grad.addColorStop(0.5, gtrs.bgGradMid ?? gtrs.backgroundDark)
+    grad.addColorStop(1, gtrs.backgroundDark)
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, W, H)
     
@@ -209,7 +253,7 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
         return
       }
       ctx.globalAlpha = t.life * 0.6
-      ctx.fillStyle = invincible > 0 || double > 0 ? '#FFD93D' : '#4ECDC4'
+      ctx.fillStyle = invincible > 0 || double > 0 ? gtrs.accent : playerBase
       ctx.beginPath()
       ctx.arc(t.x, t.y, pSize * t.life * 0.5, 0, Math.PI * 2)
       ctx.fill()
@@ -226,7 +270,8 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
     
     // 绘制玩家
     const pulse = Math.sin(Date.now() * 0.006) * 3
-    const playerColor = (invincible > 0 || double > 0) ? '#FFD93D' : (ghost > 0 ? '#9370DB' : '#4ECDC4')
+    const playerColor =
+      invincible > 0 || double > 0 ? gtrs.accent : ghost > 0 ? '#9370DB' : playerBase
     
     // 护盾光环
     if (shield > 0) {
@@ -289,7 +334,7 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
       ctx.rotate(Date.now() * 0.003 * (o.type === 0 ? 1 : -1))
       
       const r = o.r + obsPulse
-      const obsColor = o.type === 0 ? '#FF4757' : '#A855F7'
+      const obsColor = o.type === 0 ? obsDanger : obsMuted
       
       // 外发光
       ctx.shadowBlur = 25
@@ -330,9 +375,9 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
     coins.forEach(c => {
       const glow = Math.sin(Date.now() * 0.01) * 0.3 + 0.7
       ctx.globalAlpha = glow
-      ctx.fillStyle = '#FFD700'
+      ctx.fillStyle = coinColor
       ctx.shadowBlur = 15
-      ctx.shadowColor = '#FFD700'
+      ctx.shadowColor = coinColor
       
       // 旋转椭圆效果
       const scaleX = Math.abs(Math.cos(Date.now() * 0.005))
@@ -415,11 +460,11 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
     if (ghost > 0) buffBits.push('👻')
     if (slow > 0) buffBits.push('❄️')
     const buffLabel = buffBits.length ? ` · ${buffBits.join(' ')}` : ''
-    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.fillStyle = gtrs.hudBg
     ctx.beginPath()
     ctx.roundRect(10, 8, W - 20, 36, 10)
     ctx.fill()
-    ctx.fillStyle = '#4ECDC4'
+    ctx.fillStyle = playerBase
     ctx.font = 'bold 15px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -633,10 +678,8 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
             audioService.click()
           } else {
             audioService.fail()
-            engine.setVictory(false)
-            engine.endGame()
             unbindDrag()
-            onEnd()
+            gameActions.gameOver({ victory: false, score: engine.getScore() })
             return
           }
         }
@@ -657,34 +700,28 @@ export function initDodge(engine: GameEngine, onEnd: () => void) {
     speed = 1.2 + (speedLevel - 1) * 0.5
   }
   
-  applyCanvasMobileStyles(canvas)
-  const unbindDrag = bindCanvasHorizontalDrag(
-    canvas,
-    (deltaX) => {
-      px += deltaX
-      px = Math.max(pSize, Math.min(W - pSize, px))
-      TRAIL.push({ x: px, y: py, life: 1 })
-    },
-  )
+  let unbindDrag: (() => void) | null = null
 
-  let last = 0
-  function loop(ts: number) {
-    if (!document.getElementById('mainGameCanvas')) {
-      unbindDrag()
-      return
-    }
-    if (!engine.canTick()) {
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      applyCanvasMobileStyles(canvas)
+      updateHTMLPowerupBar()
+      unbindDrag = bindCanvasHorizontalDrag(canvas, deltaX => {
+        px += deltaX
+        px = Math.max(pSize, Math.min(W - pSize, px))
+        TRAIL.push({ x: px, y: py, life: 1 })
+      })
+    },
+    onUpdate(dt) {
+      update(dt * 1000)
+    },
+    onRender() {
       draw()
-      requestAnimationFrame(loop)
-      return
-    }
-    const dt = ts - last
-    last = ts
-    update(dt)
-    draw()
-    requestAnimationFrame(loop)
-  }
-  
-      
-  requestAnimationFrame(loop)
+    },
+    onDestroy() {
+      unbindDrag?.()
+      unbindDrag = null
+      app.removePowerupBar?.()
+    },
+  })
 }

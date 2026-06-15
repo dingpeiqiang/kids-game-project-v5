@@ -1,0 +1,42 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "eliminate_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "极速消除",
+    "isDefault": true,
+    "gameId": "eliminate"
+  },
+  "globalStyle": {
+    "primaryColor": "#4D96FF",
+    "secondaryColor": "#FFD93D",
+    "bgColor": "#1a1a2e",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "星星/强调" },
+        "danger": { "src": "#FF6B6B", "type": "png", "alias": "警告" },
+        "hud_bg": { "src": "rgba(255,255,255,0.1)", "type": "png", "alias": "进度条底" },
+        "game_palette": {
+          "src": "[\"#FF6B6B\",\"#FF8E53\",\"#FFD93D\",\"#6BCB77\",\"#4D96FF\",\"#9B59B6\"]",
+          "type": "png",
+          "alias": "方块色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

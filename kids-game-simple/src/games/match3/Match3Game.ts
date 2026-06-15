@@ -1,16 +1,34 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
+import { gameActions } from '../../platform/gameBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 
+let activeHost: GameLifecycle | null = null
+
+export function destroyMatch3(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
+
 export function initMatch3(engine: GameEngine, onEnd: () => void) {
-  console.log('[Match3] 游戏初始化开始')
-  
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) {
-    console.error('[Match3] Canvas not found!')
+  destroyMatch3()
+  const lifecycleCtx = createLifecycleContext('match3', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
     return
   }
+  activeHost = startMatch3Lifecycle(lifecycleCtx)
+}
+
+function startMatch3Lifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
   
   const W = 400, H = 600
   const ctx = canvas.getContext('2d')!
@@ -584,44 +602,41 @@ export function initMatch3(engine: GameEngine, onEnd: () => void) {
     }
   }
   
-  // 检查超时
-  const unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
-    void handleClickAt(x, y)
-  })
-
   function checkTimeout() {
     if (gameEnded) return
     if (Date.now() - lastMoveTime > MOVE_TIMEOUT) {
-      unbindPointer()
-      engine.setVictory(false)
-      engine.endGame()
       gameEnded = true
+      unbindPointer?.()
+      unbindPointer = null
       audioService.lose()
-      onEnd()
+      gameActions.gameOver({ victory: false, score: engine.getScore() })
     }
   }
 
-  function loop() {
-    if (!document.getElementById('mainGameCanvas')) {
-      unbindPointer()
-      return
-    }
-    if (gameEnded) return
+  let unbindPointer: (() => void) | null = null
 
-    checkTimeout()
-    draw()
-    requestAnimationFrame(loop)
-  }
-
-  resizeCanvasForMobile(canvas)
-  injectMobileStyles()
-  applyCanvasMobileStyles(canvas)
-
-  engine.start()
-  initBoard()
-  lastMoveTime = Date.now()
-
-  loop()
-  
-  console.log('[Match3] 游戏初始化完成')
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      resizeCanvasForMobile(canvas)
+      injectMobileStyles()
+      applyCanvasMobileStyles(canvas)
+      initBoard()
+      lastMoveTime = Date.now()
+      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+        void handleClickAt(x, y)
+      })
+    },
+    onUpdate(_dt) {
+      if (gameEnded) return
+      checkTimeout()
+    },
+    onRender() {
+      draw()
+    },
+    onDestroy() {
+      unbindPointer?.()
+      unbindPointer = null
+    },
+  })
+}
 }

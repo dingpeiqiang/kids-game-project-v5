@@ -1,1 +1,1 @@
-export { initWangzheRpg } from './game'
+export { initWangzheRpg, destroyWangzheRpg, getWangzheRpgGame } from './game'

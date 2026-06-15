@@ -28,7 +28,6 @@ export let SCALE_RATIO = 1.0
 export function initCanvasSize() {
   // 使用固定尺寸，不再动态计算
   SCALE_RATIO = 1.0
-  console.log(`Canvas 尺寸（固定）: ${CANVAS_WIDTH}x${CANVAS_HEIGHT}`)
 }
 
 // 游戏时长配置

@@ -1,4 +1,4 @@
-import type { GameEngine } from '../../services/gameEngine'
+import type { GameLifecycle, GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createEngine3d } from '../../engine3d/createEngine3d'
 import { createInputController, consumeFrameFlags } from './input'
 import { createInitialState, resetForNewRun } from './logic/state'
@@ -6,7 +6,7 @@ import { resetLoopTimers, tickGame } from './logic/gameLoop'
 import { loadRunStats, mergeRunStats } from './logic/storage'
 import { SkyRushSceneView } from './render/scene'
 import { createSkyRushHud } from './render/ui'
-import type { GameState, PlayMode } from './types'
+import type { GameState } from './types'
 
 let activeDispose: (() => void) | null = null
 
@@ -15,157 +15,164 @@ export function destroySkyRush3d(): void {
   activeDispose = null
 }
 
-async function runSession(
-  engine: GameEngine,
-  onEnd: () => void,
-  parent: HTMLElement,
-): Promise<void> {
-  const isMobile =
-    window.innerWidth < 768 ||
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+class SkyRush3dLifecycle extends GameLifecycle {
+  private state: GameState | null = null
+  private runStats = loadRunStats()
+  private ended = false
+  private paused = false
+  private ctx3d: ReturnType<typeof createEngine3d> | null = null
+  private hud: ReturnType<typeof createSkyRushHud> | null = null
+  private input: ReturnType<typeof createInputController> | null = null
+  private view: SkyRushSceneView | null = null
 
-  const ctx3d = createEngine3d({
-    parent,
-    antialias: !isMobile,
-    hardwareScalingLevel: isMobile ? 1.25 : 1,
-  })
+  async onInit() {
+    const engine = this.ctx.engine
+    engine.start()
+    engine.setOrientation('landscape')
 
-  const hud = createSkyRushHud(parent)
-  const input = createInputController(ctx3d.canvas)
-  const view = new SkyRushSceneView(ctx3d)
+    const parent = this.ctx.canvas ?? document.getElementById('gameCanvas')
+    if (!parent) {
+      this.ctx.onEnd()
+      return
+    }
 
-  let runStats = loadRunStats()
-  const mode = await hud.openModeMenu()
-  let state: GameState = createInitialState(mode)
-  resetForNewRun(state, mode)
-  resetLoopTimers()
+    parent.innerHTML = ''
+    parent.style.width = '100%'
+    parent.style.height = '100%'
+    parent.style.display = 'block'
 
-  let ended = false
-  let paused = false
+    const isMobile =
+      window.innerWidth < 768 ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
-  const finishToLobby = (finalScore: number) => {
-    if (ended) return
-    ended = true
-    engine.setScore(finalScore)
-    engine.setGameStats({
-      bestScore: runStats.bestScore,
-      bestClearMs: runStats.bestClearMs,
-      maxCombo: runStats.maxCombo,
-      flawlessClears: runStats.flawlessClears,
-      bossKills: runStats.bossKills,
+    const ctx3d = createEngine3d({
+      parent,
+      antialias: !isMobile,
+      hardwareScalingLevel: isMobile ? 1.25 : 1,
     })
-    engine.endGame()
-    onEnd()
+    this.ctx3d = ctx3d
+
+    const hud = createSkyRushHud(parent)
+    const input = createInputController(ctx3d.canvas)
+    const view = new SkyRushSceneView(ctx3d)
+    this.hud = hud
+    this.input = input
+    this.view = view
+
+    const mode = await hud.openModeMenu()
+    const state = createInitialState(mode)
+    resetForNewRun(state, mode)
+    resetLoopTimers()
+    this.state = state
+
+    const finishToLobby = (finalScore: number) => {
+      if (this.ended) return
+      this.ended = true
+      engine.setScore(finalScore)
+      engine.setGameStats({
+        bestScore: this.runStats.bestScore,
+        bestClearMs: this.runStats.bestClearMs,
+        maxCombo: this.runStats.maxCombo,
+        flawlessClears: this.runStats.flawlessClears,
+        bossKills: this.runStats.bossKills,
+      })
+      engine.endGame()
+      this.ctx.onEnd()
+    }
+
+    hud.onToolbar(action => {
+      if (this.ended || !this.state) return
+      if (action === 'pause') {
+        this.paused = !this.paused
+        this.state.phase = this.paused ? 'paused' : 'playing'
+        hud.showPause(this.paused)
+      }
+      if (action === 'clearScreen') input.snapshot.clearScreen = true
+      if (action === 'reset') {
+        resetForNewRun(this.state, this.state.mode)
+        resetLoopTimers()
+        this.paused = false
+        this.state.phase = 'playing'
+        hud.showPause(false)
+      }
+    })
+
+    const observer = ctx3d.scene.onBeforeRenderObservable.add(() => {
+      if (this.ended || !this.state) return
+      const dt = Math.min(0.033, ctx3d.engine.getDeltaTime() / 1000)
+      const flags = consumeFrameFlags(input.snapshot)
+      if (flags.pause) {
+        this.paused = !this.paused
+        this.state.phase = this.paused ? 'paused' : 'playing'
+        hud.showPause(this.paused)
+      }
+      if (flags.reset) {
+        resetForNewRun(this.state, this.state.mode)
+        resetLoopTimers()
+        this.paused = false
+        this.state.phase = 'playing'
+        hud.showPause(false)
+      }
+
+      if (this.state.phase === 'playing') {
+        tickGame(this.state, input.snapshot, dt, {
+          onWave: (wave, label) => hud.showWaveToast(wave, label),
+          onGameOver: () => {},
+        })
+      }
+
+      view.sync(this.state, dt)
+      hud.setPlaying(this.state, this.runStats)
+
+      if (this.state.phase === 'ended') {
+        const flawless = this.state.won && this.state.damageTaken === 0
+        this.runStats = mergeRunStats(this.runStats, {
+          score: this.state.score,
+          clearMs: this.state.won ? this.state.elapsedMs : 0,
+          maxCombo: this.state.maxCombo,
+          flawless,
+          bossKill: this.state.bossDefeated,
+        })
+        ctx3d.scene.onBeforeRenderObservable.remove(observer)
+        void hud
+          .showResult({
+            won: this.state.won,
+            score: this.state.score,
+            stats: this.runStats,
+            elapsedMs: this.state.elapsedMs,
+            maxCombo: this.state.maxCombo,
+            flawless,
+          })
+          .then(choice => {
+            if (choice === 'retry') {
+              this.ended = false
+              resetForNewRun(this.state!, this.state!.mode)
+              resetLoopTimers()
+              ctx3d.scene.onBeforeRenderObservable.add(observer)
+            } else {
+              finishToLobby(this.state!.score)
+            }
+          })
+      }
+    })
+
+    activeDispose = () => {
+      ctx3d.scene.onBeforeRenderObservable.remove(observer)
+      input.dispose()
+      view.dispose()
+      hud.dispose()
+      ctx3d.dispose()
+    }
   }
 
-  hud.onToolbar(action => {
-    if (ended) return
-    if (action === 'pause') {
-      paused = !paused
-      state.phase = paused ? 'paused' : 'playing'
-      hud.showPause(paused)
-    }
-    if (action === 'clearScreen') input.snapshot.clearScreen = true
-    if (action === 'reset') {
-      resetForNewRun(state, state.mode)
-      resetLoopTimers()
-      paused = false
-      state.phase = 'playing'
-      hud.showPause(false)
-    }
-  })
-
-  const observer = ctx3d.scene.onBeforeRenderObservable.add(() => {
-    if (ended) return
-    const dt = Math.min(0.033, ctx3d.engine.getDeltaTime() / 1000)
-    const flags = consumeFrameFlags(input.snapshot)
-    if (flags.pause) {
-      paused = !paused
-      state.phase = paused ? 'paused' : 'playing'
-      hud.showPause(paused)
-    }
-    if (flags.reset) {
-      resetForNewRun(state, state.mode)
-      resetLoopTimers()
-      paused = false
-      state.phase = 'playing'
-      hud.showPause(false)
-    }
-
-    if (state.phase === 'playing') {
-      tickGame(state, input.snapshot, dt, {
-        onWave: (wave, label) => hud.showWaveToast(wave, label),
-        onGameOver: () => {
-          /* handled below */
-        },
-      })
-    }
-
-    view.sync(state, dt)
-    hud.setPlaying(state, runStats)
-
-    if (state.phase === 'ended') {
-      const flawless = state.won && state.damageTaken === 0
-      runStats = mergeRunStats(runStats, {
-        score: state.score,
-        clearMs: state.won ? state.elapsedMs : 0,
-        maxCombo: state.maxCombo,
-        flawless,
-        bossKill: state.bossDefeated,
-      })
-      ctx3d.scene.onBeforeRenderObservable.remove(observer)
-      void hud
-        .showResult({
-          won: state.won,
-          score: state.score,
-          stats: runStats,
-          elapsedMs: state.elapsedMs,
-          maxCombo: state.maxCombo,
-          flawless,
-        })
-        .then(choice => {
-          if (choice === 'retry') {
-            ended = false
-            resetForNewRun(state, state.mode)
-            resetLoopTimers()
-            ctx3d.scene.onBeforeRenderObservable.add(observer)
-          } else {
-            finishToLobby(state.score)
-          }
-        })
-    }
-  })
-
-  activeDispose = () => {
-    ctx3d.scene.onBeforeRenderObservable.remove(observer)
-    input.dispose()
-    view.dispose()
-    hud.dispose()
-    ctx3d.dispose()
+  onUpdate() {}
+  onRender() {}
+  onDestroy() {
+    activeDispose?.()
+    activeDispose = null
   }
 }
 
-export async function initSkyRush3d(engine: GameEngine, onEnd: () => void): Promise<void> {
-  destroySkyRush3d()
-  engine.start()
-  engine.setOrientation('landscape')
-
-  const parent = document.getElementById('gameCanvas')
-  if (!parent) {
-    onEnd()
-    return
-  }
-
-  parent.innerHTML = ''
-  parent.style.width = '100%'
-  parent.style.height = '100%'
-  parent.style.display = 'block'
-
-  try {
-    await runSession(engine, onEnd, parent)
-  } catch (e) {
-    console.error('skyRush3d init failed', e)
-    destroySkyRush3d()
-    onEnd()
-  }
+export function startSkyRush3dLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  return new SkyRush3dLifecycle(lifecycleCtx)
 }

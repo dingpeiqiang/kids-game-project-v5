@@ -1,4 +1,7 @@
-import type { GameEngine } from '../../services/gameEngine'
+import { Vector3 } from '@babylonjs/core'
+import type { GameLifecycle, GameLifecycleContext } from '../../platform/GameLifecycle'
+import { gameActions } from '../../platform/gameBridge'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import {
   computeStars,
   createInitialState,
@@ -22,114 +25,113 @@ export function destroyPlantZombieDefense2d(): void {
   activeDispose = null
 }
 
-export async function initPlantZombieDefense2d(
-  engine: GameEngine,
-  onEnd: () => void,
-): Promise<void> {
-  destroyPlantZombieDefense2d()
-  engine.start()
-  engine.setOrientation('landscape')
+class PlantZombieDefense2dLifecycle extends GameLifecycle {
+  private state: GameState = createInitialState(1)
+  private ended = false
+  private assets: Awaited<ReturnType<typeof loadPzd2dAssets>> | null = null
+  private canvasCtx: CanvasRenderingContext2D | null = null
+  private unbind: (() => void) | null = null
 
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement | null
-  if (!canvas) {
-    onEnd()
-    return
-  }
+  async onInit() {
+    const engine = this.ctx.engine
+    engine.setOrientation('landscape')
 
-  const ctx = canvas.getContext('2d')
-  if (!ctx) {
-    onEnd()
-    return
-  }
+    const canvas = this.ctx.canvas
+    if (!canvas) {
+      this.ctx.onEnd()
+      return
+    }
 
-  const assets = await loadPzd2dAssets()
-  let state: GameState = createInitialState(1)
-  let ended = false
-  let raf = 0
-  let lastTs = performance.now()
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      this.ctx.onEnd()
+      return
+    }
+    this.canvasCtx = ctx
 
-  const finish = () => {
-    if (ended) return
-    ended = true
-    persistRecords(state)
-    engine.setScore(state.score)
-    engine.setGameStats({
-      grade: state.phase === 'victory' ? 'win' : 'lose',
-      stars: computeStars(state),
-      wave: state.waveIndex + 1,
-      score: state.score,
-    })
-    cancelAnimationFrame(raf)
-    unbind()
-    window.removeEventListener('resize', onResize)
-    onEnd()
-  }
+    const assets = await loadPzd2dAssets()
+    this.assets = assets
 
-  const getVp = () => computeViewport(canvas.width, canvas.height)
+    const exitToLobby = () => {
+      if (this.ended) return
+      this.ended = true
+      persistRecords(this.state)
+      gameActions.gameOver({
+        victory: this.state.phase === 'victory',
+        score: this.state.score,
+        stats: {
+          stars: computeStars(this.state),
+          wave: this.state.waveIndex + 1,
+          level: this.state.levelIndex,
+        },
+      })
+      activeDispose?.()
+      activeDispose = null
+    }
 
-  const unbind = bindPzd2dInput(
-    canvas,
-    getVp,
-    () => state,
-    result => {
-      if (ended) return
+    const getVp = () => computeViewport(canvas.width, canvas.height)
+    const onResize = () => resizeCanvasToDisplay(canvas)
+
+    this.unbind = bindPzd2dInput(canvas, getVp, () => this.state, result => {
+      if (this.ended) return
       if (result.invalidSun) {
         playPzd2dSfx('ui_invalid')
         return
       }
       if (result.resultAction === 'menu') {
-        finish()
+        exitToLobby()
         return
       }
       if (result.resultAction === 'levels') {
-        returnToLevelSelect(state)
+        returnToLevelSelect(this.state)
         return
       }
       if (result.resultAction === 'retry') {
-        resetRun(state, state.levelIndex)
+        resetRun(this.state, this.state.levelIndex)
         return
       }
-      if (result.resultAction === 'next' && state.phase === 'victory') {
-        const next = Math.min(state.levelIndex + 1, GAME_CONFIG.totalLevels)
-        if (next <= state.records.unlockedLevel) {
-          resetRun(state, next)
+      if (result.resultAction === 'next' && this.state.phase === 'victory') {
+        const next = Math.min(this.state.levelIndex + 1, GAME_CONFIG.totalLevels)
+        if (next <= this.state.records.unlockedLevel) {
+          resetRun(this.state, next)
         }
-        return
       }
-      if (
-        (state.phase === 'victory' || state.phase === 'defeat') &&
-        state.resultReady &&
-        !result.resultAction
-      ) {
-        /* wait for button */
-      }
-    },
-  )
+    })
 
-  const onResize = () => resizeCanvasToDisplay(canvas)
-  onResize()
-  window.addEventListener('resize', onResize)
+    window.addEventListener('resize', onResize)
+    onResize()
 
-  const loop = (ts: number) => {
-    if (ended) return
-    resizeCanvasToDisplay(canvas)
-    if (!engine.canTick()) {
-      drawFrame(ctx, canvas.width, canvas.height, state, assets)
-      raf = requestAnimationFrame(loop)
-      return
+    const onUpdate = (dt: number) => {
+      if (this.ended || engine.isPaused()) return
+      resizeCanvasToDisplay(canvas)
+      updateSimulation(this.state, Math.min(0.05, dt))
+      drainSfxQueue(this.state.pendingSfx)
     }
-    const dt = Math.min(0.05, (ts - lastTs) / 1000)
-    lastTs = ts
-    updateSimulation(state, dt)
-    drainSfxQueue(state.pendingSfx)
-    drawFrame(ctx, canvas.width, canvas.height, state, assets)
-    raf = requestAnimationFrame(loop)
-  }
-  raf = requestAnimationFrame(loop)
 
-  activeDispose = () => {
-    cancelAnimationFrame(raf)
-    window.removeEventListener('resize', onResize)
-    unbind()
+    const onRender = () => {
+      if (!this.canvasCtx || !this.assets) return
+      drawFrame(this.canvasCtx, canvas.width, canvas.height, this.state, this.assets)
+    }
+
+    this.ctx.onUpdate = onUpdate
+    this.ctx.onRender = onRender
+
+    activeDispose = () => {
+      window.removeEventListener('resize', onResize)
+      this.unbind?.()
+      this.unbind = null
+      this.assets = null
+    }
   }
+
+  onUpdate() {}
+  onRender() {}
+  onDestroy() {
+    activeDispose?.()
+    activeDispose = null
+  }
+}
+
+export function startPlantZombieDefense2dLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  return new PlantZombieDefense2dLifecycle(lifecycleCtx)
 }

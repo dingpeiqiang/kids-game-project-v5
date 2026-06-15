@@ -174,6 +174,14 @@ export async function endGame(ctx: PlatformContext) {
   dismissGamePauseOverlay()
 
   const gameId = ctx.currentGame.id
+
+  // 记录游玩历史（游客 / 已登录用户）
+  if (userService.isLoggedIn) {
+    // userService.recordGameResult 内部已添加 gameRecords
+  } else {
+    storageService.recordPlay(gameId)
+  }
+
   const score = gameEngine.getScore()
   const prevBest = (userService.isLoggedIn ? userService.current?.bestScores[gameId] : undefined)
     ?? storageService.get().bestScores[gameId]
@@ -365,7 +373,7 @@ export function exitGame(ctx: PlatformContext) {
   unmountGameShell(ctx.orientationManager)
   ctx.currentGame = null
 
-  refreshBestScores()
+  ctx.switchToHome()
 }
 
 // ==================== 评论区 ====================

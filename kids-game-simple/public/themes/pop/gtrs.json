@@ -1,0 +1,45 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "pop_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "缤纷气球",
+    "isDefault": true,
+    "gameId": "pop",
+    "description": "kids-game-simple pop 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#4ECDC4",
+    "secondaryColor": "#FFD93D",
+    "bgColor": "#FFF8E7",
+    "textColor": "#333333",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "强调" },
+        "background_dark": { "src": "#FFE4B5", "type": "png", "alias": "背景底" },
+        "hud_bg": { "src": "rgba(0,0,0,0.35)", "type": "png", "alias": "HUD" },
+        "danger": { "src": "#FF6B6B", "type": "png", "alias": "警告" },
+        "muted": { "src": "#999999", "type": "png", "alias": "绳子" },
+        "game_palette": {
+          "src": "[\"#FF6B6B\",\"#4ECDC4\",\"#FFD93D\",\"#FF69B4\",\"#9B59B6\",\"#FF8E53\",\"#6BCB77\"]",
+          "type": "png",
+          "alias": "气球色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

@@ -14,7 +14,6 @@ const CUSTOM_ROUTES_FILE = path.join(ROUTES_DIR, 'custom_routes.json')
 function ensureDir(): void {
   if (!fs.existsSync(ROUTES_DIR)) {
     fs.mkdirSync(ROUTES_DIR, { recursive: true })
-    console.log('✅ 创建路线目录:', ROUTES_DIR)
   }
 }
 
@@ -29,21 +28,18 @@ export function saveLevelRoutes(routes: Record<number, any>): void {
   }
   
   fs.writeFileSync(LEVEL_ROUTES_FILE, JSON.stringify(data, null, 2), 'utf8')
-  console.log(`✅ 已保存 ${Object.keys(routes).length} 个关卡路线到:`, LEVEL_ROUTES_FILE)
 }
 
 // 加载关卡专属路线
 export function loadLevelRoutes(): Record<number, any> {
   try {
     if (!fs.existsSync(LEVEL_ROUTES_FILE)) {
-      console.log('⚠️  关卡路线文件不存在，返回空对象')
       return {}
     }
     
     const content = fs.readFileSync(LEVEL_ROUTES_FILE, 'utf8')
     const data = JSON.parse(content)
     
-    console.log(`✅ 已加载 ${Object.keys(data.routes).length} 个关卡路线`)
     return data.routes
   } catch (error) {
     console.error('❌ 加载关卡路线失败:', error)
@@ -62,21 +58,18 @@ export function saveCustomRoutes(routes: any[]): void {
   }
   
   fs.writeFileSync(CUSTOM_ROUTES_FILE, JSON.stringify(data, null, 2), 'utf8')
-  console.log(`✅ 已保存 ${routes.length} 条自定义路线到:`, CUSTOM_ROUTES_FILE)
 }
 
 // 加载自定义路线
 export function loadCustomRoutes(): any[] {
   try {
     if (!fs.existsSync(CUSTOM_ROUTES_FILE)) {
-      console.log('⚠️  自定义路线文件不存在，返回空数组')
       return []
     }
     
     const content = fs.readFileSync(CUSTOM_ROUTES_FILE, 'utf8')
     const data = JSON.parse(content)
     
-    console.log(`✅ 已加载 ${data.routes.length} 条自定义路线`)
     return data.routes
   } catch (error) {
     console.error('❌ 加载自定义路线失败:', error)
@@ -110,7 +103,6 @@ export function deleteRouteFile(filename: string): void {
   
   if (fs.existsSync(filepath)) {
     fs.unlinkSync(filepath)
-    console.log(`✅ 已删除文件: ${filename}`)
   }
 }
 
@@ -130,13 +122,9 @@ export function backupRoutes(): void {
     const source = path.join(ROUTES_DIR, file)
     const backup = path.join(backupDir, file.replace('.json', `_${timestamp}.json`))
     fs.copyFileSync(source, backup)
-    console.log(`📦 已备份: ${file} -> ${path.basename(backup)}`)
   })
 }
 
 // 主函数：测试
 if (require.main === module) {
-  console.log('🐉 Dragon Shooter 路线管理器')
-  console.log('路线目录:', ROUTES_DIR)
-  console.log('可用文件:', listRouteFiles())
 }

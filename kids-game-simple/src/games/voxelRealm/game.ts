@@ -1,5 +1,6 @@
 import { Vector3 } from '@babylonjs/core'
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
 import {
   BLOCK_PALETTE,
@@ -95,7 +96,6 @@ export function destroyVoxelRealm(): void {
 
 export async function initVoxelRealm(engine: GameEngine, onEnd: () => void): Promise<void> {
   destroyVoxelRealm()
-  engine.start()
   engine.setOrientation('landscape')
 
   const parent = document.getElementById('gameCanvas')
@@ -169,16 +169,18 @@ export async function initVoxelRealm(engine: GameEngine, onEnd: () => void): Pro
   const finish = (finalScore: number) => {
     if (ended) return
     ended = true
-    engine.setScore(finalScore)
-    engine.setGameStats({
-      placed: state.blocksPlaced,
-      broken: state.blocksBroken,
-      bestBuild,
-      bestRaceMs: bestRaceMs < 999999 ? bestRaceMs : 0,
+    gameActions.gameOver({
+      victory: true,
+      score: finalScore,
+      stats: {
+        placed: state.blocksPlaced,
+        broken: state.blocksBroken,
+        bestBuild,
+        bestRaceMs: bestRaceMs < 999999 ? bestRaceMs : 0,
+      },
     })
     activeDispose?.()
     activeDispose = null
-    onEnd()
   }
 
   hud.onToolbar(action => {

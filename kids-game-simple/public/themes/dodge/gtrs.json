@@ -1,0 +1,48 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "dodge_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "星际躲避",
+    "isDefault": true,
+    "gameId": "dodge",
+    "description": "kids-game-simple dodge 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#4ECDC4",
+    "secondaryColor": "#FFD93D",
+    "bgColor": "#1a1a4e",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "强调" },
+        "background_dark": { "src": "#1a1a3e", "type": "png", "alias": "背景底" },
+        "bg_grad_mid": { "src": "#2d1b4e", "type": "png", "alias": "背景中色" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "danger": { "src": "#FF4757", "type": "png", "alias": "障碍" },
+        "muted": { "src": "#A855F7", "type": "png", "alias": "障碍紫" },
+        "player": { "src": "#4ECDC4", "type": "png", "alias": "玩家" },
+        "coin": { "src": "#FFD700", "type": "png", "alias": "金币" },
+        "game_palette": {
+          "src": "[\"#FF4757\",\"#A855F7\",\"#FFD700\",\"#4ECDC4\"]",
+          "type": "png",
+          "alias": "玩法色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

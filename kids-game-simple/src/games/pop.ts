@@ -2,17 +2,52 @@ import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../data/items'
 import { app } from '../services/appBridge'
+import { gameActions } from '../platform/gameBridge'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../platform/GameLifecycle'
+import { createLifecycleContext } from '../platform/frameworkSession'
+import { hostCanvas2D } from '../platform/hostCanvas2D'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../utils/canvasMobileUtils'
+import { resolveGtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
+
+let activeHost: GameLifecycle | null = null
+
+export function destroyPop(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
 
 export function initPop(engine: GameEngine, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  const W = 400, H = 600
+  destroyPop()
+  const lifecycleCtx = createLifecycleContext('pop', engine, onEnd)
+  if (!lifecycleCtx) {
+    onEnd()
+    return
+  }
+  activeHost = startPopLifecycle(lifecycleCtx)
+}
+
+function startPopLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
+  const W = 400
+  const H = 600
   const ctx = canvas.getContext('2d')!
   ctx.imageSmoothingEnabled = false
   const BALLOONS: any[] = []
   const PARTICLES: any[] = [] // 爆炸粒子
-  const COLORS = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#FF69B4', '#9B59B6', '#FF8E53', '#6BCB77']
-  let last = 0
+  const POP_FALLBACK = {
+    background: '#FFF8E7',
+    backgroundDark: '#FFE4B5',
+    text: '#333333',
+    accent: '#FFD93D',
+    hudBg: 'rgba(0,0,0,0.35)',
+    danger: '#FF6B6B',
+    muted: '#999999',
+    palette: ['#FF6B6B', '#4ECDC4', '#FFD93D', '#FF69B4', '#9B59B6', '#FF8E53', '#6BCB77'],
+  }
+  let gtrs = resolveGtrsCanvasStyle('pop', { ...POP_FALLBACK, primary: '#4ECDC4' })
+  let balloonColors = [...gtrs.palette]
   let lastActionTime = Date.now() // 记录最后一次操作时间
   const INACTIVITY_TIMEOUT = 12000 // 12秒无操作判定失败
   let gameStartTime = Date.now() // 游戏开始时间
@@ -51,7 +86,6 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     if (index === -1) return false
     
     inventory.splice(index, 1)
-    console.log('[道具] 使用道具:', type)
     
     switch (type) {
       case 'bomb':
@@ -69,31 +103,28 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
             })
           }
         })
-        engine.addScore(BALLOONS.length * 10, W / 2, H / 2)
+        const n = BALLOONS.length
+        gameActions.addScore(n * 10, W / 2, H / 2, 'pop')
         BALLOONS.length = 0
         audioService.win()
-        console.log('[道具] 炸弹消除', BALLOONS.length, '个气球')
         break
         
       case 'time_plus':
         // 加时 - 重置无操作计时器
         lastActionTime = Date.now()
         audioService.win()
-        console.log('[道具] 加时生效')
         break
         
       case 'double_score':
         // 双倍分数 - 10秒内×2
         ;(window as any).popDoubleScore = Date.now() + 10000
         audioService.win()
-        console.log('[道具] 双倍分数生效，持续10秒')
         break
         
       case 'slow':
         // 减速 - 气球速度减半，持续8秒
         ;(window as any).popSlow = Date.now() + 8000
         audioService.collect()
-        console.log('[道具] 减速生效，持续8秒')
         break
     }
     
@@ -138,7 +169,7 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
       x: Math.random() * (W - 60) + 30,
       y: H + 30,
       r: 18 + Math.random() * 14,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      color: balloonColors[Math.floor(Math.random() * balloonColors.length)],
       speed: 0.8 + Math.random() * 1.2, // 降低速度：0.8-2.0
       wobble: Math.random() * Math.PI * 2,
       wobbleSpd: 0.02 + Math.random() * 0.02,
@@ -149,8 +180,8 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
   function draw() {
     // 渐变背景
     const grad = ctx.createLinearGradient(0, 0, 0, H)
-    grad.addColorStop(0, '#FFF8E7')
-    grad.addColorStop(1, '#FFE4B5')
+    grad.addColorStop(0, gtrs.background)
+    grad.addColorStop(1, gtrs.backgroundDark)
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, W, H)
 
@@ -161,7 +192,8 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     
     // 绘制倒计时背景条
     const barWidth = (remaining / INACTIVITY_TIMEOUT) * (W - 40)
-    const barColor = remaining < 4000 ? '#FF6B6B' : remaining < 8000 ? '#FFD93D' : '#4ECDC4'
+    const barColor =
+      remaining < 4000 ? gtrs.danger : remaining < 8000 ? gtrs.accent : gtrs.primary
     
     ctx.fillStyle = 'rgba(0,0,0,0.1)'
     ctx.fillRect(20, 8, W - 40, 6)
@@ -170,15 +202,15 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     ctx.fillRect(20, 8, barWidth, 6)
     
     if (seconds <= 3 && Math.floor(now / 150) % 2 === 0) {
-      ctx.fillStyle = 'rgba(255,107,107,0.12)'
+      ctx.fillStyle = `${gtrs.danger}1f`
       ctx.fillRect(0, 0, W, H)
     }
 
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'
+    ctx.fillStyle = gtrs.hudBg
     ctx.beginPath()
     ctx.roundRect(10, 18, W - 20, 34, 10)
     ctx.fill()
-    ctx.fillStyle = seconds <= 8 ? '#FF6B6B' : '#333'
+    ctx.fillStyle = seconds <= 8 ? gtrs.danger : gtrs.text
     ctx.font = 'bold 15px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -190,7 +222,7 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
       const wx = Math.sin(b.wobble) * 5
       
       // 绳子
-      ctx.strokeStyle = '#999'
+      ctx.strokeStyle = gtrs.muted
       ctx.lineWidth = 2
       ctx.beginPath()
       ctx.moveTo(b.x + wx, b.y + b.r)
@@ -279,7 +311,7 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     for (let i = BALLOONS.length - 1; i >= 0; i--) {
       const b = BALLOONS[i]
       if (Math.hypot(mx - b.x - Math.sin(b.wobble) * 5, my - b.y) < b.r + 5) {
-        engine.addScore(10 + Math.round(b.r), b.x, b.y)
+        gameActions.addScore(10 + Math.round(b.r), b.x, b.y, 'pop')
         if (engine.getCombo() >= 2) engine.triggerRandomBuff()
 
         if (b.item) {
@@ -293,7 +325,7 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
                 vx: (Math.random() - 0.5) * 8,
                 vy: (Math.random() - 0.5) * 8 - 3,
                 life: 1,
-                color: '#FFD93D',
+                color: gtrs.accent,
                 size: 3 + Math.random() * 3,
               })
             }
@@ -321,11 +353,6 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  applyCanvasMobileStyles(canvas)
-  const unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
-    handleTapAt(x, y)
-  })
-  
   // 更新道具栏显示
   function updateItemBar() {
     const items = ['bomb', 'line_h', 'line_v', 'color_bomb', 'hammer', 'shuffle', 'rainbow', 'freeze', 'magnet', 'mega_bomb', 'time_plus', 'double_score']
@@ -349,8 +376,7 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     })
   }
   
-  // 使用道具函数（供外部调用）
-  ;(window as any).useGameItem = (itemId: string) => {
+  function applyUseGameItem(itemId: string) {
     if (!itemCharge[itemId] || itemCharge[itemId] <= 0) {
       return
     }
@@ -372,7 +398,7 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
               size: 3 + Math.random() * 4
             })
           }
-          engine.addScore(15, b.x, b.y)
+          gameActions.addScore(15, b.x, b.y, 'pop')
         })
         BALLOONS.length = 0
         audioService.win()
@@ -383,7 +409,7 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
         break
       case 'double_score':
         // 下次得分翻倍（简单实现：立即给分）
-        engine.addScore(50, W / 2, H / 2)
+        gameActions.addScore(50, W / 2, H / 2, 'pop')
         break
     }
     
@@ -391,32 +417,46 @@ export function initPop(engine: GameEngine, onEnd: () => void) {
     updateItemBar()
   }
 
-  function loop(ts: number) {
-    if (!document.getElementById('mainGameCanvas')) {
-      unbindPointer()
-      return
-    }
+  let unbindPointer: (() => void) | null = null
+  let lastSpawnMs = 0
 
-    if (!engine.canTick()) {
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      applyCanvasMobileStyles(canvas)
+      updateHTMLPowerupBar()
+      lastSpawnMs = performance.now()
+      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+        handleTapAt(x, y)
+      })
+      ;(window as unknown as { useGameItem?: (id: string) => void }).useGameItem = applyUseGameItem
+    },
+    onUpdate(_dt) {
+      const now = Date.now()
+      if (now - lastActionTime > INACTIVITY_TIMEOUT) {
+        unbindPointer?.()
+        unbindPointer = null
+        audioService.lose()
+        gameActions.gameOver({ victory: false, score: engine.getScore() })
+        return
+      }
+      const ts = performance.now()
+      if (ts - lastSpawnMs > 1200) {
+        spawn()
+        lastSpawnMs = ts
+      }
+      BALLOONS.forEach(b => {
+        b.y -= b.speed
+        b.wobble += b.wobbleSpd
+      })
+    },
+    onRender() {
       draw()
-      requestAnimationFrame(loop)
-      return
-    }
-
-    const now = Date.now()
-    if (now - lastActionTime > INACTIVITY_TIMEOUT) {
-      unbindPointer()
-      engine.setVictory(false)
-      engine.endGame()
-      audioService.lose()
-      onEnd()
-      return
-    }
-    
-    if (ts - last > 1200) { spawn(); last = ts } // 增加生成间隔到1.2秒
-    BALLOONS.forEach(b => { b.y -= b.speed; b.wobble += b.wobbleSpd })
-    draw()
-    requestAnimationFrame(loop)
-  }
-  requestAnimationFrame(loop)
+    },
+    onDestroy() {
+      unbindPointer?.()
+      unbindPointer = null
+      delete (window as unknown as { useGameItem?: unknown }).useGameItem
+      app.removePowerupBar?.()
+    },
+  })
 }

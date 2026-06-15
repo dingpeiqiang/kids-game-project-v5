@@ -1,0 +1,44 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "towerDefense_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "塔防守卫",
+    "isDefault": true,
+    "gameId": "towerDefense",
+    "description": "kids-game-simple towerDefense 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#2ECC71",
+    "secondaryColor": "#FFD700",
+    "bgColor": "#0f172a",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "path": { "src": "#6B8E23", "type": "png", "alias": "路径" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "accent": { "src": "#FFD700", "type": "png", "alias": "高亮" },
+        "danger": { "src": "#E74C3C", "type": "png", "alias": "危险" },
+        "game_palette": {
+          "src": "[\"#2ECC71\",\"#00E5FF\",\"#9C27B0\",\"#FFD700\",\"#FF6B6B\",\"#FFA502\"]",
+          "type": "png",
+          "alias": "防御色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

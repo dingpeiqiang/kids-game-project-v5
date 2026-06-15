@@ -28,14 +28,36 @@
 
 - **入口**：`gameSession.startGame` → `mountGameShell` → `initGame(registry)`
 - **作用**：大厅隐藏、顶栏、暂停蒙层、布局元数据（`gameLayout.ts`）
-- **不等同于** BaseGame：多数游戏仍是 `init(engine, onEnd)` 自管循环
+- **不等同于** BaseGame：玩法仍通过 `init(engine, onEnd)` 挂载；**大厅内 39 款**已标 `frameworkLifecycle`（见下）
 
-## Game Framework（迁移中）
+### 道具栏不属于框架层
+
+| 归属 | 内容 |
+|------|------|
+| **壳层（框架）** | 返回、标题、（可选）平台得分/连击、暂停/退出 |
+| **游戏（玩法）** | 道具种类、库存、效果、展示方式 |
+
+壳层 **默认不显示底部道具区域**（`game-shell-footer` 隐藏）。仅当某游戏仍使用遗留 HTML 道具栏并调用 `app.setupCustomPowerupBar` 时，才会展开 `#gameShellPowerupSlot` 作为**可选挂载点**（`powerup.ts` 为平台工具，非统一道具系统）。
+
+**推荐**：新游戏在 **canvas / 游戏内 HUD** 自绘道具，或 3D 游戏用自带 UI；不要依赖壳层底栏。长期可把 `setupCustomPowerupBar` 迁入各游戏目录或删除。
+
+## Game Framework（大厅游戏已全覆盖）
 
 - **入口**：`gameSession` 内 `installGameEventBridge` + `setGameEndHandler` → `initXxx`
-- **玩法写法**：`runCanvasLifecycle(ctx, { onInit, onUpdate, onRender, onDestroy })`
-- **计分推荐**：`gameActions.addScore` / `gameActions.gameOver`（不直接 `engine.addScore`）
-- **试点**：`bouncePath`（`bouncePath.lifecycle.ts`）
+- **2D 托管**：`hostCanvas2D` / `runCanvasLifecycle`（`onInit` / `onUpdate` / `onRender` / `onDestroy`）
+- **Adapter**（Phaser / Babylon / 自管 RAF）：`destroyXxx` + `gameActions` + `engine.canTick()` / `isPaused()`，画布在 `#gameCanvas` 或 `#mainGameCanvas`
+- **计分**：`gameActions.addScore` / `gameActions.gameOver`（经 `gameBridge` → `gameEngine`）
+- **权威列表**：`FRAMEWORK_LIFECYCLE_GAME_IDS`（39 个 id，与 `GAME_REGISTRY` 一一对应）
+- **退出/重开**：`destroyGame(gameId)` → 各注册项 `destroy`（若存在）
+
+### 接入方式分类
+
+| 类型 | 代表游戏 |
+|------|----------|
+| `hostCanvas2D` | eliminate、tetris、match3、superMario、towerDefense、beatDragon、kingBaby、plantsVsZombies、plantZombieDefense2d、cuteTankBattle… |
+| Phaser / 外部 DOM | spaceShooter |
+| Canvas 自管循环 + destroy | dragonShooter、rpgShooter、contraRpg、wangzheRpg、dnfRpg |
+| Babylon 3D + HUD | happyDefense、plantZombieDefense、skyFrenzy、cloudBallRush3d、voxelRealm |
 
 ## 迁移清单（建议顺序）
 
@@ -46,8 +68,15 @@
 | P2 | 横屏 2D | 同 P1 + `gameLayout` landscape |
 | P3 | Phaser / Babylon | **Adapter**：生命周期与 pause/score 走 bridge，渲染仍各自引擎 |
 
+## GTRS 主题（与壳层并行）
+
+- 进游戏时 `initGame` → `prepareGameTheme`（全游戏 L0）
+- 玩法读主题见 [GTRS_MIGRATE_TEMPLATE.md](./GTRS_MIGRATE_TEMPLATE.md)、进度 `registerGtrsCanvasGames.ts`
+
 ## 相关文件
 
+- [FRAMEWORK_MIGRATE_TEMPLATE.md](./FRAMEWORK_MIGRATE_TEMPLATE.md)
+- [GTRS_MIGRATE_TEMPLATE.md](./GTRS_MIGRATE_TEMPLATE.md)
 - [GameLifecycle.ts](../src/platform/GameLifecycle.ts)
 - [gameBridge.ts](../src/platform/gameBridge.ts)
 - [canvas-game-shell-spec.md](./canvas-game-shell-spec.md)

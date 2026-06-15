@@ -33,6 +33,11 @@ export interface Game {
   preview: string
 }
 
+export interface PlayRecord {
+  gameId: string
+  playedAt: string
+}
+
 // 玩家数据
 export interface PlayerData {
   name: string
@@ -40,7 +45,7 @@ export interface PlayerData {
   bestScores: Record<string, number>
   todayGames: number
   todayDate: string
-  playHistory: string[]
+  playHistory: PlayRecord[]
   loginDays: number
   lastLogin: string
   guideSkipped: Record<string, boolean>

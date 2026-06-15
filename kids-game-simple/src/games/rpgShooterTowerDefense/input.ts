@@ -57,7 +57,6 @@ function handleMapClick(
           const success = upgradeTurret(state, btn.turret)
           if (success) {
             playSound('upgrade')
-            console.log(`✅ 炮台升级到 Lv.${btn.turret.level}`)
             selectedTurretForUpgradeRef.current = null  // 升级后关闭弹窗
           }
           return
@@ -71,7 +70,6 @@ function handleMapClick(
           sellTurret(state, btn.turret)
           selectedTurretForUpgradeRef.current = null
           playSound('sell')
-          console.log(`✅ 炮台已出售，获得 💎${btn.value}`)
           return
         }
       }
@@ -86,17 +84,14 @@ function handleMapClick(
 
       if (clickedTurret) {
         if (selectedTurretForUpgradeRef.current === clickedTurret) {
-          console.log('ℹ️ 炮台已选中，弹窗保持打开')
         } else {
           selectedTurretForUpgradeRef.current = clickedTurret
           playSound('select')
-          console.log('🔍 选中新炮台，显示升级弹窗')
         }
         return
       } else {
         // 点击空白处取消选中
         selectedTurretForUpgradeRef.current = null
-        console.log('❌ 点击空白处，取消选中')
       }
     }
 
@@ -136,7 +131,6 @@ function handleMapClick(
             state.buildMode.selectedTrap = null
           }
           playSound('select')
-          console.log(`${state.buildMode.selectedTurret ? '✅ 选择' : '❌ 取消'}: ${btn.type}`)
           return
         }
       }
@@ -180,9 +174,7 @@ function tryPlaceTurret(
         vy: -0.8
       })
       state.buildMode.selectedTurret = null
-      console.log(`✅ 炮台放置成功，消耗 ${turretConfig.cost} 水晶`)
     } else {
-      console.log('❌ 炮台放置失败')
     }
   } else if (wallConfig) {
     // 放置城墙
@@ -199,9 +191,7 @@ function tryPlaceTurret(
         vy: -0.8
       })
       state.buildMode.selectedTurret = null
-      console.log(`✅ 城墙放置成功，消耗 ${wallConfig.cost} 水晶`)
     } else {
-      console.log('❌ 城墙放置失败')
     }
   } else {
     console.error(`❌ 配置不存在: ${selectedType}`)
@@ -236,10 +226,8 @@ function tryPlaceWall(
       vy: -0.8
     })
     state.buildMode.selectedTurret = null
-    console.log(`城墙放置成功，消耗 ${config.cost} 水晶`)
   } else {
     const reason = canPlaceWall(state, mousePos.x, mousePos.y, state.buildMode.selectedTurret! as any).reason
-    console.log(`城墙放置失败: ${reason || '未知原因'}`)
   }
 }
 
@@ -342,7 +330,6 @@ export function initInput(params: InputInitParams): () => void {
     // 游戏未开始 → 触摸开始游戏
     if (!state.gameStarted) {
       state.gameStarted = true
-      console.log('🎮 游戏开始！')
       return
     }
 
@@ -368,7 +355,6 @@ export function initInput(params: InputInitParams): () => void {
         state.buildMode.selectedTrap = null
       }
       playSound('select')
-      console.log(`双指切换 - 建造模式: ${state.buildMode.active ? '开启' : '关闭'}`)
       return
     }
 
@@ -388,7 +374,6 @@ export function initInput(params: InputInitParams): () => void {
             state.buildMode.selectedTrap = null
           }
           playSound('select')
-          console.log(`${state.buildMode.selectedTurret ? '✅ 选择' : '❌ 取消'} 炮台: ${btn.type}`)
           return
         }
       }
@@ -407,7 +392,6 @@ export function initInput(params: InputInitParams): () => void {
         joystick.touchId = touch.identifier
         joystick.currentX = btnX
         joystick.currentY = btnY
-        console.log('🕹️ 虚拟摇杆已激活 (圆形区域)')
         return
       }
     }
@@ -463,7 +447,6 @@ export function initInput(params: InputInitParams): () => void {
         upgradeTurret(state, upgBtn.turret)
         selectedTurretForUpgradeRef.current = null
         playSound('turretPlace')
-        console.log('⬆️ [手机端] 炮台已升级！')
         lastPlaceTime = Date.now()
         return
       }
@@ -475,7 +458,6 @@ export function initInput(params: InputInitParams): () => void {
         sellTurret(state, sellBtn.turret)
         selectedTurretForUpgradeRef.current = null
         playSound('sell')
-        console.log(`💰 [手机端] 炮台已出售 💎${sellBtn.value}`)
         lastPlaceTime = Date.now()
         return
       }
@@ -513,7 +495,6 @@ export function initInput(params: InputInitParams): () => void {
 
     if (!state.gameStarted) {
       state.gameStarted = true
-      console.log('游戏开始！')
       return
     }
 
@@ -580,7 +561,6 @@ export function initKeyboard(
     if (e.key === ' ' || e.key === 'Enter') {
       if (!state.gameStarted) {
         state.gameStarted = true
-        console.log('游戏开始！')
       }
     }
 
@@ -588,7 +568,6 @@ export function initKeyboard(
       state.buildMode.selectedTurret = null
       state.buildMode.selectedTrap = null
       selectedTurretForUpgradeRef.current = null
-      console.log('已取消选中')
     }
   }
 

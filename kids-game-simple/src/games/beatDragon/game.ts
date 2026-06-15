@@ -1,4 +1,8 @@
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { audioService } from '../../services/audio'
 import { updateSimulation, pickBuff, startBuffPick } from './logic/gameLoop'
 import { createInitialState } from './logic/state'
@@ -6,25 +10,26 @@ import { applyPlayerMove, bindBeatDragonInput, createInputState } from './input'
 import { loadBeatDragonAssets } from './render/assets'
 import { drawFrame, hitBuffCard, isResultTap } from './render/draw'
 import type { GameState } from './types'
+import type { BeatDragonImages } from './render/assets'
 
-let activeDispose: (() => void) | null = null
+let activeHost: GameLifecycle | null = null
 
 export function destroyBeatDragon(): void {
-  activeDispose?.()
-  activeDispose = null
+  activeHost?.destroy()
+  activeHost = null
 }
 
 export async function initBeatDragon(engine: GameEngine, onEnd: () => void): Promise<void> {
   destroyBeatDragon()
-  engine.start()
   engine.setOrientation('portrait')
 
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement | null
-  if (!canvas) {
+  const lifecycleCtx = createLifecycleContext('beatDragon', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
     onEnd()
     return
   }
 
+  const canvas = lifecycleCtx.canvas
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     onEnd()
@@ -32,6 +37,17 @@ export async function initBeatDragon(engine: GameEngine, onEnd: () => void): Pro
   }
 
   const assets = await loadBeatDragonAssets()
+  activeHost = startBeatDragonLifecycle(lifecycleCtx, assets)
+}
+
+function startBeatDragonLifecycle(
+  lifecycleCtx: import('../../platform/GameLifecycle').GameLifecycleContext,
+  assets: BeatDragonImages,
+): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
+  const ctx = canvas.getContext('2d')!
+
   let state: GameState = createInitialState()
   if (!state.showedWave1Guide) {
     state.showedWave1Guide = true
@@ -40,67 +56,58 @@ export async function initBeatDragon(engine: GameEngine, onEnd: () => void): Pro
   const input = createInputState()
   let ended = false
   let lastScore = 0
-  let raf = 0
-  let lastTs = performance.now()
+  let unbind: (() => void) | null = null
 
-  const finish = () => {
+  const finishFromOverlay = () => {
     if (ended) return
     ended = true
     engine.setScore(state.score)
-    engine.setGameStats({
-      grade: state.phase === 'victory' ? 'win' : 'lose',
-      stars: state.stars,
-      wave: state.waveIndex + 1,
+    const victory = state.phase === 'victory'
+    gameActions.gameOver({
+      victory,
       score: state.score,
+      stats: {
+        grade: victory ? 'win' : 'lose',
+        stars: state.stars,
+        wave: state.waveIndex + 1,
+      },
     })
-    cancelAnimationFrame(raf)
-    unbind()
-    onEnd()
   }
 
-  const unbind = bindBeatDragonInput(canvas, input, (x, y) => {
-    if (ended) return
-    if (isResultTap(state)) {
-      finish()
-      return
-    }
-    const buff = hitBuffCard(state, x, y)
-    if (buff) {
-      pickBuff(state, buff)
-      audioService.collect()
-    }
-  })
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      unbind = bindBeatDragonInput(canvas, input, (x, y) => {
+        if (ended) return
+        if (isResultTap(state)) {
+          finishFromOverlay()
+          return
+        }
+        const buff = hitBuffCard(state, x, y)
+        if (buff) {
+          pickBuff(state, buff)
+          audioService.collect()
+        }
+      })
+    },
+    onUpdate(dt) {
+      if (ended) return
+      const capped = Math.min(0.05, dt)
+      applyPlayerMove(state, input)
+      updateSimulation(state, capped)
 
-  const loop = (ts: number) => {
-    if (ended) return
-    if (!engine.canTick()) {
+      if (state.score > lastScore) {
+        const delta = state.score - lastScore
+        gameActions.addScore(delta, state.player.x, state.player.y - 40, 'beatDragon')
+        lastScore = state.score
+      }
+    },
+    onRender() {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       drawFrame(ctx, state, assets)
-      raf = requestAnimationFrame(loop)
-      return
-    }
-    const dt = Math.min(0.05, (ts - lastTs) / 1000)
-    lastTs = ts
-
-    applyPlayerMove(state, input)
-    updateSimulation(state, dt)
-
-    if (state.score > lastScore) {
-      const delta = state.score - lastScore
-      engine.addScore(delta, state.player.x, state.player.y - 40)
-      lastScore = state.score
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    drawFrame(ctx, state, assets)
-
-    raf = requestAnimationFrame(loop)
-  }
-
-  raf = requestAnimationFrame(loop)
-
-  activeDispose = () => {
-    cancelAnimationFrame(raf)
-    unbind()
-  }
+    },
+    onDestroy() {
+      unbind?.()
+      unbind = null
+    },
+  })
 }

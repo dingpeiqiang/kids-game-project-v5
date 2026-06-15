@@ -63,10 +63,14 @@ export function initRankGameSelector(ctx: PlatformContext) {
 
 export async function renderRank(ctx: PlatformContext, type: string, gameId?: string) {
   const list = document.getElementById('rankList')!
+  const podium = document.getElementById('rankPodium')!
+  const myRankCard = document.getElementById('myRankCard')!
+  const myRankPosition = document.getElementById('myRankPosition')!
+  const myRankScore = document.getElementById('myRankScore')!
 
-  console.log('[App] renderRank 被调用', { type, gameId, isLoggedIn: userService.isLoggedIn })
-
-  list.innerHTML = '<div style="text-align:center;padding:40px;color:#aaa;">加载中...</div>'
+  list.innerHTML = '<div class="rank-empty"><div class="rank-empty-icon">⏳</div><div class="rank-empty-text">加载中...</div></div>'
+  podium.style.display = 'none'
+  myRankCard.style.display = 'none'
 
   let items: { name: string; score: number }[] = []
 
@@ -76,11 +80,11 @@ export async function renderRank(ctx: PlatformContext, type: string, gameId?: st
       const cacheKey = `session_${numericId}`
       let listData: Array<{ rank: number; nickname?: string; username?: string; score: number }>
       if (ctx.rankCache.has(cacheKey)) {
-        listData = ctx.rankCache.get(cacheKey)!
+        listData = ctx.rankCache.get(cacheKey) as Array<{ rank: number; nickname?: string; username?: string; score: number }>
       } else {
         const result = await apiSessionLeaderboard(numericId, 100)
         listData = result.ok ? result.list : []
-        ctx.rankCache.set(cacheKey, listData)
+        ctx.rankCache.set(cacheKey, listData as any)
         setTimeout(() => ctx.rankCache.delete(cacheKey), 30000)
       }
       items = listData.map(entry => ({
@@ -93,12 +97,11 @@ export async function renderRank(ctx: PlatformContext, type: string, gameId?: st
   }
 
   if (items.length === 0) {
-    const msg = userService.isLoggedIn
-      ? '<div style="text-align:center;padding:40px;color:#999;">暂无排行数据<br><span style="font-size:12px">快去玩游戏上榜吧！</span></div>'
-      : '<div style="text-align:center;padding:40px;color:#999;">登录后可查看排行</div>'
-    list.innerHTML = msg
-    const myRankCard = document.getElementById('myRankCard')!
-    myRankCard.style.display = 'none'
+    if (userService.isLoggedIn) {
+      list.innerHTML = '<div class="rank-empty"><div class="rank-empty-icon">🏆</div><div class="rank-empty-text">暂无排行数据</div><div class="rank-empty-hint">快去玩游戏上榜吧！</div></div>'
+    } else {
+      list.innerHTML = '<div class="rank-empty"><div class="rank-empty-icon">🔒</div><div class="rank-empty-text">登录后可查看排行</div><div class="rank-empty-hint">登录后与其他玩家一起比拼！</div></div>'
+    }
     return
   }
 
@@ -109,10 +112,6 @@ export async function renderRank(ctx: PlatformContext, type: string, gameId?: st
 
   const myBest = gameId ? (bestScores[gameId] || 0) : 0
 
-  const myRankCard = document.getElementById('myRankCard')!
-  const myRankPosition = document.getElementById('myRankPosition')!
-  const myRankScore = document.getElementById('myRankScore')!
-
   if (myBest > 0 && type === 'global') {
     const meIdx = items.findIndex(i => i.name === myName)
     if (meIdx >= 0) {
@@ -120,43 +119,54 @@ export async function renderRank(ctx: PlatformContext, type: string, gameId?: st
     } else {
       items.push({ name: myName, score: myBest })
     }
-
-    myRankCard.style.display = 'flex'
-    myRankScore.textContent = myBest.toLocaleString()
-  } else {
-    myRankCard.style.display = 'none'
   }
 
   items.sort((a, b) => b.score - a.score)
 
   if (myBest > 0 && type === 'global') {
+    myRankCard.style.display = 'flex'
+    myRankScore.textContent = formatRankScore(myBest)
     const myRank = items.findIndex(i => i.name === myName) + 1
     myRankPosition.textContent = myRank > 0 ? `#${myRank}` : '-'
   }
 
-  list.innerHTML = items.map((item, i) => {
-    const num = i + 1
-    let cls = '', topIcon = ''
-    if (num === 1) { cls = 'gold'; topIcon = '🥇' }
-    else if (num === 2) { cls = 'silver'; topIcon = '🥈' }
-    else if (num === 3) { cls = 'bronze'; topIcon = '🥉' }
+  // 领奖台 (top 3)
+  if (items.length >= 2) {
+    const top3 = items.slice(0, Math.min(3, items.length))
+    const rankLabels = ['1ST', '2ND', '3RD']
+    const podiumClasses = ['podium-first', 'podium-second', 'podium-third']
+    podium.style.display = 'block'
+    podium.innerHTML = `<div class="podium">${top3.map((item, i) => `
+      <div class="podium-item ${podiumClasses[i]}">
+        <div class="podium-medal">${['🥇', '🥈', '🥉'][i]}</div>
+        <div class="podium-avatar">${item.name[0]}</div>
+        <div class="podium-name">${item.name}</div>
+        <div class="podium-score">${formatRankScore(item.score)}</div>
+        <div class="podium-rank">${rankLabels[i]}</div>
+      </div>
+    `).join('')}</div>`
+  } else {
+    podium.style.display = 'none'
+  }
 
-    const isMe = item.name === myName
-    const meClass = isMe ? ' rank-me' : ''
-    const meBadge = isMe ? '<span class="me-badge">我</span>' : ''
-
-    return `
-        <div class="rank-item${meClass}" id="${isMe ? 'myRankItem' : ''}">
-          <div class="rank-num ${cls} top3">${topIcon || num}</div>
+  // 列表 (从第4名开始)
+  const restItems = items.length > 3 ? items.slice(3) : []
+  if (restItems.length > 0) {
+    list.innerHTML = restItems.map((item, i) => {
+      const rankNum = i + 4
+      const isMe = item.name === myName
+      return `
+        <div class="rank-item${isMe ? ' rank-me' : ''}" style="animation-delay:${i * 0.04}s"${isMe ? ' id="myRankItem"' : ''}>
+          <div class="rank-num">${rankNum}</div>
           <div class="rank-avatar">${item.name[0]}</div>
-          <div class="rank-name">
-            ${item.name}
-            ${meBadge}
-          </div>
-          <div class="rank-score">${item.score.toLocaleString()}</div>
+          <div class="rank-name"><span class="name-text">${item.name}</span>${isMe ? '<span class="me-badge">我</span>' : ''}</div>
+          <div class="rank-score">${formatRankScore(item.score)}</div>
         </div>
       `
-  }).join('')
+    }).join('')
+  } else {
+    list.innerHTML = ''
+  }
 }
 
 // ==================== 排名计算（本地） ====================
@@ -207,6 +217,12 @@ export function convertGameIdToNumber(gameId: string): number {
     hash = hash & hash
   }
   return Math.abs(hash) % 10000 + 1
+}
+
+export function formatRankScore(score: number): string {
+  if (score >= 10000) return (score / 10000).toFixed(1) + 'w'
+  if (score >= 1000) return Math.floor(score).toLocaleString()
+  return String(score)
 }
 
 export function clearRankCache(ctx: PlatformContext, gameId: string) {

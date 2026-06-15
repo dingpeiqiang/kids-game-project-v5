@@ -1,0 +1,49 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "cookieCut_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "饼干切割",
+    "isDefault": true,
+    "gameId": "cookieCut"
+  },
+  "globalStyle": {
+    "primaryColor": "#D2691E",
+    "secondaryColor": "#8B4513",
+    "bgColor": "#2D1B0E",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "accent": { "src": "#FFD700", "type": "png", "alias": "强调" },
+        "danger": { "src": "#FF4444", "type": "png", "alias": "倒计时" },
+        "hud_bg": { "src": "rgba(0,0,0,0.4)", "type": "png", "alias": "HUD" },
+        "overlay_top": { "src": "rgba(139, 69, 19, 0.3)", "type": "png", "alias": "暖色顶" },
+        "overlay_bottom": { "src": "rgba(101, 67, 33, 0.5)", "type": "png", "alias": "暖色底" },
+        "game_palette": {
+          "src": "[\"#FFD700\",\"#FF6B6B\",\"#D2691E\",\"#F0E68C\",\"#FF69B4\"]",
+          "type": "png",
+          "alias": "饼干色板"
+        },
+        "crumb_palette": {
+          "src": "[\"#D2691E\",\"#FFD700\",\"#F4A460\",\"#8B4513\"]",
+          "type": "png",
+          "alias": "碎屑粒子"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

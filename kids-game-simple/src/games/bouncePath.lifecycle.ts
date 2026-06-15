@@ -7,6 +7,7 @@ import type { GameLifecycle } from '../platform/GameLifecycle'
 import { requireMainGameCanvas } from '../platform/canvasHost'
 import { resizeCanvasForMobile } from '../utils/mobileHelper'
 import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../utils/canvasMobileUtils'
+import { resolveGtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
 
 const W = 400
 const H = 600
@@ -18,8 +19,21 @@ export function startBouncePathLifecycle(ctx: GameLifecycleContext): GameLifecyc
   g.imageSmoothingEnabled = false
   const engine = ctx.engine
 
-  const BALL_COLORS = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#FF69B4', '#9B59B6']
-  let ball = { x: W / 2, y: H - 80, vx: 0, vy: 0, r: 15, color: BALL_COLORS[0] }
+  const BOUNCE_FALLBACK = {
+    primary: '#4ECDC4',
+    background: '#0f0c29',
+    backgroundDark: '#24243e',
+    bgGradMid: '#302b63',
+    text: '#FFFFFF',
+    accent: '#FFD93D',
+    hudBg: 'rgba(0,0,0,0.45)',
+    danger: '#FF6B6B',
+    muted: '#666666',
+    palette: ['#FF6B6B', '#4ECDC4', '#FFD93D', '#FF69B4', '#9B59B6'],
+  }
+  const gtrs = resolveGtrsCanvasStyle('bouncePath', BOUNCE_FALLBACK)
+  const ballColors = [...gtrs.palette]
+  let ball = { x: W / 2, y: H - 80, vx: 0, vy: 0, r: 15, color: ballColors[0]! }
   const stars: Array<{
     x: number
     y: number
@@ -102,9 +116,9 @@ export function startBouncePathLifecycle(ctx: GameLifecycleContext): GameLifecyc
 
   function draw() {
     const grad = g.createLinearGradient(0, 0, 0, H)
-    grad.addColorStop(0, '#0f0c29')
-    grad.addColorStop(0.5, '#302b63')
-    grad.addColorStop(1, '#24243e')
+    grad.addColorStop(0, gtrs.background)
+    grad.addColorStop(0.5, gtrs.bgGradMid ?? gtrs.backgroundDark)
+    grad.addColorStop(1, gtrs.backgroundDark)
     g.fillStyle = grad
     g.fillRect(0, 0, W, H)
 
@@ -113,7 +127,7 @@ export function startBouncePathLifecycle(ctx: GameLifecycleContext): GameLifecyc
       s.pulse += 0.05
       const pulse = Math.sin(s.pulse) * 3
       g.shadowBlur = 20
-      g.shadowColor = '#FFD93D'
+      g.shadowColor = gtrs.accent
       g.font = `${s.size + pulse}px sans-serif`
       g.textAlign = 'center'
       g.textBaseline = 'middle'
@@ -150,11 +164,11 @@ export function startBouncePathLifecycle(ctx: GameLifecycleContext): GameLifecyc
     const elapsedHud = Date.now() - gameStartTime
     const remainingHud = Math.max(0, GAME_DURATION - elapsedHud)
     const secondsHud = Math.ceil(remainingHud / 1000)
-    g.fillStyle = 'rgba(0,0,0,0.45)'
+    g.fillStyle = gtrs.hudBg
     g.beginPath()
     g.roundRect(10, 8, W - 20, 40, 10)
     g.fill()
-    g.fillStyle = secondsHud <= 10 ? '#FF6B6B' : '#4ECDC4'
+    g.fillStyle = secondsHud <= 10 ? gtrs.danger : gtrs.primary
     g.font = 'bold 16px sans-serif'
     g.textAlign = 'center'
     g.textBaseline = 'middle'
@@ -237,7 +251,7 @@ export function startBouncePathLifecycle(ctx: GameLifecycleContext): GameLifecyc
             vx: (Math.random() - 0.5) * 10,
             vy: (Math.random() - 0.5) * 10,
             life: 1,
-            color: '#FFD93D',
+            color: gtrs.accent,
             size: 3 + Math.random() * 5,
           })
         }

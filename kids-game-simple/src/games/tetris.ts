@@ -2,10 +2,34 @@ import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { createPowerupManager } from '../services/powerupManager'
 import { app } from '../services/appBridge'
+import { gameActions } from '../platform/gameBridge'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+import { resolveGtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
+import { readGtrsSceneMeta } from '../utils/gtrsSceneMeta'
+import type { GameLifecycleContext } from '../platform/GameLifecycle'
+import { createLifecycleContext } from '../platform/frameworkSession'
+import { hostCanvas2D } from '../platform/hostCanvas2D'
 
-export function initTetris(engine: GameEngine, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) return
+let activeHost: GameLifecycle | null = null
+
+export function destroyTetris(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
+
+export async function initTetris(engine: GameEngine, onEnd: () => void): Promise<void> {
+  destroyTetris()
+  const lifecycleCtx = createLifecycleContext('tetris', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
+    return
+  }
+  activeHost = startTetrisLifecycle(lifecycleCtx)
+}
+
+function startTetrisLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
   
   // 响应式Canvas尺寸 - 手机端适配
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -24,6 +48,18 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
 
   const COLS = 10
   const ROWS = 20
+  const TETRIS_FALLBACK = {
+    primary: '#4ECDC4',
+    background: '#1a1a2e',
+    backgroundDark: '#16213e',
+    text: '#FFFFFF',
+    accent: '#FFD93D',
+    hudBg: 'rgba(0,0,0,0.45)',
+    danger: '#FF6B6B',
+    muted: '#B0B0B0',
+    palette: ['#FF6B6B', '#FFD93D', '#4ECDC4', '#9B59B6', '#FF8E53', '#4D96FF', '#6BCB77'],
+  }
+  const gtrs = resolveGtrsCanvasStyle('tetris', TETRIS_FALLBACK)
   // 根据屏幕高度动态调整方块大小和偏移
   const TOP_MARGIN = isMobile ? 40 : 60
   const BLOCK = Math.floor((H - TOP_MARGIN * 2) / ROWS)
@@ -31,13 +67,13 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
   const OFFSET_Y = TOP_MARGIN
 
   const SHAPES = [
-    { color: '#FF6B6B', blocks: [[1,1,1,1]] },           // I
-    { color: '#FFD93D', blocks: [[1,1],[1,1]] },           // O
-    { color: '#4ECDC4', blocks: [[0,1,1],[1,1,0]] },       // S
-    { color: '#9B59B6', blocks: [[1,1,0],[0,1,1]] },       // Z
-    { color: '#FF8E53', blocks: [[1,0,0],[1,1,1]] },       // J
-    { color: '#4D96FF', blocks: [[0,0,1],[1,1,1]] },       // L
-    { color: '#6BCB77', blocks: [[0,1,0],[1,1,1]] },       // T
+    { color: gtrs.palette[0] ?? '#FF6B6B', blocks: [[1,1,1,1]] },
+    { color: gtrs.palette[1] ?? '#FFD93D', blocks: [[1,1],[1,1]] },
+    { color: gtrs.palette[2] ?? '#4ECDC4', blocks: [[0,1,1],[1,1,0]] },
+    { color: gtrs.palette[3] ?? '#9B59B6', blocks: [[1,1,0],[0,1,1]] },
+    { color: gtrs.palette[4] ?? '#FF8E53', blocks: [[1,0,0],[1,1,1]] },
+    { color: gtrs.palette[5] ?? '#4D96FF', blocks: [[0,0,1],[1,1,1]] },
+    { color: gtrs.palette[6] ?? '#6BCB77', blocks: [[0,1,0],[1,1,1]] },
   ]
 
   let board: string[][] = Array(ROWS).fill(null).map(() => Array(COLS).fill(''))
@@ -114,7 +150,6 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
     // 从库存中移除
     inventory.splice(index, 1)
     
-    console.log('[道具] 使用道具:', type)
     
     // 执行效果
     switch (type) {
@@ -126,7 +161,6 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
           boardPowerups.unshift(Array(COLS).fill(null))
           score += 50
           audioService.win()
-          console.log('[道具] 消除一行，当前分数:', score)
           
           // 添加粒子效果
           for (let x = 0; x < COLS; x++) {
@@ -151,7 +185,6 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
         }
         score += 400
         audioService.win()
-        console.log('[道具] Tetris! 消除四行，当前分数:', score)
         
         // 添加大量粒子
         for (let row = ROWS - 4; row < ROWS; row++) {
@@ -172,19 +205,16 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
         // 临时减速，持续8秒
         ;(window as any).tetrisSlowDrop = Date.now() + 8000
         audioService.collect()
-        console.log('[道具] 减速生效，持续8秒')
         break
       case 'score2x':
         // 双倍分数，持续10秒
         ;(window as any).tetrisScore2x = Date.now() + 10000
         audioService.collect()
-        console.log('[道具] 双倍分数生效，持续10秒')
         break
       case 'preview':
         // 预览效果，持续10秒
         ;(window as any).tetrisPreview = Date.now() + 10000
         audioService.collect()
-        console.log('[道具] 预览效果生效，持续10秒')
         break
     }
     
@@ -277,13 +307,12 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
       score += points
       lines += cleared
       level = Math.floor(lines / 10) + 1
-      engine.addScore(points, W / 2, H / 2)
+      gameActions.addScore(points, W / 2, H / 2, 'tetris')
       audioService.win()
       
       if (lines >= 50) {
-        engine.endGame()
         gameEnded = true
-        onEnd()
+        gameActions.gameOver({ victory: true, score: engine.getScore(), stats: { lines, level } })
       }
     }
     
@@ -291,9 +320,8 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
     nextShape = randomShape()
     
     if (!canPlace(current)) {
-      engine.endGame()
       gameEnded = true
-      onEnd()
+      gameActions.gameOver({ victory: false, score: engine.getScore(), stats: { lines, level } })
     }
   }
 
@@ -313,8 +341,8 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
   function draw() {
     // 背景
     const grad = ctx.createLinearGradient(0, 0, 0, H)
-    grad.addColorStop(0, '#1a1a2e')
-    grad.addColorStop(1, '#16213e')
+    grad.addColorStop(0, gtrs.background)
+    grad.addColorStop(1, gtrs.backgroundDark)
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, W, H)
 
@@ -404,7 +432,7 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
     })
 
     // UI
-    ctx.fillStyle = '#fff'
+    ctx.fillStyle = gtrs.text
     const fontSize = isMobile ? 18 : 24
     ctx.font = `bold ${fontSize}px sans-serif`
     ctx.textAlign = 'center'
@@ -420,21 +448,21 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
     
     if ((window as any).tetrisSlowDrop && now < (window as any).tetrisSlowDrop) {
       const remaining = Math.ceil(((window as any).tetrisSlowDrop - now) / 1000)
-      ctx.fillStyle = '#4ECDC4'
+      ctx.fillStyle = gtrs.primary
       ctx.fillText(`🐌 减速: ${remaining}s`, W / 4, statusY)
       statusY += isMobile ? 18 : 20
     }
     
     if ((window as any).tetrisScore2x && now < (window as any).tetrisScore2x) {
       const remaining = Math.ceil(((window as any).tetrisScore2x - now) / 1000)
-      ctx.fillStyle = '#FFD700'
+      ctx.fillStyle = gtrs.accent
       ctx.fillText(`✨ 双倍分数: ${remaining}s`, W / 4, statusY)
       statusY += isMobile ? 18 : 20
     }
     
     if ((window as any).tetrisPreview && now < (window as any).tetrisPreview) {
       const remaining = Math.ceil(((window as any).tetrisPreview - now) / 1000)
-      ctx.fillStyle = '#9B59B6'
+      ctx.fillStyle = gtrs.muted
       ctx.fillText(`👁️ 预览: ${remaining}s`, W / 4, statusY)
       statusY += isMobile ? 18 : 20
     }
@@ -731,31 +759,38 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
     buttonContainer.appendChild(dropBtn)
     document.body.appendChild(buttonContainer)
     
-    // 游戏结束时移除按钮
-    const originalOnEnd = onEnd
-    onEnd = () => {
-      buttonContainer.remove()
-      originalOnEnd()
-    }
   }
 
-  function loop() {
-    if (!document.getElementById('mainGameCanvas')) return
-    if (!engine.canTick()) {
-      draw()
-      requestAnimationFrame(loop)
-      return
-    }
-    if (!gameEnded) {
-      update()
-    }
-    draw()
-    requestAnimationFrame(loop)
+  let mobileControlRoot: HTMLElement | null = null
+
+  function teardownTetrisInput() {
+    document.onkeydown = null
+    canvas.onclick = null
+    mobileControlRoot?.remove()
+    mobileControlRoot = null
+    document.querySelectorAll('.tetris-mobile-btn').forEach(btn => btn.remove())
+    document.querySelectorAll('.tetris-mobile-controls').forEach(el => el.remove())
   }
 
   current = randomShape()
   nextShape = randomShape()
-  
-      
-  loop()
+
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      if (isMobile) {
+        createMobileControls(canvas, W, H)
+        mobileControlRoot = document.querySelector('.tetris-mobile-controls')
+      }
+    },
+    onUpdate(_dt) {
+      if (!gameEnded) update()
+    },
+    onRender() {
+      draw()
+    },
+    onDestroy() {
+      teardownTetrisInput()
+      app.removePowerupBar?.()
+    },
+  })
 }

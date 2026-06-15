@@ -1,17 +1,36 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
+import { gameActions } from '../../platform/gameBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 import { COLOR_SORT_LEVELS, getLevelColors } from './levelConfig'
 import { loadProgress, completeLevel, recordFailure } from './progressManager'
+import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
+
+let activeHost: GameLifecycle | null = null
+
+export function destroyColorSort(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
 
 export function initColorSort(engine: GameEngine, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) {
-    console.error('[ColorSort] mainGameCanvas not found')
+  destroyColorSort()
+  const lifecycleCtx = createLifecycleContext('sort', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
     onEnd()
     return
   }
+  activeHost = startColorSortLifecycle(lifecycleCtx)
+}
+
+function startColorSortLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
   const ctx = canvas.getContext('2d')!
   ctx.imageSmoothingEnabled = false
   
@@ -19,6 +38,19 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
   const TUBE_W = 50
   const TUBE_H = 180
   const BALL_R = 18
+  const SORT_FALLBACK = {
+    primary: '#FFD93D',
+    background: '#1a1a3e',
+    backgroundDark: '#1a1a3e',
+    bgGradMid: '#2d2d5e',
+    text: '#FFFFFF',
+    accent: '#FFD93D',
+    hudBg: 'rgba(0,0,0,0.45)',
+    danger: '#FF6B6B',
+    muted: '#DDA0DD',
+    palette: ['#FF6B6B', '#4ECDC4', '#FFD93D', '#9B59B6', '#FF69B4', '#6BCB77'],
+  }
+  const gtrs = resolveGtrsCanvasStyle('sort', SORT_FALLBACK)
   // 液体高度将根据当前关卡动态计算
   let LIQUID_HEIGHT = TUBE_H / 4 // 默认值，会在 initLevel 中重新计算
   
@@ -134,9 +166,9 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
     ctx.translate(shake, shake)
     
     const grad = ctx.createLinearGradient(0, 0, 0, H)
-    grad.addColorStop(0, '#1a1a3e')
-    grad.addColorStop(0.5, '#2d2d5e')
-    grad.addColorStop(1, '#1a1a3e')
+    grad.addColorStop(0, gtrs.background)
+    grad.addColorStop(0.5, gtrs.bgGradMid ?? gtrs.backgroundDark)
+    grad.addColorStop(1, gtrs.backgroundDark)
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, W, H)
     
@@ -158,10 +190,10 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
       ctx.fillStyle = 'rgba(255,255,255,0.1)'
       
       if (isSelected) {
-        ctx.strokeStyle = '#FFD93D'
+        ctx.strokeStyle = gtrs.accent
         ctx.lineWidth = 4
         ctx.shadowBlur = 20
-        ctx.shadowColor = '#FFD93D'
+        ctx.shadowColor = gtrs.accent
       } else {
         ctx.strokeStyle = 'rgba(255,255,255,0.3)'
         ctx.lineWidth = 2
@@ -188,7 +220,7 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
       ctx.shadowBlur = 0
       
       // 显示容量指示器
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'
+      ctx.fillStyle = gtrs.text
       ctx.font = '10px sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText(`${tube.length}/${levelConfig.ballsPerTube}`, x, y + TUBE_H + 15)
@@ -378,9 +410,8 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
     
     if (now - gameStartTime > levelConfig.timeLimit * 1000) {
       recordFailure()
-      engine.endGame()
       audioService.lose()
-      onEnd()
+      gameActions.gameOver({ victory: false, score: engine.getScore() })
       return
     }
     
@@ -437,16 +468,12 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
           currentLevel = nextLevel
           initLevel()
         } else {
-          onEnd()
+          gameActions.gameOver({ victory: true, score: engine.getScore(), stats: { level: currentLevel } })
         }
       }, 2000)
       return
     }
   }
-  
-  resizeCanvasForMobile(canvas)
-  injectMobileStyles()
-  applyCanvasMobileStyles(canvas)
 
   const handleTapAt = (mx: number, my: number) => {
     if (animatingBall || winAnimation) return
@@ -496,7 +523,6 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
           audioService.click()
         } else if (toTube.length >= levelConfig.ballsPerTube) {
           // 目标管子已满，显示提示
-          console.log(`管子 ${clickedTube} 已满: ${toTube.length}/${levelConfig.ballsPerTube}`)
           floatingTexts.push({
             text: '❌ 已满',
             x: 30 + clickedTube * tubeSpacing,
@@ -509,7 +535,6 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
           audioService.click()
         } else {
           // ✅ 修复：只要目标管子没满就可以倒入，无论颜色是否相同
-          console.log(`允许倒入: 从管子${selectedTube}(${fromTube.length}) 到 管子${clickedTube}(${toTube.length}/${levelConfig.ballsPerTube})`)
           const ballColor = fromTube[fromTube.length - 1]
           
           animatingBall = {
@@ -570,17 +595,27 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
     }
   }
   
-  function loop() {
-    if (!document.getElementById('mainGameCanvas')) return
-    update()
-    draw()
-    requestAnimationFrame(loop)
-  }
-  
-  bindCanvasPointerInput(canvas, (x, y) => {
-    handleTapAt(x, y)
-  })
+  let unbindPointer: (() => void) | null = null
 
-  initLevel()
-  loop()
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      resizeCanvasForMobile(canvas)
+      injectMobileStyles()
+      applyCanvasMobileStyles(canvas)
+      initLevel()
+      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+        handleTapAt(x, y)
+      })
+    },
+    onUpdate(_dt) {
+      update()
+    },
+    onRender() {
+      draw()
+    },
+    onDestroy() {
+      unbindPointer?.()
+      unbindPointer = null
+    },
+  })
 }

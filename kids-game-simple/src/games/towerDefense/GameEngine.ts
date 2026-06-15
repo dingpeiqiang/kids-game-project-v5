@@ -1,4 +1,8 @@
 import type { Tower, Enemy, Bullet, Particle, FloatingText, GameEngine as GameEngineType } from './types'
+import { gameActions } from '../../platform/gameBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { W, H, GRID, CELL, HUD_H, PATH_POINTS, TOWER_TYPES, INFINITE_WAVE_CONFIG, WAVE_INTERVAL_BASE, SPECIAL_SKILL_MAX_CHARGE, LEVEL_CONFIGS } from './config'
 import { gridToPixel, createTower, upgradeTower, findTarget } from './towers'
 import { getWaveConfig, createEnemy, createEnemyByLevel, damageEnemy as damageEnemyFunc } from './enemies'
@@ -13,11 +17,27 @@ import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/can
 import { userService } from '../../services/userService'
 import { apiSubmitGameResult, apiStartGameSession } from '../../services/apiClient'
 
+let activeHost: GameLifecycle | null = null
+
+export function destroyTowerDefense(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
+
 export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) return
+  destroyTowerDefense()
+  const lifecycleCtx = createLifecycleContext('towerDefense', engine as import('../../services/gameEngine').GameEngine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
+    return
+  }
+
+  const canvas = lifecycleCtx.canvas
   const ctx = canvas.getContext('2d')!
-  if (!ctx) return
+  if (!ctx) {
+    onEnd()
+    return
+  }
 
   const pathPixels = PATH_POINTS.map(p => ({
     x: p.gx * CELL + CELL / 2,
@@ -75,7 +95,6 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
   let maxCombo = 0
   let lastKillTime = 0
   let selectedTowerType = 0
-  let animId = 0
   let frameCount = 0
   let screenShake = 0
   let floatingTexts: FloatingText[] = []
@@ -284,14 +303,19 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     }
   }
 
+  let unbindPointer: (() => void) | null = null
+
   function teardownInput() {
-    unbindPointer()
+    unbindPointer?.()
+    unbindPointer = null
   }
+  let ending = false
 
   async function endGame(isWinParam: boolean = false) {
+    if (ending) return
+    ending = true
     isGameOver = true
     isVictory = isWinParam
-    cancelAnimationFrame(animId)
     teardownInput()
 
     const duration = Math.floor((Date.now() - gameStartTime) / 1000)
@@ -314,19 +338,25 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
           }
         })
 
-        if (result.ok) {
-          console.log('[塔防] 分数提交成功')
-        } else {
+        if (!result.ok) {
           console.warn('[塔防] 分数提交失败:', result.msg)
         }
       } catch (error) {
         console.error('[塔防] 提交分数异常:', error)
       }
-    } else {
-      console.log('[塔防] 未登录或无session，跳过分数提交')
     }
 
-    onEnd()
+    gameActions.gameOver({
+      victory: isWinParam,
+      score: engine.getScore(),
+      stats: {
+        wave: level + 1,
+        maxCombo,
+        totalWavesCompleted: totalLevelsCompleted,
+        highestWave: highestLevel,
+        lives,
+      },
+    })
   }
 
   function update() {
@@ -581,13 +611,7 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     }
   }
 
-  function loop() {
-    animId = requestAnimationFrame(loop)
-    const platformEngine = engine as import('../../services/gameEngine').GameEngine
-    if (platformEngine.canTick?.()) {
-      update()
-    }
-
+  function renderFrame() {
     ctx.save()
     if (screenShake > 0) {
       ctx.translate(
@@ -634,11 +658,22 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     }
   }
 
-  applyCanvasMobileStyles(canvas)
-  const unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
-    handleClick(x, y)
+  activeHost = hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      applyCanvasMobileStyles(canvas)
+      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+        handleClick(x, y)
+      })
+      void initGameSession()
+    },
+    onUpdate(_dt) {
+      if (!ending) update()
+    },
+    onRender() {
+      renderFrame()
+    },
+    onDestroy() {
+      teardownInput()
+    },
   })
-
-  initGameSession()
-  loop()
 }

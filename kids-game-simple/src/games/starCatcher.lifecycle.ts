@@ -5,6 +5,9 @@ import type { GameLifecycleContext } from '../platform/GameLifecycle'
 import { runCanvasLifecycle, type GameLifecycle } from '../platform/GameLifecycle'
 import { requireMainGameCanvas } from '../platform/canvasHost'
 import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../utils/canvasMobileUtils'
+import { getCachedGTRSTheme } from '../services/gtrsThemeLoader'
+import { resolveGtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
+import { readGtrsSceneMeta } from '../utils/gtrsSceneMeta'
 
 const W = 400
 const H = 600
@@ -15,6 +18,23 @@ export function startStarCatcherLifecycle(ctx: GameLifecycleContext): GameLifecy
   const ctx2d = canvas.getContext('2d')!
   ctx2d.imageSmoothingEnabled = false
   const engine = ctx.engine
+
+  const STAR_FALLBACK = {
+    primary: '#87CEEB',
+    background: '#0a0a1a',
+    backgroundDark: '#050510',
+    text: '#FFFFFF',
+    accent: '#FFD700',
+    hudBg: 'rgba(0,0,0,0.4)',
+    danger: '#FF4444',
+    muted: '#666666',
+    palette: ['#87CEEB', '#FFD700'],
+  }
+  const gtrs = resolveGtrsCanvasStyle('starCatcher', STAR_FALLBACK)
+  const theme = getCachedGTRSTheme('starCatcher')
+  const starNormal = readGtrsSceneMeta(theme, 'star_normal') ?? gtrs.primary
+  const starGold = gtrs.accent
+  const playerGlow = readGtrsSceneMeta(theme, 'player_glow') ?? (theme?.globalStyle?.secondaryColor ?? '#FF69B4')
 
   const player = { x: W / 2, y: H - 100, size: 40 }
   const stars: Array<{
@@ -108,7 +128,7 @@ export function startStarCatcherLifecycle(ctx: GameLifecycleContext): GameLifecy
   }
 
   function draw() {
-    ctx2d.fillStyle = '#0a0a1a'
+    ctx2d.fillStyle = gtrs.background
     ctx2d.fillRect(0, 0, W, H)
     for (let i = 0; i < 50; i++) {
       const sx = (i * 73) % W
@@ -123,7 +143,7 @@ export function startStarCatcherLifecycle(ctx: GameLifecycleContext): GameLifecy
       ctx2d.save()
       ctx2d.translate(s.x, s.y)
       ctx2d.rotate(s.rotation)
-      ctx2d.shadowColor = s.type === 'gold' ? '#FFD700' : '#87CEEB'
+      ctx2d.shadowColor = s.type === 'gold' ? starGold : starNormal
       ctx2d.shadowBlur = 20
       const emoji = s.type === 'gold' ? '🌟' : '⭐'
       ctx2d.font = `${s.size}px sans-serif`
@@ -140,7 +160,7 @@ export function startStarCatcherLifecycle(ctx: GameLifecycleContext): GameLifecy
     })
     ctx2d.save()
     ctx2d.translate(player.x, player.y)
-    ctx2d.shadowColor = '#FF69B4'
+    ctx2d.shadowColor = playerGlow
     ctx2d.shadowBlur = 15
     ctx2d.font = `${player.size}px sans-serif`
     ctx2d.textAlign = 'center'
@@ -165,11 +185,11 @@ export function startStarCatcherLifecycle(ctx: GameLifecycleContext): GameLifecy
     const elapsedHud = Date.now() - gameStartTime
     const remainingHud = Math.max(0, GAME_DURATION - elapsedHud)
     const secondsHud = Math.ceil(remainingHud / 1000)
-    ctx2d.fillStyle = 'rgba(0,0,0,0.4)'
+    ctx2d.fillStyle = gtrs.hudBg
     ctx2d.beginPath()
     ctx2d.roundRect(10, 8, W - 20, 40, 10)
     ctx2d.fill()
-    ctx2d.fillStyle = secondsHud <= 10 ? '#FF4444' : '#FFD700'
+    ctx2d.fillStyle = secondsHud <= 10 ? gtrs.danger : gtrs.accent
     ctx2d.font = 'bold 16px sans-serif'
     ctx2d.textAlign = 'center'
     ctx2d.textBaseline = 'middle'
@@ -204,7 +224,7 @@ export function startStarCatcherLifecycle(ctx: GameLifecycleContext): GameLifecy
             vx: (Math.random() - 0.5) * 8,
             vy: (Math.random() - 0.5) * 8,
             life: 1,
-            color: s.type === 'gold' ? '#FFD700' : '#87CEEB',
+            color: s.type === 'gold' ? starGold : starNormal,
             size: 4 + Math.random() * 4,
           })
         }

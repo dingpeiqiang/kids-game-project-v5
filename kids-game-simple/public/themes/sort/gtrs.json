@@ -1,0 +1,46 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "sort_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "试管分拣",
+    "isDefault": true,
+    "gameId": "sort",
+    "description": "kids-game-simple sort 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#FFD93D",
+    "secondaryColor": "#4ECDC4",
+    "bgColor": "#1a1a3e",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "高亮" },
+        "background_dark": { "src": "#1a1a3e", "type": "png", "alias": "背景底" },
+        "bg_grad_mid": { "src": "#2d2d5e", "type": "png", "alias": "背景中层" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "danger": { "src": "#FF6B6B", "type": "png", "alias": "警告" },
+        "muted": { "src": "#DDA0DD", "type": "png", "alias": "弱化" },
+        "game_palette": {
+          "src": "[\"#FF6B6B\",\"#4ECDC4\",\"#FFD93D\",\"#9B59B6\",\"#FF69B4\",\"#6BCB77\"]",
+          "type": "png",
+          "alias": "液体色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

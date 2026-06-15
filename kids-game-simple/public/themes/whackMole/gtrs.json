@@ -1,0 +1,46 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "whackMole_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "打地鼠",
+    "isDefault": true,
+    "gameId": "whackMole",
+    "description": "kids-game-simple whackMole 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#8D6E63",
+    "secondaryColor": "#FFD700",
+    "bgColor": "#5D4037",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "mole_normal": { "src": "#8D6E63", "type": "png", "alias": "普通地鼠" },
+        "hole_outer": { "src": "#3E2723", "type": "png", "alias": "洞外圈" },
+        "hole_inner": { "src": "#6D4C41", "type": "png", "alias": "洞内圈" },
+        "hud_bg": { "src": "#8D6E63", "type": "png", "alias": "HUD" },
+        "accent": { "src": "#FFD700", "type": "png", "alias": "高亮" },
+        "danger": { "src": "#E53935", "type": "png", "alias": "炸弹" },
+        "game_palette": {
+          "src": "[\"#8D6E63\",\"#6D4C41\",\"#3E2723\",\"#FFD700\"]",
+          "type": "png",
+          "alias": "玩法色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

@@ -84,7 +84,6 @@ export function createInputHandler(
 
   // 触摸/点击按下（统一使用游戏坐标，与渲染坐标一致）
   function handleDown(x: number, y: number) {
-    console.log('🖱️ handleDown:', { x: Math.round(x), y: Math.round(y), phase: state.phase })
 
     // 路线编辑模式
     if (state.phase === 'routeEdit') {
@@ -104,21 +103,17 @@ export function createInputHandler(
 
       // 路线绘制模式
       if (mode === 'route') {
-        console.log('✏️ route mode, isDrawing:', routeEditorRef.current.isDrawing, 'routes:', routeEditorRef.current.getRouteCount())
         // 检查是否正在绘制，如果没有则启用绘制模式
         if (!routeEditorRef.current.isDrawing) {
           // 如果还没有任何路线，新建一条
           if (routeEditorRef.current.getRouteCount() === 0) {
-            console.log('📝 新建路线')
             routeEditorRef.current.newRoute()
           } else {
             // 已有路线，继续在当前路线上绘制
-            console.log('✏️ 继续绘制当前路线')
             routeEditorRef.current.startDrawing()
           }
         }
         routeEditorRef.current.addPoint(x, y)
-        console.log('✅ 添加点，路线数:', routeEditorRef.current.getRouteCount(), '当前路线点数:', routeEditorRef.current.getCurrentPoints().length)
         state.touch.active = true
         state.touch.startX = x
         state.touch.startY = y
@@ -162,17 +157,14 @@ export function createInputHandler(
 
     // 关卡完成：点击按钮进入下一关
     if (state.phase === 'levelComplete') {
-      console.log('🖱️ 关卡完成界面点击, 坐标:', x.toFixed(0), y.toFixed(0))
       const btnW = 200
       const btnH = 50
       const btnX = BASE_W / 2 - btnW / 2
       const btnY = BASE_H / 2 + 60
       if (x >= btnX && x <= btnX + btnW && y >= btnY && y <= btnY + btnH) {
-        console.log('✅ 点击了下一关按钮')
         callbacks.onNextLevel?.()
         return
       }
-      console.log('⚠️ 点击位置不在按钮范围内')
       return
     }
 
@@ -193,12 +185,10 @@ export function createInputHandler(
           // 从底部切换到中间
           state.playerY = BASE_H / 2
           state.shootAngle = -Math.PI / 2  // 重置为向上
-          console.log('🎯 切换到中间模式（只能调整射击方向）')
         } else {
           // 从中间切换到底部
           state.playerY = BASE_H - 55
           state.shootAngle = -Math.PI / 2  // 重置为向上
-          console.log('🏃 切换到底部模式（可以移动+射击）')
         }
         audioService.click()
         return
@@ -221,7 +211,6 @@ export function createInputHandler(
         state.isSelected = !state.isSelected
         state.canMove = state.isSelected
         audioService.click()
-        console.log(state.isSelected ? '✅ 玩家已选中（可移动）' : '❌ 玩家未选中（只能调整射击方向）')
         return
       }
 
@@ -326,7 +315,6 @@ export function createInputHandler(
     // 防御：callbacks 为空时直接返回
     if (!callbacks) return
 
-    console.log('🖱️ handleStartScreen:', {
       x: Math.round(x), y: Math.round(y),
       BASE_W, BASE_H,
       '闯关区': { y1: BASE_H/2 - 85, y2: BASE_H/2 + 40, x1: 30, x2: 330 },
@@ -340,7 +328,6 @@ export function createInputHandler(
     const challengeX2 = BASE_W / 2 + 150
 
     if (y >= challengeY1 && y <= challengeY2 && x >= challengeX1 && x <= challengeX2) {
-      console.log('🎮 开始闯关按钮被点击')
       callbacks.onStartChallenge?.()
       return
     }
@@ -350,12 +337,10 @@ export function createInputHandler(
     const editY2 = BASE_H / 2 + 65
 
     if (y >= editY1 && y <= editY2 && x >= challengeX1 && x <= challengeX2) {
-      console.log('📝 编辑路线按钮被点击')
       callbacks.onDrawRoute?.()
       return
     }
 
-    console.log('❓ 未命中任何按钮')
   }
 
   // 移动

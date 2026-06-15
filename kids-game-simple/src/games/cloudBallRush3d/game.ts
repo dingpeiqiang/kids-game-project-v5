@@ -1,4 +1,5 @@
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
 import { getLevelDef, levelCount } from './logic/levelRuntime'
 import { tickGame } from './logic/gameLoop'
@@ -59,15 +60,17 @@ async function runSession(
   const finishToLobby = (finalScore: number) => {
     if (ended) return
     ended = true
-    engine.setScore(finalScore)
-    engine.setGameStats({
-      bestScore: finalScore,
-      bestTotalStars: runStats.bestTotalStars,
-      perfectClears: runStats.perfectClears,
-      totalClears: runStats.totalClears,
+    gameActions.gameOver({
+      victory: true,
+      score: finalScore,
+      stats: {
+        bestTotalStars: runStats.bestTotalStars,
+        perfectClears: runStats.perfectClears,
+        totalClears: runStats.totalClears,
+      },
     })
-    engine.endGame()
-    onEnd()
+    activeDispose?.()
+    activeDispose = null
   }
 
   const openLevelSelect = async (): Promise<void> => {
@@ -240,7 +243,6 @@ async function runSession(
 
 export async function initCloudBallRush3d(engine: GameEngine, onEnd: () => void): Promise<void> {
   destroyCloudBallRush3d()
-  engine.start()
   engine.setOrientation('landscape')
 
   const parent = document.getElementById('gameCanvas')

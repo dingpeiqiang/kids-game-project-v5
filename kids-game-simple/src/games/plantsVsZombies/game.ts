@@ -12,13 +12,14 @@ import { drawUI, drawSuns, drawProjectiles, drawParticles, drawFloatingTexts, dr
 import { createSunPickupEffect, createZombieDeathEffect, updateParticles, createFloatingText, updateFloatingTexts } from './render/effects'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
 
 export class PlantsVsZombiesGame {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private engine: GameEngine | null = null
-  private onEnd: (() => void) | null = null
   private endedReported = false
+  private hostDrivenLoop = false
   private plants: Plant[] = []
   private zombies: Zombie[] = []
   private projectiles: Projectile[] = []
@@ -44,10 +45,10 @@ export class PlantsVsZombiesGame {
   
   private animId: number = 0
   
-  constructor(canvas: HTMLCanvasElement, engine?: GameEngine, onEnd?: () => void) {
+  constructor(canvas: HTMLCanvasElement, engine?: GameEngine, hostDrivenLoop = false) {
     this.canvas = canvas
     this.engine = engine ?? null
-    this.onEnd = onEnd ?? null
+    this.hostDrivenLoop = hostDrivenLoop
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('Failed to get canvas context')
     this.ctx = ctx
@@ -175,7 +176,22 @@ export class PlantsVsZombiesGame {
     this.waveManager = new WaveManager(levelConfig)
     this.sun = levelConfig.initialSun
     this.waveCooldown = GAME_CONFIG.WAVE_COOLDOWN
-    this.gameLoop()
+    if (!this.hostDrivenLoop) {
+      this.gameLoop()
+    }
+  }
+
+  beginHostedLoop(): void {
+    /* 输入已在 constructor 中绑定 */
+  }
+
+  runHostUpdate(): void {
+    if (this.isGameOver) return
+    this.update()
+  }
+
+  runHostRender(): void {
+    this.render()
   }
   
   private resetGame() {
@@ -321,17 +337,13 @@ export class PlantsVsZombiesGame {
   }
   
   private reportEndToPlatform() {
-    if (this.endedReported || !this.engine) return
+    if (this.endedReported) return
     this.endedReported = true
-    this.engine.setScore(this.score)
-    this.engine.setVictory(this.isVictory)
-    this.engine.setGameStats({
-      wave: this.wave,
-      score: this.score,
+    gameActions.gameOver({
       victory: this.isVictory,
+      score: this.score,
+      stats: { wave: this.wave, lives: this.lives },
     })
-    this.engine.endGame()
-    queueMicrotask(() => this.onEnd?.())
   }
 
   private applyZombieKillRewards(zombie: Zombie) {

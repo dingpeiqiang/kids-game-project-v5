@@ -3,8 +3,20 @@ import { audioService } from '../services/audio'
 import { createPowerupManager } from '../services/powerupManager'
 import type { ActivePowerup } from '../services/powerupManager'
 import { app } from '../services/appBridge'
+import { gameActions } from '../platform/gameBridge'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../platform/GameLifecycle'
+import { createLifecycleContext } from '../platform/frameworkSession'
+import { hostCanvas2D } from '../platform/hostCanvas2D'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../utils/canvasMobileUtils'
 import { getCanvasPaletteForGame } from '../utils/GTRSThemeApplier'
+
+let activeHost: GameLifecycle | null = null
+
+export function destroySnake(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
 
 interface Point { x: number; y: number }
 
@@ -47,31 +59,33 @@ function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
   ctx.closePath()
 }
 
-export function initSnake(engine: GameEngine, onEnd: () => void) {
-  console.log('[贪吃蛇] 开始初始化...')
-  
-  const cvs = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!cvs) {
-    console.error('[贪吃蛇] 找不到 mainGameCanvas 元素')
-    return () => {}
+export async function initSnake(engine: GameEngine, onEnd: () => void): Promise<void> {
+  destroySnake()
+  const lifecycleCtx = createLifecycleContext('snake', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
+    return
   }
+  activeHost = startSnakeLifecycle(lifecycleCtx)
+}
+
+function startSnakeLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+
+  const cvs = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
   
   const ctx = cvs.getContext('2d')!
   if (!ctx) {
-    console.error('[贪吃蛇] 无法获取 2D 上下文')
-    return () => {}
+    throw new Error('[贪吃蛇] 无法获取 2D 上下文')
   }
-  
+
   const W = cvs.width
   const H = cvs.height
-  
-  // 检查 canvas 尺寸
+
   if (W === 0 || H === 0) {
-    console.error('[贪吃蛇] Canvas 尺寸为 0', { width: W, height: H })
-    return () => {}
+    throw new Error('[贪吃蛇] Canvas 尺寸为 0')
   }
   
-  console.log('[贪吃蛇] Canvas 尺寸:', W, 'x', H)
 
   // 创建道具管理器
   const powerupManager = createPowerupManager('snake')
@@ -149,28 +163,24 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     if (index === -1) return false
     
     inventory.splice(index, 1)
-    console.log('[道具] 使用道具:', type)
     
     switch (type) {
       case 'invincible':
         // 无敌 - 5秒内免疫
         invincible = Date.now() + 5000
         audioService.win()
-        console.log('[道具] 无敌生效，持续5秒')
         break
         
       case 'magnet':
         // 磁铁 - 自动吸引食物，持续8秒
         magnetActive = Date.now() + 8000
         audioService.win()
-        console.log('[道具] 磁铁生效，持续8秒')
         break
         
       case 'slow':
         // 减速 - 速度减半，持续8秒
         ;(window as any).snakeSlow = Date.now() + 8000
         audioService.collect()
-        console.log('[道具] 减速生效，持续8秒')
         break
         
       case 'score2x':
@@ -178,7 +188,6 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
         scoreMultiplier = 2
         setTimeout(() => { scoreMultiplier = 1 }, 10000)
         audioService.win()
-        console.log('[道具] 双倍分数生效，持续10秒')
         break
     }
     
@@ -201,7 +210,6 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
 
   // ====== 初始化 ======
   function init() {
-    console.log('[贪吃蛇] 初始化游戏...')
     
     // 蛇初始位置：屏幕中间，长度4
     // 蛇头在最右边，身体向左延伸，这样向右移动时不会撞到自己
@@ -238,8 +246,6 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     spawnFood('normal')
     spawnFood('normal')
 
-    console.log('[贪吃蛇] 初始化完成. 蛇位置:', snake, '食物:', foods.length)
-    console.log('[贪吃蛇] COLS:', COLS, 'ROWS:', ROWS, 'OFFSET_X:', OFFSET_X, 'OFFSET_Y:', OFFSET_Y)
     
     // 音效
     audioService.click()
@@ -344,18 +350,15 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
   // ====== 移动逻辑 ======
   function moveSnake() {
     if (!alive) {
-      console.log('[贪吃蛇] moveSnake 被跳过，alive=false')
       return
     }
 
     dir = { ...nextDir }
     const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y }
     
-    console.log('[贪吃蛇] 移动前：head=', head, 'snake=', JSON.stringify(snake))
 
     // 撞墙检测
     if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
-      console.log('[贪吃蛇] 撞墙! head:', head, 'COLS:', COLS, 'ROWS:', ROWS, 'invincible:', invincible)
       if (invincible > 0) {
         // 无敌模式：穿墙
         if (head.x < 0) head.x = COLS - 1
@@ -370,7 +373,6 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
 
     // 撞自身检测
     if (snake.some(s => s.x === head.x && s.y === head.y)) {
-      console.log('[贪吃蛇] 撞自己! head:', head, 'snake:', snake, 'invincible:', invincible)
       if (invincible <= 0) {
         gameOver()
         return
@@ -441,28 +443,27 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
 
   // ====== 游戏结束 ======
   function gameOver() {
-    console.log('[贪吃蛇] 游戏结束! alive=false')
+    if (!alive && gameStarted) return
     alive = false
     screenShake = 10
     if (snake.length > 0) {
       addParticles(snake[0].x, snake[0].y, '#FF4757', 30)
     }
     audioService.pop()
-
-    engine.setVictory(snake.length >= 10)
-    engine.endGame()
     cleanupSnakeInput()
-    setTimeout(() => onEnd(), 500)
+    gameActions.gameOver({
+      victory: snake.length >= 10,
+      score: engine.getScore(),
+      stats: { length: snake.length },
+    })
   }
 
   // ====== 重新开始游戏 ======
   function restartGame() {
-    console.log('[贪吃蛇] 重新开始游戏...')
     init()
     gameStarted = true
     alive = true
     isFirstStart = false
-    console.log('[贪吃蛇] 游戏重新开始！alive=true, gameStarted=true')
   }
 
   // ====== 点击方向控制（画布坐标，移动端 touchstart + 桌面 pointer） ======
@@ -497,7 +498,6 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
       gameStarted = true
       alive = true
       isFirstStart = false
-      console.log('[贪吃蛇] 游戏首次开始！alive=true, gameStarted=true')
       audioService.click()
       return
     }
@@ -512,36 +512,19 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  applyCanvasMobileStyles(cvs)
-  const unbindSnakePointer = bindCanvasPointerInput(cvs, (x, y) => handleTapOnCanvas(x, y))
-  document.addEventListener('keydown', handleKey)
+  let unbindSnakePointer: (() => void) | null = null
 
   const cleanupSnakeInput = () => {
-    unbindSnakePointer()
+    unbindSnakePointer?.()
+    unbindSnakePointer = null
     document.removeEventListener('keydown', handleKey)
   }
 
-  // ====== 主循环 ======
   let lastTime = performance.now()
-  let rafId: number
-  init()
 
-  function loop(time: number) {
-    // 如果游戏已结束，停止循环
-    if (!alive && gameStarted) {
-      console.log('[贪吃蛇] 游戏已结束，停止渲染循环')
-      return
-    }
-
-    let delta = 0
-    if (engine.canTick()) {
-      delta = time - lastTime
-      lastTime = time
-      frameCount++
-      gameTime += delta / 1000
-    } else {
-      lastTime = time
-    }
+  function tickLogic(delta: number) {
+    if (!alive && gameStarted) return
+    if (delta <= 0) return
 
     if (delta > 0) {
     
@@ -562,7 +545,6 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
       lastMoveTime += delta
       if (lastMoveTime >= currentMoveInterval) {
         lastMoveTime = 0
-        console.log('[贪吃蛇] 执行移动...')
         moveSnake()
       }
     }
@@ -658,11 +640,12 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
       const powerups = ['invincible', 'magnet', 'slow', 'score2x']
       const random = powerups[Math.floor(Math.random() * powerups.length)]
       inventory.push(random)
-            console.log('[道具] 获得道具:', random)
     }
-    }
+  }
 
-    // ====== 渲染 ======
+  function renderSnake() {
+    const slowActive = (window as unknown as { snakeSlow?: number }).snakeSlow &&
+      Date.now() < (window as unknown as { snakeSlow: number }).snakeSlow
     ctx.save()
     if (screenShake > 0) {
       ctx.translate(
@@ -920,15 +903,35 @@ export function initSnake(engine: GameEngine, onEnd: () => void) {
     }
 
     ctx.restore()
-    rafId = requestAnimationFrame(loop)
   }
-  
-      
-  rafId = requestAnimationFrame(loop)
 
-  // 清理
-  return () => {
-    cancelAnimationFrame(rafId)
-    cleanupSnakeInput()
-  }
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      init()
+      lastTime = performance.now()
+      applyCanvasMobileStyles(cvs)
+      unbindSnakePointer = bindCanvasPointerInput(cvs, (x, y) => handleTapOnCanvas(x, y))
+      document.addEventListener('keydown', handleKey)
+    },
+    onUpdate(_dtSec) {
+      const now = performance.now()
+      let delta = 0
+      if (engine.canTick()) {
+        delta = now - lastTime
+        lastTime = now
+        frameCount++
+        gameTime += delta / 1000
+      } else {
+        lastTime = now
+      }
+      tickLogic(delta)
+    },
+    onRender() {
+      renderSnake()
+    },
+    onDestroy() {
+      cleanupSnakeInput()
+      app.removePowerupBar?.()
+    },
+  })
 }

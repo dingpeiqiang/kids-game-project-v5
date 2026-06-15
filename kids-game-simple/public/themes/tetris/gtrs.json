@@ -1,0 +1,45 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "tetris_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "方块消除",
+    "isDefault": true,
+    "gameId": "tetris",
+    "description": "kids-game-simple tetris 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#4ECDC4",
+    "secondaryColor": "#FFD93D",
+    "bgColor": "#1a1a2e",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "background": { "src": "#1a1a2e", "type": "png", "alias": "背景" },
+        "background_dark": { "src": "#16213e", "type": "png", "alias": "深背景" },
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "高亮" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "danger": { "src": "#FF6B6B", "type": "png", "alias": "危险" },
+        "game_palette": {
+          "src": "[\"#FF6B6B\",\"#FFD93D\",\"#4ECDC4\",\"#9B59B6\",\"#FF8E53\",\"#4D96FF\",\"#6BCB77\"]",
+          "type": "png",
+          "alias": "方块色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

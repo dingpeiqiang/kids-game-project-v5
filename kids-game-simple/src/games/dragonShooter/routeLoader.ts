@@ -50,7 +50,6 @@ export class RouteLoader {
 
   addCustomRoute(route: CustomRoute): void {
     this.customRoutes.push(route)
-    console.log(`✅ 已添加自定义路线: ${route.name}`)
   }
 
   removeCustomRoute(routeId: string): void {
@@ -69,11 +68,9 @@ export class RouteLoader {
 
   async loadRoutes(): Promise<void> {
     try {
-      console.log('🔄 开始加载路线...')
       await this.loadIndexFile()
       await this.loadCustomRoutes()
       this.loaded = true
-      console.log('✅ 路线加载完成')
     } catch (error) {
       console.error('❌ 加载路线失败:', error)
       this.customRoutes = []
@@ -91,7 +88,6 @@ export class RouteLoader {
         const routes = await this.loadSingleRoute(`/games/dragonShooter/routes/levels/${filename}`)
         if (routes && routes.length > 0) {
           // 🎯 关键修复：将关卡文件中的所有路线都添加进来
-          console.log(`📂 加载第${level}关: ${routes.length} 条路线`)
           
           // 将所有路线存储到 levelRoutes[level] 数组中
           this.levelRoutes[level] = routes.map((route, idx) => ({
@@ -104,7 +100,6 @@ export class RouteLoader {
           
           // 打印每条路线的信息
           this.levelRoutes[level].forEach((route, idx) => {
-            console.log(`  ✅ 路线 ${idx + 1}: ${route.name}, ${route.points.length} 点`)
           })
         }
       }
@@ -127,25 +122,21 @@ export class RouteLoader {
 
   private async loadSingleRoute(url: string): Promise<CustomRoute[] | null> {
     try {
-      console.log(`🔍 加载路线文件: ${url}`)
       const response = await fetch(url, { cache: 'no-cache' })
       if (!response.ok) {
         console.error(`❌ 加载失败: ${response.status} ${response.statusText}`)
         return null
       }
       const data: any = await response.json()
-      console.log(`📄 解析数据:`, {
         hasRoute: !!data.route,
         hasRoutes: !!data.routes,
         routesCount: data.routes?.length || 0
       })
       // 兼容两种格式：单条 {"route": {...}} 或多条 {"routes": [...]}
       if (data.route) {
-        console.log(`✅ 单条路线格式`)
         return [data.route]
       }
       if (data.routes && Array.isArray(data.routes)) {
-        console.log(`✅ 多条路线格式: ${data.routes.length} 条`)
         return data.routes
       }
       console.warn(`⚠️ 未知的数据格式`)

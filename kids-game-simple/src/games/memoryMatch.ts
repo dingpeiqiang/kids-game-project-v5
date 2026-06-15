@@ -1,33 +1,67 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
+import { gameActions } from '../platform/gameBridge'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../platform/GameLifecycle'
+import { createLifecycleContext } from '../platform/frameworkSession'
+import { hostCanvas2D } from '../platform/hostCanvas2D'
 import { resizeCanvasForMobile } from '../utils/mobileHelper'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../utils/canvasMobileUtils'
+import { resolveGtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
 
-export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) {
-    console.error('Canvas not found!')
+let activeHost: GameLifecycle | null = null
+
+export function destroyMemoryMatch(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
+
+export async function initMemoryMatch(engine: GameEngine, onEnd: () => void): Promise<void> {
+  destroyMemoryMatch()
+  const lifecycleCtx = createLifecycleContext('memoryMatch', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
     return
   }
-  
-  const W = 400, H = 600
+  activeHost = startMemoryMatchLifecycle(lifecycleCtx)
+}
+
+function startMemoryMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
+
+  const W = 400
+  const H = 600
   const ctx = canvas.getContext('2d')!
   if (!ctx) {
-    console.error('Cannot get 2D context!')
-    return
+    throw new Error('memoryMatch: no 2d context')
   }
   ctx.imageSmoothingEnabled = false
 
+  const MEMORY_FALLBACK = {
+    primary: '#A29BFE',
+    background: '#0f0c29',
+    backgroundDark: '#24243e',
+    bgGradMid: '#1a1a3e',
+    text: '#FFFFFF',
+    accent: '#FFD93D',
+    hudBg: 'rgba(0,0,0,0.45)',
+    danger: '#FF6B6B',
+    muted: '#6c5ce7',
+    palette: ['#FFD93D', '#FF6B6B', '#4ECDC4', '#A29BFE', '#6BCB77', '#FF9FF3', '#FECA57', '#FF9F43'],
+  }
+  const gtrs = resolveGtrsCanvasStyle('memoryMatch', MEMORY_FALLBACK)
+
   // 卡牌图案（用emoji + 颜色组合，不需要图片资源）
   const CARD_TYPES = [
-    { emoji: '🌟', color: '#FFD93D', name: '星星' },
-    { emoji: '🔥', color: '#FF6B6B', name: '火焰' },
-    { emoji: '💎', color: '#4ECDC4', name: '钻石' },
-    { emoji: '🌙', color: '#A29BFE', name: '月亮' },
-    { emoji: '🍀', color: '#6BCB77', name: '四叶草' },
-    { emoji: '🌺', color: '#FF9FF3', name: '花朵' },
-    { emoji: '⚡', color: '#FECA57', name: '闪电' },
-    { emoji: '🎈', color: '#FF9F43', name: '气球' },
+    { emoji: '🌟', color: gtrs.palette[0] ?? '#FFD93D', name: '星星' },
+    { emoji: '🔥', color: gtrs.palette[1] ?? '#FF6B6B', name: '火焰' },
+    { emoji: '💎', color: gtrs.palette[2] ?? '#4ECDC4', name: '钻石' },
+    { emoji: '🌙', color: gtrs.palette[3] ?? '#A29BFE', name: '月亮' },
+    { emoji: '🍀', color: gtrs.palette[4] ?? '#6BCB77', name: '四叶草' },
+    { emoji: '🌺', color: gtrs.palette[5] ?? '#FF9FF3', name: '花朵' },
+    { emoji: '⚡', color: gtrs.palette[6] ?? '#FECA57', name: '闪电' },
+    { emoji: '🎈', color: gtrs.palette[7] ?? '#FF9F43', name: '气球' },
   ]
 
   // 关卡配置：[列数, 行数]（总牌数 = 列*行，必须是偶数）
@@ -41,13 +75,13 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
 
   // 扩展图案（关卡5+用）
   const EXTRA_TYPES = [
-    { emoji: '🎯', color: '#EE5A24', name: '靶心' },
-    { emoji: '🦋', color: '#6C5CE7', name: '蝴蝶' },
-    { emoji: '🎵', color: '#00B894', name: '音符' },
-    { emoji: '🎪', color: '#E17055', name: '马戏' },
-    { emoji: '🎭', color: '#FD79A8', name: '面具' },
-    { emoji: '☀️', color: '#F9CA24', name: '太阳' },
-    { emoji: '🍄', color: '#D63031', name: '蘑菇' },
+    { emoji: '🎯', color: gtrs.accent, name: '靶心' },
+    { emoji: '🦋', color: gtrs.primary, name: '蝴蝶' },
+    { emoji: '🎵', color: gtrs.palette[2] ?? '#00B894', name: '音符' },
+    { emoji: '🎪', color: gtrs.palette[5] ?? '#E17055', name: '马戏' },
+    { emoji: '🎭', color: gtrs.palette[1] ?? '#FD79A8', name: '面具' },
+    { emoji: '☀️', color: gtrs.accent, name: '太阳' },
+    { emoji: '🍄', color: gtrs.danger, name: '蘑菇' },
   ]
 
   const ALL_TYPES = [...CARD_TYPES, ...EXTRA_TYPES]
@@ -247,9 +281,7 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
       // 全部通关！
       setTimeout(() => {
         gameEnded = true
-        engine.setVictory(true)
-        engine.endGame()
-        onEnd()
+        gameActions.gameOver({ victory: true, score: engine.getScore(), stats: { level: LEVELS.length } })
       }, 1500)
     }
   }
@@ -308,8 +340,8 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
       // 卡牌背景
       const ct = ALL_TYPES[card.typeIdx]
       const grad = ctx.createLinearGradient(-hw, -hh, -hw, hh)
-      grad.addColorStop(0, '#2d2d44')
-      grad.addColorStop(1, '#1a1a2e')
+      grad.addColorStop(0, gtrs.backgroundDark)
+      grad.addColorStop(1, gtrs.background)
       ctx.fillStyle = grad
       roundRect(ctx, -hw, -hh, card.w, card.h, 8)
       ctx.fill()
@@ -345,19 +377,19 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
     } else {
       // === 背面 ===
       const grad = ctx.createLinearGradient(-hw, -hh, -hw, hh)
-      grad.addColorStop(0, '#4a3f6b')
-      grad.addColorStop(1, '#2d2456')
+      grad.addColorStop(0, gtrs.primary)
+      grad.addColorStop(1, gtrs.backgroundDark)
       ctx.fillStyle = grad
       roundRect(ctx, -hw, -hh, card.w, card.h, 8)
       ctx.fill()
 
-      ctx.strokeStyle = '#6c5ce7'
+      ctx.strokeStyle = gtrs.primary
       ctx.lineWidth = 2
       roundRect(ctx, -hw, -hh, card.w, card.h, 8)
       ctx.stroke()
 
       // 背面图案：中心问号
-      ctx.fillStyle = '#6c5ce755'
+      ctx.fillStyle = `${gtrs.primary}55`
       ctx.font = `bold ${Math.min(card.w, card.h) * 0.45}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -366,7 +398,7 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
       // 四角小装饰
       const dotR = 3
       const d = 8
-      ctx.fillStyle = '#6c5ce733'
+      ctx.fillStyle = `${gtrs.primary}33`
       const corners: [number, number][] = [[-1, -1], [1, -1], [-1, 1], [1, 1]]
       corners.forEach(([sx, sy]: [number, number]) => {
         ctx.beginPath()
@@ -404,9 +436,9 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
 
     // 背景
     const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
-    bgGrad.addColorStop(0, '#0f0c29')
-    bgGrad.addColorStop(0.5, '#1a1a3e')
-    bgGrad.addColorStop(1, '#24243e')
+    bgGrad.addColorStop(0, gtrs.background)
+    bgGrad.addColorStop(0.5, gtrs.bgGradMid ?? gtrs.backgroundDark)
+    bgGrad.addColorStop(1, gtrs.backgroundDark)
     ctx.fillStyle = bgGrad
     ctx.fillRect(0, 0, W, H)
 
@@ -415,7 +447,7 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
     for (let i = 0; i < 20; i++) {
       const bx = ((i * 73 + 17) % W)
       const by = ((i * 47 + 23) % H)
-      ctx.fillStyle = '#A29BFE'
+      ctx.fillStyle = gtrs.primary
       ctx.beginPath()
       ctx.arc(bx, by, 2 + (i % 4), 0, Math.PI * 2)
       ctx.fill()
@@ -426,7 +458,7 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
     ctx.fillStyle = 'rgba(0,0,0,0.45)'
     roundRect(ctx, 10, 8, W - 20, 44, 10)
     ctx.fill()
-    ctx.fillStyle = '#A29BFE'
+    ctx.fillStyle = gtrs.primary
     ctx.font = 'bold 18px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -492,36 +524,30 @@ export function initMemoryMatch(engine: GameEngine, onEnd: () => void) {
     })
   }
 
-  resizeCanvasForMobile(canvas)
-  applyCanvasMobileStyles(canvas)
+  let unbindPointer: (() => void) | null = null
 
-  const unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
-    handleTap(x, y)
-  })
-
-  // --- 主循环 ---
-
-  function loop() {
-    if (gameEnded) return
-    if (!engine.canTick()) {
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      resizeCanvasForMobile(canvas)
+      applyCanvasMobileStyles(canvas)
+      initLevel(0)
+      gameStartTime = Date.now()
+      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
+        handleTap(x, y)
+      })
       draw()
-      requestAnimationFrame(loop)
-      return
-    }
-    update()
-    draw()
-    requestAnimationFrame(loop)
-  }
-
-  // 开始游戏
-  initLevel(0)
-  gameStartTime = Date.now()
-
-  draw()
-  loop()
-
-  return () => {
-    gameEnded = true
-    unbindPointer()
-  }
+    },
+    onUpdate(_dt) {
+      if (gameEnded) return
+      update()
+    },
+    onRender() {
+      draw()
+    },
+    onDestroy() {
+      gameEnded = true
+      unbindPointer?.()
+      unbindPointer = null
+    },
+  })
 }

@@ -199,15 +199,11 @@ export function updatePlayer(player: Player, input: InputState, dt: number, room
 
   // ---- 技能触发检测 ----
   if (input.skill1) {
-    console.log(`[SKILL] 检测到 Skill1 输入, 冷却: ${p.skill1Cooldown}, 技能数: ${p.skills.length}`)
     
     if (p.skill1Cooldown > 0) {
-      console.log(`[SKILL] Skill1 冷却中: ${Math.ceil(p.skill1Cooldown / 1000)}s`)
     } else if (p.skills.length === 0) {
-      console.log(`[SKILL] Skill1 未解锁`)
     } else {
       const skill = p.skills[0]
-      console.log(`[SKILL] Skill1 检测: MP=${p.mp}/${p.maxMp}, 需要MP=${skill.mpCost}`)
       
       if (p.mp >= skill.mpCost) {
         p.mp -= skill.mpCost
@@ -224,23 +220,17 @@ export function updatePlayer(player: Player, input: InputState, dt: number, room
         skillAOE = skill.aoeRadius
         skillKnockback = skill.knockback
         skillLaunch = skill.launchHeight
-        console.log(`[SKILL] Skill1 触发成功! ${skill.name} (伤害:${skill.damage}, 范围:${skill.range})`)
       } else {
-        console.log(`[SKILL] Skill1 MP不足: 当前${p.mp}, 需要${skill.mpCost}`)
       }
     }
   }
 
   if (input.skill2) {
-    console.log(`[SKILL] 检测到 Skill2 输入, 冷却: ${p.skill2Cooldown}, 技能数: ${p.skills.length}`)
     
     if (p.skill2Cooldown > 0) {
-      console.log(`[SKILL] Skill2 冷却中: ${Math.ceil(p.skill2Cooldown / 1000)}s`)
     } else if (p.skills.length < 2) {
-      console.log(`[SKILL] Skill2 未解锁 (当前技能数: ${p.skills.length})`)
     } else {
       const skill = p.skills[1]
-      console.log(`[SKILL] Skill2 检测: MP=${p.mp}/${p.maxMp}, 需要MP=${skill.mpCost}`)
       
       if (p.mp >= skill.mpCost) {
         p.mp -= skill.mpCost
@@ -257,23 +247,17 @@ export function updatePlayer(player: Player, input: InputState, dt: number, room
         skillAOE = skill.aoeRadius
         skillKnockback = skill.knockback
         skillLaunch = skill.launchHeight
-        console.log(`[SKILL] Skill2 触发成功! ${skill.name} (伤害:${skill.damage}, 范围:${skill.range})`)
       } else {
-        console.log(`[SKILL] Skill2 MP不足: 当前${p.mp}, 需要${skill.mpCost}`)
       }
     }
   }
 
   if (input.skill3) {
-    console.log(`[SKILL] 检测到 Skill3 输入, 冷却: ${p.skill3Cooldown}, 技能数: ${p.skills.length}`)
     
     if (p.skill3Cooldown > 0) {
-      console.log(`[SKILL] Skill3 冷却中: ${Math.ceil(p.skill3Cooldown / 1000)}s`)
     } else if (p.skills.length < 3) {
-      console.log(`[SKILL] Skill3 未解锁 (当前技能数: ${p.skills.length})`)
     } else {
       const skill = p.skills[2]
-      console.log(`[SKILL] Skill3 检测: MP=${p.mp}/${p.maxMp}, 需要MP=${skill.mpCost}`)
       
       if (p.mp >= skill.mpCost) {
         p.mp -= skill.mpCost
@@ -289,23 +273,17 @@ export function updatePlayer(player: Player, input: InputState, dt: number, room
         skillAOE = skill.aoeRadius
         skillKnockback = skill.knockback
         skillLaunch = skill.launchHeight
-        console.log(`[SKILL] Skill3 触发成功! ${skill.name} (伤害:${skill.damage}, 范围:${skill.range})`)
       } else {
-        console.log(`[SKILL] Skill3 MP不足: 当前${p.mp}, 需要${skill.mpCost}`)
       }
     }
   }
 
   if (input.skill4) {
-    console.log(`[SKILL] 检测到 Skill4 输入, 冷却: ${p.skill4Cooldown}, 技能数: ${p.skills.length}`)
     
     if (p.skill4Cooldown > 0) {
-      console.log(`[SKILL] Skill4 冷却中: ${Math.ceil(p.skill4Cooldown / 1000)}s`)
     } else if (p.skills.length < 4) {
-      console.log(`[SKILL] Skill4 未解锁 (当前技能数: ${p.skills.length})`)
     } else {
       const skill = p.skills[3]
-      console.log(`[SKILL] Skill4 检测: MP=${p.mp}/${p.maxMp}, 需要MP=${skill.mpCost}`)
       
       if (p.mp >= skill.mpCost) {
         p.mp -= skill.mpCost
@@ -321,9 +299,7 @@ export function updatePlayer(player: Player, input: InputState, dt: number, room
         skillAOE = skill.aoeRadius
         skillKnockback = skill.knockback
         skillLaunch = skill.launchHeight
-        console.log(`[SKILL] Skill4 触发成功! ${skill.name} (伤害:${skill.damage}, 范围:${skill.range})`)
       } else {
-        console.log(`[SKILL] Skill4 MP不足: 当前${p.mp}, 需要${skill.mpCost}`)
       }
     }
   }

@@ -1,25 +1,43 @@
 import type { GameEngine } from '../services/gameEngine'
 import { audioService } from '../services/audio'
 import { app } from '../services/appBridge'
+import { gameActions } from '../platform/gameBridge'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../platform/GameLifecycle'
+import { createLifecycleContext } from '../platform/frameworkSession'
+import { hostCanvas2D } from '../platform/hostCanvas2D'
 import { resizeCanvasForMobile, injectMobileStyles } from '../utils/mobileHelper'
 import { bindCanvasPointerInput } from '../utils/canvasMobileUtils'
+import { resolveGtrsCanvasStyle } from '../utils/gtrsCanvasTheme'
 
-export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
-  console.log('[JewelMatch] 游戏初始化开始')
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
-  if (!canvas) {
-    console.error('[JewelMatch] Canvas not found!')
+let activeHost: GameLifecycle | null = null
+
+export function destroyJewelMatch(): void {
+  activeHost?.destroy()
+  activeHost = null
+}
+
+export async function initJewelMatch(engine: GameEngine, onEnd: () => void): Promise<void> {
+  destroyJewelMatch()
+  const lifecycleCtx = createLifecycleContext('jewelMatch', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
+    onEnd()
     return
   }
-  
-  const W = 400, H = 600
+  activeHost = startJewelMatchLifecycle(lifecycleCtx)
+}
+
+function startJewelMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  const canvas = lifecycleCtx.canvas!
+  const engine = lifecycleCtx.engine
+
+  const W = 400
+  const H = 600
   const ctx = canvas.getContext('2d')!
   if (!ctx) {
-    console.error('[JewelMatch] Cannot get 2D context!')
-    return
+    throw new Error('[JewelMatch] Cannot get 2D context!')
   }
   ctx.imageSmoothingEnabled = true
-  console.log('[JewelMatch] Canvas 上下文获取成功')
 
   const COLS = 6  // 减少列数
   const ROWS = 8  // 减少行数
@@ -28,14 +46,28 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
   const OFFSET_X = (W - COLS * (GEM_SIZE + GAP)) / 2
   const OFFSET_Y = 100
 
+  const JELLY_FALLBACK = {
+    primary: '#FFD700',
+    background: '#1a1a2e',
+    backgroundDark: '#0f3460',
+    bgGradMid: '#16213e',
+    text: '#FFFFFF',
+    accent: '#FFD700',
+    hudBg: 'rgba(255,255,255,0.6)',
+    danger: '#FF4444',
+    muted: '#666666',
+    palette: ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF9F43', '#FF69B4', '#9932CC'],
+  }
+  const gtrs = resolveGtrsCanvasStyle('jewelMatch', JELLY_FALLBACK)
+
   // 可爱动物主题宝石类型 - 更浅的颜色
   const GEM_TYPES = [
-    { emoji: '🐱', color: '#FFE4E1', light: '#FFF0F5', dark: '#FFB6C1', name: '猫咪' },
-    { emoji: '🐶', color: '#E0F0FF', light: '#F0F8FF', dark: '#B8DBFF', name: '狗狗' },
-    { emoji: '🐰', color: '#FFF0F5', light: '#FFFAFA', dark: '#FFCCD5', name: '兔子' },
-    { emoji: '🦊', color: '#FFF5E6', light: '#FFFDF5', dark: '#FFE4B5', name: '狐狸' },
-    { emoji: '🐨', color: '#F5F5F5', light: '#FAFAFA', dark: '#D8D8D8', name: '考拉' },
-    { emoji: '🦄', color: '#F3E5F5', light: '#FDF5FF', dark: '#E1BEE7', name: '独角兽' },
+    { emoji: '🐱', color: gtrs.palette[0] ?? '#FFE4E1', light: '#FFF0F5', dark: '#FFB6C1', name: '猫咪' },
+    { emoji: '🐶', color: gtrs.palette[1] ?? '#E0F0FF', light: '#F0F8FF', dark: '#B8DBFF', name: '狗狗' },
+    { emoji: '🐰', color: gtrs.palette[2] ?? '#FFF0F5', light: '#FFFAFA', dark: '#FFCCD5', name: '兔子' },
+    { emoji: '🦊', color: gtrs.palette[3] ?? '#FFF5E6', light: '#FFFDF5', dark: '#FFE4B5', name: '狐狸' },
+    { emoji: '🐨', color: gtrs.palette[4] ?? '#F5F5F5', light: '#FAFAFA', dark: '#D8D8D8', name: '考拉' },
+    { emoji: '🦄', color: gtrs.palette[5] ?? '#F3E5F5', light: '#FDF5FF', dark: '#E1BEE7', name: '独角兽' },
   ]
 
   let board: any[][] = []
@@ -257,7 +289,6 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     if (index === -1) return false
     
     inventory.splice(index, 1)
-    console.log('[道具] 使用道具:', type)
     
     switch (type) {
       case 'shuffle':
@@ -283,7 +314,6 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
           }
         }
         audioService.collect()
-        console.log('[道具] 洗牌完成')
         break
         
       case 'hint':
@@ -292,7 +322,6 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
         if (hint) {
           hintGem = { x: hint.x, y: hint.y, time: Date.now() + 3000 }
           audioService.collect()
-          console.log('[道具] 显示提示')
         }
         break
     }
@@ -374,8 +403,8 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     if (highlight) {
       const glowPulse = 1 + Math.sin(Date.now() * 0.005) * 0.15
       ctx.shadowBlur = 20 * glowPulse
-      ctx.shadowColor = 'rgba(255, 215, 0, 0.5)'
-      ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)'
+      ctx.shadowColor = gtrs.accent
+      ctx.strokeStyle = `${gtrs.accent}cc`
       ctx.lineWidth = 3
       ctx.beginPath()
       ctx.roundRect(finalGx - halfSize - 3, finalGy - halfSize - 3, (halfSize + 3) * 2, (halfSize + 3) * 2, 14)
@@ -433,7 +462,7 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     ctx.stroke()
 
     // 边框（柔和颜色）
-    ctx.strokeStyle = highlight ? 'rgba(255, 215, 0, 0.9)' : gemType.dark
+    ctx.strokeStyle = highlight ? `${gtrs.accent}e6` : gemType.dark
     ctx.lineWidth = highlight ? 2.5 : 1.5
     ctx.beginPath()
     ctx.roundRect(finalGx - halfSize, finalGy - halfSize, halfSize * 2, halfSize * 2, 12)
@@ -469,7 +498,7 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
         ctx.stroke()
         
         // 火花
-        ctx.fillStyle = '#FFD700'
+        ctx.fillStyle = gtrs.accent
         for (let i = 0; i < 4; i++) {
           const angle = (Math.PI * 2 * i) / 4
           ctx.beginPath()
@@ -478,7 +507,7 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
             cx + Math.cos(angle) * size * 0.5,
             cy + size * 0.3 + Math.sin(angle) * size * 0.5
           )
-          ctx.strokeStyle = '#FFD700'
+          ctx.strokeStyle = gtrs.accent
           ctx.lineWidth = 2
           ctx.stroke()
         }
@@ -591,10 +620,10 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
   function draw() {
     // 清新渐变背景
     const bgGrad = ctx.createLinearGradient(0, 0, W, H)
-    bgGrad.addColorStop(0, '#FFE4E1')
-    bgGrad.addColorStop(0.3, '#F0E68C')
-    bgGrad.addColorStop(0.6, '#87CEEB')
-    bgGrad.addColorStop(1, '#E6E6FA')
+    bgGrad.addColorStop(0, gtrs.background)
+    bgGrad.addColorStop(0.3, gtrs.bgGradMid ?? gtrs.backgroundDark)
+    bgGrad.addColorStop(0.6, gtrs.primary)
+    bgGrad.addColorStop(1, gtrs.backgroundDark)
     ctx.fillStyle = bgGrad
     ctx.fillRect(0, 0, W, H)
     
@@ -602,7 +631,7 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     drawClouds()
 
     // 顶部标题栏（玻璃态效果）
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.fillStyle = gtrs.hudBg
     ctx.fillRect(0, 0, W, 85)
     ctx.strokeStyle = 'rgba(255,255,255,0.15)'
     ctx.lineWidth = 1
@@ -613,8 +642,8 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
 
     // 分数显示（带发光效果）
     ctx.shadowBlur = 20
-    ctx.shadowColor = '#FFD700'
-    ctx.fillStyle = '#FFD700'
+    ctx.shadowColor = gtrs.accent
+    ctx.fillStyle = gtrs.accent
     ctx.font = 'bold 42px sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText(String(engine.getScore()), W / 2, 50)
@@ -1020,55 +1049,43 @@ export function initJewelMatch(engine: GameEngine, onEnd: () => void) {
     }
   }
 
-  const unbindJewel = bindCanvasPointerInput(canvas, (x, y) => {
-    void handleClickAt(x, y)
-  })
+  let unbindJewel: (() => void) | null = null
 
   function checkTimeout() {
     if (gameEnded) return
     if (Date.now() - lastMoveTime > MOVE_TIMEOUT) {
-      unbindJewel()
-      engine.endGame()
       gameEnded = true
+      unbindJewel?.()
+      unbindJewel = null
       audioService.lose()
-      onEnd()
+      gameActions.gameOver({ victory: false, score: engine.getScore() })
     }
   }
 
-  function loop() {
-    if (!document.getElementById('mainGameCanvas') || gameEnded) return
-    if (!engine.canTick()) {
+  return hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      initBoard()
+      lastMoveTime = Date.now()
+      resizeCanvasForMobile(canvas)
+      injectMobileStyles()
+      updateHTMLPowerupBar()
+      unbindJewel = bindCanvasPointerInput(canvas, (x, y) => {
+        void handleClickAt(x, y)
+      })
       draw()
-      requestAnimationFrame(loop)
-      return
-    }
-
-    checkTimeout()
-    draw()
-    requestAnimationFrame(loop)
-  }
-
-  engine.start()
-  console.log('[JewelMatch] 游戏引擎启动')
-  initBoard()
-  console.log('[JewelMatch] 游戏棋盘初始化完成')
-  lastMoveTime = Date.now()
-  
-  // 初始化Canvas尺寸（移动端适配）
-  resizeCanvasForMobile(canvas)
-  
-  // 注入移动端样式
-  injectMobileStyles()
-  
-  // 初始化HTML道具栏
-  updateHTMLPowerupBar()
-  
-  console.log('[JewelMatch] 事件绑定完成')
-  
-  // 首次绘制（避免黑屏）
-  draw()
-  console.log('[JewelMatch] 首次绘制完成')
-  
-  loop()
-  console.log('[JewelMatch] 游戏循环启动')
+    },
+    onUpdate(_dt) {
+      if (gameEnded) return
+      checkTimeout()
+    },
+    onRender() {
+      draw()
+    },
+    onDestroy() {
+      gameEnded = true
+      unbindJewel?.()
+      unbindJewel = null
+      app.removePowerupBar?.()
+    },
+  })
 }

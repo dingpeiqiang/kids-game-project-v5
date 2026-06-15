@@ -1,0 +1,47 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "voxelRealm_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "像素世界",
+    "isDefault": true,
+    "gameId": "voxelRealm",
+    "description": "kids-game-simple voxelRealm 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#7CFC98",
+    "secondaryColor": "#FFD93D",
+    "bgColor": "#87CEEB",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "sky": { "src": "#87CEEB", "type": "png", "alias": "天空" },
+        "ground": { "src": "#6B8E23", "type": "png", "alias": "地面" },
+        "water": { "src": "#4ECDC4", "type": "png", "alias": "水" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "高亮" },
+        "danger": { "src": "#FF6B6B", "type": "png", "alias": "危险" },
+        "muted": { "src": "#9CA3AF", "type": "png", "alias": "弱化" },
+        "game_palette": {
+          "src": "[\"#7CFC98\",\"#FFD93D\",\"#4ECDC4\",\"#FF8E53\",\"#9B59B6\",\"#58D68D\"]",
+          "type": "png",
+          "alias": "像素色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

@@ -694,6 +694,21 @@ export async function apiTaskClaim(taskId: number) {
   return { ok: false, msg: res.msg }
 }
 
+/** 游玩记录条目（后端 GET /api/user/game-records 响应） */
+export interface GameRecordData {
+  gameId: number
+  score: number
+  playedAt: string
+  isNewBest: boolean
+}
+
+/** GET /api/user/game-records — 获取用户游玩记录（后端尚未实现，预留接口） */
+export async function apiGetGameRecords(): Promise<{ ok: boolean; data?: GameRecordData[] }> {
+  const res = await request<GameRecordData[]>('/user/game-records', { method: 'GET' })
+  if (res.code === 200 && res.data) return { ok: true, data: res.data }
+  return { ok: false }
+}
+
 /** GET /api/leaderboard/session-top — 单局得分前100 */
 export async function apiSessionLeaderboard(gameId: number, limit = 100) {
   const res = await request<{ list: Array<{ rank: number; nickname?: string; username?: string; score: number }> }>(

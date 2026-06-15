@@ -1,0 +1,47 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "spaceshooter_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "太空射击",
+    "isDefault": true,
+    "gameId": "spaceshooter",
+    "description": "kids-game-simple spaceshooter 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#00E5FF",
+    "secondaryColor": "#FFD700",
+    "bgColor": "#0a0a1a",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "background_dark": { "src": "#0a0a1a", "type": "png", "alias": "背景底" },
+        "bg_grad_mid": { "src": "#1a1a2e", "type": "png", "alias": "背景中层" },
+        "hud_bg": { "src": "rgba(0,0,0,0.7)", "type": "png", "alias": "HUD" },
+        "accent": { "src": "#FFD700", "type": "png", "alias": "高亮" },
+        "danger": { "src": "#FF4757", "type": "png", "alias": "警告" },
+        "primary": { "src": "#00E5FF", "type": "png", "alias": "玩家主色" },
+        "enemy": { "src": "#FF6B6B", "type": "png", "alias": "敌人" },
+        "game_palette": {
+          "src": "[\"#FF4444\",\"#FFA502\",\"#00BCD4\",\"#9C27B0\",\"#FF5722\",\"#FFD700\",\"#00E5FF\"]",
+          "type": "png",
+          "alias": "太空配色"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

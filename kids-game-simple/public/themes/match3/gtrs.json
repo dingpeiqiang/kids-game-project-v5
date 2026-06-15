@@ -1,0 +1,45 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "match3_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "宝石三消",
+    "isDefault": true,
+    "gameId": "match3",
+    "description": "kids-game-simple match3 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#FFD700",
+    "secondaryColor": "#4ECDC4",
+    "bgColor": "#0f0c29",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "background_dark": { "src": "#24243e", "type": "png", "alias": "背景底" },
+        "bg_grad_mid": { "src": "#302b63", "type": "png", "alias": "背景中层" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "accent": { "src": "#FFD700", "type": "png", "alias": "高亮" },
+        "danger": { "src": "#FF6B6B", "type": "png", "alias": "警告" },
+        "game_palette": {
+          "src": "[\"#FF4444\",\"#FF8C00\",\"#FFD700\",\"#32CD32\",\"#1E90FF\",\"#9932CC\"]",
+          "type": "png",
+          "alias": "宝石色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

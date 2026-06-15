@@ -31,7 +31,6 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void, startLevel:
   let currentLevel = Math.max(1, Math.min(startLevel, LEVELS.length))
   let levelConfig = getLevelConfig(currentLevel)
   
-  console.log(`[关卡系统] 开始第 ${currentLevel} 关: ${levelConfig.name}`)
 
   // 游戏状态
   const state = createInitialState()
@@ -148,7 +147,6 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void, startLevel:
     state.shockwaves = []
     state.scorePopups = []
     
-    console.log(`[关卡系统] 进入第 ${currentLevel} 关: ${levelConfig.name}`)
   }
   
   // 进入下一关（备用方法）
@@ -163,7 +161,6 @@ export function initCookieCut(engine: GameEngine, onEnd: () => void, startLevel:
     state.shockwaves = []
     state.scorePopups = []
     
-    console.log(`[关卡系统] 进入第 ${currentLevel} 关: ${levelConfig.name}`)
     
     state.cookies.push(spawnCookie(levelConfig))
     setTimeout(() => state.cookies.push(spawnCookie(levelConfig)), 500)

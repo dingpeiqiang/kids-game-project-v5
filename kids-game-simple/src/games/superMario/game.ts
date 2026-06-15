@@ -1,4 +1,9 @@
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import type { GameLifecycleContext } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { audioService } from '../../services/audio'
 import { VirtualJoystick } from '../contraRpg/joystick'
 import { MARIO_CONFIG } from './config'
@@ -14,13 +19,13 @@ import { aabb, resolvePlayerBlocks, resolveEnemyBlocks, stompTest } from './phys
 import { drawWorld, drawHud, drawOverlay } from './render'
 import type { Block, Coin, Enemy, LevelData, MarioGameState, Player, Powerup } from './types'
 
-let activeDispose: (() => void) | null = null
+let activeHost: GameLifecycle | null = null
 let enemyId = 0
 let powerupId = 0
 
 export function destroySuperMario(): void {
-  activeDispose?.()
-  activeDispose = null
+  activeHost?.destroy()
+  activeHost = null
 }
 
 function cloneBlocks(blocks: Block[]): Block[] {
@@ -410,14 +415,15 @@ function updateSimulation(state: MarioGameState, level: LevelData, input: MarioI
 
 export async function initSuperMario(engine: GameEngine, onEnd: () => void): Promise<void> {
   destroySuperMario()
-  engine.start()
   engine.setOrientation('portrait')
 
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement | null
-  if (!canvas) {
+  const lifecycleCtx = createLifecycleContext('superMario', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
     onEnd()
     return
   }
+
+  const canvas = lifecycleCtx.canvas
   canvas.width = MARIO_CONFIG.VIEW_W
   canvas.height = MARIO_CONFIG.VIEW_H
 
@@ -442,85 +448,78 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
 
   let ended = false
   let frame = 0
-  let raf = 0
   let lastTs = performance.now()
-  let overlayTap = false
+  let unbind: (() => void) | null = null
+  let kd: (e: KeyboardEvent) => void
+  let ku: (e: KeyboardEvent) => void
+  let onTap: () => void
 
-  const finish = () => {
+  const finishFromOverlay = () => {
     if (ended) return
     ended = true
     engine.setScore(state.score)
-    activeDispose?.()
-    activeDispose = null
-    onEnd()
+    const victory = state.phase === 'victory'
+    gameActions.gameOver({
+      victory,
+      score: state.score,
+      stats: { level: state.levelIndex + 1, lives: state.lives, coins: state.coins },
+    })
   }
 
   const onJumpTap = () => {
     audioService.collect()
   }
 
-  const unbind = bindMarioInput(canvas, input, joystick, onJumpTap)
-
-  const keyTrack = (e: KeyboardEvent, down: boolean) => {
-    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keyboardActive.left = down
-    if (e.code === 'ArrowRight' || e.code === 'KeyD') keyboardActive.right = down
-  }
-  const kd = (e: KeyboardEvent) => keyTrack(e, true)
-  const ku = (e: KeyboardEvent) => keyTrack(e, false)
-  window.addEventListener('keydown', kd)
-  window.addEventListener('keyup', ku)
-
-  const onTap = () => {
-    if (state.phase === 'gameOver' || state.phase === 'victory') {
-      finish()
-    } else if (state.phase === 'levelComplete' && state.levelCompleteTimer <= 0) {
-      overlayTap = true
-    }
-  }
-  canvas.addEventListener('click', onTap)
-
-  const loop = (ts: number) => {
-    if (ended) return
-    if (!engine.canTick()) {
+  activeHost = hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      unbind = bindMarioInput(canvas, input, joystick, onJumpTap)
+      const keyTrack = (e: KeyboardEvent, down: boolean) => {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keyboardActive.left = down
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keyboardActive.right = down
+      }
+      kd = (e: KeyboardEvent) => keyTrack(e, true)
+      ku = (e: KeyboardEvent) => keyTrack(e, false)
+      window.addEventListener('keydown', kd)
+      window.addEventListener('keyup', ku)
+      onTap = () => {
+        if (state.phase === 'gameOver' || state.phase === 'victory') {
+          finishFromOverlay()
+        } else if (state.phase === 'levelComplete' && state.levelCompleteTimer <= 0) {
+          state.levelCompleteTimer = 0
+        }
+      }
+      canvas.addEventListener('click', onTap)
+      lastTs = performance.now()
+    },
+    onUpdate(dt) {
+      if (ended) return
+      const capped = Math.min(0.05, dt)
+      frame++
+      applyJoystickToInput(joystick, input, keyboardActive)
+      const level = getLevel(state.levelIndex)
+      updateSimulation(state, level, input, engine, capped)
+      engine.setScore(state.score)
+    },
+    onRender() {
+      const level = getLevel(state.levelIndex)
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      drawWorld(ctx, state, getLevel(state.levelIndex), frame)
-      drawHud(ctx, state, getLevel(state.levelIndex))
+      drawWorld(ctx, state, level, frame)
+      drawHud(ctx, state, level)
       drawTouchControls(ctx, joystick)
-      raf = requestAnimationFrame(loop)
-      return
-    }
-    const dt = Math.min(0.05, (ts - lastTs) / 1000)
-    lastTs = ts
-    frame++
-
-    applyJoystickToInput(joystick, input, keyboardActive)
-    const level = getLevel(state.levelIndex)
-    updateSimulation(state, level, input, engine, dt)
-    engine.setScore(state.score)
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    drawWorld(ctx, state, level, frame)
-    drawHud(ctx, state, level)
-    drawTouchControls(ctx, joystick)
-
-    if (state.phase === 'gameOver') {
-      drawOverlay(ctx, '游戏结束', `得分 ${state.score}`, true)
-    } else if (state.phase === 'victory') {
-      drawOverlay(ctx, '通关恭喜！', `5 关全部完成 · 得分 ${state.score}`, true)
-    } else if (state.phase === 'levelComplete' && state.levelCompleteTimer > 0.5) {
-      drawOverlay(ctx, '关卡完成！', level.name, false)
-    }
-
-    raf = requestAnimationFrame(loop)
-  }
-
-  raf = requestAnimationFrame(loop)
-
-  activeDispose = () => {
-    cancelAnimationFrame(raf)
-    unbind()
-    window.removeEventListener('keydown', kd)
-    window.removeEventListener('keyup', ku)
-    canvas.removeEventListener('click', onTap)
-  }
+      if (state.phase === 'gameOver') {
+        drawOverlay(ctx, '游戏结束', `得分 ${state.score}`, true)
+      } else if (state.phase === 'victory') {
+        drawOverlay(ctx, '通关恭喜！', `5 关全部完成 · 得分 ${state.score}`, true)
+      } else if (state.phase === 'levelComplete' && state.levelCompleteTimer > 0.5) {
+        drawOverlay(ctx, '关卡完成！', level.name, false)
+      }
+    },
+    onDestroy() {
+      unbind?.()
+      unbind = null
+      window.removeEventListener('keydown', kd!)
+      window.removeEventListener('keyup', ku!)
+      canvas.removeEventListener('click', onTap!)
+    },
+  })
 }

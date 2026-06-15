@@ -1,4 +1,5 @@
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
 import { audioService } from '../../services/audio'
 import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../../data/items'
 import { app } from '../../services/appBridge'
@@ -9,6 +10,7 @@ import { ComboSystem } from './ComboSystem'
 import { PowerupSystem } from './PowerupSystem'
 import { PowerupEffectSystem } from './PowerupEffectSystem'
 import { ELIMINATE_LEVELS, getLevelColors, getNextLevel, isLevelCompleted, type LevelConfig } from './levelConfig'
+import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 
 export class EliminateGame {
   private canvas: HTMLCanvasElement
@@ -76,6 +78,17 @@ export class EliminateGame {
   private currentLevel: number = 1
   private levelConfig: LevelConfig | null = null
   private COLORS: string[] = []
+  private gtrs = resolveGtrsCanvasStyle('eliminate', {
+    primary: '#4ECDC4',
+    background: '#1a1a2e',
+    backgroundDark: '#0f0f1a',
+    text: '#FFFFFF',
+    accent: '#FFD93D',
+    hudBg: 'rgba(255,255,255,0.1)',
+    danger: '#FF6B6B',
+    muted: '#666666',
+    palette: ['#FF6B6B', '#FF8E53', '#FFD93D', '#6BCB77', '#4D96FF', '#9B59B6'],
+  })
   
   // 星星收集系统
   private collectedStars: number = 0 // 已收集的星星数量
@@ -183,7 +196,6 @@ export class EliminateGame {
     // 根据单元格大小调整顶部区域
     this.TOP = Math.max(60, Math.floor(this.CELL * 1.8))
     
-    console.log(`[消除游戏] 布局计算完成: W=${this.W}, H=${this.H}, COLS=${this.COLS}, GRID=${this.GRID}, CELL=${this.CELL.toFixed(1)}, TOP=${this.TOP}`)
   }
   
   init() {
@@ -226,7 +238,6 @@ export class EliminateGame {
       this.canvas.width = logicalWidth
       this.canvas.height = logicalHeight
       
-      console.log(`[消除游戏] Canvas 尺寸已调整: ${logicalWidth}x${logicalHeight}`)
     }
   }
   
@@ -240,8 +251,6 @@ export class EliminateGame {
     this.isGameOver = false // 重置游戏结束标志
     this.collectedStars = 0 // 重置星星收集
     
-    console.log(`[关卡] 进入第 ${level} 关: ${this.levelConfig.name}`)
-    console.log(`[关卡] 目标星星: ${this.levelConfig.targetStars}, 时间限制: ${this.levelConfig.timeLimit / 1000}秒`)
     
     // 重新初始化方块
     this.initBlocks()
@@ -317,7 +326,6 @@ export class EliminateGame {
     
     // ⭐ 基于星星收集数量判断是否通关
     if (isLevelCompleted(this.currentLevel, this.collectedStars)) {
-      console.log(`[关卡] 第 ${this.currentLevel} 关完成！星星: ${this.collectedStars}/${this.levelConfig.targetStars}`)
       
       // 尝试进入下一关
       const nextLevel = getNextLevel(this.currentLevel)
@@ -384,13 +392,7 @@ export class EliminateGame {
         console.warn('Failed to close audio context:', e)
       }
       
-      // 防止重复调用 endGame
-      if (!this.isGameOver) {
-        this.isGameOver = true
-        this.teardownInput()
-        this.engine.endGame()
-        this.onEnd()
-      }
+      this.finishWithPlatformResult(true)
     }, 3000)
   }
   
@@ -416,14 +418,8 @@ export class EliminateGame {
     // 检查超时
     const now = Date.now()
     if (now - this.lastActionTime > this.timeLimit) {
-      // 防止重复调用 endGame
-      if (!this.isGameOver) {
-        this.isGameOver = true
-        this.teardownInput()
-        this.engine.endGame()
-        audioService.lose()
-        this.onEnd()
-      }
+      audioService.lose()
+      this.finishWithPlatformResult(false)
       return
     }
     
@@ -576,6 +572,22 @@ export class EliminateGame {
     })
   }
   
+  /** 壳层退出 / 重开时释放输入 */
+  destroy(): void {
+    this.teardownInput()
+  }
+
+  private finishWithPlatformResult(victory: boolean): void {
+    if (this.isGameOver) return
+    this.isGameOver = true
+    this.teardownInput()
+    gameActions.gameOver({
+      victory,
+      score: this.engine.getScore(),
+      stats: { level: this.currentLevel, stars: this.collectedStars },
+    })
+  }
+
   private teardownInput() {
     this.canvas.onclick = null
     this.canvas.removeEventListener('touchstart', this.handleTouchStart)
@@ -621,7 +633,6 @@ export class EliminateGame {
           idx >= 0 && idx < this.blocks.length && this.blocks[idx]) {
         this.selectedBlock = idx
         audioService.collect()
-        console.log(`[选中] 方块 ${idx}`)
       }
     }
   }
@@ -746,7 +757,6 @@ export class EliminateGame {
     if (this.selectedBlock === null) {
       this.selectedBlock = idx
       audioService.collect()
-      console.log(`[选中] 方块 ${idx}`)
       return
     }
     
@@ -773,7 +783,6 @@ export class EliminateGame {
       // 选中新的宝石（非相邻）
       this.selectedBlock = idx
       audioService.collect()
-      console.log(`[选中] 方块 ${idx}`)
     }
   }
   
@@ -1311,7 +1320,7 @@ export class EliminateGame {
   }
   
   private drawBackground() {
-    this.ctx.fillStyle = '#1a1a2e'
+    this.ctx.fillStyle = this.gtrs.background
     this.ctx.fillRect(-10, -10, this.W + 20, this.H + 20)
   }
   
@@ -1332,7 +1341,7 @@ export class EliminateGame {
     
     // 绘制关卡信息
     if (this.levelConfig) {
-      this.ctx.fillStyle = '#FFD93D'
+      this.ctx.fillStyle = this.gtrs.accent
       this.ctx.font = `bold ${mediumFontSize}px sans-serif`
       this.ctx.textAlign = 'left'
       this.ctx.fillText(`关卡 ${this.currentLevel}/10`, padding, this.TOP / 3)
@@ -1345,9 +1354,10 @@ export class EliminateGame {
     // 绘制倒计时背景条
     const barWidth = (remaining / this.timeLimit) * (this.W - padding * 2)
     const barHeight = Math.max(4, Math.floor(this.CELL * 0.12))
-    const barColor = remaining < 5000 ? '#FF6B6B' : remaining < 10000 ? '#FFD93D' : '#4ECDC4'
-    
-    this.ctx.fillStyle = 'rgba(255,255,255,0.1)'
+    const barColor =
+      remaining < 5000 ? this.gtrs.danger : remaining < 10000 ? this.gtrs.accent : this.gtrs.primary
+
+    this.ctx.fillStyle = this.gtrs.hudBg
     this.ctx.fillRect(padding, 4, this.W - padding * 2, barHeight)
     
     this.ctx.fillStyle = barColor
@@ -1355,7 +1365,7 @@ export class EliminateGame {
     
     // 绘制倒计时数字
     if (seconds <= 10) {
-      this.ctx.fillStyle = seconds <= 3 ? '#FF6B6B' : '#FFD93D'
+      this.ctx.fillStyle = seconds <= 3 ? this.gtrs.danger : this.gtrs.accent
       this.ctx.font = `bold ${largeFontSize}px sans-serif`
       this.ctx.textAlign = 'right'
       this.ctx.fillText(`⏱️ ${seconds}s`, this.W - padding, this.TOP / 3)
@@ -1368,7 +1378,7 @@ export class EliminateGame {
     }
     
     // 绘制分数
-    this.ctx.fillStyle = '#fff'
+    this.ctx.fillStyle = this.gtrs.text
     this.ctx.font = `bold ${hugeFontSize}px sans-serif`
     this.ctx.textAlign = 'center'
     this.ctx.fillText(String(this.engine.getScore()), this.W / 2, this.TOP / 2)
@@ -1378,14 +1388,14 @@ export class EliminateGame {
     
     // 绘制连击数
     if (this.engine.getCombo() >= 3) {
-      this.ctx.fillStyle = '#FFD93D'
+      this.ctx.fillStyle = this.gtrs.accent
       this.ctx.font = `bold ${mediumFontSize}px sans-serif`
       this.ctx.fillText(`🔥 ${this.engine.getCombo()} 连击`, this.W / 2, this.TOP / 2 + hugeFontSize + smallFontSize + 2)
     }
     
     // 绘制连击倍数
     if (this.comboMultiplier > 1.1) {
-      this.ctx.fillStyle = '#FF6B6B'
+      this.ctx.fillStyle = this.gtrs.danger
       this.ctx.font = `bold ${smallFontSize}px sans-serif`
       this.ctx.fillText(`x${this.comboMultiplier.toFixed(1)} 连击加成`, this.W / 2, this.TOP / 2 + hugeFontSize + smallFontSize * 2 + 6)
     }
@@ -1569,7 +1579,6 @@ export class EliminateGame {
   
   // ⭐ 立即使用道具效果（消除道具方块时自动触发）
   private async usePowerupImmediately(type: string, x: number, y: number) {
-    console.log('[道具] 自动生效:', type)
     
     // 触发华丽的收集特效
     this.triggerPowerupCollectEffect(type, x, y)

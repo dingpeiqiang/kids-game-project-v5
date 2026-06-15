@@ -1,5 +1,10 @@
 // 极速消除游戏关卡配置
 
+import { getCachedGTRSTheme } from '../../services/gtrsThemeLoader'
+import { readGtrsSceneList } from '../../utils/gtrsSceneMeta'
+
+const DEFAULT_BLOCK_COLORS = ['#FF6B6B', '#FF8E53', '#FFD93D', '#6BCB77', '#4D96FF', '#9B59B6']
+
 export interface LevelConfig {
   level: number
   name: string
@@ -138,10 +143,11 @@ export const ELIMINATE_LEVELS: LevelConfig[] = [
 
 // 根据关卡获取颜色数组
 export function getLevelColors(level: number): string[] {
-  const allColors = ['#FF6B6B', '#FF8E53', '#FFD93D', '#6BCB77', '#4D96FF', '#9B59B6']
+  const theme = getCachedGTRSTheme('eliminate')
+  const allColors = readGtrsSceneList(theme, 'game_palette') ?? DEFAULT_BLOCK_COLORS
   const config = ELIMINATE_LEVELS.find(l => l.level === level)
   if (!config) return allColors
-  
+
   return allColors.slice(0, config.colorCount)
 }
 

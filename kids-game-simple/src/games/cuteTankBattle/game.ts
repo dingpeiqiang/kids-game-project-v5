@@ -1,4 +1,8 @@
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
+import type { GameLifecycle } from '../../platform/GameLifecycle'
+import { createLifecycleContext } from '../../platform/frameworkSession'
+import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { audioService } from '../../services/audio'
 import { DESIGN_H, DESIGN_W, GRID_COLS, GRID_ROWS } from './config'
 import { loadGameAssets } from './assets'
@@ -14,24 +18,24 @@ import {
 import { renderFrame } from './render'
 import type { GameState } from './types'
 
-let activeDispose: (() => void) | null = null
+let activeHost: GameLifecycle | null = null
 
 export function destroyCuteTankBattle(): void {
-  activeDispose?.()
-  activeDispose = null
+  activeHost?.destroy()
+  activeHost = null
 }
 
 export async function initCuteTankBattle(engine: GameEngine, onEnd: () => void): Promise<void> {
   destroyCuteTankBattle()
-  engine.start()
   engine.setOrientation('portrait')
 
-  const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement | null
-  if (!canvas) {
+  const lifecycleCtx = createLifecycleContext('cuteTankBattle', engine, onEnd)
+  if (!lifecycleCtx?.canvas) {
     onEnd()
     return
   }
 
+  const canvas = lifecycleCtx.canvas
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     onEnd()
@@ -59,20 +63,11 @@ export async function initCuteTankBattle(engine: GameEngine, onEnd: () => void):
   startLevel(state, 0)
 
   let ended = false
-  let raf = 0
-  let lastTs = performance.now()
+  let onPointerTap: (() => void) | null = null
 
   const finish = (victory: boolean) => {
     if (ended) return
     ended = true
-    engine.setVictory(victory)
-    engine.setScore(state.score)
-    engine.setGameStats({
-      stars: getResultStars(state),
-      level: state.levelIndex + 1,
-      baseHp: state.baseHp,
-      victory,
-    })
     if (victory) {
       audioService.win()
       tryVibrate(120)
@@ -80,74 +75,61 @@ export async function initCuteTankBattle(engine: GameEngine, onEnd: () => void):
       audioService.lose()
       tryVibrate(150)
     }
-    cancelAnimationFrame(raf)
-    input.dispose()
-    activeDispose = null
-    onEnd()
-  }
-
-  const onPointerTap = () => {
-    if (state.phase === 'levelClear') {
-      advanceAfterLevelClear(state)
-      return
-    }
-    if (state.phase === 'victory') {
-      finish(true)
-      return
-    }
-    if (state.phase === 'defeat') {
-      finish(false)
-    }
-  }
-
-  canvas.addEventListener('click', onPointerTap)
-
-  const loop = (ts: number) => {
-    if (!document.getElementById('mainGameCanvas')) {
-      ended = true
-      cancelAnimationFrame(raf)
-      canvas.removeEventListener('click', onPointerTap)
-      input.dispose()
-      return
-    }
-    if (ended) return
-
-    if (!engine.canTick()) {
-      renderFrame(ctx, W, H, state, assets, hudTop)
-      raf = requestAnimationFrame(loop)
-      return
-    }
-
-    const dt = Math.min(0.033, (ts - lastTs) / 1000)
-    lastTs = ts
-
-    const snap = input.getSnapshot()
-
-    if (snap.firePressed) {
-      tryVibrate(40)
-      audioService.shoot()
-    }
-
-    updateSimulation(
-      state,
-      { moveDir: snap.moveDir, firePressed: snap.firePressed },
-      dt,
-      (n, x, y) => {
-        engine.addScore(n, x, y)
+    gameActions.gameOver({
+      victory,
+      score: state.score,
+      stats: {
+        stars: getResultStars(state),
+        level: state.levelIndex + 1,
+        baseHp: state.baseHp,
       },
-    )
-    state.score = engine.getScore()
-
-    renderFrame(ctx, W, H, state, assets, hudTop)
-    raf = requestAnimationFrame(loop)
+    })
   }
 
-  raf = requestAnimationFrame(loop)
-
-  activeDispose = () => {
-    ended = true
-    cancelAnimationFrame(raf)
-    canvas.removeEventListener('click', onPointerTap)
-    input.dispose()
-  }
+  activeHost = hostCanvas2D(lifecycleCtx, {
+    onInit() {
+      onPointerTap = () => {
+        if (state.phase === 'levelClear') {
+          advanceAfterLevelClear(state)
+          return
+        }
+        if (state.phase === 'victory') {
+          finish(true)
+          return
+        }
+        if (state.phase === 'defeat') {
+          finish(false)
+        }
+      }
+      canvas.addEventListener('click', onPointerTap)
+    },
+    onUpdate(dt) {
+      if (ended) return
+      const capped = Math.min(0.033, dt)
+      const snap = input.getSnapshot()
+      if (snap.firePressed) {
+        tryVibrate(40)
+        audioService.shoot()
+      }
+      updateSimulation(
+        state,
+        { moveDir: snap.moveDir, firePressed: snap.firePressed },
+        capped,
+        (n, x, y) => {
+          gameActions.addScore(n, x, y, 'cuteTankBattle')
+        },
+      )
+      state.score = engine.getScore()
+    },
+    onRender() {
+      renderFrame(ctx, W, H, state, assets, hudTop)
+    },
+    onDestroy() {
+      if (onPointerTap) {
+        canvas.removeEventListener('click', onPointerTap)
+        onPointerTap = null
+      }
+      input.dispose()
+    },
+  })
 }

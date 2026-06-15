@@ -1,15 +1,31 @@
-// === 太空射击游戏入口 ===
+// === 太空射击游戏入口（Phaser 外部画布 + 框架 destroy / 暂停桥接）===
 import type { GameEngine } from '../../services/gameEngine'
 import Phaser from 'phaser'
 import { SpaceShooterScene } from './scene'
 import { BASE_W, BASE_H } from './config'
 
+type Teardown = () => void
+
+let teardown: Teardown | null = null
+
+export function destroySpaceShooter(): void {
+  teardown?.()
+  teardown = null
+}
+
 export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
-  const gameContainer = document.getElementById('gameCanvas')!
+  destroySpaceShooter()
+
+  const gameContainer = document.getElementById('gameCanvas')
+  if (!gameContainer) {
+    onEnd()
+    return
+  }
   gameContainer.innerHTML = ''
 
-  const isMobile = /Android|iPhone|iPad|iPod|MicroMessenger/i.test(navigator.userAgent)
-    || (window.visualViewport ? window.visualViewport.width < 768 : window.innerWidth < 768)
+  const isMobile =
+    /Android|iPhone|iPad|iPod|MicroMessenger/i.test(navigator.userAgent) ||
+    (window.visualViewport ? window.visualViewport.width < 768 : window.innerWidth < 768)
 
   const phaserParent = document.createElement('div')
   phaserParent.id = 'phaser-space-shooter'
@@ -37,21 +53,13 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     phaserParent.style.aspectRatio = BASE_W + '/' + BASE_H
   }
 
-  let phaserGame: Phaser.Game
-  const handleResize = () => { if (phaserGame?.scale) phaserGame.scale.refresh() }
+  let phaserGame: Phaser.Game | null = null
+  const handleResize = () => {
+    if (phaserGame?.scale) phaserGame.scale.refresh()
+  }
 
   const wrappedOnEnd = () => {
-    window.removeEventListener('resize', handleResize)
-    if (isMobile) {
-      document.body.style.overflow = ''
-      document.body.style.touchAction = ''
-      document.body.style.position = ''
-      document.body.style.width = ''
-      document.body.style.height = ''
-    }
-    phaserGame?.destroy(true)
-    const phaserDiv = document.getElementById('phaser-space-shooter')
-    if (phaserDiv) phaserDiv.remove()
+    destroySpaceShooter()
     onEnd()
   }
 
@@ -86,5 +94,19 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     document.body.style.height = '100%'
   }
 
-  engine.start()
+  teardown = () => {
+    window.removeEventListener('resize', handleResize)
+    if (isMobile) {
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.height = ''
+    }
+    phaserGame?.destroy(true)
+    phaserGame = null
+    const phaserDiv = document.getElementById('phaser-space-shooter')
+    if (phaserDiv) phaserDiv.remove()
+    if (gameContainer) gameContainer.innerHTML = ''
+  }
 }

@@ -113,7 +113,6 @@ export function addCustomRoute(route: CustomRoute): void {
   // 🎯 关键修复：同步到 routeLoader，确保游戏中也能看到新路线
   import('./routeLoader').then(module => {
     module.routeLoader.addCustomRoute(route)
-    console.log(`✅ 已同步自定义路线到 routeLoader: ${route.name}`)
   })
 }
 
@@ -125,7 +124,6 @@ export function clearCustomRoutes(): void {
   // 🎯 关键修复：同步到 routeLoader
   import('./routeLoader').then(module => {
     module.routeLoader.getCustomRoutes().length = 0  // 清空 routeLoader 的自定义路线
-    console.log('✅ 已清空 routeLoader 中的自定义路线')
   })
 }
 
@@ -155,14 +153,12 @@ export class RouteEditor {
   startSettingPlayerStart() {
     this.activeMode = 'playerStart'
     this.isDrawing = false
-    console.log('🎯 开始设置玩家初始位置，点击画布指定位置')
   }
 
   // 退出玩家起点设置模式
   exitPlayerStartMode() {
     if (this.activeMode === 'playerStart') {
       this.activeMode = null
-      console.log('❌ 退出玩家初始位置设置')
     }
   }
 
@@ -173,7 +169,6 @@ export class RouteEditor {
         y >= CANVAS_OFFSET_Y && y <= CANVAS_OFFSET_Y + BASE_H) {
       this.playerStartPoint = { x, y }
       this.activeMode = null  // 设置完成后退出模式
-      console.log(`✅ 玩家初始位置已设置: (${x.toFixed(0)}, ${y.toFixed(0)})`)
       return true
     }
     return false
@@ -236,23 +231,19 @@ export class RouteEditor {
 
   addPoint(x: number, y: number) {
     if (!this.isDrawing) {
-      console.log('⚠️ addPoint 被拒绝：isDrawing = false')
       return
     }
     const route = this.routes[this.currentIndex]
     if (!route) {
-      console.log('⚠️ addPoint 被拒绝：route 不存在')
       return
     }
     const last = route[route.length - 1]
     // 距离阈值从 1 改为 4，提升绘制流畅度；点数上限 600
     const DISTANCE_THRESHOLD = 4
     if (last && Math.hypot(x - last.x, y - last.y) < DISTANCE_THRESHOLD) {
-      console.log('⚠️ addPoint 被拒绝：距离太近', Math.hypot(x - last.x, y - last.y).toFixed(2))
       return
     }
     if (route.length >= 600) {
-      console.log('⚠️ 路线已达上限 600 点')
       return
     }
     route.push({ x, y })
@@ -527,7 +518,6 @@ export class RouteEditor {
 export function getRouteForDragon(dragonId: number, level: number): CustomRoute {
   const levelRoute = LEVEL_SPECIFIC_ROUTES[level]
   if (levelRoute) {
-    console.log(`🎯 使用第 ${level} 关专属路线: ${levelRoute.name}`)
     return levelRoute
   }
 
@@ -547,7 +537,6 @@ export function loadCustomRoutes(): void {
       const routes = JSON.parse(stored)
       if (Array.isArray(routes)) {
         customRoutes = routes
-        console.log(`✅ 已加载 ${customRoutes.length} 条自定义路线`)
       }
     }
   } catch (error) {
@@ -560,7 +549,6 @@ export function loadCustomRoutes(): void {
 export function saveCustomRoutes(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customRoutes))
-    console.log(`✅ 已保存 ${customRoutes.length} 条自定义路线`)
   } catch (error) {
     console.error('❌ 保存自定义路线失败:', error)
   }
@@ -590,7 +578,6 @@ export function exportRoutesToFile(): void {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
 
-    console.log(`✅ 已导出 ${allRoutes.totalLevels} 个关卡路线和 ${allRoutes.totalCustomRoutes} 条自定义路线`)
   } catch (error) {
     console.error('❌ 导出路线失败:', error)
   }
@@ -611,13 +598,11 @@ export function importRoutesFromFile(file: File): Promise<void> {
 
         if (data.levelSpecificRoutes) {
           Object.assign(LEVEL_SPECIFIC_ROUTES, data.levelSpecificRoutes)
-          console.log(`✅ 已导入 ${Object.keys(data.levelSpecificRoutes).length} 个关卡路线`)
         }
 
         if (data.customRoutes && Array.isArray(data.customRoutes)) {
           customRoutes = [...customRoutes, ...data.customRoutes]
           saveCustomRoutes()
-          console.log(`✅ 已导入 ${data.customRoutes.length} 条自定义路线`)
         }
 
         resolve()
@@ -666,6 +651,5 @@ export function deleteCustomRoute(routeId: string): void {
   if (index >= 0) {
     customRoutes.splice(index, 1)
     saveCustomRoutes()
-    console.log(`✅ 已删除路线: ${routeId}`)
   }
 }

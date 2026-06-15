@@ -78,35 +78,30 @@ export function usePowerup(type: string, inventory: string[]): boolean {
   if (index === -1) return false
   
   inventory.splice(index, 1)
-  console.log('[道具] 使用道具:', type)
   
   switch (type) {
     case 'slow':
       // 减速 - 饼干速度减半，持续8秒
       ;(window as any).cookieSlow = Date.now() + 8000
       audioService.collect()
-      console.log('[道具] 减速生效，持续8秒')
       break
       
     case 'score2x':
       // 双倍分数 - 10秒内×2
       ;(window as any).cookieScore2x = Date.now() + 10000
       audioService.win()
-      console.log('[道具] 双倍分数生效，持续10秒')
       break
       
     case 'freeze':
       // 冻结 - 暂停所有饼干3秒
       ;(window as any).cookieFreeze = Date.now() + 3000
       audioService.win()
-      console.log('[道具] 冻结生效，持续3秒')
       break
       
     case 'magnet':
       // 磁铁 - 自动吸引附近饼干，持续6秒
       ;(window as any).cookieMagnet = Date.now() + 6000
       audioService.win()
-      console.log('[道具] 磁铁生效，持续6秒')
       break
   }
   

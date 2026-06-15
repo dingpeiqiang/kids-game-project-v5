@@ -527,6 +527,13 @@ body{
   padding:3px 10px;
   border-radius:10px;
 }
+.section-quick {
+  margin-bottom:6px;
+  padding-top:4px;
+}
+.section-quick .section-title {
+  margin-bottom:10px;
+}
 .game-grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(165px,1fr));
@@ -823,50 +830,97 @@ body{
 .btn-primary{background:linear-gradient(135deg,#4f8ef7,#3366e6);color:#fff;box-shadow:0 4px 12px rgba(51,102,230,0.3)}
 .btn-secondary{background:#f5f5f5;color:#666;border:1px solid #e0e0e0}
 
-/* 排行榜 - 页面模式 */
+/* ==================== 排行榜 ==================== */
 .rank-page{width:100%;height:100%}
 .rank-page-panel{background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.rank-page .rank-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f0f0f0;position:sticky;top:0;background:#fff;border-radius:20px 20px 0 0}
+.rank-page .rank-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f0f0f0;position:sticky;top:0;background:#fff;border-radius:20px 20px 0 0;z-index:2}
 .rank-page .rank-title{font-size:18px;font-weight:700;color:#333}
 .rank-page .rank-tabs{display:flex;padding:0 20px;gap:8px;margin-top:16px}
 .rank-close{width:32px;height:32px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#666}
 .rank-tabs{display:flex;padding:0 20px;gap:8px;margin-top:16px}
-.rank-tab{padding:6px 16px;border-radius:20px;font-size:13px;color:#666;cursor:pointer;transition:all 0.2s;background:#f5f5f5}
-.rank-tab.active{background:var(--primary);color:#fff;font-weight:600}
+.rank-tab{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:500;color:#666;cursor:pointer;transition:all 0.25s;background:#f5f5f5;user-select:none}
+.rank-tab:hover{background:#e8e8e8;transform:translateY(-1px)}
+.rank-tab.active{background:var(--primary);color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(91,155,213,0.35)}
+
+/* 游戏选择器 */
+.rank-game-selector{display:flex;align-items:center;gap:8px;padding:12px 20px 0}
+.selector-icon{font-size:18px}
+.rank-game-select{flex:1;padding:8px 12px;border:2px solid #e8e8e8;border-radius:12px;font-size:14px;color:#333;background:#fafafa;outline:none;cursor:pointer;transition:all 0.2s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.rank-game-select:hover{border-color:var(--primary)}
+.rank-game-select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,155,213,0.15)}
+
+/* 领奖台 */
+.rank-podium{display:none;padding:20px 20px 16px;gap:8px}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;padding:0 10px}
+.podium-item{display:flex;flex-direction:column;align-items:center;flex:1;max-width:120px;border-radius:16px 16px 0 0;padding:16px 10px 10px;position:relative;animation:podiumIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both}
+.podium-first{background:linear-gradient(180deg,#fff8e1,#fff3cd);height:140px;padding-top:20px;animation-delay:0s;box-shadow:0 -4px 20px rgba(255,215,0,0.2)}
+.podium-second{background:linear-gradient(180deg,#f5f5f5,#e8e8e8);height:105px;padding-top:14px;animation-delay:0.1s}
+.podium-third{background:linear-gradient(180deg,#fdf0e0,#f5e6d3);height:80px;padding-top:10px;animation-delay:0.2s}
+.podium-medal{font-size:28px;line-height:1;margin-bottom:4px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.15))}
+.podium-first .podium-medal{font-size:34px}
+.podium-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;margin-bottom:4px}
+.podium-first .podium-avatar{width:40px;height:40px;font-size:15px;background:linear-gradient(135deg,#ffd700,#ffaa00);box-shadow:0 3px 10px rgba(255,215,0,0.4)}
+.podium-second .podium-avatar{background:linear-gradient(135deg,#d4d4d4,#a0a0a0);box-shadow:0 2px 8px rgba(192,192,192,0.3)}
+.podium-third .podium-avatar{background:linear-gradient(135deg,#cd7f32,#a0622b);box-shadow:0 2px 8px rgba(205,127,50,0.3)}
+.podium-name{font-size:12px;font-weight:600;color:#333;text-align:center;margin-bottom:2px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.podium-score{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:8px}
+.podium-first .podium-score{font-size:15px;color:#e6a800}
+.podium-rank{font-size:11px;font-weight:800;color:#fff;padding:3px 12px;border-radius:4px;letter-spacing:1px}
+.podium-first .podium-rank{background:linear-gradient(90deg,#ffd700,#ffaa00);box-shadow:0 2px 8px rgba(255,215,0,0.3)}
+.podium-second .podium-rank{background:linear-gradient(90deg,#c0c0c0,#909090)}
+.podium-third .podium-rank{background:linear-gradient(90deg,#cd7f32,#8b4513)}
+
+@keyframes podiumIn{
+  0%{transform:scale(0.8) translateY(20px);opacity:0}
+  100%{transform:scale(1) translateY(0);opacity:1}
+}
 
 /* 我的排名卡片 */
-.my-rank-card{display:none;align-items:center;justify-content:space-between;margin:16px 20px 8px;padding:16px;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);border-radius:12px;color:#fff;box-shadow:0 4px 12px rgba(91,155,213,0.3)}
-.my-rank-info,.my-rank-score{flex:1;text-align:center}
-.my-rank-label{font-size:11px;opacity:0.9;margin-bottom:4px}
-.my-rank-value{font-size:20px;font-weight:800}
-.my-rank-btn{padding:10px 16px;background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.5);border-radius:10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap}
-.my-rank-btn:hover{background:rgba(255,255,255,0.35);transform:scale(1.05)}
-.my-rank-btn:active{transform:scale(0.98)}
+.my-rank-card{display:none;align-items:center;justify-content:space-between;margin:8px 20px 12px;padding:14px 18px;background:linear-gradient(135deg,#5b9bd5,#7ec8e3);border-radius:14px;color:#fff;box-shadow:0 4px 16px rgba(91,155,213,0.35);animation:cardSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1)}
+.my-rank-info,.my-rank-score{text-align:center}
+.my-rank-label{font-size:11px;opacity:0.85;margin-bottom:2px}
+.my-rank-value{font-size:22px;font-weight:800;line-height:1.2}
+.my-rank-card .my-rank-btn{padding:8px 14px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.4);border-radius:10px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap;backdrop-filter:blur(4px)}
+.my-rank-card .my-rank-btn:hover{background:rgba(255,255,255,0.35);transform:scale(1.05)}
+.my-rank-card .my-rank-btn:active{transform:scale(0.96)}
 
-.rank-list{padding:12px 20px 80px}
-.rank-item{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #f8f8f8}
-.rank-item:last-child{border:none}
-.rank-num{width:28px;text-align:center;font-size:14px;font-weight:700;color:#ccc}
-.rank-num.top3{font-size:18px}
-.rank-num.gold{color:#ffd700}
-.rank-num.silver{color:#c0c0c0}
-.rank-num.bronze{color:#cd7f32}
-.rank-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;margin:0 10px}
-.rank-name{flex:1;font-size:14px;color:#333;display:flex;align-items:center;gap:6px}
-.rank-score{font-size:15px;font-weight:700;color:var(--primary)}
+@keyframes cardSlideIn{
+  0%{transform:translateX(-20px);opacity:0}
+  100%{transform:translateX(0);opacity:1}
+}
+
+/* 排行榜列表 */
+.rank-list{padding:8px 16px 90px}
+.rank-item{display:flex;align-items:center;padding:10px 12px;margin-bottom:6px;border-radius:12px;border:1px solid #f5f5f5;background:#fff;transition:all 0.2s;animation:rankItemIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both}
+.rank-item:hover{border-color:#e0e0e0;box-shadow:0 2px 12px rgba(0,0,0,0.06);transform:translateY(-1px)}
+@keyframes rankItemIn{
+  0%{transform:translateY(12px);opacity:0}
+  100%{transform:translateY(0);opacity:1}
+}
+.rank-num{width:28px;text-align:center;font-size:14px;font-weight:700;color:#bbb;flex-shrink:0}
+.rank-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#5b9bd5,#8ec5fc);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;margin:0 10px;flex-shrink:0}
+.rank-name{flex:1;font-size:14px;color:#444;display:flex;align-items:center;gap:6px;min-width:0}
+.rank-name .name-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-score{font-size:15px;font-weight:700;color:var(--primary);flex-shrink:0;font-variant-numeric:tabular-nums}
 
 /* 我的排名行 */
-.rank-me{background:rgba(91,155,213,0.08);border-radius:8px;padding:10px 8px;margin:0 -8px}
+.rank-me{background:linear-gradient(135deg,rgba(91,155,213,0.06),rgba(142,197,252,0.1));border-color:rgba(91,155,213,0.2)}
 .rank-me .rank-avatar{background:linear-gradient(135deg,#FFD700,#FFA500)}
-.rank-me .rank-name{font-weight:700;color:#5b9bd5}
-.me-badge{background:#5b9bd5;color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700}
+.rank-me .rank-name{font-weight:700;color:var(--primary)}
+.me-badge{background:var(--primary);color:#fff;padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700;flex-shrink:0}
 
-/* 高亮动画 */
+/* 高亮脉冲动画 */
 @keyframes highlightPulse{
   0%,100%{background:rgba(91,155,213,0.08)}
   50%{background:rgba(91,155,213,0.25)}
 }
-.rank-item.highlight-me{animation:highlightPulse 1s ease-in-out 2}
+.rank-item.highlight-me{animation:highlightPulse 1s ease-in-out 2 !important}
+
+/* 暂无数据空状态 */
+.rank-empty{padding:50px 20px;text-align:center}
+.rank-empty-icon{font-size:56px;margin-bottom:12px}
+.rank-empty-text{font-size:16px;color:#999;margin-bottom:4px}
+.rank-empty-hint{font-size:12px;color:#bbb}
 
 /* Buff 飘字（移除白色背景框） */
 .buff-popup{position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);border-radius:12px;padding:10px 20px;display:none;align-items:center;gap:8px;animation:buffPop 0.5s cubic-bezier(0.34,1.56,0.64,1)}

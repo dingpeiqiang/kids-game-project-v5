@@ -9,8 +9,9 @@ globs: kids-game-simple/src/games/**,kids-game-simple/src/app/gameShell.ts,kids-
 - 2D 默认由壳层创建 `#mainGameCanvas`；`externalCanvas: true` 时游戏自管 WebGL/Phaser，壳层只清空容器。
 - 主循环须尊重平台暂停：`engine.canTick()` 或 `!engine.isPaused()`；暂停时 2D 可只重绘当前帧（见 kingBaby）。
 - 得分：用 `engine.addScore` / `engine.setScore`；自绘 HUD 时设 `hidePlatformScore: true`。
-- 道具栏通过 `setupCustomPowerupBar` 挂到 `#gameShellPowerupSlot`。
+- **道具属玩法**：在 canvas/游戏内自绘；勿把道具系统当作框架能力。遗留 HTML 道具栏才用 `app.setupCustomPowerupBar`（会展开壳层底栏挂载点，见 [FRAMEWORK_VS_SHELL.md](mdc:kids-game-simple/docs/FRAMEWORK_VS_SHELL.md)）。
 - 启动/退出由 [gameSession.ts](mdc:kids-game-simple/src/app/gameSession.ts) 的 `mountGameShell` / `unmountGameShell` 负责。
 - 3D Babylon 游戏在 `onBeforeRender` 开头加 `if (engine.isPaused()) return`（与壳层暂停一致；游戏内自有暂停菜单的仍可用 `togglePause`）。
 - 自绘 HUD 的游戏在 [gameLayout.ts](mdc:kids-game-simple/src/games/gameLayout.ts) 设 `hidePlatformScore: true`；游戏内已有暂停菜单可加 `hidePlatformPause: true`；横屏 3D 可加 `compactFooter: true`。
 - 真机抽测见 [GAME_SHELL_QA.md](mdc:kids-game-simple/docs/GAME_SHELL_QA.md)。
+- **新游戏必须**在 [gameRegistry.ts](mdc:kids-game-simple/src/games/gameRegistry.ts) 注册：`frameworkLifecycle: true`、`destroy`（释放 RAF/WebGL/输入）、并加入 `FRAMEWORK_LIFECYCLE_GAME_IDS`。2D 用 `hostCanvas2D` + `createLifecycleContext`；Phaser/3D 用 Adapter（`gameActions.gameOver`、暂停 `canTick`/`isPaused`）。**禁止**在游戏 `init` 内调用 `engine.start()`（由 [gameSession.ts](mdc:kids-game-simple/src/app/gameSession.ts) 统一启动）。玩法目录避免 `console.log` 调试输出。

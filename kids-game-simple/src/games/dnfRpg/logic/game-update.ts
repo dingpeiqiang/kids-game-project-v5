@@ -51,9 +51,9 @@ export function updateGameLogic(
   state: GameUpdateState,
   input: InputState,
   dt: number,
-  engine: { addScore: (score: number, x: number, y: number) => void; endGame: () => void; setVictory: (v: boolean) => void },
+  engine: { addScore: (score: number, x: number, y: number) => void },
   dungeon: DungeonManager,
-  onEnd: () => void,
+  finishGame: (victory: boolean, delayMs: number) => void,
   lastFrameTime: { value: number },
 ): void {
   const now = Date.now()
@@ -97,9 +97,7 @@ export function updateGameLogic(
           handleRoomTypeEntry(state, dungeon)
         } else {
           state.victory = true
-          engine.setVictory(true)
-          engine.endGame()
-          setTimeout(() => onEnd(), C.VICTORY_DELAY)
+          finishGame(true, C.VICTORY_DELAY)
         }
       }
       return // 滑出期间不更新游戏逻辑
@@ -183,15 +181,14 @@ export function updateGameLogic(
         } else {
           // 命耗尽，游戏结束
           state.gameOver = true
-          engine.endGame()
-          setTimeout(() => onEnd(), C.GAME_OVER_DELAY)
+          finishGame(false, C.GAME_OVER_DELAY)
         }
       }
     }
   }
 
   // 子弹碰撞检测
-  checkBulletCollisions(state, engine, onEnd, now)
+  checkBulletCollisions(state, engine, finishGame, now)
 
   // === 清理死亡敌人并生成掉落 ===
   cleanupDeadEnemies(state, engine, dungeon)
@@ -254,17 +251,11 @@ export function updateGameLogic(
         state.player.vx = 0
         state.player.vy = 0
       } else if (dungeon.isLastLevel()) {
-        // 最后一个房间的最后一个关卡 → 胜利
         state.victory = true
-        engine.setVictory(true)
-        engine.endGame()
-        setTimeout(() => onEnd(), C.VICTORY_DELAY)
+        finishGame(true, C.VICTORY_DELAY)
       } else {
-        // 非最后一个关卡，自动进入下一关（保持原有行为）
         state.victory = true
-        engine.setVictory(true)
-        engine.endGame()
-        setTimeout(() => onEnd(), C.VICTORY_DELAY)
+        finishGame(true, C.VICTORY_DELAY)
       }
     }
   }
@@ -498,8 +489,8 @@ function handleSkills(
 
 function checkBulletCollisions(
   state: GameUpdateState,
-  engine: { addScore: (score: number, x: number, y: number) => void; endGame: () => void },
-  onEnd: () => void,
+  engine: { addScore: (score: number, x: number, y: number) => void },
+  finishGame: (victory: boolean, delayMs: number) => void,
   now: number,
 ): void {
   const activeEnemies = state.enemies.filter(e => e.hp > 0)
@@ -604,8 +595,7 @@ function checkBulletCollisions(
               state.player.knockedDown = false
             } else {
               state.gameOver = true
-              engine.endGame()
-              setTimeout(() => onEnd(), C.GAME_OVER_DELAY)
+              finishGame(false, C.GAME_OVER_DELAY)
             }
           }
         }

@@ -1,0 +1,46 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "bouncePath_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "星空弹球",
+    "isDefault": true,
+    "gameId": "bouncePath",
+    "description": "kids-game-simple bouncePath 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#4ECDC4",
+    "secondaryColor": "#FFD93D",
+    "bgColor": "#0f0c29",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "星星" },
+        "background_dark": { "src": "#24243e", "type": "png", "alias": "背景底" },
+        "bg_grad_mid": { "src": "#302b63", "type": "png", "alias": "背景中层" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "danger": { "src": "#FF6B6B", "type": "png", "alias": "危险" },
+        "muted": { "src": "#666666", "type": "png", "alias": "辅助" },
+        "game_palette": {
+          "src": "[\"#FF6B6B\",\"#4ECDC4\",\"#FFD93D\",\"#FF69B4\",\"#9B59B6\"]",
+          "type": "png",
+          "alias": "玩法色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

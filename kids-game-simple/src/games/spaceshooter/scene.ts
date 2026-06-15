@@ -1,6 +1,7 @@
 import { Scene, Math as PhaserMath } from 'phaser'
 import type { Textures, Input, GameObjects } from 'phaser'
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
 import { audioService } from '../../services/audio'
 import type { Bullet, Enemy, EnemyBullet, Particle, Shockwave, FloatText, Powerup, Star, SceneState, Turret, TransformState, TransformType } from './types'
 import {
@@ -154,6 +155,12 @@ export class SpaceShooterScene extends Scene {
   private gameImage!: GameObjects.Image
 
   update(_time: number, delta: number) {
+    if (!this.engine.canTick()) {
+      this.renderToCanvas()
+      this.gameTexture.refresh()
+      return
+    }
+
     if (this.gameEnded && !this.gameWon) {
       this.renderToCanvas()
       this.gameTexture.refresh()
@@ -173,7 +180,6 @@ export class SpaceShooterScene extends Scene {
           this.respawnPlayer()
         } else {
           this.gameEnded = true
-          this.engine.endGame()
           this.time.delayedCall(800, () => this.doEnd())
         }
       }
@@ -901,9 +907,8 @@ export class SpaceShooterScene extends Scene {
               this.floatTexts.push({ text: 'BOSS defeated!', x: BASE_W / 2, y: BASE_H / 2, life: 2.5, color: '#FFD700', size: 24, vy: -0.8, scale: 1 })
               this.finalBoss = null
               this.time.delayedCall(2000, () => {
-                this.gameWon = true; this.gameEnded = true
-                this.engine.setVictory(true)
-                this.engine.endGame()
+                this.gameWon = true
+                this.gameEnded = true
                 this.doEnd()
               })
             }
@@ -2052,9 +2057,19 @@ export class SpaceShooterScene extends Scene {
   }
 
   private doEnd() {
-    const gameStats = { score: this.engine.getScore(), maxCombo: this.maxCombo, totalKills: this.totalKills, gameTime: Math.floor(this.elapsed), won: this.gameWon, level: this.getPowerupLevel() }
-    ;(this.engine as any).setGameStats(gameStats)
-    this.onEnd()
+    const stats = {
+      score: this.engine.getScore(),
+      maxCombo: this.maxCombo,
+      totalKills: this.totalKills,
+      gameTime: Math.floor(this.elapsed),
+      won: this.gameWon,
+      level: this.getPowerupLevel(),
+    }
+    gameActions.gameOver({
+      victory: this.gameWon,
+      score: this.engine.getScore(),
+      stats,
+    })
   }
 
   // === 渲染 ===

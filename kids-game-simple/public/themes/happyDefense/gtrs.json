@@ -1,0 +1,47 @@
+{
+  "specMeta": {
+    "specName": "GTRS",
+    "specVersion": "1.0.0",
+    "compatibleVersion": "1.0.0"
+  },
+  "themeInfo": {
+    "themeId": "happyDefense_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "快乐防线",
+    "isDefault": true,
+    "gameId": "happyDefense",
+    "description": "kids-game-simple happyDefense 默认 GTRS"
+  },
+  "globalStyle": {
+    "primaryColor": "#6BCB77",
+    "secondaryColor": "#FFD93D",
+    "bgColor": "#1a1a2e",
+    "textColor": "#FFFFFF",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "background": { "src": "#1a1a2e", "type": "png", "alias": "背景" },
+        "background_dark": { "src": "#0f0f1a", "type": "png", "alias": "深背景" },
+        "bg_grad_mid": { "src": "#2d2d5e", "type": "png", "alias": "中背景" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "高亮" },
+        "danger": { "src": "#FF6B6B", "type": "png", "alias": "危险" },
+        "muted": { "src": "#AAB2D5", "type": "png", "alias": "弱化" },
+        "game_palette": {
+          "src": "[\"#6BCB77\",\"#FFD93D\",\"#4ECDC4\",\"#FF8E53\",\"#9B59B6\",\"#FF69B4\"]",
+          "type": "png",
+          "alias": "玩法色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

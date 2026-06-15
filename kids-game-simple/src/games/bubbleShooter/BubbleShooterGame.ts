@@ -1,10 +1,12 @@
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
 import { audioService } from '../../services/audio'
 import { ParticleSystem } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
 import { Renderer } from './Renderer'
 import type { Shooter, Projectile, MatchPosition, PowerupType, SpecialBubbleType } from './types'
 import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../../utils/canvasMobileUtils'
+import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 
 interface LevelConfig {
   level: number
@@ -30,9 +32,19 @@ export class BubbleShooterGame {
   private ROWS = 8
   private readonly BUBBLE_SIZE = 35
   private readonly SHOOTER_Y: number
-  private readonly COLORS = [
-    '#FF6B6B', '#4ECDC4', '#FFD93D', '#6BCB77', '#4D96FF', '#FF69B4'
-  ]
+  private readonly GTRS = resolveGtrsCanvasStyle('bubbleShooter', {
+    primary: '#4ECDC4',
+    background: '#0f0c29',
+    backgroundDark: '#24243e',
+    bgGradMid: '#302b63',
+    text: '#FFFFFF',
+    accent: '#FFD700',
+    hudBg: 'rgba(15,25,45,0.85)',
+    danger: '#FF4444',
+    muted: '#666666',
+    palette: ['#FF6B6B', '#FFD93D', '#6BCB77', '#4ECDC4', '#4D96FF', '#FF69B4'],
+  })
+  private readonly COLORS = this.GTRS.palette
   
   // 关卡配置
   private readonly LEVELS: LevelConfig[] = [
@@ -200,9 +212,7 @@ export class BubbleShooterGame {
           this.engine.setVictory(true)
           this.engine.setMessage('🎉 恭喜通关！')
           setTimeout(() => {
-            this.teardownInput()
-            this.engine.endGame()
-            this.onEnd()
+            this.finishWithPlatformResult(true)
           }, 3000)
         }
       }
@@ -223,9 +233,7 @@ export class BubbleShooterGame {
           this.engine.setVictory(false)
           this.engine.setMessage('⏰ 时间到！游戏结束')
           setTimeout(() => {
-            this.teardownInput()
-            this.engine.endGame()
-            this.onEnd()
+            this.finishWithPlatformResult(false)
           }, 2000)
         }
       }
@@ -370,6 +378,21 @@ export class BubbleShooterGame {
     this.shooter.angle = Math.atan2(dy, dx)
     if (this.shooter.angle > -0.1) this.shooter.angle = -0.1
     if (this.shooter.angle < -Math.PI + 0.1) this.shooter.angle = -Math.PI + 0.1
+  }
+
+  destroy(): void {
+    this.teardownInput()
+  }
+
+  private finishWithPlatformResult(victory: boolean): void {
+    if (this.gameEnded) return
+    this.gameEnded = true
+    this.teardownInput()
+    gameActions.gameOver({
+      victory,
+      score: this.engine.getScore(),
+      stats: { level: this.currentLevel },
+    })
   }
 
   private teardownInput() {
@@ -686,9 +709,7 @@ export class BubbleShooterGame {
     this.engine.setVictory(false)
     this.engine.setMessage('💥 棋盘已满！游戏结束')
     setTimeout(() => {
-      this.teardownInput()
-      this.engine.endGame()
-      this.onEnd()
+      this.finishWithPlatformResult(false)
     }, 2000)
   }
 

@@ -4,6 +4,7 @@
 // ============================================
 
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
 import { routeLoader } from './routeLoader'
 import type { GameState, CustomRoute } from './types'
 import { performanceMonitor } from './performance'
@@ -36,15 +37,22 @@ import { createRenderer } from './renderer'
 import { createInputHandler } from './input'
 import { RouteEditor as RouteEditorImpl, addCustomRoute, clearCustomRoutes, loadCustomRoutes, customRoutes, getCustomRoutes, optimizeRoute } from './routes'
 
+let dragonTeardown: (() => void) | null = null
+
+export function destroyDragonShooter(): void {
+  dragonTeardown?.()
+  dragonTeardown = null
+}
+
 /**
  * 初始化打龙游戏主入口
  */
 export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
+  destroyDragonShooter()
+
   // 加载路线配置
-  console.log('🔄 加载路线配置...')
   await routeLoader.loadRoutes()
   const stats = routeLoader.getStats()
-  console.log(`✅ 路线加载完成: ${stats.levelCount} 个关卡, ${stats.customCount} 条自定义路线`)
 
   // 创建画布
   const container = document.getElementById('gameCanvas')!
@@ -117,45 +125,73 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
   // 创建游戏状态
   const state = createInitialState()
 
-  // 注册游戏结束回调（3秒后返回主界面）
+  let inputHandler: ReturnType<typeof createInputHandler> | null = null
+  let rafId = 0
+  let ended = false
+  let lastSyncedScore = 0
+
+  const runTeardown = () => {
+    cancelAnimationFrame(rafId)
+    inputHandler?.dispose()
+    inputHandler = null
+    disposeViewport?.()
+    disposeViewport = null
+    performanceMonitor.destroy()
+    const host = document.getElementById('gameCanvas')
+    if (host) host.innerHTML = ''
+  }
+
   setGameOverCallback(async () => {
-    // 关键修复：游戏结束时打印最终分数，确保分数已累积
-    // 游戏结束，不打 log
-    
-    // 🎯 提交游戏积分到后台
+    if (ended) return
+    ended = true
+
+    if (state.score > lastSyncedScore) {
+      const scoreDelta = state.score - lastSyncedScore
+      engine.addScore(scoreDelta, state.playerX, state.playerY)
+      lastSyncedScore = state.score
+    }
+
     if (userService.isLoggedIn && userService.current && sessionId && sessionToken) {
       try {
-        const duration = Math.floor((Date.now() - gameStartTime) / 1000)  // 秒
-        // 准备提交分数
-        
+        const duration = Math.floor((Date.now() - gameStartTime) / 1000)
         const result = await apiSubmitGameResult({
-          sessionId: sessionId,
-          sessionToken: sessionToken,
+          sessionId,
+          sessionToken,
           score: state.score,
-          duration: duration,
+          duration,
           level: state.level,
-          isWin: state.phase === 'levelComplete',  // 如果是关卡完成则胜利
+          isWin: state.phase === 'levelComplete',
           details: {
             totalKills: state.totalKills,
             coins: state.coins,
             maxCombo: state.combo,
-          }
+          },
         })
-        
-        if (result.ok) {
-          console.log('[打龙] 分数提交成功')
-        } else {
+        if (!result.ok) {
           console.warn('[打龙] 分数提交失败:', result.msg)
         }
-      } catch (error) {
-        // 提交分数异常
+      } catch {
+        /* ignore */
       }
     }
-    
-    inputHandler.dispose()
-    disposeViewport?.()
-    performanceMonitor.destroy()
-    onEnd()
+
+    const victory =
+      state.phase === 'levelComplete' ||
+      (state.mode === 'challenge' && state.timeLeft <= 0 && state.playerHP > 0)
+
+    gameActions.gameOver({
+      victory,
+      score: state.score,
+      stats: {
+        level: state.level,
+        totalKills: state.totalKills,
+        coins: state.coins,
+        maxCombo: state.combo,
+      },
+    })
+
+    runTeardown()
+    dragonTeardown = null
   })
 
   // 路线编辑器实例（包装成 ref，输入处理器始终用最新的）
@@ -316,7 +352,6 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       routeEditorRef.current.activeMode = null
     },
     onStartChallenge: () => {
-      console.log('🎯 开始闯关模式')
       state.mode = 'challenge'
       state.phase = 'playing'
       state.level = 1
@@ -337,7 +372,6 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       
       // 初始化关卡：根据第1关的路线数量设置目标
       const routes = routeLoader.getRoutesForLevel(state.level)
-      console.log('🛤️ 路线数据:', routes.length, routes.map(r => ({ name: r.name, points: r.points.length })))
       if (routes.length === 0) {
         console.error('❌ 警告：没有可用路线！使用备用路线')
         // 备用路线
@@ -362,7 +396,6 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         for (const route of customRoutesList) {
           if (route.playerStartX !== undefined && route.playerStartY !== undefined) {
             playerStartPosition = { x: route.playerStartX, y: route.playerStartY }
-            console.log(`🎯 从自定义路线获取玩家起点: (${route.playerStartX}, ${route.playerStartY})`)
             break
           }
         }
@@ -373,7 +406,6 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         const firstRoute = routes[0]
         if (firstRoute.playerStartX !== undefined && firstRoute.playerStartY !== undefined) {
           playerStartPosition = { x: firstRoute.playerStartX, y: firstRoute.playerStartY }
-          console.log(`🎯 从关卡路线获取玩家起点: (${firstRoute.playerStartX}, ${firstRoute.playerStartY})`)
         }
       }
       
@@ -383,25 +415,19 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         state.playerY = playerStartPosition.y
         state.playerStartX = playerStartPosition.x
         state.playerStartY = playerStartPosition.y
-        console.log(`✅ 玩家初始位置: (${playerStartPosition.x}, ${playerStartPosition.y})`)
       } else {
         // 默认位置（底部中央）
         state.playerX = BASE_W / 2
         state.playerY = BASE_H - 55
         state.playerStartX = BASE_W / 2
         state.playerStartY = BASE_H - 55
-        console.log(`ℹ️ 使用默认玩家位置: (${BASE_W / 2}, ${BASE_H - 55})`)
       }
       
-      console.log(`🎮 开始第${state.level}关, levelTarget=${state.levelTarget}, maxDragons=${state.maxDragons}`)
-      console.log(`🎮 开始第${state.level}关，共${state.levelTarget}条路线, 路线数:`, routes.length)
       if (routes.length > 0) {
-        console.log('🛤️ 路线信息:', routes[0].name, '点数:', routes[0].points.length)
       }
     },
 
     onDrawRoute: () => {
-      console.log('✏️ onDrawRoute called, phase:', state.phase)
       // 首页：跳转到编辑页面
       if (state.phase === 'start') {
         state.phase = 'routeEdit'
@@ -422,13 +448,19 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     onNextLevel: () => startNextLevel(state)
   }
 
-  const inputHandler = createInputHandler(canvas, ctx, state, routeEditorRef, customRoutes, inputCallbacks)
+  inputHandler = createInputHandler(canvas, ctx, state, routeEditorRef, customRoutes, inputCallbacks)
+
+  dragonTeardown = () => {
+    cancelAnimationFrame(rafId)
+    ended = true
+    runTeardown()
+  }
 
   // ===== 游戏主循环 =====
   let lastTime = performance.now()
-  let lastSyncedScore = 0  // 🎯 记录上次同步的分数，避免重复调用
 
   function gameLoop(timestamp: number) {
+    if (ended) return
     const dt = Math.min(0.033, (timestamp - lastTime) / 1000)
     lastTime = timestamp
 
@@ -558,7 +590,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     // 渲染性能监控覆盖层
     performanceMonitor.render()
     
-    requestAnimationFrame(gameLoop)
+    rafId = requestAnimationFrame(gameLoop)
   }
 
   // 启动游戏
@@ -568,11 +600,9 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
   // 🎯 关键修复：将 routes.ts 加载的自定义路线同步到 routeLoader
   const loadedRoutes = getCustomRoutes()
   if (loadedRoutes.length > 0) {
-    console.log(`🔄 同步 ${loadedRoutes.length} 条自定义路线到 routeLoader...`)
     loadedRoutes.forEach((route: CustomRoute) => {
       routeLoader.addCustomRoute(route)
     })
-    console.log(`✅ 已同步 ${loadedRoutes.length} 条自定义路线`)
   }
   
   // 🎯 初始化游戏会话（异步）
@@ -582,14 +612,12 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
         // dragonShooter 的游戏ID为2（需要根据后端实际配置调整）
         const GAME_ID = 2
         
-        console.log('[打龙] 创建游戏会话...')
         const result = await apiStartGameSession(GAME_ID)
         
         if (result.ok && result.data) {
           sessionId = result.data.sessionId
           sessionToken = result.data.sessionToken
           gameStartTime = Date.now()
-          console.log('[打龙] 游戏会话创建成功:', sessionId)
         } else {
           console.warn('[打龙] 创建游戏会话失败:', result.msg)
         }
@@ -601,6 +629,5 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
   
   initGameSession()  // 异步初始化会话
   
-  console.log('🚀 启动 gameLoop, phase:', state.phase)
-  requestAnimationFrame(gameLoop)
+  rafId = requestAnimationFrame(gameLoop)
 }

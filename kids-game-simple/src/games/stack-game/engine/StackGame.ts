@@ -1,10 +1,14 @@
 import type { GameEngine } from '../../../services/gameEngine'
+import { gameActions } from '../../../platform/gameBridge'
 import { audioService } from '../../../services/audio'
 import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../../utils/canvasMobileUtils'
 import { GAME_CONFIG, BLOCK_COLORS, BG_STAGES, SPECIAL_BLOCK_CONFIG, WEATHER_CONFIG, CHARACTER_CONFIG, BUBBLE_COLORS, RAINBOW_COLORS } from '../config/gameConfig'
 import { POWERUP_CONFIGS, POWERUP_COMBOS, POWERUP_DROP_CHANCES } from '../config/powerupConfig'
 import { ACHIEVEMENTS, ACHIEVEMENT_REWARDS } from '../config/achievementConfig'
 import type { Layer, Particle, FloatText, WeatherParticle, Character, Bubble, RainbowParticle, Cloud, SpecialBlockType, WeatherType, CharacterType, PowerupType, Achievement } from '../types'
+import { getCachedGTRSTheme } from '../../../services/gtrsThemeLoader'
+import { resolveGtrsCanvasStyle } from '../../../utils/gtrsCanvasTheme'
+import { readGtrsSceneList, readGtrsSceneMeta } from '../../../utils/gtrsSceneMeta'
 
 export class StackGame {
   private canvas: HTMLCanvasElement
@@ -61,6 +65,19 @@ export class StackGame {
   lastStackTime = 0
   stackCountIn10Seconds = 0
 
+  private gtrs = resolveGtrsCanvasStyle('stack', {
+    primary: '#A8E6CF',
+    background: '#87CEEB',
+    backgroundDark: '#5DADE2',
+    text: '#FFFFFF',
+    accent: '#FFD700',
+    hudBg: 'rgba(0,0,0,0.45)',
+    danger: '#FF6B6B',
+    muted: '#B0B0B0',
+    palette: ['#FF6B6B', '#FFD93D', '#6BCB77', '#4ECDC4', '#9B59B6', '#FF8E53', '#3498DB', '#E74C3C'],
+  })
+  private blockColors: string[] = []
+
   constructor(engine: GameEngine, onEnd: () => void) {
     const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
     if (!canvas) {
@@ -81,6 +98,10 @@ export class StackGame {
   }
 
   private init() {
+    const theme = getCachedGTRSTheme('stack')
+    this.blockColors =
+      readGtrsSceneList(theme, 'game_palette') ??
+      (BLOCK_COLORS.length ? [...BLOCK_COLORS] : [...this.gtrs.palette])
     this.initAchievements()
     this.initClouds()
     this.initBaseLayer()
@@ -545,8 +566,58 @@ export class StackGame {
     this.gameEnded = true
     this.unbindPointer?.()
     this.unbindPointer = null
-    this.engine.endGame()
-    setTimeout(() => this.onEnd(), 800)
+    gameActions.gameOver({ victory: this.layers.length >= 15, score: this.engine.getScore() })
+  }
+
+  /** 由 platform hostCanvas2D 每帧调用 */
+  runHostFrame(canTick: boolean): void {
+    if (!document.getElementById('mainGameCanvas')) return
+    if (this.gameEnded) {
+      if (this.fallingPieces.length > 0 || this.particles.length > 0) {
+        this.updateFallingPieces()
+        this.draw()
+      }
+      return
+    }
+    if (!canTick) {
+      this.draw()
+      return
+    }
+    if (!this.timeStopped) {
+      this.currentBlock.x += this.currentBlock.dir
+      if (this.currentBlock.x + this.currentBlock.w > this.W) this.currentBlock.dir = -Math.abs(this.currentBlock.dir)
+      if (this.currentBlock.x < 0) this.currentBlock.dir = Math.abs(this.currentBlock.dir)
+    }
+    if (this.gameStarted) {
+      this.weatherTimer++
+      if (this.weatherTimer > 1800) {
+        this.weatherTimer = 0
+        this.switchWeather()
+      }
+      this.nextCharTimer++
+      if (this.nextCharTimer > 900 && Math.random() > 0.7) {
+        this.nextCharTimer = 0
+        this.spawnCharacter()
+      }
+      if (Math.random() > 0.95) this.spawnBubble()
+      if (Math.random() > 0.98) this.createRainbowParticles(Math.random() * this.W, Math.random() * this.H, 5)
+    }
+    this.updateFallingPieces()
+    this.draw()
+  }
+
+  bindInput(): void {
+    this.unbindPointer?.()
+    this.unbindPointer = bindCanvasPointerInput(this.canvas, () => this.handleTap())
+  }
+
+  renderFrame(): void {
+    this.draw()
+  }
+
+  destroy(): void {
+    this.unbindPointer?.()
+    this.unbindPointer = null
   }
 
   private draw() {

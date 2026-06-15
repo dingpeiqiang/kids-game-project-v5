@@ -352,7 +352,6 @@ export class TetrisGame {
     // 从库存中移除
     this.inventory.splice(index, 1)
     
-    console.log('[道具] 使用道具:', type)
     
     // 执行效果
     switch (type) {
@@ -421,7 +420,6 @@ export class TetrisGame {
   private updateHTMLPowerupBar() {
     // 道具栏已删除 - 每个游戏有自己的道具拾取机制
     // 这里可以添加自定义的道具栏更新逻辑
-    console.log('道具栏更新:', this.inventory)
   }
   
   public update(deltaTime: number) {
