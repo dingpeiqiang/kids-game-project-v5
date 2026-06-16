@@ -118,7 +118,7 @@ export class EliminateGame {
   
   // 触摸防抖
   private lastTouchTime = 0
-  private readonly TOUCH_DEBOUNCE_MS = 200 // 触摸防抖时间
+  private readonly TOUCH_DEBOUNCE_MS = 80 // 触摸防抖（过长会感觉点击不灵）
   
   // 触摸滑动检测
   private touchStartX = 0
@@ -141,10 +141,18 @@ export class EliminateGame {
   private powerupFlashIntensity = 0 // 道具闪光强度
   private hintActive = false // 提示高亮激活状态
   private hintBlocks: number[] = [] // 需要高亮的方块索引
+  private hintBlockSet = new Set<number>() // O(1) 提示高亮查询
+  private readonly selectedBlockSet = new Set<number>()
+  /** 消除/下落后才做全盘可消检测，避免每次点击 BFS 扫 48 格 */
+  private boardNeedsClearCheck = false
+  private spawnUnlockedItemsCache: string[] = []
+  private spawnTotalWeightCache = 0
+  private spawnCacheTime = 0
   
   // ⭐ 性能优化：减少不必要的动画和特效
   private lastEliminateTime = 0 // 上次消除时间，用于防抖
-  private readonly ELIMINATE_DEBOUNCE_MS = 100 // 消除防抖时间
+  private readonly ELIMINATE_DEBOUNCE_MS = 40 // 消除防抖（过大会感觉“点了没反应”）
+  private pendingPowerups: Array<{ type: string; x: number; y: number }> = []
   
 
   
@@ -250,7 +258,8 @@ export class EliminateGame {
     this.lastActionTime = Date.now()
     this.isGameOver = false // 重置游戏结束标志
     this.collectedStars = 0 // 重置星星收集
-    
+    this.spawnCacheTime = 0
+    this.boardNeedsClearCheck = false
     
     // 重新初始化方块
     this.initBlocks()
@@ -414,6 +423,8 @@ export class EliminateGame {
       this.doubleScoreActive = false
       this.comboSystem.addText('双倍分数结束', this.W / 2, this.H / 2 - 50)
     }
+
+    this.flushPendingPowerups()
     
     // 检查超时
     const now = Date.now()
@@ -511,30 +522,36 @@ export class EliminateGame {
     this.spawnStarBlocks()
   }
   
-  private spawnItemBlocks() {
-    const now = Date.now()
+  private refreshSpawnItemCache(now: number) {
+    if (now - this.spawnCacheTime < 2000 && this.spawnUnlockedItemsCache.length > 0) return
+    this.spawnCacheTime = now
     const elapsed = now - this.gameStartTime
-    
-    // 获取已解锁的道具列表
-    const unlockedItems = GAME_ITEMS
-      .filter(item => ITEM_UNLOCK_TIMES[item.id as keyof typeof ITEM_UNLOCK_TIMES] <= elapsed)
-      .map(item => item.id)
-    
-    if (unlockedItems.length === 0) return
-    
-    // 计算总权重
+    const unlocked: string[] = []
     let totalWeight = 0
-    unlockedItems.forEach((itemId: string) => {
-      totalWeight += ITEM_SPAWN_WEIGHTS[itemId as keyof typeof ITEM_SPAWN_WEIGHTS] || 10
-    })
+    for (let i = 0; i < GAME_ITEMS.length; i++) {
+      const item = GAME_ITEMS[i]
+      if (ITEM_UNLOCK_TIMES[item.id as keyof typeof ITEM_UNLOCK_TIMES] <= elapsed) {
+        unlocked.push(item.id)
+        totalWeight += ITEM_SPAWN_WEIGHTS[item.id as keyof typeof ITEM_SPAWN_WEIGHTS] || 10
+      }
+    }
+    this.spawnUnlockedItemsCache = unlocked
+    this.spawnTotalWeightCache = totalWeight
+  }
+
+  private spawnItemBlocks(onlyIndices?: number[]) {
+    const now = Date.now()
+    this.refreshSpawnItemCache(now)
+    const unlockedItems = this.spawnUnlockedItemsCache
+    const totalWeight = this.spawnTotalWeightCache
     
-    if (totalWeight === 0) return
+    if (unlockedItems.length === 0 || totalWeight === 0) return
     
     // 根据关卡配置设置道具生成概率
     const spawnRate = this.levelConfig?.itemSpawnRate || 0.20
     
-    // 为每个方块有概率生成道具
-    this.blocks.forEach((block) => {
+    const visit = (i: number) => {
+      const block = this.blocks[i]
       if (!block || block.getItem()) return
       
       if (Math.random() < spawnRate) {
@@ -553,23 +570,32 @@ export class EliminateGame {
         
         block.setItem(selectedItem)
       }
-    })
+    }
+
+    if (onlyIndices && onlyIndices.length > 0) {
+      for (let k = 0; k < onlyIndices.length; k++) visit(onlyIndices[k])
+    } else {
+      for (let i = 0; i < this.blocks.length; i++) visit(i)
+    }
   }
   
   // 生成带星星的方块
-  private spawnStarBlocks() {
+  private spawnStarBlocks(onlyIndices?: number[]) {
     if (!this.levelConfig) return
     
     const starSpawnRate = this.levelConfig.starSpawnRate || 0.10
-    
-    // 为每个方块有概率生成星星
-    this.blocks.forEach((block) => {
+
+    const visit = (i: number) => {
+      const block = this.blocks[i]
       if (!block || block.getItem() || block.hasStar()) return
-      
-      if (Math.random() < starSpawnRate) {
-        block.setStar(true)
-      }
-    })
+      if (Math.random() < starSpawnRate) block.setStar(true)
+    }
+
+    if (onlyIndices && onlyIndices.length > 0) {
+      for (let k = 0; k < onlyIndices.length; k++) visit(onlyIndices[k])
+    } else {
+      for (let i = 0; i < this.blocks.length; i++) visit(i)
+    }
   }
   
   /** 壳层退出 / 重开时释放输入 */
@@ -907,7 +933,7 @@ export class EliminateGame {
     this.comboMultiplier += 0.1
     if (this.comboMultiplier > 3) this.comboMultiplier = 3
     
-    this.gameActions.addScore(pts, mx, my)
+    gameActions.addScore(pts, mx, my)
     this.engine.triggerRandomBuff()
     
     // 触发闪光效果
@@ -967,7 +993,7 @@ export class EliminateGame {
       setTimeout(() => {
         this.particleSystem.createFullScreenExplosion(this.W, this.H, this.COLORS)
         this.blocks.forEach((b, i) => {
-          if (b) this.gameActions.addScore(10, this.PADDING + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
+          if (b) gameActions.addScore(10, this.PADDING + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
         })
         this.blocks.forEach((_, i) => this.blocks[i] = null as any)
         audioService.win()
@@ -1009,7 +1035,7 @@ export class EliminateGame {
   }
   
   private eliminate(idx: number, mx: number, my: number) {
-    // ⭐ 性能优化：添加消除防抖，避免频繁消除导致卡顿
+    if (this.isAnimating) return
     const now = Date.now()
     if (now - this.lastEliminateTime < this.ELIMINATE_DEBOUNCE_MS) {
       return
@@ -1072,6 +1098,8 @@ export class EliminateGame {
       audioService.lose()
       return
     }
+
+    this.isAnimating = true
     
     // 标记消除
     const sameLen = same.length
@@ -1091,136 +1119,140 @@ export class EliminateGame {
     this.comboMultiplier += 0.1
     if (this.comboMultiplier > 3) this.comboMultiplier = 3
     
-    this.gameActions.addScore(pts, mx, my)
-    this.engine.triggerRandomBuff()
+    gameActions.addScore(pts, mx, my)
+    if (Math.random() < 0.12) {
+      this.engine.triggerRandomBuff()
+    }
     
-    this.flashEffect = Math.min(sameLen * 0.08, 0.6)
+    this.flashEffect = Math.min(sameLen * 0.05, 0.35)
     
     if (sameLen >= 8) {
       audioService.win()
     } else if (sameLen >= 5) {
       audioService.buff()
     } else {
-      audioService.collect()
+      audioService.pop()
     }
     
-    const collectedItems: string[] = []
     const itemSet = new Set<string>()
+    let itemFxCount = 0
     for (let i = 0; i < sameLen; i++) {
-      const idx = same[i]
-      const b = blocks[idx]
+      const cellIdx = same[i]
+      const b = blocks[cellIdx]
       if (!b) continue
       
       const itemId = b.getItem()
       if (itemId && !itemSet.has(itemId)) {
         itemSet.add(itemId)
-        collectedItems.push(itemId)
-        
-        const itemData = GAME_ITEMS.find(item => item.id === itemId)
-        if (itemData) {
-          this.comboSystem.addText(`${itemData.icon} ${itemData.name}!`, mx, my - 50 - collectedItems.length * 30)
+        this.queuePowerup(itemId, mx, my)
+        if (itemFxCount < 1) {
+          itemFxCount++
+          this.triggerPowerupCollectEffect(itemId, mx, my)
         }
-        
-        this.triggerPowerupCollectEffect(itemId, mx, my)
-        this.usePowerupImmediately(itemId, mx, my)
       }
       
       if (b.hasStar()) {
         this.collectedStars++
-        this.comboSystem.addText(`💎 +1 (${this.collectedStars}/${this.levelConfig?.targetStars})`, mx, my - 80)
-        audioService.collect()
       }
     }
     
-    if (collectedItems.length > 0) {
-      audioService.buff()
-    }
-    
-    this.screenShake = Math.min(sameLen * 1.2, 12)
+    this.screenShake = Math.min(sameLen * 0.6, 6)
     
     if (sameLen >= 4) {
       this.comboSystem.addText(`${sameLen} 连消!`, mx, my - 30)
-    }
-    if (sameLen >= 6) {
-      setTimeout(() => this.comboSystem.addText('太棒了!', mx, my - 60), 100)
-    }
-    if (sameLen >= 8) {
-      setTimeout(() => this.comboSystem.addText('完美!', mx, my - 90), 200)
     }
     
     const padding = this.PADDING
     const cell = this.CELL
     const top = this.TOP
     const particleSystem = this.particleSystem
-    for (let i = 0; i < sameLen; i += 2) {
-      const b = blocks[same[i]]
-      if (!b) continue
-      const x = padding + b.getC() * cell + cell / 2
-      const y = top + b.getR() * cell + cell / 2
-      particleSystem.createExplosion(x, y, b.getColor(), sameLen)
+    const b0 = blocks[same[0]]
+    if (b0) {
+      const x = padding + b0.getC() * cell + cell / 2
+      const y = top + b0.getR() * cell + cell / 2
+      particleSystem.createExplosion(x, y, b0.getColor(), Math.min(sameLen, 4))
     }
     
-    // Mega buff - 全屏消除更震撼
     if (this.engine.hasBuff('mega')) {
-      setTimeout(() => {
-        this.particleSystem.createFullScreenExplosion(this.W, this.H, this.COLORS)
-        
-        this.blocks.forEach((b, i) => {
-          if (b) gameActions.addScore(10, this.PADDING + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
-        })
-        this.blocks.forEach((_, i) => this.blocks[i] = null as any)
-        audioService.win()
-      }, 200)
+      this.particleSystem.createFullScreenExplosion(this.W, this.H, this.COLORS)
+      let megaScore = 0
+      for (let i = 0; i < this.blocks.length; i++) {
+        if (this.blocks[i]) {
+          megaScore += 10
+          this.blocks[i] = null as any
+        }
+      }
+      if (megaScore > 0) {
+        gameActions.addScore(megaScore, this.W / 2, this.H / 2)
+      }
+      audioService.win()
     }
     
-    // 延迟执行消除和下落
-    setTimeout(() => {
-      same.forEach(i => { this.blocks[i] = null as any })
-      this.applyGravity()
-      
-      // 检查是否有可消除的组合，如果没有则重置棋盘
-      setTimeout(() => {
-        if (!this.hasValidMove()) {
-          this.resetBoard()
-        }
-        
-        // 检查是否通关
-        this.checkLevelComplete()
-      }, 200)
-    }, 80) // ⭐ 优化：从150ms减少到80ms，提升响应速度
+    for (let i = 0; i < sameLen; i++) {
+      this.blocks[same[i]] = null as any
+    }
+    this.applyGravity()
+    this.boardNeedsClearCheck = true
+    this.finishResolveClear()
+  }
+
+  private finishResolveClear() {
+    if (this.boardNeedsClearCheck) {
+      this.boardNeedsClearCheck = false
+      if (!this.hasValidMove()) {
+        this.resetBoard()
+      }
+    }
+    this.checkLevelComplete()
+    this.isAnimating = false
+  }
+
+  private queuePowerup(type: string, x: number, y: number) {
+    this.pendingPowerups.push({ type, x, y })
+  }
+
+  private flushPendingPowerups() {
+    if (this.pendingPowerups.length === 0) return
+    const batch = this.pendingPowerups.splice(0, this.pendingPowerups.length)
+    for (let i = 0; i < batch.length; i++) {
+      const p = batch[i]
+      void this.usePowerupImmediately(p.type, p.x, p.y)
+    }
   }
   
   private applyGravity() {
+    const newIndices: number[] = []
     for (let c = 0; c < this.COLS; c++) {
       let write = this.GRID - 1
       for (let r = this.GRID - 1; r >= 0; r--) {
         const cur = r * this.COLS + c
         if (this.blocks[cur]) {
-          if (write !== r) { 
+          if (write !== r) {
             this.blocks[write * this.COLS + c] = this.blocks[cur]
             this.blocks[write * this.COLS + c].setR(write)
-            this.blocks[write * this.COLS + c].setScale(0.3)
+            this.blocks[write * this.COLS + c].setScale(0.85)
             this.blocks[cur] = null as any
           }
           write--
         }
       }
       while (write >= 0) {
-        this.blocks[write * this.COLS + c] = new Block(
-          write, 
-          c, 
+        const idx = write * this.COLS + c
+        this.blocks[idx] = new Block(
+          write,
+          c,
           this.COLORS[Math.floor(Math.random() * this.COLORS.length)],
-          0.1
+          0.85
         )
+        newIndices.push(idx)
         write--
       }
     }
-    
-    // ⭐ 修复：重新生成道具方块（仅对新生成的方块）
-    this.spawnItemBlocks()
-    
-    // ⭐ 修复：重新生成星星方块（仅对新生成的方块）
-    this.spawnStarBlocks()
+
+    if (newIndices.length > 0) {
+      this.spawnItemBlocks(newIndices)
+      this.spawnStarBlocks(newIndices)
+    }
   }
   
   private hasValidMove(): boolean {
@@ -1311,12 +1343,15 @@ export class EliminateGame {
   }
   
   private updateBlockAnimations() {
-    this.blocks.forEach(b => {
-      if (b && b.getScale() < 1) {
-        b.setScale(b.getScale() + 0.08)
-        if (b.getScale() > 1) b.setScale(1)
+    for (let i = 0; i < this.blocks.length; i++) {
+      const b = this.blocks[i]
+      if (!b) continue
+      if (b.tickShake()) continue
+      if (b.getScale() < 1) {
+        const s = b.getScale() + 0.14
+        b.setScale(s > 1 ? 1 : s)
       }
-    })
+    }
   }
   
   private drawBackground() {
@@ -1429,7 +1464,7 @@ export class EliminateGame {
       
       ctx.globalAlpha = b.getAlpha()
       
-      const isHinted = this.hintActive && this.hintBlocks.includes(i)
+      const isHinted = this.hintActive && this.hintBlockSet.has(i)
       
       if (b.isRainbow()) {
         if (!this.rainbowGradient) {
@@ -1579,10 +1614,6 @@ export class EliminateGame {
   
   // ⭐ 立即使用道具效果（消除道具方块时自动触发）
   private async usePowerupImmediately(type: string, x: number, y: number) {
-    
-    // 触发华丽的收集特效
-    this.triggerPowerupCollectEffect(type, x, y)
-    
     switch (type) {
       case 'time_extend':
         // 时间延长 - 立即增加10秒
@@ -1806,6 +1837,7 @@ export class EliminateGame {
   private activateHint() {
     this.hintActive = true
     this.hintBlocks = []
+    this.hintBlockSet.clear()
     
     // 查找第一个可消除的组合（至少3个相连的同色方块）
     for (let i = 0; i < this.blocks.length; i++) {
@@ -1816,6 +1848,7 @@ export class EliminateGame {
       
       if (connected.length >= 3) {
         this.hintBlocks = connected
+        for (let j = 0; j < connected.length; j++) this.hintBlockSet.add(connected[j])
         break
       }
     }
@@ -1824,6 +1857,7 @@ export class EliminateGame {
     setTimeout(() => {
       this.hintActive = false
       this.hintBlocks = []
+      this.hintBlockSet.clear()
     }, 5000)
   }
   

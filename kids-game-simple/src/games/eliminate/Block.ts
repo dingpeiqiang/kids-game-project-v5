@@ -38,20 +38,23 @@ export class Block {
   setItem(item: string | null) { this.item = item }
   setStar(hasStar: boolean) { this.hasStarFlag = hasStar }
   
-  // 方块抖动动画
+  // 方块抖动动画（由 EliminateGame.updateBlockAnimations 驱动，避免连点堆 setTimeout）
+  private shakeTicks = 0
+  private shakeBaseScale = 1
+
   shake() {
-    let shakeCount = 0
-    const originalScale = this.scale
-    const shake = () => {
-      if (shakeCount < 10) {
-        this.scale = shakeCount % 2 === 0 ? 0.6 : 1.2
-        shakeCount++
-        setTimeout(shake, 25)
-      } else {
-        this.scale = originalScale
-      }
+    this.shakeBaseScale = this.scale
+    this.shakeTicks = 4
+  }
+
+  tickShake(): boolean {
+    if (this.shakeTicks <= 0) return false
+    this.shakeTicks--
+    this.scale = this.shakeTicks % 2 === 0 ? this.shakeBaseScale * 1.08 : this.shakeBaseScale * 0.92
+    if (this.shakeTicks === 0) {
+      this.scale = this.shakeBaseScale
     }
-    shake()
+    return true
   }
   
   // 方块放大动画（用于特殊效果）
