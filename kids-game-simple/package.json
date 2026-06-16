@@ -13,7 +13,7 @@
     "@capacitor/android": "^8.4.0",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
-    "@kids-game/shared": "workspace:*",
+
     "axios": "^1.6.0",
     "compressorjs": "^1.2.1",
     "marked": "^15.0.0",

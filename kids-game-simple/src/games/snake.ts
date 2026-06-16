@@ -526,9 +526,7 @@ function startSnakeLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle 
     if (!alive && gameStarted) return
     if (delta <= 0) return
 
-    if (delta > 0) {
-    
-    // 道具效果检查（放在最前面）
+        // 道具效果检查（放在最前面）
     const slowActive = (window as any).snakeSlow && Date.now() < (window as any).snakeSlow
     const currentMoveInterval = slowActive ? moveInterval * 2 : moveInterval
 

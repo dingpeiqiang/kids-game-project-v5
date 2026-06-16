@@ -639,4 +639,3 @@ function startMatch3Lifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle
     },
   })
 }
-}

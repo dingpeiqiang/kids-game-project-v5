@@ -5,8 +5,10 @@
  * 用途：每次构建时自动生成新版本号，用于强制刷新缓存
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // 生成版本号：时间戳 + 随机数
 function generateVersion() {

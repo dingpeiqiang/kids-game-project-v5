@@ -10,7 +10,6 @@ export { inputManager, type ShellInputMode } from './inputManager'
 export { ObjectPool, getPool, clearAllPools } from './objectPool'
 export { GameLifecycle, runCanvasLifecycle, type GameLifecycleContext } from './GameLifecycle'
 export { createLifecycleContext, requireLifecycleContext } from './frameworkSession'
-export { createCanvasGameLifecycle, type StartLifecycleFn } from './createCanvasGameLifecycle'
 export { getMainGameCanvas, requireMainGameCanvas } from './canvasHost'
 export { hostCanvas2D } from './hostCanvas2D'
 export {

@@ -1,6 +1,6 @@
 import type { GameEngine } from '../../services/gameEngine'
-import type { GameLifecycle } from '../../platform/GameLifecycle'
-import { createLifecycleContext } from '../../platform/frameworkSession'
+import type { GameLifecycle } from '../platform/GameLifecycle'
+import { createLifecycleContext } from '../platform/frameworkSession'
 import { startHappyDefenseLifecycle } from './happyDefense/game'
 
 let activeHost: GameLifecycle | null = null

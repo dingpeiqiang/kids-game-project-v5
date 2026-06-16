@@ -128,10 +128,6 @@ export class RouteLoader {
         return null
       }
       const data: any = await response.json()
-        hasRoute: !!data.route,
-        hasRoutes: !!data.routes,
-        routesCount: data.routes?.length || 0
-      })
       // 兼容两种格式：单条 {"route": {...}} 或多条 {"routes": [...]}
       if (data.route) {
         return [data.route]

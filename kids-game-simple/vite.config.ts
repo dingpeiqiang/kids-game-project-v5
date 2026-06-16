@@ -50,7 +50,7 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2020',
     rollupOptions: {
-      external: ['phaser'],
+      external: ['phaser', /^@babylonjs\//],
       output: {
         globals: { phaser: 'Phaser' },
         manualChunks: {

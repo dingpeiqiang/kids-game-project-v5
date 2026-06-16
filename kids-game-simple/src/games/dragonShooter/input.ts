@@ -315,12 +315,6 @@ export function createInputHandler(
     // 防御：callbacks 为空时直接返回
     if (!callbacks) return
 
-      x: Math.round(x), y: Math.round(y),
-      BASE_W, BASE_H,
-      '闯关区': { y1: BASE_H/2 - 85, y2: BASE_H/2 + 40, x1: 30, x2: 330 },
-      '编辑区': { y1: BASE_H/2 + 35, y2: BASE_H/2 + 65 }
-    })
-
     // 闯关按钮：y 在 305-370（中心 325），x 在 30-330
     const challengeY1 = BASE_H / 2 - 85
     const challengeY2 = BASE_H / 2 + 40

@@ -1,1 +1,2 @@
-export { initContraRpg, destroyContraRpg } from './game'
+export { initContraRpg, destroyContraRpg } from '../contraRpg.lifecycle'
+export { startContraRpgLifecycle } from './game'

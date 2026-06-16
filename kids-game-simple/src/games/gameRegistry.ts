@@ -1292,4 +1292,3 @@ export async function initGame(gameId: string, engine: GameEngine, onEnd: () => 
 }
 
 assertFrameworkRegistryConsistency()
-}

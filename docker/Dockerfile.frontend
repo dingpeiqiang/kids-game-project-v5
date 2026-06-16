@@ -16,8 +16,8 @@ RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-timestamp.txt
 COPY kids-game-frontend/ ./
 
 # 复制 GTRS validator 本地版本
-COPY kids-game-frame-factory/templates/game-template/src/utils/gtrs-validator.ts ./src/utils/gtrs-validator-local.ts
-RUN sed -i "s|from '../../../kids-game-house/shared/utils/gtrs-validator'|from './gtrs-validator-local'|" src/utils/gtrs-validator.ts
+COPY kids-game-house/shared/utils/gtrs-validator.ts ./src/utils/gtrs-validator-local.ts
+RUN sed -i "s|from '../../../kids-game-house/shared/utils/gtrs-validator'|from './gtrs-validator-local'|" src/utils/gtrs-validator.ts || true
 
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 RUN npm run build
