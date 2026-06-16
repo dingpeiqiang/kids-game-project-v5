@@ -6,6 +6,34 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/utils.sh"
 
+# 检查目录结构（必须先执行，以定义 DEPLOY_LOG）
+check_directories() {
+    echo "=== 检查目录结构 ==="
+    
+    # 从 scripts/linux/common 退到 deploy/docker
+    local docker_dir=$(cd "$SCRIPT_DIR/../../.." && pwd)
+    
+    if [ ! -d "$docker_dir" ]; then
+        echo "ERROR: Docker 目录不存在: $docker_dir"
+        exit 1
+    fi
+    
+    local compose_path="$docker_dir/$COMPOSE_FILE"
+    if [ ! -f "$compose_path" ]; then
+        echo "ERROR: Compose 文件不存在: $compose_path"
+        exit 1
+    fi
+    
+    # 创建日志目录
+    mkdir -p "$docker_dir/logs"
+    
+    export DOCKER_DIR="$docker_dir"
+    export DEPLOY_LOG="$docker_dir/logs/deploy_$(get_timestamp).log"
+    
+    echo "Docker 目录: $docker_dir"
+    echo "部署日志: $DEPLOY_LOG"
+}
+
 # 检查 Docker 和 Docker Compose
 check_docker() {
     log_blue "=== 检查 Docker 依赖 ==="
@@ -24,31 +52,6 @@ check_docker() {
         error_exit "Docker Compose 未安装，请先安装 Docker Compose"
     fi
     log_info "使用: $DOCKER_COMPOSE"
-}
-
-# 检查目录结构
-check_directories() {
-    log_blue "=== 检查目录结构 ==="
-    
-    local docker_dir=$(dirname "$(dirname "$SCRIPT_DIR")")
-    
-    if [ ! -d "$docker_dir" ]; then
-        error_exit "Docker 目录不存在: $docker_dir"
-    fi
-    
-    local compose_path="$docker_dir/$COMPOSE_FILE"
-    if [ ! -f "$compose_path" ]; then
-        error_exit "Compose 文件不存在: $compose_path"
-    fi
-    
-    # 创建日志目录
-    mkdir -p "$docker_dir/logs"
-    
-    export DOCKER_DIR="$docker_dir"
-    export DEPLOY_LOG="$docker_dir/logs/deploy_$(get_timestamp).log"
-    
-    log_info "Docker 目录: $docker_dir"
-    log_info "部署日志: $DEPLOY_LOG"
 }
 
 # 验证环境变量
@@ -79,8 +82,8 @@ validate_env() {
 
 # 执行所有检查
 check_all() {
+    check_directories   # 必须先执行，以定义 DEPLOY_LOG
     check_docker
-    check_directories
     validate_env
     log_info "依赖检查通过"
 }

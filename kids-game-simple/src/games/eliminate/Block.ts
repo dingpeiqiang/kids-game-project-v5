@@ -7,16 +7,17 @@ export class Block {
   private exploding: boolean = false
   private rainbow: boolean = false
   private item: string | null = null
-  private hasStarFlag: boolean = false // 是否有星星
-  
+  private hasStarFlag: boolean = false
+  /** 绘制用：相对格子的纵向偏移（格数），负值表示还在上方 */
+  private visualYOffset = 0
+
   constructor(r: number, c: number, color: string, scale: number = 1) {
     this.r = r
     this.c = c
     this.color = color
     this.scale = scale
   }
-  
-  // Getters
+
   getR(): number { return this.r }
   getC(): number { return this.c }
   getColor(): string { return this.color }
@@ -26,26 +27,85 @@ export class Block {
   isRainbow(): boolean { return this.rainbow }
   getItem(): string | null { return this.item }
   hasStar(): boolean { return this.hasStarFlag }
-  
-  // Setters
+  getVisualYOffset(): number { return this.visualYOffset }
+
   setR(r: number) { this.r = r }
   setC(c: number) { this.c = c }
   setColor(color: string) { this.color = color }
   setScale(scale: number) { this.scale = scale }
   setAlpha(alpha: number) { this.alpha = alpha }
-  private explodeTicks = 0
-
-  setExploding(exploding: boolean) {
-    this.exploding = exploding
-    if (exploding) {
-      this.explodeTicks = 7
-    }
-  }
+  setExploding(exploding: boolean) { this.exploding = exploding }
   setRainbow(rainbow: boolean) { this.rainbow = rainbow }
   setItem(item: string | null) { this.item = item }
   setStar(hasStar: boolean) { this.hasStarFlag = hasStar }
-  
-  // 方块抖动动画（由 EliminateGame.updateBlockAnimations 驱动，避免连点堆 setTimeout）
+
+  /**
+   * 逻辑格已落到 toRow，画面仍从 fromRow 开始滑（消消乐式下落）
+   * fromRow < toRow 表示往下掉（行号越大越靠下）
+   */
+  snapFallFromRow(fromRow: number, toRow: number) {
+    this.r = toRow
+    this.visualYOffset = fromRow - toRow
+    if (this.visualYOffset < -0.01) {
+      this.setScale(0.92)
+    }
+  }
+
+  /** 新方块从棋盘顶外落入目标行 toRow */
+  spawnFallFromAbove(toRow: number, rowsAbove: number) {
+    this.r = toRow
+    this.visualYOffset = -Math.max(1, rowsAbove)
+    this.setScale(0.9)
+  }
+
+  isFalling(): boolean {
+    return Math.abs(this.visualYOffset) > 0.015
+  }
+
+  /** 按秒下落，deltaSec 为帧间隔 */
+  tickFall(rowsPerSecond: number, deltaSec: number): boolean {
+    if (!this.isFalling()) {
+      this.visualYOffset = 0
+      return false
+    }
+    const step = rowsPerSecond * deltaSec
+    if (this.visualYOffset < 0) {
+      this.visualYOffset = Math.min(0, this.visualYOffset + step)
+    } else if (this.visualYOffset > 0) {
+      this.visualYOffset = Math.max(0, this.visualYOffset - step)
+    }
+    if (!this.isFalling()) {
+      this.visualYOffset = 0
+      this.landBounce = 0.14
+    }
+    return this.isFalling()
+  }
+
+  private landBounce = 0
+
+  /** 落地轻微弹跳，返回是否仍在弹跳 */
+  tickLandBounce(deltaSec: number): boolean {
+    if (this.landBounce <= 0) return false
+    this.landBounce -= deltaSec * 3.2
+    if (this.landBounce < 0) this.landBounce = 0
+    const t = this.landBounce
+    this.setScale(1 + t * 0.35)
+    return this.landBounce > 0
+  }
+
+  isAnimatingMotion(): boolean {
+    return this.isFalling() || this.landBounce > 0
+  }
+
+  /** 强制落位，避免浮点残留导致永远 isAnimating */
+  forceSettle() {
+    this.visualYOffset = 0
+    this.landBounce = 0
+    if (this.scale > 1.05 || this.scale < 0.95) {
+      this.scale = 1
+    }
+  }
+
   private shakeTicks = 0
   private shakeBaseScale = 1
 
@@ -64,27 +124,6 @@ export class Block {
     return true
   }
 
-  /** 消除前缩放+淡出，返回 true 表示动画仍在播放 */
-  tickExplode(): boolean {
-    if (this.explodeTicks <= 0) return false
-    this.explodeTicks--
-    const progress = 1 - this.explodeTicks / 7
-    this.scale = 1 + progress * 0.35
-    this.alpha = 1 - progress * 0.92
-    if (this.explodeTicks === 0) {
-      this.exploding = false
-      this.alpha = 0
-      this.scale = 0.15
-    }
-    return this.explodeTicks > 0
-  }
-
-  /** 消除动画播完、尚未从棋盘移除 */
-  isVanished(): boolean {
-    return !this.exploding && this.alpha <= 0.05 && this.scale < 0.5
-  }
-  
-  // 方块放大动画（用于特殊效果）
   pulse() {
     let pulseCount = 0
     const originalScale = this.scale

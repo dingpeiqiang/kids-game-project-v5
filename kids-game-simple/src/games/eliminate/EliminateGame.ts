@@ -157,9 +157,10 @@ export class EliminateGame {
   private lastEliminateTime = 0 // 上次消除时间，用于防抖
   private readonly ELIMINATE_DEBOUNCE_MS = 40 // 消除防抖（过大会感觉“点了没反应”）
   private pendingPowerups: Array<{ type: string; x: number; y: number }> = []
-  /** 正在播放消除动画的格子，动画结束后才真正清空并下落 */
-  private pendingClearIndices: number[] | null = null
-  private pendingClearMega = false
+  /** 下落速度：格/秒（消消乐式可见滑落） */
+  private readonly FALL_SPEED_ROWS_PER_SEC = 11
+  private resolveAnimStartMs = 0
+  private readonly RESOLVE_ANIM_MAX_MS = 4000
   
 
   
@@ -267,6 +268,8 @@ export class EliminateGame {
     this.collectedStars = 0 // 重置星星收集
     this.spawnCacheTime = 0
     this.boardNeedsClearCheck = false
+    this.isAnimating = false
+    this.resolveAnimStartMs = 0
     
     // 重新初始化方块
     this.initBlocks()
@@ -422,8 +425,7 @@ export class EliminateGame {
     // ⭐ 性能优化：只在需要时更新道具特效系统
     this.powerupEffectSystem.update()
     
-    // 更新方块动画
-    this.updateBlockAnimations()
+    this.updateBlockAnimations(deltaTime / 1000)
     
     // 检查双倍分数是否过期
     if (this.doubleScoreActive && Date.now() > this.doubleScoreEndTime) {
@@ -1109,14 +1111,9 @@ export class EliminateGame {
     }
 
     this.isAnimating = true
-    
-    // 标记消除
+
     const sameLen = same.length
-    for (let i = 0; i < sameLen; i++) {
-      const b = blocks[same[i]]
-      if (b) b.setExploding(true)
-    }
-    
+
     const basePoints = sameLen * 10
     const comboMultiplier = 1 + (sameLen - 3) * 0.5
     let pts = Math.round(basePoints * comboMultiplier * this.comboMultiplier)
@@ -1195,42 +1192,50 @@ export class EliminateGame {
         gameActions.addScore(megaScore, this.W / 2, this.H / 2)
       }
       audioService.win()
-    }
-
-    this.pendingClearIndices = same.slice()
-    this.pendingClearMega = mega
-  }
-
-  private commitPendingClear() {
-    const indices = this.pendingClearIndices
-    if (!indices) return
-    this.pendingClearIndices = null
-
-    if (this.pendingClearMega) {
       for (let i = 0; i < this.blocks.length; i++) {
         this.blocks[i] = null as any
       }
-      this.pendingClearMega = false
     } else {
-      for (let i = 0; i < indices.length; i++) {
-        this.blocks[indices[i]] = null as any
+      for (let i = 0; i < sameLen; i++) {
+        this.blocks[same[i]] = null as any
       }
     }
 
     this.applyGravity()
     this.boardNeedsClearCheck = true
-    this.finishResolveClear()
+    this.resolveAnimStartMs = Date.now()
+    if (!this.hasBlocksFalling()) {
+      this.finishResolveClear()
+    }
+  }
+
+  private hasBlocksFalling(): boolean {
+    for (let i = 0; i < this.blocks.length; i++) {
+      const b = this.blocks[i]
+      if (b && b.isAnimatingMotion()) return true
+    }
+    return false
+  }
+
+  private settleAllBlockMotions() {
+    for (let i = 0; i < this.blocks.length; i++) {
+      const b = this.blocks[i]
+      if (b) b.forceSettle()
+    }
   }
 
   private finishResolveClear() {
+    this.settleAllBlockMotions()
     if (this.boardNeedsClearCheck) {
       this.boardNeedsClearCheck = false
       if (!this.hasValidMove()) {
         this.resetBoard()
+        return
       }
     }
     this.checkLevelComplete()
     this.isAnimating = false
+    this.resolveAnimStartMs = 0
   }
 
   private queuePowerup(type: string, x: number, y: number) {
@@ -1254,22 +1259,27 @@ export class EliminateGame {
         const cur = r * this.COLS + c
         if (this.blocks[cur]) {
           if (write !== r) {
-            this.blocks[write * this.COLS + c] = this.blocks[cur]
-            this.blocks[write * this.COLS + c].setR(write)
-            this.blocks[write * this.COLS + c].setScale(0.82)
+            const b = this.blocks[cur]
+            this.blocks[write * this.COLS + c] = b
+            b.setC(c)
+            b.snapFallFromRow(r, write)
             this.blocks[cur] = null as any
           }
           write--
         }
       }
+      let spawnAbove = 0
       while (write >= 0) {
+        spawnAbove++
         const idx = write * this.COLS + c
-        this.blocks[idx] = new Block(
+        const b = new Block(
           write,
           c,
           this.COLORS[Math.floor(Math.random() * this.COLORS.length)],
-          0.72
+          0.9,
         )
+        b.spawnFallFromAbove(write, spawnAbove)
+        this.blocks[idx] = b
         newIndices.push(idx)
         write--
       }
@@ -1348,53 +1358,59 @@ export class EliminateGame {
   }
   
   private resetBoard() {
-    // 创建过渡动画
-    this.blocks.forEach((b, i) => {
+    this.isAnimating = true
+    this.boardNeedsClearCheck = false
+    this.resolveAnimStartMs = 0
+    this.blocks.forEach(b => {
       if (b) {
         b.setScale(0.1)
         b.setAlpha(0.3)
       }
     })
-    
+
     setTimeout(() => {
       this.initBlocks()
-      // 新方块从小变大
       this.blocks.forEach(b => {
         if (b) {
-          b.setScale(0.1)
+          b.setScale(1)
           b.setAlpha(1)
         }
       })
+      this.isAnimating = false
     }, 300)
   }
   
-  private updateBlockAnimations() {
-    let anyExploding = false
+  private updateBlockAnimations(deltaSec: number) {
+    const dt = Math.min(0.05, Math.max(0.001, deltaSec))
+    let anyMotion = false
     for (let i = 0; i < this.blocks.length; i++) {
       const b = this.blocks[i]
       if (!b) continue
-      if (b.tickExplode()) {
-        anyExploding = true
+      if (b.tickFall(this.FALL_SPEED_ROWS_PER_SEC, dt)) {
+        anyMotion = true
+        continue
+      }
+      if (b.tickLandBounce(dt)) {
+        anyMotion = true
         continue
       }
       if (b.tickShake()) continue
-      if (b.getScale() < 1) {
-        const s = b.getScale() + 0.12
+      if (b.getScale() > 1.01) {
+        b.setScale(1)
+      } else if (b.getScale() < 1) {
+        const s = b.getScale() + dt * 2.5
         b.setScale(s > 1 ? 1 : s)
       }
     }
 
-    if (this.pendingClearIndices && !anyExploding) {
-      let allDone = true
-      for (let j = 0; j < this.pendingClearIndices.length; j++) {
-        const b = this.blocks[this.pendingClearIndices[j]]
-        if (b && !b.isVanished()) {
-          allDone = false
-          break
-        }
-      }
-      if (allDone) {
-        this.commitPendingClear()
+    if (this.isAnimating && this.boardNeedsClearCheck) {
+      if (!anyMotion) {
+        this.finishResolveClear()
+      } else if (
+        this.resolveAnimStartMs > 0 &&
+        Date.now() - this.resolveAnimStartMs > this.RESOLVE_ANIM_MAX_MS
+      ) {
+        this.finishResolveClear()
       }
     }
   }
@@ -1493,20 +1509,39 @@ export class EliminateGame {
     const top = this.TOP
     const cell = this.CELL
     const halfCell = cell * 0.5
+    const boardW = this.COLS * cell
+    const boardH = this.GRID * cell
     const blockFont = `bold ${Math.max(10, Math.floor(cell * 0.35))}px sans-serif`
     const iconFontBase = Math.max(10, Math.floor(cell * 0.28))
     const pulse = Math.sin(Date.now() * 0.008) * 0.12 + 1
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(padding - 2, top - cell * 0.5, boardW + 4, boardH + cell * 0.55)
+    ctx.clip()
+
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'
+    ctx.fillRect(padding, top, boardW, boardH)
+
+    const drawOrder: number[] = []
+    for (let i = 0; i < this.blocks.length; i++) {
+      if (this.blocks[i]) drawOrder.push(i)
+    }
+    drawOrder.sort((a, b) => {
+      const ba = this.blocks[a]!
+      const bb = this.blocks[b]!
+      return ba.getR() + ba.getVisualYOffset() - (bb.getR() + bb.getVisualYOffset())
+    })
 
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.font = blockFont
 
-    for (let i = 0; i < this.blocks.length; i++) {
-      const b = this.blocks[i]
-      if (!b) continue
-
+    for (let oi = 0; oi < drawOrder.length; oi++) {
+      const i = drawOrder[oi]
+      const b = this.blocks[i]!
       const x = padding + b.getC() * cell + halfCell
-      const y = top + b.getR() * cell + halfCell
+      const y = top + (b.getR() + b.getVisualYOffset()) * cell + halfCell
       let size = cell * 0.4 * b.getScale()
 
       const isHinted = this.hintActive && this.hintBlockSet.has(i)
@@ -1565,6 +1600,7 @@ export class EliminateGame {
 
     ctx.globalAlpha = 1
     ctx.font = blockFont
+    ctx.restore()
   }
   
 
@@ -1681,10 +1717,12 @@ export class EliminateGame {
         }
         this.applyGravity()
         this.boardNeedsClearCheck = true
-        this.finishResolveClear()
+        this.resolveAnimStartMs = Date.now()
+        if (!this.hasBlocksFalling()) {
+          this.finishResolveClear()
+        }
       } else {
         this.resetBoard()
-        this.isAnimating = false
       }
     } catch {
       this.isAnimating = false

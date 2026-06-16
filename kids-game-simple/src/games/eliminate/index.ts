@@ -43,9 +43,7 @@ export function initEliminate(engine: GameEngine, onEnd: () => void) {
       const now = performance.now()
       const deltaMs = lastMs > 0 ? now - lastMs : 16
       lastMs = now
-      if (deltaMs >= 16) {
-        game.update(deltaMs)
-      }
+      game.update(Math.min(50, Math.max(1, deltaMs)))
     },
     onRender() {
       game.render()
