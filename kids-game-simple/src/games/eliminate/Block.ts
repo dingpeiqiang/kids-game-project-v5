@@ -33,7 +33,14 @@ export class Block {
   setColor(color: string) { this.color = color }
   setScale(scale: number) { this.scale = scale }
   setAlpha(alpha: number) { this.alpha = alpha }
-  setExploding(exploding: boolean) { this.exploding = exploding }
+  private explodeTicks = 0
+
+  setExploding(exploding: boolean) {
+    this.exploding = exploding
+    if (exploding) {
+      this.explodeTicks = 7
+    }
+  }
   setRainbow(rainbow: boolean) { this.rainbow = rainbow }
   setItem(item: string | null) { this.item = item }
   setStar(hasStar: boolean) { this.hasStarFlag = hasStar }
@@ -55,6 +62,26 @@ export class Block {
       this.scale = this.shakeBaseScale
     }
     return true
+  }
+
+  /** 消除前缩放+淡出，返回 true 表示动画仍在播放 */
+  tickExplode(): boolean {
+    if (this.explodeTicks <= 0) return false
+    this.explodeTicks--
+    const progress = 1 - this.explodeTicks / 7
+    this.scale = 1 + progress * 0.35
+    this.alpha = 1 - progress * 0.92
+    if (this.explodeTicks === 0) {
+      this.exploding = false
+      this.alpha = 0
+      this.scale = 0.15
+    }
+    return this.explodeTicks > 0
+  }
+
+  /** 消除动画播完、尚未从棋盘移除 */
+  isVanished(): boolean {
+    return !this.exploding && this.alpha <= 0.05 && this.scale < 0.5
   }
   
   // 方块放大动画（用于特殊效果）

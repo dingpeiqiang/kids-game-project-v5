@@ -118,7 +118,7 @@ export class EliminateGame {
   
   // 触摸防抖
   private lastTouchTime = 0
-  private readonly TOUCH_DEBOUNCE_MS = 80 // 触摸防抖（过长会感觉点击不灵）
+  private readonly TOUCH_DEBOUNCE_MS = 50 // 触摸防抖（过长会感觉点击不灵）
   
   // 触摸滑动检测
   private touchStartX = 0
@@ -148,11 +148,18 @@ export class EliminateGame {
   private spawnUnlockedItemsCache: string[] = []
   private spawnTotalWeightCache = 0
   private spawnCacheTime = 0
+  private readonly itemIconById: Record<string, string> = Object.fromEntries(
+    GAME_ITEMS.map(item => [item.id, item.icon]),
+  )
+  private static readonly STAR_GLYPH = String.fromCodePoint(0x1f48e)
   
   // ⭐ 性能优化：减少不必要的动画和特效
   private lastEliminateTime = 0 // 上次消除时间，用于防抖
   private readonly ELIMINATE_DEBOUNCE_MS = 40 // 消除防抖（过大会感觉“点了没反应”）
   private pendingPowerups: Array<{ type: string; x: number; y: number }> = []
+  /** 正在播放消除动画的格子，动画结束后才真正清空并下落 */
+  private pendingClearIndices: number[] | null = null
+  private pendingClearMega = false
   
 
   
@@ -424,7 +431,9 @@ export class EliminateGame {
       this.comboSystem.addText('双倍分数结束', this.W / 2, this.H / 2 - 50)
     }
 
-    this.flushPendingPowerups()
+    if (!this.isAnimating) {
+      this.flushPendingPowerups()
+    }
     
     // 检查超时
     const now = Date.now()
@@ -1124,7 +1133,7 @@ export class EliminateGame {
       this.engine.triggerRandomBuff()
     }
     
-    this.flashEffect = Math.min(sameLen * 0.05, 0.35)
+    this.flashEffect = Math.min(sameLen * 0.07, 0.5)
     
     if (sameLen >= 8) {
       audioService.win()
@@ -1156,7 +1165,7 @@ export class EliminateGame {
       }
     }
     
-    this.screenShake = Math.min(sameLen * 0.6, 6)
+    this.screenShake = Math.min(sameLen * 0.9, 10)
     
     if (sameLen >= 4) {
       this.comboSystem.addText(`${sameLen} 连消!`, mx, my - 30)
@@ -1166,31 +1175,48 @@ export class EliminateGame {
     const cell = this.CELL
     const top = this.TOP
     const particleSystem = this.particleSystem
-    const b0 = blocks[same[0]]
-    if (b0) {
-      const x = padding + b0.getC() * cell + cell / 2
-      const y = top + b0.getR() * cell + cell / 2
-      particleSystem.createExplosion(x, y, b0.getColor(), Math.min(sameLen, 4))
+    const burstStep = sameLen <= 3 ? 1 : Math.max(1, Math.floor(sameLen / 3))
+    for (let bi = 0; bi < sameLen; bi += burstStep) {
+      const b = blocks[same[bi]]
+      if (!b) continue
+      const x = padding + b.getC() * cell + cell / 2
+      const y = top + b.getR() * cell + cell / 2
+      particleSystem.createExplosion(x, y, b.getColor(), Math.min(sameLen, 5))
     }
-    
-    if (this.engine.hasBuff('mega')) {
+
+    const mega = this.engine.hasBuff('mega')
+    if (mega) {
       this.particleSystem.createFullScreenExplosion(this.W, this.H, this.COLORS)
       let megaScore = 0
       for (let i = 0; i < this.blocks.length; i++) {
-        if (this.blocks[i]) {
-          megaScore += 10
-          this.blocks[i] = null as any
-        }
+        if (this.blocks[i]) megaScore += 10
       }
       if (megaScore > 0) {
         gameActions.addScore(megaScore, this.W / 2, this.H / 2)
       }
       audioService.win()
     }
-    
-    for (let i = 0; i < sameLen; i++) {
-      this.blocks[same[i]] = null as any
+
+    this.pendingClearIndices = same.slice()
+    this.pendingClearMega = mega
+  }
+
+  private commitPendingClear() {
+    const indices = this.pendingClearIndices
+    if (!indices) return
+    this.pendingClearIndices = null
+
+    if (this.pendingClearMega) {
+      for (let i = 0; i < this.blocks.length; i++) {
+        this.blocks[i] = null as any
+      }
+      this.pendingClearMega = false
+    } else {
+      for (let i = 0; i < indices.length; i++) {
+        this.blocks[indices[i]] = null as any
+      }
     }
+
     this.applyGravity()
     this.boardNeedsClearCheck = true
     this.finishResolveClear()
@@ -1230,7 +1256,7 @@ export class EliminateGame {
           if (write !== r) {
             this.blocks[write * this.COLS + c] = this.blocks[cur]
             this.blocks[write * this.COLS + c].setR(write)
-            this.blocks[write * this.COLS + c].setScale(0.85)
+            this.blocks[write * this.COLS + c].setScale(0.82)
             this.blocks[cur] = null as any
           }
           write--
@@ -1242,7 +1268,7 @@ export class EliminateGame {
           write,
           c,
           this.COLORS[Math.floor(Math.random() * this.COLORS.length)],
-          0.85
+          0.72
         )
         newIndices.push(idx)
         write--
@@ -1343,13 +1369,32 @@ export class EliminateGame {
   }
   
   private updateBlockAnimations() {
+    let anyExploding = false
     for (let i = 0; i < this.blocks.length; i++) {
       const b = this.blocks[i]
       if (!b) continue
+      if (b.tickExplode()) {
+        anyExploding = true
+        continue
+      }
       if (b.tickShake()) continue
       if (b.getScale() < 1) {
-        const s = b.getScale() + 0.14
+        const s = b.getScale() + 0.12
         b.setScale(s > 1 ? 1 : s)
+      }
+    }
+
+    if (this.pendingClearIndices && !anyExploding) {
+      let allDone = true
+      for (let j = 0; j < this.pendingClearIndices.length; j++) {
+        const b = this.blocks[this.pendingClearIndices[j]]
+        if (b && !b.isVanished()) {
+          allDone = false
+          break
+        }
+      }
+      if (allDone) {
+        this.commitPendingClear()
       }
     }
   }
@@ -1444,170 +1489,82 @@ export class EliminateGame {
   
   private drawBlocks() {
     const ctx = this.ctx
-    const padding = 15
-    const now = Date.now()
-    // ⭐ 性能优化：降低脉冲频率
-    const pulseBase = Math.sin(now * 0.006) * 0.3 + 0.7
-    
-    // ⭐ 性能优化：减小字体大小
-    ctx.font = `bold ${Math.floor(this.CELL * 0.35)}px sans-serif` // 从0.4降到0.35
+    const padding = this.PADDING
+    const top = this.TOP
+    const cell = this.CELL
+    const halfCell = cell * 0.5
+    const blockFont = `bold ${Math.max(10, Math.floor(cell * 0.35))}px sans-serif`
+    const iconFontBase = Math.max(10, Math.floor(cell * 0.28))
+    const pulse = Math.sin(Date.now() * 0.008) * 0.12 + 1
+
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    
+    ctx.font = blockFont
+
     for (let i = 0; i < this.blocks.length; i++) {
       const b = this.blocks[i]
       if (!b) continue
-      
-      const x = padding + b.getC() * this.CELL + this.CELL / 2
-      const y = this.TOP + b.getR() * this.CELL + this.CELL / 2
-      const size = this.CELL * 0.4 * b.getScale()
-      
-      ctx.globalAlpha = b.getAlpha()
-      
+
+      const x = padding + b.getC() * cell + halfCell
+      const y = top + b.getR() * cell + halfCell
+      let size = cell * 0.4 * b.getScale()
+
       const isHinted = this.hintActive && this.hintBlockSet.has(i)
-      
+      const isSelected = this.selectedBlock === i
+      if (isSelected || isHinted) {
+        size *= pulse
+      }
+
+      ctx.globalAlpha = b.getAlpha()
+
       if (b.isRainbow()) {
         if (!this.rainbowGradient) {
-          this.rainbowGradient = ctx.createLinearGradient(0, 0, this.CELL, this.CELL)
+          this.rainbowGradient = ctx.createLinearGradient(0, 0, cell, cell)
           this.COLORS.forEach((c, idx) => this.rainbowGradient!.addColorStop(idx / this.COLORS.length, c))
         }
         ctx.fillStyle = this.rainbowGradient
       } else {
         ctx.fillStyle = b.getColor()
       }
-      
-      const isSelected = this.selectedBlock === i
-      
-      if (isSelected) {
-        ctx.shadowColor = '#FFD700'
-        ctx.shadowBlur = 18 * pulseBase // ⭐ 从20降到18
-      } else if (isHinted) {
-        ctx.shadowColor = '#FFD700'
-        ctx.shadowBlur = 12 * pulseBase // ⭐ 从15降到12
-      }
-      
+
       ctx.beginPath()
       ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
       ctx.fill()
-      
-      ctx.shadowColor = 'transparent'
-      ctx.shadowBlur = 0
-      
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'
-      ctx.beginPath()
-      ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.35, 0, Math.PI * 2)
-      ctx.fill()
-      
+
+      if (b.getAlpha() > 0.35) {
+        ctx.fillStyle = 'rgba(255,255,255,0.28)'
+        ctx.beginPath()
+        ctx.arc(x - size * 0.28, y - size * 0.28, size * 0.22, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
       if (isSelected) {
         ctx.strokeStyle = '#FFD700'
-        ctx.lineWidth = 3.5 // ⭐ 从4降到3.5
+        ctx.lineWidth = 3
       } else if (isHinted) {
         ctx.strokeStyle = '#FFD700'
-        ctx.lineWidth = 2.5 // ⭐ 从3降到2.5
-      } else {
-        ctx.strokeStyle = 'rgba(255,255,255,0.6)'
         ctx.lineWidth = 2
+      } else {
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)'
+        ctx.lineWidth = 1.5
       }
-      ctx.beginPath()
-      ctx.roundRect(x - size, y - size, size * 2, size * 2, 6)
       ctx.stroke()
-      
+
       const itemId = b.getItem()
       if (itemId) {
-        const itemColor = this.ITEM_COLORS[itemId] || '#FFFFFF'
-        // ⭐ 性能优化：降低脉冲频率
-        const itemPulse = Math.sin(now * 0.01 + i * 0.5) * 0.4 + 0.8
-
-        ctx.shadowColor = itemColor
-        ctx.shadowBlur = 15 * itemPulse // ⭐ 从20降到15
-
-        const glowRadius = size * 0.65 // ⭐ 从0.7降到0.65
-        let gradient = this.itemGlowGradients.get(itemId)
-
-        if (!gradient) {
-          // 优化：使用预缓存的RGB值，避免每帧 parseInt
-          const rgb = this.itemColorRGB[itemId]
-          if (rgb) {
-            const [r, g, b] = rgb
-            gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
-            gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.4)`)
-            gradient.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, 0.2)`)
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
-          } else {
-            gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
-            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)')
-            gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.2)')
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
-          }
-          this.itemGlowGradients.set(itemId, gradient)
-        }
-        
-        ctx.save()
-        ctx.translate(x, y)
-        ctx.fillStyle = gradient
-        ctx.beginPath()
-        ctx.arc(0, 0, glowRadius, 0, Math.PI * 2)
-        ctx.fill()
-        
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + itemPulse * 0.3})`
-        ctx.lineWidth = 1.8 // ⭐ 从2降到1.8
-        ctx.beginPath()
-        ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2)
-        ctx.stroke()
-        
-        const itemData = GAME_ITEMS.find(item => item.id === itemId)
-        if (itemData) {
-          // ⭐ 性能优化：减小图标大小
-          ctx.font = `bold ${Math.floor(size * 1.2)}px sans-serif` // 从1.4降到1.2
-          const rotationSpeed = itemId === 'bomb' ? 0.006 : 0.004 // ⭐ 降低旋转速度
-          const rotation = Math.sin(now * rotationSpeed + i) * 0.12 // ⭐ 从0.15降到0.12
-          const itemScale = 1 + Math.sin(now * 0.004 + i * 0.8) * 0.06 // ⭐ 从0.005/0.08降到0.004/0.06
-          
-          ctx.save()
-          ctx.rotate(rotation)
-          ctx.scale(itemScale, itemScale)
-          ctx.fillText(itemData.icon, 0, 0)
-          ctx.restore()
-        }
-        
-        ctx.restore()
-        ctx.shadowColor = 'transparent'
-        ctx.shadowBlur = 0
-      }
-      
-      if (b.hasStar()) {
-        // ⭐ 性能优化：降低脉冲频率
-        const gemPulse = Math.sin(now * 0.006 + i) * 0.3 + 0.7
-        const hue = (now * 0.06 + i * 60) % 360 // ⭐ 从0.08降到0.06
-        
-        ctx.shadowColor = `hsl(${hue}, 100%, 60%)`
-        ctx.shadowBlur = 12 * gemPulse // ⭐ 从15降到12
-        
-        ctx.save()
-        ctx.translate(x, y)
-        
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-        ctx.beginPath()
-        ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2)
-        ctx.fill()
-        
-        ctx.strokeStyle = `hsl(${hue}, 100%, 70%)`
-        ctx.lineWidth = 1.8 // ⭐ 从2降到1.8
-        ctx.beginPath()
-        ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2)
-        ctx.stroke()
-        
-        // ⭐ 性能优化：减小图标大小
-        ctx.font = `bold ${Math.floor(size * 1.2)}px sans-serif` // 从1.4降到1.2
-        ctx.fillText('💎', 0, 0)
-        
-        ctx.restore()
-        ctx.shadowColor = 'transparent'
-        ctx.shadowBlur = 0
+        ctx.font = `bold ${iconFontBase}px sans-serif`
+        ctx.fillStyle = '#fff'
+        const icon = this.itemIconById[itemId]
+        if (icon) ctx.fillText(icon, x, y)
+      } else if (b.hasStar()) {
+        ctx.font = `bold ${iconFontBase}px sans-serif`
+        ctx.fillStyle = '#ffd700'
+        ctx.fillText(EliminateGame.STAR_GLYPH, x, y)
       }
     }
-    
+
     ctx.globalAlpha = 1
+    ctx.font = blockFont
   }
   
 
@@ -1638,10 +1595,7 @@ export class EliminateGame {
         break
         
       case 'bomb':
-        // 炸弹 - 消除最多颜色的所有方块
-        await this.wait(200) // 等待当前消除完成
-        await this.useBomb() // ⭐ 必须await，确保填充完成
-        // ⭐ 修复：炸弹使用后不需要额外调用 audioService.win()，因为 useBomb 内部已经处理
+        await this.useBomb()
         break
     }
   }
@@ -1650,25 +1604,11 @@ export class EliminateGame {
   
   // 触发道具收集特效
   private triggerPowerupCollectEffect(itemId: string, x: number, y: number) {
-    // ⭐ 性能优化：进一步减少光环特效数量，避免卡顿
-    for (let i = 0; i < 1; i++) { // 从2降到1
-      setTimeout(() => {
-        this.powerupEffectSystem.createEffect(itemId, x, y)
-      }, i * 150) // 增加间隔到150ms
-    }
-    
-    this.powerupFlashColor = this.ITEM_FLASH_COLORS_COLLECT[itemId] || 'rgba(255, 255, 255, 0.5)'
-    this.powerupFlashIntensity = 1.0
-    
-    // 适度屏幕震动
-    this.screenShake = Math.max(this.screenShake, 8) // 从12降到8
-    
-    // ⭐ 性能优化：大幅减少粒子爆炸数量
+    this.powerupFlashColor = this.ITEM_FLASH_COLORS_COLLECT[itemId] || 'rgba(255, 255, 255, 0.35)'
+    this.powerupFlashIntensity = 0.45
+    this.screenShake = Math.max(this.screenShake, 4)
     const particleColor = this.ITEM_COLORS[itemId] || '#FFD700'
-    this.particleSystem.createExplosion(x, y, particleColor, 4) // 从8降到4
-    
-    // 播放特殊音效
-    audioService.win()
+    this.particleSystem.createExplosion(x, y, particleColor, 2)
   }
   
   // 触发道具使用特效（更华丽）
@@ -1702,94 +1642,51 @@ export class EliminateGame {
     }
   }
   
-  // 炸弹效果 - 消除最多颜色的所有方块
+  // 炸弹效果 - 消除数量最多的颜色（同步结算，避免 wait + 逐格粒子卡顿）
   private async useBomb() {
-    // 设置动画状态，防止其他操作干扰
     this.isAnimating = true
-    
     try {
-      // 找到数量最多的颜色
       const colorCount: Record<string, number[]> = {}
-      this.blocks.forEach((b, i) => {
-        if (b && !b.isRainbow()) {
-          if (!colorCount[b.getColor()]) colorCount[b.getColor()] = []
-          colorCount[b.getColor()].push(i)
-        }
-      })
-      
+      for (let i = 0; i < this.blocks.length; i++) {
+        const b = this.blocks[i]
+        if (!b || b.isRainbow()) continue
+        const c = b.getColor()
+        if (!colorCount[c]) colorCount[c] = []
+        colorCount[c].push(i)
+      }
+
       let maxColor = ''
-      let maxCount = 0
-      for (const [color, indices] of Object.entries(colorCount)) {
-        if (indices.length > maxCount) {
-          maxCount = indices.length
+      let maxIndices: number[] = []
+      for (const color of Object.keys(colorCount)) {
+        const indices = colorCount[color]
+        if (indices.length > maxIndices.length) {
+          maxIndices = indices
           maxColor = color
         }
       }
-      
-      // 道具消除应该始终执行填充，不受数量限制
-      if (maxColor && maxCount > 0) {
-        // 消除所有该颜色的方块
-        const bombIndices: number[] = []
-        colorCount[maxColor].forEach(idx => {
-          if (this.blocks[idx]) {
-            bombIndices.push(idx)
-            const x = this.PADDING + (idx % this.COLS) * this.CELL + this.CELL / 2
-            const y = this.TOP + Math.floor(idx / this.COLS) * this.CELL + this.CELL / 2
-            
-            // 爆炸粒子（增强版）
-            this.particleSystem.createExplosion(x, y, maxColor, 20)
-            
-            this.blocks[idx] = null as any
-          }
-        })
-        
-        // 强烈屏幕震动
-        this.screenShake = 30
-        this.engine.addScore(maxCount * 15, this.W / 2, this.H / 2)
-        
-        // 显示连击文字（更大更醒目）
-        if (bombIndices.length >= 4) {
-          this.comboSystem.addText(`${bombIndices.length} 连消!`, this.W / 2, this.H / 2 - 30)
-          setTimeout(() => {
-            this.comboSystem.addText(' 炸弹爆发！ 💥', this.W / 2, this.H / 2 - 60)
-          }, 150)
+
+      if (maxColor && maxIndices.length > 0) {
+        const cx = this.W / 2
+        const cy = this.H / 2
+        this.particleSystem.createExplosion(cx, cy, maxColor, 6)
+        gameActions.addScore(maxIndices.length * 15, cx, cy)
+        this.screenShake = 12
+        this.powerupFlashColor = 'rgba(255, 100, 100, 0.5)'
+        this.powerupFlashIntensity = 0.5
+        if (maxIndices.length >= 4) {
+          this.comboSystem.addText(`${maxIndices.length} 连消!`, cx, cy - 30)
         }
-        
-        // 创建全屏闪光效果
-        this.powerupFlashColor = 'rgba(255, 100, 100, 0.8)'
-        this.powerupFlashIntensity = 1.0
-        
-        // 等待爆炸动画
-        await this.wait(150)
-        
-        // 应用重力填充（道具消除必须填充）
+        for (let k = 0; k < maxIndices.length; k++) {
+          this.blocks[maxIndices[k]] = null as any
+        }
         this.applyGravity()
-        
-        // 等待重力动画
-        await this.wait(300)
-        
-        // 检查新的匹配（连锁反应）
-        const newMatches = this.findMatches()
-        if (newMatches.length >= 3) {
-          // 递归处理连锁消除
-          const centerX = this.W / 2
-          const centerY = this.H / 2
-          await this.processMatches(newMatches, centerX, centerY)
-        } else {
-          // 检查是否有有效移动
-          if (!this.hasValidMove()) {
-            this.resetBoard()
-          }
-          
-          // 检查是否通关
-          this.checkLevelComplete()
-        }
-      } else if (!maxColor || maxCount === 0) {
-        // 如果没有找到任何可消除的方块，直接重置棋盘
+        this.boardNeedsClearCheck = true
+        this.finishResolveClear()
+      } else {
         this.resetBoard()
+        this.isAnimating = false
       }
-    } finally {
-      // 确保动画状态被重置
+    } catch {
       this.isAnimating = false
     }
   }
