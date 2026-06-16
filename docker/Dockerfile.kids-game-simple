@@ -4,7 +4,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # 复制依赖文件
-COPY kids-game-house/games/kids-game-simple/package*.json ./
+COPY kids-game-simple/package*.json ./
 
 # 安装依赖（包括 devDependencies）
 RUN --mount=type=cache,target=/root/.npm npm ci --ignore-engines --prefer-offline --no-audit || npm install --ignore-engines
@@ -13,7 +13,7 @@ ARG BUILD_TIMESTAMP
 RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-timestamp.txt
 
 # 复制源代码
-COPY kids-game-house/games/kids-game-simple/ ./
+COPY kids-game-simple/ ./
 
 # 构建游戏（使用生产环境配置）
 # Vite 会自动加载 .env.production 文件

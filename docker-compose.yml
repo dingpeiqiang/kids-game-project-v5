@@ -110,6 +110,27 @@ services:
     profiles:
       - games  # 使用 docker-compose --profile games up 启动
 
+  # kids-game-simple 前端服务 (HTTPS)
+  kids-game-simple:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.kids-game-simple
+    container_name: kids-game-simple
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - kids-game-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "https://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 volumes:
   mysql-data:
     driver: local
