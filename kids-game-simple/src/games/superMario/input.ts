@@ -94,7 +94,7 @@ export function bindMarioInput(
   const onTouchMove = (e: TouchEvent) => {
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i]
-      const p = toCanvas(t.clientX, t.clientY)
+      const p = clientToCanvas(canvas, t.clientX, t.clientY)
       if (p.x < MARIO_CONFIG.VIEW_W * 0.5) {
         joystick.update(p.x, p.y)
         e.preventDefault()

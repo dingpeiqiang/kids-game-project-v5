@@ -1,5 +1,6 @@
 import { Vector3 } from '@babylonjs/core'
-import type { GameLifecycle, GameLifecycleContext } from '../../platform/GameLifecycle'
+import { Color4 } from '@babylonjs/core'
+import { GameLifecycle, type GameLifecycleContext } from '../../platform/GameLifecycle'
 import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
 import { cellKindAt } from './config'
@@ -185,10 +186,10 @@ class HappyDefenseLifecycle extends GameLifecycle {
       if (scoreDelta > 0) engine.addScore(scoreDelta, window.innerWidth * 0.5, window.innerHeight * 0.35)
 
       if (this.hoverGx != null && this.hoverGz != null && cellKindAt(this.hoverGx, this.hoverGz) === 'build') {
-        ctx3d.scene.clearColor.set(gtrs.backgroundDark)
+        ctx3d.scene.clearColor = Color4.FromHexString(gtrs.backgroundDark)
         view.setHighlight(this.hoverGx, this.hoverGz)
       } else {
-        ctx3d.scene.clearColor.set(gtrs.background)
+        ctx3d.scene.clearColor = Color4.FromHexString(gtrs.background)
         view.setHighlight(null, null)
       }
 
@@ -223,5 +224,7 @@ class HappyDefenseLifecycle extends GameLifecycle {
 }
 
 export function startHappyDefenseLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
-  return new HappyDefenseLifecycle(lifecycleCtx)
+  const host = new HappyDefenseLifecycle(lifecycleCtx)
+  void host.start()
+  return host
 }

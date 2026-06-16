@@ -34,7 +34,8 @@ function startMatch3Lifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle
   const ctx = canvas.getContext('2d')!
   if (!ctx) {
     console.error('[Match3] Cannot get 2D context!')
-    return
+    lifecycleCtx.onEnd()
+    throw new Error('[Match3] Cannot get 2D context!')
   }
   ctx.imageSmoothingEnabled = true
   

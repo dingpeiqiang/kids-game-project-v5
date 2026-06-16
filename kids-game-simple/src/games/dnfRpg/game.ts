@@ -1,7 +1,6 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { gameActions } from '../../platform/gameBridge'
-import type { GameLifecycle } from '../../platform/GameLifecycle'
-import { createLifecycleContext } from '../../platform/frameworkSession'
+import type { GameLifecycle, GameLifecycleContext } from '../../platform/GameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import * as C from './config'
 import type { Player, Enemy, Bullet, DropItem, Equipment, ScreenShake } from './types'
@@ -18,15 +17,7 @@ import { level2Config } from './levels/level2'
 import { level3Config } from './levels/level3'
 import { level4Config } from './levels/level4'
 
-let activeHost: GameLifecycle | null = null
 let activeGame: DnfRpgGame | null = null
-
-export function destroyDnfRpg(): void {
-  activeGame?.destroy()
-  activeGame = null
-  activeHost?.destroy()
-  activeHost = null
-}
 
 export class DnfRpgGame {
   private canvas: HTMLCanvasElement
@@ -330,17 +321,13 @@ export class DnfRpgGame {
   }
 }
 
-export function initDnfRpg(engine: GameEngine, onEnd: () => void): void {
-  destroyDnfRpg()
-  const lifecycleCtx = createLifecycleContext('dnfRpg', engine, onEnd)
-  if (!lifecycleCtx?.canvas) {
-    onEnd()
-    return
-  }
+export function startDnfRpgLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+  const engine = lifecycleCtx.engine
+  const canvas = lifecycleCtx.canvas!
   try {
-    const game = new DnfRpgGame(engine, lifecycleCtx.canvas)
+    const game = new DnfRpgGame(engine, canvas)
     activeGame = game
-    activeHost = hostCanvas2D(lifecycleCtx, {
+    return hostCanvas2D(lifecycleCtx, {
       onInit() {
         game.beginPlay()
       },
@@ -358,6 +345,7 @@ export function initDnfRpg(engine: GameEngine, onEnd: () => void): void {
     })
   } catch (error) {
     console.error('Failed to initialize DnfRpgGame:', error)
-    onEnd()
+    lifecycleCtx.onEnd()
+    throw error
   }
 }

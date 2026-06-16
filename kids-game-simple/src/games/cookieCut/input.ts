@@ -43,7 +43,7 @@ export function setupInputListeners(
   const handleMove = (e: MouseEvent | TouchEvent) => {
     if (!inputState.isSlicing) return
     e.preventDefault()
-    const { clientX, clientY } = clientFromEvent(e, canvas)
+    const { clientX, clientY } = clientFromEvent(e)
     const pos = clientToCanvas(canvas, clientX, clientY)
     onSliceMove(inputState.lastX, inputState.lastY, pos.x, pos.y)
     inputState.lastX = pos.x

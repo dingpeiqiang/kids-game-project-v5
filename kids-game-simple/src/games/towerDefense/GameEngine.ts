@@ -348,7 +348,7 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
 
     gameActions.gameOver({
       victory: isWinParam,
-      score: engine.getScore(),
+      score,
       stats: {
         wave: level + 1,
         maxCombo,

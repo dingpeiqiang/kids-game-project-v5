@@ -62,7 +62,8 @@ kids-game-backend/
 
 | 脚本 | 作用 |
 |------|------|
-| `start-dev-all.bat` | 后端 + 管理端 + 终端 |
-| `build-production.bat` | `pnpm build`（shared + 双前端 dist） |
+| `deploy/start-dev-all.bat` | 后端 + 管理端 + 终端 |
+| `deploy/build-production.bat` | `pnpm build`（shared + 双前端 dist） |
+| `deploy/deploy.cmd` | 统一部署入口（交互式菜单） |
 | [CODEBASE_CLEANUP.md](./CODEBASE_CLEANUP.md) | 重复文件与归档清单 |
-| [scripts/README.md](../scripts/README.md) | 根目录 bat 说明 |
+| [deploy/README.md](../deploy/README.md) | 构建部署脚本说明 |

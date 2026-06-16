@@ -43,12 +43,11 @@ rg "from '@/modules" kids-game-simple
 
 | 文件 | 用途 |
 |------|------|
-| `start-dev-all.bat` | 后端 + 管理端 + 终端 |
-| `build-production.bat` | `pnpm build` |
+| `deploy/start-dev-all.bat` | 后端 + 管理端 + 终端 |
+| `deploy/build-production.bat` | `pnpm build` |
+| `deploy/deploy.cmd` | 统一部署入口 |
 | `pnpm-workspace.yaml` | workspace 定义 |
-| [scripts/README.md](../scripts/README.md) | 根脚本索引 |
-
-可选：将 `set-env-vars.bat` 等统一放入 `scripts/` 并更新链接。
+| [deploy/README.md](../deploy/README.md) | 构建部署脚本说明 |
 
 ## 勿提交
 

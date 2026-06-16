@@ -1,1 +1,1 @@
-export { initDnfRpg, destroyDnfRpg } from './game'
+export { initDnfRpg, destroyDnfRpg } from './dnfRpg.lifecycle'

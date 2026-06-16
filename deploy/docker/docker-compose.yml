@@ -1,0 +1,193 @@
+version: '3.8'
+
+services:
+  # 数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: kids-game-mysql
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kidgame}
+      MYSQL_USER: ${MYSQL_USER:-kidgame}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-kidgame123}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - kids-game-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis 缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: kids-game-redis
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - /etc/localtime:/etc/localtime:ro
+    command: redis-server --appendonly yes
+    networks:
+      - kids-game-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      retries: 5
+      interval: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 后端服务
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.backend
+    container_name: kids-game-backend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/kidgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-kidgame}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-kidgame123}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-change-in-production}
+      JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - backend-uploads:/app/uploads
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - kids-game-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+
+  # 前端服务
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.frontend
+    container_name: kids-game-frontend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+      VITE_UPLOAD_METHOD: ${VITE_UPLOAD_METHOD:-local}
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - kids-game-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 游戏服务（可选，使用 --profile games 启动）
+  games:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.games
+    container_name: kids-game-games
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+      - "3003:3003"
+      - "3004:3004"
+    volumes:
+      - game-data:/app/games
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - kids-game-network
+    profiles:
+      - games
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # kids-game-simple 服务（使用独立端口，避免与前端 80 端口冲突）
+  kids-game-simple:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.kids-game-simple
+    container_name: kids-game-simple
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "3000:80"
+      - "3443:443"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - kids-game-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  backend-uploads:
+    driver: local
+  game-data:
+    driver: local
+
+networks:
+  kids-game-network:
+    driver: bridge

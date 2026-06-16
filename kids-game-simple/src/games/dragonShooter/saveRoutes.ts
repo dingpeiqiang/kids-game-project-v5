@@ -129,6 +129,7 @@ function main() {
     processInbox()
     generateTypeScriptCode()
   } else if (args[0] === '--help' || args[0] === '-h') {
+    console.log(`
 Dragon Shooter 路线保存工具
 
 用法:

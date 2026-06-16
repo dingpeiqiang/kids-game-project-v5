@@ -17,7 +17,7 @@ import {
   STORAGE_KEY
 } from './constants'
 import { getDragonViewportLayout } from './viewport'
-import { lightenColor, triggerScreenWave, createRingWave, createEnergyBurst, createFireEffect, createFreezeEffect, createToxinCloud, createSlashWave, createCritEffect, createDefDownEffect } from './effects'
+import { lightenColor, triggerScreenWave, createRingWave, createEnergyBurst, createFireEffect, createFreezeEffect, createToxinCloud, createSlashWave, createCritEffect, createDefDownEffect, createExplosion } from './effects'
 import {
   createDragon as _createDragon,
   updateDragon,
@@ -204,7 +204,7 @@ export function createInitialState(): GameState {
     levelTransitionTimer: 0,
     currentScene: 0,
     isPaused: false,
-    touch: { active: false, startX: 0, startY: 0, currentX: 0, startTime: 0 },
+    touch: { active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, startTime: 0 },
     dragCount: 0,
     maxDragons: 1,
     isRouteEditMode: false,
@@ -240,7 +240,9 @@ export function createInitialState(): GameState {
       flashAlpha: 0,
       flashColor: '#FFFFFF',
       rings: []
-    }
+    },
+    levelCompleteScore: 0,
+    levelCompleteKills: 0,
   }
 }
 

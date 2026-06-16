@@ -29,7 +29,7 @@
 
 ### 方案三：Nginx 反向代理（✅ 已采用）
 
-已在 `docker/nginx/kids-game-simple.conf` 中配置：
+已在 `deploy/docker/nginx/kids-game-simple.conf` 中配置：
 
 ```nginx
 server {
@@ -76,8 +76,8 @@ http://kids-game-backend:8080/api/game/list
 ## 当前配置状态
 
 ✅ 已创建 `.env.production` 文件，使用相对路径 `/api`
-✅ 已创建 `docker/nginx/kids-game-simple.conf` Nginx 配置文件
-✅ 已更新 `Dockerfile.kids-game-simple` 复制自定义 Nginx 配置
+✅ 已创建 `deploy/docker/nginx/kids-game-simple.conf` Nginx 配置文件
+✅ 已更新 `deploy/docker/Dockerfile.kids-game-simple` 复制自定义 Nginx 配置
 ✅ API 代理：`/api/` → `http://kids-game-backend:8080/api/`
 
 ## 部署步骤
@@ -86,7 +86,7 @@ http://kids-game-backend:8080/api/game/list
 
 ```powershell
 cd d:\工作\sitech\项目\研发\git_workspace\AI\kids-game-project-v5
-.\docker\build-images.ps1 -Service kids-game-simple
+.\deploy\docker\build-images.ps1 -Service kids-game-simple
 ```
 
 **构建过程：**
@@ -152,7 +152,7 @@ docker exec kids-game-kids-game-simple cat /etc/nginx/conf.d/default.conf | grep
 - **生产**：`.env.production` → `/api` → Nginx 代理 → `kids-game-backend:8080`
 
 ### Q5: 如果后端服务不在 Docker 中怎么办？
-**A:** 修改 `docker/nginx/kids-game-simple.conf` 中的 `proxy_pass` 地址：
+**A:** 修改 `deploy/docker/nginx/kids-game-simple.conf` 中的 `proxy_pass` 地址：
 ```nginx
 location /api/ {
     proxy_pass http://8.136.156.190:8080/api/;  # 改为实际 IP
@@ -173,4 +173,4 @@ location /api/ {
 - `.env.production` - 生产环境配置
 - `vite.config.ts` - Vite 构建配置
 - `src/services/apiClient.ts` - API 客户端实现
-- `docker/Dockerfile.kids-game-simple` - Docker 构建文件
+- `deploy/docker/Dockerfile.kids-game-simple` - Docker 构建文件

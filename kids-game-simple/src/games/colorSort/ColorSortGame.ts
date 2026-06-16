@@ -28,7 +28,7 @@ export function initColorSort(engine: GameEngine, onEnd: () => void) {
   activeHost = startColorSortLifecycle(lifecycleCtx)
 }
 
-function startColorSortLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
+export function startColorSortLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
   const canvas = lifecycleCtx.canvas!
   const engine = lifecycleCtx.engine
   const ctx = canvas.getContext('2d')!

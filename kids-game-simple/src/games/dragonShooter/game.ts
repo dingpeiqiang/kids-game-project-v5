@@ -1,0 +1,1 @@
+export { initDragonShooter, destroyDragonShooter } from './dragonShooter.lifecycle'

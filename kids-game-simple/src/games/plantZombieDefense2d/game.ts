@@ -1,7 +1,5 @@
-import { Vector3 } from '@babylonjs/core'
-import type { GameLifecycle, GameLifecycleContext } from '../../platform/GameLifecycle'
+import { GameLifecycle, type GameLifecycleContext } from '../../platform/GameLifecycle'
 import { gameActions } from '../../platform/gameBridge'
-import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import {
   computeStars,
   createInitialState,
@@ -101,31 +99,37 @@ class PlantZombieDefense2dLifecycle extends GameLifecycle {
     window.addEventListener('resize', onResize)
     onResize()
 
-    const onUpdate = (dt: number) => {
+    this._tick = (dt: number) => {
       if (this.ended || engine.isPaused()) return
       resizeCanvasToDisplay(canvas)
       updateSimulation(this.state, Math.min(0.05, dt))
       drainSfxQueue(this.state.pendingSfx)
     }
 
-    const onRender = () => {
+    this._draw = () => {
       if (!this.canvasCtx || !this.assets) return
       drawFrame(this.canvasCtx, canvas.width, canvas.height, this.state, this.assets)
     }
-
-    this.ctx.onUpdate = onUpdate
-    this.ctx.onRender = onRender
 
     activeDispose = () => {
       window.removeEventListener('resize', onResize)
       this.unbind?.()
       this.unbind = null
       this.assets = null
+      this._tick = null
+      this._draw = null
     }
   }
 
-  onUpdate() {}
-  onRender() {}
+  private _tick: ((dt: number) => void) | null = null
+  private _draw: (() => void) | null = null
+
+  onUpdate(dt: number) {
+    this._tick?.(dt)
+  }
+  onRender() {
+    this._draw?.()
+  }
   onDestroy() {
     activeDispose?.()
     activeDispose = null
@@ -133,5 +137,7 @@ class PlantZombieDefense2dLifecycle extends GameLifecycle {
 }
 
 export function startPlantZombieDefense2dLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
-  return new PlantZombieDefense2dLifecycle(lifecycleCtx)
+  const host = new PlantZombieDefense2dLifecycle(lifecycleCtx)
+  void host.start()
+  return host
 }

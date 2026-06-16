@@ -2,7 +2,7 @@
  * 游戏模块调用壳层能力（道具栏等），避免依赖 legacy App 或 Vue 根组件。
  */
 import type { PlatformContext } from '../app/types'
-import { setupCustomPowerupBar as setupBar } from '../app/powerup'
+import { removePowerupBar as removeBar, setupCustomPowerupBar as setupBar } from '../app/powerup'
 
 let ctxRef: PlatformContext | null = null
 
@@ -22,5 +22,8 @@ export const app = {
       return
     }
     setupBar(ctxRef, gameId, powerups, inventory, onUse)
+  },
+  removePowerupBar(): void {
+    removeBar()
   },
 }

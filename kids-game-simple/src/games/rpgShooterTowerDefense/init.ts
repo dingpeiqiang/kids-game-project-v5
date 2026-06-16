@@ -47,11 +47,16 @@ export function initRpgShooterTD(engine: GameEngine, onEnd: () => void) {
   // ==================== Canvas 初始化 ====================
   initCanvasSize()
 
-  const canvas = lifecycleCtx.canvas
+  const canvas = lifecycleCtx.canvas!
+  if (!canvas) {
+    onEnd()
+    return
+  }
 
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     console.error('无法获取Canvas上下文')
+    onEnd()
     return
   }
 

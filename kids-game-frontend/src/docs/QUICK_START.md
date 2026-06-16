@@ -18,7 +18,7 @@ pnpm dev:all
 Windows（含后端）：
 
 ```bat
-start-dev-all.bat
+deploy\start-dev-all.bat
 ```
 
 ## 分步启动
@@ -66,7 +66,7 @@ cd kids-game-house
 
 ```bash
 pnpm run build
-# 或 build-production.bat
+# 或 deploy\build-production.bat
 ```
 
 产出：`kids-game-frontend/dist`、`kids-game-simple/dist`。

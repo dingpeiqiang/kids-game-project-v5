@@ -75,7 +75,7 @@ export function themePalette(theme: TrackTheme): {
 
 export function applySoftMatte(
   diffuse: Color3,
-  emissiveMul = ART_STYLE.emissiveScale,
+  emissiveMul: number = ART_STYLE.emissiveScale,
 ): { diffuse: Color3; specular: Color3; emissive: Color3 } {
   return {
     diffuse,

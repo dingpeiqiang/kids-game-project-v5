@@ -49,7 +49,7 @@
 pnpm dev:admin    # 3000
 pnpm dev:simple   # 3001
 pnpm dev:all      # 3000 + 3001
-start-dev-all.bat # 8080 + 3000 + 3001
+deploy\start-dev-all.bat # 8080 + 3000 + 3001
 ```
 
 详见 [QUICK_START.md](../QUICK_START.md)、[双前端架构](../04-architecture/dual-frontend.md)。

@@ -1,0 +1,41 @@
+# 游戏服务 Docker 镜像
+FROM node:18-alpine
+
+WORKDIR /app/games
+
+# 安装必要的系统依赖（某些游戏可能需要）
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    ffmpeg
+
+# 复制所有游戏
+COPY kids-game-house/games/ ./
+
+# 为每个游戏安装依赖并构建
+# 注意：这里使用通用的构建方式，具体游戏可能需要调整
+RUN for game_dir in */; do \
+      if [ -f "$game_dir/package.json" ]; then \
+        echo "Building game: $game_dir"; \
+        cd "$game_dir" && \
+        npm ci --only=production && \
+        if grep -q "\"build\"" package.json; then \
+          npm run build; \
+        fi; \
+        cd ..; \
+      fi; \
+    done
+
+# 暴露常用游戏端口
+EXPOSE 3001 3002 3003 3004 3005 3006 3007 3008 3009 3010
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:3001/ || exit 1
+
+# 启动脚本
+COPY deploy/docker/games/start-games.sh /app/start-games.sh
+RUN chmod +x /app/start-games.sh
+
+CMD ["/app/start-games.sh"]

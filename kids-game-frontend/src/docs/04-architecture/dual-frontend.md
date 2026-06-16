@@ -33,9 +33,9 @@ pnpm install
 pnpm dev:all   # 或分别 dev:admin / dev:simple
 ```
 
-Windows 一键（后端 + 双前端）：根目录 `start-dev-all.bat`
+Windows 一键（后端 + 双前端）：根目录 `deploy\start-dev-all.bat`
 
-生产构建：`build-production.bat` 或 `pnpm build`
+生产构建：`deploy\build-production.bat` 或 `pnpm build`
 
 ## 跨端跳转
 

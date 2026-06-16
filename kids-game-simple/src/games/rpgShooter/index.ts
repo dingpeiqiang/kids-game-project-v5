@@ -1,4 +1,5 @@
 // RPG Shooter 模块导出
+export { destroyRpgShooter, initRpgShooter } from './rpgShooter.lifecycle'
 
 // 配置
 export { GAME_CONFIG, LEVEL_STATS, ENEMY_TYPES, DROP_TYPES } from './config';

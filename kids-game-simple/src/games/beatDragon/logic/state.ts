@@ -9,7 +9,8 @@ import {
   WAVES,
   BOX_EVERY_SEGMENTS,
 } from '../config'
-import type { BuffId, Dragon, DragonKind, GameState, Player } from '../types'
+import type { BuffId } from '../config'
+import type { Dragon, DragonKind, GameState, Player } from '../types'
 
 function createPlayer(): Player {
   return {

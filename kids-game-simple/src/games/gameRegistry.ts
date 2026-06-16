@@ -151,7 +151,7 @@ export function assertFrameworkRegistryConsistency(): void {
     .map(([id]) => id)
     .sort()
   const listIds = [...FRAMEWORK_LIFECYCLE_GAME_IDS].sort()
-  const missingInList = registryIds.filter(id => !listIds.includes(id))
+  const missingInList = registryIds.filter(id => !(listIds as string[]).includes(id))
   const missingInRegistry = listIds.filter(id => !registryIds.includes(id))
   if (missingInList.length || missingInRegistry.length) {
     console.error('[GameRegistry] frameworkLifecycle mismatch', {

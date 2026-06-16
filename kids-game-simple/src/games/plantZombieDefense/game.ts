@@ -1,5 +1,5 @@
 import { Vector3 } from '@babylonjs/core'
-import type { GameLifecycle, GameLifecycleContext } from '../../platform/GameLifecycle'
+import { GameLifecycle, type GameLifecycleContext } from '../../platform/GameLifecycle'
 import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
 import { canPlacePlantAt } from './config'
@@ -223,5 +223,7 @@ class PlantZombieDefenseLifecycle extends GameLifecycle {
 }
 
 export function startPlantZombieDefenseLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
-  return new PlantZombieDefenseLifecycle(lifecycleCtx)
+  const host = new PlantZombieDefenseLifecycle(lifecycleCtx)
+  void host.start()
+  return host
 }

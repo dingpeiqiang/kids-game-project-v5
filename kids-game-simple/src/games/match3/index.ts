@@ -1,1 +1,1 @@
-export { initMatch3 } from './Match3Game'
+export { destroyMatch3, initMatch3 } from './Match3Game'

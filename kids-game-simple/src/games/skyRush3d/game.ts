@@ -1,4 +1,4 @@
-import type { GameLifecycle, GameLifecycleContext } from '../../platform/GameLifecycle'
+import { GameLifecycle, type GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createEngine3d } from '../../engine3d/createEngine3d'
 import { createInputController, consumeFrameFlags } from './input'
 import { createInitialState, resetForNewRun } from './logic/state'
@@ -97,7 +97,7 @@ class SkyRush3dLifecycle extends GameLifecycle {
       }
     })
 
-    const observer = ctx3d.scene.onBeforeRenderObservable.add(() => {
+    const onBeforeRender = () => {
       if (this.ended || !this.state) return
       const dt = Math.min(0.033, ctx3d.engine.getDeltaTime() / 1000)
       const flags = consumeFrameFlags(input.snapshot)
@@ -133,7 +133,7 @@ class SkyRush3dLifecycle extends GameLifecycle {
           flawless,
           bossKill: this.state.bossDefeated,
         })
-        ctx3d.scene.onBeforeRenderObservable.remove(observer)
+        ctx3d.scene.onBeforeRenderObservable.removeCallback(onBeforeRender)
         void hud
           .showResult({
             won: this.state.won,
@@ -148,16 +148,18 @@ class SkyRush3dLifecycle extends GameLifecycle {
               this.ended = false
               resetForNewRun(this.state!, this.state!.mode)
               resetLoopTimers()
-              ctx3d.scene.onBeforeRenderObservable.add(observer)
+              ctx3d.scene.onBeforeRenderObservable.add(onBeforeRender)
             } else {
               finishToLobby(this.state!.score)
             }
           })
       }
-    })
+    }
+
+    ctx3d.scene.onBeforeRenderObservable.add(onBeforeRender)
 
     activeDispose = () => {
-      ctx3d.scene.onBeforeRenderObservable.remove(observer)
+      ctx3d.scene.onBeforeRenderObservable.removeCallback(onBeforeRender)
       input.dispose()
       view.dispose()
       hud.dispose()
@@ -174,5 +176,7 @@ class SkyRush3dLifecycle extends GameLifecycle {
 }
 
 export function startSkyRush3dLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
-  return new SkyRush3dLifecycle(lifecycleCtx)
+  const host = new SkyRush3dLifecycle(lifecycleCtx)
+  void host.start()
+  return host
 }

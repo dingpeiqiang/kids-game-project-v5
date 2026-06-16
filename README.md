@@ -19,11 +19,11 @@
 ```bash
 pnpm install
 pnpm dev:all          # 管理端 + 终端（并行）
-# Windows 含后端：start-dev-all.bat
+# Windows 含后端：deploy\start-dev-all.bat
 pnpm dev:admin        # 仅管理端
 pnpm dev:simple       # 仅终端
 pnpm run build        # shared + admin + simple
-# Windows 生产构建：build-production.bat
+# Windows 生产构建：deploy\build-production.bat
 ```
 
 | 环境 | 地址 |
@@ -47,8 +47,12 @@ pnpm run build        # shared + admin + simple
 kids-game-project-v5-master/
 ├── package.json              # 根脚本（pnpm workspace）
 ├── pnpm-workspace.yaml
-├── start-dev-all.bat         # 本地：后端 + 双前端
-├── build-production.bat      # 生产构建双前端
+├── deploy/                   # 构建部署脚本（统一管理）
+│   ├── deploy.cmd            # 统一入口（交互式菜单）
+│   ├── deploy.bat            # Docker 部署（Windows）
+│   ├── deploy.sh             # Docker 部署（Linux/Mac）
+│   ├── start-dev-all.bat     # 本地：后端 + 双前端
+│   └── build-production.bat  # 生产构建双前端
 ├── kids-game-backend/        # Java 多模块后端
 ├── kids-game-frontend/       # 管理端 + 共用业务源码
 │   └── src/docs/             # 项目手册（推荐从这里读文档）
@@ -76,7 +80,7 @@ kids-game-project-v5-master/
 | [开发指南](./kids-game-frontend/src/docs/03-development/index.md) | 规范与流程 |
 | [架构](./kids-game-frontend/src/docs/04-architecture/index.md) | 系统设计 |
 | [双前端](./kids-game-frontend/src/docs/04-architecture/dual-frontend.md) | admin / simple 拆分 |
-| [部署](./kids-game-frontend/src/docs/07-deployment/index.md) | 环境与发布 |
+| [部署文档](./deploy/README.md) | 构建部署脚本与指南 |
 
 根目录历史 **GCRS 周报类** 材料已迁至 `docs/archive/`，避免与当前 v5 双前端结构混淆。
 

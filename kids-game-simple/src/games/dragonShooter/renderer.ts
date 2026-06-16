@@ -156,7 +156,7 @@ export function createRenderer(
         continue
       }
       drawDragonSegment(
-        seg, seg.hp, seg.maxHp, dragon.type, dragon.slowed, dragon._isBoosting,
+        seg, seg.hp, seg.maxHp, dragon.type, dragon.slowed, !!dragon._isBoosting,
         mobile && !seg.isHead
       )
     }
