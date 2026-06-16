@@ -1,0 +1,32 @@
+{
+  "specMeta": { "specName": "GTRS", "specVersion": "1.0.0", "compatibleVersion": "1.0.0" },
+  "themeInfo": {
+    "themeId": "skyRush3d_theme_default",
+    "ownerType": "GAME",
+    "ownerId": 0,
+    "themeName": "天空冲刺 3D",
+    "isDefault": true,
+    "gameId": "skyRush3d"
+  },
+  "globalStyle": { "primaryColor": "#4ECDC4", "bgColor": "#0a1628", "textColor": "#FFFFFF" },
+  "resources": {
+    "images": {
+      "login": {},
+      "scene": {
+        "accent": { "src": "#FFD93D", "type": "png", "alias": "强调色" },
+        "hud_bg": { "src": "rgba(0,0,0,0.45)", "type": "png", "alias": "HUD" },
+        "danger": { "src": "#FF6B6B", "type": "png", "alias": "警告" },
+        "game_palette": {
+          "src": "[\"#4ECDC4\",\"#45B7D1\",\"#96CEB4\",\"#FFEAA7\",\"#DDA0DD\",\"#FF6B6B\"]",
+          "type": "png",
+          "alias": "色板"
+        }
+      },
+      "ui": {},
+      "icon": {},
+      "effect": {}
+    },
+    "audio": { "bgm": {}, "effect": {}, "voice": {} },
+    "video": {}
+  }
+}

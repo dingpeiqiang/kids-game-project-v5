@@ -220,7 +220,7 @@ export class StackGame {
 
     const perfectBonus = this.comboPerfect >= 5 ? 200 : this.comboPerfect >= 3 ? 100 : this.comboPerfect >= 2 ? 50 : 25
     const finalScore = perfectBonus * this.comboPerfect * this.scoreMultiplier
-    this.engine.addScore(finalScore, this.W / 2, y - this.cameraY)
+    gameActions.addScore(finalScore, this.W / 2, y - this.cameraY)
 
     let text = '完美!'
     let size = 22
@@ -252,7 +252,7 @@ export class StackGame {
     }
 
     this.layers.push({ x: overlapLeft, w: overlapWidth, y, color, special: this.currentBlock.special })
-    this.engine.addScore(10 * this.scoreMultiplier, overlapLeft + overlapWidth / 2, y - this.cameraY)
+    this.gameActions.addScore(10 * this.scoreMultiplier, overlapLeft + overlapWidth / 2, y - this.cameraY)
 
     this.createCutParticles(cutLeft ? overlapLeft : overlapRight, y, color)
     audioService.click()
@@ -261,7 +261,7 @@ export class StackGame {
   private handleSpecialBlock(type: SpecialBlockType) {
     switch (type) {
       case 'bonus':
-        this.engine.addScore(500 * this.scoreMultiplier, this.W / 2, this.layers[this.layers.length - 1].y - this.cameraY)
+        this.gameActions.addScore(500 * this.scoreMultiplier, this.W / 2, this.layers[this.layers.length - 1].y - this.cameraY)
         this.addFloatText('🎁 奖励+500', '#FFD700', 20)
         this.incrementAchievement('treasureHunter')
         audioService.win()
@@ -282,7 +282,7 @@ export class StackGame {
         break
       case 'lucky':
         const luckyScore = Math.floor(Math.random() * 300) + 100
-        this.engine.addScore(luckyScore * this.scoreMultiplier, this.W / 2, this.layers[this.layers.length - 1].y - this.cameraY)
+        gameActions.addScore(luckyScore * this.scoreMultiplier, this.W / 2, this.layers[this.layers.length - 1].y - this.cameraY)
         this.addFloatText(`🍀 幸运+${luckyScore}`, '#9B59B6', 20)
         this.incrementAchievement('luckyStar')
         audioService.collect()

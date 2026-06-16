@@ -1,3 +1,4 @@
+import { gameActions } from '../../platform/gameBridge'
 import { GameLifecycle, type GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createEngine3d } from '../../engine3d/createEngine3d'
 import { createInputController, consumeFrameFlags } from './input'
@@ -68,15 +69,17 @@ class SkyRush3dLifecycle extends GameLifecycle {
     const finishToLobby = (finalScore: number) => {
       if (this.ended) return
       this.ended = true
-      engine.setScore(finalScore)
-      engine.setGameStats({
-        bestScore: this.runStats.bestScore,
-        bestClearMs: this.runStats.bestClearMs,
-        maxCombo: this.runStats.maxCombo,
-        flawlessClears: this.runStats.flawlessClears,
-        bossKills: this.runStats.bossKills,
+      gameActions.gameOver({
+        victory: false,
+        score: finalScore,
+        stats: {
+          bestScore: this.runStats.bestScore,
+          bestClearMs: this.runStats.bestClearMs,
+          maxCombo: this.runStats.maxCombo,
+          flawlessClears: this.runStats.flawlessClears,
+          bossKills: this.runStats.bossKills,
+        },
       })
-      engine.endGame()
       this.ctx.onEnd()
     }
 

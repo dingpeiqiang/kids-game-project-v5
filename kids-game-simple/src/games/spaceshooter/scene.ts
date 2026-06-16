@@ -825,7 +825,7 @@ export class SpaceShooterScene extends Scene {
             this.combo++; this.comboTimer = 3; this.totalKills++
             if (this.combo > this.maxCombo) this.maxCombo = this.combo
             const comboMultiplier = Math.min(this.combo, 30)
-            this.engine.addScore(e.score * comboMultiplier, e.x, e.y)
+            this.gameActions.addScore(e.score * comboMultiplier, e.x, e.y)
             const expSize = Math.min(40, 25 + e.maxHp * 6 + this.combo)
             const pCnt = Math.min(18, 10 + e.maxHp * 3 + Math.floor(this.combo / 2))
 
@@ -1123,7 +1123,7 @@ export class SpaceShooterScene extends Scene {
         this.totalKills++
         if (this.combo > this.maxCombo) this.maxCombo = this.combo
         const comboMultiplier = Math.min(this.combo, 30)
-        this.engine.addScore(enemy.score * comboMultiplier, enemy.x, enemy.y)
+        this.gameActions.addScore(enemy.score * comboMultiplier, enemy.x, enemy.y)
         
         this.explode(enemy.x, enemy.y, enemy.color, 30, 10)
         this.addShockwave(enemy.x, enemy.y, 40, enemy.color)

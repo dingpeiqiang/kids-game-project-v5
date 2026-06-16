@@ -427,7 +427,7 @@ function startSlimeJumpLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecy
             combo++
             totalJumps++
             if (combo > maxCombo) maxCombo = combo
-            engine.addScore(20 * combo, player.x, player.y)
+            gameActions.addScore(20 * combo, player.x, player.y)
             audioService.win()
             
             // 特效
@@ -449,7 +449,7 @@ function startSlimeJumpLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecy
             combo++
             totalJumps++
             if (combo > maxCombo) maxCombo = combo
-            engine.addScore(10 * combo, player.x, player.y)
+            gameActions.addScore(10 * combo, player.x, player.y)
             audioService.collect()
             
             if (combo >= 5) engine.triggerRandomBuff()
@@ -458,7 +458,7 @@ function startSlimeJumpLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecy
           // 收集星星
           if (p.hasStar) {
             p.hasStar = false
-            engine.addScore(50, p.x + p.width / 2, p.y - 20)
+            gameActions.addScore(50, p.x + p.width / 2, p.y - 20)
             for (let i = 0; i < 12; i++) {
               particles.push({
                 x: p.x + p.width / 2,

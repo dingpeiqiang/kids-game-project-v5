@@ -158,7 +158,7 @@ function startJewelMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
       board[pos.y][pos.x].type = -1
     })
     
-    engine.addScore(affected.length * 30, OFFSET_X + centerX * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + centerY * (GEM_SIZE + GAP) + GEM_SIZE / 2)
+    gameActions.addScore(affected.length * 30, OFFSET_X + centerX * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + centerY * (GEM_SIZE + GAP) + GEM_SIZE / 2)
     audioService.win()
     
     await new Promise(r => setTimeout(r, 300))
@@ -201,7 +201,7 @@ function startJewelMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
       board[pos.y][pos.x].type = -1
     })
     
-    engine.addScore(affected.length * 25, OFFSET_X + x * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + y * (GEM_SIZE + GAP) + GEM_SIZE / 2)
+    gameActions.addScore(affected.length * 25, OFFSET_X + x * (GEM_SIZE + GAP) + GEM_SIZE / 2, OFFSET_Y + y * (GEM_SIZE + GAP) + GEM_SIZE / 2)
     audioService.win()
     
     await new Promise(r => setTimeout(r, 300))

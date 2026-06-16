@@ -4,6 +4,7 @@
 
 import type { Cookie, Particle, Slice, Shockwave, ScorePopup, LevelTransition } from './types'
 import type { GameEngine } from '../../services/gameEngine'
+import { gameActions } from '../../platform/gameBridge'
 import { audioService } from '../../services/audio'
 import { app } from '../../services/appBridge'
 import { POWERUP_ICONS } from './config'
@@ -120,7 +121,7 @@ export function handleCookieSlice(
 ): void {
   state.combo++
   const score = 30 * state.combo // 翻倍分数，更爽！
-  engine.addScore(score, cookieX, cookieY)
+  gameActions.addScore(score, cookieX, cookieY)
   
   // 播放切割音效（根据连击数）
   if (state.combo >= 3) {

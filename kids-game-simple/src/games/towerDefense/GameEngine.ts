@@ -552,7 +552,7 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
       if (combo > maxCombo) maxCombo = combo
 
       if (combo >= 2) {
-        engine.addScore(combo * 10, W / 2, H / 2)
+        gameActions.addScore(combo * 10, W / 2, H / 2)
 
         if (combo % 2 === 0) {
           addFloat(W / 2, H / 2, `${combo} 连击!`, combo >= 10 ? '#FF4757' : combo >= 5 ? '#FFA502' : '#FFD700')

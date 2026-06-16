@@ -5,13 +5,13 @@
     "compatibleVersion": "1.0.0"
   },
   "themeInfo": {
-    "themeId": "spaceshooter_theme_default",
+    "themeId": "spaceShooter_theme_default",
     "ownerType": "GAME",
     "ownerId": 0,
     "themeName": "太空射击",
     "isDefault": true,
-    "gameId": "spaceshooter",
-    "description": "kids-game-simple spaceshooter 默认 GTRS"
+    "gameId": "spaceShooter",
+    "description": "kids-game-simple spaceShooter 默认 GTRS"
   },
   "globalStyle": {
     "primaryColor": "#00E5FF",

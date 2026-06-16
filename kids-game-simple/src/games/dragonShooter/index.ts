@@ -147,7 +147,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
 
     if (state.score > lastSyncedScore) {
       const scoreDelta = state.score - lastSyncedScore
-      engine.addScore(scoreDelta, state.playerX, state.playerY)
+      gameActions.addScore(scoreDelta, state.playerX, state.playerY)
       lastSyncedScore = state.score
     }
 
@@ -485,7 +485,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       //  关键修复：同步分数到 gameEngine（增量同步）
       if (state.score > lastSyncedScore) {
         const scoreDelta = state.score - lastSyncedScore
-        engine.addScore(scoreDelta, state.playerX, state.playerY)
+        gameActions.addScore(scoreDelta, state.playerX, state.playerY)
         lastSyncedScore = state.score
       }
 

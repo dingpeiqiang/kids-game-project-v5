@@ -483,7 +483,7 @@ function startMatch3Lifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle
     if (isCascade) matchChain++
 
     const points = matches.length * 20 * Math.max(1, matchChain)
-    engine.addScore(points, W / 2, H / 2)
+    gameActions.addScore(points, W / 2, H / 2)
     
     // 消除动画
     for (let i = 0; i < 10; i++) {

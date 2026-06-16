@@ -274,11 +274,11 @@ export class BubbleShooterGame {
     
     if (this.currentLevel >= this.LEVELS.length) {
       this.gameWon = true
-      this.engine.addScore(1000, this.W / 2, this.H / 2)
+      this.gameActions.addScore(1000, this.W / 2, this.H / 2)
       this.engine.setMessage('🏆 通关成功！')
     } else {
       const bonusScore = Math.floor((this.currentLevelConfig.timeLimit * 1000 - (Date.now() - this.gameStartTime)) / 100)
-      this.engine.addScore(500 + bonusScore, this.W / 2, this.H / 2)
+      this.gameActions.addScore(500 + bonusScore, this.W / 2, this.H / 2)
       this.engine.setMessage(`\u2728 \u5173\u5361\u901A\u8FC7\uFF01\u8FDB\u5165\u4E0B\u4E00\u5173`)
     }
     
@@ -777,7 +777,7 @@ export class BubbleShooterGame {
       const totalScore = this.comboSystem.addCombo(baseScore, projectileX, projectileY)
       
       const finalScore = this.isDoubleScore ? totalScore * 2 : totalScore
-      this.engine.addScore(finalScore, projectileX, projectileY)
+      gameActions.addScore(finalScore, projectileX, projectileY)
       audioService.win()
       
       matches.forEach((m) => {
@@ -841,7 +841,7 @@ export class BubbleShooterGame {
     })
     
     const finalScore = this.isDoubleScore ? bombScore * 2 : bombScore
-    this.engine.addScore(finalScore, pos.bx, pos.by)
+    gameActions.addScore(finalScore, pos.bx, pos.by)
   }
 
   private usePowerup(type: string) {

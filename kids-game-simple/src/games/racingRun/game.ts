@@ -690,7 +690,7 @@ function updateObstacles(state: GameState, engine: GameEngine, py: number): void
       const baseScore = (10 + state.combo * 2) * (state.doubleTimer > 0 ? 2 : 1);
       state.score += baseScore;
       state.combo++;
-      engine.addScore(baseScore, o.x, actualPlayerY);
+      gameActions.addScore(baseScore, o.x, actualPlayerY);
       continue;
     }
 
@@ -786,7 +786,7 @@ function updateCoins(state: GameState, engine: GameEngine, py: number): void {
       const scoreMultiplier = levelConfig?.scoreMultiplier || 1;
       const coinScore = Math.floor(30 * coinMultiplier * scoreMultiplier * (state.doubleTimer > 0 ? 2 : 1));
       state.score += coinScore;
-      engine.addScore(coinScore, c.x, c.y);
+      gameActions.addScore(coinScore, c.x, c.y);
       audioService.collect();
       
       // 增强的金币收集粒子效果

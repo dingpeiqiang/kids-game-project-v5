@@ -120,7 +120,7 @@ function bumpBlockFixed(state: MarioGameState, b: Block, engine: GameEngine) {
     if (spawn === 'coin') {
       state.coins += 1
       state.score += MARIO_CONFIG.COIN_SCORE
-      engine.addScore(MARIO_CONFIG.COIN_SCORE, b.x, b.y)
+      gameActions.addScore(MARIO_CONFIG.COIN_SCORE, b.x, b.y)
       audioService.collect()
       addFloat(state, b.x, b.y - 10, '+100')
     } else {
@@ -153,14 +153,14 @@ function applyPowerup(state: MarioGameState, type: Powerup['type'], engine: Game
         p.y -= MARIO_CONFIG.BIG_PLAYER_H - MARIO_CONFIG.PLAYER_H
       }
       state.score += 500
-      engine.addScore(500, p.x, p.y)
+      gameActions.addScore(500, p.x, p.y)
       break
     case 'flower':
       p.big = true
       p.fire = true
       p.h = MARIO_CONFIG.BIG_PLAYER_H
       state.score += 800
-      engine.addScore(800, p.x, p.y)
+      gameActions.addScore(800, p.x, p.y)
       break
     case 'star':
       p.invincible = 600
@@ -189,7 +189,7 @@ function hurtPlayer(state: MarioGameState, engine: GameEngine) {
   state.lives -= 1
   if (state.lives <= 0) {
     state.phase = 'gameOver'
-    engine.setGameStats({ grade: 'lose', score: state.score, level: state.levelIndex + 1 })
+    // 结算由 finishFromOverlay → gameActions.gameOver；此处仅标记 phase
     audioService.lose()
   } else {
     const level = getLevel(state.levelIndex)
@@ -397,13 +397,7 @@ function updateSimulation(state: MarioGameState, level: LevelData, input: MarioI
     if (state.levelCompleteTimer <= 0) {
       if (state.levelIndex >= MARIO_CONFIG.TOTAL_LEVELS - 1) {
         state.phase = 'victory'
-        engine.setScore(state.score)
-        engine.setGameStats({
-          grade: 'win',
-          score: state.score,
-          level: 5,
-          stars: 3,
-        })
+        gameActions.setScore(state.score)
       } else {
         const next = loadLevelState(state.levelIndex + 1, state.lives, state.score, state.coins)
         Object.assign(state, next)
@@ -457,7 +451,7 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
   const finishFromOverlay = () => {
     if (ended) return
     ended = true
-    engine.setScore(state.score)
+    gameActions.setScore(state.score)
     const victory = state.phase === 'victory'
     gameActions.gameOver({
       victory,
@@ -498,7 +492,7 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
       applyJoystickToInput(joystick, input, keyboardActive)
       const level = getLevel(state.levelIndex)
       updateSimulation(state, level, input, engine, capped)
-      engine.setScore(state.score)
+      gameActions.setScore(state.score)
     },
     onRender() {
       const level = getLevel(state.levelIndex)

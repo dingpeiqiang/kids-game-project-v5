@@ -421,7 +421,7 @@ export function startColorSortLifecycle(lifecycleCtx: GameLifecycleContext): Gam
       completeLevel(currentLevel, score)
       engine.setVictory(true)
       
-      engine.addScore(score + 100, W / 2, H / 2)
+      gameActions.addScore(score + 100, W / 2, H / 2)
       audioService.win()
       
       floatingTexts.push({

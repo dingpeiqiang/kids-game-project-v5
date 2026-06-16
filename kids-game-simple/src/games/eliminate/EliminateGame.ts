@@ -907,7 +907,7 @@ export class EliminateGame {
     this.comboMultiplier += 0.1
     if (this.comboMultiplier > 3) this.comboMultiplier = 3
     
-    this.engine.addScore(pts, mx, my)
+    this.gameActions.addScore(pts, mx, my)
     this.engine.triggerRandomBuff()
     
     // 触发闪光效果
@@ -967,7 +967,7 @@ export class EliminateGame {
       setTimeout(() => {
         this.particleSystem.createFullScreenExplosion(this.W, this.H, this.COLORS)
         this.blocks.forEach((b, i) => {
-          if (b) this.engine.addScore(10, this.PADDING + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
+          if (b) this.gameActions.addScore(10, this.PADDING + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
         })
         this.blocks.forEach((_, i) => this.blocks[i] = null as any)
         audioService.win()
@@ -1091,7 +1091,7 @@ export class EliminateGame {
     this.comboMultiplier += 0.1
     if (this.comboMultiplier > 3) this.comboMultiplier = 3
     
-    this.engine.addScore(pts, mx, my)
+    this.gameActions.addScore(pts, mx, my)
     this.engine.triggerRandomBuff()
     
     this.flashEffect = Math.min(sameLen * 0.08, 0.6)
@@ -1166,7 +1166,7 @@ export class EliminateGame {
         this.particleSystem.createFullScreenExplosion(this.W, this.H, this.COLORS)
         
         this.blocks.forEach((b, i) => {
-          if (b) this.engine.addScore(10, this.PADDING + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
+          if (b) gameActions.addScore(10, this.PADDING + (i % this.COLS) * this.CELL + this.CELL / 2, this.TOP + Math.floor(i / this.COLS) * this.CELL + this.CELL / 2)
         })
         this.blocks.forEach((_, i) => this.blocks[i] = null as any)
         audioService.win()

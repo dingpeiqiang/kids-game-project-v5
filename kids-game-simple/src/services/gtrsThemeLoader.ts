@@ -135,9 +135,15 @@ async function fetchThemeFromApi(gameId: string, themeId?: string): Promise<GTRS
   }
 }
 
+/** 注册 id 与 public/themes 目录名不一致时的回退路径 */
+const LOCAL_THEME_FOLDER_ALIASES: Record<string, string[]> = {
+  spaceShooter: ['spaceshooter'],
+}
+
 async function fetchLocalDefault(gameId: string): Promise<GTRSTheme | null> {
+  const folderIds = [gameId, ...(LOCAL_THEME_FOLDER_ALIASES[gameId] ?? [])]
   const urls = [
-    `/themes/${gameId}/gtrs.json`,
+    ...folderIds.map((id) => `/themes/${id}/gtrs.json`),
     `/resources/${gameId}/GTRS.json`,
     `/gtrs/${gameId}.json`,
   ]

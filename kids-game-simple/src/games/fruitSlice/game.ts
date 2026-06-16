@@ -191,7 +191,7 @@ function startFruitSliceLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
             }
           }
         })
-        engine.addScore(bombCount * 10, W / 2, H / 2)
+        gameActions.addScore(bombCount * 10, W / 2, H / 2)
         audioService.win()
         break
     }
@@ -509,7 +509,7 @@ function startFruitSliceLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
         // 检查是不是陷阱！
         if (f.isTrap) {
           engine.breakCombo()
-          engine.addScore(-50, f.x, f.y)
+          gameActions.addScore(-50, f.x, f.y)
           
           // 爆炸粒子特效
           for (let j = 0; j < 40; j++) {
