@@ -3,7 +3,9 @@
 # Linux 主入口脚本
 # ========================================
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 保存主脚本目录（deps.sh 会覆盖 SCRIPT_DIR）
+MAIN_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$MAIN_SCRIPT_DIR"
 
 # 加载公共模块
 source "$SCRIPT_DIR/common/utils.sh"
@@ -159,7 +161,7 @@ main_deploy() {
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
     check_all
     cd "$DOCKER_DIR"
-    source "$SCRIPT_DIR/deploy/deploy.sh"
+    source "$MAIN_SCRIPT_DIR/deploy/deploy.sh"
     main "$service"
     echo "结束时间: $(date)" >> "$DEPLOY_LOG"
 }
@@ -170,7 +172,7 @@ main_build() {
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
     check_all
     cd "$DOCKER_DIR"
-    source "$SCRIPT_DIR/build/build.sh"
+    source "$MAIN_SCRIPT_DIR/build/build.sh"
     main "$service"
     echo "结束时间: $(date)" >> "$DEPLOY_LOG"
 }
@@ -181,11 +183,11 @@ main_start() {
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
     check_all
     cd "$DOCKER_DIR"
-    source "$SCRIPT_DIR/deploy/deploy.sh"
+    source "$MAIN_SCRIPT_DIR/deploy/deploy.sh"
     for s in $(echo "$service" | tr ',' ' '); do
         start_service "$s"
     done
-    source "$SCRIPT_DIR/status/status.sh"
+    source "$MAIN_SCRIPT_DIR/status/status.sh"
     show_status
     echo "结束时间: $(date)" >> "$DEPLOY_LOG"
 }
@@ -196,7 +198,7 @@ main_restart() {
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
     check_all
     cd "$DOCKER_DIR"
-    source "$SCRIPT_DIR/restart/restart.sh"
+    source "$MAIN_SCRIPT_DIR/restart/restart.sh"
     main "$service"
     echo "结束时间: $(date)" >> "$DEPLOY_LOG"
 }
@@ -206,7 +208,7 @@ main_cleanup() {
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
     check_all
     cd "$DOCKER_DIR"
-    source "$SCRIPT_DIR/cleanup/cleanup.sh"
+    source "$MAIN_SCRIPT_DIR/cleanup/cleanup.sh"
     main "images"
     echo "结束时间: $(date)" >> "$DEPLOY_LOG"
 }
@@ -214,7 +216,7 @@ main_cleanup() {
 main_status() {
     check_all
     cd "$DOCKER_DIR"
-    source "$SCRIPT_DIR/status/status.sh"
+    source "$MAIN_SCRIPT_DIR/status/status.sh"
     show_status
 }
 
