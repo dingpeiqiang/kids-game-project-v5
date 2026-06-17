@@ -1,53 +1,7 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.dom.json",
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["../kids-game-frontend/src/*"],
-      "@simple/*": ["src/*"]
-    }
-  },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.vue",
-    "../kids-game-frontend/src/**/*.ts",
-    "../kids-game-frontend/src/**/*.vue"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "src/games/dragonShooter/generateInitialRoutes.ts",
-    "src/games/dragonShooter/routeManager.ts",
-    "src/games/dragonShooter/saveRoutes.ts",
-    "src/games/dragonShooter/splitRoutesToFiles.ts",
-    "src/games/dragonShooter/validateRoutes.ts",
-    "src/games/happyDefense.lifecycle.ts",
-    "src/games/dodge.ts",
-    "src/games/snake.ts",
-    "src/games/pop.ts",
-    "src/games/tetris.ts",
-    "src/games/slimeJump.ts",
-    "src/games/stack.ts",
-    "src/games/sort.ts",
-    "src/games/jewelMatch.ts",
-    "src/games/memoryMatch.ts",
-    "src/games/fruitSlice.ts",
-    "src/games/neonRun.ts",
-    "src/games/bouncePath.ts",
-    "src/games/colorTap.ts",
-    "src/games/cookieCut.ts",
-    "src/games/whackMole.ts",
-    "src/games/starCatcher.ts",
-    "src/games/happyDefense.ts",
-    "src/games/rpgShooter.ts",
-    "src/games/*.lifecycle.ts",
-    "src/games/cookieCut/_legacy_monolithic.ts",
-    "src/games/whackMole/_legacy_monolithic.ts"
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.shell.json" }
   ]
 }

@@ -5,6 +5,38 @@ import { resolve } from 'path';
 /** 与 kids-game-frontend 共用业务源码，终端包仅独立入口与路由 */
 const frontendSrc = resolve(__dirname, '../kids-game-frontend/src');
 
+/** 重型游戏单独 chunk，避免首屏与其它玩法互相拖累 */
+const HEAVY_GAME_CHUNKS: Record<string, string> = {
+  dragonShooter: 'game-dragon-shooter',
+  voxelRealm: 'game-voxel-realm',
+  plantZombieDefense: 'game-plant-zombie-3d',
+  plantZombieDefense2d: 'game-plant-zombie-2d',
+  cloudBallRush3d: 'game-cloud-ball-3d',
+  happyDefense: 'game-happy-defense',
+  dnfRpg: 'game-dnf-rpg',
+  skyFrenzy: 'game-sky-frenzy',
+  skyRush3d: 'game-sky-rush-3d',
+  rpgShooterTowerDefense: 'game-rpg-shooter-td',
+};
+
+function manualChunkId(id: string): string | undefined {
+  if (id.includes('node_modules')) {
+    if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vendor-vue';
+    if (id.includes('axios')) return 'vendor-axios';
+    return 'vendor';
+  }
+  const gameMatch = id.replace(/\\/g, '/').match(/\/src\/games\/([^/]+)\//);
+  if (gameMatch) {
+    const folder = gameMatch[1];
+    if (HEAVY_GAME_CHUNKS[folder]) return HEAVY_GAME_CHUNKS[folder];
+    return `game-${folder}`;
+  }
+  if (id.replace(/\\/g, '/').includes('/kids-game-frontend/src/modules/')) {
+    return 'shell-frontend-modules';
+  }
+  return undefined;
+}
+
 export default defineConfig({
   define: {
     'import.meta.env.VITE_APP_SHELL': JSON.stringify('simple'),
@@ -53,9 +85,7 @@ export default defineConfig({
       external: ['phaser', /^@babylonjs\//],
       output: {
         globals: { phaser: 'Phaser' },
-        manualChunks: {
-          vendor: ['vue', 'vue-router', 'pinia'],
-        },
+        manualChunks: manualChunkId,
       },
     },
   },

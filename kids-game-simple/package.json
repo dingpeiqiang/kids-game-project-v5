@@ -6,8 +6,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "node scripts/audit-framework-registry.mjs && node scripts/audit-gtrs-lifecycle.mjs && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit -p tsconfig.app.json",
+    "type-check:shell": "vue-tsc --noEmit -p tsconfig.shell.json",
+    "audit:registry": "node scripts/audit-framework-registry.mjs",
+    "audit:gtrs": "node scripts/audit-gtrs-lifecycle.mjs",
+    "audit": "pnpm run audit:registry && pnpm run audit:gtrs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

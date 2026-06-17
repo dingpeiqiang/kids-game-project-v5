@@ -153,11 +153,13 @@ export function assertFrameworkRegistryConsistency(): void {
   const listIds = [...FRAMEWORK_LIFECYCLE_GAME_IDS].sort()
   const missingInList = registryIds.filter(id => !(listIds as string[]).includes(id))
   const missingInRegistry = listIds.filter(id => !registryIds.includes(id))
-  if (missingInList.length || missingInRegistry.length) {
-    console.error('[GameRegistry] frameworkLifecycle mismatch', {
-      missingInList,
-      missingInRegistry,
-    })
+  const missingDestroy = Object.entries(GAME_REGISTRY)
+    .filter(([, reg]) => reg.frameworkLifecycle && !reg.destroy)
+    .map(([id]) => id)
+  if (missingInList.length || missingInRegistry.length || missingDestroy.length) {
+    const msg = `[GameRegistry] frameworkLifecycle mismatch: list↔registry or missing destroy — ${JSON.stringify({ missingInList, missingInRegistry, missingDestroy })}`
+    console.error(msg)
+    throw new Error(msg)
   }
 }
 

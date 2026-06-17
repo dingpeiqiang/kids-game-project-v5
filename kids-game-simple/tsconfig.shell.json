@@ -1,0 +1,22 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@simple/*": ["src/*"],
+      "@/*": ["../kids-game-frontend/src/*"]
+    }
+  },
+  "include": [
+    "src/router/**/*.ts",
+    "src/views/GamePlayHost.vue",
+    "src/shell/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

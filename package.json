@@ -10,6 +10,7 @@
     "dev:all": "pnpm -r --parallel --filter kids-game-frontend --filter kids-game-simple dev",
     "build:admin": "pnpm --filter kids-game-frontend build",
     "build:simple": "pnpm --filter kids-game-simple build",
+    "check:simple": "pnpm --filter kids-game-simple audit && pnpm --filter kids-game-simple type-check",
     "build": "pnpm run build:shared && pnpm run build:admin && pnpm run build:simple",
     "build:shared": "pnpm --filter @kids-game/shared build"
   },

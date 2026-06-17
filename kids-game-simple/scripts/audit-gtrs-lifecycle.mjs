@@ -9,6 +9,18 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
 const THEMES = path.join(ROOT, 'public/themes')
+const THEME_FOLDER_ALIASES = {
+  spaceShooter: ['spaceshooter'],
+}
+
+function hasThemeGtrs(gameId) {
+  if (fs.existsSync(path.join(THEMES, gameId, 'gtrs.json'))) return true
+  for (const alt of THEME_FOLDER_ALIASES[gameId] ?? []) {
+    if (fs.existsSync(path.join(THEMES, alt, 'gtrs.json'))) return true
+  }
+  return false
+}
+
 const REGISTRY = path.join(ROOT, 'src/games/gameRegistry.ts')
 const REGISTER_GTRS = path.join(ROOT, 'src/games/registerGtrsCanvasGames.ts')
 
@@ -24,13 +36,19 @@ const registerTs = fs.readFileSync(REGISTER_GTRS, 'utf8')
 const frameworkIds = extractStringArray(registryTs, 'FRAMEWORK_LIFECYCLE_GAME_IDS')
 const adaptedIds = extractStringArray(registerTs, 'GTRS_CANVAS_ADAPTED_GAME_IDS')
 
-const missingGtrsFramework = frameworkIds.filter((id) => !fs.existsSync(path.join(THEMES, id, 'gtrs.json')))
-const missingGtrsAdapted = adaptedIds.filter((id) => !fs.existsSync(path.join(THEMES, id, 'gtrs.json')))
+const missingGtrsFramework = frameworkIds.filter((id) => !hasThemeGtrs(id))
+const missingGtrsAdapted = adaptedIds.filter((id) => !hasThemeGtrs(id))
+const aliasOnlyFolders = new Set(Object.values(THEME_FOLDER_ALIASES).flat())
 const extraThemeDirs = fs
   .readdirSync(THEMES, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name)
-  .filter((id) => !adaptedIds.includes(id) && fs.existsSync(path.join(THEMES, id, 'gtrs.json')))
+  .filter(
+    (id) =>
+      !adaptedIds.includes(id) &&
+      !aliasOnlyFolders.has(id) &&
+      fs.existsSync(path.join(THEMES, id, 'gtrs.json')),
+  )
 
 console.log('Framework lifecycle games:', frameworkIds.length)
 console.log('GTRS adapted (registered):', adaptedIds.length)

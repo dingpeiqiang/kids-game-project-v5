@@ -646,6 +646,39 @@ export interface GameSettleResult {
   sessionScore?: number
 }
 
+/** POST /api/user/fatigue/consume — 消耗游学币（与 frontend kidApi 对齐） */
+export async function apiConsumeFatiguePoints(
+  userId: number,
+  userType: 0 | 1,
+  points = 1,
+): Promise<{ ok: boolean; msg?: string }> {
+  const body = new URLSearchParams({
+    userId: String(userId),
+    userType: String(userType),
+    points: String(points),
+  })
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  }
+  const token = tokenStore.getAccess()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  try {
+    const res = await fetch(`${API_BASE}/user/fatigue/consume`, {
+      method: 'POST',
+      headers,
+      body,
+    })
+    const json = (await res.json()) as BackendResult<boolean>
+    const normalized = deepCamelize<BackendResult<boolean>>(json)
+    if (normalized.code === 200 && normalized.data === true) return { ok: true }
+    return { ok: false, msg: normalized.msg || '扣除游学币失败' }
+  } catch (err) {
+    console.error('[apiClient] consume fatigue failed', err)
+    return { ok: false, msg: '网络请求失败' }
+  }
+}
+
 /** POST /api/game/settle — 游戏结束结算（扣游学币、发关卡奖励、单局排行） */
 export async function apiGameSettle(
   gameId: number,
