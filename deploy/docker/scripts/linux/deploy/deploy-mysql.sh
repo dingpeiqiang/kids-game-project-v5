@@ -1,16 +1,14 @@
 #!/bin/bash
 # ========================================
 # MySQL 部署脚本 - 删除重建模式
-# 每次执行都会删除旧容器和数据卷，重新初始化
 # ========================================
 
 set -e
 
-# 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -24,13 +22,9 @@ log_blue() {
     echo -e "${BLUE}=== $1 ===${NC}"
 }
 
-# 获取脚本所在目录
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 DOCKER_DIR="$SCRIPT_DIR/../../.."
 
-cd "$DOCKER_DIR"
-
-# 环境变量配置
 MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
 MYSQL_DATABASE=${MYSQL_DATABASE:-kidgame}
 MYSQL_USER=${MYSQL_USER:-kidgame}
@@ -41,15 +35,8 @@ MYSQL_PASSWORD=${MYSQL_PASSWORD:-kidgame123}
 # ========================================
 log_blue "停止并删除旧容器"
 
-if docker ps --format '{{.Names}}' | grep -q "^kids-game-mysql$"; then
-    log_info "停止 MySQL 容器..."
-    docker stop kids-game-mysql >/dev/null 2>&1 || true
-fi
-
-if docker ps -a --format '{{.Names}}' | grep -q "^kids-game-mysql$"; then
-    log_info "删除 MySQL 容器..."
-    docker rm kids-game-mysql >/dev/null 2>&1 || true
-fi
+docker stop kids-game-mysql >/dev/null 2>&1 || true
+docker rm kids-game-mysql >/dev/null 2>&1 || true
 
 log_info "旧容器已删除"
 
@@ -58,16 +45,12 @@ log_info "旧容器已删除"
 # ========================================
 log_blue "删除数据卷"
 
-VOLUME_NAME="docker_mysql-data"
-if docker volume ls --format '{{.Name}}' | grep -q "^$VOLUME_NAME$"; then
-    log_info "删除数据卷 $VOLUME_NAME..."
-    docker volume rm "$VOLUME_NAME" >/dev/null 2>&1 || true
-fi
+docker volume rm docker_mysql-data >/dev/null 2>&1 || true
 
 log_info "数据卷已删除"
 
 # ========================================
-# 3. 创建配置文件
+# 3. 创建配置文件目录
 # ========================================
 log_blue "创建配置文件"
 
@@ -88,30 +71,21 @@ log_info "配置文件已创建"
 # ========================================
 log_blue "启动 MySQL 容器"
 
-export MYSQL_ROOT_PASSWORD
-export MYSQL_DATABASE
-export MYSQL_USER
-export MYSQL_PASSWORD
-export MYSQL_DEFAULT_AUTH=mysql_native_password
-
-log_info "启动 MySQL 容器..."
-docker-compose up -d mysql
-
-sleep 10
-
-# ========================================
-# 5. 验证容器状态
-# ========================================
-if ! docker ps --format '{{.Names}}' | grep -q "^kids-game-mysql$"; then
-    log_error "MySQL 容器启动失败！"
-    log_info "查看日志: docker logs kids-game-mysql"
-    exit 1
-fi
+docker run --name kids-game-mysql -d \
+  -p 3306:3306 \
+  -v docker_mysql-data:/var/lib/mysql \
+  -v "$DOCKER_DIR/mysql/conf.d:/etc/mysql/conf.d" \
+  -e TZ=Asia/Shanghai \
+  -e MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD" \
+  -e MYSQL_DATABASE="$MYSQL_DATABASE" \
+  -e MYSQL_USER="$MYSQL_USER" \
+  -e MYSQL_PASSWORD="$MYSQL_PASSWORD" \
+  mysql:8.0 --default-authentication-plugin=mysql_native_password
 
 log_info "容器启动成功"
 
 # ========================================
-# 6. 等待服务就绪
+# 5. 等待服务就绪
 # ========================================
 log_blue "等待服务就绪"
 
@@ -136,7 +110,7 @@ while true; do
 done
 
 # ========================================
-# 7. 配置用户权限
+# 6. 配置用户权限
 # ========================================
 log_blue "配置用户权限"
 
@@ -157,7 +131,7 @@ EOF
 log_info "权限配置成功"
 
 # ========================================
-# 8. 测试连接
+# 7. 测试连接
 # ========================================
 log_blue "测试连接"
 
