@@ -46,6 +46,15 @@ start_service() {
     
     log_blue "=== 启动 $service ==="
     
+    # 检查容器是否存在，如果存在则先停止并删除
+    local container_name=$(get_container_name "$service")
+    if docker ps -a --format '{{.Names}}' | grep -q "^$container_name$"; then
+        log_warn "容器 $container_name 已存在，正在停止并删除..."
+        docker stop "$container_name" >/dev/null 2>&1 || true
+        docker rm "$container_name" >/dev/null 2>&1 || true
+        log_info "已移除旧容器 $container_name"
+    fi
+    
     # 启动服务
     log_info "启动 $service 容器..."
     if ! $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" up -d "$service"; then

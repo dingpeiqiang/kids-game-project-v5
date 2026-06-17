@@ -58,3 +58,37 @@ command_exists() {
 get_timestamp() {
     date +"%Y%m%d_%H%M%S"
 }
+
+# 获取容器名称
+get_container_name() {
+    local service=$1
+    local config="${SERVICE_CONFIGS[$service]}"
+    if [ -z "$config" ]; then
+        echo "kids-game-$service"
+        return
+    fi
+    echo "$config" | awk '{print $1}' | sed 's/"//g'
+}
+
+# 获取健康检查URL
+get_health_url() {
+    local service=$1
+    local config="${SERVICE_CONFIGS[$service]}"
+    if [ -z "$config" ]; then
+        echo ""
+        return
+    fi
+    local url=$(echo "$config" | awk '{print $2}' | sed 's/"//g')
+    echo "$url"
+}
+
+# 获取健康检查超时时间
+get_health_timeout() {
+    local service=$1
+    local config="${SERVICE_CONFIGS[$service]}"
+    if [ -z "$config" ]; then
+        echo "60"
+        return
+    fi
+    echo "$config" | awk '{print $3}'
+}
