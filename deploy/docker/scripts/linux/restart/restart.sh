@@ -34,6 +34,8 @@ restart_all() {
     log_cyan "重启所有服务"
     log_cyan "========================================"
     
+    restart_service "mysql"
+    restart_service "redis"
     restart_service "backend"
     restart_service "frontend"
     restart_service "kids-game-simple"
@@ -46,7 +48,7 @@ main() {
     local service="${1:-all}"
     
     case $service in
-        backend|frontend|kids-game-simple)
+        mysql|redis|backend|frontend|kids-game-simple)
             restart_service "$service"
             ;;
         all)

@@ -1,10 +1,20 @@
 import type { Player } from '../types'
 import * as C from '../config'
 import { CLASS_CONFIGS } from '../data/classes'
+import {
+  drawDnfSlash,
+  drawDnfSkillAura,
+  slashStyleForAttack,
+  getBattlePoseOffset,
+  getActiveSkillSlot,
+} from './dnf-combat-vfx'
+
+const ATTACK_ANIM_MS = 280
 
 export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player, now: number): void {
+  const pose = getBattlePoseOffset(player)
   const sx = Math.round(player.x)
-  const sy = Math.round(player.y)
+  const sy = Math.round(player.y + pose.offsetY)
 
   ctx.save()
 
@@ -42,21 +52,34 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player, now: n
   if (player.dashing) {
     ctx.save()
     ctx.globalAlpha = 0.3
-    drawClassBody(ctx, sx - player.vx * 0.5, sy, player, cfg)
+    drawClassBody(ctx, sx - player.vx * 0.5, sy, player, cfg, 0)
     ctx.restore()
   }
 
-  // 角色身体（按职业绘制）
-  drawClassBody(ctx, sx, sy, player, cfg)
+  // 战斗姿态倾斜（DNF 重心）
+  const pivotX = sx + player.width / 2
+  const pivotY = sy + player.height * 0.55
+  ctx.translate(pivotX, pivotY)
+  ctx.rotate(pose.lean * (player.facingRight ? 1 : -1))
+  ctx.translate(-pivotX, -pivotY)
 
-  // 攻击特效
-  if (player.attacking) {
-    drawAttackEffect(ctx, sx, sy, player, cfg, now)
+  drawClassBody(ctx, sx, sy, player, cfg, pose.armRaise)
+
+  const facing = player.facingRight ? 1 : -1
+  const cx = sx + player.width / 2
+  const cy = sy + player.height / 2
+
+  if (player.attacking && player.attackTimer > 0) {
+    const progress = 1 - player.attackTimer / ATTACK_ANIM_MS
+    const style = slashStyleForAttack(player.classType, player.attackStep)
+    drawDnfSlash(ctx, cx, cy, facing, progress, player.classType, style)
   }
 
-  // 技能特效
-  if (player.usingSkill1 || player.usingSkill2) {
-    drawSkillEffect(ctx, sx, sy, player, cfg, now)
+  const skillSlot = getActiveSkillSlot(player)
+  if (skillSlot >= 0 && player.skillTimer > 0) {
+    const maxDur = player.skills[skillSlot]?.duration ?? 500
+    const skillProgress = 1 - player.skillTimer / maxDur
+    drawDnfSkillAura(ctx, cx, cy, player.classType, skillSlot, skillProgress, facing)
   }
 
   ctx.restore()
@@ -68,26 +91,25 @@ function drawClassBody(
   x: number, y: number,
   player: Player,
   cfg: { color: string; accentColor: string; id: string },
+  armRaise: number,
 ): void {
-  const f = player.facingRight ? 1 : -1
-  // 走路摆动值：-1 到 1 之间交替，静止时为 0
   const walkSwing = Math.sin(player.walkFrame * Math.PI)
 
   switch (cfg.id) {
     case 'swordsman':
-      drawSwordsmanBody(ctx, x, y, player, cfg, walkSwing)
+      drawSwordsmanBody(ctx, x, y, player, cfg, walkSwing, armRaise)
       break
     case 'fighter':
-      drawFighterBody(ctx, x, y, player, cfg, walkSwing)
+      drawFighterBody(ctx, x, y, player, cfg, walkSwing, armRaise)
       break
     case 'archer':
-      drawArcherBody(ctx, x, y, player, cfg, walkSwing)
+      drawArcherBody(ctx, x, y, player, cfg, walkSwing, armRaise)
       break
     case 'mage':
-      drawMageBody(ctx, x, y, player, cfg, walkSwing)
+      drawMageBody(ctx, x, y, player, cfg, walkSwing, armRaise)
       break
     case 'gunner':
-      drawGunnerBody(ctx, x, y, player, cfg, walkSwing)
+      drawGunnerBody(ctx, x, y, player, cfg, walkSwing, armRaise)
       break
     default:
       drawGenericBody(ctx, x, y, player, cfg, walkSwing)
@@ -95,7 +117,15 @@ function drawClassBody(
 }
 
 // 鬼剑士 - 宽肩铠甲 + 巨剑
-function drawSwordsmanBody(ctx: CanvasRenderingContext2D, x: number, y: number, player: Player, cfg: { color: string; accentColor: string }, walkSwing: number): void {
+function drawSwordsmanBody(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  player: Player,
+  cfg: { color: string; accentColor: string },
+  walkSwing: number,
+  armRaise: number,
+): void {
   const f = player.facingRight ? 1 : -1
   const legSwing = walkSwing * 3 // 腿部前后偏移像素
 
@@ -130,26 +160,38 @@ function drawSwordsmanBody(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.fillRect(x + 5 + legSwing, y + player.height - 4, 9, 6)
   ctx.fillRect(x + player.width - 14 - legSwing, y + player.height - 4, 9, 6)
 
-  // 巨剑（标志性武器）
+  // 巨剑（攻击时上举/前挥）
+  const swordLift = armRaise + (player.attacking ? player.attackStep * 4 : 0)
+  ctx.save()
+  const handX = f > 0 ? x + player.width - 4 : x + 4
+  const handY = y + 22 - swordLift
+  ctx.translate(handX, handY)
+  ctx.rotate(f * (-0.35 - (player.attacking ? 0.5 + player.attackStep * 0.15 : 0)))
   ctx.fillStyle = '#C0C0C0'
-  if (f > 0) {
-    ctx.fillRect(x + player.width + 2, y + 10, 4, 32)
-    ctx.fillStyle = '#E8E8E8'
-    ctx.fillRect(x + player.width, y + 8, 8, 6)
-    // 剑格
-    ctx.fillStyle = '#FFD700'
-    ctx.fillRect(x + player.width - 2, y + 20, 10, 3)
-  } else {
-    ctx.fillRect(x - 6, y + 10, 4, 32)
-    ctx.fillStyle = '#E8E8E8'
-    ctx.fillRect(x - 8, y + 8, 8, 6)
-    ctx.fillStyle = '#FFD700'
-    ctx.fillRect(x - 8, y + 20, 10, 3)
+  ctx.fillRect(0, -28, 5, 34)
+  ctx.fillStyle = '#E8E8E8'
+  ctx.fillRect(-2, -30, 9, 7)
+  ctx.fillStyle = '#FFD700'
+  ctx.fillRect(-3, -8, 11, 4)
+  if (player.attacking && player.attackStep >= 2) {
+    ctx.globalAlpha = 0.5
+    ctx.fillStyle = cfg.accentColor
+    ctx.fillRect(2, -32, 3, 30)
+    ctx.globalAlpha = 1
   }
+  ctx.restore()
 }
 
 // 格斗家 - 肌肉发达 + 绑手带
-function drawFighterBody(ctx: CanvasRenderingContext2D, x: number, y: number, player: Player, cfg: { color: string; accentColor: string }, walkSwing: number): void {
+function drawFighterBody(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  player: Player,
+  cfg: { color: string; accentColor: string },
+  walkSwing: number,
+  armRaise: number,
+): void {
   const f = player.facingRight ? 1 : -1
   const legSwing = walkSwing * 3
 
@@ -184,23 +226,25 @@ function drawFighterBody(ctx: CanvasRenderingContext2D, x: number, y: number, pl
   ctx.fillRect(x + 6 + legSwing, y + player.height - 4, 9, 6)
   ctx.fillRect(x + player.width - 15 - legSwing, y + player.height - 4, 9, 6)
 
-  // 绑手带（拳头武器）
+  const punchY = y + 18 - armRaise * 0.6 + (player.attacking && player.attackStep >= 2 ? -6 : 0)
+  const punchX = f > 0 ? x + player.width + 2 + (player.attacking ? 6 + player.attackStep * 3 : 0) : x - 10 - (player.attacking ? 6 + player.attackStep * 3 : 0)
   ctx.fillStyle = '#FFF'
-  if (f > 0) {
-    ctx.fillRect(x + player.width + 2, y + 18, 8, 8)
-    ctx.fillStyle = cfg.accentColor
-    ctx.fillRect(x + player.width + 2, y + 18, 8, 3)
-    ctx.fillRect(x + player.width + 2, y + 23, 8, 3)
-  } else {
-    ctx.fillRect(x - 10, y + 18, 8, 8)
-    ctx.fillStyle = cfg.accentColor
-    ctx.fillRect(x - 10, y + 18, 8, 3)
-    ctx.fillRect(x - 10, y + 23, 8, 3)
-  }
+  ctx.fillRect(punchX, punchY, 10, 9)
+  ctx.fillStyle = cfg.accentColor
+  ctx.fillRect(punchX, punchY, 10, 3)
+  ctx.fillRect(punchX, punchY + 5, 10, 3)
 }
 
 // 弓箭手 - 纤细身材 + 弓
-function drawArcherBody(ctx: CanvasRenderingContext2D, x: number, y: number, player: Player, cfg: { color: string; accentColor: string }, walkSwing: number): void {
+function drawArcherBody(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  player: Player,
+  cfg: { color: string; accentColor: string },
+  walkSwing: number,
+  armRaise: number,
+): void {
   const f = player.facingRight ? 1 : -1
   const legSwing = walkSwing * 3
 
@@ -247,35 +291,44 @@ function drawArcherBody(ctx: CanvasRenderingContext2D, x: number, y: number, pla
   ctx.fillRect(x + 7 + legSwing, y + player.height - 3, 7, 5)
   ctx.fillRect(x + player.width - 14 - legSwing, y + player.height - 3, 7, 5)
 
-  // 弓（标志性武器）
+  const bowCx = f > 0 ? x + player.width + 6 : x - 6
+  const bowCy = y + 24 - armRaise * 0.3
+  const pull = player.attacking ? 10 + player.attackStep * 2 : 0
   ctx.strokeStyle = '#8B4513'
   ctx.lineWidth = 2
+  ctx.beginPath()
   if (f > 0) {
-    ctx.beginPath()
-    ctx.arc(x + player.width + 6, y + 24, 16, -Math.PI * 0.5, Math.PI * 0.5)
-    ctx.stroke()
-    // 弦
-    ctx.strokeStyle = '#DDD'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(x + player.width + 6, y + 8)
-    ctx.lineTo(x + player.width + 6, y + 40)
-    ctx.stroke()
+    ctx.arc(bowCx, bowCy, 16, -Math.PI * 0.5, Math.PI * 0.5)
   } else {
+    ctx.arc(bowCx, bowCy, 16, Math.PI * 0.5, Math.PI * 1.5)
+  }
+  ctx.stroke()
+  ctx.strokeStyle = '#DDD'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(bowCx - f * pull, bowCy - 16)
+  ctx.lineTo(bowCx - f * pull, bowCy + 16)
+  ctx.stroke()
+  if (player.attacking) {
+    ctx.strokeStyle = '#7CFC00'
+    ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.arc(x - 6, y + 24, 16, Math.PI * 0.5, Math.PI * 1.5)
-    ctx.stroke()
-    ctx.strokeStyle = '#DDD'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(x - 6, y + 8)
-    ctx.lineTo(x - 6, y + 40)
+    ctx.moveTo(bowCx - f * pull, bowCy)
+    ctx.lineTo(bowCx + f * 35, bowCy)
     ctx.stroke()
   }
 }
 
 // 魔法师 - 长袍 + 法杖
-function drawMageBody(ctx: CanvasRenderingContext2D, x: number, y: number, player: Player, cfg: { color: string; accentColor: string }, walkSwing: number): void {
+function drawMageBody(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  player: Player,
+  cfg: { color: string; accentColor: string },
+  walkSwing: number,
+  armRaise: number,
+): void {
   const f = player.facingRight ? 1 : -1
   const legSwing = walkSwing * 2 // 长袍摆幅小一些
 
@@ -319,32 +372,30 @@ function drawMageBody(ctx: CanvasRenderingContext2D, x: number, y: number, playe
   ctx.fillRect(x + 7 + legSwing, y + player.height - 3, 7, 5)
   ctx.fillRect(x + player.width - 14 - legSwing, y + player.height - 3, 7, 5)
 
-  // 法杖（标志性武器）
+  const staffX = f > 0 ? x + player.width + 2 : x - 5
+  const staffTop = y - 4 - armRaise
   ctx.fillStyle = '#8B4513'
-  if (f > 0) {
-    ctx.fillRect(x + player.width + 2, y - 4, 3, 40)
-    // 法杖顶部宝石
-    ctx.fillStyle = cfg.accentColor
-    ctx.shadowColor = cfg.accentColor
-    ctx.shadowBlur = 6
-    ctx.beginPath()
-    ctx.arc(x + player.width + 3.5, y - 6, 5, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.shadowBlur = 0
-  } else {
-    ctx.fillRect(x - 5, y - 4, 3, 40)
-    ctx.fillStyle = cfg.accentColor
-    ctx.shadowColor = cfg.accentColor
-    ctx.shadowBlur = 6
-    ctx.beginPath()
-    ctx.arc(x - 3.5, y - 6, 5, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.shadowBlur = 0
-  }
+  ctx.fillRect(staffX, staffTop, 3, 40 + armRaise * 0.2)
+  ctx.fillStyle = cfg.accentColor
+  const glow = player.attacking || player.usingSkill1 || player.usingSkill2 ? 14 : 6
+  ctx.shadowColor = cfg.accentColor
+  ctx.shadowBlur = glow
+  ctx.beginPath()
+  ctx.arc(staffX + 1.5, staffTop - 2, 5 + (player.attacking ? 2 : 0), 0, Math.PI * 2)
+  ctx.fill()
+  ctx.shadowBlur = 0
 }
 
 // 神枪手 - 皮夹克 + 枪械
-function drawGunnerBody(ctx: CanvasRenderingContext2D, x: number, y: number, player: Player, cfg: { color: string; accentColor: string }, walkSwing: number): void {
+function drawGunnerBody(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  player: Player,
+  cfg: { color: string; accentColor: string },
+  walkSwing: number,
+  armRaise: number,
+): void {
   const f = player.facingRight ? 1 : -1
   const legSwing = walkSwing * 3
 
@@ -389,22 +440,21 @@ function drawGunnerBody(ctx: CanvasRenderingContext2D, x: number, y: number, pla
   ctx.fillRect(x + 6 + legSwing, y + player.height - 4, 9, 6)
   ctx.fillRect(x + player.width - 15 - legSwing, y + player.height - 4, 9, 6)
 
-  // 双枪（标志性武器）
+  const gunY = y + 18 - armRaise * 0.4
+  const gunExtend = player.attacking ? 8 : 0
   ctx.fillStyle = '#444'
   if (f > 0) {
-    // 主枪
-    ctx.fillRect(x + player.width + 1, y + 18, 14, 6)
+    ctx.fillRect(x + player.width + 1 + gunExtend, gunY, 14 + gunExtend, 6)
     ctx.fillStyle = '#222'
-    ctx.fillRect(x + player.width + 13, y + 20, 4, 3)
-    // 握把
+    ctx.fillRect(x + player.width + 13 + gunExtend * 2, gunY + 2, 4, 3)
     ctx.fillStyle = '#8B4513'
-    ctx.fillRect(x + player.width + 8, y + 24, 3, 6)
+    ctx.fillRect(x + player.width + 8 + gunExtend, gunY + 6, 3, 6)
   } else {
-    ctx.fillRect(x - 15, y + 18, 14, 6)
+    ctx.fillRect(x - 15 - gunExtend, gunY, 14 + gunExtend, 6)
     ctx.fillStyle = '#222'
-    ctx.fillRect(x - 15, y + 20, 4, 3)
+    ctx.fillRect(x - 15 - gunExtend, gunY + 2, 4, 3)
     ctx.fillStyle = '#8B4513'
-    ctx.fillRect(x - 11, y + 24, 3, 6)
+    ctx.fillRect(x - 11 - gunExtend, gunY + 6, 3, 6)
   }
 }
 
@@ -434,124 +484,4 @@ function drawGenericBody(ctx: CanvasRenderingContext2D, x: number, y: number, pl
   } else {
     ctx.fillRect(x - 14, y + 18, 14, 4)
   }
-}
-
-// ============ 攻击特效 ============
-function drawAttackEffect(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, player: Player,
-  cfg: { color: string; accentColor: string },
-  now: number,
-): void {
-  const facing = player.facingRight ? 1 : -1
-  const progress = 1 - player.attackTimer / 200
-  const centerX = x + player.width / 2
-  const centerY = y + player.height / 2
-
-  ctx.save()
-  ctx.globalCompositeOperation = 'lighter'
-
-  for (let layer = 0; layer < 3; layer++) {
-    const offset = layer * 4
-    const arcX = centerX + facing * (25 + offset + progress * 15)
-    const alpha = (1 - progress) * (1 - layer * 0.25)
-
-    ctx.globalAlpha = alpha
-    ctx.strokeStyle = layer === 0 ? '#FFFFFF' : layer === 1 ? cfg.accentColor : cfg.color
-    ctx.lineWidth = layer === 0 ? 4 : layer === 1 ? 3 : 2
-    ctx.shadowColor = layer === 0 ? '#FFFFFF' : cfg.accentColor
-    ctx.shadowBlur = 8 * alpha
-
-    ctx.beginPath()
-    ctx.arc(arcX, centerY, 22 + layer * 3, facing > 0 ? -0.6 : Math.PI - 0.6, facing > 0 ? 0.6 : Math.PI + 0.6)
-    ctx.stroke()
-  }
-
-  ctx.shadowBlur = 0
-  ctx.globalAlpha = 1 - progress
-  ctx.fillStyle = '#FFFFFF'
-  ctx.beginPath()
-  ctx.arc(centerX + facing * (30 + progress * 15), centerY, 4, 0, Math.PI * 2)
-  ctx.fill()
-
-  const sparkCount = Math.floor((1 - progress) * 6)
-  for (let i = 0; i < sparkCount; i++) {
-    const angle = (i / sparkCount) * Math.PI * 0.8 - Math.PI * 0.4 + (facing > 0 ? 0 : Math.PI)
-    const dist = 10 + progress * 20
-    ctx.fillStyle = i % 2 === 0 ? '#FFFFFF' : cfg.accentColor
-    ctx.globalAlpha = (1 - progress) * 0.7
-    ctx.beginPath()
-    ctx.arc(
-      centerX + facing * 25 + Math.cos(angle) * dist,
-      centerY + Math.sin(angle) * dist,
-      2, 0, Math.PI * 2,
-    )
-    ctx.fill()
-  }
-
-  ctx.restore()
-}
-
-// ============ 技能特效 ============
-function drawSkillEffect(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, player: Player,
-  cfg: { color: string; accentColor: string },
-  now: number,
-): void {
-  const centerX = x + player.width / 2
-  const centerY = y + player.height / 2
-  const pulse = Math.sin(now / 80) * 0.3 + 0.7
-
-  ctx.save()
-  ctx.globalCompositeOperation = 'lighter'
-
-  for (let ring = 0; ring < 3; ring++) {
-    const radius = 28 + ring * 8 + Math.sin(now / 120 + ring) * 4
-    const alpha = (1 - ring * 0.2) * pulse
-
-    ctx.globalAlpha = alpha
-    ctx.strokeStyle = ring === 0 ? cfg.accentColor : ring === 1 ? '#FFFFFF' : cfg.color
-    ctx.lineWidth = ring === 0 ? 3 : ring === 1 ? 1.5 : 2
-    ctx.shadowColor = ring === 0 ? cfg.accentColor : 'transparent'
-    ctx.shadowBlur = ring === 0 ? 10 : 0
-    ctx.beginPath()
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
-    ctx.stroke()
-  }
-
-  ctx.shadowBlur = 0
-
-  const particleCount = 8
-  for (let i = 0; i < particleCount; i++) {
-    const angle = (now / 300 + i * Math.PI * 2 / particleCount) % (Math.PI * 2)
-    const radius = 22 + Math.sin(now / 150 + i) * 6
-    const px = centerX + Math.cos(angle) * radius
-    const py = centerY + Math.sin(angle) * radius
-
-    ctx.fillStyle = cfg.accentColor
-    ctx.globalAlpha = 0.3
-    ctx.beginPath()
-    ctx.arc(px, py, 5, 0, Math.PI * 2)
-    ctx.fill()
-
-    ctx.fillStyle = '#FFFFFF'
-    ctx.globalAlpha = 0.8
-    ctx.beginPath()
-    ctx.arc(px, py, 2, 0, Math.PI * 2)
-    ctx.fill()
-  }
-
-  const groundY = y + player.height + 2
-  const groundRadius = 25 + pulse * 8
-  ctx.globalAlpha = pulse * 0.4
-  ctx.fillStyle = cfg.accentColor
-  ctx.beginPath()
-  ctx.ellipse(centerX, groundY, groundRadius, 4, 0, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = cfg.accentColor
-  ctx.lineWidth = 1.5
-  ctx.stroke()
-
-  ctx.restore()
 }

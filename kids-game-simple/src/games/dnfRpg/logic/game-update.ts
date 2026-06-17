@@ -8,7 +8,7 @@ import type {
   Player, Enemy, InputState, Bullet, DropItem,
   Particle, Shockwave, FloatText, Equipment, SkillInstance, ScreenShake,
 } from '../types'
-import { createPlayer, updatePlayer, addExp } from './player'
+import { updatePlayer, addExp, type PlayerUpdateResult } from './player'
 import { updateEnemies } from './enemies'
 import { checkPlayerAttack, checkSkillAttack } from './combat'
 import { generateDrops, pickupDrops, applyEquipment } from './equipment'
@@ -166,23 +166,7 @@ export function updateGameLogic(
       state.player.invincible = C.INVINCIBLE_DURATION
 
       if (state.player.hp <= 0) {
-        state.player.lives--
-        if (state.player.lives > 0) {
-          // 复活：恢复满血满蓝，重置位置，短暂无敌
-          state.player.hp = state.player.maxHp
-          state.player.mp = state.player.maxMp
-          state.player.x = 150
-          state.player.y = C.GROUND_Y - C.PLAYER_HEIGHT
-          state.player.vx = 0
-          state.player.vy = 0
-          state.player.invincible = C.INVINCIBLE_DURATION * 3
-          state.player.attacking = false
-          state.player.knockedDown = false
-        } else {
-          // 命耗尽，游戏结束
-          state.gameOver = true
-          finishGame(false, C.GAME_OVER_DELAY)
-        }
+        handlePlayerDeath(state, finishGame)
       }
     }
   }
@@ -351,138 +335,198 @@ function handleAttack(
 
 // ============ 技能处理 ============
 
+const SKILL_TRIGGERS: (keyof PlayerUpdateResult)[] = [
+  'skill1Triggered',
+  'skill2Triggered',
+  'skill3Triggered',
+  'skill4Triggered',
+]
+
+function buildTempSkill(result: PlayerUpdateResult, slot: number): SkillInstance {
+  const n = slot + 1
+  return {
+    id: `skill_${n}`,
+    name: `技能${n}`,
+    level: 1,
+    maxLevel: 5,
+    cooldown: 0,
+    currentCooldown: 0,
+    mpCost: 0,
+    damage: result.skillDamage,
+    range: result.skillRange,
+    knockback: result.skillKnockback,
+    launchHeight: result.skillLaunch,
+    aoeRadius: result.skillAOE,
+    duration: 500,
+    spCost: 0,
+    description: '',
+    icon: `S${n}`,
+    unlockLevel: 1,
+  }
+}
+
+function pushRangedSkill1Bullets(state: GameUpdateState, result: PlayerUpdateResult): void {
+  const p = state.player
+  const dir = p.facingRight ? 1 : -1
+  const baseX = p.x + (p.facingRight ? p.width : 0)
+  const baseY = p.y + p.height / 2 - 5
+  for (let i = -1; i <= 1; i++) {
+    state.bullets.push({
+      x: baseX,
+      y: baseY + i * 8,
+      vx: dir * 5.5,
+      vy: 0,
+      width: 10,
+      height: 4,
+      damage: result.skillDamage,
+      isPlayerBullet: true,
+      color: '#00E5FF',
+      pierce: false,
+      life: 2000,
+      maxLife: 2000,
+      trail: true,
+      owner: 'player',
+    })
+  }
+}
+
+function pushRangedSkill2Bullet(state: GameUpdateState, result: PlayerUpdateResult): void {
+  const p = state.player
+  const dir = p.facingRight ? 1 : -1
+  state.bullets.push({
+    x: p.x + (p.facingRight ? p.width : 0),
+    y: p.y + p.height / 2 - 8,
+    vx: dir * 8,
+    vy: 0,
+    width: 18,
+    height: 6,
+    damage: result.skillDamage,
+    isPlayerBullet: true,
+    color: '#FFD700',
+    pierce: true,
+    life: 2500,
+    maxLife: 2500,
+    trail: true,
+    owner: 'player',
+  })
+}
+
+function applySkillMeleeResult(
+  state: GameUpdateState,
+  result: PlayerUpdateResult,
+  skillResult: ReturnType<typeof checkSkillAttack>,
+  comboAdd: number,
+  now: number,
+): void {
+  state.enemies = skillResult.enemies
+  state.bullets.push(...skillResult.bullets)
+  if (skillResult.hitEnemies.length > 0) {
+    state.combo += comboAdd
+    state.lastHitTime = now
+    if (state.combo > state.maxCombo) state.maxCombo = state.combo
+    const hitEnemy = skillResult.hitEnemies[0]
+    spawnHitEffects(
+      state,
+      hitEnemy.x + hitEnemy.width / 2,
+      hitEnemy.y + hitEnemy.height / 2,
+      result.skillDamage,
+      false,
+    )
+  }
+}
+
 function handleSkills(
   state: GameUpdateState,
-  result: ReturnType<typeof updatePlayer>,
+  result: PlayerUpdateResult,
   now: number,
-  dungeon: DungeonManager,
+  _dungeon: DungeonManager,
 ): void {
-  if (result.skill1Triggered) {
-    spawnSkillEffects(state, state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, state.player.classType, 0)
-    if (state.player.classType === 'archer' || state.player.classType === 'gunner') {
-      const dir = state.player.facingRight ? 1 : -1
-      const baseX = state.player.x + (state.player.facingRight ? state.player.width : 0)
-      const baseY = state.player.y + state.player.height / 2 - 5
-      // 水平发射3颗子弹（平行排列）
-      for (let i = -1; i <= 1; i++) {
-        state.bullets.push({
-          x: baseX, y: baseY + i * 8,
-          vx: dir * 5.5,
-          vy: 0,
-          width: 10, height: 4,
-          damage: result.skillDamage,
-          isPlayerBullet: true,
-          color: '#00E5FF',
-          pierce: false,
-          life: 2000, maxLife: 2000,
-          trail: true,
-          owner: 'player',
-        })
-      }
-    } else {
-      const tempSkill: SkillInstance = {
-        id: 'skill_1', name: '技能1', level: 1, maxLevel: 5,
-        cooldown: 0, currentCooldown: 0, mpCost: 0,
-        damage: result.skillDamage, range: result.skillRange,
-        knockback: result.skillKnockback, launchHeight: result.skillLaunch,
-        aoeRadius: result.skillAOE, duration: 500,
-        spCost: 0, description: '', icon: 'S1', unlockLevel: 1,
-      }
-      const skillResult = checkSkillAttack(state.player, state.enemies, tempSkill)
-      state.enemies = skillResult.enemies
-      state.bullets.push(...skillResult.bullets)
-      if (skillResult.hitEnemies.length > 0) {
-        state.combo++
-        state.lastHitTime = now
-        // 显示伤害数字
-        const hitEnemy = skillResult.hitEnemies[0]
-        spawnHitEffects(state, hitEnemy.x + hitEnemy.width / 2, hitEnemy.y + hitEnemy.height / 2, result.skillDamage, false)
-      }
-    }
-  }
+  const ranged = state.player.classType === 'archer' || state.player.classType === 'gunner'
+  const cx = state.player.x + state.player.width / 2
+  const cy = state.player.y + state.player.height / 2
 
-  if (result.skill2Triggered) {
-    spawnSkillEffects(state, state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, state.player.classType, 1)
-    if (state.player.classType === 'archer' || state.player.classType === 'gunner') {
-      const dir = state.player.facingRight ? 1 : -1
-      state.bullets.push({
-        x: state.player.x + (state.player.facingRight ? state.player.width : 0),
-        y: state.player.y + state.player.height / 2 - 8,
-        vx: dir * 8, vy: 0,
-        width: 18, height: 6,
-        damage: result.skillDamage,
-        isPlayerBullet: true,
-        color: '#FFD700',
-        pierce: true,
-        life: 2500, maxLife: 2500,
-        trail: true,
-        owner: 'player',
-      })
-    } else {
-      const tempSkill: SkillInstance = {
-        id: 'skill_2', name: '技能2', level: 1, maxLevel: 5,
-        cooldown: 0, currentCooldown: 0, mpCost: 0,
-        damage: result.skillDamage, range: result.skillRange,
-        knockback: result.skillKnockback, launchHeight: result.skillLaunch,
-        aoeRadius: result.skillAOE, duration: 500,
-        spCost: 0, description: '', icon: 'S2', unlockLevel: 1,
-      }
-      const skillResult = checkSkillAttack(state.player, state.enemies, tempSkill)
-      state.enemies = skillResult.enemies
-      state.bullets.push(...skillResult.bullets)
-      if (skillResult.hitEnemies.length > 0) {
-        state.combo += 2
-        state.lastHitTime = now
-        // 显示伤害数字
-        const hitEnemy = skillResult.hitEnemies[0]
-        spawnHitEffects(state, hitEnemy.x + hitEnemy.width / 2, hitEnemy.y + hitEnemy.height / 2, result.skillDamage, false)
-      }
-    }
-  }
+  for (let slot = 0; slot < 4; slot++) {
+    if (!result[SKILL_TRIGGERS[slot]]) continue
 
-  if (result.skill3Triggered) {
-    spawnSkillEffects(state, state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, state.player.classType, 2)
-    const tempSkill: SkillInstance = {
-      id: 'skill_3', name: '技能3', level: 1, maxLevel: 5,
-      cooldown: 0, currentCooldown: 0, mpCost: 0,
-      damage: result.skillDamage, range: result.skillRange,
-      knockback: result.skillKnockback, launchHeight: result.skillLaunch,
-      aoeRadius: result.skillAOE, duration: 500,
-      spCost: 0, description: '', icon: 'S3', unlockLevel: 1,
-    }
-    const skillResult = checkSkillAttack(state.player, state.enemies, tempSkill)
-    state.enemies = skillResult.enemies
-    state.bullets.push(...skillResult.bullets)
-    if (skillResult.hitEnemies.length > 0) {
-      state.combo += 3
-      state.lastHitTime = now
-      // 显示伤害数字
-      const hitEnemy = skillResult.hitEnemies[0]
-      spawnHitEffects(state, hitEnemy.x + hitEnemy.width / 2, hitEnemy.y + hitEnemy.height / 2, result.skillDamage, false)
-    }
-  }
+    spawnSkillEffects(state, cx, cy, state.player.classType, slot)
+    const comboAdd = slot + 1
 
-  if (result.skill4Triggered) {
-    spawnSkillEffects(state, state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, state.player.classType, 3)
-    const tempSkill: SkillInstance = {
-      id: 'skill_4', name: '技能4', level: 1, maxLevel: 5,
-      cooldown: 0, currentCooldown: 0, mpCost: 0,
-      damage: result.skillDamage, range: result.skillRange,
-      knockback: result.skillKnockback, launchHeight: result.skillLaunch,
-      aoeRadius: result.skillAOE, duration: 500,
-      spCost: 0, description: '', icon: 'S4', unlockLevel: 1,
+    if (ranged && slot === 0) {
+      pushRangedSkill1Bullets(state, result)
+      continue
     }
-    const skillResult = checkSkillAttack(state.player, state.enemies, tempSkill)
-    state.enemies = skillResult.enemies
-    state.bullets.push(...skillResult.bullets)
-    if (skillResult.hitEnemies.length > 0) {
-      state.combo += 4
-      state.lastHitTime = now
-      // 显示伤害数字
-      const hitEnemy = skillResult.hitEnemies[0]
-      spawnHitEffects(state, hitEnemy.x + hitEnemy.width / 2, hitEnemy.y + hitEnemy.height / 2, result.skillDamage, false)
+    if (ranged && slot === 1) {
+      pushRangedSkill2Bullet(state, result)
+      continue
     }
+
+    const skillResult = checkSkillAttack(state.player, state.enemies, buildTempSkill(result, slot))
+    applySkillMeleeResult(state, result, skillResult, comboAdd, now)
   }
+}
+
+function handlePlayerDeath(
+  state: GameUpdateState,
+  finishGame: (victory: boolean, delayMs: number) => void,
+): void {
+  state.player.lives--
+  if (state.player.lives > 0) {
+    state.player.hp = state.player.maxHp
+    state.player.mp = state.player.maxMp
+    state.player.x = 150
+    state.player.y = C.GROUND_Y - C.PLAYER_HEIGHT
+    state.player.vx = 0
+    state.player.vy = 0
+    state.player.invincible = C.INVINCIBLE_DURATION * 3
+    state.player.attacking = false
+    state.player.knockedDown = false
+  } else {
+    state.gameOver = true
+    finishGame(false, C.GAME_OVER_DELAY)
+  }
+}
+
+function spawnBulletHitFx(state: GameUpdateState, b: Bullet, damage: number): void {
+  const particleCount = C.isMobileDevice() ? 4 : 8
+  for (let j = 0; j < particleCount; j++) {
+    const angle = Math.random() * Math.PI * 2
+    const speed = Math.random() * 4 + 2
+    state.particles.push({
+      x: b.x,
+      y: b.y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      life: 350,
+      maxLife: 350,
+      color: j % 2 === 0 ? '#00E5FF' : '#FFFFFF',
+      size: Math.random() * 3 + 2,
+      shape: 'spark',
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 10,
+    })
+  }
+  state.particles.push({
+    x: b.x,
+    y: b.y,
+    vx: 0,
+    vy: 0,
+    life: 200,
+    maxLife: 200,
+    color: '#FFFFFF',
+    size: 8,
+    shape: 'circle',
+  })
+  state.floatTexts.push({
+    text: `-${damage}`,
+    x: b.x,
+    y: b.y - 15,
+    life: 600,
+    maxLife: 600,
+    color: '#FF4444',
+    size: 14,
+    vy: -2.5,
+    type: 'damage',
+  })
 }
 
 // ============ 子弹碰撞 ============
@@ -520,39 +564,7 @@ function checkBulletCollisions(
         state.combo++
         state.lastHitTime = now
         if (state.combo > state.maxCombo) state.maxCombo = state.combo
-
-        // 打击粒子
-        for (let j = 0; j < 8; j++) {
-          const angle = Math.random() * Math.PI * 2
-          const speed = Math.random() * 4 + 2
-          state.particles.push({
-            x: b.x, y: b.y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed - 2,
-            life: 350, maxLife: 350,
-            color: j % 2 === 0 ? '#00E5FF' : '#FFFFFF',
-            size: Math.random() * 3 + 2,
-            shape: 'spark',
-            rotation: Math.random() * 360,
-            rotationSpeed: (Math.random() - 0.5) * 10,
-          })
-        }
-        state.particles.push({
-          x: b.x, y: b.y,
-          vx: 0, vy: 0,
-          life: 200, maxLife: 200,
-          color: '#FFFFFF',
-          size: 8,
-          shape: 'circle',
-        })
-        state.floatTexts.push({
-          text: `-${b.damage}`,
-          x: b.x, y: b.y - 15,
-          life: 600, maxLife: 600,
-          color: '#FF4444',
-          size: 14, vy: -2.5,
-          type: 'damage',
-        })
+        spawnBulletHitFx(state, b, b.damage)
 
         if (enemy.hp <= 0) {
           spawnDeathEffects(state, enemy)
@@ -582,21 +594,7 @@ function checkBulletCollisions(
           hit = true
 
           if (state.player.hp <= 0) {
-            state.player.lives--
-            if (state.player.lives > 0) {
-              state.player.hp = state.player.maxHp
-              state.player.mp = state.player.maxMp
-              state.player.x = 150
-              state.player.y = C.GROUND_Y - C.PLAYER_HEIGHT
-              state.player.vx = 0
-              state.player.vy = 0
-              state.player.invincible = C.INVINCIBLE_DURATION * 3
-              state.player.attacking = false
-              state.player.knockedDown = false
-            } else {
-              state.gameOver = true
-              finishGame(false, C.GAME_OVER_DELAY)
-            }
+            handlePlayerDeath(state, finishGame)
           }
         }
       }

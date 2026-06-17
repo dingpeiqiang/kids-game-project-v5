@@ -123,6 +123,9 @@ export function renderGame(ctx: CanvasRenderingContext2D, data: GameRenderData):
   // 浮动文字
   drawFloatTexts(ctx, data.floatTexts)
 
+  // DNF 式战斗 vignette（突出角色与刀光）
+  drawCombatStageVignette(ctx)
+
   // 恢复相机偏移
   ctx.restore()
 
@@ -137,7 +140,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, data: GameRenderData):
 
   // 淡入效果
   if (data.fadeInTimer > 0) {
-    const alpha = data.fadeInTimer / 500
+    const alpha = data.fadeInTimer / C.FADE_DURATION
     ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`
     ctx.fillRect(0, 0, C.CANVAS_WIDTH, C.CANVAS_HEIGHT)
   }
@@ -175,4 +178,28 @@ export function renderGame(ctx: CanvasRenderingContext2D, data: GameRenderData):
   ctx.moveTo(C.LEFT_PANEL_WIDTH + C.CANVAS_WIDTH, 0)
   ctx.lineTo(C.LEFT_PANEL_WIDTH + C.CANVAS_WIDTH, C.CANVAS_HEIGHT)
   ctx.stroke()
+}
+
+/** DNF 副本战斗区：四周压暗，中间略亮 */
+function drawCombatStageVignette(ctx: CanvasRenderingContext2D): void {
+  const w = C.CANVAS_WIDTH
+  const h = C.CANVAS_HEIGHT
+  const cx = w * 0.5
+  const cy = C.GROUND_Y * 0.42
+
+  ctx.save()
+  const g = ctx.createRadialGradient(cx, cy, w * 0.12, cx, cy, w * 0.72)
+  g.addColorStop(0, 'rgba(0,0,0,0)')
+  g.addColorStop(0.55, 'rgba(0,0,0,0.12)')
+  g.addColorStop(1, 'rgba(0,0,0,0.48)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, w, h)
+
+  const floorShade = ctx.createLinearGradient(0, C.GROUND_Y - 40, 0, h)
+  floorShade.addColorStop(0, 'rgba(0,0,0,0)')
+  floorShade.addColorStop(1, 'rgba(0,0,0,0.25)')
+  ctx.fillStyle = floorShade
+  ctx.fillRect(0, C.GROUND_Y - 40, w, h - C.GROUND_Y + 40)
+  ctx.restore()
+}
 }

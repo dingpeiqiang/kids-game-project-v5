@@ -6,8 +6,8 @@ import * as C from './config'
 import type { Player, Enemy, Bullet, DropItem, Equipment, ScreenShake } from './types'
 import { DungeonManager } from './logic/dungeon'
 import { createPlayer } from './logic/player'
-import { createEnemy, createBoss } from './logic/enemies'
-import { updateGameLogic, type GameUpdateState } from './logic/game-update'
+import { updateGameLogic } from './logic/game-update'
+import { buildGameUpdateState, syncFromGameUpdateState } from './logic/game-state-snapshot'
 import { spawnRoomEnemiesFromState } from './logic/game-effects'
 import { renderGame, type GameRenderData } from './render/game-render'
 import { InputManager, type InputManagerCallbacks } from './logic/input-manager'
@@ -16,8 +16,6 @@ import { level1Config } from './levels/level1'
 import { level2Config } from './levels/level2'
 import { level3Config } from './levels/level3'
 import { level4Config } from './levels/level4'
-
-let activeGame: DnfRpgGame | null = null
 
 export class DnfRpgGame {
   private canvas: HTMLCanvasElement
@@ -53,9 +51,6 @@ export class DnfRpgGame {
   private roomClearTimer = 0
   private doorOpen = false
   private doorReached = false
-  private levelTransition = false
-  private transitionTimer = 0
-  private currentLevelName = ''
   private fadeInTimer = 0
 
   private transitionPhase: 'none' | 'slide_out' | 'slide_in' = 'none'
@@ -156,7 +151,6 @@ export class DnfRpgGame {
     this.roomCleared = false
     this.doorOpen = false
     this.doorReached = false
-    this.levelTransition = false
 
     this.cameraX = 0
     this.targetCameraX = 0
@@ -168,43 +162,13 @@ export class DnfRpgGame {
       this.player.vy = 0
     }
 
-    this.currentLevelName = this.dungeon.getCurrentLevel().name
     this.spawnRoomEnemies()
   }
 
   private spawnRoomEnemies(): void {
-    const state: GameUpdateState = {
-      player: this.player,
-      enemies: this.enemies,
-      bullets: this.bullets,
-      drops: this.drops,
-      particles: this.particles,
-      shockwaves: this.shockwaves,
-      floatTexts: this.floatTexts,
-      inventory: this.inventory,
-      score: this.score,
-      gold: this.gold,
-      combo: this.combo,
-      lastHitTime: this.lastHitTime,
-      maxCombo: this.maxCombo,
-      shownComboMilestones: [],
-      roomCleared: this.roomCleared,
-      roomClearTimer: this.roomClearTimer,
-      doorOpen: this.doorOpen,
-      doorReached: this.doorReached,
-      gameOver: this.gameOver,
-      victory: this.victory,
-      cameraX: this.cameraX,
-      targetCameraX: this.targetCameraX,
-      fadeInTimer: this.fadeInTimer,
-      transitionPhase: this.transitionPhase,
-      transitionProgress: this.transitionProgress,
-      screenShake: this.screenShake,
-    }
+    const state = buildGameUpdateState(this)
     spawnRoomEnemiesFromState(state, this.dungeon)
-    this.enemies = state.enemies
-    this.roomCleared = state.roomCleared
-    this.doorOpen = state.doorOpen
+    syncFromGameUpdateState(this, state)
   }
 
   private cleanup(): void {
@@ -216,40 +180,13 @@ export class DnfRpgGame {
   private lastFrameTimeRef = { value: 0 }
 
   private update(): void {
-    if (this.inCharSelect || this.levelTransition) return
+    if (this.inCharSelect) return
 
     const now = Date.now()
     const dt = this.lastFrameTime === 0 ? 16 : Math.min(now - this.lastFrameTime, 50)
     this.lastFrameTime = now
 
-    const state: GameUpdateState = {
-      player: this.player,
-      enemies: this.enemies,
-      bullets: this.bullets,
-      drops: this.drops,
-      particles: this.particles,
-      shockwaves: this.shockwaves,
-      floatTexts: this.floatTexts,
-      inventory: this.inventory,
-      score: this.score,
-      gold: this.gold,
-      combo: this.combo,
-      lastHitTime: this.lastHitTime,
-      maxCombo: this.maxCombo,
-      shownComboMilestones: [],
-      roomCleared: this.roomCleared,
-      roomClearTimer: this.roomClearTimer,
-      doorOpen: this.doorOpen,
-      doorReached: this.doorReached,
-      gameOver: this.gameOver,
-      victory: this.victory,
-      cameraX: this.cameraX,
-      targetCameraX: this.targetCameraX,
-      fadeInTimer: this.fadeInTimer,
-      transitionPhase: this.transitionPhase,
-      transitionProgress: this.transitionProgress,
-      screenShake: this.screenShake,
-    }
+    const state = buildGameUpdateState(this)
 
     updateGameLogic(
       state,
@@ -261,32 +198,7 @@ export class DnfRpgGame {
       this.lastFrameTimeRef,
     )
 
-    this.player = state.player
-    this.enemies = state.enemies
-    this.bullets = state.bullets
-    this.drops = state.drops
-    this.particles = state.particles
-    this.shockwaves = state.shockwaves
-    this.floatTexts = state.floatTexts
-    this.inventory = state.inventory
-    this.score = state.score
-    this.gold = state.gold
-    this.combo = state.combo
-    this.lastHitTime = state.lastHitTime
-    this.maxCombo = state.maxCombo
-    this.shownComboMilestones = state.shownComboMilestones
-    this.roomCleared = state.roomCleared
-    this.roomClearTimer = state.roomClearTimer
-    this.doorOpen = state.doorOpen
-    this.doorReached = state.doorReached
-    this.gameOver = state.gameOver
-    this.victory = state.victory
-    this.cameraX = state.cameraX
-    this.targetCameraX = state.targetCameraX
-    this.fadeInTimer = state.fadeInTimer
-    this.transitionPhase = state.transitionPhase
-    this.transitionProgress = state.transitionProgress
-    this.screenShake = state.screenShake
+    syncFromGameUpdateState(this, state)
   }
 
   private render(): void {
@@ -326,7 +238,6 @@ export function startDnfRpgLifecycle(lifecycleCtx: GameLifecycleContext): GameLi
   const canvas = lifecycleCtx.canvas!
   try {
     const game = new DnfRpgGame(engine, canvas)
-    activeGame = game
     return hostCanvas2D(lifecycleCtx, {
       onInit() {
         game.beginPlay()
@@ -340,7 +251,6 @@ export function startDnfRpgLifecycle(lifecycleCtx: GameLifecycleContext): GameLi
       },
       onDestroy() {
         game.destroy()
-        activeGame = null
       },
     })
   } catch (error) {

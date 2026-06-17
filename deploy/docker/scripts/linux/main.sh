@@ -29,12 +29,16 @@ show_help() {
     echo "  -h, --help          显示帮助信息"
     echo ""
     echo "服务名:"
+    echo "  mysql              MySQL 数据库"
+    echo "  redis              Redis 缓存"
     echo "  backend            后端服务"
     echo "  frontend           前端服务"
     echo "  kids-game-simple   儿童游戏终端服务"
     echo "  all                所有服务（默认）"
     echo ""
     echo "示例:"
+    echo "  $0 -d mysql                      # 启动 MySQL"
+    echo "  $0 -d redis                      # 启动 Redis"
     echo "  $0 -d backend                    # 部署后端"
     echo "  $0 -b frontend                   # 只构建前端"
     echo "  $0 -s all                        # 启动所有服务"
@@ -54,18 +58,20 @@ show_menu() {
         echo "儿童游戏平台 - 容器部署管理 (Linux)"
         echo "========================================="
         echo ""
-        echo "  1) 部署后端服务"
-        echo "  2) 部署前端服务"
-        echo "  3) 部署 kids-game-simple"
-        echo "  4) 全量部署"
-        echo "  5) 只构建镜像"
-        echo "  6) 只启动服务"
-        echo "  7) 重启服务"
-        echo "  8) 查看服务状态"
-        echo "  9) 清理旧镜像"
+        echo "  1) 启动 MySQL"
+        echo "  2) 启动 Redis"
+        echo "  3) 部署后端服务"
+        echo "  4) 部署前端服务"
+        echo "  5) 部署 kids-game-simple"
+        echo "  6) 全量部署"
+        echo "  7) 只构建镜像"
+        echo "  8) 只启动服务"
+        echo "  9) 重启服务"
+        echo "  10) 查看服务状态"
+        echo "  11) 清理旧镜像"
         echo "  0) 退出"
         echo ""
-        printf "请选择 [0-9]: "
+        printf "请选择 [0-11]: "
         read -r choice
         echo ""
         
@@ -75,18 +81,24 @@ show_menu() {
                 exit 0
                 ;;
             1)
-                main_deploy "backend"
+                main_deploy "mysql"
                 ;;
             2)
-                main_deploy "frontend"
+                main_deploy "redis"
                 ;;
             3)
-                main_deploy "kids-game-simple"
+                main_deploy "backend"
                 ;;
             4)
-                main_deploy "all"
+                main_deploy "frontend"
                 ;;
             5)
+                main_deploy "kids-game-simple"
+                ;;
+            6)
+                main_deploy "all"
+                ;;
+            7)
                 echo "选择要构建的服务:"
                 echo "  1) 后端"
                 echo "  2) 前端"
@@ -102,42 +114,50 @@ show_menu() {
                     *) echo "无效选择" ;;
                 esac
                 ;;
-            6)
-                echo "选择要启动的服务:"
-                echo "  1) 后端"
-                echo "  2) 前端"
-                echo "  3) kids-game-simple"
-                echo "  4) 全部"
-                printf "请选择: "
-                read -r sub_choice
-                case $sub_choice in
-                    1) main_start "backend" ;;
-                    2) main_start "frontend" ;;
-                    3) main_start "kids-game-simple" ;;
-                    4) main_start "all" ;;
-                    *) echo "无效选择" ;;
-                esac
-                ;;
-            7)
-                echo "选择要重启的服务:"
-                echo "  1) 后端"
-                echo "  2) 前端"
-                echo "  3) kids-game-simple"
-                echo "  4) 全部"
-                printf "请选择: "
-                read -r sub_choice
-                case $sub_choice in
-                    1) main_restart "backend" ;;
-                    2) main_restart "frontend" ;;
-                    3) main_restart "kids-game-simple" ;;
-                    4) main_restart "all" ;;
-                    *) echo "无效选择" ;;
-                esac
-                ;;
             8)
-                main_status
+                echo "选择要启动的服务:"
+                echo "  1) MySQL"
+                echo "  2) Redis"
+                echo "  3) 后端"
+                echo "  4) 前端"
+                echo "  5) kids-game-simple"
+                echo "  6) 全部"
+                printf "请选择: "
+                read -r sub_choice
+                case $sub_choice in
+                    1) main_start "mysql" ;;
+                    2) main_start "redis" ;;
+                    3) main_start "backend" ;;
+                    4) main_start "frontend" ;;
+                    5) main_start "kids-game-simple" ;;
+                    6) main_start "all" ;;
+                    *) echo "无效选择" ;;
+                esac
                 ;;
             9)
+                echo "选择要重启的服务:"
+                echo "  1) MySQL"
+                echo "  2) Redis"
+                echo "  3) 后端"
+                echo "  4) 前端"
+                echo "  5) kids-game-simple"
+                echo "  6) 全部"
+                printf "请选择: "
+                read -r sub_choice
+                case $sub_choice in
+                    1) main_restart "mysql" ;;
+                    2) main_restart "redis" ;;
+                    3) main_restart "backend" ;;
+                    4) main_restart "frontend" ;;
+                    5) main_restart "kids-game-simple" ;;
+                    6) main_restart "all" ;;
+                    *) echo "无效选择" ;;
+                esac
+                ;;
+            10)
+                main_status
+                ;;
+            11)
                 main_cleanup
                 ;;
             *)
@@ -145,7 +165,7 @@ show_menu() {
                 ;;
         esac
         
-        if [ $choice -ne 8 ]; then
+        if [ $choice -ne 10 ]; then
             printf "按回车继续... "
             read -r _
         fi

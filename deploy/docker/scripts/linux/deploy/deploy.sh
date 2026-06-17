@@ -81,9 +81,12 @@ deploy_service() {
     log_cyan "部署 $service"
     log_cyan "========================================"
     
-    # 构建服务
-    source "$SCRIPT_DIR/../build/build.sh"
-    build_service "$service"
+    # MySQL 和 Redis 不需要构建，直接启动
+    if [ "$service" != "mysql" ] && [ "$service" != "redis" ]; then
+        # 构建服务
+        source "$SCRIPT_DIR/../build/build.sh"
+        build_service "$service"
+    fi
     
     # 启动服务
     start_service "$service"
@@ -97,6 +100,8 @@ deploy_all() {
     log_cyan "全量部署"
     log_cyan "========================================"
     
+    deploy_service "mysql"
+    deploy_service "redis"
     deploy_service "backend"
     deploy_service "frontend"
     deploy_service "kids-game-simple"
@@ -109,7 +114,7 @@ main() {
     local service="${1:-all}"
     
     case $service in
-        backend|frontend|kids-game-simple)
+        mysql|redis|backend|frontend|kids-game-simple)
             deploy_service "$service"
             ;;
         all)

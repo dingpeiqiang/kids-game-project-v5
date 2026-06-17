@@ -3,8 +3,9 @@
  * 保持DNF风格但去除过度装饰，确保画面清晰不杂乱
  */
 
-import type { DungeonRoom } from '../types'
+import type { DungeonRoom, Platform } from '../types'
 import * as C from '../config'
+import { getDungeonTheme } from './dungeon-theme'
 
 // ============ 视差系数 ============
 const PARALLAX_FAR = 0.15
@@ -27,11 +28,21 @@ export function drawDungeonBackground(
   // 3. 远景层（简化：一层远景柱子 + 火把光）
   drawFarLayer(ctx, room, camX)
 
-  // 4. 墙壁主体 + 地面（全地图地面风格）
-  drawWallAndGround(ctx, room, camX)
+  const theme = getDungeonTheme(room)
+
+  // 4. 墙壁主体 + 地面（按关卡配色 / 主题）
+  drawWallAndGround(ctx, room, camX, theme)
+
+  // 4b. 可站立平台（DNF 式浮空台）
+  if (room.platforms?.length) {
+    drawPlatforms(ctx, room.platforms, camX, theme)
+  }
 
   // 5. 近景装饰（少量，带可视范围裁剪优化）
   drawNearDecorations(ctx, room, camX)
+
+  // 6. 房间名条（副本感）
+  drawRoomNamePlate(ctx, room.name, camX)
 
   // 6. 障碍物
   if (room.obstacles && room.obstacles.length > 0) {
@@ -249,19 +260,29 @@ function drawFarLayer(ctx: CanvasRenderingContext2D, room: DungeonRoom, camX: nu
   })
 }
 
-// ============ 墙壁 + 地面（DNF风格）============
-function drawWallAndGround(ctx: CanvasRenderingContext2D, room: DungeonRoom, camX: number): void {
+// ============ 墙壁 + 地面（DNF风格，主题驱动）============
+function drawWallAndGround(
+  ctx: CanvasRenderingContext2D,
+  room: DungeonRoom,
+  camX: number,
+  theme: ReturnType<typeof getDungeonTheme>,
+): void {
   const bg = parseHexColor(room.bgColor)
-  const groundColor = parseHexColor(room.groundColor)
 
-  // ===== DNF风格：天空/洞穴顶部 =====
   const skyGrad = ctx.createLinearGradient(0, 0, 0, C.GROUND_Y)
-  skyGrad.addColorStop(0, '#1a0a0a')           // 顶部深邃
-  skyGrad.addColorStop(0.3, '#2d1515')        // 暗红过渡
-  skyGrad.addColorStop(0.6, '#3d1a1a')        // 主色调
-  skyGrad.addColorStop(1, '#4a2020')          // 接近地面
+  skyGrad.addColorStop(0, theme.wallTop)
+  skyGrad.addColorStop(0.35, theme.wallMid)
+  skyGrad.addColorStop(0.72, theme.wallBottom)
+  skyGrad.addColorStop(1, room.bgColor)
   ctx.fillStyle = skyGrad
   ctx.fillRect(0, 0, room.width, C.GROUND_Y)
+
+  // 地面附近薄雾（格兰之森 / 废墟层次感）
+  const fogGrad = ctx.createLinearGradient(0, C.GROUND_Y - 120, 0, C.GROUND_Y)
+  fogGrad.addColorStop(0, 'transparent')
+  fogGrad.addColorStop(1, theme.fogColor)
+  ctx.fillStyle = fogGrad
+  ctx.fillRect(0, C.GROUND_Y - 120, room.width, 120)
 
   // ===== 远景层：远处的拱门和阴影 =====
   const farOffset = camX * 0.15
@@ -277,8 +298,7 @@ function drawWallAndGround(ctx: CanvasRenderingContext2D, room: DungeonRoom, cam
     ctx.arc(archX, C.GROUND_Y - 80, 50, Math.PI, 0)
     ctx.fill()
     
-    // 远景拱门轮廓
-    ctx.strokeStyle = 'rgba(80, 40, 40, 0.5)'
+    ctx.strokeStyle = theme.archStroke
     ctx.lineWidth = 3
     ctx.beginPath()
     ctx.arc(archX, C.GROUND_Y - 80, 48, Math.PI, 0)
@@ -300,26 +320,24 @@ function drawWallAndGround(ctx: CanvasRenderingContext2D, room: DungeonRoom, cam
     
     // 石柱主体
     const pillarGrad = ctx.createLinearGradient(px - 15, 0, px + 15, 0)
-    pillarGrad.addColorStop(0, '#5a4040')
-    pillarGrad.addColorStop(0.3, '#7a5555')
-    pillarGrad.addColorStop(0.7, '#7a5555')
-    pillarGrad.addColorStop(1, '#5a4040')
+    pillarGrad.addColorStop(0, theme.pillarDark)
+    pillarGrad.addColorStop(0.35, theme.pillarLight)
+    pillarGrad.addColorStop(0.65, theme.pillarLight)
+    pillarGrad.addColorStop(1, theme.pillarDark)
     ctx.fillStyle = pillarGrad
     ctx.fillRect(px - 15, C.CEILING_Y, 30, C.GROUND_Y - C.CEILING_Y - 20)
     
-    // 石柱顶部装饰
-    ctx.fillStyle = '#8a6060'
+    ctx.fillStyle = theme.pillarLight
     ctx.fillRect(px - 18, C.CEILING_Y, 36, 8)
     ctx.fillRect(px - 20, C.CEILING_Y + 8, 40, 4)
     
     // 石柱底部装饰
-    ctx.fillStyle = '#8a6060'
+    ctx.fillStyle = theme.pillarLight
     ctx.fillRect(px - 18, C.GROUND_Y - 28, 36, 8)
     ctx.fillRect(px - 20, C.GROUND_Y - 32, 40, 4)
   }
 
-  // ===== 墙壁砖纹 =====
-  ctx.strokeStyle = 'rgba(60, 30, 30, 0.4)'
+  ctx.strokeStyle = theme.brickStroke
   ctx.lineWidth = 1
   const brickW = 35
   const brickH = 18
@@ -358,15 +376,14 @@ function drawWallAndGround(ctx: CanvasRenderingContext2D, room: DungeonRoom, cam
 
   // 地面主体
   const groundGrad = ctx.createLinearGradient(0, C.GROUND_Y, 0, C.CANVAS_HEIGHT)
-  groundGrad.addColorStop(0, '#5a4a3a')
-  groundGrad.addColorStop(0.3, '#4a3a2a')
-  groundGrad.addColorStop(0.7, '#3a2a1a')
-  groundGrad.addColorStop(1, '#2a1a10')
+  groundGrad.addColorStop(0, theme.groundTop)
+  groundGrad.addColorStop(0.35, theme.groundMid)
+  groundGrad.addColorStop(0.75, theme.groundBottom)
+  groundGrad.addColorStop(1, darkenColor(parseHexColor(room.groundColor), 0.5))
   ctx.fillStyle = groundGrad
   ctx.fillRect(0, C.GROUND_Y, room.width, groundHeight)
 
-  // 地面石板纹理
-  ctx.strokeStyle = 'rgba(80, 60, 40, 0.3)'
+  ctx.strokeStyle = theme.slabStroke
   ctx.lineWidth = 1
   
   const slabW = 50
@@ -392,9 +409,8 @@ function drawWallAndGround(ctx: CanvasRenderingContext2D, room: DungeonRoom, cam
     }
   }
 
-  // 地面边缘高光
-  ctx.fillStyle = 'rgba(120, 100, 80, 0.4)'
-  ctx.fillRect(0, C.GROUND_Y, room.width, 2)
+  ctx.fillStyle = theme.groundHighlight
+  ctx.fillRect(0, C.GROUND_Y, room.width, 3)
 
   // ===== 火把光效 =====
   const torchOffset = camX * 0.2
@@ -434,6 +450,119 @@ function drawWallAndGround(ctx: CanvasRenderingContext2D, room: DungeonRoom, cam
     ctx.fillStyle = '#8a6a4a'
     ctx.fillRect(tx - 8, C.GROUND_Y - 60, 16, 4)
   }
+}
+
+function drawPlatforms(
+  ctx: CanvasRenderingContext2D,
+  platforms: Platform[],
+  camX: number,
+  theme: ReturnType<typeof getDungeonTheme>,
+): void {
+  for (const pl of platforms) {
+    const sx = pl.x
+    if (sx + pl.width < camX - 40 || sx > camX + C.CANVAS_WIDTH + 40) continue
+
+    const h = pl.height || C.PLATFORM_HEIGHT
+    const top = pl.y
+
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'
+    ctx.fillRect(sx + 4, top + h, pl.width - 8, C.PLATFORM_SHADOW_OFFSET + 2)
+
+    const grad = ctx.createLinearGradient(sx, top, sx, top + h)
+    switch (pl.type) {
+      case 'wood':
+        grad.addColorStop(0, '#8a6a4a')
+        grad.addColorStop(1, '#5a4030')
+        break
+      case 'ruin':
+        grad.addColorStop(0, theme.pillarLight)
+        grad.addColorStop(1, theme.pillarDark)
+        break
+      case 'magic':
+        grad.addColorStop(0, 'rgba(180, 120, 255, 0.9)')
+        grad.addColorStop(1, 'rgba(80, 40, 120, 0.95)')
+        break
+      case 'float':
+        grad.addColorStop(0, theme.groundTop)
+        grad.addColorStop(1, theme.groundMid)
+        break
+      default:
+        grad.addColorStop(0, theme.groundTop)
+        grad.addColorStop(1, theme.groundBottom)
+    }
+    ctx.fillStyle = grad
+    ctx.fillRect(sx, top, pl.width, h)
+
+    ctx.strokeStyle = theme.groundHighlight
+    ctx.lineWidth = 2
+    ctx.strokeRect(sx + 0.5, top + 0.5, pl.width - 1, h - 1)
+
+    if (pl.type === 'ruin' || pl.type === 'stone') {
+      ctx.strokeStyle = theme.slabStroke
+      ctx.lineWidth = 1
+      for (let i = 1; i < 4; i++) {
+        const lx = sx + (pl.width / 4) * i
+        ctx.beginPath()
+        ctx.moveTo(lx, top + 2)
+        ctx.lineTo(lx, top + h - 2)
+        ctx.stroke()
+      }
+    }
+  }
+}
+
+/** 屏幕左上角房间名牌（副本名） */
+function drawRoomNamePlate(ctx: CanvasRenderingContext2D, roomName: string, camX: number): void {
+  const padX = 14
+  const padY = 10
+  const text = roomName
+  ctx.font = 'bold 15px "Microsoft YaHei", sans-serif'
+  const tw = ctx.measureText(text).width
+  const boxW = tw + padX * 2
+  const boxH = 28
+  const x = 12
+  const y = C.CEILING_Y + 6
+
+  ctx.save()
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'
+  ctx.strokeStyle = 'rgba(255, 215, 120, 0.45)'
+  ctx.lineWidth = 1
+  roundRect(ctx, x, y, boxW, boxH, 4)
+  ctx.fill()
+  ctx.stroke()
+
+  ctx.fillStyle = 'rgba(255, 235, 180, 0.95)'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, x + padX, y + boxH / 2)
+
+  ctx.strokeStyle = 'rgba(255, 180, 60, 0.25)'
+  ctx.beginPath()
+  ctx.moveTo(x + 4, y + boxH + 4)
+  ctx.lineTo(x + boxW - 4, y + boxH + 4)
+  ctx.stroke()
+  ctx.restore()
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+  ctx.lineTo(x + r, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+  ctx.lineTo(x, y + r)
+  ctx.quadraticCurveTo(x, y, x + r, y)
+  ctx.closePath()
 }
 
 // ============ 近景装饰（少量） ============

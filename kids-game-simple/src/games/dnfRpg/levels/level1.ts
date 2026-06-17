@@ -27,6 +27,11 @@ export const level1Config: LevelConfig = {
         { type: 'box', x: 400, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
         { type: 'box', x: 650, y: 272, width: 35, height: 28, destructible: true, hp: 25, state: 'normal' },
       ],
+      platforms: [
+        { x: 320, y: 248, width: 88, height: 14, type: 'wood' },
+        { x: 520, y: 228, width: 72, height: 14, type: 'stone' },
+        { x: 680, y: 255, width: 64, height: 14, type: 'ruin' },
+      ],
       decorations: [
         { type: 'torch', x: 80, y: 250 },
         { type: 'pillar', x: 180, y: 300 },

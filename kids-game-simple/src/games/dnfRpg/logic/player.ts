@@ -135,16 +135,17 @@ export function updatePlayer(player: Player, input: InputState, dt: number, room
     // 击倒期间也允许操作（攻击/技能可取消击倒）
   }
 
-  // 技能使用中（允许移动和操作，仅减速）
-  if (p.usingSkill1 || p.usingSkill2) {
+  // 技能使用中（DNF 式：施法帧内略减速，四技能共用 skillTimer）
+  if (p.usingSkill1 || p.usingSkill2 || p.usingSkill3 || p.usingSkill4) {
     p.skillTimer -= dt
     if (p.skillTimer <= 0) {
       p.usingSkill1 = false
       p.usingSkill2 = false
+      p.usingSkill3 = false
+      p.usingSkill4 = false
     }
-    p.vx *= 0.9
+    p.vx *= 0.88
     p.vy *= 0.9
-    // 不再 return，允许后续移动/冲刺判定
   }
 
   // 攻击状态（允许移动，仅减速）
@@ -185,7 +186,7 @@ export function updatePlayer(player: Player, input: InputState, dt: number, room
         p.attackStep = (p.attackStep + 1) % C.MAX_COMBO_STEPS
       }
       p.attacking = true
-      p.attackTimer = 300
+      p.attackTimer = 280
       p.lastAttackTime = now
       attackTriggered = true
 
