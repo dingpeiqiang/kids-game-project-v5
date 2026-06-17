@@ -182,8 +182,8 @@ main() {
     esac
     
     # 显示状态
-    source "$SCRIPT_DIR/../status/status.sh"
-    show_status
+    log_blue "=== 服务状态 ==="
+    $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" ps
 }
 
 # 执行（只有直接执行脚本时才调用 main）
