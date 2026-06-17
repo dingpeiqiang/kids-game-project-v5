@@ -131,7 +131,7 @@ Write-Host "              Build Complete"
 Write-Host "============================================`n"
 
 $buildVariant = if ($BuildType -eq "debug") { "debug" } else { "release" }
-$apkPath = Join-Path $androidPath "app\build\outputs\apk\$buildVariant\app-$buildVariant.apk"
+$apkPath = Join-Path $androidPath "app\build\outputs\apk\$buildVariant\StarPlayEdu-$buildVariant.apk"
 
 if (Test-Path $apkPath) {
     $apkSize = (Get-Item $apkPath).Length / 1MB

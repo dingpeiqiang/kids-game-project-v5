@@ -6,6 +6,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/utils.sh"
 
+
+
+
 # 检查目录结构（必须先执行，以定义 DEPLOY_LOG）
 check_directories() {
     echo "=== 检查目录结构 ==="
