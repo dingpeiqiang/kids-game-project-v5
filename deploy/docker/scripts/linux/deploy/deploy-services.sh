@@ -44,20 +44,35 @@ check_dependencies() {
     return 0
 }
 
-# 健康检查
+# 健康检查（带实时日志输出）
 health_check() {
     local service=$1
     local max_wait=$2
     local check_url=$3
     
     log_info "等待 $service 启动..."
+    log_info "实时日志输出（按 Ctrl+C 可停止查看日志，但不影响启动）:"
+    
+    # 在后台显示实时日志
+    local log_tail_pid
+    $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" logs -f "$service" 2>&1 | while read -r line; do
+        echo -e "${GREY}[LOG]${NC} $line"
+    done &
+    log_tail_pid=$!
+    
+    # 设置 trap 在退出时清理日志进程
+    trap "kill $log_tail_pid 2>/dev/null; trap - INT; return 1" INT
     
     local start_time=$(date +%s)
     local end_time=$((start_time + max_wait))
+    local last_log_time=$start_time
     
     while [ $(date +%s) -lt $end_time ]; do
         # 先检查容器是否运行
         if ! $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" ps "$service" | grep -q "Up"; then
+            kill $log_tail_pid 2>/dev/null
+            trap - INT
+            echo ""
             log_error "$service 容器已停止"
             log_info "查看 $service 日志:"
             $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" logs --tail=30 "$service"
@@ -66,17 +81,29 @@ health_check() {
         
         # 尝试健康检查
         if $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" exec -T "$service" sh -c "curl -s -f $check_url" 2>/dev/null; then
+            kill $log_tail_pid 2>/dev/null
+            trap - INT
+            echo ""
             log_info "$service 健康检查通过"
             return 0
         fi
         
-        log_info "$service 容器已启动，等待服务就绪..."
-        sleep 5
+        # 每10秒输出一次等待提示（避免刷屏）
+        local current_time=$(date +%s)
+        if [ $((current_time - last_log_time)) -ge 10 ]; then
+            log_info "$service 容器已启动，等待服务就绪... (已等待 $((current_time - start_time)) 秒)"
+            last_log_time=$current_time
+        fi
+        
+        sleep 2
     done
     
-    log_error "$service 健康检查超时"
+    kill $log_tail_pid 2>/dev/null
+    trap - INT
+    echo ""
+    log_error "$service 健康检查超时（超过 $max_wait 秒）"
     log_info "查看 $service 日志:"
-    $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" logs --tail=30 "$service"
+    $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" logs --tail=50 "$service"
     return 1
 }
 
