@@ -26,9 +26,8 @@ nul
 *.swo
 *~
 
-# 编译输出
+# 编译输出（build 需要提交，dist 忽略）
 target/
-build/
 dist/
 out/
 
