@@ -70,10 +70,10 @@ services:
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/kidgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://kids-game-mysql:3306/kidgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-kidgame}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-kidgame123}
-      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_HOST: kids-game-redis
       SPRING_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-change-in-production}
       JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
@@ -84,6 +84,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    links:
+      - mysql:kids-game-mysql
+      - redis:kids-game-redis
     volumes:
       - ./logs:/app/logs
       - backend-uploads:/app/uploads
