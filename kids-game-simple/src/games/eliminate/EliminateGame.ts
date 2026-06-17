@@ -161,6 +161,9 @@ export class EliminateGame {
   private readonly FALL_SPEED_ROWS_PER_SEC = 11
   private resolveAnimStartMs = 0
   private readonly RESOLVE_ANIM_MAX_MS = 4000
+  private levelAdvanceTimer: ReturnType<typeof setTimeout> | null = null
+  private gameCompleteTimer: ReturnType<typeof setTimeout> | null = null
+  private resetBoardTimer: ReturnType<typeof setTimeout> | null = null
   
 
   
@@ -349,23 +352,22 @@ export class EliminateGame {
       // 尝试进入下一关
       const nextLevel = getNextLevel(this.currentLevel)
       if (nextLevel) {
-        // 延迟播放胜利音效，避免与提示音重叠
-        setTimeout(() => {
-          audioService.win()
-        }, 300)
-        
-        setTimeout(() => {
+        setTimeout(() => audioService.win(), 300)
+        if (this.levelAdvanceTimer) clearTimeout(this.levelAdvanceTimer)
+        this.levelAdvanceTimer = setTimeout(() => {
+          this.levelAdvanceTimer = null
           this.initLevel(nextLevel.level)
-        }, 1500)
-        return true
-      } else {
-        // 所有关卡完成 - 只播放一次胜利音效
-        setTimeout(() => {
-          audioService.win()
-          this.showGameCompleteHint()
-        }, 300)
+        }, 1200)
         return true
       }
+      setTimeout(() => audioService.win(), 300)
+      this.comboSystem.addText('�� 全部通关!', this.W / 2, this.H / 2 - 40)
+      if (this.gameCompleteTimer) clearTimeout(this.gameCompleteTimer)
+      this.gameCompleteTimer = setTimeout(() => {
+        this.gameCompleteTimer = null
+        this.finishWithPlatformResult(true)
+      }, 800)
+      return true
     }
     
     return false
@@ -609,8 +611,24 @@ export class EliminateGame {
     }
   }
   
+  private clearScheduledTimers() {
+    if (this.levelAdvanceTimer) {
+      clearTimeout(this.levelAdvanceTimer)
+      this.levelAdvanceTimer = null
+    }
+    if (this.gameCompleteTimer) {
+      clearTimeout(this.gameCompleteTimer)
+      this.gameCompleteTimer = null
+    }
+    if (this.resetBoardTimer) {
+      clearTimeout(this.resetBoardTimer)
+      this.resetBoardTimer = null
+    }
+  }
+
   /** 壳层退出 / 重开时释放输入 */
   destroy(): void {
+    this.clearScheduledTimers()
     this.teardownInput()
   }
 

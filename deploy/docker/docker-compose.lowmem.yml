@@ -80,7 +80,7 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: deploy/docker/Dockerfile.backend.lowmem
+      dockerfile: docker/Dockerfile.backend.lowmem
     container_name: kids-game-backend
     restart: unless-stopped
     environment:
@@ -136,7 +136,7 @@ services:
     image: kids-game-frontend:latest
     build:
       context: ..
-      dockerfile: deploy/docker/Dockerfile.frontend
+      dockerfile: docker/Dockerfile.frontend
     container_name: kids-game-frontend
     restart: unless-stopped
     environment:
@@ -169,7 +169,7 @@ services:
     image: kids-game-simple-game:latest
     build:
       context: ..
-      dockerfile: deploy/docker/Dockerfile.kids-game-simple
+      dockerfile: docker/Dockerfile.kids-game-simple
     container_name: kids-game-simple-game
     restart: unless-stopped
     environment:

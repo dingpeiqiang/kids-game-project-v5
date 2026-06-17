@@ -61,7 +61,7 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: deploy/docker/Dockerfile.backend
+      dockerfile: docker/Dockerfile.backend
     container_name: kids-game-backend
     restart: unless-stopped
     environment:
@@ -103,7 +103,7 @@ services:
   frontend:
     build:
       context: ..
-      dockerfile: deploy/docker/Dockerfile.frontend
+      dockerfile: docker/Dockerfile.frontend
     container_name: kids-game-frontend
     restart: unless-stopped
     environment:
@@ -133,7 +133,7 @@ services:
   games:
     build:
       context: ..
-      dockerfile: deploy/docker/Dockerfile.games
+      dockerfile: docker/Dockerfile.games
     container_name: kids-game-games
     restart: unless-stopped
     environment:
@@ -160,7 +160,7 @@ services:
   kids-game-simple:
     build:
       context: ..
-      dockerfile: deploy/docker/Dockerfile.kids-game-simple
+      dockerfile: docker/Dockerfile.kids-game-simple
     container_name: kids-game-simple
     restart: unless-stopped
     environment:
