@@ -171,9 +171,9 @@ show_menu() {
 # 构建并部署
 main_build_and_deploy() {
     local service="$1"
+    check_all
     echo "构建并部署日志: $DEPLOY_LOG" > "$DEPLOY_LOG"
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
-    check_all
     cd "$DOCKER_DIR"
     
     # 直接调用 deploy_service，它会先构建再启动，避免重复构建
@@ -198,9 +198,9 @@ main_build() {
 # 只部署
 main_deploy() {
     local service="$1"
+    check_all
     echo "部署日志: $DEPLOY_LOG" > "$DEPLOY_LOG"
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
-    check_all
     cd "$DOCKER_DIR"
     source "$MAIN_SCRIPT_DIR/deploy/deploy-services.sh"
     
@@ -222,9 +222,9 @@ main_deploy() {
 # 重启服务
 main_restart() {
     local service="$1"
+    check_all
     echo "重启日志: $DEPLOY_LOG" > "$DEPLOY_LOG"
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
-    check_all
     cd "$DOCKER_DIR"
     source "$MAIN_SCRIPT_DIR/restart/restart.sh"
     main "$service"
@@ -233,9 +233,9 @@ main_restart() {
 
 # 清理镜像
 main_cleanup() {
+    check_all
     echo "清理日志: $DEPLOY_LOG" > "$DEPLOY_LOG"
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
-    check_all
     cd "$DOCKER_DIR"
     source "$MAIN_SCRIPT_DIR/cleanup/cleanup.sh"
     main "images"
