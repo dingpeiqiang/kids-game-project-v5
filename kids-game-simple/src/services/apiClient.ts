@@ -15,11 +15,43 @@
  *   游戏分数、道具、成就、战绩 —— 后端对应接口尚未完全实现
  */
 
-// 后端基地址：通过 .env 注入，默认指向 kids-game-backend
-// 开发环境使用相对路径 /api，走 Vite 代理；生产环境使用完整 URL
-const API_BASE = import.meta.env.DEV 
-  ? '/api'  // 开发环境：使用 /api 前缀，由 Vite 代理到 http://localhost:8080/api
-  : ((import.meta.env.VITE_API_BASE as string) || 'http://localhost:8080/api')
+// 后端基地址：开发走 Vite 代理；生产默认同源 /api（Nginx → backend）
+function resolveApiBase(): string {
+  const raw = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
+  if (import.meta.env.DEV) return '/api'
+  if (!raw) return '/api'
+  if (raw.startsWith('/')) return raw.replace(/\/$/, '') || '/api'
+
+  if (typeof window !== 'undefined') {
+    const pageHost = window.location.hostname
+    const pageIsLocal = pageHost === 'localhost' || pageHost === '127.0.0.1'
+    try {
+      const apiHost = new URL(raw).hostname
+      const apiIsLocal = apiHost === 'localhost' || apiHost === '127.0.0.1'
+      if (!pageIsLocal && apiIsLocal) {
+        console.warn('[apiClient] 页面非本机访问但 API 指向 localhost，已改为同源 /api:', raw)
+        return '/api'
+      }
+    } catch {
+      /* 非法 URL，走默认 */
+      return '/api'
+    }
+  }
+  return raw.replace(/\/$/, '')
+}
+
+const API_BASE = resolveApiBase()
+
+function apiUrl(path: string): string {
+  const p = path.startsWith('/') ? path : `/${path}`
+  if (API_BASE.endsWith('/api') && p.startsWith('/api/')) {
+    return `${API_BASE}${p.slice(4)}`
+  }
+  if (API_BASE.endsWith('/api') && p === '/api') {
+    return API_BASE
+  }
+  return `${API_BASE}${p}`
+}
 
 // ─────────────────────────────────────────────
 // 通用响应结构（kids-game-backend Result<T>）
@@ -178,7 +210,7 @@ async function request<T = any>(
   }
 
   try {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
+    const res = await fetch(apiUrl(path), { ...options, headers })
     const json = await res.json()
     return deepCamelize(json)
   } catch (err) {
