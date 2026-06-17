@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import { apiClient } from '@/services/api-client.service'
 
 export interface UserControlConfig {
   configId: number
@@ -26,76 +26,35 @@ export interface ConfigListParams {
   size?: number
 }
 
-/**
- * 获取管控配置列表（分页）
- */
 export function getConfigList(params: ConfigListParams) {
-  return request<any, { records: UserControlConfig[]; total: number }>({
-    url: '/api/user-control-config/list',
-    method: 'get',
-    params
-  })
+  return apiClient.get<{ records: UserControlConfig[]; total: number }>(
+    '/api/user-control-config/list',
+    { params } as never,
+  )
 }
 
-/**
- * 根据用户 ID 获取单个配置
- */
 export function getConfigByUserId(userId: number) {
-  return request<UserControlConfig>({
-    url: `/api/user-control-config/user/${userId}`,
-    method: 'get'
-  })
+  return apiClient.get<UserControlConfig>(`/api/user-control-config/user/${userId}`)
 }
 
-/**
- * 获取管控配置详情（通过 configId）
- */
 export function getConfigDetail(configId: number) {
-  return request<UserControlConfig>({
-    url: `/api/user-control-config/${configId}`,
-    method: 'get'
-  })
+  return apiClient.get<UserControlConfig>(`/api/user-control-config/${configId}`)
 }
 
-/**
- * 新增管控配置
- */
 export function addConfig(data: Partial<UserControlConfig>) {
-  return request({
-    url: '/api/user-control-config/add',
-    method: 'post',
-    data
-  })
+  return apiClient.post('/api/user-control-config/add', data)
 }
 
-/**
- * 更新管控配置
- */
 export function updateConfig(data: Partial<UserControlConfig>) {
-  return request({
-    url: '/api/user-control-config/update',
-    method: 'put',
-    data
-  })
+  return apiClient.put('/api/user-control-config/update', data)
 }
 
-/**
- * 删除管控配置
- */
 export function deleteConfig(configId: number) {
-  return request({
-    url: `/api/user-control-config/delete`,
-    method: 'delete',
-    params: { configId }
-  })
+  return apiClient.delete('/api/user-control-config/delete', {
+    params: { configId },
+  } as never)
 }
 
-/**
- * 根据儿童 ID 获取配置
- */
 export function getConfigByKidId(kidUserId: number) {
-  return request<UserControlConfig>({
-    url: `/api/user-control-config/kid/${kidUserId}`,
-    method: 'get'
-  })
+  return apiClient.get<UserControlConfig>(`/api/user-control-config/kid/${kidUserId}`)
 }

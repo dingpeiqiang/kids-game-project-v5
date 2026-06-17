@@ -1,11 +1,10 @@
-import request from '@/utils/request'
+import { apiClient } from '@/services/api-client.service'
 import type { UserRelation as BackendUserRelation } from '@/types/user'
 
-// 使用后端实际的 UserRelation 类型
 export interface UserRelation extends BackendUserRelation {
   relationId: number
-  userA: number  // 监护人 ID
-  userB: number  // 儿童 ID
+  userA: number
+  userB: number
   relationType: 'FATHER' | 'MOTHER' | 'GUARDIAN' | 'TUTOR'
   isPrimary: boolean
   permissionLevel: 'FULL' | 'PARTIAL' | 'VIEW_ONLY'
@@ -21,20 +20,12 @@ export interface RelationListParams {
   size?: number
 }
 
-/**
- * 获取关系列表
- */
 export function getRelationList(params: RelationListParams) {
-  return request<any, { records: UserRelation[]; total: number }>({
-    url: '/api/user-relation/list',
-    method: 'get',
-    params
-  })
+  return apiClient.get<{ records: UserRelation[]; total: number }>('/api/user-relation/list', {
+    params,
+  } as never)
 }
 
-/**
- * 绑定关系
- */
 export function bindRelation(data: {
   guardianUserId: number
   kidUserId: number
@@ -42,62 +33,34 @@ export function bindRelation(data: {
   isPrimary?: boolean
   permissionLevel?: 'FULL' | 'PARTIAL' | 'VIEW_ONLY'
 }) {
-  return request({
-    url: '/api/user-relation/bind',
-    method: 'post',
-    data
-  })
+  return apiClient.post('/api/user-relation/bind', data)
 }
 
-/**
- * 解绑关系
- */
 export function unbindRelation(guardianUserId: number, kidUserId: number) {
-  return request({
-    url: '/api/user-relation/unbind',
-    method: 'delete',
-    params: { guardianUserId, kidUserId }
-  })
+  return apiClient.delete('/api/user-relation/unbind', {
+    params: { guardianUserId, kidUserId },
+  } as never)
 }
 
-/**
- * 设置主监护人
- */
 export function setPrimaryGuardian(guardianUserId: number, kidUserId: number) {
-  return request({
-    url: '/api/user-relation/set-primary',
-    method: 'put',
-    params: { guardianUserId, kidUserId }
-  })
+  return apiClient.put('/api/user-relation/set-primary', undefined, {
+    params: { guardianUserId, kidUserId },
+  } as never)
 }
 
-/**
- * 更新权限级别
- */
-export function updatePermissionLevel(relationId: number, permissionLevel: 'FULL' | 'PARTIAL' | 'VIEW_ONLY') {
-  return request({
-    url: '/api/user-relation/permission-level',
-    method: 'put',
-    params: { relationId, permissionLevel }
-  })
+export function updatePermissionLevel(
+  relationId: number,
+  permissionLevel: 'FULL' | 'PARTIAL' | 'VIEW_ONLY',
+) {
+  return apiClient.put('/api/user-relation/permission-level', undefined, {
+    params: { relationId, permissionLevel },
+  } as never)
 }
 
-/**
- * 获取监护人的所有儿童
- */
 export function getGuardianKids(guardianUserId: number) {
-  return request<UserRelation[]>({
-    url: `/api/user-relation/guardian/${guardianUserId}/kids`,
-    method: 'get'
-  })
+  return apiClient.get<UserRelation[]>(`/api/user-relation/guardian/${guardianUserId}/kids`)
 }
 
-/**
- * 获取儿童的所有监护人
- */
 export function getKidGuardians(kidUserId: number) {
-  return request<UserRelation[]>({
-    url: `/api/user-relation/kid/${kidUserId}/guardians`,
-    method: 'get'
-  })
+  return apiClient.get<UserRelation[]>(`/api/user-relation/kid/${kidUserId}/guardians`)
 }

@@ -7,7 +7,7 @@
  * ============================================
  */
 
-import { BaseApiService } from './base-api.service'
+import { apiClient } from './api-client.service'
 
 /**
  * 草稿内容类型枚举
@@ -114,133 +114,55 @@ export interface DraftListResponse {
   total: number
 }
 
-/**
- * 通用草稿 API 服务类
- */
-class DraftApiService extends BaseApiService {
-  private static instance: DraftApiService
+export const draftApi = {
+  saveDraft(params: SaveDraftParams): Promise<SaveDraftResponse> {
+    return apiClient.post<SaveDraftResponse>('/api/draft', params)
+  },
 
-  private constructor() {
-    super()
-  }
+  getDraftDetail(draftId: number): Promise<Draft> {
+    return apiClient.get<Draft>(`/api/draft/${draftId}`)
+  },
 
-  static getInstance(): DraftApiService {
-    if (!DraftApiService.instance) {
-      DraftApiService.instance = new DraftApiService()
-    }
-    return DraftApiService.instance
-  }
+  deleteDraft(draftId: number): Promise<{ success: boolean }> {
+    return apiClient.delete<{ success: boolean }>(`/api/draft/${draftId}`)
+  },
 
-  // ==================== 基本CRUD操作 ====================
-
-  /**
-   * 保存草稿
-   * POST /api/draft
-   */
-  async saveDraft(params: SaveDraftParams): Promise<SaveDraftResponse> {
-    return this.post<SaveDraftResponse>('/api/draft', params)
-  }
-
-  /**
-   * 获取草稿详情
-   * GET /api/draft/{draftId}
-   */
-  async getDraftDetail(draftId: number): Promise<Draft> {
-    return this.get<Draft>(`/api/draft/${draftId}`)
-  }
-
-  /**
-   * 删除草稿
-   * DELETE /api/draft/{draftId}
-   */
-  async deleteDraft(draftId: number): Promise<{ success: boolean }> {
-    return this.delete<{ success: boolean }>(`/api/draft/${draftId}`)
-  }
-
-  // ==================== 查询操作 ====================
-
-  /**
-   * 获取我的草稿列表
-   * GET /api/draft/my
-   */
-  async getMyDrafts(contentType?: DraftContentType): Promise<DraftListResponse> {
+  getMyDrafts(contentType?: DraftContentType): Promise<DraftListResponse> {
     const config = contentType ? { params: { contentType } } : {}
-    return this.get<DraftListResponse>('/api/draft/my', config)
-  }
+    return apiClient.get<DraftListResponse>('/api/draft/my', config as never)
+  },
 
-  /**
-   * 根据关联实体查询草稿
-   * GET /api/draft/related
-   */
-  async getDraftsByRelatedEntity(
+  getDraftsByRelatedEntity(
     relatedEntityType: string,
-    relatedEntityId: number
+    relatedEntityId: number,
   ): Promise<Draft[]> {
-    return this.get<Draft[]>('/api/draft/related', {
-      params: {
-        relatedEntityType,
-        relatedEntityId
-      }
-    })
-  }
+    return apiClient.get<Draft[]>('/api/draft/related', {
+      params: { relatedEntityType, relatedEntityId },
+    } as never)
+  },
 
-  // ==================== 版本管理 ====================
+  getDraftVersions(draftId: number): Promise<DraftVersion[]> {
+    return apiClient.get<DraftVersion[]>(`/api/draft/${draftId}/versions`)
+  },
 
-  /**
-   * 获取草稿版本历史
-   * GET /api/draft/{draftId}/versions
-   */
-  async getDraftVersions(draftId: number): Promise<DraftVersion[]> {
-    return this.get<DraftVersion[]>(`/api/draft/${draftId}/versions`)
-  }
-
-  /**
-   * 回滚到指定版本
-   * POST /api/draft/{draftId}/rollback/{version}
-   */
-  async rollbackToVersion(
+  rollbackToVersion(
     draftId: number,
-    version: number
+    version: number,
   ): Promise<{ success: boolean; draftId: number; version: number }> {
-    return this.post<{ success: boolean; draftId: number; version: number }>(
-      `/api/draft/${draftId}/rollback/${version}`,
-      {}
-    )
-  }
+    return apiClient.post(`/api/draft/${draftId}/rollback/${version}`, {})
+  },
 
-  // ==================== 批量操作 ====================
-
-  /**
-   * 批量删除草稿
-   * DELETE /api/draft/batch
-   */
-  async batchDeleteDrafts(draftIds: number[]): Promise<{
+  batchDeleteDrafts(draftIds: number[]): Promise<{
     success: boolean
     deletedCount: number
     totalCount: number
   }> {
-    return this.delete<{
-      success: boolean
-      deletedCount: number
-      totalCount: number
-    }>('/api/draft/batch', {
-      data: draftIds
-    })
-  }
+    return apiClient.delete('/api/draft/batch', { data: draftIds } as never)
+  },
 
-  // ==================== 统计操作 ====================
-
-  /**
-   * 获取草稿统计信息
-   * GET /api/draft/statistics
-   */
-  async getDraftStatistics(): Promise<DraftStatistics> {
-    return this.get<DraftStatistics>('/api/draft/statistics')
-  }
+  getDraftStatistics(): Promise<DraftStatistics> {
+    return apiClient.get<DraftStatistics>('/api/draft/statistics')
+  },
 }
 
-// 导出单例
-export const draftApi = DraftApiService.getInstance()
-
-// 默认导出
 export default draftApi

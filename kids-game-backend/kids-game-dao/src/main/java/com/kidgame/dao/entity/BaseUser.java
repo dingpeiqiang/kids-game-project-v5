@@ -1,6 +1,7 @@
 package com.kidgame.dao.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -36,8 +37,9 @@ public class BaseUser implements Serializable {
     private String username;
 
     /**
-     * 加密密码
+     * 加密密码（不序列化到 API 响应）
      */
+    @JsonIgnore
     private String password;
 
     /**
@@ -101,8 +103,9 @@ public class BaseUser implements Serializable {
     private String lastLoginIp;
     
     /**
-     * 密码加密盐值
+     * 密码加密盐值（不序列化到 API 响应）
      */
+    @JsonIgnore
     private String passwordSalt;
     
     /**

@@ -1,8 +1,7 @@
 /**
- * 后台管理 API 服务
- * 继承 BaseApiService 统一使用 fetch
+ * 后台管理 API
  */
-import { BaseApiService } from './base-api.service';
+import { apiClient } from './api-client.service';
 
 export interface PageResult<T> {
   records: T[];
@@ -34,10 +33,7 @@ export interface TodayStats {
   gameDuration: number;
   answerCount: number;
   correctAnswers: number;
-  hourlyActiveUsers: Array<{
-    hour: number;
-    value: number;
-  }>;
+  hourlyActiveUsers: Array<{ hour: number; value: number }>;
 }
 
 export interface TrendStats {
@@ -47,14 +43,8 @@ export interface TrendStats {
   activeUsers: number[];
   gameCounts: number[];
   answerCounts: number[];
-  gameCategories: Array<{
-    name: string;
-    value: number;
-  }>;
-  answerCorrectRate: {
-    correct: number;
-    incorrect: number;
-  };
+  gameCategories: Array<{ name: string; value: number }>;
+  answerCorrectRate: { correct: number; incorrect: number };
 }
 
 export interface AdminUser {
@@ -151,45 +141,20 @@ export interface QuestionUpdateDTO {
   status?: number;
 }
 
-class AdminApiService extends BaseApiService {
-  private static instance: AdminApiService;
+export const adminApi = {
+  getDashboardOverview(): Promise<DashboardOverview> {
+    return apiClient.get<DashboardOverview>('/api/admin/dashboard/overview');
+  },
 
-  private constructor() {
-    super();
-  }
+  getTodayStats(): Promise<TodayStats> {
+    return apiClient.get<TodayStats>('/api/admin/dashboard/today-stats');
+  },
 
-  static getInstance(): AdminApiService {
-    if (!AdminApiService.instance) {
-      AdminApiService.instance = new AdminApiService();
-    }
-    return AdminApiService.instance;
-  }
+  getTrendStats(days: number = 7): Promise<TrendStats> {
+    return apiClient.get<TrendStats>(`/api/admin/dashboard/trend?days=${days}`);
+  },
 
-  /**
-   * 获取仪表盘概览
-   */
-  async getDashboardOverview(): Promise<DashboardOverview> {
-    return this.get<DashboardOverview>('/api/admin/dashboard/overview');
-  }
-
-  /**
-   * 获取今日实时统计
-   */
-  async getTodayStats(): Promise<TodayStats> {
-    return this.get<TodayStats>('/api/admin/dashboard/today-stats');
-  }
-
-  /**
-   * 获取趋势统计
-   */
-  async getTrendStats(days: number = 7): Promise<TrendStats> {
-    return this.get<TrendStats>(`/api/admin/dashboard/trend?days=${days}`);
-  }
-
-  /**
-   * 获取用户列表
-   */
-  async getUserList(params: {
+  getUserList(params: {
     username?: string;
     userType?: number;
     status?: number;
@@ -202,21 +167,14 @@ class AdminApiService extends BaseApiService {
     if (params.status !== undefined) queryParams.append('status', params.status.toString());
     if (params.page !== undefined) queryParams.append('page', params.page.toString());
     if (params.size !== undefined) queryParams.append('size', params.size.toString());
+    return apiClient.get<PageResult<AdminUser>>(`/api/admin/users?${queryParams.toString()}`);
+  },
 
-    return this.get<PageResult<AdminUser>>(`/api/admin/users?${queryParams.toString()}`);
-  }
+  updateUserStatus(userId: number, status: number): Promise<void> {
+    return apiClient.put<void>(`/api/admin/users/${userId}/status`, { status });
+  },
 
-  /**
-   * 更新用户状态
-   */
-  async updateUserStatus(userId: number, status: number): Promise<void> {
-    await this.put<void>(`/api/admin/users/${userId}/status`, { status });
-  }
-
-  /**
-   * 获取游戏列表
-   */
-  async getGameList(params: {
+  getGameList(params: {
     gameName?: string;
     category?: string;
     status?: number;
@@ -229,21 +187,14 @@ class AdminApiService extends BaseApiService {
     if (params.status !== undefined) queryParams.append('status', params.status.toString());
     if (params.page !== undefined) queryParams.append('page', params.page.toString());
     if (params.size !== undefined) queryParams.append('size', params.size.toString());
+    return apiClient.get<PageResult<AdminGame>>(`/api/admin/games?${queryParams.toString()}`);
+  },
 
-    return this.get<PageResult<AdminGame>>(`/api/admin/games?${queryParams.toString()}`);
-  }
+  updateGameStatus(gameId: number, status: number): Promise<void> {
+    return apiClient.put<void>(`/api/admin/games/${gameId}/status`, { status });
+  },
 
-  /**
-   * 更新游戏状态
-   */
-  async updateGameStatus(gameId: number, status: number): Promise<void> {
-    await this.put<void>(`/api/admin/games/${gameId}/status`, { status });
-  }
-
-  /**
-   * 获取题目列表
-   */
-  async getQuestionList(params: {
+  getQuestionList(params: {
     content?: string;
     type?: string;
     difficulty?: number;
@@ -258,88 +209,52 @@ class AdminApiService extends BaseApiService {
     if (params.status !== undefined) queryParams.append('status', params.status.toString());
     if (params.page !== undefined) queryParams.append('page', params.page.toString());
     if (params.size !== undefined) queryParams.append('size', params.size.toString());
+    return apiClient.get<PageResult<AdminQuestion>>(`/api/admin/questions?${queryParams.toString()}`);
+  },
 
-    return this.get<PageResult<AdminQuestion>>(`/api/admin/questions?${queryParams.toString()}`);
-  }
+  createQuestion(data: QuestionCreateDTO): Promise<number> {
+    return apiClient.post<number>('/api/admin/questions', data);
+  },
 
-  /**
-   * 创建题目
-   */
-  async createQuestion(data: QuestionCreateDTO): Promise<number> {
-    return this.post<number>('/api/admin/questions', data);
-  }
+  updateQuestion(questionId: number, data: QuestionUpdateDTO): Promise<void> {
+    return apiClient.put<void>(`/api/admin/questions/${questionId}`, data);
+  },
 
-  /**
-   * 更新题目
-   */
-  async updateQuestion(questionId: number, data: QuestionUpdateDTO): Promise<void> {
-    await this.put<void>(`/api/admin/questions/${questionId}`, data);
-  }
+  deleteQuestion(questionId: number): Promise<void> {
+    return apiClient.delete<void>(`/api/admin/questions/${questionId}`);
+  },
 
-  /**
-   * 删除题目
-   */
-  async deleteQuestion(questionId: number): Promise<void> {
-    await this.delete<void>(`/api/admin/questions/${questionId}`);
-  }
+  getLatestUsers(limit: number = 5): Promise<AdminUser[]> {
+    return apiClient.get<AdminUser[]>(`/api/admin/users/latest?limit=${limit}`);
+  },
 
-  /**
-   * 获取最新注册用户
-   */
-  async getLatestUsers(limit: number = 5): Promise<AdminUser[]> {
-    return this.get<AdminUser[]>(`/api/admin/users/latest?limit=${limit}`);
-  }
+  getLatestGameRecords(limit: number = 5): Promise<Array<Record<string, unknown>>> {
+    return apiClient.get<Array<Record<string, unknown>>>(`/api/admin/game-records/latest?limit=${limit}`);
+  },
 
-  /**
-   * 获取最新游戏记录
-   */
-  async getLatestGameRecords(limit: number = 5): Promise<Array<{ [key: string]: any }>> {
-    return this.get<Array<{ [key: string]: any }>>(`/api/admin/game-records/latest?limit=${limit}`);
-  }
+  getLatestAnswerRecords(limit: number = 5): Promise<Array<Record<string, unknown>>> {
+    return apiClient.get<Array<Record<string, unknown>>>(`/api/admin/answer-records/latest?limit=${limit}`);
+  },
 
-  /**
-   * 获取最新答题记录
-   */
-  async getLatestAnswerRecords(limit: number = 5): Promise<Array<{ [key: string]: any }>> {
-    return this.get<Array<{ [key: string]: any }>>(`/api/admin/answer-records/latest?limit=${limit}`);
-  }
+  createGame(params: GameCreateParams): Promise<AdminGame> {
+    return apiClient.post<AdminGame>('/api/admin/games', params);
+  },
 
-  /**
-   * 创建游戏
-   */
-  async createGame(params: GameCreateParams): Promise<AdminGame> {
-    return this.post<AdminGame>('/api/admin/games', params);
-  }
+  updateGame(gameId: number, params: GameUpdateParams): Promise<void> {
+    return apiClient.put<void>(`/api/admin/games/${gameId}`, params);
+  },
 
-  /**
-   * 更新游戏
-   */
-  async updateGame(gameId: number, params: GameUpdateParams): Promise<void> {
-    await this.put<void>(`/api/admin/games/${gameId}`, params);
-  }
+  batchDeleteGames(gameIds: number[]): Promise<void> {
+    return apiClient.post<void>('/api/admin/games/batch-delete', gameIds);
+  },
 
-  /**
-   * 批量删除游戏
-   */
-  async batchDeleteGames(gameIds: number[]): Promise<void> {
-    await this.post<void>('/api/admin/games/batch-delete', gameIds);
-  }
+  getGameStats(gameId: number): Promise<GameStats> {
+    return apiClient.get<GameStats>(`/api/admin/games/${gameId}/stats`);
+  },
 
-  /**
-   * 获取游戏统计
-   */
-  async getGameStats(gameId: number): Promise<GameStats> {
-    return this.get<GameStats>(`/api/admin/games/${gameId}/stats`);
-  }
+  submitReview(gameId: number): Promise<void> {
+    return apiClient.post<void>(`/api/admin/games/${gameId}/submit-review`);
+  },
+};
 
-  /**
-   * 提交游戏审核
-   */
-  async submitReview(gameId: number): Promise<void> {
-    await this.post<void>(`/api/admin/games/${gameId}/submit-review`);
-  }
-}
-
-export const adminApi = AdminApiService.getInstance();
 export default adminApi;
-export { AdminApiService };

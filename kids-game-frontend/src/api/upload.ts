@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import { apiClient } from '@/services/api-client.service'
 
 export interface UploadResponse {
   url: string
@@ -7,49 +7,26 @@ export interface UploadResponse {
   contentType: string
 }
 
-/**
- * 上传图片
- */
 export function uploadImage(file: File, category?: string) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('category', category || 'avatars')
-  
-  return request<any, UploadResponse>({
-    url: '/api/resource/upload/image',
-    method: 'post',
-    data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
+
+  return apiClient.post<UploadResponse>('/api/resource/upload/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  } as never)
 }
 
-/**
- * 上传音频
- */
 export function uploadAudio(file: File, category?: string) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('category', category || 'themes/audio')
-  
-  return request<any, UploadResponse>({
-    url: '/api/resource/upload/audio',
-    method: 'post',
-    data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
+
+  return apiClient.post<UploadResponse>('/api/resource/upload/audio', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  } as never)
 }
 
-/**
- * 删除资源
- */
 export function deleteResource(url: string) {
-  return request({
-    url: '/api/resource/delete',
-    method: 'delete',
-    params: { url }
-  })
+  return apiClient.delete('/api/resource/delete', { params: { url } } as never)
 }

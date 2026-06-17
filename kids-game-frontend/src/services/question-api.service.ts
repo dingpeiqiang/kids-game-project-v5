@@ -1,7 +1,7 @@
 /**
  * 答题与题库 API
  */
-import { BaseApiService } from './base-api.service';
+import { apiClient } from './api-client.service';
 import type { Question, AnswerRecord } from './api.types';
 
 export interface AnswerSubmitResult {
@@ -10,7 +10,6 @@ export interface AnswerSubmitResult {
   analysis?: string;
   getPoints: number;
   currentPoints?: number;
-  /** 兼容旧字段 */
   points?: number;
 }
 
@@ -38,28 +37,15 @@ interface BackendPageResult<T> {
   records: T[];
 }
 
-export class QuestionApiService extends BaseApiService {
-  private static instance: QuestionApiService;
-
-  private constructor() {
-    super();
-  }
-
-  static getInstance(): QuestionApiService {
-    if (!QuestionApiService.instance) {
-      QuestionApiService.instance = new QuestionApiService();
-    }
-    return QuestionApiService.instance;
-  }
-
+export const questionApi = {
   async getRandom(grade: string, excludeQuestionIds?: number[]): Promise<Question> {
     const q = new URLSearchParams();
     q.set('grade', grade);
     if (excludeQuestionIds?.length) {
       q.set('excludeIds', excludeQuestionIds.join(','));
     }
-    return this.get<Question>(`/api/question/random?${q.toString()}`);
-  }
+    return apiClient.get<Question>(`/api/question/random?${q.toString()}`);
+  },
 
   async submitAnswer(
     kidId: number,
@@ -67,7 +53,7 @@ export class QuestionApiService extends BaseApiService {
     userAnswer: string,
     answerTime?: number,
   ): Promise<AnswerSubmitResult> {
-    const result = await this.post<AnswerSubmitResult>('/api/question/submit', {
+    const result = await apiClient.post<AnswerSubmitResult>('/api/question/submit', {
       kidId,
       questionId,
       userAnswer,
@@ -77,17 +63,15 @@ export class QuestionApiService extends BaseApiService {
       ...result,
       points: result.getPoints ?? result.points ?? 0,
     };
-  }
+  },
 
   async getRecords(kidId: number, limit: number = 20): Promise<AnswerRecord[]> {
-    return this.get<AnswerRecord[]>(
-      `/api/question/records?kidId=${kidId}&limit=${limit}`,
-    );
-  }
+    return apiClient.get<AnswerRecord[]>(`/api/question/records?kidId=${kidId}&limit=${limit}`);
+  },
 
   async getTodayAnswerPoints(kidId: number): Promise<number> {
-    return this.get<number>(`/api/question/today-points?kidId=${kidId}`);
-  }
+    return apiClient.get<number>(`/api/question/today-points?kidId=${kidId}`);
+  },
 
   async pageQuestions(params: {
     grade?: string;
@@ -104,36 +88,35 @@ export class QuestionApiService extends BaseApiService {
     }
     q.set('page', String(params.page ?? 1));
     q.set('size', String(params.size ?? 10));
-    const res = await this.get<BackendPageResult<Question>>(`/api/question/page?${q.toString()}`);
+    const res = await apiClient.get<BackendPageResult<Question>>(`/api/question/page?${q.toString()}`);
     return {
       list: res.records ?? [],
       total: res.total ?? 0,
     };
-  }
+  },
 
   async getDetail(questionId: number): Promise<Question> {
-    return this.get<Question>(`/api/question/${questionId}`);
-  }
+    return apiClient.get<Question>(`/api/question/${questionId}`);
+  },
 
   async createQuestion(payload: QuestionSavePayload): Promise<Question> {
-    return this.post<Question>('/api/question', payload);
-  }
+    return apiClient.post<Question>('/api/question', payload);
+  },
 
   async updateQuestion(questionId: number, payload: QuestionSavePayload): Promise<Question> {
-    return this.put<Question>(`/api/question/${questionId}`, {
+    return apiClient.put<Question>(`/api/question/${questionId}`, {
       ...payload,
       questionId,
     });
-  }
+  },
 
   async deleteQuestion(questionId: number): Promise<void> {
-    await this.delete(`/api/question/${questionId}`);
-  }
+    await apiClient.delete(`/api/question/${questionId}`);
+  },
 
   async batchUpdateStatus(questionIds: number[], status: number): Promise<number> {
-    return this.put<number>('/api/question/batch-status', { questionIds, status });
-  }
-}
+    return apiClient.put<number>('/api/question/batch-status', { questionIds, status });
+  },
+};
 
-export const questionApi = QuestionApiService.getInstance();
 export default questionApi;

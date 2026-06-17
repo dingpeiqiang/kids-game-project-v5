@@ -2,7 +2,7 @@
  * 主题 API 服务
  * 统一继承 BaseApiService，使用 fetch 替代 axios
  */
-import { BaseApiService } from './base-api.service';
+import { apiClient } from './api-client.service';
 import type { ApiResponse, PageData } from './api.types';
 import type { ThemeConfig } from '@/core/theme/ThemeManager';
 
@@ -102,24 +102,7 @@ export interface ThemeDraft {
   updatedAt: string;
 }
 
-/**
- * 主题 API 服务类
- * 继承 BaseApiService 统一使用 fetch
- */
-class ThemeApiService extends BaseApiService {
-  private static instance: ThemeApiService;
-
-  private constructor() {
-    super();
-  }
-
-  static getInstance(): ThemeApiService {
-    if (!ThemeApiService.instance) {
-      ThemeApiService.instance = new ThemeApiService();
-    }
-    return ThemeApiService.instance;
-  }
-
+const themeApiImpl = {
   /**
    * 获取主题列表
    * GET /api/theme/list
@@ -140,8 +123,8 @@ class ThemeApiService extends BaseApiService {
     const url = queryString ? `/api/theme/list?${queryString}` : '/api/theme/list';
 
     // 使用 returnPageData: true 确保返回分页格式
-    return this.get<PageData<CloudThemeInfo>>(url, { returnPageData: true });
-  }
+    return apiClient.get<PageData<CloudThemeInfo>>(url, { returnPageData: true });
+  },
 
   /**
    * 获取我上传的云端主题
@@ -157,8 +140,8 @@ class ThemeApiService extends BaseApiService {
     if (params?.ownerType) queryParams.append('ownerType', params.ownerType);
     if (params?.ownerId) queryParams.append('ownerId', String(params.ownerId));
     const queryString = queryParams.toString();
-    return this.get<CloudThemeInfo[]>(`/api/theme/my-cloud-themes${queryString ? '?' + queryString : ''}`);
-  }
+    return apiClient.get<CloudThemeInfo[]>(`/api/theme/my-cloud-themes${queryString ? '?' + queryString : ''}`);
+  },
 
   /**
    * 获取已购买的主题列表
@@ -166,8 +149,8 @@ class ThemeApiService extends BaseApiService {
    * 后端从认证信息中获取用户ID，不需要传递参数
    */
   async getPurchasedThemes(): Promise<CloudThemeInfo[]> {
-    return this.get<CloudThemeInfo[]>('/api/theme/purchased-themes');
-  }
+    return apiClient.get<CloudThemeInfo[]>('/api/theme/purchased-themes');
+  },
 
   /**
    * ⭐ 获取用户可用的主题列表（支持分页和来源筛选）
@@ -195,7 +178,7 @@ class ThemeApiService extends BaseApiService {
     const url = `/api/theme/my-available-themes?${queryParams.toString()}`;
       
     // 使用 returnPageData: true 确保返回分页格式
-    return this.get<PageData<CloudThemeInfo>>(url, { returnPageData: true });
+    return apiClient.get<PageData<CloudThemeInfo>>(url, { returnPageData: true });
   }
 
   /**
@@ -203,7 +186,7 @@ class ThemeApiService extends BaseApiService {
    * POST /api/theme/upload
    */
   async upload(payload: ThemeUploadPayload): Promise<CloudThemeInfo> {
-    return this.post<CloudThemeInfo>('/api/theme/upload', payload);
+    return apiClient.post<CloudThemeInfo>('/api/theme/upload', payload);
   }
 
 
@@ -212,7 +195,7 @@ class ThemeApiService extends BaseApiService {
    * POST /api/theme/buy
    */
   async buy(themeId: string): Promise<{ success: boolean }> {
-    return this.post<{ success: boolean }>('/api/theme/buy', { themeId });
+    return apiClient.post<{ success: boolean }>('/api/theme/buy', { themeId });
   }
 
   /**
@@ -220,7 +203,7 @@ class ThemeApiService extends BaseApiService {
    * GET /api/theme/check-purchase?themeId=xxx
    */
   async checkPurchase(themeId: number): Promise<{ purchased: boolean }> {
-    return this.get<{ purchased: boolean }>(`/api/theme/check-purchase?themeId=${themeId}`);
+    return apiClient.get<{ purchased: boolean }>(`/api/theme/check-purchase?themeId=${themeId}`);
   }
 
   /**
@@ -229,7 +212,7 @@ class ThemeApiService extends BaseApiService {
    * 返回结构: { configJson: "GTRS JSON 字符串" }
    */
   async download(themeId: string): Promise<{ configJson: string }> {
-    return this.get<{ configJson: string }>(`/api/theme/download?id=${themeId}`);
+    return apiClient.get<{ configJson: string }>(`/api/theme/download?id=${themeId}`);
   }
 
   /**
@@ -273,7 +256,7 @@ class ThemeApiService extends BaseApiService {
    * POST /api/theme/toggle-sale?themeId=xxx&onSale=true
    */
   async toggleSale(themeId: string, onSale: boolean): Promise<{ success: boolean }> {
-    return this.post<{ success: boolean }>(`/api/theme/toggle-sale?themeId=${themeId}&onSale=${onSale}`, null);
+    return apiClient.post<{ success: boolean }>(`/api/theme/toggle-sale?themeId=${themeId}&onSale=${onSale}`, null);
   }
 
   /**
@@ -297,7 +280,7 @@ class ThemeApiService extends BaseApiService {
    * POST /api/theme/update
    */
   async update(themeId: string, payload: Partial<ThemeUploadPayload>): Promise<CloudThemeInfo> {
-    return this.post<CloudThemeInfo>('/api/theme/update', { themeId, ...payload });
+    return apiClient.post<CloudThemeInfo>('/api/theme/update', { themeId, ...payload });
   }
 
   /**
@@ -305,7 +288,7 @@ class ThemeApiService extends BaseApiService {
    * POST /api/theme/delete
    */
   async delete(themeId: string): Promise<{ success: boolean }> {
-    return this.post<{ success: boolean }>('/api/theme/delete', { themeId });
+    return apiClient.post<{ success: boolean }>('/api/theme/delete', { themeId });
   }
 
   /**
@@ -313,7 +296,7 @@ class ThemeApiService extends BaseApiService {
    * POST /api/theme/set-default
    */
   async setDefault(themeId: string): Promise<{ success: boolean }> {
-    return this.post<{ success: boolean }>('/api/theme/set-default', { themeId });
+    return apiClient.post<{ success: boolean }>('/api/theme/set-default', { themeId });
   }
 
   /**
@@ -371,7 +354,7 @@ class ThemeApiService extends BaseApiService {
    */
   async getUserCurrentTheme(ownerType: string, ownerId: number): Promise<UserThemePreference | null> {
     try {
-      const response = await this.get<UserThemePreference>(
+      const response = await apiClient.get<UserThemePreference>(
         `/api/theme/user/current?ownerType=${ownerType}&ownerId=${ownerId}`
       );
       return response || null;
@@ -379,7 +362,7 @@ class ThemeApiService extends BaseApiService {
       console.error('[ThemeApi] 获取用户当前主题失败:', error);
       return null;
     }
-  }
+  },
 
   /**
    * ⭐ 获取用户所有主题偏好设置
@@ -388,7 +371,7 @@ class ThemeApiService extends BaseApiService {
    */
   async getUserPreferences(userId: number): Promise<{ list: UserThemePreference[] }> {
     try {
-      const response = await this.get<{ list: UserThemePreference[] }>(
+      const response = await apiClient.get<{ list: UserThemePreference[] }>(
         `/api/theme/user/preferences?userId=${userId}`
       );
       return response || { list: [] };
@@ -396,7 +379,7 @@ class ThemeApiService extends BaseApiService {
       console.error('[ThemeApi] 获取用户主题偏好列表失败:', error);
       return { list: [] };
     }
-  }
+  },
 
   /**
    * ⭐ 保存用户主题偏好
@@ -411,7 +394,7 @@ class ThemeApiService extends BaseApiService {
     themeId: number
   ): Promise<boolean> {
     try {
-      await this.post(
+      await apiClient.post(
         `/api/theme/user/preference?ownerType=${ownerType}&ownerId=${ownerId}&themeId=${themeId}`
       );
       return true;
@@ -419,7 +402,7 @@ class ThemeApiService extends BaseApiService {
       console.error('[ThemeApi] 保存用户主题偏好失败:', error);
       return false;
     }
-  }
+  },
 
   // ==================== 草稿功能 API ====================
 
@@ -440,34 +423,33 @@ class ThemeApiService extends BaseApiService {
     createdAt: string;
     updatedAt: string;
   }> {
-    return this.post<any>('/api/theme/draft', params);
-  }
+    return apiClient.post('/api/theme/draft', params);
+  },
 
   /**
    * 获取我的草稿列表
    * GET /api/theme/draft/my
    */
   async getMyDrafts(): Promise<{ list: ThemeDraft[]; total: number }> {
-    return this.get<any>('/api/theme/draft/my');
-  }
+    return apiClient.get('/api/theme/draft/my');
+  },
 
   /**
    * 获取草稿详情
    * GET /api/theme/draft/{draftId}
    */
   async getDraftDetail(draftId: number): Promise<ThemeDraft> {
-    return this.get<ThemeDraft>(`/api/theme/draft/${draftId}`);
-  }
+    return apiClient.get<ThemeDraft>(`/api/theme/draft/${draftId}`);
+  },
 
   /**
    * 删除草稿
    * DELETE /api/theme/draft/{draftId}
    */
   async deleteDraft(draftId: number): Promise<{ success: boolean }> {
-    return this.delete<{ success: boolean }>(`/api/theme/draft/${draftId}`);
-  }
-}
+    return apiClient.delete<{ success: boolean }>(`/api/theme/draft/${draftId}`);
+  },
+};
 
-export const themeApi = ThemeApiService.getInstance();
+export const themeApi = themeApiImpl;
 export default themeApi;
-export { ThemeApiService };

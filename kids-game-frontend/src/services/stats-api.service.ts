@@ -1,43 +1,20 @@
 /**
- * 统计相关 API 服务
+ * 统计 API
  */
-import { BaseApiService } from './base-api.service';
+import { apiClient } from './api-client.service';
 
-export class StatsApiService extends BaseApiService {
-  private static instance: StatsApiService;
+export const statsApi = {
+  getTodayStats(): Promise<unknown> {
+    return apiClient.get('/api/stats/today');
+  },
 
-  private constructor() {
-    super();
-  }
+  getKidGameStats(kidId: number): Promise<unknown> {
+    return apiClient.get(`/api/stats/kid/game?kidId=${kidId}`);
+  },
 
-  static getInstance(): StatsApiService {
-    if (!StatsApiService.instance) {
-      StatsApiService.instance = new StatsApiService();
-    }
-    return StatsApiService.instance;
-  }
+  getKidAnswerStats(kidId: number): Promise<unknown> {
+    return apiClient.get(`/api/stats/kid/answer?kidId=${kidId}`);
+  },
+};
 
-  /**
-   * 获取今日统计
-   */
-  async getTodayStats(): Promise<any> {
-    return this.get('/api/stats/today');
-  }
-
-  /**
-   * 获取儿童游戏统计
-   */
-  async getKidGameStats(kidId: number): Promise<any> {
-    return this.get(`/api/stats/kid/game?kidId=${kidId}`);
-  }
-
-  /**
-   * 获取儿童答题统计
-   */
-  async getKidAnswerStats(kidId: number): Promise<any> {
-    return this.get(`/api/stats/kid/answer?kidId=${kidId}`);
-  }
-}
-
-export const statsApi = StatsApiService.getInstance();
 export default statsApi;
