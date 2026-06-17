@@ -8,10 +8,12 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-kidgame}
       MYSQL_USER: ${MYSQL_USER:-kidgame}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-kidgame123}
+      # 使用 mysql_native_password 认证插件以兼容旧版客户端
+      MYSQL_DEFAULT_AUTH: mysql_native_password
     ports:
       - "3306:3306"
     volumes:
