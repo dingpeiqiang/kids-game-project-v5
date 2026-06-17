@@ -12,13 +12,20 @@ DEFAULT COLLATE utf8mb4_unicode_ci;
 USE kidgame;
 
 -- 创建/更新用户并授予权限
+-- 使用 mysql_native_password 认证插件以兼容旧版客户端（如 Navicat、MySQL Workbench）
+-- MySQL 8.0 默认使用 caching_sha2_password，部分旧客户端不支持
+
 -- 允许从任何主机连接
-CREATE USER IF NOT EXISTS 'kidgame'@'%' IDENTIFIED BY 'kidgame123';
+CREATE USER IF NOT EXISTS 'kidgame'@'%' IDENTIFIED WITH mysql_native_password BY 'kidgame123';
 GRANT ALL PRIVILEGES ON kidgame.* TO 'kidgame'@'%';
 
 -- 允许本地连接
-CREATE USER IF NOT EXISTS 'kidgame'@'localhost' IDENTIFIED BY 'kidgame123';
+CREATE USER IF NOT EXISTS 'kidgame'@'localhost' IDENTIFIED WITH mysql_native_password BY 'kidgame123';
 GRANT ALL PRIVILEGES ON kidgame.* TO 'kidgame'@'localhost';
+
+-- 如果用户已存在，确保使用正确的认证插件
+ALTER USER IF EXISTS 'kidgame'@'%' IDENTIFIED WITH mysql_native_password BY 'kidgame123';
+ALTER USER IF EXISTS 'kidgame'@'localhost' IDENTIFIED WITH mysql_native_password BY 'kidgame123';
 
 FLUSH PRIVILEGES;
 
