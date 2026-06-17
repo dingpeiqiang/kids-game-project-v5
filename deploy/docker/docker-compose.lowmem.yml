@@ -183,6 +183,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
     ports:
       - "3001:80"
+      - "3443:443"
     # 限制内存使用
     mem_limit: 128m
     mem_reservation: 64m
