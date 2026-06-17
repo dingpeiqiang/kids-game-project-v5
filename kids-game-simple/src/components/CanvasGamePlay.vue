@@ -263,7 +263,7 @@ onUnmounted(() => {
 .game-play-shell {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 10000;
   display: flex;
   flex-direction: column;
   background: var(--game-shell-bg, #0f172a);

@@ -361,7 +361,7 @@ export class EliminateGame {
         return true
       }
       setTimeout(() => audioService.win(), 300)
-      this.comboSystem.addText('�� 全部通关!', this.W / 2, this.H / 2 - 40)
+      this.comboSystem.addText('全部通关!', this.W / 2, this.H / 2 - 40)
       if (this.gameCompleteTimer) clearTimeout(this.gameCompleteTimer)
       this.gameCompleteTimer = setTimeout(() => {
         this.gameCompleteTimer = null
@@ -371,50 +371,6 @@ export class EliminateGame {
     }
     
     return false
-  }
-  
-  // 显示游戏全部完成提示（仅在全部通关时显示）
-  private showGameCompleteHint() {
-    const hint = document.createElement('div')
-    hint.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-      color: #fff;
-      padding: 30px 40px;
-      border-radius: 20px;
-      font-size: 18px;
-      z-index: 1000;
-      text-align: center;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      animation: fadeInScale 0.5s ease-out;
-    `
-    
-    hint.innerHTML = `
-      <div style="font-size: 56px; margin-bottom: 10px;">🏆</div>
-      <div style="font-size: 28px; font-weight: bold; margin-bottom: 10px;">恭喜通关！</div>
-      <div style="font-size: 18px; margin-bottom: 15px;">你已完成所有10个关卡</div>
-      <div style="font-size: 20px;">最终分数: ${this.engine.getScore()}</div>
-    `
-    
-    document.body.appendChild(hint)
-    
-    // 3秒后结束游戏（缩短时间，让游戏结束弹窗更快显示）
-    setTimeout(() => {
-      // 关闭 AudioContext 以停止所有音效，避免杂音
-      try {
-        const audioCtx = (audioService as any).ctx
-        if (audioCtx && audioCtx.state !== 'closed') {
-          audioCtx.close()
-        }
-      } catch (e) {
-        console.warn('Failed to close audio context:', e)
-      }
-      
-      this.finishWithPlatformResult(true)
-    }, 3000)
   }
   
   update(deltaTime: number) {
@@ -1386,7 +1342,9 @@ export class EliminateGame {
       }
     })
 
-    setTimeout(() => {
+    if (this.resetBoardTimer) clearTimeout(this.resetBoardTimer)
+    this.resetBoardTimer = setTimeout(() => {
+      this.resetBoardTimer = null
       this.initBlocks()
       this.blocks.forEach(b => {
         if (b) {

@@ -60,8 +60,8 @@ services:
   # 后端服务
   backend:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.backend
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.backend
     container_name: kids-game-backend
     restart: unless-stopped
     environment:
@@ -102,8 +102,8 @@ services:
   # 前端服务
   frontend:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.frontend
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.frontend
     container_name: kids-game-frontend
     restart: unless-stopped
     environment:
@@ -132,8 +132,8 @@ services:
   # 游戏服务（可选，使用 --profile games 启动）
   games:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.games
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.games
     container_name: kids-game-games
     restart: unless-stopped
     environment:
@@ -159,8 +159,8 @@ services:
   # kids-game-simple 服务（使用独立端口，避免与前端 80 端口冲突）
   kids-game-simple:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.kids-game-simple
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.kids-game-simple
     container_name: kids-game-simple
     restart: unless-stopped
     environment:

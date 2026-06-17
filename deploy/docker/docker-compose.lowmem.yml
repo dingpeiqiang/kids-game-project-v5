@@ -79,8 +79,8 @@ services:
   # 后端服务 - 低内存优化版
   backend:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.backend.lowmem
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.backend.lowmem
     container_name: kids-game-backend
     restart: unless-stopped
     environment:
@@ -135,8 +135,8 @@ services:
   frontend:
     image: kids-game-frontend:latest
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.frontend
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.frontend
     container_name: kids-game-frontend
     restart: unless-stopped
     environment:
@@ -168,8 +168,8 @@ services:
   kids-game-simple:
     image: kids-game-simple-game:latest
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.kids-game-simple
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.kids-game-simple
     container_name: kids-game-simple-game
     restart: unless-stopped
     environment:
