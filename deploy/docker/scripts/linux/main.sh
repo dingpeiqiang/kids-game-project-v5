@@ -27,6 +27,7 @@ show_help() {
     echo "  -c, --cleanup       清理旧镜像"
     echo "  -t, --status        查看服务状态"
     echo "  -h, --help          显示帮助信息"
+    echo "  -v, --remove-volume 删除数据卷（危险！会丢失数据，需配合其他选项使用）"
     echo ""
     echo "服务名:"
     echo "  mysql              MySQL 数据库（重启保留数据卷）"
@@ -45,6 +46,8 @@ show_help() {
     echo "  $0 -r kids-game-simple           # 重启儿童游戏服务"
     echo "  $0 -c                            # 清理旧镜像"
     echo "  $0 -t                            # 查看状态"
+    echo "  $0 -d -v mysql                   # 删除数据卷后重新部署 MySQL（数据会丢失）"
+    echo "  $0 -s -v redis                   # 删除数据卷后启动 Redis（数据会丢失）"
     echo ""
 }
 
@@ -246,6 +249,7 @@ main_status() {
 main() {
     local action="menu"
     local service="all"
+    local remove_volume="false"
     
     # 解析参数
     while [[ $# -gt 0 ]]; do
@@ -274,6 +278,10 @@ main() {
                 action="status"
                 shift
                 ;;
+            -v|--remove-volume)
+                remove_volume="true"
+                shift
+                ;;
             -h|--help)
                 show_help
                 exit 0
@@ -284,6 +292,9 @@ main() {
                 ;;
         esac
     done
+    
+    # 设置全局变量供子脚本使用
+    REMOVE_VOLUME="$remove_volume"
     
     # 执行操作
     case $action in
@@ -309,7 +320,8 @@ main() {
             show_menu
             ;;
         *)
-            error_exit "未知操作: $action"
+            echo "未知操作: $action"
+            exit 1
             ;;
     esac
 }

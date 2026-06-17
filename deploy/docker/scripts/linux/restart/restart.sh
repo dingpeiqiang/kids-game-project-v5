@@ -15,6 +15,12 @@ restart_service() {
     log_info "停止 $service 容器..."
     $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" stop "$service" 2>/dev/null || true
     
+    # 判断是否删除数据卷
+    if [ "$REMOVE_VOLUME" = "true" ]; then
+        log_warn "删除 $service 容器和数据卷（数据将丢失！）..."
+        $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" rm -f -v "$service" >/dev/null 2>&1 || true
+    fi
+    
     log_info "启动 $service 容器..."
     $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" up -d --no-deps "$service"
     
