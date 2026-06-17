@@ -186,9 +186,9 @@ main_build_and_deploy() {
 # 只构建
 main_build() {
     local service="$1"
+    check_all
     echo "构建日志: $DEPLOY_LOG" > "$DEPLOY_LOG"
     echo "开始时间: $(date)" >> "$DEPLOY_LOG"
-    check_all
     cd "$DOCKER_DIR"
     source "$MAIN_SCRIPT_DIR/build/build.sh"
     main "$service"

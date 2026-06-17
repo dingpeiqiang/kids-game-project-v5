@@ -13,8 +13,9 @@ prebuild_kids_game_simple() {
     log_blue "=== 预构建 kids-game-simple ==="
     
     # 计算项目根目录路径
-    local docker_dir=$(dirname "$(dirname "$SCRIPT_DIR")")
-    local project_root=$(dirname "$docker_dir")
+    # SCRIPT_DIR = deploy/docker/scripts/linux/build
+    # 向上跳4级到达项目根目录
+    local project_root=$(cd "$SCRIPT_DIR/../../../../.." && pwd)
     local simple_dir="$project_root/kids-game-simple"
     
     # 检查目录是否存在
@@ -58,8 +59,8 @@ prebuild_kids_game_simple() {
 prebuild_kids_game_frontend() {
     log_blue "=== 预构建 kids-game-frontend ==="
     
-    local docker_dir=$(dirname "$(dirname "$SCRIPT_DIR")")
-    local project_root=$(dirname "$docker_dir")
+    # 计算项目根目录路径
+    local project_root=$(cd "$SCRIPT_DIR/../../../../.." && pwd)
     local frontend_dir="$project_root/kids-game-frontend"
     
     if [ ! -d "$frontend_dir" ]; then
