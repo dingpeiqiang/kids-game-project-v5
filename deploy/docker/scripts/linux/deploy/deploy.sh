@@ -186,5 +186,7 @@ main() {
     show_status
 }
 
-# 执行
-main "$@"
+# 执行（只有直接执行脚本时才调用 main）
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
