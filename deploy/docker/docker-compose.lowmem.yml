@@ -87,7 +87,7 @@ services:
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://kids-game-mysql:3306/kidgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://kids-game-mysql:3306/kidgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-kidgame}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-kidgame123}
       SPRING_REDIS_HOST: kids-game-redis
