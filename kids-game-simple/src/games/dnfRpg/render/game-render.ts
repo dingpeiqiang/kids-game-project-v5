@@ -202,4 +202,3 @@ function drawCombatStageVignette(ctx: CanvasRenderingContext2D): void {
   ctx.fillRect(0, C.GROUND_Y - 40, w, h - C.GROUND_Y + 40)
   ctx.restore()
 }
-}
