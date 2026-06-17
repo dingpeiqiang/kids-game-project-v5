@@ -7,6 +7,43 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/utils.sh"
 source "$SCRIPT_DIR/../common/config.sh"
 
+# 定义服务依赖关系
+declare -A SERVICE_DEPENDENCIES=(
+    ["backend"]="mysql redis"
+    ["frontend"]="backend"
+    ["kids-game-simple"]=""
+)
+
+# 检查依赖服务是否运行
+check_dependencies() {
+    local service=$1
+    local deps="${SERVICE_DEPENDENCIES[$service]}"
+    
+    if [ -z "$deps" ]; then
+        return 0
+    fi
+    
+    local missing_deps=""
+    for dep in $deps; do
+        if ! docker ps --format '{{.Names}}' | grep -q "^$(get_container_name "$dep")$"; then
+            missing_deps="$missing_deps $dep"
+        fi
+    done
+    
+    if [ -n "$missing_deps" ]; then
+        log_warn "$service 依赖的服务未运行: $missing_deps"
+        log_warn "建议先启动依赖服务，否则 $service 可能无法正常启动"
+        read -p "是否继续启动 $service? (y/N): " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "取消启动 $service"
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
 # 健康检查
 health_check() {
     local service=$1
@@ -19,22 +56,27 @@ health_check() {
     local end_time=$((start_time + max_wait))
     
     while [ $(date +%s) -lt $end_time ]; do
+        # 先检查容器是否运行
+        if ! $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" ps "$service" | grep -q "Up"; then
+            log_error "$service 容器已停止"
+            log_info "查看 $service 日志:"
+            $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" logs --tail=30 "$service"
+            return 1
+        fi
+        
+        # 尝试健康检查
         if $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" exec -T "$service" sh -c "curl -s -f $check_url" 2>/dev/null; then
             log_info "$service 健康检查通过"
             return 0
         fi
         
-        if $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" ps "$service" | grep -q "Up"; then
-            log_info "$service 容器已启动，等待服务就绪..."
-        else
-            log_warn "$service 容器状态异常"
-            $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" ps "$service"
-        fi
-        
+        log_info "$service 容器已启动，等待服务就绪..."
         sleep 5
     done
     
     log_error "$service 健康检查超时"
+    log_info "查看 $service 日志:"
+    $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" logs --tail=30 "$service"
     return 1
 }
 
@@ -45,6 +87,11 @@ start_service() {
     local health_timeout=$(get_health_timeout "$service")
     
     log_blue "=== 启动 $service ==="
+    
+    # 检查依赖服务
+    if ! check_dependencies "$service"; then
+        return 1
+    fi
     
     # 检查容器是否存在，如果存在则先停止并删除
     local container_name=$(get_container_name "$service")
