@@ -11,6 +11,17 @@ DEFAULT COLLATE utf8mb4_unicode_ci;
 
 USE kidgame;
 
+-- 创建/更新用户并授予权限
+-- 允许从任何主机连接
+CREATE USER IF NOT EXISTS 'kidgame'@'%' IDENTIFIED BY 'kidgame123';
+GRANT ALL PRIVILEGES ON kidgame.* TO 'kidgame'@'%';
+
+-- 允许本地连接
+CREATE USER IF NOT EXISTS 'kidgame'@'localhost' IDENTIFIED BY 'kidgame123';
+GRANT ALL PRIVILEGES ON kidgame.* TO 'kidgame'@'localhost';
+
+FLUSH PRIVILEGES;
+
 -- ================================================
 -- 1. 用户体系（简化版）
 -- ================================================
