@@ -6,6 +6,11 @@
 import type { DungeonRoom, Platform } from '../types'
 import * as C from '../config'
 import { getDungeonTheme } from './dungeon-theme'
+import {
+  drawBackdropSky,
+  drawBackdropMidground,
+  drawBossArenaStage,
+} from './dungeon-backdrop'
 
 // ============ 视差系数 ============
 const PARALLAX_FAR = 0.15
@@ -19,19 +24,26 @@ export function drawDungeonBackground(
 ): void {
   ctx.save()
 
+  const theme = getDungeonTheme(room)
+
   // 1. 天空/背景渐变
   drawSkyAndCaveTop(ctx, room)
 
-  // 2. 房间类型特效层（位于远景和墙壁之间）
+  // 2. 主题远景插画（森林/废墟/Boss 等）
+  drawBackdropSky(ctx, room, theme, camX)
+  drawBackdropMidground(ctx, room, theme, camX)
+
+  // 3. 房间类型氛围
   drawRoomTypeAtmosphere(ctx, room, camX)
 
-  // 3. 远景层（简化：一层远景柱子 + 火把光）
+  // 4. 远景柱 + 火把（与插画叠层）
   drawFarLayer(ctx, room, camX)
 
-  const theme = getDungeonTheme(room)
-
-  // 4. 墙壁主体 + 地面（按关卡配色 / 主题）
+  // 5. 墙壁主体 + 地面（按关卡配色 / 主题）
   drawWallAndGround(ctx, room, camX, theme)
+
+  // 5b. Boss 半圆擂台 + 锁边
+  drawBossArenaStage(ctx, room, camX, theme)
 
   // 4b. 可站立平台（DNF 式浮空台）
   if (room.platforms?.length) {
@@ -919,6 +931,7 @@ function drawSpikes(ctx: CanvasRenderingContext2D, x: number, y: number, w: numb
 }
 
 // ============ 门绘制 ============
+/** DNF 式时空裂缝传送门（清房后激活） */
 export function drawDoor(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -927,51 +940,99 @@ export function drawDoor(
   camX: number,
 ): void {
   const screenX = x - camX
-  if (screenX < -60 || screenX > C.CANVAS_WIDTH + 60) return
+  if (screenX < -90 || screenX > C.CANVAS_WIDTH + 90) return
 
-  const doorW = 34
-  const doorH = 62
+  const time = Date.now() / 1000
+  const portalW = 52
+  const portalH = 78
+  const cx = screenX + portalW / 2 - 8
+  const cy = y + portalH / 2
 
-  // 门框
-  ctx.fillStyle = '#5a4a3a'
-  ctx.fillRect(screenX - 4, y - 4, doorW + 8, doorH + 4)
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
 
-  // 门板
-  if (isOpen) {
-    // 开门状态：发光效果
-    const doorGlow = ctx.createRadialGradient(screenX + doorW / 2, y + doorH / 2, 0, screenX + doorW / 2, y + doorH / 2, 50)
-    doorGlow.addColorStop(0, 'rgba(255,215,0,0.4)')
-    doorGlow.addColorStop(0.5, 'rgba(255,180,0,0.15)')
-    doorGlow.addColorStop(1, 'transparent')
-    ctx.fillStyle = doorGlow
-    ctx.beginPath()
-    ctx.arc(screenX + doorW / 2, y + doorH / 2, 50, 0, Math.PI * 2)
-    ctx.fill()
-
-    ctx.fillStyle = '#3a3a2a'
-  } else {
-    ctx.fillStyle = '#6a5a4a'
+  if (!isOpen) {
+    // 未激活：暗淡符文框
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.strokeStyle = 'rgba(80, 70, 60, 0.6)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(screenX - 6, y - 8, portalW + 4, portalH + 8)
+    ctx.fillStyle = 'rgba(30, 28, 25, 0.75)'
+    ctx.fillRect(screenX, y, portalW - 8, portalH)
+    ctx.fillStyle = 'rgba(100, 90, 80, 0.5)'
+    ctx.font = '10px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('封印', cx, cy)
+    ctx.restore()
+    return
   }
-  ctx.fillRect(screenX, y, doorW, doorH)
 
-  // 门板装饰线
-  ctx.strokeStyle = isOpen ? 'rgba(255,215,0,0.5)' : '#7a6a5a'
-  ctx.lineWidth = 2
-  ctx.strokeRect(screenX + 3, y + 3, doorW - 6, doorH - 6)
+  const pulse = Math.sin(time * 4) * 0.12 + 0.88
+  const spin = time * 2.2
 
-  // 门把手
-  ctx.fillStyle = isOpen ? '#FFD700' : '#AAA'
+  // 外圈光晕
+  const outer = ctx.createRadialGradient(cx, cy, 8, cx, cy, 65 * pulse)
+  outer.addColorStop(0, 'rgba(255, 240, 180, 0.35)')
+  outer.addColorStop(0.4, 'rgba(255, 200, 80, 0.15)')
+  outer.addColorStop(1, 'transparent')
+  ctx.fillStyle = outer
   ctx.beginPath()
-  ctx.arc(screenX + doorW - 8, y + doorH / 2, 3, 0, Math.PI * 2)
+  ctx.arc(cx, cy, 65 * pulse, 0, Math.PI * 2)
   ctx.fill()
 
-  if (isOpen) {
-    // 开门时门上方箭头提示
-    ctx.fillStyle = '#FFD700'
-    ctx.font = 'bold 16px Arial'
-    ctx.textAlign = 'center'
-    ctx.fillText('→', screenX + doorW / 2, y - 10)
+  // 漩涡椭圆（时空裂缝）
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(spin * 0.15)
+  for (let ring = 0; ring < 5; ring++) {
+    const rx = 22 - ring * 2
+    const ry = 34 - ring * 3
+    ctx.strokeStyle = ring % 2 === 0 ? `rgba(255, 220, 120, ${0.5 - ring * 0.08})` : `rgba(100, 200, 255, ${0.35 - ring * 0.05})`
+    ctx.lineWidth = 3 - ring * 0.4
+    ctx.beginPath()
+    ctx.ellipse(0, 0, rx, ry, spin + ring * 0.4, 0, Math.PI * 2)
+    ctx.stroke()
   }
+
+  // 裂缝核心
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, 18)
+  core.addColorStop(0, '#FFFFFF')
+  core.addColorStop(0.35, '#FFE566')
+  core.addColorStop(0.7, 'rgba(255, 150, 50, 0.6)')
+  core.addColorStop(1, 'rgba(80, 40, 120, 0.2)')
+  ctx.fillStyle = core
+  ctx.beginPath()
+  ctx.ellipse(0, 0, 14, 22, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+
+  // 漂浮粒子
+  for (let i = 0; i < 8; i++) {
+    const a = spin + (i / 8) * Math.PI * 2
+    const dist = 28 + Math.sin(time * 3 + i) * 6
+    const px = cx + Math.cos(a) * dist * 0.9
+    const py = cy + Math.sin(a) * dist * 1.1
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(255, 255, 200, 0.9)' : 'rgba(150, 220, 255, 0.7)'
+    ctx.beginPath()
+    ctx.arc(px, py, 2, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // 符文外框
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.strokeStyle = `rgba(255, 200, 80, ${0.7 * pulse})`
+  ctx.lineWidth = 2
+  ctx.strokeRect(screenX - 4, y - 6, portalW, portalH + 4)
+
+  ctx.fillStyle = '#FFD700'
+  ctx.font = 'bold 14px Arial'
+  ctx.textAlign = 'center'
+  ctx.shadowColor = '#FFD700'
+  ctx.shadowBlur = 8
+  ctx.fillText('▶', cx, y - 12)
+  ctx.shadowBlur = 0
+
+  ctx.restore()
 }
 
 // ============ 颜色工具函数 ============

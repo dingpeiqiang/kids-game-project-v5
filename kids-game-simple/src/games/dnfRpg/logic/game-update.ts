@@ -206,8 +206,8 @@ export function updateGameLogic(
   // === 进入下一房间（屏幕坐标碰撞检测，与渲染层一致）===
   if (state.doorOpen) {
     const doorWorldX = room.width - 10
-    const doorW = 36
-    const doorH = 66
+    const doorW = 44
+    const doorH = 78
     const doorY = C.GROUND_Y - 50
 
     // 转换为屏幕坐标（与 ctx.translate(-cameraX, 0) 渲染一致）
