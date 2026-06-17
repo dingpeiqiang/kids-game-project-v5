@@ -139,9 +139,9 @@ start_service() {
         fi
     fi
     
-    # 启动服务（使用 --no-deps 禁止自动启动依赖服务）
+    # 启动服务（使用 --no-deps 禁止自动启动依赖服务，--no-build 禁止自动构建）
     log_info "启动 $service 容器..."
-    if ! $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" up -d --no-deps "$service"; then
+    if ! $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" up -d --no-deps --no-build "$service"; then
         error_exit "$service 容器启动失败"
     fi
     
@@ -167,15 +167,18 @@ start_service() {
 }
 
 # 部署单个服务
+# 参数1: service - 服务名称
+# 参数2: skip_build - 是否跳过构建（可选，默认为 false）
 deploy_service() {
     local service=$1
+    local skip_build=${2:-false}
     
     log_cyan "========================================"
     log_cyan "部署 $service"
     log_cyan "========================================"
     
     # MySQL 和 Redis 不需要构建，直接启动
-    if [ "$service" != "mysql" ] && [ "$service" != "redis" ]; then
+    if [ "$skip_build" != "true" ] && [ "$service" != "mysql" ] && [ "$service" != "redis" ]; then
         # 构建服务
         source "$SCRIPT_DIR/../build/build.sh"
         build_service "$service"
