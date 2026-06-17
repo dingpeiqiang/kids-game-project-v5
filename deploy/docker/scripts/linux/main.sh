@@ -176,13 +176,9 @@ main_build_and_deploy() {
     check_all
     cd "$DOCKER_DIR"
     
-    # 先构建
-    source "$MAIN_SCRIPT_DIR/build/build.sh"
-    build_service "$service"
-    
-    # 再部署
+    # 直接调用 deploy_service，它会先构建再启动，避免重复构建
     source "$MAIN_SCRIPT_DIR/deploy/deploy-services.sh"
-    start_service "$service"
+    deploy_service "$service"
     
     echo "结束时间: $(date)" >> "$DEPLOY_LOG"
 }

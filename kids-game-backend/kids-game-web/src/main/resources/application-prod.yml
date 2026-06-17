@@ -14,8 +14,8 @@ spring:
   # MySQL 数据库配置（支持环境变量覆盖）
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/kidgame?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
-    username: ${SPRING_DATASOURCE_USERNAME:minimalgame}
-    password: ${SPRING_DATASOURCE_PASSWORD:minimalgame123}
+    username: ${SPRING_DATASOURCE_USERNAME:kidgame}
+    password: ${SPRING_DATASOURCE_PASSWORD:kidgame123}
     driver-class-name: com.mysql.cj.jdbc.Driver
     # HikariCP 连接池配置
     hikari:
