@@ -16,7 +16,7 @@ restart_service() {
     $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" stop "$service" 2>/dev/null || true
     
     log_info "启动 $service 容器..."
-    $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" up -d "$service"
+    $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" up -d --no-deps "$service"
     
     if [ $? -eq 0 ]; then
         log_info "$service 重启成功"

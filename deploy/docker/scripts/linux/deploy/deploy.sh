@@ -55,9 +55,9 @@ start_service() {
         log_info "已移除旧容器 $container_name"
     fi
     
-    # 启动服务
+    # 启动服务（使用 --no-deps 禁止自动启动依赖服务）
     log_info "启动 $service 容器..."
-    if ! $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" up -d "$service"; then
+    if ! $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" up -d --no-deps "$service"; then
         error_exit "$service 容器启动失败"
     fi
     
