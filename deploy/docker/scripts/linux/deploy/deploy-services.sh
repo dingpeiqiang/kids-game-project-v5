@@ -126,24 +126,36 @@ start_service() {
         return 1
     fi
     
-    # 检查容器是否存在，如果存在则先停止
+    # 检查容器是否存在，如果存在则先停止并删除（避免 compose v1 recreate 触发 ContainerConfig 错误）
     local container_name=$(get_container_name "$service")
-    if docker ps -a --format '{{.Names}}' | grep -q "^$container_name$"; then
-        log_warn "容器 $container_name 已存在，正在停止..."
-        docker stop "$container_name" >/dev/null 2>&1 || true
-        log_info "容器 $container_name 已停止"
-        
-        # 判断是否删除数据卷
-        if [ "$REMOVE_VOLUME" = "true" ]; then
-            log_warn "正在删除容器和数据卷（数据将丢失！）..."
-            $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" rm -f -v "$service" >/dev/null 2>&1 || true
-            log_info "容器 $container_name 已删除（数据卷已删除）"
-        else
-            log_warn "正在删除容器（数据卷将保留）..."
-            docker rm "$container_name" >/dev/null 2>&1 || true
-            log_info "容器 $container_name 已删除（数据卷保留）"
-        fi
+    # 兼容旧部署使用的容器名
+    local legacy_container_name=""
+    if [ "$service" = "kids-game-simple" ]; then
+        legacy_container_name="kids-game-simple"
     fi
+
+    for name in "$container_name" "$legacy_container_name"; do
+        [ -z "$name" ] && continue
+        if docker ps -a --format '{{.Names}}' | grep -q "^${name}$"; then
+            log_warn "容器 $name 已存在，正在停止..."
+            docker stop "$name" >/dev/null 2>&1 || true
+            log_info "容器 $name 已停止"
+
+            if [ "$REMOVE_VOLUME" = "true" ]; then
+                log_warn "正在删除容器和数据卷（数据将丢失！）..."
+                $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" rm -f -v "$service" >/dev/null 2>&1 || true
+                docker rm -f -v "$name" >/dev/null 2>&1 || true
+                log_info "容器 $name 已删除（数据卷已删除）"
+            else
+                log_warn "正在删除容器（数据卷将保留）..."
+                docker rm -f "$name" >/dev/null 2>&1 || true
+                log_info "容器 $name 已删除（数据卷保留）"
+            fi
+        fi
+    done
+
+    # 清理 compose 记录的旧容器，避免 up 走 recreate 路径
+    $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" rm -sf "$service" >/dev/null 2>&1 || true
     
     # 启动服务（使用 --no-deps 禁止自动启动依赖服务，--no-build 禁止自动构建）
     log_info "启动 $service 容器..."

@@ -46,13 +46,24 @@ check_docker() {
     fi
     log_info "Docker 版本: $(docker --version)"
     
-    # 确定使用 docker-compose 还是 docker compose
-    if command_exists docker-compose; then
-        export DOCKER_COMPOSE="docker-compose"
-    elif docker compose version &> /dev/null; then
+    # 优先使用 Docker Compose V2（docker compose），避免 v1 在新版 Docker 上 recreate 报 ContainerConfig
+    if docker compose version &> /dev/null; then
         export DOCKER_COMPOSE="docker compose"
+        log_info "Compose 版本: $(docker compose version 2>/dev/null | head -1)"
+    elif command_exists docker-compose; then
+        export DOCKER_COMPOSE="docker-compose"
+        local docker_major
+        docker_major=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d. -f1)
+        if [ -n "$docker_major" ] && [ "$docker_major" -ge 24 ] 2>/dev/null; then
+            log_error "当前为 Docker ${docker_major}.x + docker-compose v1，启动/重建容器会失败 (KeyError: ContainerConfig)"
+            log_error "请安装 Compose V2 插件后重试:"
+            log_error "  apt-get update && apt-get install -y docker-compose-plugin"
+            log_error "  docker compose version"
+            error_exit "需要 Docker Compose V2 (docker compose)"
+        fi
+        log_warn "检测到 docker-compose v1，建议安装: apt-get install -y docker-compose-plugin"
     else
-        error_exit "Docker Compose 未安装，请先安装 Docker Compose"
+        error_exit "Docker Compose 未安装。Ubuntu: apt-get install -y docker-compose-plugin"
     fi
     log_info "使用: $DOCKER_COMPOSE"
 }

@@ -38,9 +38,9 @@ curl -fsSL https://get.docker.com | bash -s docker
 systemctl start docker
 systemctl enable docker
 
-# 安装 Docker Compose
-curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
+# 安装 Docker Compose V2（插件，勿用旧版 docker-compose v1，Docker 24+ 会报 ContainerConfig）
+apt-get update && apt-get install -y docker-compose-plugin
+docker compose version
 
 # 配置镜像加速
 mkdir -p /etc/docker

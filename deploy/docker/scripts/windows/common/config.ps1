@@ -23,7 +23,7 @@ $SERVICE_CONFIGS = @{
         HealthTimeout = 60
     }
     "kids-game-simple" = @{
-        ImageName = "kids-game-kids-game-simple"
+        ImageName = "kids-game-simple-game"
         HealthUrl = ""
         HealthTimeout = 30
     }

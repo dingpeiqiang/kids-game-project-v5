@@ -15,7 +15,7 @@ declare -A SERVICE_CONFIGS=(
     ["redis"]="kids-game-redis \"\" 30"
     ["backend"]="kids-game-backend http://localhost:8080/actuator/health 120"
     ["frontend"]="kids-game-frontend http://localhost/ 60"
-    ["kids-game-simple"]="kids-game-kids-game-simple \"\" 30"
+    ["kids-game-simple"]="kids-game-simple-game \"\" 30"
 )
 
 # 必需环境变量
