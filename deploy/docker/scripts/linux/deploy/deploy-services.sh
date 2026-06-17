@@ -53,9 +53,15 @@ health_check() {
     log_info "等待 $service 启动..."
     log_info "实时日志输出（按 Ctrl+C 可停止查看日志，但不影响启动）:"
     
-    # 在后台显示实时日志
+    # 先等待容器启动，避免 Docker Compose 事件流 bug
+    sleep 2
+    
+    # 获取容器名称
+    local container_name=$(get_container_name "$service")
+    
+    # 在后台显示实时日志（使用 docker logs 替代 docker-compose logs -f 避免事件流 bug）
     local log_tail_pid
-    $DOCKER_COMPOSE -f "$DOCKER_DIR/$COMPOSE_FILE" logs -f "$service" 2>&1 | while read -r line; do
+    docker logs -f "$container_name" 2>&1 | while read -r line; do
         echo -e "${GREY}[LOG]${NC} $line"
     done &
     log_tail_pid=$!

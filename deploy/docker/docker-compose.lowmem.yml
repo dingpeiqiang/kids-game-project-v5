@@ -209,3 +209,4 @@ volumes:
 networks:
   kids-game-network:
     driver: bridge
+    name: kids-game-network
