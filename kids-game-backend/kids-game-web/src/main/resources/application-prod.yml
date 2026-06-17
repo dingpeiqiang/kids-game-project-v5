@@ -13,7 +13,7 @@ spring:
 
   # MySQL 数据库配置（支持环境变量覆盖）
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/kidgame?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/kidgame?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectTimeout=60000&socketTimeout=60000&autoReconnect=true&failOverReadOnly=false&maxReconnects=10}
     username: ${SPRING_DATASOURCE_USERNAME:kidgame}
     password: ${SPRING_DATASOURCE_PASSWORD:kidgame123}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -21,10 +21,12 @@ spring:
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
-      connection-timeout: 30000
-      idle-timeout: 300000          # 5 分钟（比 MySQL wait_timeout 短）
-      max-lifetime: 600000           # 10 分钟（确保在 MySQL 关闭连接前主动刷新）
+      connection-timeout: 60000       # 增加连接超时时间为 60 秒
+      idle-timeout: 300000           # 5 分钟（比 MySQL wait_timeout 短）
+      max-lifetime: 600000            # 10 分钟（确保在 MySQL 关闭连接前主动刷新）
       connection-test-query: SELECT 1
+      initialization-fail-timeout: 0  # 无限期等待数据库可用
+      validation-timeout: 3000        # 连接验证超时时间
   # 自动执行初始化脚本（已禁用，避免重复插入数据）
   # sql:
   #   init:
@@ -95,6 +97,15 @@ logging:
     com.baomidou.mybatisplus: debug
     # 降低异常处理器的日志级别，避免打印 WebSocket 资源未找到的错误
     com.kidgame.common.handler.GlobalExceptionHandler: info
+    # 数据库连接日志 - 显示连接池初始化和连接信息
+    com.zaxxer.hikari: DEBUG
+    com.zaxxer.hikari.pool: DEBUG
+    # MySQL JDBC 驱动日志 - 显示连接建立和通信信息
+    com.mysql.cj: DEBUG
+    com.mysql.cj.jdbc: DEBUG
+    # Spring JDBC 日志
+    org.springframework.jdbc: DEBUG
+    org.springframework.jdbc.core: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 

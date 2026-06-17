@@ -37,10 +37,11 @@ services:
       --table-open-cache=2000
       --thread-cache-size=8
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER:-kidgame}", "-p${MYSQL_PASSWORD:-kidgame123}"]
       timeout: 20s
-      retries: 10
-      interval: 30s
+      retries: 20
+      interval: 10s
+      start_period: 30s
 
   # Redis 缓存服务 - 低内存优化版
   redis:
