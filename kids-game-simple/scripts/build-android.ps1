@@ -95,8 +95,8 @@ if ($LASTEXITCODE -ne 0) {
 
 # [3/4] Sync Capacitor
 Write-Host "`n[3/4] Syncing Capacitor..."
-Write-Host "Running pnpm run cap:sync:android:remote (WebView 与 https://kidsgame.dingpq.cn:3443 同源，避免跨域 SSL)..."
-pnpm run cap:sync:android:remote
+Write-Host "Running pnpm exec cap sync android (内置 dist，不远程加载 3443，避免启动即 SSL -101)..."
+pnpm exec cap sync android
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Capacitor sync failed" -ForegroundColor Red
     exit 1
