@@ -31,6 +31,9 @@ let shellChromeAbort: AbortController | null = null
 let shellKeydownHandler: ((e: KeyboardEvent) => void) | null = null
 let shellOnExit: (() => void) | null = null
 let shellHidePlatformPause = false
+/** 打开暂停/退出蒙层后短暂忽略「点背景关闭」，避免同一次触摸触发的幽灵 click */
+let shellModalSuppressBackdropUntil = 0
+const SHELL_MODAL_BACKDROP_GUARD_MS = 450
 
 function el<T extends HTMLElement>(id: string): T | null {
   return document.getElementById(id) as T | null
@@ -148,16 +151,33 @@ function shellLayerActive(): boolean {
   return el('game-layer')?.classList.contains('show') ?? false
 }
 
+function markShellModalJustOpened() {
+  shellModalSuppressBackdropUntil = Date.now() + SHELL_MODAL_BACKDROP_GUARD_MS
+}
+
+function shouldIgnoreShellModalBackdropDismiss(): boolean {
+  return Date.now() < shellModalSuppressBackdropUntil
+}
+
+function syncShellModalBlocking() {
+  el('game-layer')?.classList.toggle('game-layer--modal-open', isShellModalOpen())
+}
+
+function showPauseOverlay() {
+  if (gameEngine.isRunning()) gameEngine.pause()
+  el('gamePauseOverlay')?.classList.add('show')
+  markShellModalJustOpened()
+  syncShellModalBlocking()
+}
+
 function handleShellBack() {
   audioService.click()
-  const overlay = el('gamePauseOverlay')
   if (shellHidePlatformPause) {
     showExitConfirmOverlay()
     return
   }
   if (gameEngine.isRunning()) {
-    gameEngine.pause()
-    overlay?.classList.add('show')
+    showPauseOverlay()
     return
   }
   shellOnExit?.()
@@ -167,8 +187,7 @@ function handleShellPause() {
   audioService.click()
   if (!shellLayerActive()) return
   if (!gameEngine.isRunning()) return
-  gameEngine.pause()
-  el('gamePauseOverlay')?.classList.add('show')
+  showPauseOverlay()
 }
 
 function bindShellChromeControls() {
@@ -221,12 +240,14 @@ function bindShellActions(opts: GameShellMountOptions) {
       audioService.click()
       gameEngine.resume()
       el('gamePauseOverlay')?.classList.remove('show')
+      syncShellModalBlocking()
       return
     }
     if (quitBtn) {
       e.preventDefault()
       audioService.click()
       el('gamePauseOverlay')?.classList.remove('show')
+      syncShellModalBlocking()
       shellOnExit?.()
       return
     }
@@ -238,10 +259,15 @@ function bindShellActions(opts: GameShellMountOptions) {
   if (!pauseOverlayBound && overlay) {
     pauseOverlayBound = true
     overlay.addEventListener('click', e => {
-      if (e.target === overlay) {
-        gameEngine.resume()
-        overlay.classList.remove('show')
+      if (e.target !== overlay) return
+      if (shouldIgnoreShellModalBackdropDismiss()) {
+        e.preventDefault()
+        e.stopPropagation()
+        return
       }
+      gameEngine.resume()
+      overlay.classList.remove('show')
+      syncShellModalBlocking()
     })
   }
 }
@@ -350,10 +376,14 @@ export function getPowerupSlotElement(): HTMLElement | null {
 function showExitConfirmOverlay() {
   if (gameEngine.isRunning()) gameEngine.pause()
   el('gameExitConfirmOverlay')?.classList.add('show')
+  markShellModalJustOpened()
+  syncShellModalBlocking()
 }
 
 export function dismissExitConfirmOverlay(resumeGame = true) {
+  shellModalSuppressBackdropUntil = 0
   el('gameExitConfirmOverlay')?.classList.remove('show')
+  syncShellModalBlocking()
   if (resumeGame && gameEngine.isRunning() && gameEngine.isPaused()) {
     gameEngine.resume()
   }
@@ -390,8 +420,7 @@ function bindShellKeyboard() {
       if (shellHidePlatformPause) {
         showExitConfirmOverlay()
       } else {
-        gameEngine.pause()
-        el('gamePauseOverlay')?.classList.add('show')
+        showPauseOverlay()
       }
     }
   }
@@ -420,9 +449,13 @@ function bindExitConfirmActions() {
   })
   const exitOverlay = el('gameExitConfirmOverlay')
   exitOverlay?.addEventListener('click', e => {
-    if (e.target === exitOverlay) {
-      dismissExitConfirmOverlay()
+    if (e.target !== exitOverlay) return
+    if (shouldIgnoreShellModalBackdropDismiss()) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
     }
+    dismissExitConfirmOverlay()
   })
 }
 

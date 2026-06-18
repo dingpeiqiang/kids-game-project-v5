@@ -10,6 +10,7 @@ import {
   STORAGE_KEY
 } from './constants'
 import { audioService } from '../../services/audio'
+import { gameEngine } from '../../services/gameEngine'
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
 
 export interface InputCallbacks {
@@ -84,6 +85,8 @@ export function createInputHandler(
 
   // 触摸/点击按下（统一使用游戏坐标，与渲染坐标一致）
   function handleDown(x: number, y: number) {
+    // 平台壳层暂停时不再处理画布输入，避免与暂停/退出弹窗抢事件
+    if (gameEngine.isRunning() && gameEngine.isPaused()) return
 
     // 路线编辑模式
     if (state.phase === 'routeEdit') {
