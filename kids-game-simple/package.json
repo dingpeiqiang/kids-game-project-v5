@@ -13,8 +13,8 @@
     "audit:registry": "node scripts/audit-framework-registry.mjs",
     "audit:gtrs": "node scripts/audit-gtrs-lifecycle.mjs",
     "audit": "pnpm run audit:registry && pnpm run audit:gtrs",
-    "cap:sync:android": "cap sync android",
-    "cap:sync:android:remote": "cap sync android --config capacitor.config.prod.ts"
+    "cap:sync:android": "pnpm exec cap sync android",
+    "cap:sync:android:remote": "node scripts/cap-sync-android-remote.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",
