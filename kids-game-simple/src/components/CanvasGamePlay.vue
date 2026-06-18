@@ -111,7 +111,7 @@ function isGuideSkipped(): boolean {
 
 function onBack() {
   teardownSession();
-  router.back();
+  router.push('/');
 }
 
 function onGuideCancel() {

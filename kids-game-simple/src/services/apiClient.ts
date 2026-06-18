@@ -194,11 +194,55 @@ function deepCamelize<T>(val: unknown): T {
   return val as T
 }
 
+const REQUEST_MAX_ATTEMPTS = 8
+/** 网关/SLB 冷连接：间隔拉长反而失败，短间隔连发更易成功（与浏览器狂刷一致） */
+const REQUEST_BURST_DELAY_MS = 160
+const LOGIN_MAX_ATTEMPTS = 16
+const LOGIN_BURST_DELAY_MS = 120
+
+export type RequestRetryOptions = {
+  maxAttempts?: number
+  /** 固定重试间隔（推荐）；不设则用 baseDelayMs * attempt 递增退避 */
+  retryDelayMs?: number
+  baseDelayMs?: number
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** CapacitorHttp / WebView 在 TLS 握手失败时常见 Connection reset、Failed to fetch */
+function isRetryableNetworkError(err: unknown): boolean {
+  const msg = String((err as Error)?.message ?? err).toLowerCase()
+  return (
+    msg.includes('connection reset') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('network request failed') ||
+    msg.includes('socketexception') ||
+    msg.includes('handshake')
+  )
+}
+
+function networkFailureMessage(err: unknown): string {
+  const msg = String((err as Error)?.message ?? err)
+  if (/connection reset/i.test(msg)) {
+    return '网络连接被重置，请检查网络或稍后再试'
+  }
+  if (/failed to fetch/i.test(msg)) {
+    return '无法连接服务器，请检查网络或 API 地址'
+  }
+  return '网络请求失败'
+}
+
 async function request<T = any>(
   path: string,
   options: RequestInit = {},
-  withAuth = true
+  withAuth = true,
+  retryOpts?: RequestRetryOptions,
 ): Promise<BackendResult<T>> {
+  const maxAttempts = retryOpts?.maxAttempts ?? REQUEST_MAX_ATTEMPTS
+  const baseDelayMs = retryOpts?.baseDelayMs ?? REQUEST_BURST_DELAY_MS
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
@@ -209,22 +253,42 @@ async function request<T = any>(
     if (token) headers['Authorization'] = `Bearer ${token}`
   }
 
-  try {
-    const res = await fetch(apiUrl(path), { ...options, headers })
-    const json = await res.json()
-    return deepCamelize(json)
-  } catch (err) {
-    const url = apiUrl(path)
-    console.error('[apiClient] 请求失败:', path, url, err)
-    if (err instanceof TypeError && String((err as Error).message).includes('fetch')) {
-      console.warn(
-        '[apiClient] 多为 SSL/跨域或 API 不可达，当前 API_BASE=',
-        API_BASE,
-        '；Android 请确认 .env.production 后重新 build + cap sync',
-      )
+  const url = apiUrl(path)
+  let lastErr: unknown
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(url, { ...options, headers })
+      const json = await res.json()
+      return deepCamelize(json)
+    } catch (err) {
+      lastErr = err
+      const retryable = isRetryableNetworkError(err)
+      if (retryable && attempt < maxAttempts) {
+        const delay = retryOpts?.retryDelayMs ?? baseDelayMs
+        console.warn(
+          `[apiClient] ${path} 第 ${attempt}/${maxAttempts} 次失败，${delay}ms 后重试:`,
+          (err as Error)?.message ?? err,
+        )
+        await sleep(delay)
+        continue
+      }
+      break
     }
-    return { code: -1, msg: '网络请求失败' }
   }
+
+  console.error('[apiClient] 请求失败:', path, url, lastErr)
+  if (
+    lastErr instanceof TypeError &&
+    String((lastErr as Error).message).includes('fetch')
+  ) {
+    console.warn(
+      '[apiClient] 多为 SSL/跨域或 API 不可达，当前 API_BASE=',
+      API_BASE,
+      '；Android 请确认 .env.production 后重新 build + cap sync',
+    )
+  }
+  return { code: -1, msg: networkFailureMessage(lastErr) }
 }
 
 // ─────────────────────────────────────────────
@@ -288,7 +352,8 @@ export async function apiLogin(
         // 不传递 userType，后端会根据用户名自动识别
       }),
     },
-    false
+    false,
+    { maxAttempts: LOGIN_MAX_ATTEMPTS, retryDelayMs: LOGIN_BURST_DELAY_MS },
   )
 
   console.log('[API] 登录接口返回:', res)

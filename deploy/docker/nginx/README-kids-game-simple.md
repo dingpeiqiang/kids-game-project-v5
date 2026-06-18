@@ -35,3 +35,14 @@ docker exec kids-game-simple nginx -t && docker exec kids-game-simple nginx -s r
 
 - 宿主机 **443** 不能被其他 Nginx/服务占用，否则 `443:443` 绑定失败。
 - 安全组放行 **TCP 443**。
+
+## 单 IP 仍要「狂刷」才打开
+
+与 App 无关时，在**服务器**上：
+
+```bash
+bash deploy/docker/scripts/diagnose-https-burst.sh kidsgame.dingpq.cn
+openssl s_client -connect kidsgame.dingpq.cn:443 -servername kidsgame.dingpq.cn </dev/null 2>&1 | grep "Verify return code"
+```
+
+A/B 关闭 HTTP/2：用 `kids-game-simple.conf.http11-abtest` 覆盖 `kids-game-simple.conf` 后 rebuild。详见 `kids-game-simple/docs/android-api-ssl.md` §6。

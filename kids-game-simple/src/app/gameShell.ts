@@ -24,10 +24,10 @@ export interface GameShellMountOptions {
 }
 
 let scoreUnsub: (() => void) | null = null
-let pauseOverlayBound = false
 let exitConfirmBound = false
 let shellActionsBound = false
 let shellChromeAbort: AbortController | null = null
+let shellModalAbort: AbortController | null = null
 let shellKeydownHandler: ((e: KeyboardEvent) => void) | null = null
 let shellOnExit: (() => void) | null = null
 let shellHidePlatformPause = false
@@ -68,6 +68,7 @@ export function mountGameShell(opts: GameShellMountOptions): GameShellMountResul
   shell.classList.toggle('game-shell--hide-score', !!layout.hidePlatformScore)
   shell.classList.toggle('game-shell--hide-pause', !!layout.hidePlatformPause)
   shell.classList.toggle('game-shell--compact-footer', !!layout.compactFooter)
+  shell.classList.toggle('game-shell--external-canvas', !!layout.externalCanvas)
   if (!layout.hidePlatformScore && scoreEl) {
     scoreEl.textContent = '0'
   }
@@ -95,6 +96,13 @@ export function mountGameShell(opts: GameShellMountOptions): GameShellMountResul
   let portraitResizeHandler: (() => void) | null = null
   if (layout.externalCanvas) {
     canvasHost.innerHTML = ''
+    canvasHost.style.display = 'block'
+    canvasHost.style.width = '100%'
+    canvasHost.style.height = '100%'
+    canvasHost.style.position = 'relative'
+    canvasHost.style.flex = '1 1 auto'
+    canvasHost.style.alignSelf = 'stretch'
+    canvasHost.style.minHeight = '0'
   } else if (isLandscapeLayout(layout)) {
     applyLandscapeShell(layer, canvasHost, layout, opts.orientationManager)
   } else {
@@ -118,8 +126,11 @@ export function unmountGameShell(orientationManager: OrientationManager | null) 
 
   shellChromeAbort?.abort()
   shellChromeAbort = null
+  shellModalAbort?.abort()
+  shellModalAbort = null
   unbindShellKeyboard()
   dismissGamePauseOverlay()
+  el('game-layer')?.classList.remove('game-layer--modal-open')
   shellHidePlatformPause = false
   shell?.classList.remove(
     'game-shell--active',
@@ -127,6 +138,7 @@ export function unmountGameShell(orientationManager: OrientationManager | null) 
     'game-shell--hide-pause',
     'game-shell--compact-footer',
     'game-shell--powerup-active',
+    'game-shell--external-canvas',
   )
   shell?.removeAttribute('data-orientation')
   shell?.removeAttribute('data-game-id')
@@ -190,6 +202,25 @@ function handleShellPause() {
   showPauseOverlay()
 }
 
+function handlePauseResume() {
+  audioService.click()
+  if (!shellLayerActive()) return
+  gameEngine.resume()
+  el('gamePauseOverlay')?.classList.remove('show')
+  syncShellModalBlocking()
+}
+
+function handlePauseQuit() {
+  audioService.click()
+  if (!shellLayerActive()) return
+  shellModalSuppressBackdropUntil = 0
+  dismissExitConfirmOverlay(false)
+  el('gamePauseOverlay')?.classList.remove('show')
+  syncShellModalBlocking()
+  gameEngine.stop()
+  shellOnExit?.()
+}
+
 function bindShellChromeControls() {
   shellChromeAbort?.abort()
   shellChromeAbort = new AbortController()
@@ -217,9 +248,52 @@ function bindShellChromeControls() {
   bindShellBtn('gameShellPause', handleShellPause)
 }
 
+function bindShellModalControls() {
+  shellModalAbort?.abort()
+  shellModalAbort = new AbortController()
+  const signal = shellModalAbort.signal
+  const opts = { signal, passive: false as const }
+
+  const bindModalBtn = (id: string, handler: () => void) => {
+    const btn = el<HTMLButtonElement>(id)
+    if (!btn) return
+    const fire = (e: PointerEvent) => {
+      if (!shellLayerActive()) return
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      e.preventDefault()
+      e.stopPropagation()
+      handler()
+    }
+    btn.addEventListener('pointerup', fire, opts)
+    btn.addEventListener('click', e => {
+      e.preventDefault()
+      e.stopPropagation()
+    }, opts)
+  }
+
+  bindModalBtn('gamePauseResume', handlePauseResume)
+  bindModalBtn('gamePauseQuit', handlePauseQuit)
+
+  const overlay = el('gamePauseOverlay')
+  overlay?.addEventListener(
+    'click',
+    e => {
+      if (e.target !== overlay) return
+      if (shouldIgnoreShellModalBackdropDismiss()) {
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
+      handlePauseResume()
+    },
+    { signal },
+  )
+}
+
 function bindShellActions(opts: GameShellMountOptions) {
   shellOnExit = opts.onExit
   bindShellChromeControls()
+  bindShellModalControls()
 
   if (shellActionsBound) {
     bindExitConfirmActions()
@@ -227,49 +301,7 @@ function bindShellActions(opts: GameShellMountOptions) {
   }
   shellActionsBound = true
 
-  const layer = el('game-layer')
-  if (!layer) return
-
-  layer.addEventListener('click', e => {
-    if (!shellLayerActive()) return
-    const t = e.target as HTMLElement
-    const resumeBtn = t.closest('#gamePauseResume')
-    const quitBtn = t.closest('#gamePauseQuit')
-    if (resumeBtn) {
-      e.preventDefault()
-      audioService.click()
-      gameEngine.resume()
-      el('gamePauseOverlay')?.classList.remove('show')
-      syncShellModalBlocking()
-      return
-    }
-    if (quitBtn) {
-      e.preventDefault()
-      audioService.click()
-      el('gamePauseOverlay')?.classList.remove('show')
-      syncShellModalBlocking()
-      shellOnExit?.()
-      return
-    }
-  })
-
   bindExitConfirmActions()
-
-  const overlay = el('gamePauseOverlay')
-  if (!pauseOverlayBound && overlay) {
-    pauseOverlayBound = true
-    overlay.addEventListener('click', e => {
-      if (e.target !== overlay) return
-      if (shouldIgnoreShellModalBackdropDismiss()) {
-        e.preventDefault()
-        e.stopPropagation()
-        return
-      }
-      gameEngine.resume()
-      overlay.classList.remove('show')
-      syncShellModalBlocking()
-    })
-  }
 }
 
 function bindScoreHud(scoreEl: HTMLElement | null, comboEl: HTMLElement | null) {
@@ -308,6 +340,10 @@ function resetCanvasHostStyles(canvas: HTMLElement) {
   canvas.style.height = ''
   canvas.style.transform = ''
   canvas.style.transformOrigin = ''
+  canvas.style.position = ''
+  canvas.style.flex = ''
+  canvas.style.alignSelf = ''
+  canvas.style.minHeight = ''
 }
 
 function applyLandscapeShell(
@@ -397,6 +433,10 @@ function isExitConfirmVisible(): boolean {
   return el('gameExitConfirmOverlay')?.classList.contains('show') ?? false
 }
 
+function isShellModalOpen(): boolean {
+  return isPauseOverlayVisible() || isExitConfirmVisible()
+}
+
 function bindShellKeyboard() {
   unbindShellKeyboard()
   shellKeydownHandler = (e: KeyboardEvent) => {
@@ -413,6 +453,7 @@ function bindShellKeyboard() {
       e.preventDefault()
       gameEngine.resume()
       el('gamePauseOverlay')?.classList.remove('show')
+      syncShellModalBlocking()
       return
     }
     if (gameEngine.isRunning()) {
@@ -445,6 +486,7 @@ function bindExitConfirmActions() {
     audioService.click()
     dismissExitConfirmOverlay(false)
     el('gamePauseOverlay')?.classList.remove('show')
+    syncShellModalBlocking()
     shellOnExit?.()
   })
   const exitOverlay = el('gameExitConfirmOverlay')
@@ -464,6 +506,7 @@ export function dismissGamePauseOverlay() {
   dismissExitConfirmOverlay(false)
   const overlay = el('gamePauseOverlay')
   overlay?.classList.remove('show')
+  syncShellModalBlocking()
   if (gameEngine.isRunning()) {
     gameEngine.resume()
   }

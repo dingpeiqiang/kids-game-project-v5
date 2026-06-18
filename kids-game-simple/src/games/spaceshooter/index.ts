@@ -1,6 +1,5 @@
 // === 太空射击游戏入口（Phaser 外部画布 + 框架 destroy / 暂停桥接）===
 import type { GameEngine } from '../../services/gameEngine'
-import Phaser from 'phaser'
 import { SpaceShooterScene } from './scene'
 import { BASE_W, BASE_H } from './config'
 
@@ -22,6 +21,12 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     return
   }
   gameContainer.innerHTML = ''
+  gameContainer.style.display = 'block'
+  gameContainer.style.width = '100%'
+  gameContainer.style.height = '100%'
+  gameContainer.style.position = 'relative'
+  gameContainer.style.flex = '1 1 auto'
+  gameContainer.style.minHeight = '0'
 
   const isMobile =
     /Android|iPhone|iPad|iPod|MicroMessenger/i.test(navigator.userAgent) ||
@@ -34,7 +39,7 @@ export function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     inset: 0;
     width: 100%;
     height: 100%;
-    z-index: 1;
+    z-index: 100;
     background: linear-gradient(to bottom, #0a0a2e 0%, #1a1a3e 50%, #0a0a2e 100%);
     overflow: hidden;
     margin: 0;

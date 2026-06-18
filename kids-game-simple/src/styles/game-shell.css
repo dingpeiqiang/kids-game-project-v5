@@ -167,6 +167,20 @@
   height: 100%;
 }
 
+/* Phaser / 自管 DOM：视口内画布区必须撑满，避免 flex 居中导致高度塌缩为 0 */
+.game-shell.game-shell--external-canvas .game-viewport {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.game-shell.game-shell--external-canvas #gameCanvas {
+  display: block !important;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 0;
+  position: relative;
+}
+
 .game-shell-footer {
   flex-shrink: 0;
   min-height: 56px;
@@ -211,7 +225,20 @@
   display: flex;
 }
 
+/* 暂停/退出弹窗打开时，禁止事件落到画布与游戏内控件 */
+#game-layer.game-layer--modal-open .game-viewport,
+#game-layer.game-layer--modal-open .game-shell-header,
+#game-layer.game-layer--modal-open .game-shell-footer {
+  pointer-events: none;
+}
+
+#game-layer.game-layer--modal-open .game-pause-overlay,
+#game-layer.game-layer--modal-open .game-exit-confirm-overlay {
+  pointer-events: auto;
+}
+
 .game-pause-card {
+  pointer-events: auto;
   width: min(320px, 100%);
   padding: 24px 20px;
   border-radius: 20px;

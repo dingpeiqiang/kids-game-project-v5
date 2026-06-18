@@ -101,8 +101,61 @@ java.net.SocketException: Connection reset
 
 `deploy/docker/nginx/kids-game-simple.conf` 已加 `ssl_session_tickets off`，部署后 `nginx -s reload`。
 
-## 6. 验收
+## 6. 浏览器也要「狂刷」才打开 — 根因在 HTTPS 入口，不是 App
+
+若 **PC/手机浏览器** 访问 `https://kidsgame.dingpq.cn/` 也要多次刷新，且 **连点快容易成功、隔几秒再点又失败**，说明：
+
+- 不是 Capacitor / Android 独有；
+- **即使只有一台机器、一个公网 IP**（无 SLB 多节点），仍可能出现：TLS/HTTP2 首连、容器资源、安全组/防火墙、证书链、Nginx 配置等。
+
+客户端已用 **短间隔连发重试**（登录约 120ms、其它 API 约 160ms）模拟「狂刷」，只能缓解，**必须在服务器上修**。
+
+### 6.1 单实例（一个 IP）优先排查
+
+当前 compose：`443:443` → 容器内 Nginx（`deploy/docker/nginx/kids-game-simple.conf`）。
+
+1. **证书链（最常见）**  
+   ```bash
+   echo | openssl s_client -connect kidsgame.dingpq.cn:443 -servername kidsgame.dingpq.cn 2>&1 | grep "Verify return code"
+   ```  
+   非 `0 (ok)` 时，把 **fullchain** 重新打进 `ssl/kidsgame.dingpq.cn_ca.crt` 后 rebuild 镜像。
+
+2. **HTTP/2 首连（建议 A/B）**  
+   配置里为 `http2 on;`。临时改为仅 TLS 1.2 + HTTP/1.1：  
+   - 复制 `kids-game-simple.conf.http11-abtest` 覆盖 `kids-game-simple.conf`（或手动注释 `http2 on`），  
+   - `docker compose build kids-game-simple && docker compose up -d kids-game-simple`  
+   若浏览器 **单次刷新即稳定**，再保留 HTTP/1.1 或升级 Nginx/OpenSSL。
+
+3. **本机连发 vs 冷连接（在服务器上跑）**  
+   ```bash
+   bash deploy/docker/scripts/diagnose-https-burst.sh kidsgame.dingpq.cn
+   ```  
+   若「连发 20 次成功率明显高于间隔 2s 的 20 次」，偏向 **首包/连接跟踪/资源瞬时不足**，查 `dmesg`、Docker 内存、云安全组。
+
+4. **443 是否被别的进程占用或双监听**  
+   `ss -tlnp | grep ':443'` — 应只有 docker-proxy 指向 `kids-game-simple`。多进程抢 443 会导致随机 reset。
+
+5. **失败时刻 Nginx 日志**  
+   ```bash
+   docker exec kids-game-simple tail -30 /var/log/nginx/error.log
+   ```  
+   握手阶段失败多为 `SSL_read` / `peer closed`；若 `/api` 才有错则是 backend 问题（与 TLS reset 不同）。
+
+6. **（已排除）多 A 记录 / SLB 抽签**  
+   若确认 **只有一个 IP、无 SLB**，不必查多节点；重点放在 §6.1 的 1–5。
+
+### 6.2 客户端策略（当前工程）
+
+| 场景 | 策略 |
+|------|------|
+| `/auth/login` | 最多 16 次，每次失败后 **120ms** 再试 |
+| 其它 `/api/*` | 最多 8 次，失败后 **160ms** 再试 |
+
+仍失败时提示「网络连接被重置」，需按 §6.1 修入口。
+
+## 7. 验收
 
 - 手机 Chrome 访问 API URL 无证书警告。
 - `curl` 返回 HTTP 200/401 等正常业务码，而非 SSL 错误。
-- 重装 Debug APK 后登录不再出现 `Failed to fetch` / `Connection reset`。
+- 浏览器 **单次刷新** 即可打开首页（不依赖连点）。
+- 重装 Debug APK 后登录一次点击即可（不依赖连点）。

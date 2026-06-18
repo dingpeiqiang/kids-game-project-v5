@@ -45,6 +45,7 @@ export class AuthModal {
   private el: HTMLElement | null = null
   private mode: 'login' | 'register' = 'login'
   private onSuccess?: () => void
+  private overlayBound = false
 
   open(onSuccess?: () => void) {
     this.onSuccess = onSuccess
@@ -88,88 +89,80 @@ export class AuthModal {
       </div>
     `
 
-    this.el.querySelectorAll('.ugp-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        this.mode = tab.getAttribute('data-tab') as any
+    this.bindOverlayEvents()
+  }
+
+  /** 事件委托：避免 renderPanel 多次调用导致同一按钮叠多个 login 请求 */
+  private bindOverlayEvents() {
+    if (!this.el || this.overlayBound) return
+    this.overlayBound = true
+
+    this.el.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement
+      const tab = t.closest('.ugp-tab') as HTMLElement | null
+      if (tab) {
+        this.mode = tab.getAttribute('data-tab') as 'login' | 'register'
         this.renderPanel()
-      })
+        return
+      }
+      if (t.closest('#btnDoLogin')) {
+        void this.doLogin()
+        return
+      }
+      if (t.closest('#btnDoRegister')) {
+        void this.doRegister()
+        return
+      }
+      const acct = t.closest('.ugp-acct-item') as HTMLElement | null
+      if (acct) {
+        const uid = acct.getAttribute('data-uid')!
+        userService.switchAccount(uid)
+        this.close()
+        this.onSuccess?.()
+        showToast(`欢迎回来，${userService.current?.username}！`, 'success')
+        return
+      }
+      const kidOption = t.closest('#userTypeKid')
+      const parentOption = t.closest('#userTypeParent')
+      if (kidOption) {
+        this._selectedUserType = 'KID'
+        document.getElementById('userTypeKid')?.classList.add('selected')
+        document.getElementById('userTypeParent')?.classList.remove('selected')
+      } else if (parentOption) {
+        this._selectedUserType = 'PARENT'
+        document.getElementById('userTypeParent')?.classList.add('selected')
+        document.getElementById('userTypeKid')?.classList.remove('selected')
+      }
     })
 
-    if (isLogin) {
-      document.getElementById('btnDoLogin')?.addEventListener('click', () => this.doLogin())
-      document.getElementById('ugp-login-pass')?.addEventListener('keydown', (e) => {
-        if ((e as KeyboardEvent).key === 'Enter') this.doLogin()
-      })
-      // 快速切换账号
-      this.el.querySelectorAll('.ugp-acct-item').forEach(item => {
-        item.addEventListener('click', () => {
-          const uid = item.getAttribute('data-uid')!
-          userService.switchAccount(uid)
-          this.close()
-          this.onSuccess?.()
-          showToast(`欢迎回来，${userService.current?.username}！`, 'success')
-        })
-      })
-    } else {
-      document.getElementById('btnDoRegister')?.addEventListener('click', () => this.doRegister())
-      document.getElementById('ugp-reg-pass')?.addEventListener('keydown', (e) => {
-        if ((e as KeyboardEvent).key === 'Enter') this.doRegister()
-      })
-      
-      // 账号格式实时验证
-      const usernameInput = document.getElementById('ugp-reg-user') as HTMLInputElement
+    this.el.addEventListener('keydown', (e) => {
+      if ((e as KeyboardEvent).key !== 'Enter') return
+      const target = e.target as HTMLElement
+      if (target.id === 'ugp-login-pass') void this.doLogin()
+      if (target.id === 'ugp-reg-pass') void this.doRegister()
+    })
+
+    this.el.addEventListener('input', (e) => {
+      const target = e.target as HTMLElement
+      if (target.id !== 'ugp-reg-user') return
+      const usernameInput = target as HTMLInputElement
       const usernameHint = document.getElementById('usernameHint')
-      if (usernameInput && usernameHint) {
-        usernameInput.addEventListener('input', () => {
-          const value = usernameInput.value
-          const validation = this.validateUsername(value)
-          if (value.length === 0) {
-            usernameHint.textContent = ''
-            usernameHint.className = 'ugp-field-hint'
-          } else if (validation.valid) {
-            usernameHint.textContent = '✓ 账号格式正确'
-            usernameHint.className = 'ugp-field-hint ugp-hint-success'
-          } else {
-            usernameHint.textContent = validation.message
-            usernameHint.className = 'ugp-field-hint ugp-hint-error'
-          }
-        })
+      if (!usernameHint) return
+      const validation = this.validateUsername(usernameInput.value)
+      if (usernameInput.value.length === 0) {
+        usernameHint.textContent = ''
+        usernameHint.className = 'ugp-field-hint'
+      } else if (validation.valid) {
+        usernameHint.textContent = '✓ 账号格式正确'
+        usernameHint.className = 'ugp-field-hint ugp-hint-success'
+      } else {
+        usernameHint.textContent = validation.message
+        usernameHint.className = 'ugp-field-hint ugp-hint-error'
       }
-      
-      // 用户类型选择
-      let selectedUserType = 'KID' // 默认选择儿童
-      const kidOption = document.getElementById('userTypeKid')
-      const parentOption = document.getElementById('userTypeParent')
-      
-      console.log('[AuthModal] 初始化用户类型选择器', { kidOption: !!kidOption, parentOption: !!parentOption })
-      
-      if (kidOption) {
-        kidOption.classList.add('selected')
-        kidOption.addEventListener('click', () => {
-          selectedUserType = 'KID'
-          kidOption.classList.add('selected')
-          parentOption?.classList.remove('selected')
-          console.log('[AuthModal] 用户类型切换为:', selectedUserType)
-        })
-      }
-      
-      if (parentOption) {
-        parentOption.addEventListener('click', () => {
-          selectedUserType = 'PARENT'
-          parentOption.classList.add('selected')
-          kidOption?.classList.remove('selected')
-          console.log('[AuthModal] 用户类型切换为:', selectedUserType)
-        })
-      }
-      
-      // 将选中的用户类型保存到实例变量，供 doRegister 使用
-      ;(this as any)._selectedUserType = selectedUserType
-      ;(this as any)._getUserType = () => {
-        console.log('[AuthModal] _getUserType 返回:', selectedUserType)
-        return selectedUserType
-      }
-    }
+    })
   }
+
+  private _selectedUserType: 'KID' | 'PARENT' = 'KID'
 
   private loginPanel(accounts: ReturnType<typeof userService.getAccountList>) {
     const accountList = accounts.length > 0 ? `
@@ -298,7 +291,7 @@ export class AuthModal {
     const btn = document.getElementById('btnDoRegister') as HTMLButtonElement | null
     
     // 获取用户类型（默认为 KID）
-    const userType = (this as any)._getUserType ? (this as any)._getUserType() : 'KID'
+    const userType = this._selectedUserType
     console.log('[AuthModal] 注册信息:', { username, nickname, userType })
     
     // 验证用户类型
@@ -615,14 +608,24 @@ export class MePanel {
       }
 
       if (target.closest('#btnMeLogout')) {
+        console.log('[MePanel] Logout button clicked')
         if (confirm('确定退出登录？')) {
-          await userService.logout()
-          showToast('已退出登录', 'info')
-          this.reRender()
-          window.dispatchEvent(new CustomEvent('ugp:userChange'))
-          this.authModal.open(() => {
+          console.log('[MePanel] User confirmed logout')
+          try {
+            await userService.logout()
+            console.log('[MePanel] Logout successful')
+            showToast('已退出登录', 'info')
+            this.reRender()
             window.dispatchEvent(new CustomEvent('ugp:userChange'))
-          })
+            this.authModal.open(() => {
+              window.dispatchEvent(new CustomEvent('ugp:userChange'))
+            })
+          } catch (e) {
+            console.error('[MePanel] Logout error:', e)
+            showToast('退出登录失败', 'error')
+          }
+        } else {
+          console.log('[MePanel] User cancelled logout')
         }
         return
       }
@@ -680,14 +683,24 @@ export class MePanel {
       }
 
       if (target.closest('#btnMeLogout')) {
+        console.log('[MePanel] Logout button clicked')
         if (confirm('确定退出登录？')) {
-          await userService.logout()
-          showToast('已退出登录', 'info')
-          this.reRender()
-          window.dispatchEvent(new CustomEvent('ugp:userChange'))
-          this.authModal.open(() => {
+          console.log('[MePanel] User confirmed logout')
+          try {
+            await userService.logout()
+            console.log('[MePanel] Logout successful')
+            showToast('已退出登录', 'info')
+            this.reRender()
             window.dispatchEvent(new CustomEvent('ugp:userChange'))
-          })
+            this.authModal.open(() => {
+              window.dispatchEvent(new CustomEvent('ugp:userChange'))
+            })
+          } catch (e) {
+            console.error('[MePanel] Logout error:', e)
+            showToast('退出登录失败', 'error')
+          }
+        } else {
+          console.log('[MePanel] User cancelled logout')
         }
         return
       }

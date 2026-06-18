@@ -150,6 +150,8 @@ class UserService {
   private _current: UserAccount | null = null
   /** 是否已从后端恢复登录状态 */
   private _initialized = false
+  /** 防止 Android 上连续点击触发多次 CapacitorHttp 登录 */
+  private _loginInFlight = false
 
   constructor() {
     // 同步尝试从 Token 恢复会话（异步，不阻塞启动）
@@ -252,13 +254,21 @@ class UserService {
 
   // ── 登录 ──────────────────────────────────────────────────────
   async login(username: string, password: string): Promise<{ ok: boolean; msg: string }> {
-    const res = await apiClient.login(username, password)
-    if (!res.ok || !res.data) return { ok: false, msg: res.msg }
+    if (this._loginInFlight) {
+      return { ok: false, msg: '正在登录，请稍候…' }
+    }
+    this._loginInFlight = true
+    try {
+      const res = await apiClient.login(username, password)
+      if (!res.ok || !res.data) return { ok: false, msg: res.msg }
 
-    this._buildCurrentFromBackend(res.data)
-    this._dailyCheckIn()
-    await this._loadFavoritesFromBackend()
-    return { ok: true, msg: res.msg }
+      this._buildCurrentFromBackend(res.data)
+      this._dailyCheckIn()
+      await this._loadFavoritesFromBackend()
+      return { ok: true, msg: res.msg }
+    } finally {
+      this._loginInFlight = false
+    }
   }
 
   // ── 登出 ──────────────────────────────────────────────────────

@@ -1,5 +1,3 @@
-import { Scene, Math as PhaserMath } from 'phaser'
-import type { Textures, Input, GameObjects } from 'phaser'
 import type { GameEngine } from '../../services/gameEngine'
 import { gameActions } from '../../platform/gameBridge'
 import { audioService } from '../../services/audio'
@@ -22,10 +20,10 @@ const SAFE_T = 15
 const SAFE_B = 15
 const TOUCH_OFFSET_Y = 80
 
-export class SpaceShooterScene extends Scene {
+export class SpaceShooterScene extends Phaser.Scene {
   private engine!: GameEngine
   private onEnd!: () => void
-  gameTexture!: Textures.CanvasTexture  // public for renderer
+  gameTexture!: Phaser.Textures.CanvasTexture  // public for renderer
   ctx!: CanvasRenderingContext2D
 
   // 游戏状态
@@ -136,7 +134,9 @@ export class SpaceShooterScene extends Scene {
     const texture = this.textures.createCanvas('gameCanvas', BASE_W, BASE_H)
     if (!texture) throw new Error('Failed to create canvas texture')
     this.gameTexture = texture
-    this.ctx = this.gameTexture.getContext() as CanvasRenderingContext2D
+    const ctx = this.gameTexture.getContext()
+    if (!ctx) throw new Error('Failed to get canvas context')
+    this.ctx = ctx
     this.ctx.imageSmoothingEnabled = true
     this.ctx.imageSmoothingQuality = 'high'
   }
@@ -152,7 +152,7 @@ export class SpaceShooterScene extends Scene {
     this.startTime = Date.now()
   }
 
-  private gameImage!: GameObjects.Image
+  private gameImage!: Phaser.GameObjects.Image
 
   update(_time: number, delta: number) {
     if (!this.engine.canTick()) {
@@ -375,14 +375,14 @@ export class SpaceShooterScene extends Scene {
     if (this.inputBound) return
     this.inputBound = true
 
-    const applyPointer = (pointer: Input.Pointer) => {
+    const applyPointer = (pointer: Phaser.Input.Pointer) => {
       const pos = this.screenToLogical(pointer)
       this.playerX = pos.x
       this.playerY = pos.y - TOUCH_OFFSET_Y
       this.clampPlayer()
     }
 
-    const onDown = (pointer: Input.Pointer) => {
+    const onDown = (pointer: Phaser.Input.Pointer) => {
       if (this.gameEnded) return
       this.mouseDown = true
       applyPointer(pointer)
@@ -424,8 +424,8 @@ export class SpaceShooterScene extends Scene {
   }
 
   private clampPlayer() {
-    this.playerX = PhaserMath.Clamp(this.playerX, PLAYER_W / 2, BASE_W - PLAYER_W / 2)
-    this.playerY = PhaserMath.Clamp(this.playerY, PLAYER_H / 2, BASE_H - 25)
+    this.playerX = Math.max(PLAYER_W / 2, Math.min(this.playerX, BASE_W - PLAYER_W / 2))
+    this.playerY = Math.max(PLAYER_H / 2, Math.min(this.playerY, BASE_H - 25))
   }
 
   // === 等级/伤害 ===
@@ -825,7 +825,7 @@ export class SpaceShooterScene extends Scene {
             this.combo++; this.comboTimer = 3; this.totalKills++
             if (this.combo > this.maxCombo) this.maxCombo = this.combo
             const comboMultiplier = Math.min(this.combo, 30)
-            this.gameActions.addScore(e.score * comboMultiplier, e.x, e.y)
+            gameActions.addScore(e.score * comboMultiplier, e.x, e.y)
             const expSize = Math.min(40, 25 + e.maxHp * 6 + this.combo)
             const pCnt = Math.min(18, 10 + e.maxHp * 3 + Math.floor(this.combo / 2))
 
@@ -1123,7 +1123,7 @@ export class SpaceShooterScene extends Scene {
         this.totalKills++
         if (this.combo > this.maxCombo) this.maxCombo = this.combo
         const comboMultiplier = Math.min(this.combo, 30)
-        this.gameActions.addScore(enemy.score * comboMultiplier, enemy.x, enemy.y)
+        gameActions.addScore(enemy.score * comboMultiplier, enemy.x, enemy.y)
         
         this.explode(enemy.x, enemy.y, enemy.color, 30, 10)
         this.addShockwave(enemy.x, enemy.y, 40, enemy.color)

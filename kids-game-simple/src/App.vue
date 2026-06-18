@@ -168,6 +168,12 @@ onMounted(async () => {
   bindGameCallbacks()
   bindEconomyButtons()
 
+  // 绑定用户头像点击事件，打开个人中心
+  const userAvatar = document.getElementById('userAvatar')
+  userAvatar?.addEventListener('click', () => {
+    mePanel.open()
+  })
+
   // 渲染游戏卡片
   renderGameCards(buildContext())
   await loadBannerTasks()
