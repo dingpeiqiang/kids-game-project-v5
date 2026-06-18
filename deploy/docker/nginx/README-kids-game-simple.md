@@ -5,8 +5,9 @@
 | 位置 | 说明 |
 |------|------|
 | `deploy/docker/docker-compose.yml` | `kids-game-simple` 映射 **`3443:443`**（宿主机 3443 → 容器 443） |
-| `kids-game-simple/.env.production` | `VITE_API_BASE=https://kidsgame.dingpq.cn:3443/api` |
-| `capacitor` remote | `CAPACITOR_REMOTE_SERVER_URL=https://kidsgame.dingpq.cn:3443` |
+| **App 推荐** | `VITE_API_BASE=https://kidsgame.dingpq.cn/api`（**443**，见 `kidsgame.dingpq.cn-gateway.conf`） |
+| `kids-game-simple/.env.production`（旧） | `:3443/api` — 仅 Web/备用，App 不推荐 |
+| `capacitor` remote | 仅证书验收后；默认用内置 dist |
 
 配置文件：**`kids-game-simple.conf`**（由 `Dockerfile.kids-game-simple` 挂为 `default.conf`）。
 

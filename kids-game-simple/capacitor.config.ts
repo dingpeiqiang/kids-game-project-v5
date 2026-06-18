@@ -26,6 +26,12 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
     packageName: 'com.kidsgame.simple',
   },
+  /** 内置 dist + 跨域 HTTPS API：用系统 TLS 栈发请求，避免 WebView fetch 对 3443 报 net_error -101 */
+  plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    },
+  },
 };
 
 export default config;

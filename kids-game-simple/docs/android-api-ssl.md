@@ -75,8 +75,34 @@ pnpm exec cap sync android
 - `apiClient` 使用 `VITE_API_BASE`，打包时由 `.env.production` 注入。
 - **不要**在客户端关闭证书校验或信任自签（上架与安全都不允许）。
 
-## 5. 验收
+## 5. CapacitorHttp 仍失败：`Connection reset`（握手阶段）
+
+已开启 `CapacitorHttp` 后，log 里常见：
+
+```text
+java.net.SocketException: Connection reset
+  at ... ConscryptEngineSocket.doHandshake ...
+```
+
+说明 **TLS 还没建连成功就被对端 RST**，不是业务 401/500，也不同于 WebView 的 `net_error -101`。
+
+| 对比 | 含义 |
+|------|------|
+| `-101` | WebView Chromium 不信任证书链 |
+| `Connection reset` | 握手时 TCP 被断开：防火墙/运营商、云 WAF、Nginx/负载、证书与 SNI 不一致、模拟器网络等 |
+
+**建议在「与手机同一网络」排查：**
+
+1. 手机 Chrome 打开 `https://kidsgame.dingpq.cn:3443/api/auth/login`（会 405/415 也正常，关键是 **无证书警告、不白屏**）。
+2. 服务器上看失败时刻 Nginx **error** 日志：`docker logs kids-game-simple 2>&1 | tail -100`
+3. 云安全组 / 机房防火墙：放行 **入站 TCP 3443**（不仅是你本机 curl 的那条线路）。
+4. 模拟器：换 **真机 + 4G** 试一次（排除模拟器到公网 3443 的路径问题）。
+5. 若 **443** 已有正规证书：把 API 改到 `https://kidsgame.dingpq.cn/api`（见上文 §3），很多环境下比非标准端口更稳。
+
+`deploy/docker/nginx/kids-game-simple.conf` 已加 `ssl_session_tickets off`，部署后 `nginx -s reload`。
+
+## 6. 验收
 
 - 手机 Chrome 访问 API URL 无证书警告。
 - `curl` 返回 HTTP 200/401 等正常业务码，而非 SSL 错误。
-- 重装 Debug APK 后登录不再出现 `Failed to fetch`。
+- 重装 Debug APK 后登录不再出现 `Failed to fetch` / `Connection reset`。

@@ -8,17 +8,19 @@ Builds Android APK for kids-game-simple project.
 .PARAMETER BuildType
 Build type: debug or release (default)
 
-.EXAMPLE
-.\build-android.ps1
-Interactive build selection
+.PARAMETER ApiBase
+Override VITE_API_BASE for this build (default: read from .env.production)
 
 .EXAMPLE
 .\build-android.ps1 debug
-Build debug APK directly
+
+.EXAMPLE
+.\build-android.ps1 release -ApiBase "https://kidsgame.dingpq.cn/api"
 #>
 
 param(
-    [string]$BuildType = ""
+    [string]$BuildType = "",
+    [string]$ApiBase = ""
 )
 
 $scriptPath = $MyInvocation.MyCommand.Definition
@@ -85,6 +87,22 @@ Write-Host "OK: Gradle wrapper found" -ForegroundColor Green
 
 # [2/4] Build web project
 Write-Host "`n[2/4] Building web project..."
+$envFile = Join-Path $projectRoot ".env.production"
+if ($ApiBase -ne "") {
+    Write-Host "Using -ApiBase: $ApiBase" -ForegroundColor Cyan
+    $lines = @()
+    if (Test-Path $envFile) { $lines = Get-Content $envFile -Encoding UTF8 }
+    $found = $false
+    $newLines = foreach ($line in $lines) {
+        if ($line -match '^\s*VITE_API_BASE\s*=') { $found = $true; "VITE_API_BASE=$ApiBase" } else { $line }
+    }
+    if (-not $found) { $newLines += "VITE_API_BASE=$ApiBase" }
+    $newLines | Set-Content $envFile -Encoding UTF8
+} elseif (Test-Path $envFile) {
+    $apiLine = (Get-Content $envFile -Encoding UTF8 | Where-Object { $_ -match '^\s*VITE_API_BASE\s*=' } | Select-Object -First 1)
+    if ($apiLine) { Write-Host "API from .env.production: $apiLine" -ForegroundColor Cyan }
+}
+Write-Host "Docs: docs/STABLE_ANDROID_API.md (443 + built-in dist + CapacitorHttp)"
 Write-Host "Running pnpm run build..."
 pnpm run build 2>&1
 if ($LASTEXITCODE -ne 0) {
