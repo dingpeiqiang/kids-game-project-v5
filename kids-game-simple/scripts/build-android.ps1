@@ -95,8 +95,8 @@ if ($LASTEXITCODE -ne 0) {
 
 # [3/4] Sync Capacitor
 Write-Host "`n[3/4] Syncing Capacitor..."
-Write-Host "Running pnpm exec cap sync android..."
-pnpm exec cap sync android
+Write-Host "Running pnpm run cap:sync:android:remote (WebView 与 https://kidsgame.dingpq.cn:3443 同源，避免跨域 SSL)..."
+pnpm run cap:sync:android:remote
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Capacitor sync failed" -ForegroundColor Red
     exit 1
@@ -109,16 +109,10 @@ Set-Location $androidPath
 
 $gradleTask = if ($BuildType -eq "debug") { "assembleDebug" } else { "assembleRelease" }
 
-Write-Host "Running gradlew clean..."
-& $gradlePath clean
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Gradle clean failed" -ForegroundColor Red
-    exit 1
-}
-Write-Host "OK: Gradle clean successful" -ForegroundColor Green
+Write-Host "Skipping gradlew clean (to avoid hang issues)..."
 
 Write-Host "Running gradlew $gradleTask..."
-& $gradlePath $gradleTask
+& $gradlePath $gradleTask --no-daemon
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: APK build failed" -ForegroundColor Red
     exit 1
@@ -131,7 +125,7 @@ Write-Host "              Build Complete"
 Write-Host "============================================`n"
 
 $buildVariant = if ($BuildType -eq "debug") { "debug" } else { "release" }
-$apkPath = Join-Path $androidPath "app\build\outputs\apk\$buildVariant\StarPlayEdu-$buildVariant.apk"
+$apkPath = Join-Path $androidPath "app\build\outputs\apk\$buildVariant\KidsGame-v1.0-$buildVariant.apk"
 
 if (Test-Path $apkPath) {
     $apkSize = (Get-Item $apkPath).Length / 1MB

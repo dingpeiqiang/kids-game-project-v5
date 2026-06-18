@@ -214,7 +214,15 @@ async function request<T = any>(
     const json = await res.json()
     return deepCamelize(json)
   } catch (err) {
-    console.error('[apiClient] 请求失败:', path, err)
+    const url = apiUrl(path)
+    console.error('[apiClient] 请求失败:', path, url, err)
+    if (err instanceof TypeError && String((err as Error).message).includes('fetch')) {
+      console.warn(
+        '[apiClient] 多为 SSL/跨域或 API 不可达，当前 API_BASE=',
+        API_BASE,
+        '；Android 请确认 .env.production 后重新 build + cap sync',
+      )
+    }
     return { code: -1, msg: '网络请求失败' }
   }
 }
