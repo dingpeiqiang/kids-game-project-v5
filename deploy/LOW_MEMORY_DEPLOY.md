@@ -333,7 +333,7 @@ healthcheck:
 **解决：**
 ```bash
 # 查看 MySQL 日志
-docker-compose -f docker-compose.lowmem.yml logs mysql
+docker compose logs mysql
 
 # 进一步减少 MySQL 内存
 # 编辑 docker-compose.yml / MySQL command，调整 innodb-buffer-pool-size
@@ -346,7 +346,7 @@ docker-compose -f docker-compose.lowmem.yml logs mysql
 **解决：**
 ```bash
 # 监控 GC 情况
-docker-compose -f docker-compose.lowmem.yml logs backend | grep GC
+docker compose logs backend | grep GC
 
 # 考虑升级内存或优化代码
 ```

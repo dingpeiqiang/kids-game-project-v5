@@ -4,7 +4,7 @@
 # ========================================
 
 # 默认配置
-export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.lowmem.yml}"
+export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 export MAX_RETRY=3
 export RETRY_DELAY=5
 export HEALTH_CHECK_TIMEOUT=120

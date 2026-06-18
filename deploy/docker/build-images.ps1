@@ -20,7 +20,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Configuration
-$COMPOSE_FILE = "docker-compose.lowmem.yml"
+$COMPOSE_FILE = "docker-compose.yml"
 $BUILD_TIME = Get-Date -Format "yyyyMMdd-HHmmss"
 $BACKEND_IMAGE = "kids-game-backend:latest"
 $BACKEND_IMAGE_VERSIONED = "kids-game-backend:$BUILD_TIME"

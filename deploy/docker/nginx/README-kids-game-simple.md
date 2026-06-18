@@ -5,7 +5,7 @@
 | 文件 | `kids-game-simple` 端口 |
 |------|-------------------------|
 | `docker-compose.yml` | `3000:80`、`443:443` |
-| `docker-compose.lowmem.yml` | `3001:80`、`443:443` |
+| 低内存模式（`.env` 设置） | `3001:80`、`443:443` |
 
 App：`VITE_API_BASE=https://kidsgame.dingpq.cn/api`（标准 **443**，无端口）。
 

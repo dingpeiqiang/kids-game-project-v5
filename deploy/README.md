@@ -16,7 +16,7 @@ deploy/
 ├── LOW_MEMORY_DEPLOY.md         # 低内存环境部署指南
 └── docker/                      # Docker 部署配置
     ├── docker-compose.yml       # 主 Docker Compose 配置
-    ├── docker-compose.lowmem.yml # 低内存 Docker Compose 配置
+    ├── .env.lowmem.example      # 低内存环境变量配置
     ├── .env.example             # 环境变量示例
     ├── .env.production.example  # 生产环境变量示例
     ├── Dockerfile.backend       # 后端 Dockerfile
@@ -96,7 +96,7 @@ docker-compose up -d
 | 文件 | 用途 |
 |------|------|
 | `docker/docker-compose.yml` | 标准环境 Docker 配置 |
-| `docker/docker-compose.lowmem.yml` | 低内存环境 Docker 配置 |
+| `docker/.env.lowmem.example` | 低内存环境变量配置 |
 | `docker/.env.example` | 环境变量示例（开发/测试） |
 | `docker/.env.production.example` | 环境变量示例（生产） |
 

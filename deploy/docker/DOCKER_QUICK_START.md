@@ -16,8 +16,8 @@
     ├── nginx/                       # Nginx 配置
     │   └── frontend.conf           # 前端 Nginx 配置
     ├── Dockerfile.frontend         # 前端构建配置
-    ├── Dockerfile.backend.lowmem   # 后端构建配置
-    ├── docker-compose.lowmem.yml   # Docker Compose 配置
+    ├── Dockerfile.backend.lowmem   # 后端构建配置（低内存优化版）
+    ├── docker-compose.yml          # Docker Compose 配置
     └── .env.production.example     # 环境变量示例
 ```
 
@@ -74,9 +74,9 @@ cd ~/workspace/kids-game-project-v5/docker/scripts
 ./manage-service.sh all status         # 查看所有服务状态
 
 # 或直接使用 docker compose
-docker compose --file ../docker-compose.lowmem.yml ps           # 查看状态
-docker compose --file ../docker-compose.lowmem.yml restart     # 重启所有
-docker compose --file ../docker-compose.lowmem.yml logs -f     # 查看所有日志
+docker compose --file ../docker-compose.yml ps           # 查看状态
+docker compose --file ../docker-compose.yml restart     # 重启所有
+docker compose --file ../docker-compose.yml logs -f     # 查看所有日志
 ```
 
 ---
@@ -110,7 +110,7 @@ grep "ERROR" ../logs/backend.log
 
 ## ⚠️ 重要提示
 
-1. **内存限制：** 服务器只有 2GB 内存，使用 `docker-compose.lowmem.yml`
+1. **内存限制：** 服务器只有 2GB 内存，可通过 `.env` 文件设置 `BACKEND_DOCKERFILE=deploy/docker/Dockerfile.backend.lowmem` 使用低内存版本
 2. **配置文件：** 首次部署前必须编辑 `.env` 文件设置密码
 3. **端口占用：** 确保 80、3306、6379、8080 端口空闲
 4. **Docker Compose V2：** 使用 `docker compose` 命令（带空格）
