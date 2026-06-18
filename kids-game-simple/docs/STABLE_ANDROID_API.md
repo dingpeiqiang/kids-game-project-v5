@@ -10,7 +10,7 @@
 | **HTTP** | `CapacitorHttp`（`capacitor.config.ts`） |
 | **API** | **`https://kidsgame.dingpq.cn/api`**（**443**，`.env.production`） |
 | **服务器** | **只改一份** `deploy/docker/nginx/kids-game-simple.conf`（容器内 Nginx，已含 `/api` → `backend:8080`） |
-| **端口** | compose：`443:443` + `3443:443`（同一容器 443，双入口）；App **只用 443** |
+| **端口** | compose 仅 **`443:443`**（HTTPS）+ `3000:80`（HTTP）；App 用 443 |
 
 **不要**再维护单独的「宿主机 gateway」配置：原先 `kidsgame.dingpq.cn-gateway.conf` 与 `kids-game-simple.conf` 职责重复（都是 `/api` + 证书），已删除 gateway，避免两套真相。
 

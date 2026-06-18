@@ -78,30 +78,17 @@ VITE_API_BASE_URL=http://服务器IP/api
 ### 5. 使用低内存配置部署
 
 ```bash
-# 赋予执行权限
-chmod +x deploy/deploy.sh
-
-# 使用低内存配置文件部署
-docker-compose -f docker-compose.lowmem.yml up -d
-```
-
-**或者修改 deploy/deploy.sh 使用低内存配置：**
-
-编辑 `deploy/deploy.sh`，将：
-```bash
-docker-compose up -d
-```
-
-改为：
-```bash
-docker-compose -f docker-compose.lowmem.yml up -d
+cd deploy/docker
+cp .env.lowmem.example .env
+# 按需合并 .env.production 中的 MYSQL/JWT 等
+docker compose up -d
 ```
 
 ### 6. 验证部署
 
 ```bash
-# 查看容器状态
-docker-compose -f docker-compose.lowmem.yml ps
+cd deploy/docker
+docker compose ps
 
 # 查看资源使用
 docker stats
@@ -292,7 +279,7 @@ server:
 docker-compose --profile games up -d
 
 # 正确：只运行核心服务
-docker-compose -f docker-compose.lowmem.yml up -d
+docker compose up -d
 ```
 
 ### ❌ 不要同时运行多个 Java 应用
@@ -349,7 +336,7 @@ healthcheck:
 docker-compose -f docker-compose.lowmem.yml logs mysql
 
 # 进一步减少 MySQL 内存
-# 编辑 docker-compose.lowmem.yml，调整 innodb-buffer-pool-size
+# 编辑 docker-compose.yml / MySQL command，调整 innodb-buffer-pool-size
 ```
 
 ### 问题 4：响应速度慢
@@ -434,7 +421,7 @@ done &
 
 ## ✅ 部署检查清单
 
-- [ ] 使用 `docker-compose.lowmem.yml` 配置文件
+- [ ] 使用 `deploy/docker/.env.lowmem.example` 复制为 `.env`（低内存 JVM）
 - [ ] JVM 参数设置为 `-Xmx256m`
 - [ ] MySQL 缓冲池设置为 128MB
 - [ ] Redis 最大内存设置为 80MB
@@ -470,7 +457,7 @@ done &
 - 期望高性能
 
 ⚡ **优化要点：**
-1. 使用 `docker-compose.lowmem.yml`
+1. 使用 `deploy/docker/docker-compose.yml` + `.env.lowmem.example`
 2. 启用 swap 空间
 3. 严格限制各服务内存
 4. 定期监控和清理
