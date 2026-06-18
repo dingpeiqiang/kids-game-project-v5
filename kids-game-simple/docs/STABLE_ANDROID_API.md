@@ -1,66 +1,49 @@
 # Android 稳定工作法（推荐）
 
-一套固定组合，避免 `:3443`、WebView SSL `-101`、CapacitorHttp `Connection reset`。
+一套固定组合，避免非标准端口 `:3443` 带来的 WebView `-101`、CapacitorHttp `Connection reset`。
 
 ## 架构
 
 | 层 | 做法 |
 |----|------|
-| **App 壳** | APK **内置 `dist`**（`pnpm exec cap sync android`，**不要**默认 `cap:sync:android:remote`） |
-| **HTTP 客户端** | `CapacitorHttp` 已开（`capacitor.config.ts` → `plugins.CapacitorHttp.enabled: true`） |
-| **API 地址** | **`https://kidsgame.dingpq.cn/api`**（**443**，见 `.env.production`） |
-| **服务器** | 宿主机 Nginx **443** 反代 `/api` → `127.0.0.1:8080`（见 `deploy/docker/nginx/kidsgame.dingpq.cn-gateway.conf`） |
-| **3443** | 仅 Docker 内 H5/备用；**App 生产包不依赖** |
+| **App 壳** | APK **内置 `dist`**（`pnpm exec cap sync android`） |
+| **HTTP** | `CapacitorHttp`（`capacitor.config.ts`） |
+| **API** | **`https://kidsgame.dingpq.cn/api`**（**443**，`.env.production`） |
+| **服务器** | **只改一份** `deploy/docker/nginx/kids-game-simple.conf`（容器内 Nginx，已含 `/api` → `backend:8080`） |
+| **端口** | compose：`443:443` + `3443:443`（同一容器 443，双入口）；App **只用 443** |
 
-## 服务器（一次性）
+**不要**再维护单独的「宿主机 gateway」配置：原先 `kidsgame.dingpq.cn-gateway.conf` 与 `kids-game-simple.conf` 职责重复（都是 `/api` + 证书），已删除 gateway，避免两套真相。
 
-1. 证书放到 `/etc/nginx/ssl/`（fullchain + key，与 3443 相同文件即可）。
-2. 启用网关配置：
+## 服务器
+
+1. 安全组放行 **443**（及备用 **3443** 若需要）。
+2. 若宿主机 **80/443 已被别的 Nginx 占用**，需先停掉或改映射，否则 `443:443` 会 bind 失败。
+3. 更新并重启：
 
 ```bash
-cp deploy/docker/nginx/kidsgame.dingpq.cn-gateway.conf /etc/nginx/conf.d/kidsgame.conf
-nginx -t && systemctl reload nginx
+cd deploy/docker
+docker compose build kids-game-simple
+docker compose up -d kids-game-simple
+docker exec kids-game-simple nginx -t && docker exec kids-game-simple nginx -s reload
 ```
 
-3. 安全组放行 **TCP 443**；backend 容器 **8080** 映射到本机（compose 已有 `8080:8080`）。
 4. 验收：
 
 ```bash
 curl -sS -o /dev/null -w "%{http_code}\n" "https://kidsgame.dingpq.cn/api/game/list"
-# 期望 200
 ```
 
-手机 Chrome 打开同一 URL，无证书警告。
-
-## 本机打 APK（仅 PowerShell）
+## 本机打 APK
 
 ```powershell
 cd kids-game-simple
 .\scripts\build-android.ps1 debug
 ```
 
-脚本会：`pnpm run build`（注入 `.env.production`）→ `cap sync android` → `assembleDebug`。
-
-安装前 **卸载旧包**。APK：`android\app\build\outputs\apk\debug\KidsGame-v1.0-debug.apk`。
-
-## 验收
-
-- logcat **无**连续 `net_error -101` / 登录时 **无** `Connection reset`（偶发可重试一次）。
-- 能登录、`CapacitorHttp fetch ... https://kidsgame.dingpq.cn/api/...` 返回业务 JSON。
-
-## 仍要用 3443 时（不推荐 App）
-
-仅 Web 或 remote WebView，且证书 `Verify return code: 0` 后：
-
-```powershell
-$env:VITE_API_BASE="https://kidsgame.dingpq.cn:3443/api"
-pnpm run build
-$env:CAPACITOR_REMOTE_SERVER_URL="https://kidsgame.dingpq.cn:3443"
-pnpm run cap:sync:android:remote
-```
+卸载旧包后安装新 APK。
 
 ## 相关文件
 
-- `deploy/docker/nginx/kidsgame.dingpq.cn-gateway.conf` — 443 网关
-- `docs/ANDROID_RELEASE.md` — 证书与 checklist
-- `docs/android-api-ssl.md` — 错误码对照
+- `deploy/docker/nginx/kids-game-simple.conf` — **唯一** Nginx 站点配置
+- `deploy/docker/Dockerfile.kids-game-simple` — 拷贝上述 conf
+- `docs/ANDROID_RELEASE.md` — 证书 checklist

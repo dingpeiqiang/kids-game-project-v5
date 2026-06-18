@@ -9,7 +9,7 @@
 | 项 | 值 |
 |----|-----|
 | API | `https://kidsgame.dingpq.cn/api`（**443**，`.env.production`） |
-| 服务器 | `deploy/docker/nginx/kidsgame.dingpq.cn-gateway.conf` 挂到宿主机 Nginx |
+| 服务器 | `deploy/docker/nginx/kids-game-simple.conf` + compose `443:443` |
 | APK | `.\scripts\build-android.ps1 debug`（仅 PowerShell） |
 | 不要用 | App 依赖 `:3443`、`cap:sync:android:remote`（除非证书已验收且明确要远程 H5） |
 
@@ -54,4 +54,4 @@ cd kids-game-simple
 | `docs/STABLE_ANDROID_API.md` | **主文档** |
 | `scripts/build-android.ps1` | 打 APK |
 | `capacitor.config.ts` | `CapacitorHttp` |
-| `deploy/docker/nginx/kidsgame.dingpq.cn-gateway.conf` | 443 网关 |
+| `deploy/docker/nginx/kids-game-simple.conf` | 容器 Nginx（静态 + `/api`） |
