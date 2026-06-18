@@ -205,8 +205,14 @@
   -webkit-overflow-scrolling: touch;
 }
 
-#game-layer.game-layer-root {
-  position: relative;
+/* 与 main.css 全屏层一致：勿用 relative 盖住 fixed，否则中间游戏区高度易塌成 0 */
+#game-layer.game-layer-root.show {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 200;
 }
 
 .game-pause-overlay {

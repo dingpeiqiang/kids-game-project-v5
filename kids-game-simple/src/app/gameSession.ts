@@ -193,7 +193,18 @@ export async function endGame(ctx: PlatformContext) {
 
 // ==================== 结算弹窗 ====================
 
+function setText(id: string, text: string) {
+  const el = document.getElementById(id)
+  if (el) el.textContent = text
+}
+
 export function showResult(ctx: PlatformContext, gameId: string, score: number, prevBest: number) {
+  const overlay = document.getElementById('result-overlay')
+  if (!overlay) {
+    console.warn('[App] showResult: #result-overlay 未找到，跳过结算 UI')
+    return
+  }
+
   const gameStats = gameEngine.getGameStats()
 
   let coinsEarned = 0
@@ -205,8 +216,8 @@ export function showResult(ctx: PlatformContext, gameId: string, score: number, 
 
   const dispCoins = userService.isLoggedIn ? userService.current!.coins : storageService.get().coins
   const dispGames = userService.isLoggedIn ? userService.current!.todayGames : storageService.get().todayGames
-  document.getElementById('coinCount')!.textContent = String(dispCoins)
-  document.getElementById('todayGames')!.textContent = String(dispGames)
+  setText('coinCount', String(dispCoins))
+  setText('todayGames', String(dispGames))
 
   const pct = prevBest > 0 ? Math.round(score / prevBest * 100) : 100
   const isVictory = gameEngine.isVictory()
@@ -221,13 +232,17 @@ export function showResult(ctx: PlatformContext, gameId: string, score: number, 
     tier = 'good'; icon = '⭐'; title = '很棒!'
   }
 
-  const resultIcon = document.getElementById('resultIcon')!
-  resultIcon.className = 'result-icon ' + tier
-  resultIcon.textContent = icon
-  document.getElementById('resultTitle')!.textContent = title
-  document.getElementById('resultScore')!.textContent =
-    score + (coinsEarned > 0 ? ' +' + coinsEarned + '💰' : '')
-  document.getElementById('resultBest')!.textContent = '历史最高: ' + (prevBest || 0)
+  const resultIcon = document.getElementById('resultIcon')
+  if (resultIcon) {
+    resultIcon.className = 'result-icon ' + tier
+    resultIcon.textContent = icon
+  }
+  setText('resultTitle', title)
+  setText(
+    'resultScore',
+    coinsEarned > 0 ? `${score} +${coinsEarned}\uD83D\uDCB0` : String(score)
+  )
+  setText('resultBest', '历史最高: ' + (prevBest || 0))
 
   const statsEl = document.getElementById('resultStats')
   if (statsEl && gameStats) {
@@ -257,11 +272,11 @@ export function showResult(ctx: PlatformContext, gameId: string, score: number, 
 
   // 显示本地排名（后端同步后会被 syncScoreAsync 更新）
   const rankInfo = calculateRank(ctx, score)
-  const rankEl = document.getElementById('resultRank')!
-  const rankBadgeEl = document.getElementById('rankBadge')!
-  const rankTextEl = document.getElementById('rankText')!
+  const rankEl = document.getElementById('resultRank')
+  const rankBadgeEl = document.getElementById('rankBadge')
+  const rankTextEl = document.getElementById('rankText')
 
-  if (rankInfo) {
+  if (rankEl && rankBadgeEl && rankTextEl && rankInfo) {
     rankEl.style.display = 'block'
     rankBadgeEl.textContent = rankInfo.badge
     rankTextEl.innerHTML = rankInfo.text
@@ -271,20 +286,22 @@ export function showResult(ctx: PlatformContext, gameId: string, score: number, 
     } else {
       rankBadgeEl.style.color = '#5b9bd5'
     }
-  } else {
+  } else if (rankEl) {
     rankEl.style.display = 'none'
   }
 
-  const buffsEl = document.getElementById('resultBuffs')!
-  buffsEl.innerHTML = ''
-  if (gameEngine.getCrits() > 0) {
-    buffsEl.innerHTML += `<span class="buff-tag crit">⚡暴击 x${gameEngine.getCrits()}</span>`
-  }
-  if (gameEngine.getCombo() >= 10) {
-    buffsEl.innerHTML += `<span class="buff-tag">🔥连击 x${gameEngine.getCombo()}</span>`
+  const buffsEl = document.getElementById('resultBuffs')
+  if (buffsEl) {
+    buffsEl.innerHTML = ''
+    if (gameEngine.getCrits() > 0) {
+      buffsEl.innerHTML += `<span class="buff-tag crit">⚡暴击 x${gameEngine.getCrits()}</span>`
+    }
+    if (gameEngine.getCombo() >= 10) {
+      buffsEl.innerHTML += `<span class="buff-tag">🔥连击 x${gameEngine.getCombo()}</span>`
+    }
   }
 
-  document.getElementById('result-overlay')!.classList.add('show')
+  overlay.classList.add('show')
 }
 
 export async function syncScoreAsync(ctx: PlatformContext, gameId: string, score: number, prevBest: number) {

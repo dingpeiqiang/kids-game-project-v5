@@ -11,6 +11,9 @@ import {
 } from './config'
 import { renderToCanvas } from './renderer'
 
+/** Phaser 画布纹理键（勿与壳层 DOM #gameCanvas 同名） */
+export const SPACE_SHOOTER_TEXTURE_KEY = 'spaceShooterFrame'
+
 // 私有常量（仅 scene 内部使用）
 const PLAYER_W = PW
 const PLAYER_H = PH
@@ -123,6 +126,9 @@ export class SpaceShooterScene extends Phaser.Scene {
   bossCountdown = 0
 
   mouseDown = false
+  /** 壳层暂停恢复后，忽略误触到画布上的「继续」点击，避免飞船被瞬移到屏幕中央 */
+  private suppressPointerUntil = 0
+  private shellPauseLatch = false
 
   constructor(engine: GameEngine, onEnd: () => void) {
     super({ key: 'SpaceShooterScene' })
@@ -131,7 +137,7 @@ export class SpaceShooterScene extends Phaser.Scene {
   }
 
   preload() {
-    const texture = this.textures.createCanvas('gameCanvas', BASE_W, BASE_H)
+    const texture = this.textures.createCanvas(SPACE_SHOOTER_TEXTURE_KEY, BASE_W, BASE_H)
     if (!texture) throw new Error('Failed to create canvas texture')
     this.gameTexture = texture
     const ctx = this.gameTexture.getContext()
@@ -145,20 +151,32 @@ export class SpaceShooterScene extends Phaser.Scene {
     this.gameImage = this.add.image(
       this.cameras.main.centerX,
       this.cameras.main.centerY,
-      'gameCanvas'
+      SPACE_SHOOTER_TEXTURE_KEY
     )
+    this.gameImage.setDisplaySize(BASE_W, BASE_H)
+    this.gameImage.setOrigin(0.5, 0.5)
+    this.gameImage.setDepth(0)
     this.initStars()
     this.setupInput()
     this.startTime = Date.now()
+    this.renderToCanvas()
+    this.gameTexture.refresh()
   }
 
   private gameImage!: Phaser.GameObjects.Image
 
   update(_time: number, delta: number) {
-    if (!this.engine.canTick()) {
+    const paused = !this.engine.canTick()
+    if (paused) {
+      this.shellPauseLatch = true
       this.renderToCanvas()
       this.gameTexture.refresh()
       return
+    }
+    if (this.shellPauseLatch) {
+      this.shellPauseLatch = false
+      this.suppressPointerUntil = Date.now() + 450
+      this.mouseDown = false
     }
 
     if (this.gameEnded && !this.gameWon) {
@@ -375,6 +393,9 @@ export class SpaceShooterScene extends Phaser.Scene {
     if (this.inputBound) return
     this.inputBound = true
 
+    const shouldIgnorePointer = () =>
+      !this.engine.canTick() || Date.now() < this.suppressPointerUntil
+
     const applyPointer = (pointer: Phaser.Input.Pointer) => {
       const pos = this.screenToLogical(pointer)
       this.playerX = pos.x
@@ -384,6 +405,7 @@ export class SpaceShooterScene extends Phaser.Scene {
 
     const onDown = (pointer: Phaser.Input.Pointer) => {
       if (this.gameEnded) return
+      if (shouldIgnorePointer()) return
       this.mouseDown = true
       applyPointer(pointer)
       if (!this.gameStarted) {
@@ -392,8 +414,9 @@ export class SpaceShooterScene extends Phaser.Scene {
       }
     }
 
-    const onMove = (pointer: Input.Pointer) => {
+    const onMove = (pointer: Phaser.Input.Pointer) => {
       if (this.gameEnded || !pointer.isDown) return
+      if (shouldIgnorePointer()) return
       applyPointer(pointer)
     }
 
@@ -417,7 +440,7 @@ export class SpaceShooterScene extends Phaser.Scene {
     })
   }
 
-  private screenToLogical(pointer: Input.Pointer): { x: number; y: number } {
+  private screenToLogical(pointer: Phaser.Input.Pointer): { x: number; y: number } {
     const cam = this.cameras.main
     // Phaser FIT 缩放下 pointer 已在相机空间，减去 scroll 即逻辑坐标
     return { x: pointer.x - cam.scrollX, y: pointer.y - cam.scrollY }

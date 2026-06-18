@@ -783,9 +783,28 @@ body{
 #game-layer::-webkit-scrollbar{width:0;height:0;display:none}
 #gameCanvas::-webkit-scrollbar{width:0;height:0;display:none}
 #game-layer{scrollbar-width:none;-ms-overflow-style:none}
+/* 外部画布（太空射击等）：避免 #gameCanvas 的 flex 居中把高度压成 0 */
+#game-layer.show .game-shell.game-shell--external-canvas .game-viewport {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+#game-layer.show .game-shell.game-shell--external-canvas #gameCanvas {
+  display: block !important;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
 /* Phaser 容器（挂在壳层 #gameCanvas 内） */
-#phaser-space-shooter{position:absolute;inset:0;width:100%;height:100%;z-index:1;overflow:hidden}
-#phaser-space-shooter canvas{touch-action:none;width:100%!important;height:100%!important}
+#phaser-space-shooter{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;z-index:1;overflow:hidden;background:#0a0a2e}
+#phaser-space-shooter canvas{
+  touch-action:none;
+  display:block;
+  max-width:100%;
+  max-height:100%;
+}
 
 /* 横屏旋转提示 */
 #rotate-overlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center}
