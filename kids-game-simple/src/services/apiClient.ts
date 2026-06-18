@@ -725,11 +725,11 @@ export async function apiGameSettle(
   return { ok: false, msg: res.msg }
 }
 
-/** GET /api/shop/products */
+/** GET /api/shop/products（需登录，与 SecurityConfig /api/** 一致） */
 export async function apiShopProducts(): Promise<{ ok: boolean; data?: Array<Record<string, unknown>> }> {
-  const res = await request<Array<Record<string, unknown>>>('/shop/products', { method: 'GET' }, false)
+  const res = await request<Array<Record<string, unknown>>>('/shop/products', { method: 'GET' })
   if (res.code === 200) return { ok: true, data: res.data || [] }
-  return { ok: false }
+  return { ok: false, msg: res.msg }
 }
 
 /** POST /api/shop/purchase */
@@ -779,7 +779,6 @@ export async function apiSessionLeaderboard(gameId: number, limit = 100) {
   const res = await request<{ list: Array<{ rank: number; nickname?: string; username?: string; score: number }> }>(
     `/leaderboard/session-top?gameId=${gameId}&limit=${limit}`,
     { method: 'GET' },
-    false
   )
   if (res.code === 200 && res.data) return { ok: true, list: res.data.list || [] }
   return { ok: false, list: [] as Array<{ rank: number; nickname?: string; username?: string; score: number }> }

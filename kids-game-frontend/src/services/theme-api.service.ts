@@ -248,7 +248,7 @@ const themeApiImpl = {
       resources: Record<string, any>;
     };
   }> {
-    return this.get<any>(`/api/theme/editor-data?id=${themeId}`);
+    return apiClient.get<any>(`/api/theme/editor-data?id=${themeId}`);
   }
 
   /**
@@ -264,7 +264,7 @@ const themeApiImpl = {
    * GET /api/theme/earnings
    */
   async getEarnings(): Promise<{ total: number; pending: number; withdrawn: number }> {
-    return this.get<{ total: number; pending: number; withdrawn: number }>('/api/theme/earnings');
+    return apiClient.get<{ total: number; pending: number; withdrawn: number }>('/api/theme/earnings');
   }
 
   /**
@@ -272,7 +272,7 @@ const themeApiImpl = {
    * GET /api/theme/detail?id=xxx
    */
   async getDetail(themeId: string): Promise<CloudThemeInfo> {
-    return this.get<CloudThemeInfo>(`/api/theme/detail?id=${themeId}`);
+    return apiClient.get<CloudThemeInfo>(`/api/theme/detail?id=${themeId}`);
   }
 
   /**
@@ -304,7 +304,7 @@ const themeApiImpl = {
    * POST /api/theme/withdraw
    */
   async withdraw(amount: number): Promise<{ success: boolean }> {
-    return this.post<{ success: boolean }>('/api/theme/withdraw', { amount });
+    return apiClient.post<{ success: boolean }>('/api/theme/withdraw', { amount });
   }
 
   /**
@@ -312,7 +312,7 @@ const themeApiImpl = {
    * POST /api/theme/validate-gtrs
    */
   async validateGTRSTheme(themeJson: string): Promise<{ valid: boolean; message: string }> {
-    return this.post<{ valid: boolean; message: string }>('/api/theme/validate-gtrs', { themeJson });
+    return apiClient.post<{ valid: boolean; message: string }>('/api/theme/validate-gtrs', { themeJson });
   }
 
   /**
@@ -320,7 +320,7 @@ const themeApiImpl = {
    * POST /api/theme/detect-format
    */
   async detectThemeFormat(themeJson: string): Promise<{ isGTRS: boolean; format: string }> {
-    return this.post<{ isGTRS: boolean; format: string }>('/api/theme/detect-format', { themeJson });
+    return apiClient.post<{ isGTRS: boolean; format: string }>('/api/theme/detect-format', { themeJson });
   }
 
   /**
@@ -333,7 +333,7 @@ const themeApiImpl = {
     gameId: string
     themeName: string
   }): Promise<{ gtrsJson: string; valid: boolean; message: string }> {
-    return this.post<{ gtrsJson: string; valid: boolean; message: string }>('/api/theme/migrate-to-gtrs', params);
+    return apiClient.post<{ gtrsJson: string; valid: boolean; message: string }>('/api/theme/migrate-to-gtrs', params);
   }
 
   /**
@@ -341,7 +341,7 @@ const themeApiImpl = {
    * POST /api/theme/quick-validate
    */
   async quickValidate(themeJson: string): Promise<{ valid: boolean }> {
-    return this.post<{ valid: boolean }>('/api/theme/quick-validate', { themeJson });
+    return apiClient.post<{ valid: boolean }>('/api/theme/quick-validate', { themeJson });
   }
 
   // ==================== ⭐ 用户主题偏好相关 API ====================

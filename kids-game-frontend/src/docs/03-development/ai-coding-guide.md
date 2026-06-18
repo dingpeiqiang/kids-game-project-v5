@@ -208,33 +208,30 @@ defineProps → defineEmits → 类型定义 → ref/reactive → computed → m
 
 **API 服务类**：
 ```typescript
-export class KidApiService extends BaseApiService {
-    private static instance: KidApiService;
-    static getInstance(): KidApiService { ... }
-    async getKidInfo(kidId: number): Promise<Kid> { ... }
-}
-export const kidApi = KidApiService.getInstance();
+import { apiClient, kidApi } from '@/services'
+
+const kid = await kidApi.getInfo(kidId)
+const users = await apiClient.get('/api/admin/users')
 ```
 
 ### 统一 API 调用组件
 
-**核心文件**：`src/utils/request.ts` + `src/services/api.types.ts`
+**核心文件**：`src/services/api-client.service.ts` + `src/core/network/shared-http.client.ts` + `src/services/api.types.ts`
 
 **使用规范**：
 ```typescript
-// ✅ 正确：使用统一封装
-import request from '@/utils/request'
-import { API_CONSTANTS } from '@/services/api.types'
+// ✅ 正确：apiClient 或领域 *Api
+import { apiClient, shopApi, API_CONSTANTS } from '@/services'
 
-const token = localStorage.getItem(API_CONSTANTS.TOKEN_KEY)
-const users = await request({ url: '/api/admin/users', method: 'get' })
+await shopApi.listProducts()
+await apiClient.get('/api/admin/users')
 
-// ❌ 禁止：直接使用 axios 或硬编码 Token
-const token = localStorage.getItem('token')  // ❌
-await axios.get('/api/admin/users')          // ❌
+// ❌ 禁止：axios.create、裸 fetch('/api/...')
+await axios.get('/api/admin/users')  // ❌
+fetch('/api/shop/products')          // ❌
 ```
 
-**特性**：自动添加 Token、统一错误处理、401 跳转登录。
+**特性**：自动 `Authorization`、`X-Device-Fingerprint`、401 刷新 Token。
 
 ### 公共组件使用与抽取
 
