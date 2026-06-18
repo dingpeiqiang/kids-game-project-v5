@@ -102,7 +102,6 @@ const LAYOUT_OVERRIDES: Record<string, Partial<GameLayoutConfig>> = {
   beatDragon: {
     designWidth: 400,
     designHeight: 600,
-    externalCanvas: true,
     hidePlatformScore: true,
   },
   parkingLot: {
