@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
+import viteCompression from 'vite-plugin-compression';
 
 /** 与 kids-game-frontend 共用业务源码，终端包仅独立入口与路由 */
 const frontendSrc = resolve(__dirname, '../kids-game-frontend/src');
@@ -41,7 +42,20 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_APP_SHELL': JSON.stringify('simple'),
   },
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    viteCompression({
+      algorithm: 'gzip',
+      threshold: 1024,
+      minRatio: 0.8,
+    }),
+    viteCompression({
+      algorithm: 'brotliCompress',
+      threshold: 1024,
+      minRatio: 0.8,
+      ext: '.br',
+    }),
+  ],
   publicDir: resolve(__dirname, 'public'),
   css: {
     preprocessorOptions: {
@@ -81,6 +95,13 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     target: 'es2020',
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
     rollupOptions: {
       external: ['phaser', /^@babylonjs\//],
       output: {

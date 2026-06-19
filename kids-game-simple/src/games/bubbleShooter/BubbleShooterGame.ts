@@ -5,7 +5,7 @@ import { ParticleSystem } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
 import { Renderer } from './Renderer'
 import type { Shooter, Projectile, MatchPosition, PowerupType, SpecialBubbleType } from './types'
-import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles, bindCanvasAimAndShoot } from '../../utils/canvasMobileUtils'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 
 interface LevelConfig {
@@ -74,6 +74,8 @@ export class BubbleShooterGame {
   private shooter: Shooter
   private projectile: Projectile | null = null
   private mouseX: number = 0
+  private mouseY: number = 0
+  private currentChargeTime: number = 0
   private currentPowerup: PowerupType | null = null
   private nextPowerup: PowerupType | null = null
   private isSlowMotion: boolean = false
@@ -247,6 +249,8 @@ export class BubbleShooterGame {
       this.shooter,
       this.projectile,
       this.mouseX,
+      this.mouseY,
+      this.currentChargeTime,
       this.engine.getScore(),
       this.gameStartTime,
       this.currentLevelConfig.timeLimit * 1000,
@@ -274,11 +278,11 @@ export class BubbleShooterGame {
     
     if (this.currentLevel >= this.LEVELS.length) {
       this.gameWon = true
-      this.gameActions.addScore(1000, this.W / 2, this.H / 2)
+      gameActions.addScore(1000, this.W / 2, this.H / 2)
       this.engine.setMessage('🏆 通关成功！')
     } else {
       const bonusScore = Math.floor((this.currentLevelConfig.timeLimit * 1000 - (Date.now() - this.gameStartTime)) / 100)
-      this.gameActions.addScore(500 + bonusScore, this.W / 2, this.H / 2)
+      gameActions.addScore(500 + bonusScore, this.W / 2, this.H / 2)
       this.engine.setMessage(`\u2728 \u5173\u5361\u901A\u8FC7\uFF01\u8FDB\u5165\u4E0B\u4E00\u5173`)
     }
     
@@ -371,8 +375,10 @@ export class BubbleShooterGame {
 
   private unbindPointer: (() => void) | null = null
 
-  private aimAt(mx: number, my: number) {
+  private aimAt(mx: number, my: number, chargeTime: number = 0) {
     this.mouseX = mx
+    this.mouseY = my
+    this.currentChargeTime = chargeTime
     const dx = mx - this.shooter.x
     const dy = my - this.shooter.y
     this.shooter.angle = Math.atan2(dy, dx)
@@ -403,20 +409,34 @@ export class BubbleShooterGame {
   private setupEventListeners() {
     this.teardownInput()
     applyCanvasMobileStyles(this.canvas)
-    this.unbindPointer = bindCanvasPointerTapAndMove(
+    this.unbindPointer = bindCanvasAimAndShoot(
       this.canvas,
-      (x, y) => this.aimAt(x, y),
-      () => {
-        if (!this.gameEnded && !this.levelTransitioning) this.shoot()
+      (x, y, chargeTime) => this.aimAt(x, y, chargeTime),
+      (x, y, chargeTime) => {
+        if (!this.gameEnded && !this.levelTransitioning) {
+          this.aimAt(x, y, chargeTime)
+          this.shoot(chargeTime)
+        }
       },
     )
   }
 
-  private shoot() {
+  private shoot(chargeTime: number = 0) {
     if (this.projectile) return
     
-    // 更快的射击速度
-    const speed = 12
+    // 根据蓄力时间计算发射速度
+    const minSpeed = 8
+    const maxSpeed = 18
+    const maxChargeTime = 2000 // 最大蓄力时间（毫秒）
+    const chargeRatio = Math.min(chargeTime / maxChargeTime, 1)
+    const speed = minSpeed + (maxSpeed - minSpeed) * chargeRatio
+    
+    // 重置蓄力时间
+    this.currentChargeTime = 0
+    
+    // 发射时的触觉反馈（根据蓄力程度）
+    this.triggerVibration(chargeRatio)
+    
     this.projectile = {
       x: this.shooter.x,
       y: this.shooter.y - this.BUBBLE_SIZE / 2,
@@ -454,15 +474,40 @@ export class BubbleShooterGame {
     
     audioService.click()
   }
+  
+  private triggerVibration(intensity: number) {
+    if (!navigator.vibrate) return
+    
+    // 根据力度设置不同的震动模式
+    if (intensity >= 1) {
+      navigator.vibrate([30, 20, 30])  // 强烈震动
+    } else if (intensity > 0.7) {
+      navigator.vibrate(40)  // 中等震动
+    } else if (intensity > 0.4) {
+      navigator.vibrate(25)  // 轻微震动
+    } else {
+      navigator.vibrate(15)  // 微弱震动
+    }
+  }
+  
+  private triggerCollisionVibration() {
+    if (!navigator.vibrate) return
+    navigator.vibrate(20)  // 碰撞时轻微震动
+  }
 
   private updateProjectile(speedMultiplier: number = 1) {
     if (!this.projectile) return
 
+    // 添加阻尼效果，让泡泡飞行更自然
+    const friction = 0.995
+    this.projectile.vx *= friction
+    this.projectile.vy *= friction
+    
     this.projectile.x += this.projectile.vx * speedMultiplier
     this.projectile.y += this.projectile.vy * speedMultiplier
 
-    // 添加飞行轨迹粒子
-    if (Math.random() > 0.6) {
+    // 添加飞行轨迹粒子（更密集）
+    if (Math.random() > 0.4) {
       this.particleSystem.addTrail(
         this.projectile.x,
         this.projectile.y,
@@ -470,52 +515,85 @@ export class BubbleShooterGame {
       )
     }
 
-    // 左右边界反弹
+    // 左右边界反弹（添加角度限制，避免无限反弹）
     if (this.projectile.x - this.BUBBLE_SIZE / 2 <= 0) {
       this.projectile.x = this.BUBBLE_SIZE / 2
-      this.projectile.vx *= -0.9
+      this.projectile.vx = Math.abs(this.projectile.vx) * 0.85
+      if (this.projectile.vx < 2) this.projectile.vx = 2
       this.playBounceEffect(this.projectile.x, this.projectile.y)
     }
     if (this.projectile.x + this.BUBBLE_SIZE / 2 >= this.W) {
       this.projectile.x = this.W - this.BUBBLE_SIZE / 2
-      this.projectile.vx *= -0.9
+      this.projectile.vx = -Math.abs(this.projectile.vx) * 0.85
+      if (Math.abs(this.projectile.vx) < 2) this.projectile.vx = -2
       this.playBounceEffect(this.projectile.x, this.projectile.y)
     }
 
     // 顶部反弹
     if (this.projectile.y - this.BUBBLE_SIZE / 2 <= 30) {
       this.projectile.y = this.BUBBLE_SIZE / 2 + 30
-      this.projectile.vy *= -0.9
+      this.projectile.vy = Math.abs(this.projectile.vy) * 0.85
+      if (this.projectile.vy < 2) this.projectile.vy = 2
       this.playBounceEffect(this.projectile.x, this.projectile.y)
     }
 
     // 底部反弹
     if (this.projectile.y + this.BUBBLE_SIZE / 2 >= this.SHOOTER_Y) {
       this.projectile.y = this.SHOOTER_Y - this.BUBBLE_SIZE / 2
-      this.projectile.vy *= -0.9
+      this.projectile.vy = -Math.abs(this.projectile.vy) * 0.85
+      if (Math.abs(this.projectile.vy) < 2) this.projectile.vy = -2
       this.playBounceEffect(this.projectile.x, this.projectile.y)
     }
 
-    // 与已有的泡泡碰撞检测（只有碰到泡泡才停止并附着）
+    // 检测是否速度过慢（防止泡泡在原地抖动）
+    const speed = Math.hypot(this.projectile.vx, this.projectile.vy)
+    if (speed < 1.5) {
+      // 找到最近的空位附着
+      this.findNearestEmptyPosition()
+      return
+    }
+
+    // 与已有的泡泡碰撞检测（优化：先检测附近的泡泡）
+    const nearestBubble = this.findNearestBubble(this.projectile.x, this.projectile.y)
+    if (nearestBubble) {
+      const pos = this.renderer.getBubblePos(nearestBubble.col, nearestBubble.row)
+      const dist = Math.hypot(this.projectile.x - pos.bx, this.projectile.y - pos.by)
+      
+      // 碰撞检测：两个泡泡半径之和（完整的碰撞距离）
+      const collisionDist = this.BUBBLE_SIZE * 0.95
+      if (dist < collisionDist) {
+        // 添加强烈的碰撞特效
+        this.playCollisionEffect(pos.bx, pos.by, this.projectile.color)
+        // 碰撞时的触觉反馈
+        this.triggerCollisionVibration()
+        audioService.win()
+        // 根据泡泡实际位置找到最佳附着位置
+        this.attachBubbleAtPosition(nearestBubble.row, nearestBubble.col)
+        return
+      }
+    }
+  }
+  
+  private findNearestBubble(x: number, y: number): {row: number, col: number} | null {
+    let nearest: {row: number, col: number} | null = null
+    let minDist = Infinity
+    const searchRadius = this.BUBBLE_SIZE * 2
+    
     for (let r = 0; r < this.ROWS; r++) {
       for (let c = 0; c < this.COLS; c++) {
         if (this.board[r]?.[c] === null || this.board[r]?.[c] === undefined) continue
         
         const pos = this.renderer.getBubblePos(c, r)
-        const dist = Math.hypot(this.projectile.x - pos.bx, this.projectile.y - pos.by)
+        const dist = Math.hypot(x - pos.bx, y - pos.by)
         
-        // 碰撞检测：两个泡泡半径之和（完整的碰撞距离）
-        const collisionDist = this.BUBBLE_SIZE * 0.95
-        if (dist < collisionDist) {
-          // 添加强烈的碰撞特效
-          this.playCollisionEffect(pos.bx, pos.by, this.projectile.color)
-          audioService.win()
-          // 根据泡泡实际位置找到最佳附着位置
-          this.attachBubbleAtPosition(r, c)
-          return
+        if (dist < searchRadius && dist < minDist) {
+          minDist = dist
+          nearest = { row: r, col: c }
         }
       }
     }
+    
+    return nearest
   }
 
   private playCollisionEffect(x: number, y: number, color: number) {

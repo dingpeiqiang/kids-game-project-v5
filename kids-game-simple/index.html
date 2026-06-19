@@ -7,11 +7,26 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>星光游学</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+    
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous" />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
+    <script>
+      if (typeof Phaser === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js';
+        script.crossOrigin = 'anonymous';
+        script.onload = function() {
+          console.log('Phaser loaded');
+        };
+        document.head.appendChild(script);
+      }
+    </script>
   </body>
 </html>

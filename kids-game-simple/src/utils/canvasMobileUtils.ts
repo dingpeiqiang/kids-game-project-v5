@@ -194,6 +194,160 @@ export function bindCanvasPointerTapAndMove(
   }
 }
 
+/** 瞄准发射模式：按下移动瞄准，释放时发射（泡泡龙、弹弓类游戏） */
+export interface AimState {
+  x: number
+  y: number
+  chargeTime: number
+}
+
+export function bindCanvasAimAndShoot(
+  canvas: HTMLCanvasElement,
+  onAim: (x: number, y: number, chargeTime: number) => void,
+  onShoot: (x: number, y: number, chargeTime: number) => void,
+  onCancel?: () => void,
+): () => void {
+  applyCanvasMobileStyles(canvas)
+
+  const toCanvas = (clientX: number, clientY: number) =>
+    clientToCanvas(canvas, clientX, clientY)
+
+  let aiming = false
+  let lastX = 0
+  let lastY = 0
+  let chargeStartTime = 0
+  let chargeInterval: number | null = null
+
+  const startAim = (x: number, y: number) => {
+    aiming = true
+    lastX = x
+    lastY = y
+    chargeStartTime = Date.now()
+    
+    chargeInterval = window.setInterval(() => {
+      if (aiming) {
+        const chargeTime = Date.now() - chargeStartTime
+        onAim(lastX, lastY, chargeTime)
+      }
+    }, 16)
+    
+    onAim(x, y, 0)
+  }
+
+  const updateAim = (x: number, y: number) => {
+    if (!aiming) return
+    lastX = x
+    lastY = y
+    const chargeTime = Date.now() - chargeStartTime
+    onAim(x, y, chargeTime)
+  }
+
+  const endAim = () => {
+    if (!aiming) return
+    aiming = false
+    
+    if (chargeInterval) {
+      clearInterval(chargeInterval)
+      chargeInterval = null
+    }
+    
+    const chargeTime = Date.now() - chargeStartTime
+    onShoot(lastX, lastY, chargeTime)
+  }
+
+  const cancelAim = () => {
+    if (!aiming) return
+    aiming = false
+    
+    if (chargeInterval) {
+      clearInterval(chargeInterval)
+      chargeInterval = null
+    }
+    
+    onCancel?.()
+  }
+
+  const onPointerDown = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    e.preventDefault()
+    const { x, y } = toCanvas(e.clientX, e.clientY)
+    startAim(x, y)
+  }
+
+  const onPointerMove = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && (e.buttons & 1) === 0) return
+    e.preventDefault()
+    const { x, y } = toCanvas(e.clientX, e.clientY)
+    updateAim(x, y)
+  }
+
+  const onPointerUp = () => endAim()
+  const onPointerCancel = () => cancelAim()
+
+  const onTouchStart = (e: TouchEvent) => {
+    const t = e.touches[0]
+    if (!t) return
+    e.preventDefault()
+    const { x, y } = toCanvas(t.clientX, t.clientY)
+    startAim(x, y)
+  }
+
+  const onTouchMove = (e: TouchEvent) => {
+    const t = e.touches[0]
+    if (!t) return
+    e.preventDefault()
+    const { x, y } = toCanvas(t.clientX, t.clientY)
+    updateAim(x, y)
+  }
+
+  const onTouchEnd = () => endAim()
+  const onTouchCancel = () => cancelAim()
+
+  const onMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    const { x, y } = toCanvas(e.clientX, e.clientY)
+    startAim(x, y)
+  }
+
+  const onMouseMove = (e: MouseEvent) => {
+    if ((e.buttons & 1) === 0) return
+    const { x, y } = toCanvas(e.clientX, e.clientY)
+    updateAim(x, y)
+  }
+
+  const onMouseUp = () => endAim()
+
+  canvas.addEventListener('pointerdown', onPointerDown, { passive: false })
+  canvas.addEventListener('pointermove', onPointerMove, { passive: false })
+  canvas.addEventListener('pointerup', onPointerUp)
+  canvas.addEventListener('pointercancel', onPointerCancel)
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+  canvas.addEventListener('touchmove', onTouchMove, { passive: false })
+  canvas.addEventListener('touchend', onTouchEnd)
+  canvas.addEventListener('touchcancel', onTouchCancel)
+  canvas.addEventListener('mousedown', onMouseDown)
+  canvas.addEventListener('mousemove', onMouseMove)
+  canvas.addEventListener('mouseup', onMouseUp)
+
+  return () => {
+    if (chargeInterval) {
+      clearInterval(chargeInterval)
+    }
+    canvas.removeEventListener('pointerdown', onPointerDown)
+    canvas.removeEventListener('pointermove', onPointerMove)
+    canvas.removeEventListener('pointerup', onPointerUp)
+    canvas.removeEventListener('pointercancel', onPointerCancel)
+    canvas.removeEventListener('touchstart', onTouchStart)
+    canvas.removeEventListener('touchmove', onTouchMove)
+    canvas.removeEventListener('touchend', onTouchEnd)
+    canvas.removeEventListener('touchcancel', onTouchCancel)
+    canvas.removeEventListener('mousedown', onMouseDown)
+    canvas.removeEventListener('mousemove', onMouseMove)
+    canvas.removeEventListener('mouseup', onMouseUp)
+  }
+}
+
 /** 水平拖拽（躲避、切水果等） */
 export function bindCanvasHorizontalDrag(
   canvas: HTMLCanvasElement,

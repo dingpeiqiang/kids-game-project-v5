@@ -78,6 +78,8 @@ export class Renderer {
     shooter: Shooter,
     projectile: Projectile | null,
     mouseX: number,
+    mouseY: number,
+    chargeTime: number,
     score: number,
     gameStartTime: number,
     GAME_DURATION: number,
@@ -114,7 +116,7 @@ export class Renderer {
     }
 
     // 发射轨迹 - 更明显的瞄准线
-    this.drawAimLine(ctx, shooter, mouseX)
+    this.drawAimLine(ctx, shooter, mouseX, mouseY, chargeTime)
 
     // 发射器（最后绘制，覆盖在飞行泡泡上方，避免穿透显示）
     this.drawShooter(ctx, shooter)
@@ -293,30 +295,178 @@ export class Renderer {
   }
 
   // 绘制瞄准线
-  private drawAimLine(ctx: CanvasRenderingContext2D, shooter: Shooter, mouseX: number) {
+  private drawAimLine(ctx: CanvasRenderingContext2D, shooter: Shooter, mouseX: number, mouseY: number, chargeTime: number) {
     // 像素对齐
     const sx = Math.round(shooter.x)
     const sy = Math.round(shooter.y)
     
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)'
-    ctx.lineWidth = 3
-    ctx.setLineDash([8, 8])
+    // 计算瞄准距离（基于鼠标位置）
+    const aimLength = Math.max(50, Math.min(200, Math.abs(mouseX - sx) * 1.5))
+    
+    // 根据蓄力时间计算力度
+    const maxChargeTime = 2000
+    const chargeRatio = Math.min(chargeTime / maxChargeTime, 1)
+    
+    // 绘制主瞄准线
+    const gradient = ctx.createLinearGradient(sx, sy, 
+      sx + Math.cos(shooter.angle) * aimLength, 
+      sy + Math.sin(shooter.angle) * aimLength)
+    
+    // 根据蓄力程度改变颜色
+    if (chargeRatio > 0.7) {
+      gradient.addColorStop(0, 'rgba(255,100,100,0.9)')
+      gradient.addColorStop(0.5, 'rgba(255,50,50,0.7)')
+      gradient.addColorStop(1, 'rgba(200,0,0,0.5)')
+    } else if (chargeRatio > 0.4) {
+      gradient.addColorStop(0, 'rgba(255,215,0,0.9)')
+      gradient.addColorStop(0.5, 'rgba(255,200,0,0.7)')
+      gradient.addColorStop(1, 'rgba(200,150,0,0.5)')
+    } else {
+      gradient.addColorStop(0, 'rgba(255,255,255,0.8)')
+      gradient.addColorStop(0.5, 'rgba(255,215,0,0.6)')
+      gradient.addColorStop(1, 'rgba(255,100,100,0.4)')
+    }
+    
+    ctx.strokeStyle = gradient
+    ctx.lineWidth = 3 + chargeRatio * 2
+    ctx.lineCap = 'round'
+    ctx.setLineDash([10 - chargeRatio * 3, 5])
     ctx.beginPath()
     ctx.moveTo(sx, sy)
     
     // 延长瞄准线（像素对齐）
-    const aimLength = 150
     const targetX = Math.round(sx + Math.cos(shooter.angle) * aimLength)
     const targetY = Math.round(sy + Math.sin(shooter.angle) * aimLength)
     ctx.lineTo(targetX, targetY)
     ctx.stroke()
     ctx.setLineDash([])
     
+    // 添加箭头指示
+    this.drawArrowHead(ctx, targetX, targetY, shooter.angle, chargeRatio)
+    
+    // 添加力度指示圈
+    this.drawPowerIndicator(ctx, sx, sy, chargeRatio)
+    
     // 添加瞄准点（像素对齐）
-    ctx.fillStyle = 'rgba(255,255,255,0.8)'
+    const aimPointSize = 6 + chargeRatio * 4
+    ctx.fillStyle = chargeRatio > 0.7 ? 'rgba(255,100,100,0.9)' : 'rgba(255,255,255,0.9)'
     ctx.beginPath()
-    ctx.arc(targetX, targetY, 5, 0, Math.PI * 2)
+    ctx.arc(targetX, targetY, aimPointSize, 0, Math.PI * 2)
     ctx.fill()
+    
+    // 瞄准点光晕（根据蓄力程度变化）
+    const glowSize = 12 + chargeRatio * 10
+    const glowAlpha = 0.3 + chargeRatio * 0.3
+    ctx.fillStyle = chargeRatio > 0.7 ? `rgba(255,100,100,${glowAlpha})` : `rgba(255,215,0,${glowAlpha})`
+    ctx.beginPath()
+    ctx.arc(targetX, targetY, glowSize, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 蓄力文字提示
+    if (chargeTime > 0) {
+      this.drawChargeText(ctx, sx, sy - 40, chargeRatio)
+    }
+  }
+  
+  // 绘制箭头头部
+  private drawArrowHead(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, chargeRatio: number = 0) {
+    const arrowSize = 12 + chargeRatio * 6
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(angle)
+    
+    // 根据蓄力程度改变颜色
+    const arrowColor = chargeRatio > 0.7 ? 'rgba(255,100,100,0.9)' : chargeRatio > 0.4 ? 'rgba(255,215,0,0.9)' : 'rgba(255,215,0,0.8)'
+    ctx.fillStyle = arrowColor
+    ctx.beginPath()
+    ctx.moveTo(0, -arrowSize)
+    ctx.lineTo(-arrowSize * 0.5, arrowSize * 0.5)
+    ctx.lineTo(arrowSize * 0.5, arrowSize * 0.5)
+    ctx.closePath()
+    ctx.fill()
+    
+    // 蓄力时添加光晕
+    if (chargeRatio > 0) {
+      ctx.fillStyle = `${arrowColor.replace('0.9', '0.3').replace('0.8', '0.3')}`
+      ctx.beginPath()
+      ctx.arc(0, -arrowSize * 0.3, arrowSize * 0.8, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    
+    ctx.restore()
+  }
+  
+  // 绘制力度指示圈
+  private drawPowerIndicator(ctx: CanvasRenderingContext2D, sx: number, sy: number, chargeRatio: number) {
+    const baseRadius = 28
+    const maxRadius = baseRadius + chargeRatio * 10
+    
+    // 外圈
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.arc(sx, sy, baseRadius, 0, Math.PI * 2)
+    ctx.stroke()
+    
+    // 蓄力外圈（随蓄力增大）
+    if (chargeRatio > 0) {
+      ctx.strokeStyle = `rgba(255,215,0,${0.3 + chargeRatio * 0.4})`
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(sx, sy, maxRadius, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+    
+    // 力度指示弧
+    const powerColor = chargeRatio > 0.7 ? '#FF6B6B' : chargeRatio > 0.4 ? '#FFD93D' : '#6BCB77'
+    ctx.strokeStyle = powerColor
+    ctx.lineWidth = 4 + chargeRatio * 2
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.arc(sx, sy, baseRadius, -Math.PI * 0.4, -Math.PI * 0.4 + Math.PI * 0.8 * chargeRatio)
+    ctx.stroke()
+    
+    // 蓄力达到最大时的闪烁效果
+    if (chargeRatio >= 1) {
+      ctx.fillStyle = 'rgba(255,100,100,0.5)'
+      ctx.beginPath()
+      ctx.arc(sx, sy, baseRadius + 5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  
+  // 绘制蓄力文字提示
+  private drawChargeText(ctx: CanvasRenderingContext2D, x: number, y: number, chargeRatio: number) {
+    ctx.save()
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    
+    let chargeText = ''
+    let chargeColor = '#6BCB77'
+    
+    if (chargeRatio >= 1) {
+      chargeText = 'MAX!'
+      chargeColor = '#FF6B6B'
+    } else if (chargeRatio > 0.7) {
+      chargeText = '强'
+      chargeColor = '#FF6B6B'
+    } else if (chargeRatio > 0.4) {
+      chargeText = '中'
+      chargeColor = '#FFD93D'
+    } else {
+      chargeText = '弱'
+      chargeColor = '#6BCB77'
+    }
+    
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'
+    ctx.font = 'bold 16px sans-serif'
+    ctx.fillText(chargeText, x + 1, y + 1)
+    
+    ctx.fillStyle = chargeColor
+    ctx.font = 'bold 16px sans-serif'
+    ctx.fillText(chargeText, x, y)
+    
+    ctx.restore()
   }
 
   // 绘制发射器
