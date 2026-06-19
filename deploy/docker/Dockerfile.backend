@@ -35,8 +35,8 @@ RUN mvn dependency:go-offline -B -s /usr/share/maven/ref/settings.xml -pl kids-g
 # 第 2 步：复制源代码并构建
 COPY kids-game-backend/ ./
 
-# 构建应用（跳过测试）
-RUN mvn clean package -DskipTests -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -B -s /usr/share/maven/ref/settings.xml -pl kids-game-web
+# 构建应用（跳过测试，-am 表示同时构建依赖模块）
+RUN mvn clean package -DskipTests -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -B -s /usr/share/maven/ref/settings.xml -pl kids-game-web -am
 
 # 生产阶段 - 使用 JRE 运行时
 FROM eclipse-temurin:17-jre-alpine
