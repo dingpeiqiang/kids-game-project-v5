@@ -118,6 +118,12 @@ public class JwtUtil {
      * 验证 Token 是否有效
      */
     public boolean validateToken(String token) {
+        // 检查token是否为空或空白字符串
+        if (token == null || token.trim().isEmpty()) {
+            log.error("Token validation failed: Token is null or empty");
+            return false;
+        }
+        
         try {
             Claims claims = parseToken(token);
             Date expiration = claims.getExpiration();
