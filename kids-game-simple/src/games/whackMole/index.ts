@@ -59,6 +59,18 @@ interface FloatText {
   life: number; vy: number
 }
 
+let unbindPointer: (() => void) | null = null
+let animationFrameId: number | null = null
+
+export function destroyWhackMole() {
+  unbindPointer?.()
+  unbindPointer = null
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+}
+
 export function initWhackMole(engine: GameEngine, onEnd: () => void) {
   const cvs = document.getElementById('mainGameCanvas') as HTMLCanvasElement
   const ctx = cvs.getContext('2d')!
@@ -854,28 +866,28 @@ export function initWhackMole(engine: GameEngine, onEnd: () => void) {
   }
 
   applyCanvasMobileStyles(cvs)
-  const unbindPointer = bindCanvasPointerInput(cvs, (x, y) => checkHit(x, y))
+  unbindPointer = bindCanvasPointerInput(cvs, (x, y) => checkHit(x, y))
 
   // —— 启动 ——
   engine.start()
 
   function loop() {
     if (!document.getElementById('mainGameCanvas')) {
-      unbindPointer()
+      unbindPointer?.()
       return
     }
     if (gameEnded) {
-      unbindPointer()
+      unbindPointer?.()
       return
     }
     if (!engine.canTick()) {
       draw()
-      requestAnimationFrame(loop)
+      animationFrameId = requestAnimationFrame(loop)
       return
     }
     update()
     draw()
-    requestAnimationFrame(loop)
+    animationFrameId = requestAnimationFrame(loop)
   }
   
       

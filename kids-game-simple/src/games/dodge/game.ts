@@ -6,6 +6,8 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createCanvasGameLifecycle } from '../../platform/createCanvasGameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { applyCanvasMobileStyles, bindCanvasHorizontalDrag } from '../../utils/canvasMobileUtils'
+import { bindDesktopControls } from '../../platform/mobileControls'
+import { mergeLayout } from '../../platform/mobileControls/layout'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 import { getCachedGTRSTheme } from '../../services/gtrsThemeLoader'
 import { readGtrsSceneMeta } from '../../utils/gtrsSceneMeta'
@@ -682,15 +684,33 @@ function startDodgeLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle 
   }
   
   let unbindDrag: (() => void) | null = null
+  let unbindDesktop: (() => void) | null = null
+  const KEYBOARD_MOVE_SPEED = 7
+
+  const applyHorizontalDelta = (deltaX: number) => {
+    px += deltaX
+    px = Math.max(pSize, Math.min(W - pSize, px))
+    TRAIL.push({ x: px, y: py, life: 1 })
+  }
 
   return hostCanvas2D(lifecycleCtx, {
     onInit() {
       applyCanvasMobileStyles(canvas)
       updateHTMLPowerupBar()
+      unbindDesktop = bindDesktopControls({
+        canvas,
+        preset: 'swipe_pan',
+        layout: mergeLayout(W, H),
+        enablePointer: false,
+        onAction: (action, payload) => {
+          if (action === 'move' && payload.source === 'keyboard') {
+            const sx = payload.stickX ?? 0
+            if (sx !== 0) applyHorizontalDelta(sx * KEYBOARD_MOVE_SPEED)
+          }
+        },
+      })
       unbindDrag = bindCanvasHorizontalDrag(canvas, deltaX => {
-        px += deltaX
-        px = Math.max(pSize, Math.min(W - pSize, px))
-        TRAIL.push({ x: px, y: py, life: 1 })
+        applyHorizontalDelta(deltaX)
       })
     },
     onUpdate(dt) {
@@ -702,6 +722,8 @@ function startDodgeLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle 
     onDestroy() {
       unbindDrag?.()
       unbindDrag = null
+      unbindDesktop?.()
+      unbindDesktop = null
       app.removePowerupBar?.()
     },
   })

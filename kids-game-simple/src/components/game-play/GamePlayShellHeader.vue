@@ -81,16 +81,16 @@ function handleTogglePause() {
 <style scoped>
 .game-play-header__toggle {
   position: fixed;
-  top: 8px;
-  left: 8px;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  left: calc(env(safe-area-inset-left, 0px) + 8px);
   z-index: 101;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.7);
   color: #fff;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -98,6 +98,7 @@ function handleTogglePause() {
   transition: opacity 0.2s;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
 }
 
 .game-play-header__toggle:hover {

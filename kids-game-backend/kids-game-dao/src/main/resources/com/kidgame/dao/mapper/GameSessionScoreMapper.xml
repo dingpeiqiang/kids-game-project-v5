@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kidgame.dao.mapper.GameSessionScoreMapper">
+
+    <insert id="insert" parameterType="com.kidgame.dao.entity.GameSessionScore">
+        INSERT INTO t_game_session_score (
+            game_id, user_id, username, nickname, avatar,
+            score, level_reached, create_time, deleted
+        ) VALUES (
+            #{gameId}, #{userId}, #{username}, #{nickname}, #{avatar},
+            #{score}, #{levelReached}, #{createTime}, 0
+        )
+    </insert>
+
+</mapper>

@@ -7,6 +7,23 @@ export {
   setGameEndHandler,
 } from './gameBridge'
 export { inputManager, type ShellInputMode } from './inputManager'
+export {
+  bindMobileControlPreset,
+  bindDesktopControls,
+  drawMobileControlOverlay,
+  getGameControlPreset,
+  getPresetGuideHint,
+  getCombinedControlGuideHint,
+  getDesktopGuideHint,
+  listGameControlPresets,
+  isTouchPrimaryDevice,
+  shouldDrawOnScreenControls,
+  VirtualJoystick,
+  type MobileControlRuntime,
+  type MobileControlPresetId,
+  type BindMobileControlOptions,
+  type ControlInputSource,
+} from './mobileControls'
 export { ObjectPool, getPool, clearAllPools } from './objectPool'
 export { GameLifecycle, runCanvasLifecycle, type GameLifecycleContext } from './GameLifecycle'
 export { createLifecycleContext, requireLifecycleContext } from './frameworkSession'

@@ -4,7 +4,10 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import type { GameLifecycle } from '../../platform/GameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { requireMainGameCanvas } from '../../platform/canvasHost'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import {
+  bindMobileControlPreset,
+  getGameControlPreset,
+} from '../../platform/mobileControls'
 import { getCachedGTRSTheme } from '../../services/gtrsThemeLoader'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 import { readGtrsSceneMeta } from '../../utils/gtrsSceneMeta'
@@ -63,7 +66,7 @@ export function startWhackMoleLifecycle(ctx: GameLifecycleContext): GameLifecycl
   let gameStart = Date.now()
   let gameEnded = false
   let spawnTimer = 0
-  let unbind: (() => void) | null = null
+  let controls: ReturnType<typeof bindMobileControlPreset> | null = null
 
   function holeAt(x: number, y: number): number {
     for (let i = 0; i < holes.length; i++) {
@@ -187,15 +190,23 @@ export function startWhackMoleLifecycle(ctx: GameLifecycleContext): GameLifecycl
   return hostCanvas2D(ctx, {
     onInit() {
       gameStart = Date.now()
-      applyCanvasMobileStyles(canvas)
-      unbind = bindCanvasPointerInput(canvas, (x, y) => whackAt(x, y))
+      controls = bindMobileControlPreset(canvas, {
+        preset: getGameControlPreset('whackMole'),
+        viewWidth: W,
+        viewHeight: H,
+        onAction: (action, payload) => {
+          if (action === 'tap' && payload.x != null && payload.y != null) {
+            whackAt(payload.x, payload.y)
+          }
+        },
+      })
     },
     onUpdate(dt) {
       if (gameEnded) return
       if (Date.now() - gameStart >= GAME_MS) {
         gameEnded = true
-        unbind?.()
-        unbind = null
+        controls?.dispose()
+        controls = null
         audioService.win()
         gameActions.gameOver({ victory: true, score: engine.getScore() })
         return
@@ -206,8 +217,8 @@ export function startWhackMoleLifecycle(ctx: GameLifecycleContext): GameLifecycl
       draw()
     },
     onDestroy() {
-      unbind?.()
-      unbind = null
+      controls?.dispose()
+      controls = null
     },
   })
 }

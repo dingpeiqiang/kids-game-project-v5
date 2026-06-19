@@ -5,16 +5,15 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createLifecycleContext } from '../../platform/frameworkSession'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { audioService } from '../../services/audio'
-import { VirtualJoystick } from '../contraRpg/joystick'
 import { MARIO_CONFIG } from './config'
 import { getLevel } from './levels'
+import { createInputState, type MarioInput } from './input'
 import {
-  bindMarioInput,
-  createInputState,
-  applyJoystickToInput,
-  drawTouchControls,
-  type MarioInput,
-} from './input'
+  bindMobileControlPreset,
+  drawMobileControlOverlay,
+  getGameControlPreset,
+  type MobileControlRuntime,
+} from '../../platform/mobileControls'
 import { aabb, resolvePlayerBlocks, resolveEnemyBlocks, stompTest } from './physics'
 import { drawWorld, drawHud, drawOverlay } from './render'
 import type { Block, Coin, Enemy, LevelData, MarioGameState, Player, Powerup } from './types'
@@ -430,22 +429,12 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
 
   let state = loadLevelState(0, MARIO_CONFIG.START_LIVES, 0, 0)
   const input = createInputState()
-  const keyboardActive = { left: false, right: false }
-
-  const joystick = new VirtualJoystick({
-    x: 88,
-    y: MARIO_CONFIG.VIEW_H - 76,
-    radius: 52,
-    knobRadius: 22,
-    deadZone: 0.15,
-  })
+  let kbStickX = 0
+  let controls: MobileControlRuntime | null = null
 
   let ended = false
   let frame = 0
   let lastTs = performance.now()
-  let unbind: (() => void) | null = null
-  let kd: (e: KeyboardEvent) => void
-  let ku: (e: KeyboardEvent) => void
   let onTap: () => void
 
   const finishFromOverlay = () => {
@@ -464,17 +453,74 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
     audioService.collect()
   }
 
+  const syncMoveFromControls = () => {
+    const dead = 0.2
+    const joy = controls?.getJoystick()
+    const joyActive = joy?.getState().active ?? false
+    const out = joy?.getState().output
+    if (joyActive && out) {
+      input.left = out.x < -dead
+      input.right = out.x > dead
+      if (out.magnitude > 0.75) input.run = true
+      else if (out.magnitude < 0.3) input.run = false
+    } else {
+      input.left = kbStickX < -dead
+      input.right = kbStickX > dead
+    }
+  }
+
   activeHost = hostCanvas2D(lifecycleCtx, {
     onInit() {
-      unbind = bindMarioInput(canvas, input, joystick, onJumpTap)
-      const keyTrack = (e: KeyboardEvent, down: boolean) => {
-        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keyboardActive.left = down
-        if (e.code === 'ArrowRight' || e.code === 'KeyD') keyboardActive.right = down
-      }
-      kd = (e: KeyboardEvent) => keyTrack(e, true)
-      ku = (e: KeyboardEvent) => keyTrack(e, false)
-      window.addEventListener('keydown', kd)
-      window.addEventListener('keyup', ku)
+      controls = bindMobileControlPreset(canvas, {
+        preset: getGameControlPreset('superMario'),
+        viewWidth: MARIO_CONFIG.VIEW_W,
+        viewHeight: MARIO_CONFIG.VIEW_H,
+        layout: {
+          viewWidth: MARIO_CONFIG.VIEW_W,
+          viewHeight: MARIO_CONFIG.VIEW_H,
+          joystick: {
+            x: 88,
+            y: MARIO_CONFIG.VIEW_H - 76,
+            radius: 52,
+            knobRadius: 22,
+            deadZone: 0.15,
+            dynamicZoneWidthRatio: 0.45,
+          },
+          buttons: [
+            {
+              id: 'jump',
+              label: '跳',
+              cx: MARIO_CONFIG.VIEW_W - 58,
+              cy: MARIO_CONFIG.VIEW_H - 72,
+              r: 44,
+            },
+          ],
+        },
+        keyboardProfile: {
+          buttons: {
+            ShiftLeft: 'run',
+            ShiftRight: 'run',
+          },
+        },
+        onAction: (action, payload) => {
+          if (action === 'move') {
+            if (payload.source === 'keyboard') {
+              kbStickX = payload.stickX ?? 0
+            }
+            return
+          }
+          if (action === 'button_down' && payload.id === 'jump') {
+            input.jump = true
+            input.jumpPressed = true
+            onJumpTap()
+          }
+          if (action === 'button_up' && payload.id === 'jump') {
+            input.jump = false
+          }
+          if (action === 'button_down' && payload.id === 'run') input.run = true
+          if (action === 'button_up' && payload.id === 'run') input.run = false
+        },
+      })
       onTap = () => {
         if (state.phase === 'gameOver' || state.phase === 'victory') {
           finishFromOverlay()
@@ -489,7 +535,7 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
       if (ended) return
       const capped = Math.min(0.05, dt)
       frame++
-      applyJoystickToInput(joystick, input, keyboardActive)
+      syncMoveFromControls()
       const level = getLevel(state.levelIndex)
       updateSimulation(state, level, input, engine, capped)
       gameActions.setScore(state.score)
@@ -499,7 +545,13 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       drawWorld(ctx, state, level, frame)
       drawHud(ctx, state, level)
-      drawTouchControls(ctx, joystick)
+      if (controls?.shouldDrawOverlay()) {
+        drawMobileControlOverlay(
+          ctx,
+          controls.getSnapshot(),
+          controls.getJoystick(),
+        )
+      }
       if (state.phase === 'gameOver') {
         drawOverlay(ctx, '游戏结束', `得分 ${state.score}`, true)
       } else if (state.phase === 'victory') {
@@ -509,10 +561,8 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
       }
     },
     onDestroy() {
-      unbind?.()
-      unbind = null
-      window.removeEventListener('keydown', kd!)
-      window.removeEventListener('keyup', ku!)
+      controls?.dispose()
+      controls = null
       canvas.removeEventListener('click', onTap!)
     },
   })

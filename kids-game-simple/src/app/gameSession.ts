@@ -61,33 +61,38 @@ export async function showGameGuide(ctx: PlatformContext, game: Game) {
     return
   }
 
-  document.getElementById('guideIcon')!.textContent = guide.icon
-  document.getElementById('guideName')!.textContent = guide.name
-  document.getElementById('guideDesc')!.textContent = guide.desc
+  setText('guideIcon', guide.icon)
+  setText('guideName', guide.name)
+  setText('guideDesc', guide.desc)
 
-  const opsEl = document.getElementById('guideOps')!
-  opsEl.innerHTML = guide.ops.map(op => `
-      <div class="guide-op">
-        <div class="guide-op-icon" style="background:${game.color.split(',')[0]}20">${op.icon}</div>
-        <div class="guide-op-text">${op.text}</div>
-      </div>
-    `).join('')
+  const opsEl = document.getElementById('guideOps')
+  if (opsEl) {
+    opsEl.innerHTML = guide.ops.map(op => `
+        <div class="guide-op">
+          <div class="guide-op-icon" style="background:${game.color.split(',')[0]}20">${op.icon}</div>
+          <div class="guide-op-text">${op.text}</div>
+        </div>
+      `).join('')
+  }
 
-  const tipsEl = document.getElementById('guideTips')!
-  tipsEl.innerHTML = `
-      <div class="guide-tips-title">${guide.tipsTitle}</div>
-      <div class="guide-tips-text">${guide.tips}</div>
-    `
+  const tipsEl = document.getElementById('guideTips')
+  if (tipsEl) {
+    tipsEl.innerHTML = `
+        <div class="guide-tips-title">${guide.tipsTitle}</div>
+        <div class="guide-tips-text">${guide.tips}</div>
+      `
+  }
 
-  ;(document.getElementById('guideSkipCheck') as HTMLInputElement).checked = false
+  const skipCheckEl = document.getElementById('guideSkipCheck') as HTMLInputElement | null
+  if (skipCheckEl) skipCheckEl.checked = false
 
   // 初始化评论区
   ctx.setRating(0)
   ctx.renderComments()
 
-  document.getElementById('guide-overlay')!.classList.add('show')
+  document.getElementById('guide-overlay')?.classList.add('show')
 
-  const overlay = document.getElementById('guide-overlay')!
+  const overlay = document.getElementById('guide-overlay')
   const handleOverlayClick = (e: MouseEvent) => {
     if (e.target === overlay) {
       cancelGuide(ctx, overlay as HTMLElement, handleOverlayClick)
@@ -98,17 +103,18 @@ export async function showGameGuide(ctx: PlatformContext, game: Game) {
 }
 
 export function closeGuide(ctx: PlatformContext) {
-  const skipCheck = (document.getElementById('guideSkipCheck') as HTMLInputElement).checked
+  const skipCheckEl = document.getElementById('guideSkipCheck') as HTMLInputElement | null
+  const skipCheck = skipCheckEl?.checked ?? false
   if (skipCheck && ctx.currentGame) {
     userService.skipGuide(ctx.currentGame.id)
   }
-  document.getElementById('guide-overlay')!.classList.remove('show')
+  document.getElementById('guide-overlay')?.classList.remove('show')
   setTimeout(() => ctx.startGame(), 300)
 }
 
-export function cancelGuide(ctx: PlatformContext, overlay: HTMLElement, handler: (e: MouseEvent) => void) {
-  overlay.removeEventListener('click', handler)
-  document.getElementById('guide-overlay')!.classList.remove('show')
+export function cancelGuide(ctx: PlatformContext, overlay: HTMLElement | null, handler: (e: MouseEvent) => void) {
+  overlay?.removeEventListener('click', handler)
+  document.getElementById('guide-overlay')?.classList.remove('show')
   ctx.currentGame = null
 }
 
@@ -219,8 +225,8 @@ export function showResult(ctx: PlatformContext, gameId: string, score: number, 
 
   const gameStats = gameEngine.getGameStats()
 
-  const dispCoins = userService.current!.coins
-  const dispGames = userService.current!.todayGames
+  const dispCoins = userService.current?.coins ?? 0
+  const dispGames = userService.current?.todayGames ?? 0
   setText('coinCount', String(dispCoins))
   setText('todayGames', String(dispGames))
 
@@ -315,9 +321,9 @@ export async function syncScoreAsync(ctx: PlatformContext, gameId: string, score
     const result = await userService.recordGameResult(gameId, score, gameStats)
     console.log('[App] recordGameResult 返回结果:', result)
     
-    const dispCoins = userService.current!.coins
-    document.getElementById('coinCount')!.textContent = String(dispCoins)
-    document.getElementById('todayGames')!.textContent = String(userService.current!.todayGames)
+    const dispCoins = userService.current?.coins ?? 0
+    setText('coinCount', String(dispCoins))
+    setText('todayGames', String(userService.current?.todayGames ?? 0))
     
     const earnedEl = document.getElementById('resultScore')
     if (earnedEl && result.synced) {
@@ -345,12 +351,12 @@ export async function syncScoreAsync(ctx: PlatformContext, gameId: string, score
 }
 
 export function closeResult(ctx: PlatformContext) {
-  document.getElementById('result-overlay')!.classList.remove('show')
+  document.getElementById('result-overlay')?.classList.remove('show')
   exitGame(ctx)
 }
 
 export function replayGame(ctx: PlatformContext) {
-  document.getElementById('result-overlay')!.classList.remove('show')
+  document.getElementById('result-overlay')?.classList.remove('show')
   dismissGamePauseOverlay()
   const gameToReplay = ctx.currentGame
   if (gameToReplay) destroyGame(gameToReplay.id)
