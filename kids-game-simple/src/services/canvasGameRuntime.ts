@@ -1,5 +1,6 @@
 /**
  * 内置 Canvas 游戏视口与画布挂载（自 legacy App.ts startGame 抽取）
+ * 横竖屏仅由 getGameLayoutConfig(gameId).orientation 决定，不在此按 gameId 分支。
  */
 import { getGameLayoutConfig, isLandscapeLayout } from '../games/gameLayout'
 import { isExternalCanvas3dGame, prepareGame3dMountHost } from '../platform/game3dHost'
@@ -30,6 +31,7 @@ export function isMobileViewport(): boolean {
 
 export function shouldForceLandscapeOnMobile(gameId: string): boolean {
   const layout = getGameLayoutConfig(gameId)
+  if (layout.orientation !== 'landscape') return false
   return !!layout.forceLandscapeOnMobile && isMobileDevice() && isPortraitViewport()
 }
 
@@ -39,48 +41,12 @@ export function resolveGameViewport(
 ): GameViewport {
   const layout = getGameLayoutConfig(gameId)
   const isSpaceShooter = gameId === 'spaceShooter'
-  const isRacingRun = gameId === 'racingRun'
-  const isContraRpg = gameId === 'contraRpg'
-  const isWangzheRpg = gameId === 'wangzheRpg'
-  const isPlantsVsZombies = gameId === 'plantsVsZombies'
-  const isDnfRpg = gameId === 'dnfRpg'
-  const isCuteTankBattle = gameId === 'cuteTankBattle'
-  const isSuperMario = gameId === 'superMario'
-
-  let gameW = layout.designWidth
-  let gameH = layout.designHeight
-
-  if (isContraRpg) {
-    gameW = 680
-    gameH = 320
-  } else if (isWangzheRpg) {
-    gameW = 660
-    gameH = 360
-  } else if (isRacingRun) {
-    gameH = 720
-  } else if (isPlantsVsZombies) {
-    gameW = 720
-    gameH = 600
-  } else if (isDnfRpg) {
-    gameW = 880
-    gameH = 440
-  } else if (isCuteTankBattle) {
-    gameW = 750
-    gameH = 1334
-  } else if (isSuperMario) {
-    gameW = 400
-    gameH = 640
-  }
+  const gameW = layout.designWidth
+  const gameH = layout.designHeight
+  const isLandscapeGame = isLandscapeLayout(layout)
 
   let displayW = gameW
   let displayH = gameH
-
-  const isLandscapeGame =
-    isLandscapeLayout(layout) ||
-    isContraRpg ||
-    isWangzheRpg ||
-    isPlantsVsZombies ||
-    isDnfRpg
 
   if (!isSpaceShooter && !isExternalCanvas3dGame(gameId)) {
     if (isLandscapeGame) {
@@ -92,7 +58,7 @@ export function resolveGameViewport(
       displayW = sized.displayW
       displayH = sized.displayH
     } else {
-      const ratio = isRacingRun ? 0.95 : layout.portraitHeightRatio ?? 0.85
+      const ratio = layout.portraitHeightRatio ?? 0.85
       const sized = computePortraitCanvasDisplaySize(gameW, gameH, ratio)
       displayW = sized.displayW
       displayH = sized.displayH
@@ -160,7 +126,7 @@ export function mountMainGameCanvas(
   } else {
     canvas.setAttribute(
       'style',
-      `width:${vp.displayW}px;height:${vp.displayH}px;${pixelated}`
+      `width:${vp.displayW}px;height:${vp.displayH}px;${pixelated}`,
     )
   }
 

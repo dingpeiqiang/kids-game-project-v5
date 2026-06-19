@@ -36,6 +36,8 @@ let shellModalAbort: AbortController | null = null
 let shellKeydownHandler: ((e: KeyboardEvent) => void) | null = null
 let shellOnExit: (() => void) | null = null
 let shellHidePlatformPause = false
+let chromeToggleAbort: AbortController | null = null
+let chromeVisible = false
 /** 打开暂停/退出蒙层后短暂忽略「点背景关闭」，避免同一次触摸触发的幽灵 click */
 let shellModalSuppressBackdropUntil = 0
 const SHELL_MODAL_BACKDROP_GUARD_MS = 450
@@ -92,6 +94,9 @@ export function mountGameShell(opts: GameShellMountOptions): GameShellMountResul
     scoreUnsub?.()
     scoreUnsub = null
   }
+
+  hideChrome()
+  bindChromeToggle()
 
   gameEngine.setOrientation(isLandscapeLayout(layout) ? 'landscape' : 'portrait')
 
@@ -158,6 +163,8 @@ export function unmountGameShell(orientationManager: OrientationManager | null) 
   shellChromeAbort = null
   shellModalAbort?.abort()
   shellModalAbort = null
+  chromeToggleAbort?.abort()
+  chromeToggleAbort = null
   unbindShellKeyboard()
   dismissGamePauseOverlay()
   el('game-layer')?.classList.remove('game-layer--modal-open')
@@ -575,4 +582,52 @@ export function dismissGamePauseOverlay() {
   if (gameEngine.isRunning()) {
     gameEngine.resume()
   }
+}
+
+function hideChrome() {
+  const chrome = el('gameShellChrome')
+  if (chrome) {
+    chrome.classList.add('hidden')
+    chromeVisible = false
+  }
+}
+
+function showChrome() {
+  const chrome = el('gameShellChrome')
+  if (chrome) {
+    chrome.classList.remove('hidden')
+    chromeVisible = true
+  }
+}
+
+function toggleChrome() {
+  if (chromeVisible) {
+    hideChrome()
+  } else {
+    showChrome()
+  }
+}
+
+function bindChromeToggle() {
+  chromeToggleAbort?.abort()
+  chromeToggleAbort = new AbortController()
+  const signal = chromeToggleAbort.signal
+  const opts = { signal, passive: false as const }
+
+  const toggleBtn = el<HTMLButtonElement>('gameShellToggle')
+  if (!toggleBtn) return
+
+  const fire = (e: PointerEvent) => {
+    if (!shellLayerActive()) return
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    audioService.click()
+    toggleChrome()
+  }
+  toggleBtn.addEventListener('pointerup', fire, opts)
+  toggleBtn.addEventListener('click', e => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, opts)
 }

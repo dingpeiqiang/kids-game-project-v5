@@ -1,28 +1,25 @@
 /**
- * 游戏容器布局元数据 —— 壳层统一适配，各游戏只声明设计分辨率与横竖屏策略
+ * 游戏容器布局元数据 —— 壳层统一适配。
+ * 每个 gameId 必须且只能声明一种方向：portrait | landscape（禁止 auto / 双模式）。
+ * 方向以 gameOrientation.ts 目录为准（操作体验评估）。
  */
-export type GameOrientationMode = 'portrait' | 'landscape' | 'auto'
+import { GAME_ORIENTATION_CATALOG, assertGameOrientationCatalogComplete } from './gameOrientation'
+
+export type GameOrientationMode = 'portrait' | 'landscape'
 
 export interface GameLayoutConfig {
   designWidth: number
   designHeight: number
-  /** 竖屏时画布占可用高度比例 */
+  /** 仅竖屏游戏：画布占可用高度比例 */
   portraitHeightRatio?: number
   orientation: GameOrientationMode
   /** Phaser / 自管 DOM，不由壳层创建 mainGameCanvas */
   externalCanvas?: boolean
-  /** 横屏时强制旋转（移动端） */
+  /** 仅横屏游戏：移动端竖屏持机时 CSS 旋转 + 提示 */
   forceLandscapeOnMobile?: boolean
-  /** 游戏自绘 HUD 时隐藏壳层顶栏得分 */
   hidePlatformScore?: boolean
-  /** 游戏内已有暂停菜单时隐藏壳层暂停按钮（返回仍保留） */
   hidePlatformPause?: boolean
-  /** 横屏/3D 时底栏更矮（仅当游戏已启用道具挂载时有效） */
   compactFooter?: boolean
-  /**
-   * 是否在壳层预留底栏挂载点（默认 false）。
-   * 道具属于游戏玩法，推荐在 canvas 内自绘；仅遗留 HTML 道具栏游戏可设为 true。
-   */
   showPowerupSlot?: boolean
 }
 
@@ -33,8 +30,29 @@ const DEFAULT_LAYOUT: GameLayoutConfig = {
   orientation: 'portrait',
 }
 
-/** 按 gameId 覆盖默认布局（从 gameSession 历史逻辑收敛） */
+/** 按 gameId 覆盖默认布局；orientation 须与 GAME_ORIENTATION_CATALOG 一致 */
 const LAYOUT_OVERRIDES: Record<string, Partial<GameLayoutConfig>> = {
+  // —— 竖屏（显式声明，避免仅依赖 DEFAULT）——
+  eliminate: { orientation: 'portrait' },
+  tetris: { orientation: 'portrait' },
+  jewelMatch: { orientation: 'portrait' },
+  match3: { orientation: 'portrait' },
+  bubbleShooter: { orientation: 'portrait' },
+  sort: { orientation: 'portrait' },
+  memoryMatch: { orientation: 'portrait' },
+  colorTap: { orientation: 'portrait' },
+  whackMole: { orientation: 'portrait' },
+  pop: { orientation: 'portrait' },
+  fruitSlice: { orientation: 'portrait' },
+  cookieCut: { orientation: 'portrait' },
+  dodge: { orientation: 'portrait' },
+  neonRun: { orientation: 'portrait' },
+  slimeJump: { orientation: 'portrait' },
+  snake: { orientation: 'portrait' },
+  starCatcher: { orientation: 'portrait' },
+  bouncePath: { orientation: 'portrait' },
+  stack: { orientation: 'portrait' },
+
   contraRpg: {
     designWidth: 680,
     designHeight: 320,
@@ -63,9 +81,16 @@ const LAYOUT_OVERRIDES: Record<string, Partial<GameLayoutConfig>> = {
     forceLandscapeOnMobile: true,
     hidePlatformScore: true,
   },
-  racingRun: { designHeight: 720, portraitHeightRatio: 0.95 },
-  cuteTankBattle: { designWidth: 750, designHeight: 1334 },
-  spaceShooter: { externalCanvas: true, hidePlatformScore: true },
+  racingRun: { designHeight: 720, portraitHeightRatio: 0.95, orientation: 'portrait' },
+  cuteTankBattle: { designWidth: 750, designHeight: 1334, orientation: 'portrait' },
+  superMario: {
+    designWidth: 960,
+    designHeight: 540,
+    orientation: 'landscape',
+    forceLandscapeOnMobile: true,
+    hidePlatformScore: true,
+  },
+  spaceShooter: { externalCanvas: true, hidePlatformScore: true, orientation: 'portrait' },
   kingBaby: {
     designWidth: 1280,
     designHeight: 720,
@@ -96,27 +121,24 @@ const LAYOUT_OVERRIDES: Record<string, Partial<GameLayoutConfig>> = {
   dragonShooter: {
     designWidth: 400,
     designHeight: 600,
+    orientation: 'portrait',
     externalCanvas: true,
     hidePlatformScore: true,
   },
   beatDragon: {
     designWidth: 400,
     designHeight: 600,
-    hidePlatformScore: true,
-  },
-  parkingLot: {
-    designWidth: 400,
-    designHeight: 600,
-    externalCanvas: true,
+    orientation: 'portrait',
     hidePlatformScore: true,
   },
   rpgShooterTD: {
     designWidth: 400,
     designHeight: 600,
+    orientation: 'portrait',
     externalCanvas: true,
     hidePlatformScore: true,
   },
-  rpgShooter: { externalCanvas: true, hidePlatformScore: true },
+  rpgShooter: { externalCanvas: true, hidePlatformScore: true, orientation: 'portrait' },
   happyDefense: {
     designWidth: 960,
     designHeight: 540,
@@ -166,17 +188,42 @@ const LAYOUT_OVERRIDES: Record<string, Partial<GameLayoutConfig>> = {
     compactFooter: true,
     forceLandscapeOnMobile: true,
   },
-  towerDefense: { hidePlatformScore: true },
+  towerDefense: { hidePlatformScore: true, orientation: 'portrait' },
 }
 
-export function getGameLayoutConfig(gameId: string, registrationLayout?: Partial<GameLayoutConfig>): GameLayoutConfig {
-  const base = { ...DEFAULT_LAYOUT, ...LAYOUT_OVERRIDES[gameId], ...registrationLayout }
+export function getGameLayoutConfig(
+  gameId: string,
+  registrationLayout?: Partial<GameLayoutConfig>,
+): GameLayoutConfig {
+  const catalog = GAME_ORIENTATION_CATALOG[gameId]
+  const base = {
+    ...DEFAULT_LAYOUT,
+    ...(catalog ? { orientation: catalog.orientation } : {}),
+    ...LAYOUT_OVERRIDES[gameId],
+    ...registrationLayout,
+  }
+  if (import.meta.env?.DEV && catalog && base.orientation !== catalog.orientation) {
+    console.warn(
+      `[gameLayout] ${gameId}: layout orientation=${base.orientation} 与目录 ${catalog.orientation} 不一致`,
+    )
+  }
   if (base.orientation === 'landscape') {
     base.forceLandscapeOnMobile = base.forceLandscapeOnMobile ?? true
+    if (base.designWidth < base.designHeight) {
+      console.warn(
+        `[gameLayout] ${gameId}: orientation=landscape 但 designWidth < designHeight，请核对设计分辨率`,
+      )
+    }
+  } else {
+    base.forceLandscapeOnMobile = false
   }
   return base as GameLayoutConfig
 }
 
 export function isLandscapeLayout(cfg: GameLayoutConfig): boolean {
   return cfg.orientation === 'landscape'
+}
+
+export function isPortraitLayout(cfg: GameLayoutConfig): boolean {
+  return cfg.orientation === 'portrait'
 }

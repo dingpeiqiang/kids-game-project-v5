@@ -4,6 +4,58 @@
   flex-direction: column;
 }
 
+.game-shell-toggle {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 501;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 0 0 6px 6px;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, background 0.2s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-shell-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.game-shell-toggle:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.game-shell-toggle.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#game-layer.landscape-mode .game-shell-toggle {
+  top: 8px;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translateX(-50%);
+}
+
+#game-layer.force-landscape .game-shell-toggle {
+  top: 8px;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translateX(-50%) rotate(-90deg);
+}
+
 .game-shell {
   flex: 1;
   min-height: 0;
@@ -51,6 +103,17 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 500;
   pointer-events: auto;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.game-shell-chrome.hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 .game-shell-btn {

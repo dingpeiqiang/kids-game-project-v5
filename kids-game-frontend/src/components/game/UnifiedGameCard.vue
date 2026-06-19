@@ -149,6 +149,7 @@ function toggleFavorite() {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  will-change: transform, box-shadow;
 
   &:hover {
     transform: translateY(-8px) scale(1.02);

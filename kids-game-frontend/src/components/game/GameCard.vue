@@ -88,6 +88,7 @@ function getGradeName(grade: string): string {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid transparent;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  will-change: transform, box-shadow;
 }
 
 .game-card:hover {

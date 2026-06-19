@@ -7,6 +7,7 @@ import { audioService } from '../services/audio'
 import { gameEngine } from '../services/gameEngine'
 import { showToast } from '../services/userUI'
 import { apiSubmitComment, apiGetComments } from '../services/apiClient'
+import { storageService } from '../services/storage'
 import { OrientationManager } from '../utils/orientation'
 import { setPlatformContextForGames } from '../services/appBridge'
 import { removePowerupBar } from './powerup'
@@ -185,7 +186,7 @@ export async function endGame(ctx: PlatformContext) {
   gameEngine.stop()
   gameEngine.endGame()
 
-  clearPortraitCanvasResizeListener()
+  clearCanvasViewportResizeListeners()
   setPlatformContextForGames(null)
   removePowerupBar()
 
@@ -370,7 +371,7 @@ export function exitGame(ctx: PlatformContext) {
   clearAllPools()
   inputManager.stop()
 
-  clearPortraitCanvasResizeListener()
+  clearCanvasViewportResizeListeners()
   setPlatformContextForGames(null)
   removePowerupBar()
 

@@ -134,14 +134,20 @@
           <div v-else-if="filteredGames.length === 0" class="empty">
             该分类暂无游戏
           </div>
-          <div v-else class="game-grid">
-            <UnifiedGameCard
-              v-for="game in filteredGames"
-              :key="game.gameId"
-              :game="game"
-              variant="blue-purple"
-              @play="startGame(game)"
-            />
+          <div v-else class="game-grid-container">
+            <VirtualScrollList
+              :items="filteredGames"
+              :item-height="320"
+              :buffer="2"
+            >
+              <template #default="{ item }">
+                <UnifiedGameCard
+                  :game="item"
+                  variant="blue-purple"
+                  @play="startGame(item)"
+                />
+              </template>
+            </VirtualScrollList>
           </div>
         </section>
 
@@ -265,6 +271,7 @@ import SearchBox from '@/components/ui/SearchBox.vue';
 import KidModal from '@/components/ui/KidModal.vue';
 import { modal } from '@/composables/useUnifiedModalV2';
 import KidUnifiedModalV2 from '@/components/ui/KidUnifiedModalV2.vue';
+import VirtualScrollList from '@/components/ui/VirtualScrollList.vue';
 import { webSocketService } from '@/services/websocket.service';
 import { parentApi } from '@/services/parent-api.service';
 
@@ -939,6 +946,26 @@ onUnmounted(() => {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
+}
+
+.game-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.game-grid-container :deep(.virtual-scroll-container) {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: inherit;
+  gap: inherit;
+}
+
+.game-grid-container :deep(.virtual-scroll-content) {
+  display: contents;
 }
 
 .loading,

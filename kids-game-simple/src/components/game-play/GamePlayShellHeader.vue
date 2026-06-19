@@ -1,6 +1,19 @@
 <template>
-  <header class="game-play-header">
-    <button type="button" class="game-play-header__back" @click="emit('back')">
+  <button
+    type="button"
+    class="game-play-header__toggle"
+    :class="{ 'game-play-header__toggle--hidden': isHeaderVisible }"
+    @click="toggleHeader"
+    aria-label="Toggle header"
+  >
+    ☰
+  </button>
+  
+  <header
+    class="game-play-header"
+    :class="{ 'game-play-header--hidden': !isHeaderVisible }"
+  >
+    <button type="button" class="game-play-header__back" @click="handleBack">
       ← {{ labels.back }}
     </button>
     <div class="game-play-header__center">
@@ -16,7 +29,7 @@
       type="button"
       class="game-play-header__pause"
       :aria-label="paused ? labels.resume : labels.pause"
-      @click="emit('toggle-pause')"
+      @click="handleTogglePause"
     >
       {{ paused ? '▶' : '⏸' }}
     </button>
@@ -24,9 +37,10 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { GAME_PLAY_SHELL } from '@simple/constants/gamePlayShell';
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     title: string;
     icon?: string;
@@ -49,19 +63,76 @@ const emit = defineEmits<{
 }>();
 
 const labels = GAME_PLAY_SHELL.labels;
+const isHeaderVisible = ref(false);
+
+function toggleHeader() {
+  isHeaderVisible.value = !isHeaderVisible.value;
+}
+
+function handleBack() {
+  emit('back');
+}
+
+function handleTogglePause() {
+  emit('toggle-pause');
+}
 </script>
 
 <style scoped>
+.game-play-header__toggle {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 101;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-play-header__toggle:hover {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.game-play-header__toggle--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .game-play-header {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
   min-height: 48px;
   flex-shrink: 0;
   background: rgba(15, 23, 42, 0.92);
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  z-index: 2;
+  z-index: 100;
+  position: relative;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.game-play-header--hidden {
+  transform: translateY(-100%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: none;
 }
 
 .game-play-header__back {
@@ -125,5 +196,18 @@ const labels = GAME_PLAY_SHELL.labels;
   cursor: pointer;
   flex-shrink: 0;
   font-size: 14px;
+}
+
+.game-play-shell--landscape .game-play-header__toggle {
+  top: auto;
+  bottom: 8px;
+  left: 8px;
+}
+
+.game-play-shell--force-landscape .game-play-header__toggle {
+  transform: rotate(-90deg);
+  left: auto;
+  right: calc(env(safe-area-inset-right, 0px) + 8px);
+  bottom: calc(50% - 18px);
 }
 </style>

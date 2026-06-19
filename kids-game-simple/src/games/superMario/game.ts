@@ -409,7 +409,7 @@ function updateSimulation(state: MarioGameState, level: LevelData, input: MarioI
 
 export async function initSuperMario(engine: GameEngine, onEnd: () => void): Promise<void> {
   destroySuperMario()
-  engine.setOrientation('portrait')
+  engine.setOrientation('landscape')
 
   const lifecycleCtx = createLifecycleContext('superMario', engine, onEnd)
   if (!lifecycleCtx?.canvas) {
@@ -433,8 +433,8 @@ export async function initSuperMario(engine: GameEngine, onEnd: () => void): Pro
   const keyboardActive = { left: false, right: false }
 
   const joystick = new VirtualJoystick({
-    x: 72,
-    y: MARIO_CONFIG.VIEW_H - 88,
+    x: 88,
+    y: MARIO_CONFIG.VIEW_H - 76,
     radius: 52,
     knobRadius: 22,
     deadZone: 0.15,

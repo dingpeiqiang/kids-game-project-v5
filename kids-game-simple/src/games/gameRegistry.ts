@@ -1,6 +1,7 @@
 import type { Game, GameCategoryDef } from '../types'
 import { GameEngine } from '../services/gameEngine'
 import type { GameLayoutConfig } from './gameLayout'
+import { assertGameOrientationCatalogComplete } from './gameOrientation'
 
 export const GAME_CATEGORIES: GameCategoryDef[] = [
   { id: 'logic', label: '🧠 逻辑思维', icon: '💡', color: '#4D96FF', desc: '培养分析推理、因果判断与逻辑思维能力' },
@@ -369,7 +370,7 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
     game: {
       id: 'superMario',
       name: '超级玛丽',
-      desc: '手游横版闯关！跳跃踩怪、顶砖块、闯过 5 大关到达终点旗！',
+      desc: '横屏闯关！跳跃踩怪、顶砖块、闯过 5 大关到达终点旗！',
       type: '2d',
       category: 'coordination',
       tag: '平台',

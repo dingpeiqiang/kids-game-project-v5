@@ -385,6 +385,9 @@ function onUserChange() {
 
     <!-- 统一游戏容器壳层（操作层统一，内容区 #gameCanvas 个性化） -->
     <div id="game-layer" class="game-layer-root">
+      <button type="button" class="game-shell-toggle" id="gameShellToggle" aria-label="Toggle header">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+      </button>
       <div id="game-shell" class="game-shell">
         <header class="game-shell-chrome" id="gameShellChrome">
           <button type="button" class="game-shell-btn game-shell-btn--back" id="gameShellBack" aria-label="返回">

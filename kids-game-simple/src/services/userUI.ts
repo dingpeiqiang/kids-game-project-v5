@@ -102,9 +102,9 @@ export class AuthModal {
     this.renderPanel()
   }
 
-  close() {
-    // 强制登录模式下禁止关闭
-    if (this.requireLogin) {
+  close(force: boolean = false) {
+    // 强制登录模式下禁止关闭（除非是登录成功强制关闭）
+    if (this.requireLogin && !force) {
       showToast('请先登录')
       return
     }
@@ -172,7 +172,7 @@ export class AuthModal {
         userService.switchAccount(uid)
         // 检查切换是否成功（token 是否有效）
         if (userService.isLoggedIn) {
-          this.close()
+          this.close(true)
           this.onSuccess?.()
           showToast(`欢迎回来，${userService.current?.username}！`, 'success')
         } else {
@@ -331,7 +331,7 @@ export class AuthModal {
     try {
       const res = await userService.login(user, pass)
       if (res.ok) {
-        this.close()
+        this.close(true)
         this.onSuccess?.()
         showToast(res.msg, 'success')
       } else {
@@ -396,7 +396,7 @@ export class AuthModal {
       const res = await userService.register(username, pass, nickname, userType)
       console.log('[AuthModal] 注册结果:', res)
       if (res.ok) {
-        this.close()
+        this.close(true)
         this.onSuccess?.()
         showToast(res.msg, 'success')
       } else {

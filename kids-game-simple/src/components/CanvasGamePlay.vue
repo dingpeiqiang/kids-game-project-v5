@@ -112,12 +112,7 @@ const guideCustomPanel = ref<Component | undefined>();
 const guideIcon = computed(() => guide.value?.icon ?? '');
 const accentColor = computed(() => registration.value?.game.color?.split(',')[0] ?? '#4D96FF');
 
-const showHeader = computed(
-  () =>
-    session.phase.value !== 'guide' &&
-    session.phase.value !== 'loading' &&
-    !session.isEnded.value,
-);
+const showHeader = computed(() => true);
 
 const landscapeShellStyle = computed(() => {
   if (!landscapeMode.value || !forceLandscape.value) return undefined;
@@ -348,6 +343,7 @@ onUnmounted(() => {
   min-height: 0;
   overflow: hidden;
   position: relative;
+  z-index: 1;
 }
 
 .game-play-shell__canvas--frozen {
@@ -377,6 +373,11 @@ onUnmounted(() => {
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .game-play-shell--landscape:not(.game-play-shell--force-landscape) .game-play-shell__canvas {

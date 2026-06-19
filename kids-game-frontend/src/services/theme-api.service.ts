@@ -179,7 +179,7 @@ const themeApiImpl = {
       
     // 使用 returnPageData: true 确保返回分页格式
     return apiClient.get<PageData<CloudThemeInfo>>(url, { returnPageData: true });
-  }
+  },
 
   /**
    * 上传主题到云端
@@ -187,7 +187,7 @@ const themeApiImpl = {
    */
   async upload(payload: ThemeUploadPayload): Promise<CloudThemeInfo> {
     return apiClient.post<CloudThemeInfo>('/api/theme/upload', payload);
-  }
+  },
 
 
   /**
@@ -196,7 +196,7 @@ const themeApiImpl = {
    */
   async buy(themeId: string): Promise<{ success: boolean }> {
     return apiClient.post<{ success: boolean }>('/api/theme/buy', { themeId });
-  }
+  },
 
   /**
    * 检查购买状态
@@ -204,7 +204,7 @@ const themeApiImpl = {
    */
   async checkPurchase(themeId: number): Promise<{ purchased: boolean }> {
     return apiClient.get<{ purchased: boolean }>(`/api/theme/check-purchase?themeId=${themeId}`);
-  }
+  },
 
   /**
    * 下载主题
@@ -213,7 +213,7 @@ const themeApiImpl = {
    */
   async download(themeId: string): Promise<{ configJson: string }> {
     return apiClient.get<{ configJson: string }>(`/api/theme/download?id=${themeId}`);
-  }
+  },
 
   /**
    * ⭐ 获取主题编辑器专用数据（结构化返回）
@@ -249,7 +249,7 @@ const themeApiImpl = {
     };
   }> {
     return apiClient.get<any>(`/api/theme/editor-data?id=${themeId}`);
-  }
+  },
 
   /**
    * 切换主题销售状态
@@ -257,7 +257,7 @@ const themeApiImpl = {
    */
   async toggleSale(themeId: string, onSale: boolean): Promise<{ success: boolean }> {
     return apiClient.post<{ success: boolean }>(`/api/theme/toggle-sale?themeId=${themeId}&onSale=${onSale}`, null);
-  }
+  },
 
   /**
    * 获取创作者收益
@@ -265,7 +265,7 @@ const themeApiImpl = {
    */
   async getEarnings(): Promise<{ total: number; pending: number; withdrawn: number }> {
     return apiClient.get<{ total: number; pending: number; withdrawn: number }>('/api/theme/earnings');
-  }
+  },
 
   /**
    * 获取主题详情
@@ -273,7 +273,7 @@ const themeApiImpl = {
    */
   async getDetail(themeId: string): Promise<CloudThemeInfo> {
     return apiClient.get<CloudThemeInfo>(`/api/theme/detail?id=${themeId}`);
-  }
+  },
 
   /**
    * 更新主题信息
@@ -281,7 +281,7 @@ const themeApiImpl = {
    */
   async update(themeId: string, payload: Partial<ThemeUploadPayload>): Promise<CloudThemeInfo> {
     return apiClient.post<CloudThemeInfo>('/api/theme/update', { themeId, ...payload });
-  }
+  },
 
   /**
    * 删除主题
@@ -289,7 +289,7 @@ const themeApiImpl = {
    */
   async delete(themeId: string): Promise<{ success: boolean }> {
     return apiClient.post<{ success: boolean }>('/api/theme/delete', { themeId });
-  }
+  },
 
   /**
    * 设为默认主题
@@ -297,7 +297,7 @@ const themeApiImpl = {
    */
   async setDefault(themeId: string): Promise<{ success: boolean }> {
     return apiClient.post<{ success: boolean }>('/api/theme/set-default', { themeId });
-  }
+  },
 
   /**
    * 提现收益
@@ -305,7 +305,7 @@ const themeApiImpl = {
    */
   async withdraw(amount: number): Promise<{ success: boolean }> {
     return apiClient.post<{ success: boolean }>('/api/theme/withdraw', { amount });
-  }
+  },
 
   /**
    * GTRS Schema校验
@@ -313,7 +313,7 @@ const themeApiImpl = {
    */
   async validateGTRSTheme(themeJson: string): Promise<{ valid: boolean; message: string }> {
     return apiClient.post<{ valid: boolean; message: string }>('/api/theme/validate-gtrs', { themeJson });
-  }
+  },
 
   /**
    * 检测主题格式
@@ -321,7 +321,7 @@ const themeApiImpl = {
    */
   async detectThemeFormat(themeJson: string): Promise<{ isGTRS: boolean; format: string }> {
     return apiClient.post<{ isGTRS: boolean; format: string }>('/api/theme/detect-format', { themeJson });
-  }
+  },
 
   /**
    * 迁移旧版主题到GTRS规范
@@ -334,7 +334,7 @@ const themeApiImpl = {
     themeName: string
   }): Promise<{ gtrsJson: string; valid: boolean; message: string }> {
     return apiClient.post<{ gtrsJson: string; valid: boolean; message: string }>('/api/theme/migrate-to-gtrs', params);
-  }
+  },
 
   /**
    * 快速校验（用于前端实时预览）
@@ -342,7 +342,7 @@ const themeApiImpl = {
    */
   async quickValidate(themeJson: string): Promise<{ valid: boolean }> {
     return apiClient.post<{ valid: boolean }>('/api/theme/quick-validate', { themeJson });
-  }
+  },
 
   // ==================== ⭐ 用户主题偏好相关 API ====================
 

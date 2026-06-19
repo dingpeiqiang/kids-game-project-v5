@@ -1,7 +1,7 @@
-/** 手游版超级玛丽 - 全局配置 */
+/** 横屏手游超级玛丽 - 全局配置 */
 export const MARIO_CONFIG = {
-  VIEW_W: 400,
-  VIEW_H: 640,
+  VIEW_W: 960,
+  VIEW_H: 540,
   TILE: 20,
   GRAVITY: 0.55,
   MAX_FALL: 14,

@@ -392,13 +392,13 @@ export function renderPreview(ctx: PlatformContext, game: Game, retryCount = 0) 
   const rect = canvas.getBoundingClientRect()
 
   if (rect.width === 0 || rect.height === 0) {
-    if (retryCount < 5) {
-      console.log(`[App] renderPreview: Canvas size is 0 (${rect.width.toFixed(1)}x${rect.height.toFixed(1)}), retry ${retryCount + 1}/5 for game`, game.id)
-      setTimeout(() => {
+    if (retryCount < 10) {
+      console.log(`[App] renderPreview: Canvas size is 0 (${rect.width.toFixed(1)}x${rect.height.toFixed(1)}), retry ${retryCount + 1}/10 for game`, game.id)
+      requestAnimationFrame(() => {
         renderPreview(ctx, game, retryCount + 1)
-      }, 100 * (retryCount + 1))
+      })
     } else {
-      console.error('[App] renderPreview: Canvas still has 0 size after 5 retries for game', game.id)
+      console.error('[App] renderPreview: Canvas still has 0 size after 10 retries for game', game.id)
       const parent = canvas.parentElement
       if (parent) {
         const parentRect = parent.getBoundingClientRect()
