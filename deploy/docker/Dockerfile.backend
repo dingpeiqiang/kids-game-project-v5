@@ -30,13 +30,13 @@ COPY kids-game-backend/kids-game-service/pom.xml ./kids-game-service/pom.xml
 COPY kids-game-backend/kids-game-web/pom.xml ./kids-game-web/pom.xml
 
 # 使用 install 命令预下载依赖（比 go-offline 更可靠）
-RUN mvn install -DskipTests -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -B -q -s /usr/share/maven/ref/settings.xml -pl kids-game-web -am
+RUN mvn install -DskipTests -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -B -s /usr/share/maven/ref/settings.xml -pl kids-game-web -am
 
 # 第 2 步：复制源代码并构建
 COPY kids-game-backend/ ./
 
 # 构建应用（跳过测试，使用离线模式）
-RUN mvn clean package -DskipTests -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -B -q -o -s /usr/share/maven/ref/settings.xml -pl kids-game-web
+RUN mvn clean package -DskipTests -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -B -o -s /usr/share/maven/ref/settings.xml -pl kids-game-web
 
 # 生产阶段 - 使用 JRE 运行时
 FROM eclipse-temurin:17-jre-alpine
