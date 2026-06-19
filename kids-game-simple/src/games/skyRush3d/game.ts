@@ -1,6 +1,8 @@
 import { gameActions } from '../../platform/gameBridge'
 import { GameLifecycle, type GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createEngine3d } from '../../engine3d/createEngine3d'
+import { resolveGame3dMountHost } from '../../platform/game3dHost'
+import { showGame3dMobileTouchHint } from '../../utils/game3dMobileShell'
 import { createInputController, consumeFrameFlags } from './input'
 import { createInitialState, resetForNewRun } from './logic/state'
 import { resetLoopTimers, tickGame } from './logic/gameLoop'
@@ -31,25 +33,17 @@ class SkyRush3dLifecycle extends GameLifecycle {
     engine.start()
     engine.setOrientation('landscape')
 
-    const parent = this.ctx.canvas ?? document.getElementById('gameCanvas')
+    const parent = resolveGame3dMountHost(this.ctx.canvas)
     if (!parent) {
       this.ctx.onEnd()
       return
     }
 
     parent.innerHTML = ''
-    parent.style.width = '100%'
-    parent.style.height = '100%'
-    parent.style.display = 'block'
-
-    const isMobile =
-      window.innerWidth < 768 ||
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
     const ctx3d = createEngine3d({
       parent,
-      antialias: !isMobile,
-      hardwareScalingLevel: isMobile ? 1.25 : 1,
+      skipDefaultCameraControls: true,
     })
     this.ctx3d = ctx3d
 
@@ -65,6 +59,7 @@ class SkyRush3dLifecycle extends GameLifecycle {
     resetForNewRun(state, mode)
     resetLoopTimers()
     this.state = state
+    const hideTouchHint = showGame3dMobileTouchHint(parent, 'skyRush')
 
     const finishToLobby = (finalScore: number) => {
       if (this.ended) return
@@ -162,6 +157,7 @@ class SkyRush3dLifecycle extends GameLifecycle {
     ctx3d.scene.onBeforeRenderObservable.add(onBeforeRender)
 
     activeDispose = () => {
+      hideTouchHint()
       ctx3d.scene.onBeforeRenderObservable.removeCallback(onBeforeRender)
       input.dispose()
       view.dispose()

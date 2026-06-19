@@ -1,16 +1,12 @@
 import type { InputSnapshot } from './types'
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { isMobileDevice } from '../../utils/mobileEnv'
 
 export interface InputController {
   snapshot: InputSnapshot
   tick: () => void
   dispose: () => void
 }
-
-const isMobileDevice = (): boolean =>
-  'ontouchstart' in window ||
-  navigator.maxTouchPoints > 0 ||
-  window.innerWidth < 768
 
 export function createInputController(canvas: HTMLCanvasElement): InputController {
   applyCanvasMobileStyles(canvas)
@@ -29,6 +25,8 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     hotbarNext: false,
     hotbarPrev: false,
     pointerLocked: false,
+    lookYawDelta: 0,
+    lookPitchDelta: 0,
   }
 
   let breakHeld = false
@@ -87,6 +85,51 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
   const inBreakZone = (lx: number, ly: number) => lx > 0.58 && lx < 0.76 && ly > 0.68
   const inPlaceZone = (lx: number, ly: number) => lx > 0.78 && ly > 0.48 && ly < 0.66
   const inStickZone = (lx: number, ly: number) => lx < 0.42 && ly > 0.42
+  const inLookZone = (lx: number, ly: number) =>
+    lx > 0.44 &&
+    ly < 0.42 &&
+    !inStickZone(lx, ly)
+
+  let lookPointerId: number | null = null
+  let lastLookClientX = 0
+  let lastLookClientY = 0
+  let lookAccX = 0
+  let lookAccY = 0
+  const LOOK_SENS = 0.0045
+
+  const onLookPointerDown = (e: PointerEvent) => {
+    if (!mobile || e.button !== 0) return
+    const rect = canvas.getBoundingClientRect()
+    const lx = (e.clientX - rect.left) / rect.width
+    const ly = (e.clientY - rect.top) / rect.height
+    if (!inLookZone(lx, ly)) return
+    e.preventDefault()
+    lookPointerId = e.pointerId
+    lastLookClientX = e.clientX
+    lastLookClientY = e.clientY
+    canvas.setPointerCapture(e.pointerId)
+  }
+
+  const onLookPointerMove = (e: PointerEvent) => {
+    if (lookPointerId !== e.pointerId) return
+    e.preventDefault()
+    const dx = e.clientX - lastLookClientX
+    const dy = e.clientY - lastLookClientY
+    lastLookClientX = e.clientX
+    lastLookClientY = e.clientY
+    lookAccX += dx * LOOK_SENS
+    lookAccY += dy * LOOK_SENS
+  }
+
+  const endLookPointer = (e: PointerEvent) => {
+    if (lookPointerId !== e.pointerId) return
+    lookPointerId = null
+    try {
+      canvas.releasePointerCapture(e.pointerId)
+    } catch {
+      /* ignore */
+    }
+  }
 
   const updateStickFromPos = (px: number, py: number) => {
     let dx = px - stickOx
@@ -181,6 +224,10 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     canvas.addEventListener('touchmove', onTouchMove, { passive: false })
     canvas.addEventListener('touchend', onTouchEnd, { passive: false })
     canvas.addEventListener('touchcancel', onTouchEnd, { passive: false })
+    canvas.addEventListener('pointerdown', onLookPointerDown, { passive: false })
+    canvas.addEventListener('pointermove', onLookPointerMove, { passive: false })
+    canvas.addEventListener('pointerup', endLookPointer)
+    canvas.addEventListener('pointercancel', endLookPointer)
   }
 
   const tick = () => {
@@ -205,6 +252,10 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     snapshot.placeBlock = placeHeld
     snapshot.hotbarNext = keys.has('KeyE')
     snapshot.hotbarPrev = keys.has('KeyQ')
+    snapshot.lookYawDelta = lookAccX
+    snapshot.lookPitchDelta = lookAccY
+    lookAccX = 0
+    lookAccY = 0
   }
 
   const dispose = () => {
@@ -219,6 +270,10 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     canvas.removeEventListener('touchmove', onTouchMove)
     canvas.removeEventListener('touchend', onTouchEnd)
     canvas.removeEventListener('touchcancel', onTouchEnd)
+    canvas.removeEventListener('pointerdown', onLookPointerDown)
+    canvas.removeEventListener('pointermove', onLookPointerMove)
+    canvas.removeEventListener('pointerup', endLookPointer)
+    canvas.removeEventListener('pointercancel', endLookPointer)
     if (document.pointerLockElement === canvas) document.exitPointerLock()
   }
 

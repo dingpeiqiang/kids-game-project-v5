@@ -2,6 +2,8 @@ import { Vector3 } from '@babylonjs/core'
 import type { GameEngine } from '../../services/gameEngine'
 import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
+import { resolveGame3dMountHost } from '../../platform/game3dHost'
+import { showGame3dMobileTouchHint } from '../../utils/game3dMobileShell'
 import { createInputController } from './input'
 import {
   createInitialState,
@@ -27,25 +29,17 @@ export async function initSkyFrenzy(engine: GameEngine, onEnd: () => void): Prom
   destroySkyFrenzy()
   engine.setOrientation('landscape')
 
-  const parent = document.getElementById('gameCanvas')
+  const parent = resolveGame3dMountHost()
   if (!parent) {
     onEnd()
     return
   }
 
   parent.innerHTML = ''
-  parent.style.width = '100%'
-  parent.style.height = '100%'
-  parent.style.display = 'block'
-
-  const isMobile =
-    window.innerWidth < 768 ||
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
   const ctx3d = createEngine3d({
     parent,
-    antialias: !isMobile,
-    hardwareScalingLevel: isMobile ? 1.25 : 1,
+    skipDefaultCameraControls: true,
   })
 
   ctx3d.camera.detachControl()
@@ -58,6 +52,7 @@ export async function initSkyFrenzy(engine: GameEngine, onEnd: () => void): Prom
   const input = createInputController(ctx3d.canvas)
 
   const mode = await hud.openModeMenu()
+  const hideTouchHint = showGame3dMobileTouchHint(parent, 'skyFrenzy')
   let state: GameState = createInitialState(mode)
   let ended = false
   let lastModalPhase: GameState['phase'] | null = null
@@ -144,6 +139,7 @@ export async function initSkyFrenzy(engine: GameEngine, onEnd: () => void): Prom
   hud.sync(state)
 
   activeDispose = () => {
+    hideTouchHint()
     ctx3d.scene.onBeforeRenderObservable.removeCallback(onUpdate)
     input.dispose()
     hud.dispose()

@@ -1,6 +1,8 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
+import { resolveGame3dMountHost } from '../../platform/game3dHost'
+import { showGame3dMobileTouchHint } from '../../utils/game3dMobileShell'
 import { getLevelDef, levelCount } from './logic/levelRuntime'
 import { tickGame } from './logic/gameLoop'
 import { createInitialState, resetLevel, respawnAfterFall } from './logic/state'
@@ -23,14 +25,9 @@ async function runSession(
   onEnd: () => void,
   parent: HTMLElement,
 ): Promise<void> {
-  const isMobile =
-    window.innerWidth < 768 ||
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
   const ctx3d = createEngine3d({
     parent,
-    antialias: !isMobile,
-    hardwareScalingLevel: isMobile ? 1.25 : 1,
+    skipDefaultCameraControls: true,
   })
 
   const hud = createCloudBallHud(parent)
@@ -43,6 +40,7 @@ async function runSession(
   let state: GameState = createInitialState(start.mode, start.levelIndex)
   view.rebuildLevel(state)
   view.setSkin(runStats.unlockedSkin)
+  const hideTouchHint = showGame3dMobileTouchHint(parent, 'cloudBall')
 
   audio.playBgm(start.mode === 'compete' ? 'bgm_compete' : 'bgm_casual')
   audio.playBgm('ambience_wind', 0.25)
@@ -231,6 +229,7 @@ async function runSession(
   })
 
   activeDispose = () => {
+    hideTouchHint()
     ctx3d.scene.onBeforeRenderObservable.remove(observer)
     audio.stopSfx('shield_loop')
     audio.dispose()
@@ -245,16 +244,13 @@ export async function initCloudBallRush3d(engine: GameEngine, onEnd: () => void)
   destroyCloudBallRush3d()
   engine.setOrientation('landscape')
 
-  const parent = document.getElementById('gameCanvas')
+  const parent = resolveGame3dMountHost()
   if (!parent) {
     onEnd()
     return
   }
 
   parent.innerHTML = ''
-  parent.style.width = '100%'
-  parent.style.height = '100%'
-  parent.style.display = 'block'
 
   try {
     await runSession(engine, onEnd, parent)

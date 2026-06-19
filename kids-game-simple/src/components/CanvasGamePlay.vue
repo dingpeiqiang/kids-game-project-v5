@@ -69,6 +69,13 @@ import GamePlayPauseOverlay from '@simple/components/game-play/GamePlayPauseOver
 import { prepareEmbeddedCanvasPlay } from '@simple/services/embeddedGameLaunch';
 import { useCanvasGameSession } from '@simple/composables/useCanvasGameSession';
 import { GAME_PLAY_SHELL } from '@simple/constants/gamePlayShell';
+import { getGameLayoutConfig } from '@simple/games/gameLayout';
+import {
+  mountLandscapeRotateHint,
+  unmountLandscapeRotateHint,
+  resetRotateDismissForNewGame,
+  setRouteLandscapeSessionActive,
+} from '@simple/app/gameShellOrientation';
 
 const props = defineProps<{
   gameId: string;
@@ -180,6 +187,8 @@ function clearRuntimeOnly() {
     clearInterval(scoreTimer);
     scoreTimer = null;
   }
+  setRouteLandscapeSessionActive(false);
+  unmountLandscapeRotateHint();
   destroyGame(props.gameId);
   gameEngine.stop();
   gameEngine.endGame();
@@ -207,6 +216,13 @@ async function startSession() {
     if (!orientationManager) orientationManager = new OrientationManager();
     orientationManager.tryLockLandscape();
     if (isMobileViewport()) forceLandscape.value = true;
+    resetRotateDismissForNewGame();
+    setRouteLandscapeSessionActive(true);
+    const layout = getGameLayoutConfig(props.gameId);
+    mountLandscapeRotateHint({
+      forceLandscapeOnMobile: layout.forceLandscapeOnMobile !== false,
+      orientationManager,
+    });
   }
 
   mountMainGameCanvas(canvasHost.value, vp, !!reg.isSpecial);

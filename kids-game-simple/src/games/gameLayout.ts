@@ -156,6 +156,16 @@ const LAYOUT_OVERRIDES: Record<string, Partial<GameLayoutConfig>> = {
     compactFooter: true,
     forceLandscapeOnMobile: true,
   },
+  skyRush3d: {
+    designWidth: 960,
+    designHeight: 540,
+    orientation: 'landscape',
+    externalCanvas: true,
+    hidePlatformScore: true,
+    hidePlatformPause: true,
+    compactFooter: true,
+    forceLandscapeOnMobile: true,
+  },
   towerDefense: { hidePlatformScore: true },
 }
 

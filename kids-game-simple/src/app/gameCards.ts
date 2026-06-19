@@ -13,7 +13,14 @@ import { closeTaskCenter, closeShop, renderTaskList as renderTaskListFn, renderS
 // ==================== 游玩历史辅助 ====================
 
 let playRecordsCache: { gameId: string; playedAt: string }[] | null = null
-export function clearPlayRecordsCache() { playRecordsCache = null }
+
+export function clearPlayRecordsCache() { 
+  playRecordsCache = null 
+}
+
+export function invalidatePlayRecordsCache() {
+  playRecordsCache = null
+}
 
 function buildNumericGameIdMap(): Map<number, string> {
   const map = new Map<number, string>()
@@ -36,32 +43,53 @@ function convertGameIdToNumberSimple(gameId: string): number {
 async function getPlayRecords(): Promise<{ gameId: string; playedAt: string }[]> {
   if (playRecordsCache) return playRecordsCache
 
-  // 已登录用户优先从后台获取
-  if (userService.isLoggedIn) {
-    try {
-      const res = await apiGetGameRecords()
-      if (res.ok && res.data && res.data.length > 0) {
-        const numToId = buildNumericGameIdMap()
-        playRecordsCache = res.data
-          .map(r => ({
-            gameId: numToId.get(r.gameId) || String(r.gameId),
-            playedAt: r.playedAt,
-          }))
-          .filter(r => !!r.gameId)
-        return playRecordsCache
-      }
-    } catch { /* 后端接口未实现，降级到本地数据 */ }
-  }
-
-  // 降级：本地数据
-  const local = userService.isLoggedIn && userService.current
+  // 先获取本地数据（包含最新记录）
+  const localRecords = userService.isLoggedIn && userService.current
     ? userService.current.gameRecords.map((r: GameRecord) => ({
         gameId: r.gameId,
         playedAt: r.playedAt,
       }))
     : storageService.getPlayHistory()
-  playRecordsCache = local
-  return local
+
+  // 已登录用户从后台获取数据，并与本地数据合并
+  if (userService.isLoggedIn) {
+    try {
+      const res = await apiGetGameRecords()
+      if (res.ok && res.data && res.data.length > 0) {
+        const numToId = buildNumericGameIdMap()
+        const serverRecords = res.data
+          .map(r => ({
+            gameId: numToId.get(r.gameId) || String(r.gameId),
+            playedAt: r.playedAt,
+          }))
+          .filter(r => !!r.gameId)
+        
+        // 合并服务器数据和本地数据，本地数据优先（更新更及时）
+        const recordMap = new Map<string, { gameId: string; playedAt: string }>()
+        
+        // 先添加服务器数据
+        for (const r of serverRecords) {
+          recordMap.set(r.gameId + r.playedAt, r)
+        }
+        
+        // 添加本地数据（可能包含服务器还未同步的最新记录）
+        for (const r of localRecords) {
+          recordMap.set(r.gameId + r.playedAt, r)
+        }
+        
+        // 按时间排序
+        playRecordsCache = Array.from(recordMap.values())
+          .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime())
+        return playRecordsCache
+      }
+    } catch (e) { 
+      console.warn('[GameCards] 从后端获取游戏记录失败，使用本地数据', e)
+    }
+  }
+
+  // 降级：仅使用本地数据
+  playRecordsCache = localRecords
+  return localRecords
 }
 
 async function getRecentlyPlayedGames(max: number): Promise<Game[]> {
@@ -169,8 +197,7 @@ export async function renderGameCards(ctx: PlatformContext) {
     const toPreview: Game[] = []
     recentlyPlayed.forEach(game => {
       const best = bestScores[game.id] || 0
-      const rank = rankMap[game.id] !== undefined ? rankMap[game.id] : null
-      grid.appendChild(createGameCard(ctx, game, best, rank))
+      grid.appendChild(createGameCard(ctx, game, best))
       toPreview.push(game)
     })
     sec.appendChild(grid)
@@ -189,8 +216,7 @@ export async function renderGameCards(ctx: PlatformContext) {
     const toPreview: Game[] = []
     frequentGames.forEach(game => {
       const best = bestScores[game.id] || 0
-      const rank = rankMap[game.id] !== undefined ? rankMap[game.id] : null
-      grid.appendChild(createGameCard(ctx, game, best, rank))
+      grid.appendChild(createGameCard(ctx, game, best))
       toPreview.push(game)
     })
     sec.appendChild(grid)
@@ -216,8 +242,7 @@ export async function renderGameCards(ctx: PlatformContext) {
     const gamesToPreview: Game[] = []
     gamesInCat.forEach((game) => {
       const best = bestScores[game.id] || 0
-      const rank = rankMap[game.id] !== undefined ? rankMap[game.id] : null
-      const card = createGameCard(ctx, game, best, rank)
+      const card = createGameCard(ctx, game, best)
       grid.appendChild(card)
       gamesToPreview.push(game)
     })
@@ -229,7 +254,7 @@ export async function renderGameCards(ctx: PlatformContext) {
   })
 }
 
-export function createGameCard(ctx: PlatformContext, game: Game, best: number, rank: number | null) {
+export function createGameCard(ctx: PlatformContext, game: Game, best: number) {
   const card = document.createElement('div')
   card.className = 'game-card'
   card.dataset.gameId = game.id
@@ -238,28 +263,6 @@ export function createGameCard(ctx: PlatformContext, game: Game, best: number, r
   const isLoggedIn = userService.isLoggedIn
   const favorites = isLoggedIn ? (userService.current?.favorites || []) : []
   const isFavorited = favorites.includes(game.id)
-
-  // 排名显示
-  let rankDisplay = ''
-  if (rank !== null) {
-    let rankIcon = '🏅'
-    let rankClass = ''
-    if (rank === 1) { rankIcon = '🥇'; rankClass = 'rank-gold' }
-    else if (rank === 2) { rankIcon = '🥈'; rankClass = 'rank-silver' }
-    else if (rank === 3) { rankIcon = '🥉'; rankClass = 'rank-bronze' }
-
-    rankDisplay = `
-        <div class="card-rank ${rankClass}" title="你的排名">
-          ${rankIcon} 第${rank}名
-        </div>
-      `
-  } else {
-    rankDisplay = `
-        <div class="card-rank card-rank-empty" title="尚未游玩">
-          📝 无记录
-        </div>
-      `
-  }
 
   // 只有登录用户才显示收藏按钮
   const favoriteBtnHtml = isLoggedIn ? `
@@ -273,18 +276,19 @@ export function createGameCard(ctx: PlatformContext, game: Game, best: number, r
         <canvas id="preview_${game.id}" width="320" height="200"></canvas>
         <div class="card-tag">${game.tag}</div>
         ${getGameDisplayConfig(game.id).badge ? `<div class="card-badge">${getGameDisplayConfig(game.id).badge}</div>` : ''}
-        ${favoriteBtnHtml}
       </div>
-      <div class="card-info">
+      <div class="card-body">
         <div class="card-name">${game.name}</div>
         <div class="card-desc">${game.desc}</div>
-        <div class="card-meta">
-          <span class="card-players">👥 ${game.players}</span>
+      </div>
+      <div class="card-footer">
+        <span class="card-players">👥 ${game.players}</span>
+        <div class="card-meta-right">
+          ${favoriteBtnHtml}
           <span class="card-best" data-game-id="${game.id}" title="点击查看${game.name}排行榜">
-            ★ ${best > 0 ? best.toLocaleString() : '-'}
+            🏆 ${best > 0 ? best.toLocaleString() : '-'}
           </span>
         </div>
-        ${rankDisplay}
       </div>
     `
 
@@ -448,10 +452,10 @@ export function doRenderPreview(ctx: PlatformContext, game: Game, canvas: HTMLCa
 export function getFavorites(ctx: PlatformContext): string[] {
   const u = userService.current
   if (u) {
-    return u.favorites || []
+    return [...(u.favorites || [])]
   }
   const data = storageService.get()
-  return data.favorites || []
+  return [...(data.favorites || [])]
 }
 
 export async function toggleFavorite(ctx: PlatformContext, gameId: string) {
@@ -637,7 +641,7 @@ export function showSearchResults(ctx: PlatformContext, results: Game[]) {
       const gamesToPreview: Game[] = []
       results.forEach((game, index) => {
         const best = ctx.store.bestScores[game.id] || 0
-        const card = createGameCard(ctx, game, best, null)
+        const card = createGameCard(ctx, game, best)
         card.style.animationDelay = `${index * 55}ms`
         searchGameList.appendChild(card)
         gamesToPreview.push(game)
@@ -711,7 +715,7 @@ export function renderFavoritesPage(ctx: PlatformContext) {
       const gamesToPreview: Game[] = []
       favoriteGames.forEach((game) => {
         const best = ctx.store.bestScores[game.id] || 0
-        const card = createGameCard(ctx, game, best, null)
+        const card = createGameCard(ctx, game, best)
         favoritesGameList.appendChild(card)
         gamesToPreview.push(game)
       })

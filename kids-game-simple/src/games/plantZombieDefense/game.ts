@@ -2,6 +2,9 @@ import { Vector3 } from '@babylonjs/core'
 import { GameLifecycle, type GameLifecycleContext } from '../../platform/GameLifecycle'
 import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
+import { resolveGame3dMountHost } from '../../platform/game3dHost'
+import { showGame3dMobileTouchHint } from '../../utils/game3dMobileShell'
+import { shouldEnable3dSceneShadows } from '../../engine3d/sceneQuality'
 import { canPlacePlantAt } from './config'
 import { bindCanvasInput, clientToPickCoords } from './input'
 import {
@@ -44,25 +47,17 @@ class PlantZombieDefenseLifecycle extends GameLifecycle {
     const engine = this.ctx.engine
     engine.setOrientation('landscape')
 
-    const parent = this.ctx.canvas ?? document.getElementById('gameCanvas')
+    const parent = resolveGame3dMountHost(this.ctx.canvas)
     if (!parent) {
       this.ctx.onEnd()
       return
     }
 
     parent.innerHTML = ''
-    parent.style.width = '100%'
-    parent.style.height = '100%'
-    parent.style.display = 'block'
-
-    const isMobile =
-      window.innerWidth < 768 ||
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
     const ctx3d = createEngine3d({
       parent,
-      antialias: !isMobile,
-      hardwareScalingLevel: isMobile ? 1.35 : 1,
+      skipDefaultCameraControls: true,
     })
     this.ctx3d = ctx3d
 
@@ -75,7 +70,7 @@ class PlantZombieDefenseLifecycle extends GameLifecycle {
       loadPlantZombieModels(ctx3d.scene),
     ])
 
-    const enableShadows = !isMobile
+    const enableShadows = shouldEnable3dSceneShadows()
     const gtrs = resolveGtrsCanvasStyle('plantZombieDefense', {
       primary: '#7ED957',
       background: '#102018',
@@ -92,6 +87,7 @@ class PlantZombieDefenseLifecycle extends GameLifecycle {
     const view = new PlantZombieScene(ctx3d.scene, camera, assets, models, enableShadows)
     this.hud = hud
     this.view = view
+    const hideTouchHint = showGame3dMobileTouchHint(parent, 'plantDefense')
 
     const finish = (finalScore: number) => {
       if (this.ended) return
@@ -203,6 +199,7 @@ class PlantZombieDefenseLifecycle extends GameLifecycle {
     hud.sync(this.state)
 
     activeDispose = () => {
+      hideTouchHint()
       ctx3d.scene.onBeforeRenderObservable.removeCallback(onUpdate)
       this.unbindInput?.()
       if (this.onMove) ctx3d.canvas.removeEventListener('pointermove', this.onMove)

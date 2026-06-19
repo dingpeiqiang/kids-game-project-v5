@@ -8,6 +8,53 @@ import { GAMES } from '../games/gameRegistry'
 
 
 // ============================================================
+// 工具：显示确认对话框
+// ============================================================
+export function showConfirm(message: string, title: string = '提示'): Promise<boolean> {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('ugp-confirm-overlay')
+    if (existing) {
+      existing.remove()
+    }
+    
+    const overlay = document.createElement('div')
+    overlay.id = 'ugp-confirm-overlay'
+    overlay.className = 'ugp-confirm-overlay'
+    
+    overlay.innerHTML = `
+      <div class="ugp-confirm-card">
+        <div class="ugp-confirm-title">${title}</div>
+        <div class="ugp-confirm-message">${message}</div>
+        <div class="ugp-confirm-buttons">
+          <button class="ugp-confirm-btn ugp-confirm-cancel">取消</button>
+          <button class="ugp-confirm-btn ugp-confirm-ok">确定</button>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(overlay)
+    
+    requestAnimationFrame(() => overlay.classList.add('show'))
+    
+    const cancelBtn = overlay.querySelector('.ugp-confirm-cancel') as HTMLElement
+    const okBtn = overlay.querySelector('.ugp-confirm-ok') as HTMLElement
+    
+    const handleClose = (result: boolean) => {
+      overlay.classList.remove('show')
+      setTimeout(() => {
+        if (document.body.contains(overlay)) {
+          overlay.remove()
+        }
+      }, 300)
+      resolve(result)
+    }
+    
+    cancelBtn.addEventListener('click', () => handleClose(false))
+    okBtn.addEventListener('click', () => handleClose(true))
+  })
+}
+
+// ============================================================
 // 工具：显示 Toast 提示
 // ============================================================
 export function showToast(msg: string, type: 'success' | 'error' | 'info' = 'info') {
@@ -596,7 +643,7 @@ export class MePanel {
       }
 
       if (target.closest('#btnMeResetGuide')) {
-        if (confirm('确定重置所有游戏引导吗？')) {
+        if (await showConfirm('确定重置所有游戏引导吗？')) {
           const u = userService.current
           if (u) {
             u.guideSkipped = {}
@@ -609,7 +656,7 @@ export class MePanel {
 
       if (target.closest('#btnMeLogout')) {
         console.log('[MePanel] Logout button clicked')
-        if (confirm('确定退出登录？')) {
+        if (await showConfirm('确定退出登录？')) {
           console.log('[MePanel] User confirmed logout')
           try {
             await userService.logout()
@@ -619,6 +666,7 @@ export class MePanel {
             window.dispatchEvent(new CustomEvent('ugp:userChange'))
             this.authModal.open(() => {
               window.dispatchEvent(new CustomEvent('ugp:userChange'))
+              this.reRender()
             })
           } catch (e) {
             console.error('[MePanel] Logout error:', e)
@@ -631,7 +679,7 @@ export class MePanel {
       }
 
       if (target.closest('#btnMeClearData')) {
-        if (confirm('警告：将清除该账号所有游戏数据！此操作不可撤销！')) {
+        if (await showConfirm('警告：将清除该账号所有游戏数据！此操作不可撤销！', '警告')) {
           const u = userService.current
           if (u) {
             u.coins = 0; u.exp = 0; u.bestScores = {}
@@ -671,7 +719,7 @@ export class MePanel {
       }
 
       if (target.closest('#btnMeResetGuide')) {
-        if (confirm('确定重置所有游戏引导吗？')) {
+        if (await showConfirm('确定重置所有游戏引导吗？')) {
           const u = userService.current
           if (u) {
             u.guideSkipped = {}
@@ -684,7 +732,7 @@ export class MePanel {
 
       if (target.closest('#btnMeLogout')) {
         console.log('[MePanel] Logout button clicked')
-        if (confirm('确定退出登录？')) {
+        if (await showConfirm('确定退出登录？')) {
           console.log('[MePanel] User confirmed logout')
           try {
             await userService.logout()
@@ -694,6 +742,7 @@ export class MePanel {
             window.dispatchEvent(new CustomEvent('ugp:userChange'))
             this.authModal.open(() => {
               window.dispatchEvent(new CustomEvent('ugp:userChange'))
+              this.reRender()
             })
           } catch (e) {
             console.error('[MePanel] Logout error:', e)
@@ -706,7 +755,7 @@ export class MePanel {
       }
 
       if (target.closest('#btnMeClearData')) {
-        if (confirm('警告：将清除该账号所有游戏数据！此操作不可撤销！')) {
+        if (await showConfirm('警告：将清除该账号所有游戏数据！此操作不可撤销！', '警告')) {
           const u = userService.current
           if (u) {
             u.coins = 0; u.exp = 0; u.bestScores = {}
@@ -737,6 +786,23 @@ export function injectUserStyles() {
 .ugp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .ugp-toast-success{background:rgba(46,125,50,0.92)}
 .ugp-toast-error{background:rgba(198,40,40,0.92)}
+
+/* ===== 确认对话框 ===== */
+.ugp-confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2000;
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.ugp-confirm-overlay.show{display:flex}
+.ugp-confirm-card{background:#fff;border-radius:20px;width:min(340px,88vw);padding:24px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.2);animation:slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)}
+.ugp-confirm-title{font-size:18px;font-weight:700;color:#333;text-align:center;margin-bottom:10px}
+.ugp-confirm-message{font-size:15px;color:#666;text-align:center;line-height:1.6;margin-bottom:24px}
+.ugp-confirm-buttons{display:flex;gap:12px}
+.ugp-confirm-btn{flex:1;border:none;outline:none;border-radius:12px;padding:13px;font-size:15px;
+  font-weight:600;cursor:pointer;transition:all 0.15s}
+.ugp-confirm-btn:active{transform:scale(0.97)}
+.ugp-confirm-cancel{background:#f5f5f5;color:#666}
+.ugp-confirm-cancel:hover{background:#eee}
+.ugp-confirm-ok{background:#5b9bd5;color:#fff}
+.ugp-confirm-ok:hover{background:#4a8ac4}
 
 /* ===== 登录弹窗 ===== */
 .ugp-auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;

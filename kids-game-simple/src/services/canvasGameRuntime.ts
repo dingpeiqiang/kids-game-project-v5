@@ -1,6 +1,9 @@
 /**
  * 内置 Canvas 游戏视口与画布挂载（自 legacy App.ts startGame 抽取）
  */
+import { getGameLayoutConfig, isLandscapeLayout } from '../games/gameLayout'
+import { isExternalCanvas3dGame, prepareGame3dMountHost } from '../platform/game3dHost'
+
 export interface GameViewport {
   gameW: number
   gameH: number
@@ -20,6 +23,7 @@ export function isMobileViewport(): boolean {
 }
 
 export function resolveGameViewport(gameId: string): GameViewport {
+  const layout = getGameLayoutConfig(gameId)
   const isSpaceShooter = gameId === 'spaceShooter'
   const isRacingRun = gameId === 'racingRun'
   const isContraRpg = gameId === 'contraRpg'
@@ -29,8 +33,8 @@ export function resolveGameViewport(gameId: string): GameViewport {
   const isCuteTankBattle = gameId === 'cuteTankBattle'
   const isSuperMario = gameId === 'superMario'
 
-  let gameW = 400
-  let gameH = 600
+  let gameW = layout.designWidth
+  let gameH = layout.designHeight
 
   if (isContraRpg) {
     gameW = 680
@@ -58,9 +62,13 @@ export function resolveGameViewport(gameId: string): GameViewport {
   let displayH = gameH
 
   const isLandscapeGame =
-    isContraRpg || isWangzheRpg || isPlantsVsZombies || isDnfRpg
+    isLandscapeLayout(layout) ||
+    isContraRpg ||
+    isWangzheRpg ||
+    isPlantsVsZombies ||
+    isDnfRpg
 
-  if (!isSpaceShooter) {
+  if (!isSpaceShooter && !isExternalCanvas3dGame(gameId)) {
     if (isLandscapeGame) {
       const heightRatio = window.innerHeight / gameH
       const widthRatio = window.innerWidth / gameW
@@ -86,7 +94,7 @@ export function resolveGameViewport(gameId: string): GameViewport {
     isSpaceShooter,
     isLandscapeGame,
     clearCanvasForPhaser: isSpaceShooter,
-    clearCanvasForSpecial: false,
+    clearCanvasForSpecial: isExternalCanvas3dGame(gameId),
   }
 }
 
@@ -96,13 +104,19 @@ export function mountMainGameCanvas(
   isSpecial: boolean
 ): HTMLCanvasElement | null {
   host.innerHTML = ''
-  host.style.display = 'flex'
-  host.style.alignItems = 'center'
-  host.style.justifyContent = 'center'
   host.style.width = '100%'
   host.style.height = '100%'
 
-  if (vp.isSpaceShooter || isSpecial) {
+  if (vp.clearCanvasForSpecial || isSpecial) {
+    prepareGame3dMountHost(host)
+    return null
+  }
+
+  host.style.display = 'flex'
+  host.style.alignItems = 'center'
+  host.style.justifyContent = 'center'
+
+  if (vp.isSpaceShooter) {
     return null
   }
 

@@ -9,6 +9,7 @@ import {
   Vector3,
 } from '@babylonjs/core'
 import type { Engine3dContext } from '../../../engine3d/createEngine3d'
+import { attachGameArcRotateCamera } from '../../../engine3d/sceneCameraMobile'
 import { BALL_SKINS, GAME_CONFIG, themeSky } from '../config'
 import type { GameState } from '../types'
 import {
@@ -53,7 +54,7 @@ export class CloudBallSceneView {
     )
     this.camera.lowerRadiusLimit = 14
     this.camera.upperRadiusLimit = 32
-    this.camera.attachControl(ctx.canvas, true)
+    attachGameArcRotateCamera(this.camera, ctx.canvas)
     this.camera.panningSensibility = 0
     this.camera.wheelPrecision = 80
 

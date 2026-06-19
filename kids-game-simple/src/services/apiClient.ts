@@ -789,10 +789,20 @@ export interface GameRecordData {
   isNewBest: boolean
 }
 
-/** GET /api/user/game-records — 获取用户游玩记录（后端尚未实现，预留接口） */
+/** GET /api/user/game-records — 获取用户游玩记录 */
 export async function apiGetGameRecords(): Promise<{ ok: boolean; data?: GameRecordData[] }> {
   const res = await request<GameRecordData[]>('/user/game-records', { method: 'GET' })
   if (res.code === 200 && res.data) return { ok: true, data: res.data }
+  return { ok: false }
+}
+
+/** POST /api/user/game-record — 保存游戏记录 */
+export async function apiSaveGameRecord(gameId: number, score: number, isNewBest: boolean): Promise<{ ok: boolean }> {
+  const res = await request('/user/game-record', { 
+    method: 'POST',
+    params: { gameId, score, isNewBest }
+  })
+  if (res.code === 200) return { ok: true }
   return { ok: false }
 }
 

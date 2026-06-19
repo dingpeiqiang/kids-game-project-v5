@@ -119,7 +119,7 @@ const buildContext = (): PlatformContext => {
     get userServiceCurrent() { return userService.current },
     orientationManager: null as any,
     renderGameCards: () => renderGameCards(buildContext()),
-    createGameCard: (game, best, rank) => createGameCard(buildContext(), game, best, rank),
+    createGameCard: (game, best) => createGameCard(buildContext(), game, best),
     renderPreview: (game, retryCount) => renderPreview(buildContext(), game, retryCount),
     getFavorites: () => getFavorites(buildContext()),
     toggleFavorite: (gameId) => toggleFavorite(buildContext(), gameId),
@@ -225,10 +225,9 @@ function onUserChange() {
     <!-- 顶部栏 -->
     <div class="top-bar" id="topBar">
       <div class="top-left">
-       
-        <img class="brand-logo" :src="'/brand-logo.png'" alt="星光游学" />
-     <span class="brand-text">星光游学</span>
-    </div>
+        <img class="brand-icon" :src="'/icon-512x512.png'" alt="图标" />
+        <img class="brand-text-img" :src="'/星光游学App文字.png'" alt="星光游学" />
+      </div>
       <div class="top-right">
         <div class="search-box" id="searchBox">
           <input type="text" id="searchInput" placeholder="搜索..." v-model="searchKeyword" />
@@ -256,57 +255,6 @@ function onUserChange() {
     <div class="main-container" id="mainView">
       <!-- 首页内容 -->
       <div id="homeContent">
-        <section class="home-hub" aria-label="快捷入口">
-          <button type="button" class="hub-card" id="btnHubTask">
-            <span class="hub-icon">任务</span>
-            <span class="hub-label">做任务领金币</span>
-          </button>
-          <button type="button" class="hub-card hub-card--shop" id="btnHubShop">
-            <span class="hub-icon">商城</span>
-            <span class="hub-label">金币换游学币</span>
-          </button>
-        </section>
-
-        <div class="daily-banner" id="dailyBanner">
-          <div class="db-header">
-            <div class="db-user">
-              <div class="db-avatar">{{ avatarContent }}</div>
-              <div class="db-meta">
-                <div class="db-name">{{ userService.current?.username || '游客' }}</div>
-                <div class="db-level">{{ userLevel.name }} · Lv.{{ userLevel.level }}</div>
-              </div>
-            </div>
-            <div class="db-pills">
-              <span class="db-pill">金币 {{ coinVal }}</span>
-              <span class="db-pill db-pill--study">游学币 {{ studyCoinVal }}</span>
-            </div>
-          </div>
-          <div class="db-tasks">
-            <div v-for="task in bannerTasks" :key="task.id" class="db-task">
-              <div class="db-task-icon">{{ task.icon }}</div>
-              <div class="db-task-body">
-                <div class="db-task-name">{{ task.name }}</div>
-                <div class="db-task-bar">
-                  <div class="db-task-progress" :style="{ width: task.percent + '%' }"></div>
-                </div>
-                <div class="db-task-foot">
-                  <span class="db-task-status" :class="{ 'db-task-done': task.current >= task.target }">{{ task.status }}</span>
-                  <button
-                    v-if="task.canClaim"
-                    type="button"
-                    class="db-claim-btn"
-                    @click="onBannerClaim(task)"
-                  >领取</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="db-footer">
-            <div class="db-fire">🔥 连续 {{ loginDays }} 天</div>
-            <button type="button" class="db-link-btn" id="btnTaskCenter">全部任务</button>
-          </div>
-        </div>
-
         <div id="categorySections"></div>
       </div>
 
@@ -334,7 +282,7 @@ function onUserChange() {
         <div class="no-favorites" id="noFavorites" style="display:none;">
           <div class="no-favorites-icon">💔</div>
           <div class="no-favorites-text">暂无收藏游戏</div>
-          <div class="no-favorites-hint">点击游戏卡片上的 ❤️ 图标即可收藏</div>
+          <div class="no-favorites-hint">点击游戏卡片底部的收藏标签即可收藏</div>
         </div>
       </div>
 

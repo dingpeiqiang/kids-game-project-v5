@@ -29,7 +29,7 @@ export interface PlatformContext {
   // 方法
   renderGameCards(): void
   renderPreview(game: Game, retryCount?: number): void
-  createGameCard(game: Game, best: number, rank: number | null): HTMLElement
+  createGameCard(game: Game, best: number): HTMLElement
   getFavorites(): string[]
   toggleFavorite(gameId: string): void
   refreshCurrentPage(): void

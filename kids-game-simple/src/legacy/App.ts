@@ -420,8 +420,7 @@ class App {
       const gamesToPreview: Game[] = []
       gamesInCat.forEach((game) => {
         const best = bestScores[game.id] || 0
-        const rank = rankMap[game.id] !== undefined ? rankMap[game.id] : null
-        const card = this.createGameCard(game, best, rank)
+        const card = this.createGameCard(game, best)
         grid.appendChild(card)
         gamesToPreview.push(game)
       })
@@ -433,7 +432,7 @@ class App {
     })
   }
 
-  private createGameCard(game: Game, best: number, rank: number | null) {
+  private createGameCard(game: Game, best: number) {
     const card = document.createElement('div')
     card.className = 'game-card'
     card.dataset.gameId = game.id
@@ -442,49 +441,26 @@ class App {
     const favorites = this.getFavorites()
     const isFavorited = favorites.includes(game.id)
     
-    // 排名显示
-    let rankDisplay = ''
-    if (rank !== null) {
-      // 有排名
-      let rankIcon = '🏅'
-      let rankClass = ''
-      if (rank === 1) { rankIcon = '🥇'; rankClass = 'rank-gold' }
-      else if (rank === 2) { rankIcon = '🥈'; rankClass = 'rank-silver' }
-      else if (rank === 3) { rankIcon = '🥉'; rankClass = 'rank-bronze' }
-      
-      rankDisplay = `
-        <div class="card-rank ${rankClass}" title="你的排名">
-          ${rankIcon} 第${rank}名
-        </div>
-      `
-    } else {
-      // 无记录
-      rankDisplay = `
-        <div class="card-rank card-rank-empty" title="尚未游玩">
-          📝 无记录
-        </div>
-      `
-    }
-    
     card.innerHTML = `
       <div class="card-cover">
         <canvas id="preview_${game.id}" width="320" height="200"></canvas>
         <div class="card-tag">${game.tag}</div>
         ${getGameDisplayConfig(game.id).badge ? `<div class="card-badge">${getGameDisplayConfig(game.id).badge}</div>` : ''}
-        <button class="favorite-btn ${isFavorited ? 'favorited' : ''}" data-game-id="${game.id}" title="${isFavorited ? '取消收藏' : '加入收藏'}">
-          ${isFavorited ? '❤️' : '🤍'}
-        </button>
       </div>
       <div class="card-info">
         <div class="card-name">${game.name}</div>
         <div class="card-desc">${game.desc}</div>
         <div class="card-meta">
           <span class="card-players">👥 ${game.players}</span>
-          <span class="card-best" data-game-id="${game.id}" title="点击查看${game.name}排行榜">
-            ★ ${best > 0 ? best.toLocaleString() : '-'}
-          </span>
+          <div class="card-meta-right">
+            <button class="favorite-btn ${isFavorited ? 'favorited' : ''}" data-game-id="${game.id}" title="${isFavorited ? '取消收藏' : '加入收藏'}">
+              ${isFavorited ? '❤️' : '🤍'}
+            </button>
+            <span class="card-best" data-game-id="${game.id}" title="点击查看${game.name}排行榜">
+              🏆 ${best > 0 ? best.toLocaleString() : '-'}
+            </span>
+          </div>
         </div>
-        ${rankDisplay}
       </div>
     `
     
@@ -658,10 +634,10 @@ class App {
   private getFavorites(): string[] {
     const u = userService.current
     if (u) {
-      return u.favorites || []
+      return [...(u.favorites || [])]
     }
     const data = storageService.get()
-    return data.favorites || []
+    return [...(data.favorites || [])]
   }
 
   private toggleFavorite(gameId: string) {
@@ -774,7 +750,7 @@ class App {
         const gamesToPreview: Game[] = []
         results.forEach((game, index) => {
           const best = this.store.bestScores[game.id] || 0
-          const card = this.createGameCard(game, best, null)
+          const card = this.createGameCard(game, best)
           // 逐卡错落入场动画延迟
           card.style.animationDelay = `${index * 55}ms`
           searchGameList.appendChild(card)
@@ -843,7 +819,7 @@ class App {
         const gamesToPreview: Game[] = []
         favoriteGames.forEach((game, index) => {
           const best = this.store.bestScores[game.id] || 0
-          const card = this.createGameCard(game, best, null)
+          const card = this.createGameCard(game, best)
           // 逐卡错落入场动画延迟
           card.style.animationDelay = `${index * 55}ms`
           favoritesGameList.appendChild(card)

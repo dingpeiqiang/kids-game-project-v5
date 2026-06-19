@@ -48,6 +48,11 @@ public class UserSignInController {
             if ((Boolean) result.get("success")) {
                 return Result.success(result);
             } else {
+                // 当用户已签到时，返回包含 alreadySignedIn 信息的成功响应
+                // 这样前端可以正确处理"今日已签到"的业务逻辑
+                if (Boolean.TRUE.equals(result.get("alreadySignedIn"))) {
+                    return Result.success(result);
+                }
                 return Result.error((String) result.get("message"));
             }
         } catch (Exception e) {

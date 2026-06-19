@@ -9,6 +9,7 @@ import {
   Vector3,
 } from '@babylonjs/core'
 import type { Engine3dContext } from '../../../engine3d/createEngine3d'
+import { attachGameArcRotateCamera } from '../../../engine3d/sceneCameraMobile'
 import { GAME_CONFIG } from '../config'
 import type { GameState } from '../types'
 
@@ -45,7 +46,7 @@ export class SkyRushSceneView {
     )
     this.camera.lowerRadiusLimit = 38
     this.camera.upperRadiusLimit = 48
-    this.camera.attachControl(ctx.canvas, true)
+    attachGameArcRotateCamera(this.camera, ctx.canvas)
     this.camera.panningSensibility = 0
     this.camera.wheelPrecision = 0
 
@@ -184,6 +185,6 @@ export function setupTopDownCamera(ctx: Engine3dContext): ArcRotateCamera {
   ctx.camera.detachControl()
   ctx.camera.dispose()
   const cam = new ArcRotateCamera('skyCam', -Math.PI / 2, Math.PI / 2.4, 42, Vector3.Zero(), ctx.scene)
-  cam.attachControl(ctx.canvas, true)
+  attachGameArcRotateCamera(cam, ctx.canvas)
   return cam
 }

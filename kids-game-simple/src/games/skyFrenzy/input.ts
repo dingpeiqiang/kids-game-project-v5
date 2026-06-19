@@ -41,7 +41,7 @@ export function createInputController(canvas: HTMLCanvasElement): {
     lastY = e.clientY
     const sens = 0.028
     moveX += dx * sens
-    moveY -= dy * sens
+    moveY += dy * sens
   }
 
   const onPointerUp = (e: PointerEvent) => {
@@ -65,8 +65,8 @@ export function createInputController(canvas: HTMLCanvasElement): {
     let kz = 0
     if (keys.has('arrowleft') || keys.has('a')) kx -= 1
     if (keys.has('arrowright') || keys.has('d')) kx += 1
-    if (keys.has('arrowup') || keys.has('w')) kz -= 1
-    if (keys.has('arrowdown') || keys.has('s')) kz += 1
+    if (keys.has('arrowup') || keys.has('w')) kz += 1
+    if (keys.has('arrowdown') || keys.has('s')) kz -= 1
 
     let mx = kx + moveX
     let mz = kz + moveY

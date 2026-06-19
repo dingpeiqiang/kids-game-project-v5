@@ -29,7 +29,7 @@ function uid(): number {
 function emptyPlayer(mode: PlayMode): GameState['player'] {
   return {
     x: 0,
-    z: GAME_CONFIG.arenaHalfD - 3,
+    z: -GAME_CONFIG.arenaHalfD + 3,
     hp: GAME_CONFIG.playerMaxHp,
     maxHp: GAME_CONFIG.playerMaxHp,
     shield: 0,
@@ -140,14 +140,14 @@ function spawnEnemy(state: GameState, kind: EnemyKind): void {
   const def = ENEMY_DEFS[kind]
   const waveMul = 1 + state.waveIndex * 0.12
   const x = (Math.random() * 2 - 1) * (GAME_CONFIG.arenaHalfW - 1)
-  const z = -GAME_CONFIG.arenaHalfD + 1.5
+  const z = GAME_CONFIG.arenaHalfD - 1.5
   state.enemies.push({
     id: uid(),
     kind,
     x,
     z,
     vx: kind === 'dart' ? (Math.random() > 0.5 ? 1 : -1) * def.speed * 0.6 : 0,
-    vz: def.speed,
+    vz: -def.speed,
     hp: Math.round(def.hp * waveMul),
     maxHp: Math.round(def.hp * waveMul),
     shootCd: def.shootInterval * (0.5 + Math.random() * 0.5),
@@ -212,7 +212,7 @@ function firePlayer(state: GameState): void {
   const def = BULLET_TIER_DEFS[tier]
   const px = state.player.x
   const pz = state.player.z
-  const baseAngle = -Math.PI / 2
+  const baseAngle = Math.PI / 2
   const count = tier === 2 ? 2 : tier === 3 ? 5 : 1
   for (let i = 0; i < count; i++) {
     let ang = baseAngle
@@ -225,7 +225,7 @@ function firePlayer(state: GameState): void {
     state.playerBullets.push({
       id: uid(),
       x: px,
-      z: pz - 0.4,
+      z: pz + 0.4,
       vx,
       vz,
       damage: def.damage,
@@ -418,7 +418,7 @@ function updateEnemies(state: GameState, dt: number): void {
       if (e.x < -GAME_CONFIG.arenaHalfW + 1 || e.x > GAME_CONFIG.arenaHalfW - 1) e.vx *= -1
     }
     e.z += e.vz * dt * slow
-    if (e.z > GAME_CONFIG.arenaHalfD + 1) {
+    if (e.z < -GAME_CONFIG.arenaHalfD - 1) {
       e.alive = false
       breakCombo(state)
       continue

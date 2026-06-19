@@ -15,6 +15,7 @@ import type { AuthResponseData, UserInfoData } from './apiClient'
 import { getLevelByExp, ALL_ACHIEVEMENTS } from '../types/user'
 import type { UserAccount, UserSession, GameRecord } from '../types/user'
 import { GAMES } from '../games/gameRegistry'
+import { invalidatePlayRecordsCache } from '../app/gameCards'
 
 import {
   submitScore,
@@ -30,6 +31,7 @@ import {
   apiGetFavoriteList,
   apiAddFavorite,
   apiGameSettle,
+  apiSaveGameRecord,
   type SignInResponseData,
   type SignInInfoData
 } from './apiClient'
@@ -458,6 +460,9 @@ class UserService {
     const levelReached = gameStats?.level ?? 0
     u.todayGames += 1
     this.saveUser(u)
+    
+    // 失效游戏记录缓存，确保返回首页时重新获取最新数据
+    invalidatePlayRecordsCache()
 
     if (this.isLoggedIn) {
       const numericGameId = this.convertGameIdToNumber(gameId)
@@ -471,6 +476,12 @@ class UserService {
             if (d.exp != null) u.exp = d.exp
             this.saveUser(u)
             this._checkAchievements(u)
+            
+            // 异步保存游戏记录到数据库（用于常玩游戏和最近游玩）
+            apiSaveGameRecord(numericGameId, score, isNewBest).catch(e => {
+              console.warn('[UserService] 保存游戏记录到数据库失败', e)
+            })
+            
             return { synced: true, rank: d.rank ?? undefined }
           }
         } catch (e) {

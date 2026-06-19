@@ -14,6 +14,11 @@ import {
 } from '../utils/canvasMobileUtils'
 import { isMobileDevice } from '../utils/mobileEnv'
 import { OrientationManager } from '../utils/orientation'
+import {
+  mountLandscapeRotateHint,
+  unmountLandscapeRotateHint,
+  resetRotateDismissForNewGame,
+} from './gameShellOrientation'
 
 export interface GameShellMountOptions {
   game: Game
@@ -93,8 +98,21 @@ export function mountGameShell(opts: GameShellMountOptions): GameShellMountResul
   resetCanvasHostStyles(canvasHost)
   clearLandscapeClasses(layer)
 
+  resetRotateDismissForNewGame()
+
   let portraitResizeHandler: (() => void) | null = null
-  if (layout.externalCanvas) {
+  if (layout.externalCanvas && isLandscapeLayout(layout)) {
+    applyLandscapeShell(layer, canvasHost, layout, opts.orientationManager)
+    canvasHost.innerHTML = ''
+    canvasHost.style.position = 'relative'
+    canvasHost.style.flex = '1 1 auto'
+    canvasHost.style.alignSelf = 'stretch'
+    canvasHost.style.minHeight = '0'
+    mountLandscapeRotateHint({
+      forceLandscapeOnMobile: !!layout.forceLandscapeOnMobile,
+      orientationManager: opts.orientationManager,
+    })
+  } else if (layout.externalCanvas) {
     canvasHost.innerHTML = ''
     canvasHost.style.display = 'block'
     canvasHost.style.width = '100%'
@@ -105,6 +123,10 @@ export function mountGameShell(opts: GameShellMountOptions): GameShellMountResul
     canvasHost.style.minHeight = '0'
   } else if (isLandscapeLayout(layout)) {
     applyLandscapeShell(layer, canvasHost, layout, opts.orientationManager)
+    mountLandscapeRotateHint({
+      forceLandscapeOnMobile: !!layout.forceLandscapeOnMobile,
+      orientationManager: opts.orientationManager,
+    })
   } else {
     const portrait = setupPortraitCanvas(canvasHost, layout)
     portraitResizeHandler = portrait.onResize
@@ -116,6 +138,7 @@ export function mountGameShell(opts: GameShellMountOptions): GameShellMountResul
 }
 
 export function unmountGameShell(orientationManager: OrientationManager | null) {
+  unmountLandscapeRotateHint()
   scoreUnsub?.()
   scoreUnsub = null
 

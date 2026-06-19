@@ -1,10 +1,12 @@
 import type { GameEngine } from '../services/gameEngine'
 import { gameActions } from './gameBridge'
+import { isExternalCanvas3dGame } from './game3dHost'
 
 export interface GameLifecycleContext {
   engine: GameEngine
   onEnd: () => void
-  canvas: HTMLCanvasElement | null
+  /** 2D：#mainGameCanvas；3D / external：#gameCanvas 或路由页 .game-play-shell__canvas */
+  canvas: HTMLElement | null
   gameId: string
 }
 
@@ -67,8 +69,12 @@ export abstract class GameLifecycle {
 
   private loop = (ts: number) => {
     if (this.destroyed) return
-    const canvas = this.ctx.canvas ?? document.getElementById('mainGameCanvas')
-    if (!canvas || !document.body.contains(canvas)) {
+    const mount = this.ctx.canvas ?? document.getElementById('mainGameCanvas')
+    if (!mount || !document.body.contains(mount)) {
+      this.destroy()
+      return
+    }
+    if (!isExternalCanvas3dGame(this.ctx.gameId) && mount.tagName !== 'CANVAS') {
       this.destroy()
       return
     }

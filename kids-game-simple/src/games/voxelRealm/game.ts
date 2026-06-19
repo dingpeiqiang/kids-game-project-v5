@@ -2,6 +2,9 @@ import { Vector3 } from '@babylonjs/core'
 import type { GameEngine } from '../../services/gameEngine'
 import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
+import { attachGameUniversalCamera } from '../../engine3d/sceneCameraMobile'
+import { resolveGame3dMountHost } from '../../platform/game3dHost'
+import { showGame3dMobileTouchHint } from '../../utils/game3dMobileShell'
 import {
   BLOCK_PALETTE,
   GAME_CONFIG,
@@ -98,33 +101,22 @@ export async function initVoxelRealm(engine: GameEngine, onEnd: () => void): Pro
   destroyVoxelRealm()
   engine.setOrientation('landscape')
 
-  const parent = document.getElementById('gameCanvas')
+  const parent = resolveGame3dMountHost()
   if (!parent) {
     onEnd()
     return
   }
 
   parent.innerHTML = ''
-  parent.style.width = '100%'
-  parent.style.height = '100%'
-  parent.style.display = 'block'
 
-  const isMobile =
-    window.innerWidth < 768 ||
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
-  const ctx3d = createEngine3d({
-    parent,
-    antialias: !isMobile,
-    hardwareScalingLevel: isMobile ? 1.25 : 1,
-  })
+  const ctx3d = createEngine3d({ parent, skipDefaultCameraControls: true })
 
   const hud = createVoxelHud(parent)
   const grid = new VoxelGrid()
   const view = new VoxelSceneView(ctx3d.scene)
   const input = createInputController(ctx3d.canvas)
 
-  ctx3d.camera.attachControl(ctx3d.canvas, true)
+  attachGameUniversalCamera(ctx3d.camera, ctx3d.canvas)
   ctx3d.camera.keysUp = []
   ctx3d.camera.keysDown = []
   ctx3d.camera.keysLeft = []
@@ -156,6 +148,7 @@ export async function initVoxelRealm(engine: GameEngine, onEnd: () => void): Pro
   state.creatures = spawnCreatures(biome, seed, 10)
   state.worldReady = true
   view.rebuildTerrain(grid)
+  const hideTouchHint = showGame3dMobileTouchHint(parent, 'voxel')
 
   const sessionPlaced = new Map<BlockType, number>()
   let lastHotbarNext = false
@@ -250,6 +243,13 @@ export async function initVoxelRealm(engine: GameEngine, onEnd: () => void): Pro
     view.setDayNight(state.meta.dayPhase, state.meta.isNight)
 
     const cam = ctx3d.camera
+    if (snap.lookYawDelta !== 0 || snap.lookPitchDelta !== 0) {
+      cam.rotation.y += snap.lookYawDelta
+      cam.rotation.x = Math.max(
+        -Math.PI / 2 + 0.08,
+        Math.min(Math.PI / 2 - 0.08, cam.rotation.x + snap.lookPitchDelta),
+      )
+    }
     const forward = cam.getDirection(Vector3.Forward())
     forward.y = 0
     forward.normalize()
@@ -382,6 +382,7 @@ export async function initVoxelRealm(engine: GameEngine, onEnd: () => void): Pro
   ctx3d.scene.onBeforeRenderObservable.add(onUpdate)
 
   activeDispose = () => {
+    hideTouchHint()
     ctx3d.scene.onBeforeRenderObservable.removeCallback(onUpdate)
     input.dispose()
     view.dispose()

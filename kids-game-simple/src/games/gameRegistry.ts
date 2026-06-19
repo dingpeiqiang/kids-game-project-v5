@@ -75,7 +75,8 @@ export const GAME_DISPLAY_CONFIG: GameDisplayConfig[] = [
   { id: 'plantZombieDefense', visible: true, order: 4, badge: '新' },
   { id: 'plantZombieDefense2d', visible: true, order: 5, badge: '新' },
   { id: 'cloudBallRush3d', visible: true, order: 4, badge: '' },
-  { id: 'skyFrenzy', visible: true, order: 5, badge: '' },
+  { id: 'skyRush3d', visible: true, order: 5, badge: '新' },
+  { id: 'skyFrenzy', visible: true, order: 6, badge: '' },
   { id: 'cuteTankBattle', visible: true, order: 6, badge: '新' },
   { id: 'beatDragon', visible: true, order: 7, badge: '新' },
   { id: 'kingBaby', visible: true, order: 8, badge: '新' },
@@ -133,6 +134,7 @@ export const FRAMEWORK_LIFECYCLE_GAME_IDS = [
   'plantZombieDefense',
   'cuteTankBattle',
   'skyFrenzy',
+  'skyRush3d',
   'cloudBallRush3d',
   'voxelRealm',
 ] as const
@@ -1188,6 +1190,44 @@ export const GAME_REGISTRY: Record<string, GameRegistration> = {
     init: async (engine, onEnd) => {
       const { initSkyFrenzy } = await import('./skyFrenzy')
       await initSkyFrenzy(engine, onEnd)
+    },
+  },
+
+  skyRush3d: {
+    frameworkLifecycle: true,
+    game: {
+      id: 'skyRush3d',
+      name: '天空狂飙 3D',
+      desc: '3D 俯视角空战！摇杆移动、拖动瞄准，六波敌机与 BOSS 闯关。',
+      type: '3d',
+      category: 'reaction',
+      tag: '射击',
+      color: '#6BCBFF,#FFD93D',
+      players: 0,
+      best: 0,
+      preview: 'skyRush3d',
+    },
+    guide: {
+      icon: '✈️',
+      name: '天空狂飙 3D',
+      desc: '立体空域射击：移动端左下摇杆、右下瞄准，桌面 WASD + 拖拽。',
+      ops: [
+        { icon: '��️', text: '<b>左下摇杆</b>（手机）或 <b>WASD</b> 移动' },
+        { icon: '👆', text: '<b>拖动</b>瞄准方向，自动开火清敌' },
+        { icon: '��', text: '拾取火力、护盾等道具' },
+        { icon: '🏆', text: '<b>休闲</b> / <b>竞技</b> 模式选关开局' },
+      ],
+      tipsTitle: '小技巧',
+      tips: '横屏游玩体验最佳；清屏与暂停可用顶栏或快捷键。',
+      bg: '#6BCBFF',
+    },
+    isSpecial: true,
+    destroy: () => {
+      void import('./skyRush3d').then(m => m.destroySkyRush3d())
+    },
+    init: async (engine, onEnd) => {
+      const { initSkyRush3d } = await import('./skyRush3d')
+      await initSkyRush3d(engine, onEnd)
     },
   },
 

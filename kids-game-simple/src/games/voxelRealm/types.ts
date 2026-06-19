@@ -107,4 +107,7 @@ export interface InputSnapshot {
   hotbarNext: boolean
   hotbarPrev: boolean
   pointerLocked: boolean
+  /** 移动端右半屏拖拽视角（弧度/帧，在 game 中按 dt 缩放） */
+  lookYawDelta: number
+  lookPitchDelta: number
 }

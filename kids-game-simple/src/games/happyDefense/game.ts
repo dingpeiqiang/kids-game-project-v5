@@ -3,6 +3,8 @@ import { Color4 } from '@babylonjs/core'
 import { GameLifecycle, type GameLifecycleContext } from '../../platform/GameLifecycle'
 import { gameActions } from '../../platform/gameBridge'
 import { createEngine3d } from '../../engine3d/createEngine3d'
+import { resolveGame3dMountHost } from '../../platform/game3dHost'
+import { showGame3dMobileTouchHint } from '../../utils/game3dMobileShell'
 import { cellKindAt } from './config'
 import { bindCanvasInput, clientToPickCoords } from './input'
 import {
@@ -24,6 +26,7 @@ import { HappyDefenseScene, setupTopDownCamera } from './render/scene'
 import { createHappyDefenseHud } from './render/ui'
 import type { GameState } from './types'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
+import { shouldEnable3dSceneShadows } from '../../engine3d/sceneQuality'
 
 let activeDispose: (() => void) | null = null
 
@@ -49,25 +52,17 @@ class HappyDefenseLifecycle extends GameLifecycle {
     const engine = this.ctx.engine
     engine.setOrientation('landscape')
 
-    const parent = this.ctx.canvas ?? document.getElementById('gameCanvas')
+    const parent = resolveGame3dMountHost(this.ctx.canvas)
     if (!parent) {
       this.ctx.onEnd()
       return
     }
 
     parent.innerHTML = ''
-    parent.style.width = '100%'
-    parent.style.height = '100%'
-    parent.style.display = 'block'
-
-    const isMobile =
-      window.innerWidth < 768 ||
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
     const ctx3d = createEngine3d({
       parent,
-      antialias: !isMobile,
-      hardwareScalingLevel: isMobile ? 1.35 : 1,
+      skipDefaultCameraControls: true,
     })
     this.ctx3d = ctx3d
 
@@ -82,7 +77,7 @@ class HappyDefenseLifecycle extends GameLifecycle {
     this.assets = assets
     this.models = models
 
-    const enableShadows = !isMobile
+    const enableShadows = shouldEnable3dSceneShadows()
     const gtrs = resolveGtrsCanvasStyle('happyDefense', {
       primary: '#6BCB77',
       background: '#1a1a2e',
@@ -99,6 +94,7 @@ class HappyDefenseLifecycle extends GameLifecycle {
     const view = new HappyDefenseScene(ctx3d.scene, camera, assets, models, enableShadows)
     this.hud = hud
     this.view = view
+    const hideTouchHint = showGame3dMobileTouchHint(parent, 'happyDefense')
 
     const finish = (finalScore: number) => {
       if (this.ended) return
@@ -204,6 +200,7 @@ class HappyDefenseLifecycle extends GameLifecycle {
     hud.sync(this.state)
 
     activeDispose = () => {
+      hideTouchHint()
       ctx3d.scene.onBeforeRenderObservable.removeCallback(onUpdate)
       this.unbindInput?.()
       if (this.onMove) ctx3d.canvas.removeEventListener('pointermove', this.onMove)
