@@ -4,11 +4,11 @@
  * 架构说明：
  *   认证层（登录/注册/Token）  → kids-game-backend API（/api/auth、/api/user）
  *   排行榜（分数同步/排名查询） → kids-game-backend API（/api/leaderboard）
- *   其他游戏数据（签到/道具）   → localStorage
+ *   其他游戏数据（签到/道具）   → localStorage（按用户隔离）
  *
- * 游客模式：
- *   未登录时自动降级到纯 localStorage，用户体验不受影响
- *   分数同步到排行榜需要登录后才能进行
+ * 登录要求：
+ *   用户必须登录后才能使用应用功能
+ *   未登录用户会被强制要求登录
  */
 import { apiClient, tokenStore } from './apiClient'
 import type { AuthResponseData, UserInfoData } from './apiClient'
@@ -234,7 +234,9 @@ class UserService {
 
   // ── 公开属性 ──────────────────────────────────────────────────
   get current(): UserAccount | null { return this._current }
-  get isLoggedIn(): boolean { return this._current !== null && !!tokenStore.getAccess() }
+  get isLoggedIn(): boolean { 
+    return this._current !== null && !!tokenStore.getAccess() && !!tokenStore.getUserId() 
+  }
 
   // ── 注册 ──────────────────────────────────────────────────────
   async register(username: string, password: string, nickname?: string, userType: 'KID' | 'PARENT' = 'KID'): Promise<{ ok: boolean; msg: string }> {
@@ -283,6 +285,12 @@ class UserService {
   switchAccount(localId: string) {
     // 快速切换只切本地游戏数据视图，Token 仍是当前登录用户
     // 如需真正切换，需要重新登录
+    // 首先检查 token 是否有效，如果无效则清除登录状态
+    if (!tokenStore.getAccess() || !tokenStore.getUserId()) {
+      console.warn('[UserService] switchAccount: Token 无效，无法切换账号')
+      return
+    }
+    
     const list = loadLocalAccounts()
     const meta = list.find(a => a.id === localId)
     if (!meta) return
@@ -298,6 +306,8 @@ class UserService {
       ...gd,
     }
     this._dailyCheckIn()
+    // 通知 UI 刷新
+    window.dispatchEvent(new CustomEvent('ugp:userChange'))
   }
 
   // ── 每日签到检查 ──────────────────────────────────────────────
@@ -373,78 +383,62 @@ class UserService {
 
   // ── 手动签到领奖 ──────────────────────────────────────────────
   async collectDailyReward(): Promise<{ ok: boolean; msg: string; coins?: number }> {
-    if (!this._current) return { ok: false, msg: '请先登录' }
+    if (!this._current || !this.isLoggedIn) return { ok: false, msg: '请先登录' }
 
     const today = new Date().toDateString()
     if (this._current.dailyRewardCollected === today) return { ok: false, msg: '今日已领取' }
 
-    // 尝试同步到后端（仅已登录用户）
-    if (this.isLoggedIn) {
-      try {
-        console.log('[UserService] 尝试同步签到到后端...')
-        const result = await apiCollectDailyReward()
+    try {
+      console.log('[UserService] 尝试同步签到到后端...')
+      const result = await apiCollectDailyReward()
+      
+      if (result.ok && result.data) {
+        const backendData = result.data
         
-        if (result.ok && result.data) {
-          const backendData = result.data
-          
-          if (backendData.alreadySignedIn) {
-            // 后端返回已签到，更新本地状态
-            this._current.dailyRewardCollected = today
-            this.saveUser(this._current)
-            return { ok: false, msg: '今日已签到' }
-          }
-          
-          const coins = backendData.coinsReward || 0
-          const exp = backendData.expReward || 0
-          const study = backendData.studyCoinsReward || 0
-          const consecutiveDays = backendData.consecutiveDays || this._current.consecutiveLoginDays
-          const wallet = backendData.wallet
-
+        if (backendData.alreadySignedIn) {
+          // 后端返回已签到，更新本地状态
           this._current.dailyRewardCollected = today
-          if (wallet) {
-            this._current.coins = wallet.coins
-            this._current.studyCoins = wallet.studyCoins
-            this._current.exp = wallet.exp
-          } else {
-            this._current.coins += coins
-            if (exp > 0) this._current.exp += exp
-            if (study > 0) this._current.studyCoins += study
-          }
-          this._current.consecutiveLoginDays = consecutiveDays
           this.saveUser(this._current)
-
-          console.log('[UserService] 签到成功同步到后端', { coins, exp, study, consecutiveDays })
-          return { ok: true, msg: backendData.message || `签到成功！获得 ${coins} 金币`, coins }
-        } else {
-          console.warn('[UserService] 后端签到失败，使用本地模式:', result.msg)
-          // 降级到本地模式
+          return { ok: false, msg: '今日已签到' }
         }
-      } catch (error) {
-        console.error('[UserService] 后端签到异常，使用本地模式:', error)
-        // 降级到本地模式
+        
+        const coins = backendData.coinsReward || 0
+        const exp = backendData.expReward || 0
+        const study = backendData.studyCoinsReward || 0
+        const consecutiveDays = backendData.consecutiveDays || this._current.consecutiveLoginDays
+        const wallet = backendData.wallet
+
+        this._current.dailyRewardCollected = today
+        if (wallet) {
+          this._current.coins = wallet.coins
+          this._current.studyCoins = wallet.studyCoins
+          this._current.exp = wallet.exp
+        } else {
+          this._current.coins += coins
+          if (exp > 0) this._current.exp += exp
+          if (study > 0) this._current.studyCoins += study
+        }
+        this._current.consecutiveLoginDays = consecutiveDays
+        this.saveUser(this._current)
+
+        console.log('[UserService] 签到成功同步到后端', { coins, exp, study, consecutiveDays })
+        return { ok: true, msg: backendData.message || `签到成功！获得 ${coins} 金币`, coins }
+      } else {
+        console.warn('[UserService] 后端签到失败:', result.msg)
+        return { ok: false, msg: result.msg || '签到失败' }
       }
+    } catch (error) {
+      console.error('[UserService] 后端签到异常:', error)
+      return { ok: false, msg: '签到失败，请稍后重试' }
     }
-
-    // 本地模式（后端不可用时）
-    const days = this._current.consecutiveLoginDays
-    const baseCoins = 50
-    const bonus = Math.min(days - 1, 6) * 10
-    const coins = baseCoins + bonus
-
-    this._current.dailyRewardCollected = today
-    this._current.coins += coins
-    if (days >= 3) this._current.exp += 20
-
-    this.saveUser(this._current)
-    return { ok: true, msg: `签到成功！获得 ${coins} 金币`, coins }
   }
 
   // ── 游戏数据 ──────────────────────────────────────────────────
   async recordGameResult(gameId: string, score: number, gameStats?: any): Promise<{ synced: boolean; rank?: number }> {
-    console.log('[UserService] recordGameResult 被调用', { gameId, score, isLoggedIn: this.isLoggedIn })
+    console.log('[UserService] recordGameResult 被调用', { gameId, score })
     
-    if (!this._current) {
-      console.warn('[UserService] _current 为空，无法记录游戏结果')
+    if (!this._current || !this.isLoggedIn) {
+      console.warn('[UserService] 用户未登录，无法记录游戏结果')
       return { synced: false }
     }
 
@@ -459,43 +453,35 @@ class UserService {
 
     const levelReached = gameStats?.level ?? 0
     u.todayGames += 1
-    this.saveUser(u)
     
     // 失效游戏记录缓存，确保返回首页时重新获取最新数据
     invalidatePlayRecordsCache()
 
-    if (this.isLoggedIn) {
-      const numericGameId = this.convertGameIdToNumber(gameId)
-      if (numericGameId != null) {
-        try {
-          const settle = await apiGameSettle(numericGameId, score, levelReached)
-          if (settle.ok && settle.data?.success !== false) {
-            const d = settle.data!
-            if (d.coins != null) u.coins = d.coins
-            if (d.studyCoins != null) u.studyCoins = d.studyCoins
-            if (d.exp != null) u.exp = d.exp
-            this.saveUser(u)
-            this._checkAchievements(u)
-            
-            // 异步保存游戏记录到数据库（用于常玩游戏和最近游玩）
-            apiSaveGameRecord(numericGameId, score, isNewBest).catch(e => {
-              console.warn('[UserService] 保存游戏记录到数据库失败', e)
-            })
-            
-            return { synced: true, rank: d.rank ?? undefined }
-          }
-        } catch (e) {
-          console.warn('[UserService] 游戏结算失败，使用本地记录', e)
+    const numericGameId = this.convertGameIdToNumber(gameId)
+    if (numericGameId != null) {
+      try {
+        const settle = await apiGameSettle(numericGameId, score, levelReached)
+        if (settle.ok && settle.data?.success !== false) {
+          const d = settle.data!
+          if (d.coins != null) u.coins = d.coins
+          if (d.studyCoins != null) u.studyCoins = d.studyCoins
+          if (d.exp != null) u.exp = d.exp
+          this.saveUser(u)
+          this._checkAchievements(u)
+          
+          // 异步保存游戏记录到数据库（用于常玩游戏和最近游玩）
+          apiSaveGameRecord(numericGameId, score, isNewBest).catch(e => {
+            console.warn('[UserService] 保存游戏记录到数据库失败', e)
+          })
+          
+          return { synced: true, rank: d.rank ?? undefined }
         }
+      } catch (e) {
+        console.warn('[UserService] 游戏结算失败', e)
       }
     }
 
-    const coins = Math.min(8, Math.max(1, Math.round(score / 200)))
-    const exp = Math.min(10, Math.max(2, Math.round(score / 300)))
-    u.coins += coins
-    u.exp += exp
     this.saveUser(u)
-    this._checkAchievements(u)
     return { synced: false }
   }
 

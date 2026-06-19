@@ -93,6 +93,7 @@ export class AuthModal {
   private mode: 'login' | 'register' = 'login'
   private onSuccess?: () => void
   private overlayBound = false
+  requireLogin = false // 是否强制登录模式（禁止关闭）
 
   open(onSuccess?: () => void) {
     this.onSuccess = onSuccess
@@ -102,6 +103,11 @@ export class AuthModal {
   }
 
   close() {
+    // 强制登录模式下禁止关闭
+    if (this.requireLogin) {
+      showToast('请先登录')
+      return
+    }
     this.el?.classList.remove('show')
   }
 
@@ -164,9 +170,16 @@ export class AuthModal {
       if (acct) {
         const uid = acct.getAttribute('data-uid')!
         userService.switchAccount(uid)
-        this.close()
-        this.onSuccess?.()
-        showToast(`欢迎回来，${userService.current?.username}！`, 'success')
+        // 检查切换是否成功（token 是否有效）
+        if (userService.isLoggedIn) {
+          this.close()
+          this.onSuccess?.()
+          showToast(`欢迎回来，${userService.current?.username}！`, 'success')
+        } else {
+          showToast('登录状态已失效，请重新登录', 'error')
+          // 强制刷新面板显示登录表单
+          this.renderPanel()
+        }
         return
       }
       const kidOption = t.closest('#userTypeKid')

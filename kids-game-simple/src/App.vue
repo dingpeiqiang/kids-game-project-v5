@@ -187,10 +187,11 @@ onMounted(async () => {
     isLoading.value = false
   }, 500)
 
-  // 等待会话恢复后检查登录状态，未登录则自动弹出登录/注册框
+  // 等待会话恢复后检查登录状态，未登录则强制显示登录弹窗（禁止关闭）
   setTimeout(() => {
     if (!userService.isLoggedIn) {
       authModal.open(() => onUserChange())
+      authModal.requireLogin = true // 强制登录模式，禁止关闭
     }
   }, 800)
 })

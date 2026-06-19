@@ -46,6 +46,7 @@
       v-if="session.phase.value === 'guide' && guide"
       :guide="guide"
       :accent="accentColor"
+      :custom-panel="guideCustomPanel"
       @start="onGuideStart"
       @cancel="onGuideCancel"
     />
@@ -53,10 +54,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, type Component } from 'vue';
 import { useRouter } from 'vue-router';
 import type { GameGuide } from '@simple/types';
-import { getGameRegistration, destroyGame, initGame, GAME_GUIDES } from '@simple/games/gameRegistry';
+import { getGameRegistration, destroyGame, initGame } from '@simple/games/gameRegistry';
+import { hasGameGuide, loadGameGuideModule } from '@simple/platform/gameGuide';
 import { gameEngine } from '@simple/services/gameEngine';
 import { mountMainGameCanvas, resolveGameViewport, isMobileViewport } from '@simple/services/canvasGameRuntime';
 import { OrientationManager } from '@simple/utils/orientation';
@@ -98,7 +100,8 @@ const shellLabels = GAME_PLAY_SHELL.labels;
 
 const registration = computed(() => getGameRegistration(props.gameId));
 const title = computed(() => registration.value?.game.name ?? props.gameId);
-const guide = computed<GameGuide | undefined>(() => GAME_GUIDES[props.gameId]);
+const guide = ref<GameGuide | undefined>();
+const guideCustomPanel = ref<Component | undefined>();
 const guideIcon = computed(() => guide.value?.icon ?? '');
 const accentColor = computed(() => registration.value?.game.color?.split(',')[0] ?? '#4D96FF');
 
@@ -254,14 +257,26 @@ async function startSession() {
   }, 200);
 }
 
+async function resolveGuideForPlay(): Promise<boolean> {
+  if (!hasGameGuide(props.gameId)) return false;
+  const mod = await loadGameGuideModule(props.gameId);
+  if (!mod) return false;
+  guide.value = mod.guide;
+  guideCustomPanel.value = mod.GuidePage;
+  return true;
+}
+
 onMounted(async () => {
   if (!registration.value) {
     router.replace('/');
     return;
   }
-  if (!isGuideSkipped() && guide.value) {
-    session.setPhase('guide');
-    return;
+  if (!isGuideSkipped()) {
+    const hasGuide = await resolveGuideForPlay();
+    if (hasGuide) {
+      session.setPhase('guide');
+      return;
+    }
   }
   if (!(await ensureLaunchPrepared())) {
     router.back();

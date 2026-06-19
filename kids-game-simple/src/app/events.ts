@@ -30,6 +30,17 @@ export function bindEvents(ctx: PlatformContext) {
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
       const page = item.getAttribute('data-page')
+      
+      // 非首页导航需要登录
+      if (page && page !== 'home') {
+        if (!userService.isLoggedIn) {
+          showToast('请先登录')
+          ctx.authModal.open(() => ctx.onUserChange())
+          ctx.authModal.requireLogin = true
+          return
+        }
+      }
+      
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
       item.classList.add('active')
 
@@ -119,27 +130,18 @@ export function bindEvents(ctx: PlatformContext) {
   document.getElementById('btnClaimDaily')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnClaimDaily') as HTMLButtonElement | null
     if (btn) btn.disabled = true
-    if (userService.isLoggedIn) {
-      const res = await userService.collectDailyReward()
-      if (res.ok) {
-        showToast(res.msg || '签到成功', 'success')
-        ctx.closeDailyPop()
-        window.dispatchEvent(new CustomEvent('ugp:tasksRefresh'))
-        window.dispatchEvent(new CustomEvent('ugp:userChange'))
-      } else {
-        showToast(res.msg || '签到失败', 'info')
-        if (res.msg?.includes('已')) ctx.closeDailyPop()
-      }
+    
+    const res = await userService.collectDailyReward()
+    if (res.ok) {
+      showToast(res.msg || '签到成功', 'success')
+      ctx.closeDailyPop()
+      window.dispatchEvent(new CustomEvent('ugp:tasksRefresh'))
+      window.dispatchEvent(new CustomEvent('ugp:userChange'))
     } else {
-      const res = await userService.collectDailyReward()
-      if (res.ok) {
-        showToast(res.msg || '签到成功', 'success')
-        ctx.closeDailyPop()
-      } else {
-        showToast('请先登录后签到', 'info')
-        ctx.authModal.open(() => ctx.onUserChange())
-      }
+      showToast(res.msg || '签到失败', 'info')
+      if (res.msg?.includes('已')) ctx.closeDailyPop()
     }
+    
     if (btn) btn.disabled = false
   })
 

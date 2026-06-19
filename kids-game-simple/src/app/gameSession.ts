@@ -1,8 +1,7 @@
 import type { PlatformContext } from './types'
 import type { Game } from '../types'
-import { GAME_GUIDES } from '../games/gameRegistry'
 import { getGameRegistration, initGame, destroyGame } from '../games/gameRegistry'
-import { storageService } from '../services/storage'
+import { hasGameGuide, loadGameGuide } from '../platform/gameGuide'
 import { userService } from '../services/userService'
 import { audioService } from '../services/audio'
 import { gameEngine } from '../services/gameEngine'
@@ -29,23 +28,33 @@ let activeLifecycleHost: GameLifecycle | null = null
 // ==================== 游戏启动 ====================
 
 export function launchGame(ctx: PlatformContext, game: Game) {
+  // 强制检查登录状态
+  if (!userService.isLoggedIn) {
+    showToast('请先登录后再玩游戏')
+    ctx.authModal.open(() => ctx.onUserChange())
+    ctx.authModal.requireLogin = true
+    return
+  }
+
   ctx.currentGame = game
 
   audioService.click()
 
-  const guideSkipped = userService.isLoggedIn
-    ? (userService.current?.guideSkipped || {})[game.id]
-    : storageService.get().guideSkipped[game.id]
+  const guideSkipped = userService.current?.guideSkipped?.[game.id] ?? false
 
   if (!guideSkipped) {
-    showGameGuide(ctx, game)
+    void showGameGuide(ctx, game)
   } else {
     ctx.startGame()
   }
 }
 
-export function showGameGuide(ctx: PlatformContext, game: Game) {
-  const guide = GAME_GUIDES[game.id]
+export async function showGameGuide(ctx: PlatformContext, game: Game) {
+  if (!hasGameGuide(game.id)) {
+    ctx.startGame()
+    return
+  }
+  const guide = await loadGameGuide(game.id)
   if (!guide) {
     ctx.startGame()
     return
@@ -90,8 +99,7 @@ export function showGameGuide(ctx: PlatformContext, game: Game) {
 export function closeGuide(ctx: PlatformContext) {
   const skipCheck = (document.getElementById('guideSkipCheck') as HTMLInputElement).checked
   if (skipCheck && ctx.currentGame) {
-    if (userService.isLoggedIn) userService.skipGuide(ctx.currentGame.id)
-    else storageService.skipGuide(ctx.currentGame.id)
+    userService.skipGuide(ctx.currentGame.id)
   }
   document.getElementById('guide-overlay')!.classList.remove('show')
   setTimeout(() => ctx.startGame(), 300)
@@ -175,17 +183,8 @@ export async function endGame(ctx: PlatformContext) {
 
   const gameId = ctx.currentGame.id
 
-  // 记录游玩历史（游客 / 已登录用户）
-  if (userService.isLoggedIn) {
-    // userService.recordGameResult 内部已添加 gameRecords
-  } else {
-    storageService.recordPlay(gameId)
-  }
-
   const score = gameEngine.getScore()
-  const prevBest = (userService.isLoggedIn ? userService.current?.bestScores[gameId] : undefined)
-    ?? storageService.get().bestScores[gameId]
-    ?? 0
+  const prevBest = userService.current?.bestScores[gameId] ?? 0
 
   showResult(ctx, gameId, score, prevBest)
   syncScoreAsync(ctx, gameId, score, prevBest)
@@ -207,15 +206,8 @@ export function showResult(ctx: PlatformContext, gameId: string, score: number, 
 
   const gameStats = gameEngine.getGameStats()
 
-  let coinsEarned = 0
-  if (!userService.isLoggedIn) {
-    coinsEarned = Math.min(8, Math.max(1, Math.round(score / 200)))
-    storageService.addCoins(coinsEarned)
-    storageService.incrementGames()
-  }
-
-  const dispCoins = userService.isLoggedIn ? userService.current!.coins : storageService.get().coins
-  const dispGames = userService.isLoggedIn ? userService.current!.todayGames : storageService.get().todayGames
+  const dispCoins = userService.current!.coins
+  const dispGames = userService.current!.todayGames
   setText('coinCount', String(dispCoins))
   setText('todayGames', String(dispGames))
 
@@ -238,10 +230,7 @@ export function showResult(ctx: PlatformContext, gameId: string, score: number, 
     resultIcon.textContent = icon
   }
   setText('resultTitle', title)
-  setText(
-    'resultScore',
-    coinsEarned > 0 ? `${score} +${coinsEarned}\uD83D\uDCB0` : String(score)
-  )
+  setText('resultScore', String(score))
   setText('resultBest', '历史最高: ' + (prevBest || 0))
 
   const statsEl = document.getElementById('resultStats')
@@ -305,49 +294,40 @@ export function showResult(ctx: PlatformContext, gameId: string, score: number, 
 }
 
 export async function syncScoreAsync(ctx: PlatformContext, gameId: string, score: number, prevBest: number) {
-  console.log('[App] syncScoreAsync - 检查登录状态', { isLoggedIn: userService.isLoggedIn, gameId, score })
-  if (userService.isLoggedIn) {
-    try {
-      const gameStats = gameEngine.getGameStats()
+  console.log('[App] syncScoreAsync - 开始同步分数', { gameId, score })
+  try {
+    const gameStats = gameEngine.getGameStats()
 
-      console.log('[App] 调用 userService.recordGameResult...')
-      const result = await userService.recordGameResult(gameId, score, gameStats)
-      console.log('[App] recordGameResult 返回结果:', result)
-      const dispCoins = userService.current!.coins
-      document.getElementById('coinCount')!.textContent = String(dispCoins)
-      document.getElementById('todayGames')!.textContent = String(userService.current!.todayGames)
-      const earnedEl = document.getElementById('resultScore')
-      if (earnedEl && result.synced) {
-        const cur = earnedEl.textContent || ''
-        if (!cur.includes('金币')) earnedEl.textContent = score + ' (已同步奖励)'
-      }
-      if (result.synced && result.rank) {
-        const rankEl = document.getElementById('resultRank')
-        const rankBadgeEl = document.getElementById('rankBadge')
-        const rankTextEl = document.getElementById('rankText')
-        if (rankEl && rankBadgeEl && rankTextEl) {
-          rankEl.style.display = 'block'
-          const badge = result.rank <= 3 ? ['🥇', '🥈', '🥉'][result.rank - 1] : `#${result.rank}`
-          rankBadgeEl.textContent = badge
-          rankTextEl.innerHTML = `当前排名 <b>${result.rank}</b> 位`
-          rankBadgeEl.style.color = result.rank === 1 ? '#FFD700' : result.rank === 2 ? '#C0C0C0' : result.rank === 3 ? '#CD7F32' : '#5b9bd5'
-        }
-      }
-
-      ctx.clearRankCache(gameId)
-    } catch (e) {
-      console.warn('[App] 分数同步失败:', e)
-    }
-  } else {
-    storageService.updateBest(gameId, score)
-  }
-
-  if (!userService.isLoggedIn) {
-    storageService.incrementGames()
-    const dispCoins = storageService.get().coins
-    const dispGames = storageService.get().todayGames
+    console.log('[App] 调用 userService.recordGameResult...')
+    const result = await userService.recordGameResult(gameId, score, gameStats)
+    console.log('[App] recordGameResult 返回结果:', result)
+    
+    const dispCoins = userService.current!.coins
     document.getElementById('coinCount')!.textContent = String(dispCoins)
-    document.getElementById('todayGames')!.textContent = String(dispGames)
+    document.getElementById('todayGames')!.textContent = String(userService.current!.todayGames)
+    
+    const earnedEl = document.getElementById('resultScore')
+    if (earnedEl && result.synced) {
+      const cur = earnedEl.textContent || ''
+      if (!cur.includes('金币')) earnedEl.textContent = score + ' (已同步奖励)'
+    }
+    
+    if (result.synced && result.rank) {
+      const rankEl = document.getElementById('resultRank')
+      const rankBadgeEl = document.getElementById('rankBadge')
+      const rankTextEl = document.getElementById('rankText')
+      if (rankEl && rankBadgeEl && rankTextEl) {
+        rankEl.style.display = 'block'
+        const badge = result.rank <= 3 ? ['🥇', '🥈', '🥉'][result.rank - 1] : `#${result.rank}`
+        rankBadgeEl.textContent = badge
+        rankTextEl.innerHTML = `当前排名 <b>${result.rank}</b> 位`
+        rankBadgeEl.style.color = result.rank === 1 ? '#FFD700' : result.rank === 2 ? '#C0C0C0' : result.rank === 3 ? '#CD7F32' : '#5b9bd5'
+      }
+    }
+
+    ctx.clearRankCache(gameId)
+  } catch (e) {
+    console.warn('[App] 分数同步失败:', e)
   }
 }
 
