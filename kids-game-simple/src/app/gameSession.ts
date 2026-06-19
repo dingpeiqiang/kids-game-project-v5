@@ -114,12 +114,18 @@ export function cancelGuide(ctx: PlatformContext, overlay: HTMLElement, handler:
 // ==================== 游戏开始/结束 ====================
 
 let portraitCanvasResizeHandler: (() => void) | null = null
+let landscapeCanvasResizeHandler: (() => void) | null = null
 
-function clearPortraitCanvasResizeListener() {
+function clearCanvasViewportResizeListeners() {
   if (portraitCanvasResizeHandler) {
     window.removeEventListener('resize', portraitCanvasResizeHandler)
     window.visualViewport?.removeEventListener('resize', portraitCanvasResizeHandler)
     portraitCanvasResizeHandler = null
+  }
+  if (landscapeCanvasResizeHandler) {
+    window.removeEventListener('resize', landscapeCanvasResizeHandler)
+    window.visualViewport?.removeEventListener('resize', landscapeCanvasResizeHandler)
+    landscapeCanvasResizeHandler = null
   }
 }
 
@@ -133,7 +139,7 @@ export async function startGame(ctx: PlatformContext) {
   }
 
   setPlatformContextForGames(ctx)
-  clearPortraitCanvasResizeListener()
+  clearCanvasViewportResizeListeners()
   gameEngine.start()
 
   if (isLandscapeLayout(getGameLayoutConfig(ctx.currentGame.id, registration.layout))) {
@@ -142,7 +148,7 @@ export async function startGame(ctx: PlatformContext) {
     }
   }
 
-  const { layout, portraitResizeHandler } = mountGameShell({
+  const { layout, portraitResizeHandler, landscapeResizeHandler } = mountGameShell({
     game: ctx.currentGame,
     registration,
     orientationManager: ctx.orientationManager,
@@ -153,6 +159,12 @@ export async function startGame(ctx: PlatformContext) {
     portraitCanvasResizeHandler = portraitResizeHandler
     window.addEventListener('resize', portraitCanvasResizeHandler)
     window.visualViewport?.addEventListener('resize', portraitCanvasResizeHandler)
+  }
+
+  if (landscapeResizeHandler) {
+    landscapeCanvasResizeHandler = landscapeResizeHandler
+    window.addEventListener('resize', landscapeCanvasResizeHandler)
+    window.visualViewport?.addEventListener('resize', landscapeCanvasResizeHandler)
   }
 
   if (layout.externalCanvas) {

@@ -5,6 +5,7 @@
       'game-play-shell--landscape': landscapeMode,
       'game-play-shell--force-landscape': forceLandscape,
     }"
+    :style="landscapeShellStyle"
   >
     <GamePlayShellHeader
       v-if="showHeader"
@@ -60,7 +61,13 @@ import type { GameGuide } from '@simple/types';
 import { getGameRegistration, destroyGame, initGame } from '@simple/games/gameRegistry';
 import { hasGameGuide, loadGameGuideModule } from '@simple/platform/gameGuide';
 import { gameEngine } from '@simple/services/gameEngine';
-import { mountMainGameCanvas, resolveGameViewport, isMobileViewport } from '@simple/services/canvasGameRuntime';
+import {
+  mountMainGameCanvas,
+  resolveGameViewport,
+  shouldForceLandscapeOnMobile,
+  syncLandscapeMainCanvas,
+  type GameViewport,
+} from '@simple/services/canvasGameRuntime';
 import { OrientationManager } from '@simple/utils/orientation';
 import { storageService } from '@simple/services/storage';
 import { userService } from '@simple/services/userService';
@@ -111,6 +118,16 @@ const showHeader = computed(
     session.phase.value !== 'loading' &&
     !session.isEnded.value,
 );
+
+const landscapeShellStyle = computed(() => {
+  if (!landscapeMode.value || !forceLandscape.value) return undefined;
+  const layout = getGameLayoutConfig(props.gameId);
+  const ratio = layout.designHeight / layout.designWidth;
+  return { '--game-ratio': String(ratio) };
+});
+
+let sessionLandscapeResizeHandler: (() => void) | null = null;
+let activeLandscapeVp: GameViewport | null = null;
 
 function isGuideSkipped(): boolean {
   const skipped = userService.isLoggedIn
@@ -185,11 +202,21 @@ function wireEngineUiCallbacks() {
   });
 }
 
+function clearLandscapeViewportListeners() {
+  if (sessionLandscapeResizeHandler) {
+    window.removeEventListener('resize', sessionLandscapeResizeHandler);
+    window.visualViewport?.removeEventListener('resize', sessionLandscapeResizeHandler);
+    sessionLandscapeResizeHandler = null;
+  }
+  activeLandscapeVp = null;
+}
+
 function clearRuntimeOnly() {
   if (scoreTimer) {
     clearInterval(scoreTimer);
     scoreTimer = null;
   }
+  clearLandscapeViewportListeners();
   setRouteLandscapeSessionActive(false);
   unmountLandscapeRotateHint();
   destroyGame(props.gameId);
@@ -212,23 +239,38 @@ async function startSession() {
 
   wireEngineUiCallbacks();
   gameEngine.start();
-  const vp = resolveGameViewport(props.gameId);
+  const layout = getGameLayoutConfig(props.gameId);
+  const portraitHeldForce = shouldForceLandscapeOnMobile(props.gameId);
+  const vp = resolveGameViewport(props.gameId, portraitHeldForce);
   landscapeMode.value = vp.isLandscapeGame;
 
   if (vp.isLandscapeGame) {
     if (!orientationManager) orientationManager = new OrientationManager();
     orientationManager.tryLockLandscape();
-    if (isMobileViewport()) forceLandscape.value = true;
+    forceLandscape.value = portraitHeldForce;
     resetRotateDismissForNewGame();
     setRouteLandscapeSessionActive(true);
-    const layout = getGameLayoutConfig(props.gameId);
     mountLandscapeRotateHint({
       forceLandscapeOnMobile: layout.forceLandscapeOnMobile !== false,
       orientationManager,
     });
   }
 
-  mountMainGameCanvas(canvasHost.value, vp, !!reg.isSpecial);
+  mountMainGameCanvas(canvasHost.value, vp, !!reg.isSpecial, portraitHeldForce);
+
+  if (vp.isLandscapeGame && !reg.isSpecial) {
+    activeLandscapeVp = vp;
+    const syncLandscapeCanvas = () => {
+      const cvs = document.getElementById('mainGameCanvas') as HTMLCanvasElement | null;
+      if (!cvs || !activeLandscapeVp) return;
+      const held = shouldForceLandscapeOnMobile(props.gameId);
+      forceLandscape.value = held;
+      syncLandscapeMainCanvas(cvs, activeLandscapeVp, held);
+    };
+    sessionLandscapeResizeHandler = syncLandscapeCanvas;
+    window.addEventListener('resize', sessionLandscapeResizeHandler);
+    window.visualViewport?.addEventListener('resize', sessionLandscapeResizeHandler);
+  }
 
   const ok = await initGame(props.gameId, gameEngine, () => {
     if (!session.sessionActive.value) return;
@@ -325,9 +367,21 @@ onUnmounted(() => {
 }
 
 .game-play-shell--landscape.game-play-shell--force-landscape .game-play-shell__canvas {
-  width: 100vh;
-  height: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transform: rotate(90deg);
-  transform-origin: center center;
+  width: 100vh !important;
+  height: calc(100vh * var(--game-ratio, 0.47)) !important;
+  flex-shrink: 0;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.game-play-shell--landscape:not(.game-play-shell--force-landscape) .game-play-shell__canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

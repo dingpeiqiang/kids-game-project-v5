@@ -1,4 +1,4 @@
-import { getVisualViewportSize } from './mobileEnv'
+import { getLandscapePlayViewportSize, getVisualViewportSize } from './mobileEnv'
 
 export interface CanvasLogicalSize {
   width: number
@@ -26,17 +26,40 @@ export function computePortraitCanvasDisplaySize(
   }
 }
 
-/** 横屏设计分辨率游戏在视口中的等比缩放 */
+/**
+ * 横屏设计分辨率游戏在视口中的等比缩放。
+ * portraitHeldForceLandscape：竖屏持机 + CSS 旋转模拟横屏时，可用宽高与物理视口对调。
+ */
 export function computeLandscapeCanvasDisplaySize(
   gameW: number,
   gameH: number,
+  portraitHeldForceLandscape = false,
 ): CanvasDisplaySize {
   const { width: vw, height: vh } = getVisualViewportSize()
-  const scale = Math.min(vw / gameW, vh / gameH)
+  const availW = portraitHeldForceLandscape ? vh : vw
+  const availH = portraitHeldForceLandscape ? vw : vh
+  const scale = Math.min(availW / gameW, availH / gameH)
   return {
     displayW: Math.floor(gameW * scale * 100) / 100,
     displayH: Math.floor(gameH * scale * 100) / 100,
   }
+}
+
+/** 将横屏主画布设为等比显示尺寸（逻辑分辨率不变） */
+export function applyLandscapeMainCanvasDisplaySize(
+  canvas: HTMLCanvasElement,
+  gameW: number,
+  gameH: number,
+  portraitHeldForceLandscape = false,
+): void {
+  const { displayW, displayH } = computeLandscapeCanvasDisplaySize(
+    gameW,
+    gameH,
+    portraitHeldForceLandscape,
+  )
+  canvas.style.width = `${displayW}px`
+  canvas.style.height = `${displayH}px`
+  applyCanvasMobileStyles(canvas)
 }
 
 export function applyCanvasMobileStyles(canvas: HTMLCanvasElement): void {

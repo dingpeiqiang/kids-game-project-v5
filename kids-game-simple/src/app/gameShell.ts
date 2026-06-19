@@ -9,10 +9,10 @@ import { getGameLayoutConfig, isLandscapeLayout, type GameLayoutConfig } from '.
 import type { GameRegistration } from '../games/gameRegistry'
 import {
   applyCanvasMobileStyles,
-  computeLandscapeCanvasDisplaySize,
+  applyLandscapeMainCanvasDisplaySize,
   computePortraitCanvasDisplaySize,
 } from '../utils/canvasMobileUtils'
-import { isMobileDevice } from '../utils/mobileEnv'
+import { isMobileDevice, isPortraitViewport } from '../utils/mobileEnv'
 import { OrientationManager } from '../utils/orientation'
 import {
   mountLandscapeRotateHint,
@@ -47,6 +47,7 @@ function el<T extends HTMLElement>(id: string): T | null {
 export interface GameShellMountResult {
   layout: GameLayoutConfig
   portraitResizeHandler: (() => void) | null
+  landscapeResizeHandler: (() => void) | null
 }
 
 export function mountGameShell(opts: GameShellMountOptions): GameShellMountResult {
@@ -101,13 +102,18 @@ export function mountGameShell(opts: GameShellMountOptions): GameShellMountResul
   resetRotateDismissForNewGame()
 
   let portraitResizeHandler: (() => void) | null = null
+  let landscapeResizeHandler: (() => void) | null = null
   if (layout.externalCanvas && isLandscapeLayout(layout)) {
-    applyLandscapeShell(layer, canvasHost, layout, opts.orientationManager)
+    applyLandscapeShellOrientation(layer, layout, opts.orientationManager)
     canvasHost.innerHTML = ''
+    canvasHost.style.display = 'block'
     canvasHost.style.position = 'relative'
     canvasHost.style.flex = '1 1 auto'
     canvasHost.style.alignSelf = 'stretch'
     canvasHost.style.minHeight = '0'
+    canvasHost.style.width = '100%'
+    canvasHost.style.height = '100%'
+    landscapeResizeHandler = createLandscapeOrientationResizeHandler(layer, layout)
     mountLandscapeRotateHint({
       forceLandscapeOnMobile: !!layout.forceLandscapeOnMobile,
       orientationManager: opts.orientationManager,
@@ -122,7 +128,8 @@ export function mountGameShell(opts: GameShellMountOptions): GameShellMountResul
     canvasHost.style.alignSelf = 'stretch'
     canvasHost.style.minHeight = '0'
   } else if (isLandscapeLayout(layout)) {
-    applyLandscapeShell(layer, canvasHost, layout, opts.orientationManager)
+    const landscape = applyLandscapeShell(layer, canvasHost, layout, opts.orientationManager)
+    landscapeResizeHandler = landscape.onResize
     mountLandscapeRotateHint({
       forceLandscapeOnMobile: !!layout.forceLandscapeOnMobile,
       orientationManager: opts.orientationManager,
@@ -134,7 +141,7 @@ export function mountGameShell(opts: GameShellMountOptions): GameShellMountResul
 
   viewport.setAttribute('aria-label', `${opts.game.name} 游戏区域`)
 
-  return { layout, portraitResizeHandler }
+  return { layout, portraitResizeHandler, landscapeResizeHandler }
 }
 
 export function unmountGameShell(orientationManager: OrientationManager | null) {
@@ -369,24 +376,46 @@ function resetCanvasHostStyles(canvas: HTMLElement) {
   canvas.style.minHeight = ''
 }
 
+function isPortraitHeldForceLandscape(_layer: HTMLElement, layout: GameLayoutConfig): boolean {
+  return !!layout.forceLandscapeOnMobile && isMobileDevice() && isPortraitViewport()
+}
+
+function syncForceLandscapeClass(layer: HTMLElement, layout: GameLayoutConfig): void {
+  layer.classList.remove('force-landscape')
+  if (layout.forceLandscapeOnMobile && isMobileDevice() && isPortraitViewport()) {
+    layer.classList.add('force-landscape')
+  }
+}
+
+function applyLandscapeShellOrientation(
+  layer: HTMLElement,
+  layout: GameLayoutConfig,
+  orientationManager: OrientationManager | null,
+): void {
+  layer.classList.add('landscape-mode')
+  const ratio = layout.designHeight / layout.designWidth
+  layer.style.setProperty('--game-ratio', ratio.toString())
+
+  if (orientationManager) {
+    orientationManager.tryLockLandscape()
+  }
+  syncForceLandscapeClass(layer, layout)
+}
+
+function createLandscapeOrientationResizeHandler(
+  layer: HTMLElement,
+  layout: GameLayoutConfig,
+): () => void {
+  return () => syncForceLandscapeClass(layer, layout)
+}
+
 function applyLandscapeShell(
   layer: HTMLElement,
   canvas: HTMLElement,
   layout: GameLayoutConfig,
   orientationManager: OrientationManager | null,
-) {
-  layer.classList.add('landscape-mode')
-  const ratio = layout.designHeight / layout.designWidth
-  layer.style.setProperty('--game-ratio', ratio.toString())
-
-  if (!orientationManager) {
-    // caller may assign on ctx
-  } else {
-    orientationManager.tryLockLandscape()
-  }
-  if (layout.forceLandscapeOnMobile && isMobileDevice()) {
-    layer.classList.add('force-landscape')
-  }
+): { onResize: () => void } {
+  applyLandscapeShellOrientation(layer, layout, orientationManager)
 
   canvas.style.display = 'flex'
   canvas.style.alignItems = 'center'
@@ -394,12 +423,25 @@ function applyLandscapeShell(
   canvas.style.width = '100%'
   canvas.style.height = '100%'
 
-  const { displayW, displayH } = computeLandscapeCanvasDisplaySize(layout.designWidth, layout.designHeight)
-  canvas.innerHTML = `<canvas id="mainGameCanvas" width="${layout.designWidth}" height="${layout.designHeight}" style="display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>`
-  const mainCvs = el<HTMLCanvasElement>('mainGameCanvas')
-  if (mainCvs) applyCanvasMobileStyles(mainCvs)
-  void displayW
-  void displayH
+  const pixelated =
+    'display:block;-webkit-image-rendering:pixelated;image-rendering:pixelated;image-rendering:crisp-edges'
+  canvas.innerHTML = `<canvas id="mainGameCanvas" width="${layout.designWidth}" height="${layout.designHeight}" style="${pixelated}"></canvas>`
+
+  const syncCanvasSize = () => {
+    syncForceLandscapeClass(layer, layout)
+    const cvs = el<HTMLCanvasElement>('mainGameCanvas')
+    if (!cvs) return
+    applyLandscapeMainCanvasDisplaySize(
+      cvs,
+      layout.designWidth,
+      layout.designHeight,
+      isPortraitHeldForceLandscape(layer, layout),
+    )
+  }
+
+  syncCanvasSize()
+
+  return { onResize: syncCanvasSize }
 }
 
 export function setupPortraitCanvas(canvas: HTMLElement, layout: GameLayoutConfig) {

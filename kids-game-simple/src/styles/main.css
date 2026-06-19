@@ -910,11 +910,11 @@ body{
 
 #game-layer.force-landscape #gameCanvas{transform:rotate(90deg);width:100vh !important;height:calc(100vh * var(--game-ratio, 0.47)) !important;flex-shrink:0;will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 
-#game-layer.force-landscape #mainGameCanvas{width:100% !important;height:100% !important;object-fit:contain;max-width:none !important;max-height:none !important;will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+#game-layer.force-landscape #mainGameCanvas{object-fit:contain;max-width:none !important;max-height:none !important;will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 #gameCanvas{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;padding:0}
 .landscape-mode #gameCanvas{overflow:visible !important;width:auto !important;height:auto !important;min-width:100%;min-height:100%}
 #mainGameCanvas{display:block;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges;margin:0 auto;max-width:100%;max-height:100%;object-fit:contain}
-.landscape-mode #mainGameCanvas{max-width:none !important;max-height:none !important;width:100% !important;height:auto !important;object-fit:contain !important}
+.landscape-mode #mainGameCanvas{max-width:none !important;max-height:none !important;object-fit:contain !important}
 /* 隐藏游戏层滚动条 */
 #game-layer::-webkit-scrollbar{width:0;height:0;display:none}
 #gameCanvas::-webkit-scrollbar{width:0;height:0;display:none}

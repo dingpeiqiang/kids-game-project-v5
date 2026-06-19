@@ -3,6 +3,12 @@
  */
 import { getGameLayoutConfig, isLandscapeLayout } from '../games/gameLayout'
 import { isExternalCanvas3dGame, prepareGame3dMountHost } from '../platform/game3dHost'
+import {
+  applyLandscapeMainCanvasDisplaySize,
+  computeLandscapeCanvasDisplaySize,
+  computePortraitCanvasDisplaySize,
+} from '../utils/canvasMobileUtils'
+import { isMobileDevice, isPortraitViewport } from '../utils/mobileEnv'
 
 export interface GameViewport {
   gameW: number
@@ -22,7 +28,15 @@ export function isMobileViewport(): boolean {
   return window.innerWidth < 768 || MOBILE_RE.test(navigator.userAgent)
 }
 
-export function resolveGameViewport(gameId: string): GameViewport {
+export function shouldForceLandscapeOnMobile(gameId: string): boolean {
+  const layout = getGameLayoutConfig(gameId)
+  return !!layout.forceLandscapeOnMobile && isMobileDevice() && isPortraitViewport()
+}
+
+export function resolveGameViewport(
+  gameId: string,
+  portraitHeldForceLandscape = shouldForceLandscapeOnMobile(gameId),
+): GameViewport {
   const layout = getGameLayoutConfig(gameId)
   const isSpaceShooter = gameId === 'spaceShooter'
   const isRacingRun = gameId === 'racingRun'
@@ -70,19 +84,18 @@ export function resolveGameViewport(gameId: string): GameViewport {
 
   if (!isSpaceShooter && !isExternalCanvas3dGame(gameId)) {
     if (isLandscapeGame) {
-      const heightRatio = window.innerHeight / gameH
-      const widthRatio = window.innerWidth / gameW
-      const scale = Math.min(widthRatio, heightRatio)
-      displayW = Math.floor(gameW * scale * 100) / 100
-      displayH = Math.floor(gameH * scale * 100) / 100
+      const sized = computeLandscapeCanvasDisplaySize(
+        gameW,
+        gameH,
+        portraitHeldForceLandscape,
+      )
+      displayW = sized.displayW
+      displayH = sized.displayH
     } else {
-      const heightRatio = isRacingRun
-        ? (window.innerHeight * 0.95) / gameH
-        : (window.innerHeight * 0.85) / gameH
-      const widthRatio = window.innerWidth / gameW
-      const scale = Math.min(widthRatio, heightRatio)
-      displayW = Math.floor(gameW * scale * 100) / 100
-      displayH = Math.floor(gameH * scale * 100) / 100
+      const ratio = isRacingRun ? 0.95 : layout.portraitHeightRatio ?? 0.85
+      const sized = computePortraitCanvasDisplaySize(gameW, gameH, ratio)
+      displayW = sized.displayW
+      displayH = sized.displayH
     }
   }
 
@@ -98,10 +111,24 @@ export function resolveGameViewport(gameId: string): GameViewport {
   }
 }
 
+export function syncLandscapeMainCanvas(
+  canvas: HTMLCanvasElement,
+  vp: GameViewport,
+  portraitHeldForceLandscape: boolean,
+): void {
+  applyLandscapeMainCanvasDisplaySize(
+    canvas,
+    vp.gameW,
+    vp.gameH,
+    portraitHeldForceLandscape,
+  )
+}
+
 export function mountMainGameCanvas(
   host: HTMLElement,
   vp: GameViewport,
-  isSpecial: boolean
+  isSpecial: boolean,
+  portraitHeldForceLandscape = false,
 ): HTMLCanvasElement | null {
   host.innerHTML = ''
   host.style.width = '100%'
@@ -129,6 +156,7 @@ export function mountMainGameCanvas(
 
   if (vp.isLandscapeGame) {
     canvas.setAttribute('style', pixelated)
+    syncLandscapeMainCanvas(canvas, vp, portraitHeldForceLandscape)
   } else {
     canvas.setAttribute(
       'style',

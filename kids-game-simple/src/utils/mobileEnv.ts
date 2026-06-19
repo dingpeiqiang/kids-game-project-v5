@@ -17,6 +17,26 @@ export function getVisualViewportSize(): { width: number; height: number } {
   }
 }
 
+/** 竖屏持机（宽 ≤ 高），与横屏游戏 force-landscape 旋转策略一致 */
+export function isPortraitViewport(): boolean {
+  const { width, height } = getVisualViewportSize()
+  return height >= width
+}
+
+/**
+ * 移动端竖屏玩横屏游戏时，壳层会旋转 90°，可用区域宽高与视口对调。
+ */
+export function getLandscapePlayViewportSize(forceLandscapeTransform: boolean): {
+  width: number
+  height: number
+} {
+  const { width, height } = getVisualViewportSize()
+  if (forceLandscapeTransform) {
+    return { width: height, height: width }
+  }
+  return { width, height }
+}
+
 export function installMobileShellGuards(): void {
   if (typeof document === 'undefined') return
 
