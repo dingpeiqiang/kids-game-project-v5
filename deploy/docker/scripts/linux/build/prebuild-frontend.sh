@@ -31,10 +31,10 @@ prebuild_kids_game_simple() {
         error_exit "package.json 不存在"
     fi
     
-    # 检查是否需要安装依赖（node_modules 不存在或 package-lock.json 有更新）
-    if [ ! -d "node_modules" ] || [ "package-lock.json" -nt "node_modules" ]; then
+    # 检查是否需要安装依赖（node_modules 不存在或 pnpm-lock.yaml 有更新）
+    if [ ! -d "node_modules" ] || [ "pnpm-lock.yaml" -nt "node_modules" ]; then
         log_info "安装依赖..."
-        if ! npm ci --no-audit --prefer-offline 2>&1 | tee -a "$DEPLOY_LOG"; then
+        if ! pnpm install 2>&1 | tee -a "$DEPLOY_LOG"; then
             error_exit "依赖安装失败"
         fi
     else
@@ -43,7 +43,7 @@ prebuild_kids_game_simple() {
     
     # 执行构建
     log_info "执行构建..."
-    if ! npm run build 2>&1 | tee -a "$DEPLOY_LOG"; then
+    if ! pnpm run build 2>&1 | tee -a "$DEPLOY_LOG"; then
         error_exit "构建失败"
     fi
     
@@ -74,9 +74,9 @@ prebuild_kids_game_frontend() {
         error_exit "package.json 不存在"
     fi
     
-    if [ ! -d "node_modules" ] || [ "package-lock.json" -nt "node_modules" ]; then
+    if [ ! -d "node_modules" ] || [ "pnpm-lock.yaml" -nt "node_modules" ]; then
         log_info "安装依赖..."
-        if ! npm ci --no-audit --prefer-offline 2>&1 | tee -a "$DEPLOY_LOG"; then
+        if ! pnpm install 2>&1 | tee -a "$DEPLOY_LOG"; then
             error_exit "依赖安装失败"
         fi
     else
@@ -84,7 +84,7 @@ prebuild_kids_game_frontend() {
     fi
     
     log_info "执行构建..."
-    if ! npm run build 2>&1 | tee -a "$DEPLOY_LOG"; then
+    if ! pnpm run build 2>&1 | tee -a "$DEPLOY_LOG"; then
         error_exit "构建失败"
     fi
     

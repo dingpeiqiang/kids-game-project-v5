@@ -3,9 +3,24 @@ FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /app
 
-# 配置阿里云 Maven 镜像（国内加速）
+# 配置多个 Maven 镜像源（提高下载成功率）
 RUN mkdir -p /usr/share/maven/ref/ && \
-    echo '<?xml version="1.0" encoding="UTF-8"?><settings xmlns="http://maven.apache.org/SETTINGS/1.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"><mirrors><mirror><id>aliyunmaven</id><mirrorOf>*</mirrorOf><name>阿里云公共仓库</name><url>https://maven.aliyun.com/repository/public</url></mirror></mirrors></settings>' > /usr/share/maven/ref/settings.xml
+    echo '<?xml version="1.0" encoding="UTF-8"?>\
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd">\
+  <mirrors>\
+    <mirror><id>aliyunmaven</id><mirrorOf>central</mirrorOf><name>阿里云中央仓库</name><url>https://maven.aliyun.com/repository/public</url></mirror>\
+    <mirror><id>aliyunmaven-spring</id><mirrorOf>spring-milestone,spring-snapshot</mirrorOf><name>阿里云Spring仓库</name><url>https://maven.aliyun.com/repository/spring</url></mirror>\
+    <mirror><id>aliyunmaven-google</id><mirrorOf>google</mirrorOf><name>阿里云Google仓库</name><url>https://maven.aliyun.com/repository/google</url></mirror>\
+  </mirrors>\
+  <profiles>\
+    <profile><id>default</id><activation><activeByDefault>true</activeByDefault></activation>\
+    <repositories>\
+      <repository><id>central</id><url>https://maven.aliyun.com/repository/public</url><releases><enabled>true</enabled></releases><snapshots><enabled>false</enabled></snapshots></repository>\
+      <repository><id>spring-milestone</id><url>https://maven.aliyun.com/repository/spring</url><releases><enabled>true</enabled></releases><snapshots><enabled>false</enabled></snapshots></repository>\
+    </repositories>\
+    </profile>\
+  </profiles>\
+</settings>' > /usr/share/maven/ref/settings.xml
 
 # 第 1 步：只复制 POM 文件，下载依赖（这一层会被缓存）
 COPY kids-game-backend/pom.xml ./pom.xml
@@ -14,14 +29,14 @@ COPY kids-game-backend/kids-game-dao/pom.xml ./kids-game-dao/pom.xml
 COPY kids-game-backend/kids-game-service/pom.xml ./kids-game-service/pom.xml
 COPY kids-game-backend/kids-game-web/pom.xml ./kids-game-web/pom.xml
 
-# 下载依赖（使用阿里云镜像加速）
-RUN mvn dependency:go-offline -B -q -s /usr/share/maven/ref/settings.xml || true
+# 使用 install 命令预下载依赖（比 go-offline 更可靠）
+RUN mvn install -DskipTests -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -B -q -s /usr/share/maven/ref/settings.xml -pl kids-game-web -am
 
 # 第 2 步：复制源代码并构建
 COPY kids-game-backend/ ./
 
-# 构建应用（跳过测试以加快构建速度）
-RUN mvn clean package -DskipTests -B -s /usr/share/maven/ref/settings.xml
+# 构建应用（跳过测试，使用离线模式）
+RUN mvn clean package -DskipTests -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -B -q -o -s /usr/share/maven/ref/settings.xml -pl kids-game-web
 
 # 生产阶段 - 使用 JRE 运行时
 FROM eclipse-temurin:17-jre-alpine
