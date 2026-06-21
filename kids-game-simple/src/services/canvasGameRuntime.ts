@@ -2,7 +2,11 @@
  * 内置 Canvas 游戏视口与画布挂载（自 legacy App.ts startGame 抽取）
  * 横竖屏仅由 getGameLayoutConfig(gameId).orientation 决定，不在此按 gameId 分支。
  */
-import { getGameLayoutConfig, isLandscapeLayout } from '../games/gameLayout'
+import {
+  DEFAULT_PORTRAIT_HEIGHT_RATIO,
+  getGameLayoutConfig,
+  isLandscapeLayout,
+} from '../games/gameLayout'
 import { isExternalCanvas3dGame, prepareGame3dMountHost } from '../platform/game3dHost'
 import {
   applyLandscapeMainCanvasDisplaySize,
@@ -58,7 +62,7 @@ export function resolveGameViewport(
       displayW = sized.displayW
       displayH = sized.displayH
     } else {
-      const ratio = layout.portraitHeightRatio ?? 0.85
+      const ratio = layout.portraitHeightRatio ?? DEFAULT_PORTRAIT_HEIGHT_RATIO
       const sized = computePortraitCanvasDisplaySize(gameW, gameH, ratio)
       displayW = sized.displayW
       displayH = sized.displayH

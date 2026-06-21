@@ -71,8 +71,16 @@ CREATE TABLE `t_answer_record` (
                                    `record_id` bigint NOT NULL AUTO_INCREMENT COMMENT '记录ID',
                                    `user_id` bigint NOT NULL COMMENT '儿童用户ID',
                                    `question_id` bigint NOT NULL COMMENT '题目ID',
+                                   `session_id` bigint DEFAULT NULL COMMENT '每日练习会话ID（t_daily_session.session_id）',
+                                   `subject_id` bigint DEFAULT NULL COMMENT '学科ID（冗余便于统计）',
+                                   `knowledge_point_ids` json DEFAULT NULL COMMENT '本题知识点ID数组（冗余便于统计）',
+                                   `question_type` varchar(20) DEFAULT NULL COMMENT '题型（冗余）',
+                                   `difficulty` tinyint DEFAULT NULL COMMENT '难度（冗余）',
                                    `user_answer` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户答案',
                                    `is_correct` tinyint DEFAULT NULL COMMENT '是否正确：0-错误，1-正确',
+                                   `is_marked` tinyint DEFAULT '0' COMMENT '是否标记：0-否，1-是',
+                                   `is_collected` tinyint DEFAULT '0' COMMENT '是否收藏：0-否，1-是',
+                                   `is_wrong` tinyint DEFAULT '0' COMMENT '是否错题：0-否，1-是（错题本来源）',
                                    `get_points` int DEFAULT '0' COMMENT '获得游学币',
                                    `answer_time` int DEFAULT '0' COMMENT '答题时间（秒）',
                                    `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间（毫秒时间戳）',
@@ -80,6 +88,10 @@ CREATE TABLE `t_answer_record` (
                                    PRIMARY KEY (`record_id`),
                                    KEY `idx_user_id` (`user_id`),
                                    KEY `idx_question_id` (`question_id`),
+                                   KEY `idx_session_id` (`session_id`),
+                                   KEY `idx_user_wrong` (`user_id`, `is_wrong`),
+                                   KEY `idx_user_correct` (`user_id`, `is_correct`),
+                                   KEY `idx_user_create` (`user_id`, `create_time`),
                                    KEY `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='答题记录表';
 
@@ -606,19 +618,28 @@ CREATE TABLE `t_permission` (
 CREATE TABLE `t_question` (
                               `question_id` bigint NOT NULL AUTO_INCREMENT COMMENT '题目ID',
                               `subject_id` bigint DEFAULT NULL COMMENT '学科ID',
-                              `content` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '题目内容',
+                              `knowledge_points` json DEFAULT NULL COMMENT '知识点ID数组（JSON）',
+                              `tags` json DEFAULT NULL COMMENT '标签数组（JSON）',
+                              `media_urls` json DEFAULT NULL COMMENT '媒体附件（图片/音频/视频，JSON数组）',
+                              `content` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '题目内容（纯文本或富文本JSON）',
                               `options` json DEFAULT NULL COMMENT '选项（JSON数组）',
                               `correct_answer` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '正确答案',
                               `analysis` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT '答案解析',
                               `grade` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '适龄阶段',
-                              `type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'choice' COMMENT '题型：choice-选择，fill-填空，judgment-判断',
+                              `type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'single' COMMENT '题型：single-单选，multiple-多选，judge-判断，fill-填空，short_answer-简答，image-图片题，audio-音频题',
                               `difficulty` tinyint DEFAULT '1' COMMENT '难度：1-5',
+                              `score` int DEFAULT '1' COMMENT '分值',
+                              `time_limit` int DEFAULT '0' COMMENT '建议答题限时（秒），0表示不限',
+                              `answer_mode` varchar(20) DEFAULT 'single' COMMENT '作答模式：single-单选，multiple-多选，text-文本作答',
+                              `fill_config` json DEFAULT NULL COMMENT '填空题配置（JSON：多空、关键词、容错模式）',
+                              `short_answer_keywords` json DEFAULT NULL COMMENT '简答题关键词（JSON数组，用于人工阅卷辅助）',
                               `status` tinyint DEFAULT '1' COMMENT '状态：0-禁用，1-启用',
                               `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间（毫秒时间戳）',
                               `update_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '更新时间（毫秒时间戳）',
                               `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除：0-未删除，1-已删除',
                               PRIMARY KEY (`question_id`),
                               KEY `idx_subject_id` (`subject_id`),
+                              KEY `idx_subject_grade` (`subject_id`, `grade`),
                               KEY `idx_grade` (`grade`),
                               KEY `idx_type` (`type`),
                               KEY `idx_difficulty` (`difficulty`),
@@ -1075,3 +1096,200 @@ CREATE TABLE `t_user_favorite` (
                                   KEY `idx_user_id` (`user_id`),
                                   KEY `idx_game_id` (`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户收藏表';
+
+
+-- ================================================
+-- 考试与试题系统 v3 新增表（2026-06-20）
+-- 详细定义见 schema_v3_question.sql
+-- ================================================
+
+-- kidgame.t_knowledge_point definition
+
+CREATE TABLE `t_knowledge_point` (
+    `knowledge_point_id` bigint NOT NULL AUTO_INCREMENT COMMENT '知识点ID',
+    `subject_id` bigint NOT NULL COMMENT '学科ID',
+    `parent_id` bigint DEFAULT NULL COMMENT '父知识点ID（NULL为根节点）',
+    `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '知识点编码（同学科内唯一）',
+    `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '知识点名称',
+    `chapter` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '所属章节',
+    `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '知识点描述',
+    `sort_order` int DEFAULT '0' COMMENT '排序',
+    `status` tinyint DEFAULT '1' COMMENT '状态：0-禁用，1-启用',
+    `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间（毫秒时间戳）',
+    `update_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '更新时间（毫秒时间戳）',
+    `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除：0-未删除，1-已删除',
+    PRIMARY KEY (`knowledge_point_id`),
+    UNIQUE KEY `uk_subject_code` (`subject_id`, `code`, `deleted`),
+    KEY `idx_subject_id` (`subject_id`),
+    KEY `idx_parent_id` (`parent_id`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识点表';
+
+
+-- kidgame.t_wrong_question definition
+
+CREATE TABLE `t_wrong_question` (
+    `wrong_id` bigint NOT NULL AUTO_INCREMENT COMMENT '错题记录ID',
+    `user_id` bigint NOT NULL COMMENT '儿童用户ID',
+    `question_id` bigint NOT NULL COMMENT '题目ID',
+    `subject_id` bigint DEFAULT NULL COMMENT '学科ID（冗余）',
+    `knowledge_point_ids` json DEFAULT NULL COMMENT '知识点ID数组（冗余）',
+    `wrong_count` int DEFAULT '1' COMMENT '错误次数',
+    `last_wrong_time` bigint DEFAULT NULL COMMENT '最近答错时间',
+    `last_wrong_answer` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '最近错误答案',
+    `mastery_level` tinyint DEFAULT '0' COMMENT '掌握度：0-未掌握，1-了解，2-熟悉，3-掌握',
+    `review_count` int DEFAULT '0' COMMENT '复习次数',
+    `last_review_time` bigint DEFAULT NULL COMMENT '最近复习时间',
+    `next_review_time` bigint DEFAULT NULL COMMENT '下次推荐复习时间',
+    `status` tinyint DEFAULT '1' COMMENT '状态：0-已掌握移除，1-待复习，2-复习中',
+    `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间',
+    `update_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '更新时间',
+    `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除',
+    PRIMARY KEY (`wrong_id`),
+    UNIQUE KEY `uk_user_question` (`user_id`, `question_id`, `deleted`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_question_id` (`question_id`),
+    KEY `idx_subject_id` (`subject_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_next_review` (`user_id`, `next_review_time`),
+    KEY `idx_mastery` (`user_id`, `mastery_level`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='错题本';
+
+
+-- kidgame.t_collection definition
+
+CREATE TABLE `t_collection` (
+    `collection_id` bigint NOT NULL AUTO_INCREMENT COMMENT '收藏ID',
+    `user_id` bigint NOT NULL COMMENT '用户ID',
+    `question_id` bigint NOT NULL COMMENT '题目ID',
+    `note` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '收藏笔记',
+    `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间',
+    `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除',
+    PRIMARY KEY (`collection_id`),
+    UNIQUE KEY `uk_user_question` (`user_id`, `question_id`, `deleted`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_question_id` (`question_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目收藏表';
+
+
+-- kidgame.t_daily_session definition
+
+CREATE TABLE `t_daily_session` (
+    `session_id` bigint NOT NULL AUTO_INCREMENT COMMENT '会话ID',
+    `user_id` bigint NOT NULL COMMENT '儿童用户ID',
+    `session_date` date NOT NULL COMMENT '会话日期',
+    `subject_id` bigint DEFAULT NULL COMMENT '学科ID（NULL为综合）',
+    `knowledge_point_ids` json DEFAULT NULL COMMENT '本次练习知识点范围',
+    `difficulty_range` varchar(20) DEFAULT 'ALL' COMMENT '难度范围：ALL/EASY/MEDIUM/HARD',
+    `total_count` int DEFAULT '0' COMMENT '本次题目总数',
+    `answered_count` int DEFAULT '0' COMMENT '已答题数',
+    `correct_count` int DEFAULT '0' COMMENT '答对题数',
+    `points_earned` int DEFAULT '0' COMMENT '本次获得游学币',
+    `duration` int DEFAULT '0' COMMENT '本次用时（秒）',
+    `source` varchar(20) DEFAULT 'DAILY' COMMENT '来源：DAILY-每日练习，RECOMMEND-推荐练习，WRONG_REVIEW-错题复习，ASSIGNMENT-教师任务',
+    `source_id` bigint DEFAULT NULL COMMENT '来源ID（如任务ID）',
+    `status` tinyint DEFAULT '0' COMMENT '状态：0-进行中，1-已完成，2-已放弃',
+    `start_time` bigint DEFAULT NULL COMMENT '开始时间',
+    `end_time` bigint DEFAULT NULL COMMENT '结束时间',
+    `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间',
+    `update_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '更新时间',
+    `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除',
+    PRIMARY KEY (`session_id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_user_date` (`user_id`, `session_date`),
+    KEY `idx_status` (`status`),
+    KEY `idx_source` (`source`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='每日练习会话表';
+
+
+-- kidgame.t_class definition
+
+CREATE TABLE `t_class` (
+    `class_id` bigint NOT NULL AUTO_INCREMENT COMMENT '班级ID',
+    `class_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '班级名称',
+    `grade` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '年级',
+    `school_year` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '学年（如 2025-2026）',
+    `creator_id` bigint NOT NULL COMMENT '创建者ID（教师）',
+    `invite_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '邀请码',
+    `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '班级描述',
+    `status` tinyint DEFAULT '1' COMMENT '状态：0-已解散，1-正常',
+    `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间',
+    `update_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '更新时间',
+    `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除',
+    PRIMARY KEY (`class_id`),
+    KEY `idx_creator_id` (`creator_id`),
+    KEY `idx_grade` (`grade`),
+    KEY `idx_invite_code` (`invite_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='班级表';
+
+
+-- kidgame.t_class_member definition
+
+CREATE TABLE `t_class_member` (
+    `member_id` bigint NOT NULL AUTO_INCREMENT COMMENT '成员ID',
+    `class_id` bigint NOT NULL COMMENT '班级ID',
+    `user_id` bigint NOT NULL COMMENT '用户ID',
+    `role` varchar(20) NOT NULL DEFAULT 'STUDENT' COMMENT '角色：TEACHER-教师，STUDENT-学生',
+    `join_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '加入时间',
+    `status` tinyint DEFAULT '1' COMMENT '状态：0-已退出，1-正常',
+    `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间',
+    `update_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '更新时间',
+    `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除',
+    PRIMARY KEY (`member_id`),
+    UNIQUE KEY `uk_class_user` (`class_id`, `user_id`, `deleted`),
+    KEY `idx_class_id` (`class_id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_role` (`role`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='班级成员表';
+
+
+-- kidgame.t_practice_assignment definition
+
+CREATE TABLE `t_practice_assignment` (
+    `assignment_id` bigint NOT NULL AUTO_INCREMENT COMMENT '任务ID',
+    `teacher_id` bigint NOT NULL COMMENT '教师ID',
+    `class_id` bigint NOT NULL COMMENT '班级ID',
+    `title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '任务标题',
+    `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '任务说明',
+    `subject_id` bigint DEFAULT NULL COMMENT '学科ID',
+    `knowledge_point_ids` json DEFAULT NULL COMMENT '知识点范围',
+    `difficulty_range` varchar(20) DEFAULT 'ALL' COMMENT '难度范围',
+    `question_count` int DEFAULT '10' COMMENT '题目数量',
+    `question_type` varchar(20) DEFAULT NULL COMMENT '指定题型（NULL为混合）',
+    `due_time` bigint DEFAULT NULL COMMENT '截止时间',
+    `points_reward` int DEFAULT '0' COMMENT '完成奖励游学币',
+    `status` tinyint DEFAULT '1' COMMENT '状态：0-草稿，1-已发布，2-已截止，3-已删除',
+    `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间',
+    `update_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '更新时间',
+    `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除',
+    PRIMARY KEY (`assignment_id`),
+    KEY `idx_teacher_id` (`teacher_id`),
+    KEY `idx_class_id` (`class_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_due_time` (`due_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='教师练习任务表';
+
+
+-- kidgame.t_assignment_completion definition
+
+CREATE TABLE `t_assignment_completion` (
+    `completion_id` bigint NOT NULL AUTO_INCREMENT COMMENT '完成记录ID',
+    `assignment_id` bigint NOT NULL COMMENT '任务ID',
+    `student_id` bigint NOT NULL COMMENT '学生ID',
+    `session_id` bigint DEFAULT NULL COMMENT '关联的练习会话ID',
+    `total_count` int DEFAULT '0' COMMENT '任务题目数',
+    `answered_count` int DEFAULT '0' COMMENT '已答题数',
+    `correct_count` int DEFAULT '0' COMMENT '答对题数',
+    `points_earned` int DEFAULT '0' COMMENT '获得游学币',
+    `duration` int DEFAULT '0' COMMENT '用时（秒）',
+    `finish_status` tinyint DEFAULT '0' COMMENT '完成状态：0-未开始，1-进行中，2-已完成',
+    `finish_time` bigint DEFAULT NULL COMMENT '完成时间',
+    `create_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '创建时间',
+    `update_time` bigint DEFAULT ((unix_timestamp(now()) * 1000)) COMMENT '更新时间',
+    `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除',
+    PRIMARY KEY (`completion_id`),
+    UNIQUE KEY `uk_assignment_student` (`assignment_id`, `student_id`, `deleted`),
+    KEY `idx_assignment_id` (`assignment_id`),
+    KEY `idx_student_id` (`student_id`),
+    KEY `idx_finish_status` (`finish_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='任务完成情况表';

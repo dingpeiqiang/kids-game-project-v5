@@ -7,7 +7,9 @@ import type { GameLifecycle } from '../../platform/GameLifecycle'
 import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createCanvasGameLifecycle } from '../../platform/createCanvasGameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { getCanvasPaletteForGame } from '../../utils/GTRSThemeApplier'
 
 interface Point { x: number; y: number }
@@ -494,11 +496,11 @@ function startSnakeLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle 
     }
   }
 
-  let unbindSnakePointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   const cleanupSnakeInput = () => {
-    unbindSnakePointer?.()
-    unbindSnakePointer = null
+    controls?.dispose()
+    controls = null
     document.removeEventListener('keydown', handleKey)
   }
 
@@ -890,7 +892,17 @@ function startSnakeLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle 
       init()
       lastTime = performance.now()
       applyCanvasMobileStyles(cvs)
-      unbindSnakePointer = bindCanvasPointerInput(cvs, (x, y) => handleTapOnCanvas(x, y))
+      controls = bindGameCanvasControls(cvs, {
+        gameId: 'snake',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (action === 'tap' && payload.x != null && payload.y != null) {
+            handleTapOnCanvas(payload.x, payload.y)
+          }
+        },
+      })
       document.addEventListener('keydown', handleKey)
     },
     onUpdate(_dtSec) {

@@ -94,22 +94,20 @@ export function unlockMobilePageScroll(): void {
   document.body.style.top = ''
 }
 
+/** 铺满游戏壳内 `#gameCanvas` / Vue `.game-play-shell__canvas`（非整页 fixed） */
 export function createMobileWrapperStyles(): string {
   const safeTop = 'env(safe-area-inset-top, 0px)'
   const safeBottom = 'env(safe-area-inset-bottom, 0px)'
   const safeLeft = 'env(safe-area-inset-left, 0px)'
   const safeRight = 'env(safe-area-inset-right, 0px)'
   return `
-    position: fixed;
-    top: 0;
-    left: 0;
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
-    height: 100dvh;
-    width: 100dvw;
     padding: ${safeTop} ${safeRight} ${safeBottom} ${safeLeft};
     box-sizing: border-box;
-    z-index: 1000;
+    z-index: 1;
     background: #000;
     overflow: hidden;
     touch-action: none;

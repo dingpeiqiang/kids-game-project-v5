@@ -10,7 +10,9 @@ import { drawPlants } from './render/plants'
 import { drawZombies } from './render/zombies'
 import { drawUI, drawSuns, drawProjectiles, drawParticles, drawFloatingTexts, drawGameOver, drawStartScreen } from './render/ui'
 import { createSunPickupEffect, createZombieDeathEffect, updateParticles, createFloatingText, updateFloatingTexts } from './render/effects'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import type { GameEngine } from '../../services/gameEngine'
 import { gameActions } from '../../platform/gameBridge'
 
@@ -27,7 +29,7 @@ export class PlantsVsZombiesGame {
   private particles: Particle[] = []
   private floatingTexts: FloatingText[] = []
   
-  private unbindPointer: (() => void) | null = null
+  private controls: MobileControlRuntime | null = null
   
   private sun: number = 200
   private lives: number = 5
@@ -62,9 +64,21 @@ export class PlantsVsZombiesGame {
   
   private setupEventListeners() {
     applyCanvasMobileStyles(this.canvas)
-    this.unbindPointer?.()
-    this.unbindPointer = bindCanvasPointerInput(this.canvas, (x, y) => {
-      this.handleInput(x, y)
+    this.controls?.dispose()
+    this.controls = bindGameCanvasControls(this.canvas, {
+      gameId: 'plantsVsZombies',
+      viewWidth: GAME_CONFIG.CANVAS_WIDTH,
+      viewHeight: GAME_CONFIG.CANVAS_HEIGHT,
+      layout: {
+        viewWidth: GAME_CONFIG.CANVAS_WIDTH,
+        viewHeight: GAME_CONFIG.CANVAS_HEIGHT,
+        buttons: [],
+      },
+      onAction: (action, payload) => {
+        if (action === 'tap' && payload.x != null && payload.y != null) {
+          this.handleInput(payload.x, payload.y)
+        }
+      },
     })
   }
   
@@ -407,7 +421,7 @@ export class PlantsVsZombiesGame {
   
   public destroy() {
     cancelAnimationFrame(this.animId)
-    this.unbindPointer?.()
-    this.unbindPointer = null
+    this.controls?.dispose()
+    this.controls = null
   }
 }

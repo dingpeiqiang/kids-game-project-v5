@@ -11,8 +11,6 @@
     ├── DOCKER_QUICK_START.md       # 快速部署指南
     ├── scripts/                     # 部署脚本
     │   └── deploy-from-images.sh   # 服务器端部署脚本
-    ├── mysql/                       # MySQL 配置
-    │   └── init.sql                # 数据库初始化脚本
     ├── nginx/                       # Nginx 配置
     │   └── frontend.conf           # 前端 Nginx 配置
     ├── Dockerfile.frontend         # 前端构建配置
@@ -88,9 +86,7 @@ docker compose --file ../docker-compose.yml logs -f     # 查看所有日志
 ```
 docker/logs/
 ├── backend.log    # 后端日志
-├── frontend.log   # 前端日志
-├── mysql.log      # MySQL 日志
-└── redis.log      # Redis 日志
+└── frontend.log   # 前端日志
 ```
 
 查看日志：
@@ -112,7 +108,7 @@ grep "ERROR" ../logs/backend.log
 
 1. **内存限制：** 服务器只有 2GB 内存，可通过 `.env` 文件设置 `BACKEND_DOCKERFILE=deploy/docker/Dockerfile.backend.lowmem` 使用低内存版本
 2. **配置文件：** 首次部署前必须编辑 `.env` 文件设置密码
-3. **端口占用：** 确保 80、3306、6379、8080 端口空闲
+3. **端口占用：** 确保 80、8080 端口空闲
 4. **Docker Compose V2：** 使用 `docker compose` 命令（带空格）
 
 ---

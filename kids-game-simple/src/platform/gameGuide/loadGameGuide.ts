@@ -1,4 +1,5 @@
 import type { GameGuide } from '../../types'
+import { mergeGuideWithControlHint } from '../mobileControls/mergeGuideWithControlHint'
 import type { GameGuideModule } from './types'
 import { GAME_GUIDE_LOADERS } from './gameGuideMap'
 
@@ -18,7 +19,8 @@ export async function loadGameGuideModule(gameId: string): Promise<GameGuideModu
 
 export async function loadGameGuide(gameId: string): Promise<GameGuide | undefined> {
   const mod = await loadGameGuideModule(gameId)
-  return mod?.guide
+  if (!mod?.guide) return undefined
+  return mergeGuideWithControlHint(gameId, mod.guide)
 }
 
 export function clearGameGuideCache(gameId?: string): void {

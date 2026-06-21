@@ -6,7 +6,9 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createLifecycleContext } from '../../platform/frameworkSession'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { COLOR_SORT_LEVELS, getLevelColors } from './levelConfig'
 import { loadProgress, completeLevel, recordFailure } from './progressManager'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
@@ -595,7 +597,7 @@ export function startColorSortLifecycle(lifecycleCtx: GameLifecycleContext): Gam
     }
   }
   
-  let unbindPointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   return hostCanvas2D(lifecycleCtx, {
     onInit() {
@@ -603,8 +605,16 @@ export function startColorSortLifecycle(lifecycleCtx: GameLifecycleContext): Gam
       injectMobileStyles()
       applyCanvasMobileStyles(canvas)
       initLevel()
-      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
-        handleTapAt(x, y)
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'sort',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (action === 'tap' && payload.x != null && payload.y != null) {
+            handleTapAt(payload.x, payload.y)
+          }
+        },
       })
     },
     onUpdate(_dt) {
@@ -614,8 +624,8 @@ export function startColorSortLifecycle(lifecycleCtx: GameLifecycleContext): Gam
       draw()
     },
     onDestroy() {
-      unbindPointer?.()
-      unbindPointer = null
+      controls?.dispose()
+      controls = null
     },
   })
 }

@@ -5,7 +5,9 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { runCanvasLifecycle, type GameLifecycle } from '../../platform/GameLifecycle'
 import { requireMainGameCanvas } from '../../platform/canvasHost'
 import { resizeCanvasForMobile } from '../../utils/mobileHelper'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { resolveGtrsCanvasStyle, type GtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 
 const W = 400
@@ -49,7 +51,7 @@ export function startColorTapLifecycle(ctx: GameLifecycleContext): GameLifecycle
   let inventory: string[] = []
   let lastSoundTime = 0
   const MIN_SOUND_INTERVAL = 80
-  let unbindPointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   const powerupIcons: Record<string, string> = {
     time_plus: '⏰',
@@ -305,7 +307,17 @@ export function startColorTapLifecycle(ctx: GameLifecycleContext): GameLifecycle
       gameStartTime = Date.now()
       spawnChallenge()
       updateHTMLPowerupBar()
-      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => handleClick(x, y))
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'colorTap',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (action === 'tap' && payload.x != null && payload.y != null) {
+            handleClick(payload.x, payload.y)
+          }
+        },
+      })
       const initAudio = () => {
         audioService.initOnGesture()
         document.removeEventListener('click', initAudio)
@@ -321,8 +333,8 @@ export function startColorTapLifecycle(ctx: GameLifecycleContext): GameLifecycle
       const elapsed = Date.now() - gameStartTime
       if (elapsed > TOTAL_TIME + bonus) {
         gameEnded = true
-        unbindPointer?.()
-        unbindPointer = null
+        controls?.dispose()
+        controls = null
         gameActions.gameOver({ victory: true, score: engine.getScore() })
       }
     },
@@ -330,8 +342,8 @@ export function startColorTapLifecycle(ctx: GameLifecycleContext): GameLifecycle
       draw()
     },
     onDestroy() {
-      unbindPointer?.()
-      unbindPointer = null
+      controls?.dispose()
+      controls = null
       app.removePowerupBar?.()
     },
   })

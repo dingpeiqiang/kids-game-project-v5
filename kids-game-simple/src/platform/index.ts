@@ -9,6 +9,9 @@ export {
 export { inputManager, type ShellInputMode } from './inputManager'
 export {
   bindMobileControlPreset,
+  bindGameCanvasControls,
+  bindHorizontalSwipePan,
+  mergeGuideWithControlHint,
   bindDesktopControls,
   drawMobileControlOverlay,
   getGameControlPreset,

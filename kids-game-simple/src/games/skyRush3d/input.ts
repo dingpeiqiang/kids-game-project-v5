@@ -1,5 +1,7 @@
 import type { InputSnapshot } from './types'
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGame3dCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { isMobileDevice } from '../../utils/mobileEnv'
 
 export interface InputController {
@@ -18,30 +20,43 @@ const emptySnap = (): InputSnapshot => ({
   reset: false,
 })
 
+/** 屏幕摇杆 Y 与 world Z 反向 */
+function mapStickToWorld(stickX: number, stickY: number): { moveX: number; moveZ: number } {
+  return { moveX: stickX, moveZ: -stickY }
+}
+
 export function createInputController(canvas: HTMLCanvasElement): InputController {
   applyCanvasMobileStyles(canvas)
   const mobile = isMobileDevice()
   const snapshot = emptySnap()
-  const keys = new Set<string>()
 
-  const mapKey = (code: string, down: boolean) => {
-    if (down) keys.add(code)
-    else keys.delete(code)
-  }
+  const w = canvas.width || canvas.clientWidth || 800
+  const h = canvas.height || canvas.clientHeight || 600
+
+  let controls: MobileControlRuntime | null = null
+  controls = bindGame3dCanvasControls(canvas, {
+    gameId: 'skyRush3d',
+    preset: 'joystick_dynamic',
+    viewWidth: w,
+    viewHeight: h,
+    onScreenControls: 'auto',
+    layout: { buttons: [] },
+    onAction: (action, payload) => {
+      if (action === 'move') {
+        const mapped = mapStickToWorld(payload.stickX ?? 0, payload.stickY ?? 0)
+        snapshot.moveX = mapped.moveX
+        snapshot.moveZ = mapped.moveZ
+      }
+    },
+  })
 
   const onKeyDown = (e: KeyboardEvent) => {
-    mapKey(e.code, true)
     if (e.code === 'KeyC' || e.code === 'KeyK') snapshot.clearScreen = true
     if (e.code === 'KeyP' || e.code === 'Escape') snapshot.pause = true
     if (e.code === 'KeyR') snapshot.reset = true
   }
-  const onKeyUp = (e: KeyboardEvent) => mapKey(e.code, false)
 
   let dragId: number | null = null
-  let stickId: number | null = null
-  let stickOx = 0
-  let stickOy = 0
-  const STICK_R = 52
 
   const normPointer = (clientX: number, clientY: number) => {
     const rect = canvas.getBoundingClientRect()
@@ -59,28 +74,11 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     const lx = (e.clientX - rect.left) / rect.width
     const ly = (e.clientY - rect.top) / rect.height
 
-    if (mobile) {
-      if (inStickZone(lx, ly)) {
-        e.preventDefault()
-        stickId = e.pointerId
-        stickOx = e.clientX - rect.left
-        stickOy = e.clientY - rect.top
-        canvas.setPointerCapture(e.pointerId)
-        return
-      }
-      if (inAimZone(lx, ly)) {
-        e.preventDefault()
-        dragId = e.pointerId
-        canvas.setPointerCapture(e.pointerId)
-        const { nx, ny } = normPointer(e.clientX, e.clientY)
-        snapshot.pointerActive = true
-        snapshot.pointerX = nx
-        snapshot.pointerY = -ny
-        return
-      }
-      return
-    }
+    if (mobile && inStickZone(lx, ly)) return
 
+    if (mobile && !inAimZone(lx, ly)) return
+
+    e.preventDefault()
     dragId = e.pointerId
     canvas.setPointerCapture(e.pointerId)
     const { nx, ny } = normPointer(e.clientX, e.clientY)
@@ -90,22 +88,6 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
   }
 
   const onPointerMove = (e: PointerEvent) => {
-    if (stickId === e.pointerId) {
-      e.preventDefault()
-      const rect = canvas.getBoundingClientRect()
-      const lx = e.clientX - rect.left
-      const ly = e.clientY - rect.top
-      let dx = lx - stickOx
-      let dy = ly - stickOy
-      const d = Math.hypot(dx, dy)
-      if (d > STICK_R) {
-        dx = (dx / d) * STICK_R
-        dy = (dy / d) * STICK_R
-      }
-      snapshot.moveX = dx / STICK_R
-      snapshot.moveZ = -dy / STICK_R
-      return
-    }
     if (dragId !== e.pointerId) return
     const { nx, ny } = normPointer(e.clientX, e.clientY)
     snapshot.pointerX = nx
@@ -113,17 +95,6 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
   }
 
   const endPointer = (e: PointerEvent) => {
-    if (stickId === e.pointerId) {
-      stickId = null
-      snapshot.moveX = 0
-      snapshot.moveZ = 0
-      try {
-        canvas.releasePointerCapture(e.pointerId)
-      } catch {
-        /* ignore */
-      }
-      return
-    }
     if (dragId !== e.pointerId) return
     dragId = null
     snapshot.pointerActive = false
@@ -136,31 +107,7 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     }
   }
 
-  let pollRaf = 0
-  let disposed = false
-  const pollKeys = () => {
-    if (disposed) return
-    if (stickId == null) {
-      let mx = 0
-      let mz = 0
-      if (keys.has('ArrowLeft') || keys.has('KeyA')) mx -= 1
-      if (keys.has('ArrowRight') || keys.has('KeyD')) mx += 1
-      if (keys.has('ArrowUp') || keys.has('KeyW')) mz -= 1
-      if (keys.has('ArrowDown') || keys.has('KeyS')) mz += 1
-      const len = Math.hypot(mx, mz)
-      if (len > 1) {
-        mx /= len
-        mz /= len
-      }
-      snapshot.moveX = mx
-      snapshot.moveZ = mz
-    }
-    pollRaf = requestAnimationFrame(pollKeys)
-  }
-  pollRaf = requestAnimationFrame(pollKeys)
-
   window.addEventListener('keydown', onKeyDown)
-  window.addEventListener('keyup', onKeyUp)
   canvas.addEventListener('pointerdown', onPointerDown, { passive: false })
   canvas.addEventListener('pointermove', onPointerMove, { passive: false })
   canvas.addEventListener('pointerup', endPointer)
@@ -169,14 +116,13 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
   return {
     snapshot,
     dispose: () => {
-      disposed = true
-      cancelAnimationFrame(pollRaf)
       window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('keyup', onKeyUp)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerup', endPointer)
       canvas.removeEventListener('pointercancel', endPointer)
+      controls?.dispose()
+      controls = null
     },
   }
 }

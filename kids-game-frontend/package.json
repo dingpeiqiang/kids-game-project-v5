@@ -15,8 +15,8 @@
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@kids-game/shared": "workspace:*",
     "@element-plus/icons-vue": "^2.3.2",
+    "@kids-game/shared": "workspace:*",
     "@types/marked": "^5.0.2",
     "ajv": "^8.18.0",
     "axios": "^1.6.0",
@@ -33,7 +33,8 @@
     "vue": "^3.4.0",
     "vue-cropper": "^1.1.4",
     "vue-router": "^4.2.0",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/echarts": "^4.9.22",

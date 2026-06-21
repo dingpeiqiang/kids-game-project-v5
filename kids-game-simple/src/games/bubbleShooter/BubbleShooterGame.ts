@@ -5,7 +5,7 @@ import { ParticleSystem } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
 import { Renderer } from './Renderer'
 import type { Shooter, Projectile, MatchPosition, PowerupType, SpecialBubbleType } from './types'
-import { applyCanvasMobileStyles, bindCanvasAimAndShoot } from '../../utils/canvasMobileUtils'
+import { bindMobileControlPreset, getGameControlPreset } from '../../platform/mobileControls'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 
 interface LevelConfig {
@@ -373,7 +373,7 @@ export class BubbleShooterGame {
     return Math.floor(Math.random() * Math.min(this.currentLevelConfig.bubbleColors, this.COLORS.length))
   }
 
-  private unbindPointer: (() => void) | null = null
+  private controls: ReturnType<typeof bindMobileControlPreset> | null = null
 
   private aimAt(mx: number, my: number, chargeTime: number = 0) {
     this.mouseX = mx
@@ -402,23 +402,28 @@ export class BubbleShooterGame {
   }
 
   private teardownInput() {
-    this.unbindPointer?.()
-    this.unbindPointer = null
+    this.controls?.dispose()
+    this.controls = null
   }
 
   private setupEventListeners() {
     this.teardownInput()
-    applyCanvasMobileStyles(this.canvas)
-    this.unbindPointer = bindCanvasAimAndShoot(
-      this.canvas,
-      (x, y, chargeTime) => this.aimAt(x, y, chargeTime),
-      (x, y, chargeTime) => {
-        if (!this.gameEnded && !this.levelTransitioning) {
+    this.controls = bindMobileControlPreset(this.canvas, {
+      preset: getGameControlPreset('bubbleShooter'),
+      viewWidth: this.W,
+      viewHeight: this.H,
+      onAction: (action, payload) => {
+        if (this.gameEnded || this.levelTransitioning) return
+        const x = payload.x ?? 0
+        const y = payload.y ?? 0
+        const chargeTime = payload.chargeTime ?? 0
+        if (action === 'aim') this.aimAt(x, y, chargeTime)
+        if (action === 'shoot') {
           this.aimAt(x, y, chargeTime)
           this.shoot(chargeTime)
         }
       },
-    )
+    })
   }
 
   private shoot(chargeTime: number = 0) {

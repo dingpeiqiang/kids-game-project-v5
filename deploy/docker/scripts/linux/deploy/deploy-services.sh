@@ -9,7 +9,7 @@ source "$SCRIPT_DIR/../common/config.sh"
 
 # 定义服务依赖关系
 declare -A SERVICE_DEPENDENCIES=(
-    ["backend"]="mysql redis"
+    ["backend"]=""
     ["frontend"]="backend"
     ["kids-game-simple"]=""
 )
@@ -195,8 +195,7 @@ deploy_service() {
     log_cyan "部署 $service"
     log_cyan "========================================"
     
-    # MySQL 和 Redis 不需要构建，直接启动
-    if [ "$skip_build" != "true" ] && [ "$service" != "mysql" ] && [ "$service" != "redis" ]; then
+    if [ "$skip_build" != "true" ]; then
         # 构建服务
         source "$SCRIPT_DIR/../build/build.sh"
         build_service "$service"
@@ -214,8 +213,6 @@ deploy_all() {
     log_cyan "全量部署"
     log_cyan "========================================"
     
-    deploy_service "mysql"
-    deploy_service "redis"
     deploy_service "backend"
     deploy_service "frontend"
     deploy_service "kids-game-simple"
@@ -228,7 +225,7 @@ main() {
     local service="${1:-all}"
     
     case $service in
-        mysql|redis|backend|frontend|kids-game-simple)
+        backend|frontend|kids-game-simple)
             deploy_service "$service"
             ;;
         all)

@@ -108,6 +108,9 @@ export class AuthModal {
       showToast('请先登录')
       return
     }
+    if (force) {
+      this.requireLogin = false
+    }
     this.el?.classList.remove('show')
   }
 
@@ -173,7 +176,6 @@ export class AuthModal {
         // 检查切换是否成功（token 是否有效）
         if (userService.isLoggedIn) {
           this.close(true)
-          this.onSuccess?.()
           showToast(`欢迎回来，${userService.current?.username}！`, 'success')
         } else {
           showToast('登录状态已失效，请重新登录', 'error')
@@ -332,7 +334,7 @@ export class AuthModal {
       const res = await userService.login(user, pass)
       if (res.ok) {
         this.close(true)
-        this.onSuccess?.()
+        // 刷新由 userService.login → ugp:userChange 统一触发，避免重复请求 game-records
         showToast(res.msg, 'success')
       } else {
         if (errorEl) { errorEl.textContent = res.msg; errorEl.style.display = 'block' }
@@ -397,7 +399,6 @@ export class AuthModal {
       console.log('[AuthModal] 注册结果:', res)
       if (res.ok) {
         this.close(true)
-        this.onSuccess?.()
         showToast(res.msg, 'success')
       } else {
         if (errorEl) { errorEl.textContent = res.msg; errorEl.style.display = 'block' }
@@ -678,7 +679,6 @@ export class MePanel {
             this.reRender()
             window.dispatchEvent(new CustomEvent('ugp:userChange'))
             this.authModal.open(() => {
-              window.dispatchEvent(new CustomEvent('ugp:userChange'))
               this.reRender()
             })
           } catch (e) {

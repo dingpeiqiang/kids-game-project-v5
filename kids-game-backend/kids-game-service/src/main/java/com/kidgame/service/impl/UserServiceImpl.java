@@ -25,11 +25,11 @@ import com.kidgame.service.dto.AuthResponseDTO;
 import com.kidgame.service.dto.UserLoginDTO;
 import com.kidgame.service.dto.UserLoginResponseDTO;
 import com.kidgame.service.dto.UserRegisterDTO;
-import io.jsonwebtoken.Claims;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,6 +72,15 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private EconomyWalletService economyWalletService;
+
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
+
+    /**
+     * 登录失败锁定阈值
+     */
+    private static final int LOGIN_FAILURE_THRESHOLD = 5;
+    private static final long LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000L; // 15 分钟
 
     /**
      * 将用户类型整数转换为字符串角色
@@ -466,15 +475,25 @@ public class UserServiceImpl implements UserService {
         BaseUser user = baseUserMapper.selectOne(wrapper);
         if (user == null) {
             log.warn("用户不存在：username={}", request.getUsername());
-            throw new RuntimeException("用户不存在");
+            // 统一错误信息，防止用户名枚举攻击
+            throw new RuntimeException("用户名或密码错误");
+        }
+        
+        // 检查账号是否被锁定（登录失败次数过多）
+        if (user.getLockedUntil() != null && user.getLockedUntil() > System.currentTimeMillis()) {
+            long remainMin = (user.getLockedUntil() - System.currentTimeMillis()) / 60000;
+            log.warn("账号已锁定：username={}, 剩余{}分钟", request.getUsername(), remainMin);
+            throw new RuntimeException("账号已被锁定，请" + (remainMin + 1) + "分钟后再试");
         }
         
         // 2. 解密和验证密码
         String rawPassword = decryptPasswordIfNeeded(request);
         
         if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
-            log.warn("密码错误：username={}", request.getUsername());
-            throw new RuntimeException("密码错误");
+            // 登录失败：增加失败计数，达到阈值则锁定账号
+            recordLoginFailure(user);
+            log.warn("密码错误：username={}, 失败次数={}", request.getUsername(), user.getLoginFailureCount());
+            throw new RuntimeException("用户名或密码错误");
         }
         
         // 3. 准备 JWT claims
@@ -549,9 +568,11 @@ public class UserServiceImpl implements UserService {
             }
         }
         
-        // 8. 更新登录信息
+        // 8. 更新登录信息（登录成功，重置失败计数与锁定状态）
         user.setLastLoginTime(System.currentTimeMillis());
         user.setLastLoginIp(getClientIp());
+        user.setLoginFailureCount(0);
+        user.setLockedUntil(null);
         baseUserMapper.updateById(user);
         
         // 9. 缓存用户信息
@@ -591,9 +612,14 @@ public class UserServiceImpl implements UserService {
             }
         }
         
-        // 向后兼容：使用明文密码
+        // 生产环境强制 RSA 加密，禁止明文密码传输
+        if ("prod".equalsIgnoreCase(activeProfile)) {
+            throw new RuntimeException("生产环境必须使用 RSA 加密密码，禁止明文传输");
+        }
+        
+        // 非生产环境向后兼容：使用明文密码（仅限开发/测试）
         if (request.getPassword() != null) {
-            log.debug("使用明文密码（向后兼容）");
+            log.debug("使用明文密码（非生产环境向后兼容）");
             return request.getPassword();
         }
         
@@ -624,22 +650,55 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("用户不存在或被禁用");
         }
         
-        // 5. 可选：验证设备指纹（如果启用了设备绑定）
-        // if (deviceFingerprint != null) {
-        //     // 验证设备指纹是否匹配
-        // }
+        // 5. 重新构建 Access Token 的 claims（修复：从数据库重新加载，避免丢失 userType/role/kidId 等）
+        Map<String, Object> newClaims = new HashMap<>();
+        newClaims.put("userId", user.getUserId().toString());
+        newClaims.put("userType", user.getUserType());
+        newClaims.put("role", convertUserRoleToString(user.getUserType()));
+        
+        // 补充用户扩展信息（与登录时一致）
+        UserProfile profile = userProfileMapper.selectOne(
+            new LambdaQueryWrapper<UserProfile>()
+                .eq(UserProfile::getUserId, user.getUserId())
+        );
+        if (profile != null && profile.getProfileData() != null) {
+            try {
+                JSONObject extInfo = JSON.parseObject(profile.getProfileData());
+                if (user.getUserType() == 0) { // KID
+                    newClaims.put("kidId", user.getUserId().toString());
+                    newClaims.put("parentId", extInfo.getString("parentId"));
+                    newClaims.put("grade", extInfo.getString("grade"));
+                } else if (user.getUserType() == 1) { // PARENT
+                    newClaims.put("parentId", user.getUserId().toString());
+                } else if (user.getUserType() == 2) { // ADMIN
+                    newClaims.put("adminId", user.getUserId().toString());
+                }
+            } catch (Exception e) {
+                log.warn("刷新 Token 时解析用户扩展信息失败：{}", e.getMessage());
+            }
+        }
         
         // 6. 重新生成 Access Token
-        Claims oldClaims = jwtUtil.parseToken(refreshToken);
-        Map<String, Object> newClaims = new HashMap<>();
-        newClaims.putAll(oldClaims);
-        newClaims.put("type", "access"); // 改为 access 类型
-        
         String newAccessToken = jwtUtil.generateToken(userId, newClaims);
         
         log.info("用户 {} 刷新 Token 成功", userId);
         
         return newAccessToken;
+    }
+
+    /**
+     * 记录登录失败，达到阈值则锁定账号
+     */
+    private void recordLoginFailure(BaseUser user) {
+        int failCount = (user.getLoginFailureCount() == null ? 0 : user.getLoginFailureCount()) + 1;
+        user.setLoginFailureCount(failCount);
+        if (failCount >= LOGIN_FAILURE_THRESHOLD) {
+            user.setLockedUntil(System.currentTimeMillis() + LOGIN_LOCK_DURATION_MS);
+            log.warn("账号已被锁定：userId={}, username={}, 失败次数={}", 
+                user.getUserId(), user.getUsername(), failCount);
+        }
+        user.setUpdateTime(System.currentTimeMillis());
+        baseUserMapper.updateById(user);
     }
 
     /**

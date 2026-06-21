@@ -11,6 +11,11 @@ import { buildGameUpdateState, syncFromGameUpdateState } from './logic/game-stat
 import { spawnRoomEnemiesFromState } from './logic/game-effects'
 import { renderGame, type GameRenderData } from './render/game-render'
 import { InputManager, type InputManagerCallbacks } from './logic/input-manager'
+import {
+  bindGameCanvasControls,
+  drawMobileControlOverlay,
+  type MobileControlRuntime,
+} from '../../platform/mobileControls'
 
 import { level1Config } from './levels/level1'
 import { level2Config } from './levels/level2'
@@ -41,6 +46,7 @@ export class DnfRpgGame {
   private shownComboMilestones: number[] = []
 
   private inputManager: InputManager
+  private platformControls: MobileControlRuntime | null = null
   private input = { left: false, right: false, up: false, down: false, jump: false, attack: false, skill1: false, skill2: false, skill3: false, skill4: false, dash: false, interact: false, stickX: 0, stickY: 0 }
   private inCharSelect = true
   private selectedClass: 'swordsman' | 'fighter' | 'archer' | 'mage' | 'gunner' | null = null
@@ -79,12 +85,67 @@ export class DnfRpgGame {
       setHoveredClassIndex: (index) => { this.hoveredClassIndex = index },
     }
     this.inputManager = new InputManager(this.canvas, callbacks)
+    this.inputManager.enablePlatformCombat()
     this.inputManager.setup()
     this.input = this.inputManager.input
   }
 
+  private buildCombatControlLayout() {
+    const w = this.canvas.width
+    const h = this.canvas.height
+    const min = Math.min(w, h)
+    const btnX = w - 85
+    const btnR = min * 0.065
+    return {
+      viewWidth: w,
+      viewHeight: h,
+      joystick: {
+        x: w * 0.14,
+        y: h * 0.72,
+        radius: min * 0.11,
+        knobRadius: min * 0.045,
+        deadZone: 0.12,
+      },
+      buttons: [
+        { id: 'attack', label: 'A', cx: btnX, cy: h * 0.58, r: btnR * 1.15 },
+        { id: 'jump', label: 'J', cx: btnX - 62, cy: h * 0.72, r: btnR },
+        { id: 'skill1', label: 'S1', cx: btnX - 62, cy: h * 0.42, r: btnR },
+        { id: 'skill2', label: 'S2', cx: btnX - 8, cy: h * 0.38, r: btnR },
+      ],
+    }
+  }
+
+  private setupPlatformControls(): void {
+    const layout = this.buildCombatControlLayout()
+    this.platformControls = bindGameCanvasControls(this.canvas, {
+      gameId: 'dnfRpg',
+      preset: 'joystick_action',
+      viewWidth: layout.viewWidth,
+      viewHeight: layout.viewHeight,
+      layout,
+      onAction: (action, payload) => {
+        if (this.inCharSelect) {
+          if (action === 'tap') {
+            this.inputManager.onCharSelectPointer(payload.x ?? 0, payload.y ?? 0)
+          }
+          return
+        }
+        if (this.gameOver || this.victory) {
+          if (action === 'tap') this.inputManager.onOverlayPointer()
+          return
+        }
+        if (action === 'move') {
+          this.inputManager.applyPlatformMove(payload.stickX ?? 0, payload.stickY ?? 0)
+        }
+        if (action === 'button_down') this.inputManager.applyPlatformButton(payload.id ?? '', true)
+        if (action === 'button_up') this.inputManager.applyPlatformButton(payload.id ?? '', false)
+      },
+    })
+  }
+
   beginPlay(): void {
     this.lastFrameTime = 0
+    this.setupPlatformControls()
   }
 
   destroy(): void {
@@ -173,6 +234,8 @@ export class DnfRpgGame {
 
   private cleanup(): void {
     this.destroyed = true
+    this.platformControls?.dispose()
+    this.platformControls = null
     this.inputManager.cleanup()
   }
 
@@ -228,8 +291,16 @@ export class DnfRpgGame {
       transitionPhase: this.transitionPhase,
       transitionProgress: this.transitionProgress,
       screenShake: this.screenShake,
+      skipLegacyTouchUi: Boolean(this.platformControls?.shouldDrawOverlay()),
     }
     renderGame(this.ctx, data)
+    if (this.platformControls?.shouldDrawOverlay()) {
+      drawMobileControlOverlay(
+        this.ctx,
+        this.platformControls.getSnapshot(),
+        this.platformControls.getJoystick(),
+      )
+    }
   }
 }
 

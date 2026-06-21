@@ -3,8 +3,17 @@ import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
 import { createPowerupManager } from '../../services/powerupManager'
 import { app } from '../../services/appBridge'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { bindMobileControlPreset, shouldDrawOnScreenControls } from '../../platform/mobileControls'
 import { ParticleSystem } from './ParticleSystem'
+import { drawTetrisCell, TETRIS_PALETTE } from './tetrisBlockDraw'
+import {
+  computeHandheldShellFrame,
+  drawHandheldControls,
+  drawHandheldShellAndLcd,
+  handheldTouchLayout,
+  tryHapticLight,
+  type HandheldShellFrame,
+} from './tetrisHandheldShell'
 
 export class TetrisGame {
   private canvas: HTMLCanvasElement
@@ -24,6 +33,16 @@ export class TetrisGame {
   private boardPowerups: (string | null)[][] = []
   private currentPiece: any = null
   private nextPiece: any = null
+  private holdPiece: any = null
+  private canHold = true
+  private pieceVisualX = 0
+  private pieceVisualY = 0
+  private lineClearFlash: { row: number; t: number }[] = []
+  private repeatLeft = 0
+  private repeatRight = 0
+  private repeatDown = 0
+  private readonly REPEAT_INITIAL_MS = 180
+  private readonly REPEAT_RATE_MS = 55
   private particleSystem: ParticleSystem
   private inventory: string[] = []
   private score = 0
@@ -35,6 +54,7 @@ export class TetrisGame {
   private gameTime = 0
   private combo = 0
   private screenShake = { x: 0, y: 0, duration: 0 }
+  private handheldFrame: HandheldShellFrame | null = null
   
   // 道具系统
   private powerupManager: any
@@ -48,13 +68,13 @@ export class TetrisGame {
   
   // 方块形状定义
   private SHAPES = [
-    { color: '#FF6B6B', blocks: [[1,1,1,1]] },           // I - 红色
-    { color: '#FFD93D', blocks: [[1,1],[1,1]] },         // O - 黄色
-    { color: '#4ECDC4', blocks: [[0,1,1],[1,1,0]] },     // S - 青色
-    { color: '#9B59B6', blocks: [[1,1,0],[0,1,1]] },     // Z - 紫色
-    { color: '#FF8E53', blocks: [[1,0,0],[1,1,1]] },     // J - 橙色
-    { color: '#4D96FF', blocks: [[0,0,1],[1,1,1]] },     // L - 蓝色
-    { color: '#6BCB77', blocks: [[0,1,0],[1,1,1]] },     // T - 绿色
+    { color: TETRIS_PALETTE[0], blocks: [[1, 1, 1, 1]] },
+    { color: TETRIS_PALETTE[1], blocks: [[1, 1], [1, 1]] },
+    { color: TETRIS_PALETTE[2], blocks: [[0, 1, 1], [1, 1, 0]] },
+    { color: TETRIS_PALETTE[3], blocks: [[1, 1, 0], [0, 1, 1]] },
+    { color: TETRIS_PALETTE[4], blocks: [[1, 0, 0], [1, 1, 1]] },
+    { color: TETRIS_PALETTE[5], blocks: [[0, 0, 1], [1, 1, 1]] },
+    { color: TETRIS_PALETTE[6], blocks: [[0, 1, 0], [1, 1, 1]] },
   ]
   
   constructor(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, engine: GameEngine, onEnd: () => void) {
@@ -81,23 +101,98 @@ export class TetrisGame {
     this.boardPowerups = Array(this.ROWS).fill(null).map(() => Array(this.COLS).fill(null))
   }
   
+  private isHandheldMode(): boolean {
+    return shouldDrawOnScreenControls()
+  }
+
   private calculateLayout() {
     const W = this.canvas.width
     const H = this.canvas.height
-    this.BLOCK_SIZE = Math.floor((H - 100) / this.ROWS)
+
+    if (this.isHandheldMode()) {
+      this.handheldFrame = computeHandheldShellFrame(W, H)
+      const { boardRect } = this.handheldFrame
+      const innerPad = 3
+      const playW = boardRect.w - innerPad * 2
+      const playH = boardRect.h - innerPad * 2
+      this.BLOCK_SIZE = Math.max(10, Math.floor(Math.min(playH / this.ROWS, playW / this.COLS)))
+      const boardW = this.COLS * this.BLOCK_SIZE
+      const boardH = this.ROWS * this.BLOCK_SIZE
+      this.OFFSET_X = boardRect.x + (boardRect.w - boardW) / 2
+      this.OFFSET_Y = boardRect.y + (boardRect.h - boardH) / 2
+      return
+    }
+
+    this.handheldFrame = null
+    const topHud = 52
+    const bottomReserve = 48
+    const playH = H - topHud - bottomReserve
+    this.BLOCK_SIZE = Math.max(12, Math.floor(playH / this.ROWS))
     this.OFFSET_X = (W - this.COLS * this.BLOCK_SIZE) / 2
+    this.OFFSET_Y = topHud
   }
   
   public init() {
-    // 初始化第一个方块
     this.currentPiece = this.randomShape()
     this.nextPiece = this.randomShape()
-    
-    // 更新道具栏
+    this.holdPiece = null
+    this.canHold = true
+    this.syncPieceVisual(true)
     this.updateHTMLPowerupBar()
-    
-    // 设置事件监听
+    this.calculateLayout()
     this.setupEventListeners()
+  }
+
+  private syncPieceVisual(instant = false) {
+    if (!this.currentPiece) return
+    if (instant) {
+      this.pieceVisualX = this.currentPiece.x
+      this.pieceVisualY = this.currentPiece.y
+    }
+  }
+
+  private lerpPieceVisual(dt: number) {
+    if (!this.currentPiece) return
+    const t = Math.min(1, dt / 100)
+    this.pieceVisualX += (this.currentPiece.x - this.pieceVisualX) * t
+    this.pieceVisualY += (this.currentPiece.y - this.pieceVisualY) * t
+  }
+
+  private ghostLandingY(): number {
+    if (!this.currentPiece) return 0
+    let dy = 0
+    while (this.canPlace(this.currentPiece, 0, dy + 1)) dy++
+    return this.currentPiece.y + dy
+  }
+
+  private tryHold() {
+    if (!this.canHold || this.gameEnded) return
+    tryHapticLight()
+    if (!this.holdPiece) {
+      this.holdPiece = {
+        ...this.currentPiece,
+        blocks: this.currentPiece.blocks.map((r: number[]) => [...r]),
+        x: Math.floor(this.COLS / 2) - 1,
+        y: 0,
+      }
+      this.currentPiece = this.nextPiece
+      this.nextPiece = this.randomShape()
+    } else {
+      const swap = {
+        ...this.holdPiece,
+        blocks: this.holdPiece.blocks.map((r: number[]) => [...r]),
+        x: Math.floor(this.COLS / 2) - 1,
+        y: 0,
+      }
+      this.holdPiece = {
+        ...this.currentPiece,
+        blocks: this.currentPiece.blocks.map((r: number[]) => [...r]),
+      }
+      this.currentPiece = swap
+    }
+    this.canHold = false
+    this.syncPieceVisual(true)
+    audioService.collect()
   }
   
   private randomShape() {
@@ -110,78 +205,133 @@ export class TetrisGame {
     }
   }
   
-  private unbindPointer: (() => void) | null = null
+  private controls: ReturnType<typeof bindMobileControlPreset> | null = null
 
-  private handleCanvasTap(mx: number, my: number) {
-    if (this.gameEnded) return
-    const W = this.canvas.width
-    const H = this.canvas.height
-
-    if (my > H * 0.72) {
-      if (this.canPlace(this.currentPiece, 0, 1)) {
-        this.currentPiece.y++
-        this.score += 1
-      }
-      return
-    }
-
-    if (mx < W / 3 && this.canPlace(this.currentPiece, -1, 0)) {
+  private tryMoveLeft() {
+    if (this.canPlace(this.currentPiece, -1, 0)) {
       this.currentPiece.x--
       audioService.collect()
-    } else if (mx > (W * 2) / 3 && this.canPlace(this.currentPiece, 1, 0)) {
-      this.currentPiece.x++
-      audioService.collect()
-    } else {
-      this.rotate()
     }
   }
 
+  private tryMoveRight() {
+    if (this.canPlace(this.currentPiece, 1, 0)) {
+      this.currentPiece.x++
+      audioService.collect()
+    }
+  }
+
+  private trySoftDrop() {
+    if (this.canPlace(this.currentPiece, 0, 1)) {
+      this.currentPiece.y++
+      this.score += 1
+    }
+  }
+
+  private tryHardDrop() {
+    while (this.canPlace(this.currentPiece, 0, 1)) {
+      this.currentPiece.y++
+      this.score += 2
+    }
+    this.placePiece()
+    audioService.collect()
+  }
+
   private teardownInput() {
-    this.unbindPointer?.()
-    this.unbindPointer = null
-    document.onkeydown = null
+    this.controls?.dispose()
+    this.controls = null
   }
 
   private setupEventListeners() {
     this.teardownInput()
-    applyCanvasMobileStyles(this.canvas)
-
-    document.onkeydown = (e) => {
-      if (this.gameEnded) return
-      switch (e.key) {
-        case 'ArrowLeft':
-          if (this.canPlace(this.currentPiece, -1, 0)) {
-            this.currentPiece.x--
-            audioService.collect()
+    const W = this.canvas.width
+    const H = this.canvas.height
+    const frame = computeHandheldShellFrame(W, H)
+    this.handheldFrame = this.isHandheldMode() ? frame : null
+    const mobileLayout = this.isHandheldMode()
+      ? handheldTouchLayout(frame)
+      : { viewWidth: W, viewHeight: H, buttons: [] as never[] }
+    this.controls = bindMobileControlPreset(this.canvas, {
+      preset: 'joystick_action',
+      viewWidth: W,
+      viewHeight: H,
+      layout: {
+        ...mobileLayout,
+        joystick: {
+          x: -100,
+          y: -100,
+          radius: 1,
+          knobRadius: 1,
+          deadZone: 0.99,
+          dynamicZoneWidthRatio: 0,
+        },
+      },
+      keyboardProfile: {
+        movementKeys: {
+          up: ['ArrowUp', 'KeyW'],
+          down: ['ArrowDown', 'KeyS'],
+          left: ['ArrowLeft', 'KeyA'],
+          right: ['ArrowRight', 'KeyD'],
+        },
+        buttons: {
+          Space: 'hard_drop',
+          KeyC: 'hold',
+          ShiftLeft: 'hold',
+          ShiftRight: 'hold',
+        },
+      },
+      onAction: (action, payload) => {
+        if (this.gameEnded) return
+        if (action === 'button_down') {
+          tryHapticLight()
+          switch (payload.id) {
+            case 'left':
+              this.tryMoveLeft()
+              this.repeatLeft = this.REPEAT_INITIAL_MS
+              break
+            case 'right':
+              this.tryMoveRight()
+              this.repeatRight = this.REPEAT_INITIAL_MS
+              break
+            case 'rotate':
+              this.rotate()
+              break
+            case 'soft_drop':
+              this.trySoftDrop()
+              this.repeatDown = this.REPEAT_INITIAL_MS
+              break
+            case 'hard_drop':
+              this.tryHardDrop()
+              break
+            case 'hold':
+              this.tryHold()
+              break
           }
-          break
-        case 'ArrowRight':
-          if (this.canPlace(this.currentPiece, 1, 0)) {
-            this.currentPiece.x++
-            audioService.collect()
+          return
+        }
+        if (action === 'button_up') {
+          switch (payload.id) {
+            case 'left':
+              this.repeatLeft = 0
+              break
+            case 'right':
+              this.repeatRight = 0
+              break
+            case 'soft_drop':
+              this.repeatDown = 0
+              break
           }
-          break
-        case 'ArrowDown':
-          if (this.canPlace(this.currentPiece, 0, 1)) {
-            this.currentPiece.y++
-            this.score += 1
-          }
-          break
-        case 'ArrowUp':
-          this.rotate()
-          break
-        case ' ':
-          while (this.canPlace(this.currentPiece, 0, 1)) {
-            this.currentPiece.y++
-            this.score += 2
-          }
-          this.placePiece()
-          break
-      }
-    }
-
-    this.unbindPointer = bindCanvasPointerInput(this.canvas, (x, y) => {
-      this.handleCanvasTap(x, y)
+          return
+        }
+        if (action === 'move' && payload.source === 'keyboard') {
+          const sx = payload.stickX ?? 0
+          const sy = payload.stickY ?? 0
+          if (sy < -0.5) this.rotate()
+          else if (sy > 0.5) this.trySoftDrop()
+          else if (sx < -0.5) this.tryMoveLeft()
+          else if (sx > 0.5) this.tryMoveRight()
+        }
+      },
     })
   }
   
@@ -201,15 +351,27 @@ export class TetrisGame {
   
   private rotate() {
     const rotated = this.currentPiece.blocks[0].map((_: any, i: number) =>
-      this.currentPiece.blocks.map((row: number[]) => row[i]).reverse()
+      this.currentPiece.blocks.map((row: number[]) => row[i]).reverse(),
     )
     const old = this.currentPiece.blocks
+    const oldX = this.currentPiece.x
     this.currentPiece.blocks = rotated
-    if (!this.canPlace(this.currentPiece)) {
-      this.currentPiece.blocks = old
-    } else {
+    if (this.canPlace(this.currentPiece)) {
       audioService.collect()
+      this.syncPieceVisual(true)
+      return
     }
+    const kicks = [1, -1, 2, -2]
+    for (const dx of kicks) {
+      this.currentPiece.x = oldX + dx
+      if (this.canPlace(this.currentPiece)) {
+        audioService.collect()
+        this.syncPieceVisual(true)
+        return
+      }
+    }
+    this.currentPiece.blocks = old
+    this.currentPiece.x = oldX
   }
   
   private placePiece() {
@@ -234,7 +396,9 @@ export class TetrisGame {
     // 生成新方块
     this.currentPiece = this.nextPiece
     this.nextPiece = this.randomShape()
-    
+    this.canHold = true
+    this.syncPieceVisual(true)
+
     // 检查游戏结束
     if (!this.canPlace(this.currentPiece)) {
       this.teardownInput()
@@ -260,9 +424,9 @@ export class TetrisGame {
           }
         }
         
-        // 消除特效
         this.createLineClearEffect(y)
-        
+        this.lineClearFlash.push({ row: y, t: 1 })
+
         this.board.splice(y, 1)
         this.board.unshift(Array(this.COLS).fill(''))
         this.boardPowerups.splice(y, 1)
@@ -425,7 +589,30 @@ export class TetrisGame {
   public update(deltaTime: number) {
     this.gameTime += deltaTime / 1000
     this.frameCount++
-    
+    this.lerpPieceVisual(deltaTime)
+
+    if (this.isHandheldMode() && !this.gameEnded) {
+      const step = (acc: number, dir: 'left' | 'right' | 'down') => {
+        if (acc <= 0) return 0
+        const next = acc - deltaTime
+        if (next <= 0) {
+          if (dir === 'left') this.tryMoveLeft()
+          else if (dir === 'right') this.tryMoveRight()
+          else this.trySoftDrop()
+          return this.REPEAT_RATE_MS
+        }
+        return next
+      }
+      this.repeatLeft = step(this.repeatLeft, 'left')
+      this.repeatRight = step(this.repeatRight, 'right')
+      this.repeatDown = step(this.repeatDown, 'down')
+    }
+
+    for (let i = this.lineClearFlash.length - 1; i >= 0; i--) {
+      this.lineClearFlash[i].t -= deltaTime / 280
+      if (this.lineClearFlash[i].t <= 0) this.lineClearFlash.splice(i, 1)
+    }
+
     // 下落速度
     let dropSpeed = Math.max(100, 800 - this.level * 80)
     
@@ -464,134 +651,199 @@ export class TetrisGame {
   public render() {
     const W = this.canvas.width
     const H = this.canvas.height
-    
-    // 应用屏幕震动
+    const handheld = this.isHandheldMode() && this.handheldFrame
+
     this.ctx.save()
     if (this.screenShake.duration > 0) {
       this.ctx.translate(this.screenShake.x, this.screenShake.y)
     }
-    
-    // 背景渐变
-    const grad = this.ctx.createLinearGradient(0, 0, 0, H)
-    grad.addColorStop(0, '#1a1a2e')
-    grad.addColorStop(1, '#16213e')
-    this.ctx.fillStyle = grad
-    this.ctx.fillRect(0, 0, W, H)
-    
-    // 绘制棋盘背景
+
+    if (handheld) {
+      drawHandheldShellAndLcd(this.ctx, this.handheldFrame!)
+      const { boardRect } = this.handheldFrame!
+      this.ctx.save()
+      this.ctx.beginPath()
+      this.ctx.roundRect(boardRect.x, boardRect.y, boardRect.w, boardRect.h, boardRect.r)
+      this.ctx.clip()
+    } else {
+      const grad = this.ctx.createLinearGradient(0, 0, 0, H)
+      grad.addColorStop(0, '#1a1a2e')
+      grad.addColorStop(1, '#16213e')
+      this.ctx.fillStyle = grad
+      this.ctx.fillRect(0, 0, W, H)
+    }
+
     this.ctx.fillStyle = 'rgba(255,255,255,0.05)'
     this.ctx.fillRect(this.OFFSET_X, this.OFFSET_Y, this.COLS * this.BLOCK_SIZE, this.ROWS * this.BLOCK_SIZE)
-    
-    // 绘制网格线
     this.drawGrid()
-    
-    // 绘制已放置的方块
     this.drawPlacedBlocks()
-    
-    // 绘制当前方块
+    this.drawLineClearFlash()
+    this.drawGhostPiece()
     this.drawCurrentPiece()
-    
-    // 绘制粒子效果
     this.particleSystem.render(this.ctx)
-    
-    // 绘制UI
-    this.drawUI()
-    
-    // 绘制下一个方块预览
-    this.drawNextPiece()
-    
+
+    if (handheld) {
+      this.ctx.restore()
+      this.drawUI()
+      this.drawPreviewPanels()
+    } else {
+      this.drawUI()
+      this.drawNextPiece()
+    }
+
+    if (handheld) {
+      const snap = this.controls?.getSnapshot()
+      const pressed = new Set<string>()
+      if (snap) {
+        for (const b of snap.buttons) {
+          if (b.pressed) pressed.add(b.id)
+        }
+      }
+      drawHandheldControls(this.ctx, this.handheldFrame!, pressed)
+    }
+
     this.ctx.restore()
   }
   
   private drawGrid() {
-    this.ctx.strokeStyle = 'rgba(255,255,255,0.1)'
-    this.ctx.lineWidth = 1
+    const g = this.ctx
+    g.strokeStyle = 'rgba(51, 51, 51, 0.55)'
+    g.lineWidth = 1
+    g.setLineDash([3, 4])
     for (let x = 0; x <= this.COLS; x++) {
-      this.ctx.beginPath()
-      this.ctx.moveTo(this.OFFSET_X + x * this.BLOCK_SIZE, this.OFFSET_Y)
-      this.ctx.lineTo(this.OFFSET_X + x * this.BLOCK_SIZE, this.OFFSET_Y + this.ROWS * this.BLOCK_SIZE)
-      this.ctx.stroke()
+      g.beginPath()
+      g.moveTo(this.OFFSET_X + x * this.BLOCK_SIZE, this.OFFSET_Y)
+      g.lineTo(this.OFFSET_X + x * this.BLOCK_SIZE, this.OFFSET_Y + this.ROWS * this.BLOCK_SIZE)
+      g.stroke()
     }
     for (let y = 0; y <= this.ROWS; y++) {
-      this.ctx.beginPath()
-      this.ctx.moveTo(this.OFFSET_X, this.OFFSET_Y + y * this.BLOCK_SIZE)
-      this.ctx.lineTo(this.OFFSET_X + this.COLS * this.BLOCK_SIZE, this.OFFSET_Y + y * this.BLOCK_SIZE)
-      this.ctx.stroke()
+      g.beginPath()
+      g.moveTo(this.OFFSET_X, this.OFFSET_Y + y * this.BLOCK_SIZE)
+      g.lineTo(this.OFFSET_X + this.COLS * this.BLOCK_SIZE, this.OFFSET_Y + y * this.BLOCK_SIZE)
+      g.stroke()
+    }
+    g.setLineDash([])
+  }
+
+  private drawPieceBlocks(
+    piece: { blocks: number[][]; color: string; x: number; y: number },
+    ox: number,
+    oy: number,
+    cell: number,
+    opts?: { ghost?: boolean; powerupGlow?: number },
+  ) {
+    for (let y = 0; y < piece.blocks.length; y++) {
+      for (let x = 0; x < piece.blocks[y].length; x++) {
+        if (!piece.blocks[y][x]) continue
+        const px = ox + (piece.x + x) * cell
+        const py = oy + (piece.y + y) * cell
+        drawTetrisCell(this.ctx, px, py, cell, piece.color, opts)
+      }
     }
   }
-  
+
+  private drawGhostPiece() {
+    if (!this.currentPiece) return
+    const gy = this.ghostLandingY()
+    if (gy === this.currentPiece.y) return
+    this.drawPieceBlocks(
+      { ...this.currentPiece, y: gy },
+      this.OFFSET_X,
+      this.OFFSET_Y,
+      this.BLOCK_SIZE,
+      { ghost: true },
+    )
+  }
+
+  private drawLineClearFlash() {
+    const t = this.frameCount * 0.08
+    for (const f of this.lineClearFlash) {
+      const alpha = f.t * (0.35 + 0.25 * Math.sin(t * 12))
+      this.ctx.fillStyle = `rgba(255,255,255,${alpha})`
+      this.ctx.fillRect(
+        this.OFFSET_X,
+        this.OFFSET_Y + f.row * this.BLOCK_SIZE,
+        this.COLS * this.BLOCK_SIZE,
+        this.BLOCK_SIZE,
+      )
+    }
+  }
+
   private drawPlacedBlocks() {
+    const pulse = 0.5 + 0.5 * Math.sin(this.frameCount * 0.06)
     for (let y = 0; y < this.ROWS; y++) {
       for (let x = 0; x < this.COLS; x++) {
-        if (this.board[y][x]) {
-          this.ctx.shadowBlur = 8
-          this.ctx.shadowColor = this.board[y][x]
-          this.ctx.fillStyle = this.board[y][x]
-          this.ctx.fillRect(
-            this.OFFSET_X + x * this.BLOCK_SIZE + 2, 
-            this.OFFSET_Y + y * this.BLOCK_SIZE + 2, 
-            this.BLOCK_SIZE - 4, 
-            this.BLOCK_SIZE - 4
+        if (!this.board[y][x]) continue
+        const powerup = this.boardPowerups[y][x]
+        drawTetrisCell(
+          this.ctx,
+          this.OFFSET_X + x * this.BLOCK_SIZE,
+          this.OFFSET_Y + y * this.BLOCK_SIZE,
+          this.BLOCK_SIZE,
+          this.board[y][x],
+          { powerupGlow: powerup ? pulse : 0 },
+        )
+        if (powerup) {
+          this.ctx.font = `${Math.max(9, this.BLOCK_SIZE * 0.32)}px sans-serif`
+          this.ctx.textAlign = 'center'
+          this.ctx.textBaseline = 'middle'
+          this.ctx.fillText(
+            this.powerupIcons[powerup] || '?',
+            this.OFFSET_X + x * this.BLOCK_SIZE + this.BLOCK_SIZE / 2,
+            this.OFFSET_Y + y * this.BLOCK_SIZE + this.BLOCK_SIZE / 2,
           )
-          
-          // 如果方块上有道具，显示小图标
-          const powerup = this.boardPowerups[y][x]
-          if (powerup) {
-            this.ctx.font = '10px sans-serif'
-            this.ctx.textAlign = 'center'
-            this.ctx.fillText(
-              this.powerupIcons[powerup] || '?', 
-              this.OFFSET_X + x * this.BLOCK_SIZE + this.BLOCK_SIZE / 2,
-              this.OFFSET_Y + y * this.BLOCK_SIZE + this.BLOCK_SIZE / 2 + 3
-            )
-          }
-          
-          this.ctx.shadowBlur = 0
         }
       }
     }
   }
-  
+
   private drawCurrentPiece() {
-    if (this.currentPiece) {
-      this.ctx.shadowBlur = 15
-      this.ctx.shadowColor = this.currentPiece.color
-      for (let y = 0; y < this.currentPiece.blocks.length; y++) {
-        for (let x = 0; x < this.currentPiece.blocks[y].length; x++) {
-          if (this.currentPiece.blocks[y][x]) {
-            const px = this.OFFSET_X + (this.currentPiece.x + x) * this.BLOCK_SIZE
-            const py = this.OFFSET_Y + (this.currentPiece.y + y) * this.BLOCK_SIZE
-            this.ctx.fillStyle = this.currentPiece.color
-            this.ctx.fillRect(px + 2, py + 2, this.BLOCK_SIZE - 4, this.BLOCK_SIZE - 4)
-          }
-        }
-      }
-      this.ctx.shadowBlur = 0
+    if (!this.currentPiece) return
+    const vis = {
+      ...this.currentPiece,
+      x: this.pieceVisualX,
+      y: this.pieceVisualY,
     }
+    this.drawPieceBlocks(vis, this.OFFSET_X, this.OFFSET_Y, this.BLOCK_SIZE)
   }
 
   
   private drawUI() {
     const W = this.canvas.width
-
-    this.ctx.fillStyle = 'rgba(0,0,0,0.45)'
-    this.ctx.beginPath()
-    this.ctx.roundRect(10, 8, W - 20, 40, 10)
-    this.ctx.fill()
     const comboLabel = this.combo > 1 ? ` · ${this.combo}连击` : ''
-    this.ctx.fillStyle = '#4D96FF'
-    this.ctx.font = 'bold 15px sans-serif'
-    this.ctx.textAlign = 'center'
-    this.ctx.textBaseline = 'middle'
-    this.ctx.fillText(
-      `等级 ${this.level} · 消行 ${this.lines}${comboLabel}`,
-      W / 2,
-      28,
-    )
+    const statusLine = `Lv${this.level} · ${this.lines}行${comboLabel}`
 
-    // 显示激活的道具状态（左侧小字，避免挡棋盘）
+    if (this.handheldFrame) {
+      const { hud } = this.handheldFrame
+      this.ctx.fillStyle = '#b8d4e8'
+      this.ctx.font = 'bold 12px sans-serif'
+      this.ctx.textAlign = 'left'
+      this.ctx.textBaseline = 'middle'
+      this.ctx.fillText(statusLine, hud.x + 12, hud.y + hud.h / 2)
+      
+      this.ctx.font = 'bold 14px sans-serif'
+      this.ctx.fillStyle = '#FFD54F'
+      this.ctx.textAlign = 'right'
+      const scoreX = hud.x + hud.w - 12
+      this.ctx.fillText(`${this.score}`, scoreX, hud.y + hud.h / 2)
+      
+      this.ctx.font = '9px sans-serif'
+      this.ctx.fillStyle = 'rgba(255,255,255,0.45)'
+      this.ctx.fillText('得分', scoreX, hud.y + hud.h / 2 - 10)
+    } else {
+      this.ctx.fillStyle = 'rgba(0,0,0,0.45)'
+      this.ctx.beginPath()
+      this.ctx.roundRect(10, 8, W - 20, 40, 10)
+      this.ctx.fill()
+      this.ctx.fillStyle = '#4D96FF'
+      this.ctx.font = 'bold 15px sans-serif'
+      this.ctx.textAlign = 'center'
+      this.ctx.textBaseline = 'middle'
+      this.ctx.fillText(`等级 ${this.level} · 消行 ${this.lines}${comboLabel}`, W / 2, 28)
+    }
+
     const now = Date.now()
-    let statusY = 95
+    let statusY = this.handheldFrame ? this.handheldFrame.hud.y + this.handheldFrame.hud.h + 8 : 95
     
     if ((window as any).tetrisSlowDrop && now < (window as any).tetrisSlowDrop) {
       const remaining = Math.ceil(((window as any).tetrisSlowDrop - now) / 1000)
@@ -615,36 +867,67 @@ export class TetrisGame {
     }
   }
   
-  private drawNextPiece() {
-    const W = this.canvas.width
-    
-    // 下一个方块标题
-    this.ctx.fillStyle = 'rgba(255,255,255,0.3)'
-    this.ctx.font = '14px sans-serif'
-    this.ctx.textAlign = 'right'
-    this.ctx.fillText('NEXT', W - 20, 35)
-    
-    if (this.nextPiece) {
-      // 如果激活了预览道具，高亮显示
-      if ((window as any).tetrisPreview && Date.now() < (window as any).tetrisPreview) {
-        this.ctx.shadowBlur = 15
-        this.ctx.shadowColor = '#FFD700'
-      } else {
-        this.ctx.shadowBlur = 10
-      }
-      this.ctx.shadowColor = this.nextPiece.color
-      
-      for (let y = 0; y < this.nextPiece.blocks.length; y++) {
-        for (let x = 0; x < this.nextPiece.blocks[y].length; x++) {
-          if (this.nextPiece.blocks[y][x]) {
-            const px = W - 120 + x * 20
-            const py = 50 + y * 20
-            this.ctx.fillStyle = this.nextPiece.color
-            this.ctx.fillRect(px, py, 18, 18)
+  private drawPreviewPanels() {
+    const frame = this.handheldFrame
+    if (!frame) return
+    const { previewHold, previewNext } = frame
+    const cellHold = Math.floor(Math.min(previewHold.w - 12, previewHold.h - 24) / 4)
+    const cellNext = Math.floor(Math.min(previewNext.w - 12, previewNext.h - 24) / 4)
+
+    this.ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    this.ctx.font = 'bold 9px sans-serif'
+    this.ctx.textAlign = 'center'
+    this.ctx.fillText('HOLD', previewHold.x + previewHold.w / 2, previewHold.y + 10)
+    this.ctx.fillText('NEXT', previewNext.x + previewNext.w / 2, previewNext.y + 10)
+
+    const drawMini = (
+      piece: typeof this.nextPiece,
+      box: { x: number; y: number; w: number; h: number },
+      cell: number,
+    ) => {
+      if (!piece) return
+      const bw = piece.blocks[0].length * cell
+      const bh = piece.blocks.length * cell
+      const ox = box.x + (box.w - bw) / 2
+      const oy = box.y + (box.h - bh) / 2 + 8
+      for (let y = 0; y < piece.blocks.length; y++) {
+        for (let x = 0; x < piece.blocks[y].length; x++) {
+          if (piece.blocks[y][x]) {
+            drawTetrisCell(this.ctx, ox + x * cell, oy + y * cell, cell, piece.color)
           }
         }
       }
-      this.ctx.shadowBlur = 0
+    }
+
+    drawMini(this.holdPiece, previewHold, cellHold)
+    drawMini(this.nextPiece, previewNext, cellNext)
+  }
+
+  private drawNextPiece() {
+    const W = this.canvas.width
+    const cell = 18
+    const originX = W - 120
+    const originY = 50
+
+    this.ctx.fillStyle = 'rgba(255,255,255,0.35)'
+    this.ctx.font = '14px sans-serif'
+    this.ctx.textAlign = 'right'
+    this.ctx.fillText('NEXT', W - 20, 35)
+
+    if (this.nextPiece) {
+      for (let y = 0; y < this.nextPiece.blocks.length; y++) {
+        for (let x = 0; x < this.nextPiece.blocks[y].length; x++) {
+          if (this.nextPiece.blocks[y][x]) {
+            drawTetrisCell(
+              this.ctx,
+              originX + x * cell,
+              originY + y * cell,
+              cell,
+              this.nextPiece.color,
+            )
+          }
+        }
+      }
     }
   }
 }

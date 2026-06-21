@@ -8,6 +8,10 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT, TURRET_CONFIGS, WALL_CONFIGS } from './con
 import { placeTurret, placeWall, upgradeTurret, sellTurret, canPlaceWall } from './turrets'
 import type { JoystickState, MobileButtons } from './renderer'
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import {
+  bindGameCanvasControls,
+  type MobileControlRuntime,
+} from '../../platform/mobileControls'
 
 // ==================== 类型定义 ====================
 
@@ -246,6 +250,47 @@ export function initInput(params: InputInitParams): () => void {
 
   applyCanvasMobileStyles(canvas)
 
+  let platformControls: MobileControlRuntime | null = bindGameCanvasControls(canvas, {
+    gameId: 'rpgShooterTD',
+    viewWidth: CANVAS_WIDTH,
+    viewHeight: CANVAS_HEIGHT,
+    layout: {
+      viewWidth: CANVAS_WIDTH,
+      viewHeight: CANVAS_HEIGHT,
+      buttons: [],
+      joystick: {
+        x: joystick.baseX,
+        y: joystick.baseY,
+        radius: joystick.radius,
+        knobRadius: joystick.knobRadius,
+        deadZone: 0.12,
+      },
+    },
+    onAction: (action, payload) => {
+      if (action !== 'move' || payload.source !== 'touch') return
+      const dx = payload.stickX ?? 0
+      const dy = payload.stickY ?? 0
+      const mag = payload.stickMagnitude ?? Math.hypot(dx, dy)
+      const active = mag > 0.12
+      state.joystick = {
+        active,
+        dx: active ? dx : 0,
+        dy: active ? dy : 0,
+        baseX: joystick.baseX,
+        baseY: joystick.baseY,
+        touchId: null,
+      }
+      joystick.active = active
+      if (active) {
+        joystick.currentX = joystick.baseX + dx * joystick.radius
+        joystick.currentY = joystick.baseY + dy * joystick.radius
+      } else {
+        joystick.currentX = joystick.baseX
+        joystick.currentY = joystick.baseY
+      }
+    },
+  })
+
   let lastTouchTime = 0
   let lastPlaceTime = 0           // 上次放置炮台的时间戳
   let touchStartedOnButton = false // 本次触摸是否始于按钮区域
@@ -262,62 +307,8 @@ export function initInput(params: InputInitParams): () => void {
     state.buildMode.previewY = mousePos.y
   }
 
-  // ---------- 触摸移动（摇杆拖拽） ----------
-  const JOY_DEAD_ZONE = 0.12  // 死区 <12% 不响应（防手指微抖）
-
   const handleTouchMove = (e: TouchEvent) => {
     e.preventDefault()
-    if (!joystick.active) return
-
-    const touch = Array.from(e.touches).find(t => t.identifier === joystick.touchId)
-    if (!touch) return
-
-    // 屏幕坐标 → Canvas 逻辑坐标转换（与 touchStart 一致！）
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = CANVAS_WIDTH / rect.width
-    const scaleY = CANVAS_HEIGHT / rect.height
-    const cx = (touch.clientX - rect.left) * scaleX
-    const cy = (touch.clientY - rect.top) * scaleY
-
-    // 计算相对于底座的偏移（统一逻辑坐标系）
-    let dx = cx - joystick.baseX
-    let dy = cy - joystick.baseY
-    let dist = Math.sqrt(dx * dx + dy * dy)
-
-    // 限制在半径内
-    if (dist > joystick.radius) {
-      dx = (dx / dist) * joystick.radius
-      dy = (dy / dist) * joystick.radius
-      dist = joystick.radius
-    }
-
-    // 更新旋钮位置（逻辑坐标）
-    joystick.currentX = joystick.baseX + dx
-    joystick.currentY = joystick.baseY + dy
-
-    // 归一化到 [-1, 1]
-    let ndx = dx / joystick.radius
-    let ndy = dy / joystick.radius
-
-    // 死区过滤
-    const mag = Math.sqrt(ndx * ndx + ndy * ndy)
-    if (mag < JOY_DEAD_ZONE) {
-      ndx = 0; ndy = 0
-    }
-
-    state.joystick = {
-      active: true,
-      dx: ndx,
-      dy: ndy,
-      baseX: joystick.baseX,
-      baseY: joystick.baseY,
-      touchId: joystick.touchId
-    }
-
-    mousePos.x = joystick.currentX
-    mousePos.y = joystick.currentY
-    state.buildMode.previewX = mousePos.x
-    state.buildMode.previewY = mousePos.y
   }
 
   // ---------- 触摸开始 ----------
@@ -379,19 +370,12 @@ export function initInput(params: InputInitParams): () => void {
       }
     }
 
-    // 2. 摇杆区域检测 — 仅限虚线圆圈范围内
+    // 2. 左下摇杆区（platform 处理移动；此处仅避免 touchend 误放塔）
     if (!state.buildMode.selectedTurret) {
       const dx = btnX - joystick.baseX
       const dy = btnY - joystick.baseY
-      const dist = Math.sqrt(dx * dx + dy * dy)
-
-      // 激活范围 = 摇杆半径（与渲染虚线框完全一致）
-      if (dist <= joystick.radius) {
+      if (Math.hypot(dx, dy) <= joystick.radius * 1.08) {
         touchStartedOnButton = true
-        joystick.active = true
-        joystick.touchId = touch.identifier
-        joystick.currentX = btnX
-        joystick.currentY = btnY
         return
       }
     }
@@ -399,19 +383,9 @@ export function initInput(params: InputInitParams): () => void {
     // 3. 其他触摸 → 地图点击（触摸结束时才执行放置）
   }
 
-  const releaseJoystickIfNeeded = (e: TouchEvent) => {
-    if (!joystick.active) return
-    const touch = Array.from(e.changedTouches).find(t => t.identifier === joystick.touchId)
-    if (touch) {
-      joystick.active = false
-      state.joystick = { active: false, dx: 0, dy: 0, baseX: 0, baseY: 0, touchId: null }
-    }
-  }
-
   // ---------- 触摸结束 ----------
   const handleTouchEnd = (e: TouchEvent) => {
     e.preventDefault()
-    releaseJoystickIfNeeded(e)
 
     // 摇杆/按钮区域开始的触摸 → 不做地图放置
     if (touchStartedOnButton) return
@@ -523,7 +497,6 @@ export function initInput(params: InputInitParams): () => void {
   canvas.addEventListener('contextmenu', handleRightClick)
   const handleTouchCancel = (e: TouchEvent) => {
     e.preventDefault()
-    releaseJoystickIfNeeded(e)
     touchStartedOnButton = false
   }
 
@@ -534,6 +507,8 @@ export function initInput(params: InputInitParams): () => void {
 
   // ========== 清理函数 ==========
   return () => {
+    platformControls?.dispose()
+    platformControls = null
     canvas.removeEventListener('mousemove', handleMouseMove)
     canvas.removeEventListener('click', handleClick)
     canvas.removeEventListener('contextmenu', handleRightClick)

@@ -1,35 +1,22 @@
 import type { Scene } from '@babylonjs/core'
 import { worldToGrid } from './config'
+import { clientToPickCoords } from '../../platform/babylonPickUtils'
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+
+export { clientToPickCoords }
 
 export interface PointerPick {
   gx: number
   gz: number
 }
 
-/** client 坐标 → Babylon pick 用的画布像素坐标 */
-export function clientToPickCoords(
-  canvas: HTMLCanvasElement,
-  clientX: number,
-  clientY: number,
-): { x: number; y: number } {
-  const rect = canvas.getBoundingClientRect()
-  const scaleX = canvas.width / rect.width
-  const scaleY = canvas.height / rect.height
-  return {
-    x: (clientX - rect.left) * scaleX,
-    y: (clientY - rect.top) * scaleY,
-  }
-}
-
-export function pickGridAt(
+export function pickGridAtCanvasPixels(
   scene: Scene,
-  canvas: HTMLCanvasElement,
-  clientX: number,
-  clientY: number,
+  logicalX: number,
+  logicalY: number,
 ): PointerPick | null {
-  const { x, y } = clientToPickCoords(canvas, clientX, clientY)
-  const pick = scene.pick(x, y)
+  const pick = scene.pick(logicalX, logicalY)
   if (!pick?.hit || !pick.pickedMesh) return null
   const meta = pick.pickedMesh.metadata as { gx?: number; gz?: number; sunId?: number } | undefined
   if (meta?.sunId != null) return null
@@ -41,6 +28,26 @@ export function pickGridAt(
   return worldToGrid(p.x, p.z)
 }
 
+export function pickSunIdAtCanvasPixels(
+  scene: Scene,
+  logicalX: number,
+  logicalY: number,
+): number | null {
+  const pick = scene.pick(logicalX, logicalY)
+  const meta = pick?.pickedMesh?.metadata as { sunId?: number } | undefined
+  return meta?.sunId ?? null
+}
+
+export function pickGridAt(
+  scene: Scene,
+  canvas: HTMLCanvasElement,
+  clientX: number,
+  clientY: number,
+): PointerPick | null {
+  const { x, y } = clientToPickCoords(canvas, clientX, clientY)
+  return pickGridAtCanvasPixels(scene, x, y)
+}
+
 export function pickSunIdAt(
   scene: Scene,
   canvas: HTMLCanvasElement,
@@ -48,11 +55,10 @@ export function pickSunIdAt(
   clientY: number,
 ): number | null {
   const { x, y } = clientToPickCoords(canvas, clientX, clientY)
-  const pick = scene.pick(x, y)
-  const meta = pick?.pickedMesh?.metadata as { sunId?: number } | undefined
-  return meta?.sunId ?? null
+  return pickSunIdAtCanvasPixels(scene, x, y)
 }
 
+/** 3D：统一 tap + 格子 pick / 阳光 pick */
 export function bindCanvasInput(
   canvas: HTMLCanvasElement,
   scene: Scene,
@@ -62,13 +68,17 @@ export function bindCanvasInput(
 ): () => void {
   applyCanvasMobileStyles(canvas)
 
-  const onPointer = (ev: PointerEvent) => {
-    if (ev.button !== 0) return
-    ev.preventDefault()
-    const sunId = pickSunIdAt(scene, canvas, ev.clientX, ev.clientY)
-    const pick = pickGridAt(scene, canvas, ev.clientX, ev.clientY)
-    handlers.onTap(pick, sunId)
-  }
-  canvas.addEventListener('pointerdown', onPointer, { passive: false })
-  return () => canvas.removeEventListener('pointerdown', onPointer)
+  const runtime = bindGameCanvasControls(canvas, {
+    gameId: 'plantZombieDefense',
+    viewWidth: canvas.width,
+    viewHeight: canvas.height,
+    layout: { viewWidth: canvas.width, viewHeight: canvas.height, buttons: [] },
+    onAction: (action, payload) => {
+      if (action !== 'tap' || payload.x == null || payload.y == null) return
+      const sunId = pickSunIdAtCanvasPixels(scene, payload.x, payload.y)
+      const pick = pickGridAtCanvasPixels(scene, payload.x, payload.y)
+      handlers.onTap(pick, sunId)
+    },
+  })
+  return () => runtime.dispose()
 }

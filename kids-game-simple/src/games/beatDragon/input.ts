@@ -1,6 +1,8 @@
-import { BASE_W } from './config'
+import { BASE_H, BASE_W } from './config'
 import type { GameState } from './types'
 import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 
 export interface InputState {
   pointerX: number | null
@@ -11,6 +13,7 @@ export function createInputState(): InputState {
   return { pointerX: null, pointerDown: false }
 }
 
+/** 横向跟手 + 点击选 buff（registry `swipe_pan`；PC 鼠标未按键时仍跟手） */
 export function bindBeatDragonInput(
   canvas: HTMLCanvasElement,
   input: InputState,
@@ -18,37 +21,50 @@ export function bindBeatDragonInput(
 ): () => void {
   applyCanvasMobileStyles(canvas)
 
-  const onPointerDown = (e: PointerEvent) => {
-    e.preventDefault()
-    input.pointerDown = true
-    const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY)
+  let controls: MobileControlRuntime | null = null
+
+  const setX = (x: number) => {
     input.pointerX = x
-    onTap(x, y)
   }
 
-  const onPointerMove = (e: PointerEvent) => {
+  controls = bindGameCanvasControls(canvas, {
+    gameId: 'beatDragon',
+    viewWidth: BASE_W,
+    viewHeight: BASE_H,
+    layout: { viewWidth: BASE_W, viewHeight: BASE_H, buttons: [] },
+    onAction: (action, payload) => {
+      const x = payload.x ?? input.pointerX ?? BASE_W / 2
+      const y = payload.y ?? 0
+      if (action === 'tap') {
+        input.pointerDown = true
+        setX(x)
+        onTap(x, y)
+        return
+      }
+      if (action === 'swipe') {
+        input.pointerDown = true
+        setX(x)
+      }
+    },
+  })
+
+  const onMouseMoveHover = (e: MouseEvent) => {
+    if (e.buttons !== 0) return
     const { x } = clientToCanvas(canvas, e.clientX, e.clientY)
-    if (!input.pointerDown && e.pointerType === 'mouse') {
-      input.pointerX = x
-      return
-    }
-    if (input.pointerDown) input.pointerX = x
+    setX(x)
   }
-
-  const onPointerUp = () => {
+  const onMouseUp = () => {
     input.pointerDown = false
   }
-
-  canvas.addEventListener('pointerdown', onPointerDown)
-  canvas.addEventListener('pointermove', onPointerMove)
-  canvas.addEventListener('pointerup', onPointerUp)
-  canvas.addEventListener('pointercancel', onPointerUp)
+  canvas.addEventListener('mousemove', onMouseMoveHover)
+  window.addEventListener('mouseup', onMouseUp)
 
   return () => {
-    canvas.removeEventListener('pointerdown', onPointerDown)
-    canvas.removeEventListener('pointermove', onPointerMove)
-    canvas.removeEventListener('pointerup', onPointerUp)
-    canvas.removeEventListener('pointercancel', onPointerUp)
+    controls?.dispose()
+    controls = null
+    canvas.removeEventListener('mousemove', onMouseMoveHover)
+    window.removeEventListener('mouseup', onMouseUp)
+    input.pointerDown = false
   }
 }
 

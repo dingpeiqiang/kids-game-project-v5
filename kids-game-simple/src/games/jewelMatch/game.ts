@@ -6,7 +6,8 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createCanvasGameLifecycle } from '../../platform/createCanvasGameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
-import { bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 
 function startJewelMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
@@ -1031,14 +1032,14 @@ function startJewelMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
     }
   }
 
-  let unbindJewel: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   function checkTimeout() {
     if (gameEnded) return
     if (Date.now() - lastMoveTime > MOVE_TIMEOUT) {
       gameEnded = true
-      unbindJewel?.()
-      unbindJewel = null
+      controls?.dispose()
+      controls = null
       audioService.lose()
       gameActions.gameOver({ victory: false, score: engine.getScore() })
     }
@@ -1051,8 +1052,16 @@ function startJewelMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
       resizeCanvasForMobile(canvas)
       injectMobileStyles()
       updateHTMLPowerupBar()
-      unbindJewel = bindCanvasPointerInput(canvas, (x, y) => {
-        void handleClickAt(x, y)
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'jewelMatch',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (action === 'tap' && payload.x != null && payload.y != null) {
+            void handleClickAt(payload.x, payload.y)
+          }
+        },
       })
       draw()
     },
@@ -1065,8 +1074,8 @@ function startJewelMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
     },
     onDestroy() {
       gameEnded = true
-      unbindJewel?.()
-      unbindJewel = null
+      controls?.dispose()
+      controls = null
       app.removePowerupBar?.()
     },
   })

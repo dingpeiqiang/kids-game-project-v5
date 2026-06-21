@@ -12,6 +12,8 @@ import {
 import { audioService } from '../../services/audio'
 import { gameEngine } from '../../services/gameEngine'
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 
 export interface InputCallbacks {
   onRouteEditorClear: () => void
@@ -366,40 +368,42 @@ export function createInputHandler(
 
   applyCanvasMobileStyles(canvas)
 
-  const onTouchStart = (e: TouchEvent) => {
-    e.preventDefault()
-    const t = e.touches[0]
-    if (!t) return
-    const pos = state.phase === 'routeEdit' ? getCanvasPos(t) : getPos(t)
-    handleDown(pos.x, pos.y)
+  const logicalToClient = (logX: number, logY: number) => {
+    const rect = getCanvasRect()
+    return {
+      clientX: rect.left + (logX / CANVAS_W) * rect.width,
+      clientY: rect.top + (logY / CANVAS_H) * rect.height,
+    }
   }
 
-  const onTouchMove = (e: TouchEvent) => {
-    e.preventDefault()
-    const t = e.touches[0]
-    if (!t) return
-    const pos = state.phase === 'routeEdit' ? getCanvasPos(t) : getPos(t)
-    handleMove(pos.x, pos.y)
+  const dispatchPlatformPointer = (action: 'tap' | 'swipe', logX: number, logY: number) => {
+    const { clientX, clientY } = logicalToClient(logX, logY)
+    const pt = { clientX, clientY } as MouseEvent
+    const pos = state.phase === 'routeEdit' ? getCanvasPos(pt) : getPos(pt)
+    if (action === 'tap') handleDown(pos.x, pos.y)
+    else handleMove(pos.x, pos.y)
   }
 
-  const onMouseDown = (e: MouseEvent) => {
-    const pos = state.phase === 'routeEdit' ? getCanvasPos(e) : getPos(e)
-    handleDown(pos.x, pos.y)
-  }
+  let platformControls: MobileControlRuntime | null = bindGameCanvasControls(canvas, {
+    gameId: 'dragonShooter',
+    preset: 'swipe_pan',
+    viewWidth: CANVAS_W,
+    viewHeight: CANVAS_H,
+    trackOutsideCanvas: true,
+    onAction: (action, payload) => {
+      const lx = payload.x ?? 0
+      const ly = payload.y ?? 0
+      if (action === 'tap') dispatchPlatformPointer('tap', lx, ly)
+      if (action === 'swipe') dispatchPlatformPointer('swipe', lx, ly)
+    },
+  })
 
-  const onMouseMove = (e: MouseEvent) => {
-    const pos = state.phase === 'routeEdit' ? getCanvasPos(e) : getPos(e)
-    handleMove(pos.x, pos.y)
-  }
-
-  canvas.addEventListener('touchstart', onTouchStart, { passive: false })
-  canvas.addEventListener('touchmove', onTouchMove, { passive: false })
-  canvas.addEventListener('touchend', handleUp)
-  canvas.addEventListener('touchcancel', handleUp)
-  canvas.addEventListener('mousedown', onMouseDown)
-  canvas.addEventListener('mousemove', onMouseMove)
-  canvas.addEventListener('mouseup', handleUp)
-  canvas.addEventListener('mouseleave', handleUp)
+  const onPointerRelease = () => handleUp()
+  canvas.addEventListener('mouseup', onPointerRelease)
+  canvas.addEventListener('mouseleave', onPointerRelease)
+  window.addEventListener('mouseup', onPointerRelease)
+  window.addEventListener('touchend', onPointerRelease)
+  window.addEventListener('touchcancel', onPointerRelease)
 
   const handleResize = () => {
     cachedRect = null
@@ -408,14 +412,13 @@ export function createInputHandler(
   window.addEventListener('resize', handleResize)
 
   const dispose = () => {
-    canvas.removeEventListener('touchstart', onTouchStart)
-    canvas.removeEventListener('touchmove', onTouchMove)
-    canvas.removeEventListener('touchend', handleUp)
-    canvas.removeEventListener('touchcancel', handleUp)
-    canvas.removeEventListener('mousedown', onMouseDown)
-    canvas.removeEventListener('mousemove', onMouseMove)
-    canvas.removeEventListener('mouseup', handleUp)
-    canvas.removeEventListener('mouseleave', handleUp)
+    platformControls?.dispose()
+    platformControls = null
+    canvas.removeEventListener('mouseup', onPointerRelease)
+    canvas.removeEventListener('mouseleave', onPointerRelease)
+    window.removeEventListener('mouseup', onPointerRelease)
+    window.removeEventListener('touchend', onPointerRelease)
+    window.removeEventListener('touchcancel', onPointerRelease)
     window.removeEventListener('resize', handleResize)
     delete (canvas as HTMLCanvasElement & { __invalidateTouchRect?: () => void }).__invalidateTouchRect
   }

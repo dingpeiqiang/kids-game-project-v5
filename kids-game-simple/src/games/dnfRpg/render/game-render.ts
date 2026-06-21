@@ -48,6 +48,8 @@ export interface GameRenderData {
   transitionPhase: 'none' | 'slide_out' | 'slide_in'
   transitionProgress: number
   screenShake: ScreenShake | null
+  /** platform overlay 绘制时跳过自绘 touch-ui */
+  skipLegacyTouchUi?: boolean
 }
 
 export function renderGame(ctx: CanvasRenderingContext2D, data: GameRenderData): void {
@@ -157,15 +159,16 @@ export function renderGame(ctx: CanvasRenderingContext2D, data: GameRenderData):
 
   ctx.restore()
 
-  // 绘制触屏UI
-  const touchData: TouchUIData = {
-    touchButtons: data.touchButtons,
-    joystick: data.joystick,
-    dungeon: data.dungeon,
-    player: data.player,
-    skills: data.skills,
+  if (!data.skipLegacyTouchUi) {
+    const touchData: TouchUIData = {
+      touchButtons: data.touchButtons,
+      joystick: data.joystick,
+      dungeon: data.dungeon,
+      player: data.player,
+      skills: data.skills,
+    }
+    drawTouchUI(ctx, touchData, totalWidth, now)
   }
-  drawTouchUI(ctx, touchData, totalWidth, now)
 
   // 面板分隔线
   ctx.strokeStyle = 'rgba(255,255,255,0.1)'

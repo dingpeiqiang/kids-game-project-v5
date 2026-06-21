@@ -19,16 +19,18 @@ const GAME_CONTROL_PRESETS: Record<string, MobileControlPresetId> = {
 
   // 休闲切割 / 蓄力
   fruitSlice: 'swipe_pan',
-  cookieCut: 'tap_hold',
+  /** 滑动切割（与 fruitSlice 同类；蓄力版见 tap_hold） */
+  cookieCut: 'swipe_pan',
 
   // 跑酷 / 分屏
   /** 横向跟手拖拽 + 方向键（见 dodge/game.ts） */
   dodge: 'swipe_pan',
   racingRun: 'tap',
   neonRun: 'portrait_swipe_lane',
-  slimeJump: 'tap',
-  bouncePath: 'tap',
-  starCatcher: 'tap',
+  /** 跟手 swipe（bindGameCanvasControls 消费 swipe） */
+  slimeJump: 'swipe_pan',
+  bouncePath: 'swipe_pan',
+  starCatcher: 'swipe_pan',
 
   // 方向 / 堆叠
   snake: 'swipe_pan',
@@ -42,16 +44,19 @@ const GAME_CONTROL_PRESETS: Record<string, MobileControlPresetId> = {
   contraRpg: 'joystick_action',
   dnfRpg: 'joystick_action',
   wangzheRpg: 'joystick_action',
-  kingBaby: 'joystick_action',
-  beatDragon: 'joystick_action',
+  kingBaby: 'swipe_pan',
+  beatDragon: 'swipe_pan',
   voxelRealm: 'joystick_dynamic',
 
   // 射击
-  spaceShooter: 'joystick_dynamic',
-  dragonShooter: 'joystick_dynamic',
+  /** 全屏拖动机位（Phaser canvas + swipe_pan） */
+  spaceShooter: 'swipe_pan',
+  /** 跟手瞄准 + 路线编辑（全画布 swipe_pan，见 dragonShooter/input.ts） */
+  dragonShooter: 'swipe_pan',
   rpgShooter: 'joystick_dynamic',
   skyRush3d: 'joystick_dynamic',
-  skyFrenzy: 'tap',
+  /** 俯视角拖移 + 方向键（见 skyFrenzy/input.ts） */
+  skyFrenzy: 'swipe_pan',
   skyTideClash: 'joystick_dynamic',
   cloudBallRush3d: 'tilt',
 
@@ -61,7 +66,8 @@ const GAME_CONTROL_PRESETS: Record<string, MobileControlPresetId> = {
   plantZombieDefense: 'tap',
   plantZombieDefense2d: 'tap',
   plantsVsZombies: 'tap',
-  rpgShooterTD: 'tap',
+  /** 左下固定摇杆 + 地图 tap/松手放塔（混合 input.ts） */
+  rpgShooterTD: 'joystick_action',
 
   // 坦克 / 格斗向
   cuteTankBattle: 'joystick_4way',
@@ -71,7 +77,7 @@ const DEFAULT_PRESET: MobileControlPresetId = 'tap'
 
 /**
  * 统一操作框架试点（见 docs/CONTROL_PILOT_GAMES.md）
- * P0 先迁：whackMole → dodge → superMario
+ * 用于调试顺序与 `isControlPilotGame`；非试点游戏也可已接入 platform。
  */
 export const CONTROL_PILOT_GAME_IDS = [
   'superMario',
@@ -82,6 +88,15 @@ export const CONTROL_PILOT_GAME_IDS = [
   'cuteTankBattle',
   'towerDefense',
   'cookieCut',
+  'cloudBallRush3d',
+  'skyFrenzy',
+  'skyRush3d',
+  'rpgShooter',
+  'spaceShooter',
+  'voxelRealm',
+  'wangzheRpg',
+  'contraRpg',
+  'dnfRpg',
 ] as const
 
 export type ControlPilotGameId = (typeof CONTROL_PILOT_GAME_IDS)[number]

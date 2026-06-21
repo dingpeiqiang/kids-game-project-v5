@@ -2,13 +2,40 @@ export {
   bindMobileControlPreset,
   type MobileControlRuntime,
 } from './bindPreset'
+export {
+  bindGameCanvasControls,
+  type BindGameCanvasControlsOptions,
+} from './bindGameCanvasControls'
+export {
+  bindGame3dCanvasControls,
+  type BindGame3dCanvasControlsOptions,
+} from './bindGame3dCanvasControls'
+export {
+  bindHorizontalSwipePan,
+  type BindHorizontalSwipePanOptions,
+} from './bindHorizontalSwipePan'
+export { mergeGuideWithControlHint } from './mergeGuideWithControlHint'
 export { drawMobileControlOverlay } from './drawOverlay'
 export {
   defaultActionLayout,
+  portraitActionLayout,
   mergeLayout,
   quantizeStick,
   hitCircle,
+  portraitDpadButtons,
+  stickFromDpadPressed,
+  dpadButtonToStick,
 } from './layout'
+export {
+  MOBILE_CONTROL_LAYOUT_STORAGE_KEY,
+  loadSavedLayoutOverrides,
+  saveLayoutOverrides,
+  clearSavedLayoutOverrides,
+  listSavedLayoutGameIds,
+  type StoredLayoutEntryV1,
+  type StoredLayoutStoreV1,
+} from './layoutPersistence'
+export { bindTiltControl, type BindTiltOptions } from './bindTilt'
 export {
   getGameControlPreset,
   listGameControlPresets,

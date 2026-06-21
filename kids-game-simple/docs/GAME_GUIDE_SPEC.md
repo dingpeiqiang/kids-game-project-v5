@@ -48,7 +48,7 @@ export default { guide, GuidePage } satisfies GameGuideModule
 | 方法 | 说明 |
 |------|------|
 | `hasGameGuide(gameId)` | 是否已注册引导模块 |
-| `loadGameGuide(gameId)` | 懒加载 `GameGuide` 数据 |
+| `loadGameGuide(gameId)` | 懒加载 `GameGuide` 数据，并自动追加 `getCombinedControlGuideHint`（见 `mergeGuideWithControlHint`） |
 | `loadGameGuideModule(gameId)` | 加载完整模块（含可选 `GuidePage`） |
 
 ## 接入点

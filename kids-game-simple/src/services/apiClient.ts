@@ -15,6 +15,8 @@
  *   游戏分数、道具、成就、战绩 —— 后端对应接口尚未完全实现
  */
 
+import JSEncrypt from 'jsencrypt'
+
 // 后端基地址：开发走 Vite 代理；生产默认同源 /api（Nginx → backend）
 function resolveApiBase(): string {
   const raw = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
@@ -149,6 +151,10 @@ export interface SignInInfoData {
 const TOKEN_KEY = 'sgp_access_token'
 const REFRESH_KEY = 'sgp_refresh_token'
 const USER_ID_KEY = 'sgp_user_id'
+// 系统 B（frontend shared auth）使用的 key，同步写入以保持两套认证系统登录状态一致
+const SHARED_TOKEN_KEY = 'authToken'
+const SHARED_REFRESH_KEY = 'refreshToken'
+const SHARED_USER_INFO_KEY = 'userInfo'
 
 class TokenStore {
   getAccess(): string | null { return localStorage.getItem(TOKEN_KEY) }
@@ -159,16 +165,86 @@ class TokenStore {
     localStorage.setItem(TOKEN_KEY, access)
     localStorage.setItem(REFRESH_KEY, refresh)
     localStorage.setItem(USER_ID_KEY, String(userId))
+    // 同步写入系统 B 的 key，使路由守卫 isLoggedIn() 能识别系统 A 的登录状态
+    localStorage.setItem(SHARED_TOKEN_KEY, access)
+    localStorage.setItem(SHARED_REFRESH_KEY, refresh)
+    const uid = Number(userId)
+    localStorage.setItem(SHARED_USER_INFO_KEY, JSON.stringify({ id: uid, userId: uid }))
   }
 
   clear() {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem(USER_ID_KEY)
+    // 同步清除系统 B 的 key，避免登录态残留
+    localStorage.removeItem(SHARED_TOKEN_KEY)
+    localStorage.removeItem(SHARED_REFRESH_KEY)
+    localStorage.removeItem(SHARED_USER_INFO_KEY)
+    localStorage.removeItem('parentToken')
+    localStorage.removeItem('parentInfo')
+    localStorage.removeItem('adminInfo')
   }
 }
 
 export const tokenStore = new TokenStore()
+
+// ─────────────────────────────────────────────
+// RSA 密码加密（PKCS#1 v1.5，与后端 RSA/ECB/PKCS1Padding 一致）
+// ─────────────────────────────────────────────
+const PUBLIC_KEY_CACHE_TTL_MS = 10 * 60 * 1000
+
+interface CachedPublicKey {
+  publicKey: string
+  keyIndex: number
+  fetchedAt: number
+}
+
+let cachedPublicKey: CachedPublicKey | null = null
+
+function pemFromBase64Spki(base64: string): string {
+  const lines = base64.match(/.{1,64}/g) || [base64]
+  return `-----BEGIN PUBLIC KEY-----\n${lines.join('\n')}\n-----END PUBLIC KEY-----`
+}
+
+async function fetchPublicKey(): Promise<CachedPublicKey> {
+  const now = Date.now()
+  if (cachedPublicKey && now - cachedPublicKey.fetchedAt < PUBLIC_KEY_CACHE_TTL_MS) {
+    return cachedPublicKey
+  }
+  const res = await fetch(apiUrl('/auth/public-key'))
+  const json = (await res.json()) as {
+    code?: number
+    data?: { publicKey?: string; keyIndex?: number }
+  }
+  if (json.code !== 200 || !json.data?.publicKey) {
+    throw new Error('获取登录公钥失败')
+  }
+  cachedPublicKey = {
+    publicKey: json.data.publicKey,
+    keyIndex: json.data.keyIndex ?? 0,
+    fetchedAt: now,
+  }
+  return cachedPublicKey
+}
+
+/**
+ * 加密登录密码；生产环境失败抛错，开发环境可回退明文
+ */
+async function encryptPasswordForLogin(
+  plainPassword: string,
+): Promise<{ encryptedPassword: string; keyIndex: number } | null> {
+  try {
+    const { publicKey, keyIndex } = await fetchPublicKey()
+    const encrypt = new JSEncrypt()
+    encrypt.setPublicKey(pemFromBase64Spki(publicKey))
+    const encryptedPassword = encrypt.encrypt(plainPassword)
+    if (!encryptedPassword) return null
+    return { encryptedPassword, keyIndex }
+  } catch (e) {
+    console.warn('[apiClient] RSA 加密失败:', e)
+    return null
+  }
+}
 
 // ─────────────────────────────────────────────
 // HTTP 基础工具
@@ -205,6 +281,25 @@ function networkFailureMessage(err: unknown): string {
   return '网络请求失败'
 }
 
+// ─────────────────────────────────────────────
+// 401 全局自动刷新（单飞模式，避免并发刷新）
+// ─────────────────────────────────────────────
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/refresh', '/auth/public-key', '/auth/register', '/auth/logout']
+
+function isAuthEndpoint(path: string): boolean {
+  return AUTH_ENDPOINTS.some(ep => path.includes(ep))
+}
+
+let refreshPromise: Promise<string | null> | null = null
+
+function refreshOnce(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = apiRefreshToken().finally(() => {
+    refreshPromise = null
+  })
+  return refreshPromise
+}
+
 async function request<T = any>(
   path: string,
   options: RequestInit = {},
@@ -221,24 +316,41 @@ async function request<T = any>(
   }
 
   const url = apiUrl(path)
-  try {
-    const res = await fetch(url, { ...options, headers })
-    const json = await res.json()
-    return deepCamelize(json)
-  } catch (err) {
-    console.error('[apiClient] 请求失败:', path, url, err)
-    if (
-      err instanceof TypeError &&
-      String((err as Error).message).includes('fetch')
-    ) {
-      console.warn(
-        '[apiClient] 多为 SSL/跨域或 API 不可达，当前 API_BASE=',
-        API_BASE,
-        '；Android 请确认 .env.production 后重新 build + cap sync',
-      )
+  const doFetch = async (): Promise<BackendResult<T>> => {
+    try {
+      const res = await fetch(url, { ...options, headers })
+      const json = await res.json()
+      return deepCamelize(json)
+    } catch (err) {
+      console.error('[apiClient] 请求失败:', path, url, err)
+      if (
+        err instanceof TypeError &&
+        String((err as Error).message).includes('fetch')
+      ) {
+        console.warn(
+          '[apiClient] 多为 SSL/跨域或 API 不可达，当前 API_BASE=',
+          API_BASE,
+          '；Android 请确认 .env.production 后重新 build + cap sync',
+        )
+      }
+      return { code: -1, msg: networkFailureMessage(err) }
     }
-    return { code: -1, msg: networkFailureMessage(err) }
   }
+
+  const result = await doFetch()
+
+  // 401 自动刷新：仅对需鉴权的非认证端点生效，刷新成功后重试一次
+  if (result.code === 401 && withAuth && !isAuthEndpoint(path)) {
+    const newToken = await refreshOnce()
+    if (newToken) {
+      headers['Authorization'] = `Bearer ${newToken}`
+      return doFetch()
+    }
+    // 刷新失败，清除登录态
+    tokenStore.clear()
+  }
+
+  return result
 }
 
 // ─────────────────────────────────────────────
@@ -291,21 +403,31 @@ export async function apiLogin(
   username: string,
   password: string
 ): Promise<{ ok: boolean; msg: string; data?: AuthResponseData }> {
-  console.log('[API] 准备调用登录接口', { username })
+  // RSA 加密密码，生产环境强制加密，开发环境可回退明文
+  const encrypted = await encryptPasswordForLogin(password)
+  let body: Record<string, unknown>
+  if (encrypted) {
+    body = {
+      username,
+      encryptedPassword: encrypted.encryptedPassword,
+      keyIndex: encrypted.keyIndex,
+    }
+  } else {
+    if (import.meta.env.PROD) {
+      return { ok: false, msg: '无法安全加密密码，请检查网络后重试' }
+    }
+    body = { username, password }
+  }
+
   const res = await request<AuthResponseData>(
     '/auth/login',
     {
       method: 'POST',
-      body: JSON.stringify({
-        username,
-        password,
-        // 不传递 userType，后端会根据用户名自动识别
-      }),
+      body: JSON.stringify(body),
     },
     false,
   )
 
-  console.log('[API] 登录接口返回:', res)
   if (res.code === 200 && res.data) {
     const d = res.data
     tokenStore.save(d.accessToken, d.refreshToken, d.userId)
@@ -325,15 +447,18 @@ export async function apiLogout(): Promise<void> {
 
 /**
  * 刷新 AccessToken
- * POST /api/auth/refresh?refreshToken=...
+ * POST /api/auth/refresh（refreshToken 放 request body，避免泄露到 URL/日志）
  */
 export async function apiRefreshToken(): Promise<string | null> {
   const refreshToken = tokenStore.getRefresh()
   if (!refreshToken) return null
 
   const res = await request<{ accessToken: string }>(
-    `/auth/refresh?refreshToken=${encodeURIComponent(refreshToken)}`,
-    { method: 'POST' },
+    '/auth/refresh',
+    {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+    },
     false
   )
 
@@ -355,6 +480,12 @@ export async function apiGetCurrentUser(): Promise<UserInfoData | null> {
 
   const res = await request<UserInfoData>(`/user/${userId}`)
   if (res.code === 200 && res.data) return res.data
+
+  // 网络异常等非鉴权错误：保留 Token，避免移动端弱网误清登录态
+  if (res.code === -1) {
+    console.warn('[apiClient] getCurrentUser 网络失败，保留本地 Token')
+    return null
+  }
 
   // Token 可能已过期，尝试刷新
   if (res.code === 401) {
@@ -798,9 +929,9 @@ export async function apiGetGameRecords(): Promise<{ ok: boolean; data?: GameRec
 
 /** POST /api/user/game-record — 保存游戏记录 */
 export async function apiSaveGameRecord(gameId: number, score: number, isNewBest: boolean): Promise<{ ok: boolean }> {
-  const res = await request('/user/game-record', { 
+  const res = await request('/user/game-record', {
     method: 'POST',
-    params: { gameId, score, isNewBest }
+    body: JSON.stringify({ gameId, score, isNewBest })
   })
   if (res.code === 200) return { ok: true }
   return { ok: false }

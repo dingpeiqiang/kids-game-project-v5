@@ -94,8 +94,6 @@ Docker Network: kids-game-network (Bridge)
 │                        └──────────────────┘          │
 │                                                       │
 │  Volumes:                                             │
-│  - mysql-data: 数据库持久化                           │
-│  - redis-data: Redis 持久化                           │
 │  - backend-logs: 后端日志                             │
 │  - backend-uploads: 临时上传文件                      │
 │  - game-data: 游戏数据                                │
@@ -338,8 +336,6 @@ ELK Stack (可选)
     │       │
     │       └─→ docker-compose up -d
     │               │
-    │               ├─→ 启动 MySQL
-    │               ├─→ 启动 Redis
     │               ├─→ 启动 Backend
     │               ├─→ 启动 Frontend
     │               └─→ 启动 Games (可选)

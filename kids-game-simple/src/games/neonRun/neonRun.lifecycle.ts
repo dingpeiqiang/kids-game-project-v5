@@ -5,7 +5,9 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import type { GameLifecycle } from '../../platform/GameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { requireMainGameCanvas } from '../../platform/canvasHost'
-import { applyCanvasMobileStyles, bindCanvasLaneTap } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { getCachedGTRSTheme } from '../../services/gtrsThemeLoader'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 import { readGtrsSceneMeta } from '../../utils/gtrsSceneMeta'
@@ -76,8 +78,21 @@ export function startNeonRunLifecycle(ctx: GameLifecycleContext): GameLifecycle 
   let hitInvincibleFrames = 0
   let powerInvincibleUntil = 0
   let inventory: string[] = []
-  let unbindLaneTap: (() => void) | null = null
-  let onKeydown: ((e: KeyboardEvent) => void) | null = null
+  let controls: MobileControlRuntime | null = null
+
+  function laneLeft() {
+    if (playerLane > 0) {
+      playerLane--
+      audioService.collect()
+    }
+  }
+
+  function laneRight() {
+    if (playerLane < lanes - 1) {
+      playerLane++
+      audioService.collect()
+    }
+  }
 
   const powerupIcons: Record<string, string> = {
     invincible: '⭐',
@@ -339,12 +354,8 @@ export function startNeonRunLifecycle(ctx: GameLifecycleContext): GameLifecycle 
   }
 
   function finishRun() {
-    unbindLaneTap?.()
-    unbindLaneTap = null
-    if (onKeydown) {
-      document.removeEventListener('keydown', onKeydown)
-      onKeydown = null
-    }
+    controls?.dispose()
+    controls = null
   }
 
   return hostCanvas2D(ctx, {
@@ -353,33 +364,16 @@ export function startNeonRunLifecycle(ctx: GameLifecycleContext): GameLifecycle 
       gameEnded = false
       applyCanvasMobileStyles(canvas)
       updateHTMLPowerupBar()
-      onKeydown = (e: KeyboardEvent) => {
-        if (e.key === 'ArrowLeft' && playerLane > 0) {
-          playerLane--
-          audioService.collect()
-        }
-        if (e.key === 'ArrowRight' && playerLane < lanes - 1) {
-          playerLane++
-          audioService.collect()
-        }
-      }
-      document.addEventListener('keydown', onKeydown)
-      unbindLaneTap = bindCanvasLaneTap(
-        canvas,
-        W,
-        () => {
-          if (playerLane > 0) {
-            playerLane--
-            audioService.collect()
-          }
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'neonRun',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action) => {
+          if (action === 'lane_left') laneLeft()
+          if (action === 'lane_right') laneRight()
         },
-        () => {
-          if (playerLane < lanes - 1) {
-            playerLane++
-            audioService.collect()
-          }
-        },
-      )
+      })
     },
     onUpdate(_dt) {
       if (gameEnded) return

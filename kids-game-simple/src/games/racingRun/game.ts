@@ -11,7 +11,12 @@ import { spawnObstacle, spawnCoin, spawnPowerup } from './spawner';
 import { spawnExplosion, spawnFloatText, activatePowerup } from './effects';
 import { drawRoad, drawPlayer, drawObstacles, drawCoins, drawPowerups, drawParticles, drawBullets, drawHUD, drawFloatTexts } from './renderer';
 import { H, W, LEVELS, SPEED_RECOVERY_RATE, OBSTACLE_CONFIG, SCENES, SCENE_SWITCH_DISTANCE, COLLISION_SLOW_DURATION } from './config';
-import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils';
+import {
+  applyCanvasMobileStyles,
+  bindCanvasDragFollowAndLaneTap,
+} from '../../utils/canvasMobileUtils';
+import { bindDesktopControls } from '../../platform/mobileControls';
+import { mergeLayout } from '../../platform/mobileControls/layout';
 
 let activeHost: GameLifecycle | null = null;
 
@@ -111,155 +116,43 @@ function setupInput(canvas: HTMLCanvasElement, state: GameState): () => void {
     }
   };
 
-  // 键盘控制 - 优化：支持长按连续变道
-  let keyRepeatTimer: number | null = null;
-  let lastKeyDirection = 0;
-  
-  document.onkeydown = (e: KeyboardEvent): void => {
-    // 防止重复触发
-    if (e.repeat) return;
-    
-    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-      switchLane(-1);
-      lastKeyDirection = -1;
-      // 长按时每隔200ms重复变道
-      if (keyRepeatTimer) clearInterval(keyRepeatTimer);
-      keyRepeatTimer = window.setInterval(() => {
-        if (lastKeyDirection !== 0) {
-          switchLane(lastKeyDirection);
-        }
-      }, 200);
-    }
-    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-      switchLane(1);
-      lastKeyDirection = 1;
-      // 长按时每隔200ms重复变道
-      if (keyRepeatTimer) clearInterval(keyRepeatTimer);
-      keyRepeatTimer = window.setInterval(() => {
-        if (lastKeyDirection !== 0) {
-          switchLane(lastKeyDirection);
-        }
-      }, 200);
-    }
-    // 坦克形态下按空格键发射炮弹
-    if (e.key === ' ' && state.vehicleForm === 'tank') {
-      fireBullet(state);
-    }
-  };
+  const layout = mergeLayout(W, H, { viewWidth: W, viewHeight: H, buttons: [] });
 
-  document.onkeyup = (e: KeyboardEvent): void => {
-    if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' ||
-         e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') &&
-        keyRepeatTimer) {
-      clearInterval(keyRepeatTimer);
-      keyRepeatTimer = null;
-      lastKeyDirection = 0;
-    }
-  };
+  const unbindDrag = bindCanvasDragFollowAndLaneTap(canvas, {
+    logicalWidth: W,
+    onDragMove: (x) => {
+      state.targetX = Math.max(MIN_X, Math.min(MAX_X, x));
+    },
+    onRelease: (x, wasDrag) => {
+      if (!wasDrag) {
+        if (x < W / 2) switchLane(-1);
+        else switchLane(1);
+      } else {
+        snapToNearestLane(x);
+      }
+    },
+  });
 
-  let touchStartX = 0;
-  let hasMoved = false;
-  let isDragging = false;
+  const unbindDesktop = bindDesktopControls({
+    canvas,
+    preset: 'portrait_swipe_lane',
+    layout,
+    enablePointer: false,
+    keyboardProfile: {
+      buttons: { Space: 'fire' },
+    },
+    onAction: (action, payload) => {
+      if (action === 'lane_left') switchLane(-1);
+      if (action === 'lane_right') switchLane(1);
+      if (action === 'button_down' && payload.id === 'fire' && state.vehicleForm === 'tank') {
+        fireBullet(state);
+      }
+    },
+  });
 
-  canvas.ontouchstart = (e: TouchEvent): void => {
-    e.preventDefault();
-    const t = e.touches[0];
-    if (!t) return;
-    const { x } = clientToCanvas(canvas, t.clientX, t.clientY);
-    touchStartX = x;
-    hasMoved = false;
-    isDragging = true;
-  };
-
-  canvas.ontouchmove = (e: TouchEvent): void => {
-    e.preventDefault();
-    if (!isDragging) return;
-    const t = e.touches[0];
-    if (!t) return;
-    const { x: curX } = clientToCanvas(canvas, t.clientX, t.clientY);
-    const dx = curX - touchStartX;
-
-    if (Math.abs(dx) > 10) {
-      hasMoved = true;
-      state.targetX = Math.max(40, Math.min(W - 40, curX));
-    }
-  };
-
-  const finishTouch = (clientX: number, clientY: number): void => {
-    isDragging = false;
-    const { x: endX } = clientToCanvas(canvas, clientX, clientY);
-    if (!hasMoved) {
-      if (endX < W / 2) switchLane(-1);
-      else switchLane(1);
-    } else {
-      snapToNearestLane(endX);
-    }
-  };
-
-  canvas.ontouchend = (e: TouchEvent): void => {
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    if (!t) return;
-    finishTouch(t.clientX, t.clientY);
-  };
-
-  canvas.ontouchcancel = (e: TouchEvent): void => {
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    if (t) finishTouch(t.clientX, t.clientY);
-    else isDragging = false;
-  };
-
-  let mouseDown = false;
-  canvas.onmousedown = (e: MouseEvent): void => {
-    const { x: mx } = clientToCanvas(canvas, e.clientX, e.clientY);
-    touchStartX = mx;
-    mouseDown = true;
-    hasMoved = false;
-  };
-  canvas.onmousemove = (e: MouseEvent): void => {
-    if (!mouseDown) return;
-    const { x: mx } = clientToCanvas(canvas, e.clientX, e.clientY);
-    const dx = mx - touchStartX;
-
-    if (Math.abs(dx) > 10) {
-      hasMoved = true;
-      state.targetX = Math.max(40, Math.min(W - 40, mx));
-    }
-  };
-  canvas.onmouseup = (): void => {
-    mouseDown = false;
-    if (hasMoved) {
-      snapToNearestLane(state.targetX);
-    }
-  };
-
-  canvas.onclick = (e: MouseEvent): void => {
-    if (hasMoved) return;
-    const { x } = clientToCanvas(canvas, e.clientX, e.clientY);
-    if (x < W / 2) switchLane(-1);
-    else switchLane(1);
-  };
-  
-  // 返回清理函数
   return (): void => {
-    // 清理事件监听器
-    document.onkeydown = null;
-    document.onkeyup = null;
-    canvas.ontouchstart = null;
-    canvas.ontouchmove = null;
-    canvas.ontouchend = null;
-    canvas.ontouchcancel = null;
-    canvas.onmousedown = null;
-    canvas.onmousemove = null;
-    canvas.onmouseup = null;
-    canvas.onclick = null;
-    
-    // 清理定时器
-    if (keyRepeatTimer) {
-      clearInterval(keyRepeatTimer);
-      keyRepeatTimer = null;
-    }
+    unbindDrag();
+    unbindDesktop();
   };
 }
 

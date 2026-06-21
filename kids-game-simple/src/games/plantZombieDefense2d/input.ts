@@ -1,4 +1,6 @@
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { BASE_H, BASE_W, GAME_CONFIG, PLANT_CARD_ORDER } from './config'
 import { PlantKind } from './types'
 import type { GameState } from './types'
@@ -144,20 +146,27 @@ export function bindPzd2dInput(
 ): () => void {
   applyCanvasMobileStyles(canvas)
 
-  const onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0) return
-    e.preventDefault()
-    const rect = canvas.getBoundingClientRect()
-    if (rect.width <= 0 || rect.height <= 0) return
-    const sx = ((e.clientX - rect.left) / rect.width) * canvas.width
-    const sy = ((e.clientY - rect.top) / rect.height) * canvas.height
-    const state = getState()
-    const r = handleTap(state, getVp(), sx, sy)
-    onTap(r)
+  let controls: MobileControlRuntime | null = null
+  controls = bindGameCanvasControls(canvas, {
+    gameId: 'plantZombieDefense2d',
+    viewWidth: canvas.width || BASE_W,
+    viewHeight: canvas.height || BASE_H,
+    layout: {
+      viewWidth: canvas.width || BASE_W,
+      viewHeight: canvas.height || BASE_H,
+      buttons: [],
+    },
+    onAction: (action, payload) => {
+      if (action !== 'tap' || payload.x == null || payload.y == null) return
+      const state = getState()
+      const r = handleTap(state, getVp(), payload.x, payload.y)
+      onTap(r)
+    },
+  })
+  return () => {
+    controls?.dispose()
+    controls = null
   }
-
-  canvas.addEventListener('pointerdown', onPointerDown, { passive: false })
-  return () => canvas.removeEventListener('pointerdown', onPointerDown)
 }
 
 export function resizeCanvasToDisplay(canvas: HTMLCanvasElement): void {

@@ -32,6 +32,8 @@ export const ALL_ADMIN_MENU_ITEMS: AdminMenuItemDef[] = [
   { id: 'stats', name: '统计报表', icon: '📈', path: '/admin/stats', roles: ['admin', 'parent'] },
   { id: 'games', name: '游戏管理', icon: '🎮', path: '/admin/games' },
   { id: 'questions', name: '题库管理', icon: '📝', path: '/admin/questions' },
+  { id: 'subjects', name: '学科管理', icon: '📖', path: '/admin/subjects' },
+  { id: 'knowledge-points', name: '知识点管理', icon: '🧩', path: '/admin/knowledge-points' },
   { id: 'docs', name: '项目手册', icon: '📚', path: '/admin/docs' },
   { id: 'themes', name: '主题管理', icon: '🎨', path: '/admin/themes' },
   { id: 'game-resources', name: '游戏资源管理', icon: '🖼️', path: '/admin/game-resources' },

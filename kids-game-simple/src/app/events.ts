@@ -29,10 +29,12 @@ export function bindEvents(ctx: PlatformContext) {
   // 导航
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
+      void (async () => {
       const page = item.getAttribute('data-page')
       
       // 非首页导航需要登录
       if (page && page !== 'home') {
+        await userService.whenReady()
         if (!userService.isLoggedIn) {
           showToast('请先登录')
           ctx.authModal.open(() => ctx.onUserChange())
@@ -63,6 +65,7 @@ export function bindEvents(ctx: PlatformContext) {
         ctx.closeRank()
         ctx.switchToHome()
       }
+      })()
     })
   })
 

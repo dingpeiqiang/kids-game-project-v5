@@ -6,7 +6,9 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createLifecycleContext } from '../../platform/frameworkSession'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { resizeCanvasForMobile, injectMobileStyles } from '../../utils/mobileHelper'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 
 let activeHost: GameLifecycle | null = null
 
@@ -607,14 +609,14 @@ function startMatch3Lifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle
     if (gameEnded) return
     if (Date.now() - lastMoveTime > MOVE_TIMEOUT) {
       gameEnded = true
-      unbindPointer?.()
-      unbindPointer = null
+      controls?.dispose()
+      controls = null
       audioService.lose()
       gameActions.gameOver({ victory: false, score: engine.getScore() })
     }
   }
 
-  let unbindPointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   return hostCanvas2D(lifecycleCtx, {
     onInit() {
@@ -623,8 +625,16 @@ function startMatch3Lifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle
       applyCanvasMobileStyles(canvas)
       initBoard()
       lastMoveTime = Date.now()
-      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
-        void handleClickAt(x, y)
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'match3',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (action === 'tap' && payload.x != null && payload.y != null) {
+            void handleClickAt(payload.x, payload.y)
+          }
+        },
       })
     },
     onUpdate(_dt) {
@@ -635,8 +645,8 @@ function startMatch3Lifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle
       draw()
     },
     onDestroy() {
-      unbindPointer?.()
-      unbindPointer = null
+      controls?.dispose()
+      controls = null
     },
   })
 }

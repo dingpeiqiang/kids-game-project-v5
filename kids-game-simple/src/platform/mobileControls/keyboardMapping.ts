@@ -88,7 +88,10 @@ export const DEFAULT_KEYBOARD_BY_PRESET: Record<MobileControlPresetId, KeyboardP
     laneRight: ['ArrowRight', 'KeyD'],
   },
   portrait_dpad: { movementKeys: MOVE_ARROWS },
-  tilt: { movementKeys: MOVE_ARROWS },
+  tilt: {
+    movementKeys: MOVE_ARROWS,
+    buttons: { Space: 'jump' },
+  },
   gesture_combo: {},
 }
 
@@ -139,6 +142,10 @@ export function getDesktopGuideHint(preset: MobileControlPresetId): string {
     swipe_pan: '⌨️ 方向键或 WASD · 鼠标拖拽',
     drag_select_rect: '🖱️ 左键拖拽框选',
     fighting_stick_buttons: '⌨️ WASD + J/K/L/U/I/O/P 技能键',
+    portrait_dpad: '⌨️ 方向键 · 或点击屏上四向键',
+    tilt: '⌨️ 方向键（无陀螺仪时）· 📱 倾斜设备',
+    swipe_flick: '🖱️ 拖拽 · 快速松手甩动',
+    gesture_combo: '🖱️ 双击 · 单击',
   }
   return hints[preset] ?? hints.tap ?? '🖱️ 鼠标 / ⌨️ 键盘'
 }

@@ -1,3 +1,4 @@
+import { DEFAULT_PORTRAIT_HEIGHT_RATIO } from '../games/gameLayout'
 import { getLandscapePlayViewportSize, getVisualViewportSize } from './mobileEnv'
 
 export interface CanvasLogicalSize {
@@ -14,7 +15,7 @@ export interface CanvasDisplaySize {
 export function computePortraitCanvasDisplaySize(
   gameW: number,
   gameH: number,
-  heightRatio = 0.88,
+  heightRatio = DEFAULT_PORTRAIT_HEIGHT_RATIO,
 ): CanvasDisplaySize {
   const { width: vw, height: vh } = getVisualViewportSize()
   const widthRatio = vw / gameW
@@ -146,35 +147,51 @@ export function bindCanvasLaneTap(
 
 export type CanvasMoveHandler = (x: number, y: number) => void
 
+export interface BindCanvasPointerTapAndMoveOptions {
+  /** 按下后滑出画布仍跟手（切水果等） */
+  trackOutsideCanvas?: boolean
+}
+
 /** 点击 + 移动（弹珠、瞄准类） */
 export function bindCanvasPointerTapAndMove(
   canvas: HTMLCanvasElement,
   onMove: CanvasMoveHandler,
   onTap: CanvasMoveHandler,
+  options?: BindCanvasPointerTapAndMoveOptions,
 ): () => void {
   applyCanvasMobileStyles(canvas)
+  const trackOutside = options?.trackOutsideCanvas ?? false
 
   const toCanvas = (clientX: number, clientY: number) =>
     clientToCanvas(canvas, clientX, clientY)
 
+  let dragging = false
+
   const onPointerDown = (e: PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     e.preventDefault()
+    dragging = true
     const { x, y } = toCanvas(e.clientX, e.clientY)
     onTap(x, y)
   }
 
   const onPointerMove = (e: PointerEvent) => {
     if (e.pointerType === 'mouse' && (e.buttons & 1) === 0) return
+    if (!dragging && e.pointerType === 'mouse') return
     e.preventDefault()
     const { x, y } = toCanvas(e.clientX, e.clientY)
     onMove(x, y)
+  }
+
+  const onPointerUp = () => {
+    dragging = false
   }
 
   const onTouchStart = (e: TouchEvent) => {
     const t = e.touches[0]
     if (!t) return
     e.preventDefault()
+    dragging = true
     const { x, y } = toCanvas(t.clientX, t.clientY)
     onTap(x, y)
   }
@@ -187,6 +204,10 @@ export function bindCanvasPointerTapAndMove(
     onMove(x, y)
   }
 
+  const onTouchEnd = () => {
+    dragging = false
+  }
+
   const onMouseMove = (e: MouseEvent) => {
     if ((e.buttons & 1) === 0) return
     const { x, y } = toCanvas(e.clientX, e.clientY)
@@ -196,8 +217,13 @@ export function bindCanvasPointerTapAndMove(
   const onMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return
     e.preventDefault()
+    dragging = true
     const { x, y } = toCanvas(e.clientX, e.clientY)
     onTap(x, y)
+  }
+
+  const onMouseUp = () => {
+    dragging = false
   }
 
   canvas.addEventListener('pointerdown', onPointerDown, { passive: false })
@@ -207,6 +233,17 @@ export function bindCanvasPointerTapAndMove(
   canvas.addEventListener('mousedown', onMouseDown)
   canvas.addEventListener('mousemove', onMouseMove)
 
+  if (trackOutside) {
+    window.addEventListener('pointermove', onPointerMove, { passive: false })
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerUp)
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+    document.addEventListener('touchend', onTouchEnd)
+    document.addEventListener('touchcancel', onTouchEnd)
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }
+
   return () => {
     canvas.removeEventListener('pointerdown', onPointerDown)
     canvas.removeEventListener('pointermove', onPointerMove)
@@ -214,6 +251,16 @@ export function bindCanvasPointerTapAndMove(
     canvas.removeEventListener('touchmove', onTouchMove)
     canvas.removeEventListener('mousedown', onMouseDown)
     canvas.removeEventListener('mousemove', onMouseMove)
+    if (trackOutside) {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerUp)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onTouchEnd)
+      document.removeEventListener('touchcancel', onTouchEnd)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
   }
 }
 
@@ -448,5 +495,212 @@ export function bindCanvasHorizontalDrag(
     canvas.removeEventListener('touchmove', onTouchMove)
     canvas.removeEventListener('touchend', end)
     canvas.removeEventListener('touchcancel', end)
+  }
+}
+
+/** 赛车类：短按半屏变道，拖拽跟手，松手吸附车道 */
+export interface CanvasDragFollowLaneOptions {
+  logicalWidth: number
+  dragThreshold?: number
+  onDragMove: (canvasX: number) => void
+  /** wasDrag=false 时通常为半屏 tap 变道 */
+  onRelease: (canvasX: number, wasDrag: boolean) => void
+}
+
+export function bindCanvasDragFollowAndLaneTap(
+  canvas: HTMLCanvasElement,
+  options: CanvasDragFollowLaneOptions,
+): () => void {
+  applyCanvasMobileStyles(canvas)
+  const threshold = options.dragThreshold ?? 10
+  let active = false
+  let startX = 0
+  let hasMoved = false
+
+  const toX = (clientX: number, clientY: number) =>
+    clientToCanvas(canvas, clientX, clientY).x
+
+  const down = (clientX: number, clientY: number) => {
+    active = true
+    startX = toX(clientX, clientY)
+    hasMoved = false
+  }
+
+  const move = (clientX: number, clientY: number) => {
+    if (!active) return
+    const x = toX(clientX, clientY)
+    if (Math.abs(x - startX) > threshold) {
+      hasMoved = true
+      options.onDragMove(x)
+    }
+  }
+
+  const up = (clientX: number, clientY: number) => {
+    if (!active) return
+    active = false
+    const x = toX(clientX, clientY)
+    options.onRelease(x, hasMoved)
+  }
+
+  const onPointerDown = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    e.preventDefault()
+    down(e.clientX, e.clientY)
+  }
+  const onPointerMove = (e: PointerEvent) => {
+    if (!active) return
+    e.preventDefault()
+    move(e.clientX, e.clientY)
+  }
+  const onPointerUp = (e: PointerEvent) => {
+    e.preventDefault()
+    up(e.clientX, e.clientY)
+  }
+
+  const onTouchStart = (e: TouchEvent) => {
+    const t = e.touches[0]
+    if (!t) return
+    e.preventDefault()
+    down(t.clientX, t.clientY)
+  }
+  const onTouchMove = (e: TouchEvent) => {
+    const t = e.touches[0]
+    if (!t) return
+    e.preventDefault()
+    move(t.clientX, t.clientY)
+  }
+  const onTouchEnd = (e: TouchEvent) => {
+    const t = e.changedTouches[0]
+    if (!t) return
+    e.preventDefault()
+    up(t.clientX, t.clientY)
+  }
+
+  const onMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    down(e.clientX, e.clientY)
+  }
+  const onMouseMove = (e: MouseEvent) => {
+    if (!active || (e.buttons & 1) === 0) return
+    move(e.clientX, e.clientY)
+  }
+  const onMouseUp = (e: MouseEvent) => {
+    up(e.clientX, e.clientY)
+  }
+
+  canvas.addEventListener('pointerdown', onPointerDown, { passive: false })
+  canvas.addEventListener('pointermove', onPointerMove, { passive: false })
+  window.addEventListener('pointerup', onPointerUp)
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+  canvas.addEventListener('touchmove', onTouchMove, { passive: false })
+  canvas.addEventListener('touchend', onTouchEnd)
+  canvas.addEventListener('touchcancel', onTouchEnd)
+  canvas.addEventListener('mousedown', onMouseDown)
+  canvas.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+
+  return () => {
+    canvas.removeEventListener('pointerdown', onPointerDown)
+    canvas.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerup', onPointerUp)
+    canvas.removeEventListener('touchstart', onTouchStart)
+    canvas.removeEventListener('touchmove', onTouchMove)
+    canvas.removeEventListener('touchend', onTouchEnd)
+    canvas.removeEventListener('touchcancel', onTouchEnd)
+    canvas.removeEventListener('mousedown', onMouseDown)
+    canvas.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
+}
+
+/**
+ * 消消乐类触屏：按下选中 → 滑动交换相邻格 → 短按连通消除。
+ * PC 侧通常另接 `bindMobileControlPreset`（`enableTouch: false`）。
+ */
+export interface BindCanvasTapDragSwapOptions {
+  swipeThreshold?: number
+  onActivity?(): void
+  canInteract(): boolean
+  /** touchstart：尝试选中，返回当前选中 index（无则 null） */
+  selectAt(x: number, y: number): number | null
+  /** 根据屏幕像素滑动方向解析相邻格 index */
+  resolveAdjacent(fromIdx: number, dxClient: number, dyClient: number): number | null
+  isValidSwapTarget(fromIdx: number, toIdx: number): boolean
+  onSwap(fromIdx: number, toIdx: number, x: number, y: number): void
+  onTap(x: number, y: number): void
+}
+
+export function bindCanvasTapDragSwap(
+  canvas: HTMLCanvasElement,
+  options: BindCanvasTapDragSwapOptions,
+): () => void {
+  applyCanvasMobileStyles(canvas)
+  const threshold = options.swipeThreshold ?? 30
+  let startClientX = 0
+  let startClientY = 0
+  let selectedIdx: number | null = null
+  let hasSwiped = false
+
+  const onTouchStart = (e: TouchEvent) => {
+    const t = e.touches[0]
+    if (!t) return
+    e.preventDefault()
+    if (!options.canInteract()) return
+    options.onActivity?.()
+    startClientX = t.clientX
+    startClientY = t.clientY
+    hasSwiped = false
+    const { x, y } = clientToCanvas(canvas, t.clientX, t.clientY)
+    selectedIdx = options.selectAt(x, y)
+  }
+
+  const onTouchMove = (e: TouchEvent) => {
+    e.preventDefault()
+    if (selectedIdx === null || hasSwiped) return
+    const t = e.touches[0]
+    if (!t) return
+    const dx = t.clientX - startClientX
+    const dy = t.clientY - startClientY
+    if (Math.abs(dx) <= threshold && Math.abs(dy) <= threshold) return
+    const toIdx = options.resolveAdjacent(selectedIdx, dx, dy)
+    if (toIdx === null || !options.isValidSwapTarget(selectedIdx, toIdx)) return
+    const { x, y } = clientToCanvas(canvas, t.clientX, t.clientY)
+    hasSwiped = true
+    options.onSwap(selectedIdx, toIdx, x, y)
+    selectedIdx = null
+  }
+
+  const onTouchEnd = (e: TouchEvent) => {
+    e.preventDefault()
+    const t = e.changedTouches[0]
+    if (!t) return
+    if (hasSwiped || selectedIdx === null) {
+      selectedIdx = null
+      hasSwiped = false
+      return
+    }
+    const dx = Math.abs(t.clientX - startClientX)
+    const dy = Math.abs(t.clientY - startClientY)
+    if (dx < threshold && dy < threshold) {
+      const { x, y } = clientToCanvas(canvas, t.clientX, t.clientY)
+      options.onTap(x, y)
+    }
+    selectedIdx = null
+    hasSwiped = false
+  }
+
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+  canvas.addEventListener('touchmove', onTouchMove, { passive: false })
+  canvas.addEventListener('touchend', onTouchEnd, { passive: false })
+  canvas.addEventListener('touchcancel', onTouchEnd, { passive: false })
+
+  return () => {
+    canvas.removeEventListener('touchstart', onTouchStart)
+    canvas.removeEventListener('touchmove', onTouchMove)
+    canvas.removeEventListener('touchend', onTouchEnd)
+    canvas.removeEventListener('touchcancel', onTouchEnd)
+    selectedIdx = null
+    hasSwiped = false
   }
 }

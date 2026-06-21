@@ -175,4 +175,7 @@ export interface GameState {
   targetX: number;
   targetY: number;
   keys: { [key: string]: boolean };
+  /** 触屏左摇杆（统一操作框架） */
+  mobileStickX: number;
+  mobileStickY: number;
 }

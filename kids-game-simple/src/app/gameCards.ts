@@ -13,13 +13,24 @@ import { closeTaskCenter, closeShop, renderTaskList as renderTaskListFn, renderS
 // ==================== 游玩历史辅助 ====================
 
 let playRecordsCache: { gameId: string; playedAt: string }[] | null = null
+/** 进行中的 game-records 请求，避免首页重复区块并发打同一接口 */
+let playRecordsInflight: Promise<{ gameId: string; playedAt: string }[]> | null = null
+let playRecordsCacheUserKey = ''
 
-export function clearPlayRecordsCache() { 
-  playRecordsCache = null 
+function playRecordsUserKey(): string {
+  return userService.isLoggedIn ? `u:${tokenStore.getUserId() || ''}` : 'guest'
+}
+
+export function clearPlayRecordsCache() {
+  playRecordsCache = null
+  playRecordsInflight = null
+  playRecordsCacheUserKey = ''
 }
 
 export function invalidatePlayRecordsCache() {
   playRecordsCache = null
+  playRecordsInflight = null
+  playRecordsCacheUserKey = ''
 }
 
 function buildNumericGameIdMap(): Map<number, string> {
@@ -40,10 +51,7 @@ function convertGameIdToNumberSimple(gameId: string): number {
   return Math.abs(hash) % 10000 + 1
 }
 
-async function getPlayRecords(): Promise<{ gameId: string; playedAt: string }[]> {
-  if (playRecordsCache) return playRecordsCache
-
-  // 先获取本地数据（包含最新记录）
+async function fetchPlayRecordsOnce(): Promise<{ gameId: string; playedAt: string }[]> {
   const localRecords = userService.isLoggedIn && userService.current
     ? userService.current.gameRecords.map((r: GameRecord) => ({
         gameId: r.gameId,
@@ -51,7 +59,6 @@ async function getPlayRecords(): Promise<{ gameId: string; playedAt: string }[]>
       }))
     : storageService.getPlayHistory()
 
-  // 已登录用户从后台获取数据，并与本地数据合并
   if (userService.isLoggedIn) {
     try {
       const res = await apiGetGameRecords()
@@ -63,40 +70,55 @@ async function getPlayRecords(): Promise<{ gameId: string; playedAt: string }[]>
             playedAt: r.playedAt,
           }))
           .filter(r => !!r.gameId)
-        
-        // 合并服务器数据和本地数据，本地数据优先（更新更及时）
+
         const recordMap = new Map<string, { gameId: string; playedAt: string }>()
-        
-        // 先添加服务器数据
         for (const r of serverRecords) {
           recordMap.set(r.gameId + r.playedAt, r)
         }
-        
-        // 添加本地数据（可能包含服务器还未同步的最新记录）
         for (const r of localRecords) {
           recordMap.set(r.gameId + r.playedAt, r)
         }
-        
-        // 按时间排序
-        playRecordsCache = Array.from(recordMap.values())
+
+        return Array.from(recordMap.values())
           .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime())
-        return playRecordsCache
       }
-    } catch (e) { 
+    } catch (e) {
       console.warn('[GameCards] 从后端获取游戏记录失败，使用本地数据', e)
     }
   }
 
-  // 降级：仅使用本地数据
-  playRecordsCache = localRecords
   return localRecords
 }
 
-async function getRecentlyPlayedGames(max: number): Promise<Game[]> {
-  const records = await getPlayRecords()
+async function getPlayRecords(): Promise<{ gameId: string; playedAt: string }[]> {
+  const userKey = playRecordsUserKey()
+  if (playRecordsCache && playRecordsCacheUserKey === userKey) {
+    return playRecordsCache
+  }
+
+  if (!playRecordsInflight) {
+    playRecordsInflight = fetchPlayRecordsOnce()
+      .then(records => {
+        playRecordsCache = records
+        playRecordsCacheUserKey = userKey
+        return records
+      })
+      .finally(() => {
+        playRecordsInflight = null
+      })
+  }
+
+  return playRecordsInflight
+}
+
+async function getRecentlyPlayedGames(
+  max: number,
+  records?: { gameId: string; playedAt: string }[],
+): Promise<Game[]> {
+  const list = records ?? (await getPlayRecords())
   const seen = new Set<string>()
   const result: Game[] = []
-  for (const r of records) {
+  for (const r of list) {
     if (seen.has(r.gameId)) continue
     seen.add(r.gameId)
     const game = GAMES.find(g => g.id === r.gameId && isGameVisible(g.id))
@@ -108,10 +130,13 @@ async function getRecentlyPlayedGames(max: number): Promise<Game[]> {
   return result
 }
 
-async function getFrequentlyPlayedGames(max: number): Promise<Game[]> {
-  const records = await getPlayRecords()
+async function getFrequentlyPlayedGames(
+  max: number,
+  records?: { gameId: string; playedAt: string }[],
+): Promise<Game[]> {
+  const list = records ?? (await getPlayRecords())
   const countMap = new Map<string, number>()
-  for (const r of records) {
+  for (const r of list) {
     countMap.set(r.gameId, (countMap.get(r.gameId) || 0) + 1)
   }
   const sorted = [...countMap.entries()]
@@ -129,8 +154,16 @@ async function getFrequentlyPlayedGames(max: number): Promise<Game[]> {
 
 // ==================== 游戏卡片渲染 ====================
 
+let renderGameCardsInflight: Promise<void> | null = null
+let renderGameCardsQueued = false
+
 export async function renderGameCards(ctx: PlatformContext) {
-  clearPlayRecordsCache()
+  if (renderGameCardsInflight) {
+    renderGameCardsQueued = true
+    return renderGameCardsInflight
+  }
+
+  const run = async () => {
   const container = document.getElementById('categorySections')!
 
   // 停止所有预览动画 + 断开旧 Observer
@@ -186,8 +219,10 @@ export async function renderGameCards(ctx: PlatformContext) {
     }
   }
 
+  const playRecordsForHome = userService.isLoggedIn ? await getPlayRecords() : null
+
   // ── 常用游戏（最近游玩） ─────────────────────────────
-  const recentlyPlayed = await getRecentlyPlayedGames(6)
+  const recentlyPlayed = await getRecentlyPlayedGames(6, playRecordsForHome ?? undefined)
   if (recentlyPlayed.length > 0) {
     const sec = document.createElement('div')
     sec.className = 'section-quick'
@@ -206,7 +241,7 @@ export async function renderGameCards(ctx: PlatformContext) {
   }
 
   // ── 常玩游戏（按游玩次数） ──────────────────────────
-  const frequentGames = await getFrequentlyPlayedGames(6)
+  const frequentGames = await getFrequentlyPlayedGames(6, playRecordsForHome ?? undefined)
   if (frequentGames.length > 0 && frequentGames.length !== recentlyPlayed.length) {
     const sec = document.createElement('div')
     sec.className = 'section-quick'
@@ -252,6 +287,22 @@ export async function renderGameCards(ctx: PlatformContext) {
       gamesToPreview.forEach(game => ctx.renderPreview(game))
     }, 50)
   })
+  }
+
+  renderGameCardsInflight = run().finally(() => {
+    renderGameCardsInflight = null
+    if (renderGameCardsQueued) {
+      renderGameCardsQueued = false
+      void renderGameCards(ctx)
+    }
+  })
+  return renderGameCardsInflight
+}
+
+/** 用户切换或需要强制刷新游玩记录时调用（会触发一次 game-records 请求） */
+export function renderGameCardsFresh(ctx: PlatformContext) {
+  clearPlayRecordsCache()
+  return renderGameCards(ctx)
 }
 
 export function createGameCard(ctx: PlatformContext, game: Game, best: number) {

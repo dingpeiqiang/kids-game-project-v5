@@ -1,6 +1,13 @@
 import type { GameLifecycle, GameLifecycleContext } from '../../platform/GameLifecycle'
+import { gameActions } from '../../platform/gameBridge'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
-import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { GAME_CONFIG } from './config'
+import { clientToCanvas } from '../../utils/canvasMobileUtils'
+import {
+  bindGameCanvasControls,
+  drawMobileControlOverlay,
+  type MobileControlRuntime,
+} from '../../platform/mobileControls'
 import type { GameState } from './types'
 import { createInitialState, resetState } from './state'
 import { updatePlayer } from './player'
@@ -18,31 +25,69 @@ export function startRpgShooterLifecycle(lifecycleCtx: GameLifecycleContext): Ga
   const H = canvas.height
 
   let state: GameState = createInitialState()
+  let controls: MobileControlRuntime | null = null
+  let platformEnded = false
 
-  function handleKey(e: KeyboardEvent, pressed: boolean) {
-    state.keys[e.key.toLowerCase()] = pressed
-    if (!state.gameStarted && pressed) {
-      state.gameStarted = true
-    }
+  const tryStart = () => {
+    if (!state.gameStarted) state.gameStarted = true
   }
 
-  function handleMouse(e: MouseEvent) {
-    const rect = canvas.getBoundingClientRect()
-    state.targetX = (e.clientX - rect.left) * (W / rect.width)
-    state.targetY = (e.clientY - rect.top) * (H / rect.height)
-    if (!state.gameStarted) {
-      state.gameStarted = true
-    }
+  const finishSession = (victory: boolean) => {
+    if (platformEnded) return
+    platformEnded = true
+    state.gameEnded = true
+    gameActions.setScore(state.score)
+    gameActions.gameOver({
+      victory,
+      score: state.score,
+      stats: {
+        level: state.playerLevel,
+        combo: state.combo,
+        elapsed: state.elapsed,
+      },
+    })
+  }
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    state.keys[e.key.toLowerCase()] = true
+    if (e.key.length === 1) tryStart()
+  }
+  const onKeyUp = (e: KeyboardEvent) => {
+    state.keys[e.key.toLowerCase()] = false
+  }
+
+  const onMouseMove = (e: MouseEvent) => {
+    const p = clientToCanvas(canvas, e.clientX, e.clientY)
+    state.targetX = p.x
+    state.targetY = p.y
+    tryStart()
   }
 
   return hostCanvas2D(lifecycleCtx, {
     onInit() {
-      applyCanvasMobileStyles(canvas)
       state = createInitialState()
-      document.addEventListener('keydown', (e) => handleKey(e, true))
-      document.addEventListener('keyup', (e) => handleKey(e, false))
-      canvas.addEventListener('mousemove', handleMouse)
-      canvas.addEventListener('click', () => { if (!state.gameStarted) state.gameStarted = true })
+
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'rpgShooter',
+        viewWidth: W,
+        viewHeight: H,
+        onAction: (action, payload) => {
+          if (action === 'move' && payload.source !== 'keyboard') {
+            state.mobileStickX = payload.stickX ?? 0
+            state.mobileStickY = payload.stickY ?? 0
+            tryStart()
+          }
+          if (action === 'tap') {
+            state.targetX = payload.x ?? state.targetX
+            state.targetY = payload.y ?? state.targetY
+            tryStart()
+          }
+        },
+      })
+
+      document.addEventListener('keydown', onKeyDown)
+      document.addEventListener('keyup', onKeyUp)
+      canvas.addEventListener('mousemove', onMouseMove)
     },
     onUpdate(dt: number) {
       if (!state.gameStarted || state.gameEnded) return
@@ -81,9 +126,12 @@ export function startRpgShooterLifecycle(lifecycleCtx: GameLifecycleContext): Ga
       if (state.elapsed > 60 && state.difficulty < 5) state.difficulty = 3
       if (state.elapsed > 90 && state.difficulty < 5) state.difficulty = 4
 
-      // 游戏结束
+      if (state.elapsed >= GAME_CONFIG.GAME_DURATION) {
+        finishSession(true)
+        return
+      }
       if (state.playerHP <= 0) {
-        state.gameEnded = true
+        finishSession(false)
       }
     },
     onRender() {
@@ -102,8 +150,16 @@ export function startRpgShooterLifecycle(lifecycleCtx: GameLifecycleContext): Ga
         drawGameOver(ctx, state)
       }
       drawParticles(ctx, state)
+      if (controls?.shouldDrawOverlay()) {
+        drawMobileControlOverlay(ctx, controls.getSnapshot(), controls.getJoystick())
+      }
     },
     onDestroy() {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('keyup', onKeyUp)
+      canvas.removeEventListener('mousemove', onMouseMove)
+      controls?.dispose()
+      controls = null
       resetState(state)
     },
   })

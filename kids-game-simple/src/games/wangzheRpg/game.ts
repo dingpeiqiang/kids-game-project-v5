@@ -15,7 +15,11 @@ import {
   addSkillParticles, addFloatText, grantExp, updateTowers, rectCollision,
 } from './logic/combat'
 import { renderGame } from './render/index'
-import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import {
+  bindGameCanvasControls,
+  drawMobileControlOverlay,
+  type MobileControlRuntime,
+} from '../../platform/mobileControls'
 
 let activeHost: GameLifecycle | null = null
 let activeGame: WangzheRpgGame | null = null
@@ -73,25 +77,9 @@ export class WangzheRpgGame {
   private joystick: JoystickInput = { active: false, dirX: 0, dirY: 0 }
   private buttons: ButtonState = { attack: false, skill1: false, skill2: false, skill3: false }
 
-  // 触控状态
-  private joystickTouchId: number = -1
-  private joystickBaseX: number = 0
-  private joystickBaseY: number = 0
-  private joystickCurrentX: number = 0
-  private joystickCurrentY: number = 0
-  private readonly joystickRadius: number = 55
-  private readonly joystickKnobRadius: number = 22
-  private readonly joystickCenterX: number = 0
-  private readonly joystickCenterY: number = 0
-
-  private touchButtons: { id: string; x: number; y: number; radius: number; pressed: boolean; touchId: number }[] = []
-
-  // 触摸事件监听器引用（用于清理）
-  private boundTouchStart: ((e: TouchEvent) => void) | null = null
-  private boundTouchMove: ((e: TouchEvent) => void) | null = null
-  private boundTouchEnd: ((e: TouchEvent) => void) | null = null
-  private boundKeyDown: ((e: KeyboardEvent) => void) | null = null
-  private boundKeyUp: ((e: KeyboardEvent) => void) | null = null
+  private platformControls: MobileControlRuntime | null = null
+  private keyboardMoveX = 0
+  private keyboardMoveY = 0
 
   constructor(engine: GameEngine, canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -100,23 +88,51 @@ export class WangzheRpgGame {
     this.canvasWidth = this.canvas.width
     this.canvasHeight = this.canvas.height
     this.state = this.createInitialState()
+  }
 
-    // 设置触控按钮位置（屏幕坐标，不受相机影响）
-    this.joystickCenterX = this.canvasWidth * 0.15
-    this.joystickCenterY = this.canvasHeight * 0.7
-    this.joystickBaseX = this.joystickCenterX
-    this.joystickBaseY = this.joystickCenterY
-    this.joystickCurrentX = this.joystickCenterX
-    this.joystickCurrentY = this.joystickCenterY
+  private buildControlLayout() {
+    const w = this.canvasWidth
+    const h = this.canvasHeight
+    const min = Math.min(w, h)
+    const btnX = w - 85
+    const btnR = min * 0.07
+    return {
+      viewWidth: w,
+      viewHeight: h,
+      joystick: {
+        x: w * 0.15,
+        y: h * 0.7,
+        radius: min * 0.11,
+        knobRadius: min * 0.046,
+        deadZone: 0.12,
+      },
+      buttons: [
+        { id: 'attack', label: '攻', cx: btnX, cy: h * 0.55, r: btnR },
+        { id: 'skill1', label: '1', cx: btnX, cy: h * 0.35, r: btnR },
+        { id: 'skill2', label: '2', cx: btnX - 70, cy: h * 0.45, r: btnR },
+        { id: 'skill3', label: '3', cx: btnX - 140, cy: h * 0.55, r: btnR },
+      ],
+    }
+  }
 
-    const btnX = this.canvasWidth - 85
-    const btnR = 28
-    this.touchButtons = [
-      { id: 'attack', x: btnX, y: this.canvasHeight * 0.55, radius: btnR, pressed: false, touchId: -1 },
-      { id: 'skill1', x: btnX, y: this.canvasHeight * 0.35, radius: btnR, pressed: false, touchId: -1 },
-      { id: 'skill2', x: btnX - 70, y: this.canvasHeight * 0.45, radius: btnR, pressed: false, touchId: -1 },
-      { id: 'skill3', x: btnX - 140, y: this.canvasHeight * 0.55, radius: btnR, pressed: false, touchId: -1 },
-    ]
+  private syncJoystickFromPlatform(sx: number, sy: number): void {
+    const mag = Math.hypot(sx, sy)
+    if (mag < 0.08) {
+      this.joystick.active = false
+      this.joystick.dirX = 0
+      this.joystick.dirY = 0
+    } else {
+      this.joystick.active = true
+      this.joystick.dirX = sx
+      this.joystick.dirY = sy
+    }
+  }
+
+  private applyButtonId(id: string, down: boolean): void {
+    if (id === 'attack') this.buttons.attack = down
+    else if (id === 'skill1') this.buttons.skill1 = down
+    else if (id === 'skill2') this.buttons.skill2 = down
+    else if (id === 'skill3') this.buttons.skill3 = down
   }
 
   private createInitialState(): GameState {
@@ -229,13 +245,36 @@ export class WangzheRpgGame {
 
   beginPlay(): void {
     this.lastTime = performance.now()
-    this.setupTouchControls()
-    this.setupKeyboardControls()
+    this.setupPlatformControls()
   }
 
   stop(): void {
-    this.removeTouchControls()
-    this.removeKeyboardControls()
+    this.platformControls?.dispose()
+    this.platformControls = null
+  }
+
+  private setupPlatformControls(): void {
+    const layout = this.buildControlLayout()
+    this.platformControls = bindGameCanvasControls(this.canvas, {
+      gameId: 'wangzheRpg',
+      preset: 'joystick_action',
+      viewWidth: this.canvasWidth,
+      viewHeight: this.canvasHeight,
+      layout,
+      onAction: (action, payload) => {
+        if (action === 'move') {
+          if (payload.source === 'keyboard') {
+            this.keyboardMoveX = payload.stickX ?? 0
+            this.keyboardMoveY = payload.stickY ?? 0
+            this.syncJoystickFromPlatform(this.keyboardMoveX, this.keyboardMoveY)
+          } else {
+            this.syncJoystickFromPlatform(payload.stickX ?? 0, payload.stickY ?? 0)
+          }
+        }
+        if (action === 'button_down') this.applyButtonId(payload.id ?? '', true)
+        if (action === 'button_up') this.applyButtonId(payload.id ?? '', false)
+      },
+    })
   }
 
   runHostUpdate(deltaMs: number): void {
@@ -245,262 +284,6 @@ export class WangzheRpgGame {
 
   runHostRender(): void {
     this.render()
-  }
-
-  /**
-   * 设置触控监听
-   */
-  private setupTouchControls(): void {
-    applyCanvasMobileStyles(this.canvas)
-    this.boundTouchStart = (e: TouchEvent) => this.onTouchStart(e)
-    this.boundTouchMove = (e: TouchEvent) => this.onTouchMove(e)
-    this.boundTouchEnd = (e: TouchEvent) => this.onTouchEnd(e)
-
-    this.canvas.addEventListener('touchstart', this.boundTouchStart, { passive: false })
-    this.canvas.addEventListener('touchmove', this.boundTouchMove, { passive: false })
-    this.canvas.addEventListener('touchend', this.boundTouchEnd, { passive: false })
-    this.canvas.addEventListener('touchcancel', this.boundTouchEnd, { passive: false })
-  }
-
-  /**
-   * 移除触控监听
-   */
-  private removeTouchControls(): void {
-    if (this.boundTouchStart) {
-      this.canvas.removeEventListener('touchstart', this.boundTouchStart)
-    }
-    if (this.boundTouchMove) {
-      this.canvas.removeEventListener('touchmove', this.boundTouchMove)
-    }
-    if (this.boundTouchEnd) {
-      this.canvas.removeEventListener('touchend', this.boundTouchEnd)
-      this.canvas.removeEventListener('touchcancel', this.boundTouchEnd)
-    }
-  }
-
-  /**
-   * 将屏幕坐标转换为 Canvas 逻辑坐标（处理横屏旋转偏移）
-   * 当 force-landscape 旋转 90deg 时，screenX 对应 canvasY，screenY 对应反转的 canvasX
-   */
-  private screenToCanvas(
-    clientX: number,
-    clientY: number,
-    rect: DOMRect,
-    rotated: boolean,
-  ): { tx: number; ty: number } {
-    if (!rotated) {
-      const scaleX = this.canvasWidth / rect.width
-      const scaleY = this.canvasHeight / rect.height
-      return {
-        tx: (clientX - rect.left) * scaleX,
-        ty: (clientY - rect.top) * scaleY,
-      }
-    }
-
-    // 90deg 顺时针旋转后：
-    // canvasX = 屏幕Y / 屏幕高度 * canvasWidth
-    // canvasY = canvasHeight - 屏幕X / 屏幕宽度 * canvasHeight
-    const nx = (clientY - rect.top) / rect.height
-    const ny = 1 - (clientX - rect.left) / rect.width
-    return {
-      tx: nx * this.canvasWidth,
-      ty: ny * this.canvasHeight,
-    }
-  }
-
-  /**
-   * 触摸开始
-   */
-  private onTouchStart(e: TouchEvent): void {
-    e.preventDefault()
-    const rect = this.canvas.getBoundingClientRect()
-    const rotated = rect.width < rect.height
-
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i]
-      const { tx, ty } = this.screenToCanvas(touch.clientX, touch.clientY, rect, rotated)
-
-      // 判断是否点击摇杆区域（左侧）
-      if (tx < this.canvasWidth * 0.4) {
-        this.joystickTouchId = touch.identifier
-        this.joystickBaseX = tx
-        this.joystickBaseY = ty
-        this.joystickCurrentX = tx
-        this.joystickCurrentY = ty
-        this.updateJoystickOutput()
-        continue
-      }
-
-      // 判断是否点击按钮
-      for (const btn of this.touchButtons) {
-        const dx = tx - btn.x
-        const dy = ty - btn.y
-        if (dx * dx + dy * dy <= btn.radius * btn.radius) {
-          btn.pressed = true
-          btn.touchId = touch.identifier
-          this.syncButtonState()
-          break
-        }
-      }
-    }
-  }
-
-  /**
-   * 触摸移动
-   */
-  private onTouchMove(e: TouchEvent): void {
-    e.preventDefault()
-    const rect = this.canvas.getBoundingClientRect()
-    const rotated = rect.width < rect.height
-
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i]
-      const { tx, ty } = this.screenToCanvas(touch.clientX, touch.clientY, rect, rotated)
-
-      // 摇杆移动
-      if (touch.identifier === this.joystickTouchId) {
-        const dx = tx - this.joystickBaseX
-        const dy = ty - this.joystickBaseY
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist > this.joystickRadius) {
-          const ratio = this.joystickRadius / dist
-          this.joystickCurrentX = this.joystickBaseX + dx * ratio
-          this.joystickCurrentY = this.joystickBaseY + dy * ratio
-        } else {
-          this.joystickCurrentX = tx
-          this.joystickCurrentY = ty
-        }
-        this.updateJoystickOutput()
-      }
-    }
-  }
-
-  /**
-   * 触摸结束
-   */
-  private onTouchEnd(e: TouchEvent): void {
-    e.preventDefault()
-
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i]
-
-      // 摇杆释放
-      if (touch.identifier === this.joystickTouchId) {
-        this.joystickTouchId = -1
-        this.joystickBaseX = this.joystickCenterX
-        this.joystickBaseY = this.joystickCenterY
-        this.joystickCurrentX = this.joystickCenterX
-        this.joystickCurrentY = this.joystickCenterY
-        this.joystick.active = false
-        this.joystick.dirX = 0
-        this.joystick.dirY = 0
-      }
-
-      // 按钮释放
-      for (const btn of this.touchButtons) {
-        if (touch.identifier === btn.touchId) {
-          btn.pressed = false
-          btn.touchId = -1
-          this.syncButtonState()
-        }
-      }
-    }
-  }
-
-  /**
-   * 更新摇杆输出
-   */
-  private updateJoystickOutput(): void {
-    const dx = this.joystickCurrentX - this.joystickBaseX
-    const dy = this.joystickCurrentY - this.joystickBaseY
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    const deadZone = this.joystickRadius * 0.15
-
-    if (dist < deadZone) {
-      this.joystick.active = false
-      this.joystick.dirX = 0
-      this.joystick.dirY = 0
-    } else {
-      this.joystick.active = true
-      const normalizedDist = (dist - deadZone) / (this.joystickRadius - deadZone)
-      const clampedDist = Math.min(normalizedDist, 1)
-      this.joystick.dirX = (dx / dist) * clampedDist
-      this.joystick.dirY = (dy / dist) * clampedDist
-    }
-  }
-
-  /**
-   * 同步按钮状态到 buttons 对象
-   */
-  private syncButtonState(): void {
-    this.buttons.attack = false
-    this.buttons.skill1 = false
-    this.buttons.skill2 = false
-    this.buttons.skill3 = false
-    for (const btn of this.touchButtons) {
-      if (btn.pressed) {
-        const key = btn.id as keyof ButtonState
-        this.buttons[key] = true
-      }
-    }
-  }
-
-  /**
-   * 设置键盘控制
-   */
-  private setupKeyboardControls(): void {
-    this.boundKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowLeft': case 'a': case 'A':
-          this.joystick.dirX = -1; this.joystick.active = true; break
-        case 'ArrowRight': case 'd': case 'D':
-          this.joystick.dirX = 1; this.joystick.active = true; break
-        case 'ArrowUp': case 'w': case 'W':
-          this.joystick.dirY = -1; this.joystick.active = true; break
-        case 'ArrowDown': case 's': case 'S':
-          this.joystick.dirY = 1; this.joystick.active = true; break
-        case 'j': case 'J': this.buttons.attack = true; break
-        case '1': this.buttons.skill1 = true; break
-        case '2': this.buttons.skill2 = true; break
-        case '3': this.buttons.skill3 = true; break
-      }
-    }
-
-    this.boundKeyUp = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowLeft': case 'a': case 'A':
-        case 'ArrowRight': case 'd': case 'D':
-          this.joystick.dirX = 0; break
-        case 'ArrowUp': case 'w': case 'W':
-        case 'ArrowDown': case 's': case 'S':
-          this.joystick.dirY = 0; break
-        case 'j': case 'J': this.buttons.attack = false; break
-        case '1': this.buttons.skill1 = false; break
-        case '2': this.buttons.skill2 = false; break
-        case '3': this.buttons.skill3 = false; break
-      }
-      // 如果所有方向键都释放了
-      if (!this.joystick.dirX && !this.joystick.dirY) {
-        this.joystick.active = false
-      }
-    }
-
-    document.addEventListener('keydown', this.boundKeyDown)
-    document.addEventListener('keyup', this.boundKeyUp)
-  }
-
-  /**
-   * 移除键盘控制
-   */
-  private removeKeyboardControls(): void {
-    if (this.boundKeyDown) {
-      document.removeEventListener('keydown', this.boundKeyDown)
-      this.boundKeyDown = null
-    }
-    if (this.boundKeyUp) {
-      document.removeEventListener('keyup', this.boundKeyUp)
-      this.boundKeyUp = null
-    }
   }
 
   setJoystick(dirX: number, dirY: number, active: boolean): void {
@@ -833,80 +616,12 @@ export class WangzheRpgGame {
       this.cameraX,
       this.cameraY,
     )
-    this.drawTouchUI()
-  }
-
-  /**
-   * 绘制触控 UI（摇杆 + 按钮，覆盖在游戏画面上）
-   */
-  private drawTouchUI(): void {
-    const ctx = this.ctx
-    const w = this.canvasWidth
-    const h = this.canvasHeight
-
-    ctx.save()
-
-    // --- 摇杆区域 ---
-    const jx = this.joystickBaseX
-    const jy = this.joystickBaseY
-    const jkx = this.joystickCurrentX
-    const jky = this.joystickCurrentY
-
-    // 底座外圈
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
-    ctx.lineWidth = 2.5
-    ctx.beginPath()
-    ctx.arc(jx, jy, this.joystickRadius, 0, Math.PI * 2)
-    ctx.stroke()
-
-    // 底座填充
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
-    ctx.beginPath()
-    ctx.arc(jx, jy, this.joystickRadius - 2, 0, Math.PI * 2)
-    ctx.fill()
-
-    // 摇杆钮
-    ctx.fillStyle = this.joystick.active ? 'rgba(255, 215, 0, 0.7)' : 'rgba(255, 255, 255, 0.5)'
-    ctx.beginPath()
-    ctx.arc(jkx, jky, this.joystickKnobRadius, 0, Math.PI * 2)
-    ctx.fill()
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
-    ctx.lineWidth = 2
-    ctx.stroke()
-
-    // --- 按钮区域 ---
-    for (const btn of this.touchButtons) {
-      const bx = btn.x
-      const by = btn.y
-      const br = btn.radius
-
-      // 按钮背景
-      ctx.fillStyle = btn.pressed ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.35)'
-      ctx.beginPath()
-      ctx.arc(bx, by, br, 0, Math.PI * 2)
-      ctx.fill()
-
-      ctx.strokeStyle = btn.pressed ? 'rgba(255, 215, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)'
-      ctx.lineWidth = 2
-      ctx.stroke()
-
-      // 按钮文字
-      ctx.fillStyle = '#ffffff'
-      ctx.font = `bold ${Math.round(br * 0.55)}px Arial`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-
-      let label = ''
-      switch (btn.id) {
-        case 'attack': label = '攻'; break
-        case 'skill1': label = '1'; break
-        case 'skill2': label = '2'; break
-        case 'skill3': label = '3'; break
-      }
-      ctx.fillText(label, bx, by)
+    if (this.platformControls?.shouldDrawOverlay()) {
+      drawMobileControlOverlay(
+        this.ctx,
+        this.platformControls.getSnapshot(),
+        this.platformControls.getJoystick(),
+      )
     }
-
-    ctx.restore()
   }
 }

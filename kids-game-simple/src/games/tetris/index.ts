@@ -3,6 +3,9 @@ import type { GameEngine } from '../../services/gameEngine'
 import { audioService } from '../../services/audio'
 import { TetrisGame } from './TetrisGame'
 
+let animationId: number | null = null
+let gameInstance: TetrisGame | null = null
+
 export function initTetris(engine: GameEngine, onEnd: () => void) {
   const canvas = document.getElementById('mainGameCanvas') as HTMLCanvasElement
   if (!canvas) return
@@ -10,26 +13,31 @@ export function initTetris(engine: GameEngine, onEnd: () => void) {
   const ctx = canvas.getContext('2d')!
   ctx.imageSmoothingEnabled = false
   
-  // 创建游戏实例
-  const game = new TetrisGame(canvas, ctx, engine, onEnd)
+  gameInstance = new TetrisGame(canvas, ctx, engine, onEnd)
   
-  // 初始化游戏
-  game.init()
+  gameInstance.init()
   
-  // 启动游戏循环
   let lastTime = 0
   function gameLoop(timestamp: number) {
     if (!document.getElementById('mainGameCanvas')) return
     
     const deltaTime = timestamp - lastTime
-    if (deltaTime >= 16) { // 约60fps
-      game.update(deltaTime)
-      game.render()
+    if (deltaTime >= 16) {
+      gameInstance?.update(deltaTime)
+      gameInstance?.render()
       lastTime = timestamp
     }
     
-    requestAnimationFrame(gameLoop)
+    animationId = requestAnimationFrame(gameLoop)
   }
   
-  requestAnimationFrame(gameLoop)
+  animationId = requestAnimationFrame(gameLoop)
+}
+
+export function destroyTetris() {
+  if (animationId !== null) {
+    cancelAnimationFrame(animationId)
+    animationId = null
+  }
+  gameInstance = null
 }

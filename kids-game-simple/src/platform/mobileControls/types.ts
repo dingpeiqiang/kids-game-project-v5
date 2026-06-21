@@ -63,9 +63,10 @@ export type MobileControlAction =
   | 'lane_right'
   | 'swipe'
   | 'flick'
+  | 'double_tap'
   | 'select_rect'
 
-export type ControlInputSource = 'touch' | 'pointer' | 'keyboard'
+export type ControlInputSource = 'touch' | 'pointer' | 'keyboard' | 'sensor'
 
 export interface MobileControlActionPayload {
   x?: number
@@ -107,6 +108,16 @@ export interface BindMobileControlOptions {
   keyboardProfile?: Partial<import('./keyboardMapping').KeyboardPresetProfile>
   /** 屏上摇杆/按钮：auto=仅触屏主设备显示 */
   onScreenControls?: 'auto' | 'always' | 'never'
+  /** swipe_pan：滑出画布仍跟手（切水果） */
+  trackOutsideCanvas?: boolean
+  /** swipe_pan / swipe_flick：仅水平或仅垂直 delta */
+  swipePanAxis?: 'both' | 'horizontal' | 'vertical'
+  /** gesture_combo：两次 tap 间隔上限 ms */
+  doubleTapMs?: number
+  /** 从 localStorage 读取 `mobileControlLayout:v1` 并按视口缩放（`bindGameCanvasControls` 默认带 gameId） */
+  layoutPersistenceGameId?: string
+  /** 开发/调试：拖拽屏上按钮后松手写入持久化（需同时设 layoutPersistenceGameId） */
+  layoutEditEnabled?: boolean
 }
 
 export interface TouchButtonSnapshot {

@@ -5,6 +5,8 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { runCanvasLifecycle, type GameLifecycle } from '../../platform/GameLifecycle'
 import { requireMainGameCanvas } from '../../platform/canvasHost'
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { getCachedGTRSTheme } from '../../services/gtrsThemeLoader'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 import { readGtrsSceneList, readGtrsSceneMeta } from '../../utils/gtrsSceneMeta'
@@ -78,9 +80,9 @@ export function startCookieCutLifecycle(ctx: GameLifecycleContext): GameLifecycl
   let lastSpawn = 0
   let gameStartTime = Date.now()
   let gameEnded = false
-  let isSlicing = false
-  let lastX = 0
-  let lastY = 0
+  let sliceLastX = 0
+  let sliceLastY = 0
+  let controls: MobileControlRuntime | null = null
   let inventory: string[] = []
 
   const powerupIcons: Record<string, string> = {
@@ -294,41 +296,9 @@ export function startCookieCutLifecycle(ctx: GameLifecycleContext): GameLifecycl
     }
   }
 
-  function getPos(e: MouseEvent | TouchEvent) {
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = W / rect.width
-    const scaleY = H / rect.height
-    if ('touches' in e && e.touches.length > 0) {
-      return {
-        x: (e.touches[0].clientX - rect.left) * scaleX,
-        y: (e.touches[0].clientY - rect.top) * scaleY,
-      }
-    }
-    const me = e as MouseEvent
-    return {
-      x: (me.clientX - rect.left) * scaleX,
-      y: (me.clientY - rect.top) * scaleY,
-    }
-  }
-
-  const onDown = (e: MouseEvent | TouchEvent) => {
-    e.preventDefault()
-    isSlicing = true
-    const pos = getPos(e)
-    lastX = pos.x
-    lastY = pos.y
-  }
-  const onMove = (e: MouseEvent | TouchEvent) => {
-    if (!isSlicing) return
-    e.preventDefault()
-    const pos = getPos(e)
-    slices.push({ x1: lastX, y1: lastY, x2: pos.x, y2: pos.y, life: 1 })
-    checkSlice(lastX, lastY, pos.x, pos.y)
-    lastX = pos.x
-    lastY = pos.y
-  }
-  const onUp = () => {
-    isSlicing = false
+  function onSliceSegment(x1: number, y1: number, x2: number, y2: number) {
+    slices.push({ x1, y1, x2, y2, life: 1 })
+    checkSlice(x1, y1, x2, y2)
   }
 
   return runCanvasLifecycle(ctx, {
@@ -338,14 +308,32 @@ export function startCookieCutLifecycle(ctx: GameLifecycleContext): GameLifecycl
       spawnCookie()
       setTimeout(spawnCookie, 500)
       updateHTMLPowerupBar()
-      canvas.addEventListener('mousedown', onDown)
-      canvas.addEventListener('mousemove', onMove)
-      canvas.addEventListener('mouseup', onUp)
-      canvas.addEventListener('mouseleave', onUp)
-      canvas.addEventListener('touchstart', onDown, { passive: false })
-      canvas.addEventListener('touchmove', onMove, { passive: false })
-      canvas.addEventListener('touchend', onUp)
-      canvas.addEventListener('touchcancel', onUp)
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'cookieCut',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (gameEnded) return
+          const x = payload.x ?? 0
+          const y = payload.y ?? 0
+          if (action === 'tap') {
+            sliceLastX = x
+            sliceLastY = y
+            return
+          }
+          if (action === 'swipe') {
+            const dx = payload.dx ?? 0
+            const dy = payload.dy ?? 0
+            if (dx === 0 && dy === 0) return
+            const x2 = x
+            const y2 = y
+            onSliceSegment(sliceLastX, sliceLastY, x2, y2)
+            sliceLastX = x2
+            sliceLastY = y2
+          }
+        },
+      })
     },
     onUpdate() {
       if (gameEnded) return
@@ -360,14 +348,8 @@ export function startCookieCutLifecycle(ctx: GameLifecycleContext): GameLifecycl
       draw()
     },
     onDestroy() {
-      canvas.removeEventListener('mousedown', onDown)
-      canvas.removeEventListener('mousemove', onMove)
-      canvas.removeEventListener('mouseup', onUp)
-      canvas.removeEventListener('mouseleave', onUp)
-      canvas.removeEventListener('touchstart', onDown)
-      canvas.removeEventListener('touchmove', onMove)
-      canvas.removeEventListener('touchend', onUp)
-      canvas.removeEventListener('touchcancel', onUp)
+      controls?.dispose()
+      controls = null
       app.removePowerupBar?.()
     },
   })

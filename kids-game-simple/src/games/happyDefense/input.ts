@@ -1,30 +1,23 @@
 import type { ArcRotateCamera, Scene } from '@babylonjs/core'
 import { worldToGrid } from './config'
+import { clientToPickCoords } from '../../platform/babylonPickUtils'
 import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+
+export { clientToPickCoords }
 
 export interface PointerPick {
   gx: number
   gz: number
 }
 
-/** 将 client 坐标转为 Babylon pick 用的画布像素坐标（含 CSS 缩放） */
-export function clientToPickCoords(
-  canvas: HTMLCanvasElement,
-  clientX: number,
-  clientY: number,
-): { x: number; y: number } {
-  const rect = canvas.getBoundingClientRect()
-  const scaleX = canvas.width / rect.width
-  const scaleY = canvas.height / rect.height
-  return {
-    x: (clientX - rect.left) * scaleX,
-    y: (clientY - rect.top) * scaleY,
-  }
-}
-
-export function pickGridAt(scene: Scene, canvas: HTMLCanvasElement, clientX: number, clientY: number): PointerPick | null {
-  const { x, y } = clientToPickCoords(canvas, clientX, clientY)
-  const pick = scene.pick(x, y)
+/** 画布逻辑像素坐标（与 `bindGameCanvasControls` 的 tap payload 一致） */
+export function pickGridAtCanvasPixels(
+  scene: Scene,
+  logicalX: number,
+  logicalY: number,
+): PointerPick | null {
+  const pick = scene.pick(logicalX, logicalY)
   if (!pick?.hit || !pick.pickedMesh) return null
   const meta = pick.pickedMesh.metadata as { gx?: number; gz?: number } | undefined
   if (meta?.gx != null && meta?.gz != null) {
@@ -32,26 +25,35 @@ export function pickGridAt(scene: Scene, canvas: HTMLCanvasElement, clientX: num
   }
   const p = pick.pickedPoint
   if (!p) return null
-  const g = worldToGrid(p.x, p.z)
-  return g
+  return worldToGrid(p.x, p.z)
 }
 
+export function pickGridAt(scene: Scene, canvas: HTMLCanvasElement, clientX: number, clientY: number): PointerPick | null {
+  const { x, y } = clientToPickCoords(canvas, clientX, clientY)
+  return pickGridAtCanvasPixels(scene, x, y)
+}
+
+/** 3D 塔防：统一 `tap` + Babylon pick（与 2D `bindGameCanvasControls` 双端一致） */
 export function bindCanvasInput(
   canvas: HTMLCanvasElement,
   scene: Scene,
-  camera: ArcRotateCamera,
+  _camera: ArcRotateCamera,
   handlers: {
     onTap: (pick: PointerPick | null) => void
   },
 ): () => void {
   applyCanvasMobileStyles(canvas)
 
-  const onPointer = (ev: PointerEvent) => {
-    if (ev.button !== 0) return
-    ev.preventDefault()
-    const pick = pickGridAt(scene, canvas, ev.clientX, ev.clientY)
-    handlers.onTap(pick)
-  }
-  canvas.addEventListener('pointerdown', onPointer, { passive: false })
-  return () => canvas.removeEventListener('pointerdown', onPointer)
+  const runtime = bindGameCanvasControls(canvas, {
+    gameId: 'happyDefense',
+    viewWidth: canvas.width,
+    viewHeight: canvas.height,
+    layout: { viewWidth: canvas.width, viewHeight: canvas.height, buttons: [] },
+    onAction: (action, payload) => {
+      if (action !== 'tap' || payload.x == null || payload.y == null) return
+      const pick = pickGridAtCanvasPixels(scene, payload.x, payload.y)
+      handlers.onTap(pick)
+    },
+  })
+  return () => runtime.dispose()
 }

@@ -4,7 +4,7 @@ import {
   bindCanvasPointerInput,
   clientToCanvas,
 } from '../../utils/canvasMobileUtils'
-import { hitCircle } from './layout'
+import { hitCircle, stickFromDpadPressed } from './layout'
 import {
   computeStickFromKeys,
   mergeKeyboardProfile,
@@ -133,7 +133,57 @@ export function bindDesktopControls(options: BindDesktopOptions): () => void {
     preset === 'joystick_dynamic' ||
     preset === 'joystick_4way' ||
     preset === 'joystick_8way' ||
-    preset === 'fighting_stick_buttons'
+    preset === 'fighting_stick_buttons' ||
+    preset === 'tilt'
+
+  const dpadPressedKeys = new Set<string>()
+
+  const emitDpadMoveFromKeys = () => {
+    const { x, y } = stickFromDpadPressed(dpadPressedKeys)
+    const mag = x === 0 && y === 0 ? 0 : 1
+    onAction('move', {
+      stickX: x * mag,
+      stickY: y * mag,
+      stickMagnitude: mag,
+      stickAngle: Math.atan2(y, x) * (180 / Math.PI),
+      source: 'pointer',
+    })
+  }
+
+  if (enablePointer && preset === 'portrait_dpad' && buttons.length > 0) {
+    applyCanvasMobileStyles(canvas)
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return
+      const p = clientToCanvas(canvas, e.clientX, e.clientY)
+      for (const btn of buttons) {
+        if (hitCircle(p.x, p.y, btn)) {
+          dpadPressedKeys.add(btn.id)
+          buttonPressed?.set(btn.id, true)
+          onAction('button_down', { id: btn.id, x: p.x, y: p.y, source: 'pointer' })
+          emitDpadMoveFromKeys()
+          e.preventDefault()
+          break
+        }
+      }
+    }
+    const onMouseUp = () => {
+      for (const btn of buttons) {
+        if (dpadPressedKeys.has(btn.id)) {
+          dpadPressedKeys.delete(btn.id)
+          buttonPressed?.set(btn.id, false)
+          onAction('button_up', { id: btn.id, source: 'pointer' })
+        }
+      }
+      emitDpadMoveFromKeys()
+    }
+    canvas.addEventListener('mousedown', onMouseDown)
+    window.addEventListener('mouseup', onMouseUp)
+    disposers.push(() => {
+      canvas.removeEventListener('mousedown', onMouseDown)
+      window.removeEventListener('mouseup', onMouseUp)
+      dpadPressedKeys.clear()
+    })
+  }
 
   if (enablePointer && isJoystickFamily && buttons.length > 0) {
     applyCanvasMobileStyles(canvas)

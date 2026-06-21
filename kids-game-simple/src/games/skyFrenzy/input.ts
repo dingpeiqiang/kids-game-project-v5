@@ -1,4 +1,5 @@
-import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGame3dCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 
 export interface InputSnapshot {
   moveX: number
@@ -6,83 +7,54 @@ export interface InputSnapshot {
   dragging: boolean
 }
 
+const SWIPE_SENS = 0.028
+const DRAG_DECAY = 0.82
+
 export function createInputController(canvas: HTMLCanvasElement): {
   getSnapshot: () => InputSnapshot
   dispose: () => void
 } {
-  applyCanvasMobileStyles(canvas)
-  const keys = new Set<string>()
-  let pointerDown = false
-  let lastX = 0
-  let lastY = 0
-  let moveX = 0
-  let moveY = 0
+  const w = canvas.width || canvas.clientWidth || 800
+  const h = canvas.height || canvas.clientHeight || 600
 
-  const onKeyDown = (e: KeyboardEvent) => {
-    keys.add(e.key.toLowerCase())
-  }
-  const onKeyUp = (e: KeyboardEvent) => {
-    keys.delete(e.key.toLowerCase())
-  }
+  let keyMoveX = 0
+  let keyMoveY = 0
+  let dragMoveX = 0
+  let dragMoveY = 0
+  let controls: MobileControlRuntime | null = null
 
-  const onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0) return
-    pointerDown = true
-    lastX = e.clientX
-    lastY = e.clientY
-    canvas.setPointerCapture(e.pointerId)
-  }
-
-  const onPointerMove = (e: PointerEvent) => {
-    if (!pointerDown) return
-    const dx = e.clientX - lastX
-    const dy = e.clientY - lastY
-    lastX = e.clientX
-    lastY = e.clientY
-    const sens = 0.028
-    moveX += dx * sens
-    moveY += dy * sens
-  }
-
-  const onPointerUp = (e: PointerEvent) => {
-    pointerDown = false
-    try {
-      canvas.releasePointerCapture(e.pointerId)
-    } catch {
-      /* ignore */
-    }
-  }
-
-  window.addEventListener('keydown', onKeyDown)
-  window.addEventListener('keyup', onKeyUp)
-  canvas.addEventListener('pointerdown', onPointerDown, { passive: true })
-  canvas.addEventListener('pointermove', onPointerMove, { passive: true })
-  canvas.addEventListener('pointerup', onPointerUp, { passive: true })
-  canvas.addEventListener('pointercancel', onPointerUp, { passive: true })
+  controls = bindGame3dCanvasControls(canvas, {
+    gameId: 'skyFrenzy',
+    preset: 'swipe_pan',
+    viewWidth: w,
+    viewHeight: h,
+    onScreenControls: 'never',
+    onAction: (action, payload) => {
+      if (action === 'move' && payload.source === 'keyboard') {
+        keyMoveX = payload.stickX ?? 0
+        keyMoveY = payload.stickY ?? 0
+      }
+      if (action === 'swipe') {
+        dragMoveX += (payload.dx ?? 0) * SWIPE_SENS
+        dragMoveY += (payload.dy ?? 0) * SWIPE_SENS
+      }
+    },
+  })
 
   const getSnapshot = (): InputSnapshot => {
-    let kx = 0
-    let kz = 0
-    if (keys.has('arrowleft') || keys.has('a')) kx -= 1
-    if (keys.has('arrowright') || keys.has('d')) kx += 1
-    if (keys.has('arrowup') || keys.has('w')) kz += 1
-    if (keys.has('arrowdown') || keys.has('s')) kz -= 1
-
-    let mx = kx + moveX
-    let mz = kz + moveY
-    moveX *= 0.82
-    moveY *= 0.82
-
-    return { moveX: mx, moveY: mz, dragging: pointerDown }
+    const mx = keyMoveX + dragMoveX
+    const my = keyMoveY + dragMoveY
+    dragMoveX *= DRAG_DECAY
+    dragMoveY *= DRAG_DECAY
+    if (Math.abs(dragMoveX) < 0.001) dragMoveX = 0
+    if (Math.abs(dragMoveY) < 0.001) dragMoveY = 0
+    const dragging = Math.hypot(mx, my) > 0.05
+    return { moveX: mx, moveY: my, dragging }
   }
 
   const dispose = () => {
-    window.removeEventListener('keydown', onKeyDown)
-    window.removeEventListener('keyup', onKeyUp)
-    canvas.removeEventListener('pointerdown', onPointerDown)
-    canvas.removeEventListener('pointermove', onPointerMove)
-    canvas.removeEventListener('pointerup', onPointerUp)
-    canvas.removeEventListener('pointercancel', onPointerUp)
+    controls?.dispose()
+    controls = null
   }
 
   return { getSnapshot, dispose }

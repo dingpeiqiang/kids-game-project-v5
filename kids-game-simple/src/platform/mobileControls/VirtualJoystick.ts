@@ -171,11 +171,11 @@ export class VirtualJoystick {
     ctx.setLineDash([])
     ctx.fillStyle = 'rgba(78, 205, 196, 0.12)'
     ctx.beginPath()
-    ctx.arc(baseX, baseY, radius - 2, 0, Math.PI * 2)
+    ctx.arc(baseX, baseY, Math.max(0, radius - 2), 0, Math.PI * 2)
     ctx.fill()
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
     ctx.beginPath()
-    ctx.arc(baseX, baseY, knobRadius * 0.6, 0, Math.PI * 2)
+    ctx.arc(baseX, baseY, Math.max(0, knobRadius * 0.6), 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
   }

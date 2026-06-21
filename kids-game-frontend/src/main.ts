@@ -13,9 +13,6 @@ import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 
-// 导入认证拦截器
-import { setupAuthInterceptors } from './core/network/auth-interceptor';
-
 // 导入错误处理器
 import { setToastFn } from './utils/error-handler';
 import { toast } from './composables/useToast';
@@ -40,8 +37,5 @@ themeStore.init();
 
 // 初始化错误处理器（在认证拦截器之前）
 setToastFn(toast.show);
-
-// 注册认证拦截器
-setupAuthInterceptors();
 
 app.mount('#app');

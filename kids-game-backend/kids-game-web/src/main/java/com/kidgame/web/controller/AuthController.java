@@ -93,19 +93,32 @@ public class AuthController {
     @Operation(summary = "刷新 Token")
     @PostMapping("/refresh")
     public Result<Map<String, String>> refreshToken(
-            @Parameter(description = "Refresh Token") 
-            @RequestParam String refreshToken,
+            @RequestBody(required = false) Map<String, String> body,
+            @RequestParam(required = false) String refreshToken,
             HttpServletRequest request) {
-        
+
         try {
+            // 优先从 request body 读取（推荐），兼容旧客户端的 query 参数
+            String token = refreshToken;
+            if ((token == null || token.isBlank()) && body != null) {
+                token = body.get("refreshToken");
+            }
+            // query 参数方式已废弃，记录警告
+            if (token != null && (body == null || body.get("refreshToken") == null)) {
+                log.warn("客户端通过 query 参数传递 refreshToken，该方式已废弃，请改用 request body");
+            }
+            if (token == null || token.isBlank()) {
+                return Result.error("refreshToken 不能为空");
+            }
+
             String deviceFingerprint = request.getHeader("X-Device-Fingerprint");
-            
+
             // 调用 Service 刷新 Token
-            String newAccessToken = userService.refreshAccessToken(refreshToken, deviceFingerprint);
-            
+            String newAccessToken = userService.refreshAccessToken(token, deviceFingerprint);
+
             Map<String, String> result = new HashMap<>();
             result.put("accessToken", newAccessToken);
-            
+
             return Result.success(result);
         } catch (Exception e) {
             log.error("刷新 Token 失败", e);

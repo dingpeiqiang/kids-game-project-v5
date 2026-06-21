@@ -5,7 +5,9 @@ import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createCanvasGameLifecycle } from '../../platform/createCanvasGameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { resizeCanvasForMobile } from '../../utils/mobileHelper'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 
 function startMemoryMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
@@ -506,7 +508,7 @@ function startMemoryMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLife
     })
   }
 
-  let unbindPointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   return hostCanvas2D(lifecycleCtx, {
     onInit() {
@@ -514,8 +516,16 @@ function startMemoryMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLife
       applyCanvasMobileStyles(canvas)
       initLevel(0)
       gameStartTime = Date.now()
-      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
-        handleTap(x, y)
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'memoryMatch',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (action === 'tap' && payload.x != null && payload.y != null) {
+            handleTap(payload.x, payload.y)
+          }
+        },
       })
       draw()
     },
@@ -528,8 +538,8 @@ function startMemoryMatchLifecycle(lifecycleCtx: GameLifecycleContext): GameLife
     },
     onDestroy() {
       gameEnded = true
-      unbindPointer?.()
-      unbindPointer = null
+      controls?.dispose()
+      controls = null
     },
   })
 }

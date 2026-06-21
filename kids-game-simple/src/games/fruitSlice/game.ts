@@ -5,7 +5,9 @@ import type { GameLifecycle } from '../../platform/GameLifecycle'
 import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createCanvasGameLifecycle } from '../../platform/createCanvasGameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
-import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { getCachedGTRSTheme } from '../../services/gtrsThemeLoader'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 import { readGtrsSceneList } from '../../utils/gtrsSceneMeta'
@@ -56,8 +58,9 @@ function startFruitSliceLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
   const GAME_DURATION = 60000
   let gameEnded = false
   let missedCount = 0
-  let isSlicing = false
-  let lastX = 0, lastY = 0
+  let sliceLastX = 0
+  let sliceLastY = 0
+  let controls: MobileControlRuntime | null = null
   let scorePopups: any[] = [] // 分数弹出效果
   
   // 性能优化 - 对象池
@@ -645,149 +648,26 @@ function startFruitSliceLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
     }
   }
 
-  function getPos(e: MouseEvent | TouchEvent) {
-    let clientX: number
-    let clientY: number
-    if ('touches' in e && e.touches.length > 0) {
-      clientX = e.touches[0].clientX
-      clientY = e.touches[0].clientY
-    } else if ('changedTouches' in e && e.changedTouches.length > 0) {
-      clientX = e.changedTouches[0].clientX
-      clientY = e.changedTouches[0].clientY
-    } else {
-      const me = e as MouseEvent
-      clientX = me.clientX
-      clientY = me.clientY
-    }
-    return clientToCanvas(canvas, clientX, clientY)
-  }
-
-  canvas.onmousedown = null
-  canvas.ontouchstart = null
-  canvas.onmousemove = null
-  canvas.ontouchmove = null
-  canvas.onmouseup = null
-  canvas.ontouchend = null
-  // 移除 onmouseleave 和 ontouchcancel 的清空，允许滑出边框继续切割
-  
-  canvas.onmousedown = (e) => {
-    e.preventDefault()
-    isSlicing = true
-    const pos = getPos(e)
-    lastX = pos.x
-    lastY = pos.y
-  }
-  
-  canvas.ontouchstart = (e) => {
-    e.preventDefault()
-    isSlicing = true
-    const pos = getPos(e)
-    lastX = pos.x
-    lastY = pos.y
-  }
-
-  canvas.onmousemove = (e) => {
-    if (!isSlicing) return
-    e.preventDefault()
-    
-    const pos = getPos(e)
+  function pushSliceSegment(x1: number, y1: number, x2: number, y2: number) {
     const s = getSlice()
-    s.x1 = lastX
-    s.y1 = lastY
-    s.x2 = pos.x
-    s.y2 = pos.y
+    s.x1 = x1
+    s.y1 = y1
+    s.x2 = x2
+    s.y2 = y2
     s.life = 1
     slices.push(s)
-    checkSlice(lastX, lastY, pos.x, pos.y)
-    
-    lastX = pos.x
-    lastY = pos.y
-  }
-  
-  canvas.ontouchmove = (e) => {
-    if (!isSlicing) return
-    e.preventDefault()
-    
-    const pos = getPos(e)
-    const s = getSlice()
-    s.x1 = lastX
-    s.y1 = lastY
-    s.x2 = pos.x
-    s.y2 = pos.y
-    s.life = 1
-    slices.push(s)
-    checkSlice(lastX, lastY, pos.x, pos.y)
-    
-    lastX = pos.x
-    lastY = pos.y
-  }
-
-  canvas.onmouseup = () => isSlicing = false
-  canvas.ontouchend = () => isSlicing = false
-  // 不再在 mouseleave 时停止切割
-  
-  // 添加全局事件监听，即使鼠标滑出Canvas也能继续切割
-  const handleGlobalMove = (e: MouseEvent) => {
-    if (!isSlicing) return
-    const pos = clientToCanvas(canvas, e.clientX, e.clientY)
-    
-    const s = getSlice()
-    s.x1 = lastX
-    s.y1 = lastY
-    s.x2 = pos.x
-    s.y2 = pos.y
-    s.life = 1
-    slices.push(s)
-    checkSlice(lastX, lastY, pos.x, pos.y)
-    
-    lastX = pos.x
-    lastY = pos.y
-  }
-  
-  const handleGlobalUp = () => {
-    isSlicing = false
-  }
-  
-  const handleGlobalTouchMove = (e: TouchEvent) => {
-    if (!isSlicing) return
-    const t = e.touches[0]
-    if (!t) return
-    e.preventDefault()
-    const pos = clientToCanvas(canvas, t.clientX, t.clientY)
-    const s = getSlice()
-    s.x1 = lastX
-    s.y1 = lastY
-    s.x2 = pos.x
-    s.y2 = pos.y
-    s.life = 1
-    slices.push(s)
-    checkSlice(lastX, lastY, pos.x, pos.y)
-    lastX = pos.x
-    lastY = pos.y
-  }
-
-  function bindGlobalSliceInput() {
-    document.addEventListener('mousemove', handleGlobalMove)
-    document.addEventListener('mouseup', handleGlobalUp)
-    document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false })
-    document.addEventListener('touchend', handleGlobalUp)
-    document.addEventListener('touchcancel', handleGlobalUp)
+    checkSlice(x1, y1, x2, y2)
   }
 
   // 性能优化 - 游戏结束时清理资源
   function cleanup() {
-    document.removeEventListener('mousemove', handleGlobalMove)
-    document.removeEventListener('mouseup', handleGlobalUp)
-    document.removeEventListener('touchmove', handleGlobalTouchMove)
-    document.removeEventListener('touchend', handleGlobalUp)
-    document.removeEventListener('touchcancel', handleGlobalUp)
-    // 清空数组释放内存
+    controls?.dispose()
+    controls = null
     fruits.length = 0
     particles.length = 0
     slices.length = 0
     sliceEffects.length = 0
     scorePopups.length = 0
-    // 保留对象池以便复用
   }
 
   return hostCanvas2D(lifecycleCtx, {
@@ -795,7 +675,31 @@ function startFruitSliceLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
       gameStartTime = Date.now()
       inventory = ['bomb', 'slow', 'double']
       updateHTMLPowerupBar()
-      bindGlobalSliceInput()
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'fruitSlice',
+        trackOutsideCanvas: true,
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (gameEnded) return
+          const x = payload.x ?? 0
+          const y = payload.y ?? 0
+          if (action === 'tap') {
+            sliceLastX = x
+            sliceLastY = y
+            return
+          }
+          if (action === 'swipe') {
+            const dx = payload.dx ?? 0
+            const dy = payload.dy ?? 0
+            if (dx === 0 && dy === 0) return
+            pushSliceSegment(sliceLastX, sliceLastY, x, y)
+            sliceLastX = x
+            sliceLastY = y
+          }
+        },
+      })
       spawnFruit()
       setTimeout(spawnFruit, 400)
       setTimeout(spawnFruit, 800)

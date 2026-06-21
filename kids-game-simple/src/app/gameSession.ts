@@ -28,9 +28,9 @@ let activeLifecycleHost: GameLifecycle | null = null
 
 // ==================== 游戏启动 ====================
 
-export function launchGame(ctx: PlatformContext, game: Game) {
-  // 强制检查登录状态
-  if (!userService.isLoggedIn) {
+export async function launchGame(ctx: PlatformContext, game: Game) {
+  const ok = await userService.ensurePlayableSession()
+  if (!ok) {
     showToast('请先登录后再玩游戏')
     ctx.authModal.open(() => ctx.onUserChange())
     ctx.authModal.requireLogin = true

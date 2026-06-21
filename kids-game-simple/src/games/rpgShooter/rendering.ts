@@ -377,5 +377,5 @@ export function drawGameOver(ctx: CanvasRenderingContext2D, state: GameState): v
   
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.font = '14px sans-serif';
-  ctx.fillText('点击重新开始', GAME_CONFIG.CANVAS_WIDTH / 2, GAME_CONFIG.CANVAS_HEIGHT / 2 + 70);
+  ctx.fillText('结算中… 请使用上方按钮返回或再来一局', GAME_CONFIG.CANVAS_WIDTH / 2, GAME_CONFIG.CANVAS_HEIGHT / 2 + 70);
 }

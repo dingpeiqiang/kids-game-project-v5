@@ -18,6 +18,7 @@ import com.kidgame.service.dto.UpdateChildPermissionsDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +30,7 @@ import java.util.List;
  */
 @Deprecated
 @Tag(name = "家长管理", description = "家长管控相关接口")
+@Slf4j
 @RestController
 @RequestMapping("/api/parent")
 public class ParentController {
@@ -47,8 +49,10 @@ public class ParentController {
     }
 
     @Operation(summary = "家长登录")
+    @Deprecated
     @PostMapping("/login")
     public Result<com.kidgame.dao.entity.Parent> login(@RequestBody ParentLoginDTO dto) {
+        log.warn("/api/parent/login 已废弃，请使用 /api/auth/login 统一登录接口");
         com.kidgame.dao.entity.Parent parent = parentService.login(dto);
         return Result.success(parent);
     }

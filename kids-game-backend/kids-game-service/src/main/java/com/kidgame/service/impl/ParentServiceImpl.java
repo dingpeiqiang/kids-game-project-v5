@@ -1,6 +1,5 @@
 package com.kidgame.service.impl;
 
-import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -35,6 +34,7 @@ import com.kidgame.service.dto.UpdateChildPermissionsDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,6 +70,9 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
 
     @Autowired
     private BaseUserMapper baseUserMapper;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private NotificationService notificationService;
@@ -110,7 +113,7 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
         // 创建家长账号（使用 BaseUser）
         BaseUser baseUser = new BaseUser();
         baseUser.setUsername(username);
-        baseUser.setPassword(BCrypt.hashpw(dto.getPassword()));
+        baseUser.setPassword(passwordEncoder.encode(dto.getPassword()));
         baseUser.setNickname(dto.getNickname() != null ? dto.getNickname() : "家长");
         baseUser.setUserType(1); // 1-PARENT
         baseUser.setStatus(1); // 1-正常
@@ -161,7 +164,7 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
         }
 
         // 验证密码
-        if (!BCrypt.checkpw(dto.getPassword(), baseUser.getPassword())) {
+        if (!passwordEncoder.matches(dto.getPassword(), baseUser.getPassword())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD_OBJ);
         }
 
@@ -193,7 +196,7 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
         if (parent == null) {
             return false;
         }
-        return BCrypt.checkpw(password, parent.getPassword());
+        return passwordEncoder.matches(password, parent.getPassword());
     }
 
     @Override
@@ -507,7 +510,7 @@ public class ParentServiceImpl extends ServiceImpl<ParentMapper, Parent> impleme
         Kid kid = new Kid();
         kid.setUserType(0); // 0表示儿童
         kid.setUsername("kid_" + System.currentTimeMillis()); // 生成唯一用户名
-        kid.setPassword(BCrypt.hashpw(dto.getPassword()));
+        kid.setPassword(passwordEncoder.encode(dto.getPassword()));
         kid.setNickname(dto.getNickname().trim());
         kid.setAvatar(dto.getAvatar() != null ? dto.getAvatar() : "👶"); // 默认头像
         kid.setStatus(1); // 激活状态

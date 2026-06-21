@@ -1,6 +1,10 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { gameActions } from '../../platform/gameBridge'
 import { audioService } from '../../services/audio'
+import {
+  bindGameCanvasControls,
+  type MobileControlRuntime,
+} from '../../platform/mobileControls'
 import type { Bullet, Enemy, EnemyBullet, Particle, Shockwave, FloatText, Powerup, Star, SceneState, Turret, TransformState, TransformType } from './types'
 import {
   BASE_W, BASE_H, ENEMY_TYPES, getLevelConfig, getLevelBossConfig,
@@ -129,6 +133,8 @@ export class SpaceShooterScene extends Phaser.Scene {
   /** 壳层暂停恢复后，忽略误触到画布上的「继续」点击，避免飞船被瞬移到屏幕中央 */
   private suppressPointerUntil = 0
   private shellPauseLatch = false
+
+  private platformControls: MobileControlRuntime | null = null
 
   constructor(engine: GameEngine, onEnd: () => void) {
     super({ key: 'SpaceShooterScene' })
@@ -388,54 +394,66 @@ export class SpaceShooterScene extends Phaser.Scene {
 
   private inputBound = false
 
-  // === 输入处理（触摸拖动战机，逻辑坐标 BASE_W×BASE_H）===
+  /** 统一操作框架 + Phaser 指针（PC 跟手）；逻辑坐标 BASE_W×BASE_H */
   private setupInput() {
     if (this.inputBound) return
     this.inputBound = true
 
+    const canvas = this.game.canvas as HTMLCanvasElement
     const shouldIgnorePointer = () =>
       !this.engine.canTick() || Date.now() < this.suppressPointerUntil
 
-    const applyPointer = (pointer: Phaser.Input.Pointer) => {
-      const pos = this.screenToLogical(pointer)
-      this.playerX = pos.x
-      this.playerY = pos.y - TOUCH_OFFSET_Y
-      this.clampPlayer()
-    }
-
-    const onDown = (pointer: Phaser.Input.Pointer) => {
-      if (this.gameEnded) return
-      if (shouldIgnorePointer()) return
-      this.mouseDown = true
-      applyPointer(pointer)
+    const tryStartGame = () => {
       if (!this.gameStarted) {
         this.gameStarted = true
         this.startTime = Date.now()
       }
     }
 
-    const onMove = (pointer: Phaser.Input.Pointer) => {
-      if (this.gameEnded || !pointer.isDown) return
-      if (shouldIgnorePointer()) return
-      applyPointer(pointer)
+    const applyLogicalPos = (x: number, y: number) => {
+      this.playerX = x
+      this.playerY = y - TOUCH_OFFSET_Y
+      this.clampPlayer()
     }
+
+    this.platformControls = bindGameCanvasControls(canvas, {
+      gameId: 'spaceShooter',
+      viewWidth: BASE_W,
+      viewHeight: BASE_H,
+      trackOutsideCanvas: true,
+      onAction: (action, payload) => {
+        if (this.gameEnded || shouldIgnorePointer()) return
+        if (action === 'tap' || action === 'swipe') {
+          applyLogicalPos(payload.x ?? this.playerX, payload.y ?? this.playerY)
+          this.mouseDown = true
+          tryStartGame()
+        }
+        if (action === 'move' && payload.source === 'keyboard') {
+          const sx = payload.stickX ?? 0
+          const sy = payload.stickY ?? 0
+          const len = Math.hypot(sx, sy)
+          if (len > 0) {
+            const spd = 5.5
+            this.playerX += (sx / len) * spd
+            this.playerY += (sy / len) * spd
+            this.clampPlayer()
+            tryStartGame()
+          }
+        }
+      },
+    })
 
     const onUp = () => {
       this.mouseDown = false
     }
-
-    this.input.on('pointerdown', onDown)
-    this.input.on('pointermove', onMove)
-    this.input.on('pointerup', onUp)
-    this.input.on('pointerupoutside', onUp)
-    this.input.on('pointercancel', onUp)
+    canvas.addEventListener('mouseup', onUp)
+    canvas.addEventListener('touchend', onUp)
 
     this.events.once('shutdown', () => {
-      this.input.off('pointerdown', onDown)
-      this.input.off('pointermove', onMove)
-      this.input.off('pointerup', onUp)
-      this.input.off('pointerupoutside', onUp)
-      this.input.off('pointercancel', onUp)
+      canvas.removeEventListener('mouseup', onUp)
+      canvas.removeEventListener('touchend', onUp)
+      this.platformControls?.dispose()
+      this.platformControls = null
       this.inputBound = false
     })
   }

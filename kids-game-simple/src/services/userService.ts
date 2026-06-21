@@ -105,6 +105,8 @@ interface LocalAccountMeta {
   avatar: string
   exp: number
   userId?: number  // 后端 userId
+  accessToken?: string   // 保存登录 token，支持快速切换账号
+  refreshToken?: string
 }
 
 function loadLocalAccounts(): LocalAccountMeta[] {
@@ -154,31 +156,89 @@ class UserService {
   private _initialized = false
   /** 防止 Android 上连续点击触发多次 CapacitorHttp 登录 */
   private _loginInFlight = false
+  /** 会话恢复进行中，避免与手动登录竞态导致误清 Token */
+  private _restoreInFlight = false
 
   constructor() {
     // 同步尝试从 Token 恢复会话（异步，不阻塞启动）
     this._tryRestoreSession()
   }
 
+  /** 等待会话恢复完成（移动端启动/登录后应先 await，再判断 isLoggedIn） */
+  whenReady(): Promise<void> {
+    if (this._initialized) return Promise.resolve()
+    return new Promise(resolve => {
+      const done = () => {
+        window.removeEventListener('ugp:sessionReady', done)
+        resolve()
+      }
+      window.addEventListener('ugp:sessionReady', done, { once: true })
+      // 恢复可能在 Vue onMounted 注册监听之前就结束，避免永远 pending
+      if (this._initialized) {
+        window.removeEventListener('ugp:sessionReady', done)
+        resolve()
+      }
+    })
+  }
+
+  private _notifyUserChange() {
+    window.dispatchEvent(new CustomEvent('ugp:userChange'))
+  }
+
   // ── 异步恢复会话（页面刷新/重开时自动续登）──────────────────
   private async _tryRestoreSession() {
     const userId = tokenStore.getUserId()
-    if (!userId) { this._initialized = true; return }
+    if (!userId) {
+      this._initialized = true
+      window.dispatchEvent(new CustomEvent('ugp:sessionReady'))
+      return
+    }
 
+    this._restoreInFlight = true
     try {
       const info = await apiClient.getCurrentUser()
       if (info) {
         this._buildCurrentFromBackend(info)
         await this._loadFavoritesFromBackend()
+      } else if (!tokenStore.getAccess()) {
+        // 仅当 Token 已被服务端/刷新逻辑清除时才视为未登录
+        this._current = null
       } else {
-        tokenStore.clear()
+        // 有 Token 但拉取用户信息失败（弱网等）：保留 Token，用本地缓存恢复 _current
+        this._hydrateCurrentFromLocalCache(userId)
       }
-    } catch {
-      tokenStore.clear()
+    } catch (e) {
+      console.warn('[UserService] 恢复会话异常，保留 Token（若有）', e)
+      if (tokenStore.getAccess() && tokenStore.getUserId()) {
+        this._hydrateCurrentFromLocalCache(tokenStore.getUserId()!)
+      }
+    } finally {
+      this._restoreInFlight = false
+      this._initialized = true
+      window.dispatchEvent(new CustomEvent('ugp:sessionReady'))
+      // 首页由 App.vue 在 whenReady 后统一 renderGameCards，此处不再广播 userChange，避免重复请求 game-records / batch-user-rank
     }
-    this._initialized = true
-    // 通知 UI 刷新
-    window.dispatchEvent(new CustomEvent('ugp:userChange'))
+  }
+
+  /** 弱网/接口失败时用本地 ugp_gd_* 与账号列表恢复内存态，避免 isLoggedIn 为 false */
+  private _hydrateCurrentFromLocalCache(uid: string) {
+    const list = loadLocalAccounts()
+    const meta = list.find(a => a.id === uid)
+    const gd = loadGameData(uid)
+    const today = new Date().toDateString()
+    if (gd.todayDate !== today) {
+      gd.todayGames = 0
+      gd.todayDate = today
+    }
+    this._current = {
+      id: uid,
+      username: meta?.username || '',
+      password: '',
+      avatar: meta?.avatar || pickAvatar(),
+      createdAt: new Date().toISOString(),
+      ...gd,
+    }
+    saveGameData(uid, gd)
   }
 
   /** 从后端用户信息构建 current 对象 */
@@ -229,6 +289,8 @@ class UserService {
       avatar: account.avatar,
       exp: gd.exp,
       userId: 'userId' in info ? info.userId : undefined,
+      accessToken: tokenStore.getAccess() || undefined,
+      refreshToken: tokenStore.getRefresh() || undefined,
     })
   }
 
@@ -236,6 +298,36 @@ class UserService {
   get current(): UserAccount | null { return this._current }
   get isLoggedIn(): boolean { 
     return this._current !== null && !!tokenStore.getAccess() && !!tokenStore.getUserId() 
+  }
+
+  /**
+   * 移动端：有 Token 但 _current 未就绪时（弱网/恢复竞态）尝试补全内存态，避免误弹登录。
+   */
+  async ensurePlayableSession(): Promise<boolean> {
+    await this.whenReady()
+    if (this.isLoggedIn) return true
+    const uid = tokenStore.getUserId()
+    const token = tokenStore.getAccess()
+    if (!uid || !token) return false
+    if (!this._current) {
+      this._hydrateCurrentFromLocalCache(uid)
+    }
+    if (this.isLoggedIn) return true
+    try {
+      const info = await apiClient.getCurrentUser()
+      if (info) {
+        this._buildCurrentFromBackend(info)
+        return this.isLoggedIn
+      }
+      if (tokenStore.getAccess()) {
+        this._hydrateCurrentFromLocalCache(uid)
+      }
+    } catch {
+      if (tokenStore.getAccess()) {
+        this._hydrateCurrentFromLocalCache(uid)
+      }
+    }
+    return this.isLoggedIn
   }
 
   // ── 注册 ──────────────────────────────────────────────────────
@@ -261,14 +353,19 @@ class UserService {
     if (this._loginInFlight) {
       return { ok: false, msg: '正在登录，请稍候…' }
     }
+    if (this._restoreInFlight) {
+      await this.whenReady()
+    }
     this._loginInFlight = true
     try {
       const res = await apiClient.login(username, password)
       if (!res.ok || !res.data) return { ok: false, msg: res.msg }
 
       this._buildCurrentFromBackend(res.data)
+      this._initialized = true
       this._dailyCheckIn()
       await this._loadFavoritesFromBackend()
+      this._notifyUserChange()
       return { ok: true, msg: res.msg }
     } finally {
       this._loginInFlight = false
@@ -281,19 +378,20 @@ class UserService {
     this._current = null
   }
 
-  // ── 快速切换账号（本地缓存中选，不重新走后端认证）──────────────
+  // ── 快速切换账号（切换本地游戏数据视图 + token）──────────────
   switchAccount(localId: string) {
-    // 快速切换只切本地游戏数据视图，Token 仍是当前登录用户
-    // 如需真正切换，需要重新登录
-    // 首先检查 token 是否有效，如果无效则清除登录状态
-    if (!tokenStore.getAccess() || !tokenStore.getUserId()) {
-      console.warn('[UserService] switchAccount: Token 无效，无法切换账号')
-      return
-    }
-    
     const list = loadLocalAccounts()
     const meta = list.find(a => a.id === localId)
     if (!meta) return
+
+    // 修复：切换账号时同时切换 token，确保后端请求使用对应账号的身份
+    if (meta.accessToken && meta.refreshToken) {
+      tokenStore.save(meta.accessToken, meta.refreshToken, meta.userId || meta.id)
+    } else if (!tokenStore.getAccess() || !tokenStore.getUserId()) {
+      console.warn('[UserService] switchAccount: 该账号无保存的 token 且当前未登录，无法切换')
+      return
+    }
+
     const gd = loadGameData(localId)
     const today = new Date().toDateString()
     if (gd.todayDate !== today) { gd.todayGames = 0; gd.todayDate = today }

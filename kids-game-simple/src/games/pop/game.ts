@@ -7,7 +7,9 @@ import type { GameLifecycle } from '../../platform/GameLifecycle'
 import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createCanvasGameLifecycle } from '../../platform/createCanvasGameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 
 export function startPopLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
@@ -400,7 +402,7 @@ export function startPopLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
     updateItemBar()
   }
 
-  let unbindPointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
   let lastSpawnMs = 0
 
   return hostCanvas2D(lifecycleCtx, {
@@ -408,16 +410,24 @@ export function startPopLifecycle(lifecycleCtx: GameLifecycleContext): GameLifec
       applyCanvasMobileStyles(canvas)
       updateHTMLPowerupBar()
       lastSpawnMs = performance.now()
-      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
-        handleTapAt(x, y)
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'pop',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (action === 'tap' && payload.x != null && payload.y != null) {
+            handleTapAt(payload.x, payload.y)
+          }
+        },
       })
       ;(window as unknown as { useGameItem?: (id: string) => void }).useGameItem = applyUseGameItem
     },
     onUpdate(_dt) {
       const now = Date.now()
       if (now - lastActionTime > INACTIVITY_TIMEOUT) {
-        unbindPointer?.()
-        unbindPointer = null
+        controls?.dispose()
+        controls = null
         audioService.lose()
         gameActions.gameOver({ victory: false, score: engine.getScore() })
         return

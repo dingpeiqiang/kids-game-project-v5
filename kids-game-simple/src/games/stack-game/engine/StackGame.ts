@@ -1,7 +1,9 @@
 import type { GameEngine } from '../../../services/gameEngine'
 import { gameActions } from '../../../platform/gameBridge'
 import { audioService } from '../../../services/audio'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../../platform/mobileControls'
 import { GAME_CONFIG, BLOCK_COLORS, BG_STAGES, SPECIAL_BLOCK_CONFIG, WEATHER_CONFIG, CHARACTER_CONFIG, BUBBLE_COLORS, RAINBOW_COLORS } from '../config/gameConfig'
 import { POWERUP_CONFIGS, POWERUP_COMBOS, POWERUP_DROP_CHANCES } from '../config/powerupConfig'
 import { ACHIEVEMENTS, ACHIEVEMENT_REWARDS } from '../config/achievementConfig'
@@ -564,8 +566,8 @@ export class StackGame {
     }
 
     this.gameEnded = true
-    this.unbindPointer?.()
-    this.unbindPointer = null
+    this.controls?.dispose()
+    this.controls = null
     gameActions.gameOver({ victory: this.layers.length >= 15, score: this.engine.getScore() })
   }
 
@@ -607,8 +609,16 @@ export class StackGame {
   }
 
   bindInput(): void {
-    this.unbindPointer?.()
-    this.unbindPointer = bindCanvasPointerInput(this.canvas, () => this.handleTap())
+    this.controls?.dispose()
+    this.controls = bindGameCanvasControls(this.canvas, {
+      gameId: 'stack',
+      viewWidth: this.W,
+      viewHeight: this.H,
+      layout: { viewWidth: this.W, viewHeight: this.H, buttons: [] },
+      onAction: action => {
+        if (action === 'tap') this.handleTap()
+      },
+    })
   }
 
   renderFrame(): void {
@@ -616,8 +626,8 @@ export class StackGame {
   }
 
   destroy(): void {
-    this.unbindPointer?.()
-    this.unbindPointer = null
+    this.controls?.dispose()
+    this.controls = null
   }
 
   private draw() {
@@ -1014,11 +1024,10 @@ export class StackGame {
 
   private updateFallingPieces() {}
 
-  private unbindPointer: (() => void) | null = null
+  private controls: MobileControlRuntime | null = null
 
   start() {
-    this.unbindPointer?.()
-    this.unbindPointer = bindCanvasPointerInput(this.canvas, () => this.handleTap())
+    this.bindInput()
     this.engine.start()
     this.draw()
     this.loop()

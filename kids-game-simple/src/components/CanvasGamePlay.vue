@@ -4,6 +4,8 @@
     :class="{
       'game-play-shell--landscape': landscapeMode,
       'game-play-shell--force-landscape': forceLandscape,
+      'game-play-shell--compact-footer': shellLayout.compactFooter,
+      'game-play-shell--immersive-header': shellLayout.immersiveHeader,
     }"
     :style="landscapeShellStyle"
   >
@@ -14,7 +16,12 @@
       :score="liveScore"
       :combo="liveCombo"
       :paused="session.isPaused.value"
-      :show-pause="session.isPlaying.value || session.isPaused.value"
+      :show-score="shellLayout.showPlatformScore"
+      :show-pause="
+        shellLayout.showPlatformPause &&
+        (session.isPlaying.value || session.isPaused.value)
+      "
+      :immersive-header="shellLayout.immersiveHeader"
       @back="onBack"
       @toggle-pause="onTogglePause"
     />
@@ -60,6 +67,7 @@ import { useRouter } from 'vue-router';
 import type { GameGuide } from '@simple/types';
 import { getGameRegistration, destroyGame, initGame } from '@simple/games/gameRegistry';
 import { hasGameGuide, loadGameGuideModule } from '@simple/platform/gameGuide';
+import { mergeGuideWithControlHint } from '@simple/platform/mobileControls';
 import { gameEngine } from '@simple/services/gameEngine';
 import {
   mountMainGameCanvas,
@@ -76,6 +84,11 @@ import GamePlayShellHeader from '@simple/components/game-play/GamePlayShellHeade
 import GamePlayResultPanel from '@simple/components/game-play/GamePlayResultPanel.vue';
 import GamePlayPauseOverlay from '@simple/components/game-play/GamePlayPauseOverlay.vue';
 import { prepareEmbeddedCanvasPlay } from '@simple/services/embeddedGameLaunch';
+import {
+  installGameEventBridge,
+  uninstallGameEventBridge,
+  setGameEndHandler,
+} from '@simple/platform';
 import { useCanvasGameSession } from '@simple/composables/useCanvasGameSession';
 import { GAME_PLAY_SHELL } from '@simple/constants/gamePlayShell';
 import { getGameLayoutConfig } from '@simple/games/gameLayout';
@@ -111,6 +124,16 @@ const guide = ref<GameGuide | undefined>();
 const guideCustomPanel = ref<Component | undefined>();
 const guideIcon = computed(() => guide.value?.icon ?? '');
 const accentColor = computed(() => registration.value?.game.color?.split(',')[0] ?? '#4D96FF');
+
+const shellLayout = computed(() => {
+  const layout = getGameLayoutConfig(props.gameId);
+  return {
+    compactFooter: !!layout.compactFooter,
+    showPlatformScore: !layout.hidePlatformScore,
+    showPlatformPause: !layout.hidePlatformPause,
+    immersiveHeader: !!layout.immersiveHeader,
+  };
+});
 
 const showHeader = computed(() => true);
 
@@ -181,7 +204,21 @@ function replay() {
   })();
 }
 
+function finishSessionFromEngine() {
+  if (!session.sessionActive.value) return;
+  const score = gameEngine.getScore();
+  liveScore.value = score;
+  session.endSession({
+    score,
+    victory: gameEngine.isVictory(),
+    stats: gameEngine.getGameStats(),
+  });
+  gameEngine.endGame();
+}
+
 function teardownSession() {
+  setGameEndHandler(null);
+  uninstallGameEventBridge();
   session.teardown();
   clearRuntimeOnly();
 }
@@ -267,16 +304,15 @@ async function startSession() {
     window.visualViewport?.addEventListener('resize', sessionLandscapeResizeHandler);
   }
 
+  installGameEventBridge();
+  setGameEndHandler(() => {
+    destroyGame(props.gameId);
+    finishSessionFromEngine();
+  });
+
   const ok = await initGame(props.gameId, gameEngine, () => {
-    if (!session.sessionActive.value) return;
-    const score = gameEngine.getScore();
-    liveScore.value = score;
-    session.endSession({
-      score,
-      victory: gameEngine.isVictory(),
-      stats: gameEngine.getGameStats(),
-    });
-    gameEngine.endGame();
+    destroyGame(props.gameId);
+    finishSessionFromEngine();
   });
 
   if (!ok) {
@@ -298,7 +334,7 @@ async function resolveGuideForPlay(): Promise<boolean> {
   if (!hasGameGuide(props.gameId)) return false;
   const mod = await loadGameGuideModule(props.gameId);
   if (!mod) return false;
-  guide.value = mod.guide;
+  guide.value = mergeGuideWithControlHint(props.gameId, mod.guide);
   guideCustomPanel.value = mod.GuidePage;
   return true;
 }
@@ -384,5 +420,40 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/** 3D / 横屏：为游戏内底栏或虚拟键预留安全区，避免与系统 Home 条重叠 */
+.game-play-shell--compact-footer .game-play-shell__canvas {
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+
+/** 沉浸式：顶栏收起时画布占满壳层 */
+.game-play-shell--immersive-header :deep(.game-play-header--hidden) {
+  display: none;
+}
+
+.game-play-shell--immersive-header :deep(.game-play-header__toggle) {
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  right: calc(env(safe-area-inset-right, 0px) + 8px);
+  left: auto;
+}
+
+.game-play-shell--landscape.game-play-shell--immersive-header :deep(.game-play-header__toggle) {
+  top: auto;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  right: calc(env(safe-area-inset-right, 0px) + 8px);
+  left: auto;
+}
+
+.game-play-shell--landscape.game-play-shell--immersive-header :deep(.game-play-header__back-float) {
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  left: calc(env(safe-area-inset-left, 0px) + 8px);
+}
+
+.game-play-shell--force-landscape.game-play-shell--immersive-header :deep(.game-play-header__toggle) {
+  transform: rotate(-90deg);
+  right: calc(env(safe-area-inset-right, 0px) + 8px);
+  bottom: calc(50% - 22px);
 }
 </style>

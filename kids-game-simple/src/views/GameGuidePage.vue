@@ -19,6 +19,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { GameGuide } from '@simple/types';
 import { getGameRegistration } from '@simple/games/gameRegistry';
 import { hasGameGuide, loadGameGuideModule } from '@simple/platform/gameGuide';
+import { mergeGuideWithControlHint } from '@simple/platform/mobileControls';
 import GameGuideShell from '@simple/platform/gameGuide/GameGuideShell.vue';
 import { storageService } from '@simple/services/storage';
 import { userService } from '@simple/services/userService';
@@ -56,7 +57,9 @@ onMounted(async () => {
     return;
   }
   const mod = await loadGameGuideModule(gameId.value);
-  guide.value = mod?.guide;
+  guide.value = mod?.guide
+    ? mergeGuideWithControlHint(gameId.value, mod.guide)
+    : undefined;
   customPanel.value = mod?.GuidePage;
   loading.value = false;
 });

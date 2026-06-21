@@ -7,6 +7,7 @@ import com.kidgame.service.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +17,7 @@ import java.util.List;
  * 儿童控制器
  */
 @Tag(name = "儿童管理", description = "儿童用户相关接口")
+@Slf4j
 @RestController
 @RequestMapping("/api/kid")
 public class KidController {
@@ -31,8 +33,10 @@ public class KidController {
     }
 
     @Operation(summary = "儿童登录")
+    @Deprecated
     @PostMapping("/login")
     public Result<Kid> login(@RequestBody KidLoginDTO dto) {
+        log.warn("/api/kid/login 已废弃，请使用 /api/auth/login 统一登录接口");
         Kid kid = kidService.login(dto.getUsername(), dto.getPassword());
         return Result.success(kid);
     }

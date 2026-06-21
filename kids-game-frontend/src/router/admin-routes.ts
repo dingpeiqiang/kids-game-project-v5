@@ -15,6 +15,9 @@ import {
   type AdminPortalRole,
 } from '@kids-game/shared';
 
+const LOGIN_PORTAL_URL = import.meta.env.VITE_LOGIN_PORTAL_URL || (import.meta.env.DEV ? 'http://localhost:3001/login' : '/login');
+const REGISTER_PORTAL_URL = import.meta.env.VITE_REGISTER_PORTAL_URL || (import.meta.env.DEV ? 'http://localhost:3001/register' : '/register');
+
 function portalRole(): AdminPortalRole | null {
   const t = getCurrentUserType();
   if (t === 'admin') return 'admin';
@@ -68,7 +71,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Login',
     beforeEnter: () => {
       // 3000 管理端无独立登录页，统一跳转到 3001 终端登录
-      window.location.href = 'http://localhost:3001/login';
+      window.location.href = LOGIN_PORTAL_URL;
       return false;
     },
   },
@@ -76,7 +79,7 @@ const routes: RouteRecordRaw[] = [
     path: '/register',
     name: 'Register',
     beforeEnter: () => {
-      window.location.href = 'http://localhost:3001/register';
+      window.location.href = REGISTER_PORTAL_URL;
       return false;
     },
   },
@@ -95,6 +98,12 @@ const routes: RouteRecordRaw[] = [
     name: 'Parent',
     component: () => import('@/modules/parent/index.vue'),
     meta: { title: '家长中心', requiresAuth: true },
+  },
+  {
+    path: '/parent/learning-report',
+    name: 'ParentLearningReport',
+    component: () => import('@/modules/parent/components/ParentLearningReport.vue'),
+    meta: { title: '孩子学情', requiresAuth: true },
   },
   {
     path: '/admin',
@@ -140,6 +149,16 @@ const routes: RouteRecordRaw[] = [
         path: 'questions',
         meta: { title: '题库管理', menuId: 'questions', adminOnly: true },
         component: () => import('@/modules/admin/components/QuestionManagement.vue'),
+      },
+      {
+        path: 'subjects',
+        meta: { title: '学科管理', menuId: 'subjects', adminOnly: true },
+        component: () => import('@/modules/admin/components/SubjectManagement.vue'),
+      },
+      {
+        path: 'knowledge-points',
+        meta: { title: '知识点管理', menuId: 'knowledge-points', adminOnly: true },
+        component: () => import('@/modules/admin/components/KnowledgePointManagement.vue'),
       },
       {
         path: 'docs',
@@ -244,7 +263,7 @@ router.beforeEach((to, _from, next) => {
 
   // 3000 无独立登录页，未认证时跳转到 3001 终端登录
   if (requiresAuth && !loggedIn) {
-    window.location.href = 'http://localhost:3001/login';
+    window.location.href = LOGIN_PORTAL_URL;
     return;
   }
 

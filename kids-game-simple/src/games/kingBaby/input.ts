@@ -1,4 +1,6 @@
-import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { BASE_H, BASE_W } from './config'
 import type { GameState } from './types'
 
@@ -46,6 +48,7 @@ export function hitTestUi(canvasW: number, canvasH: number, px: number, py: numb
   return null
 }
 
+/** 左区拖移英雄 + 右侧自绘技能圈点选（混合 §5.2，preset `swipe_pan`） */
 export function bindKingBabyInput(
   canvas: HTMLCanvasElement,
   input: InputState,
@@ -54,37 +57,49 @@ export function bindKingBabyInput(
 ): () => void {
   applyCanvasMobileStyles(canvas)
 
-  const onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0 && e.pointerType === 'mouse') return
-    e.preventDefault()
-    input.pointerDown = true
-    const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY)
+  let controls: MobileControlRuntime | null = null
+
+  const applyPos = (x: number, y: number, fireTap: boolean) => {
     input.moveX = x
     input.moveY = y
-    onPointer(x, y, hitTestUi(canvas.width, canvas.height, x, y, state))
+    if (fireTap) {
+      input.pointerDown = true
+      onPointer(x, y, hitTestUi(canvas.width, canvas.height, x, y, state))
+    }
   }
 
-  const onPointerMove = (e: PointerEvent) => {
-    if (!input.pointerDown && e.pointerType !== 'touch') return
-    const { x, y } = clientToCanvas(canvas, e.clientX, e.clientY)
-    input.moveX = x
-    input.moveY = y
-  }
+  controls = bindGameCanvasControls(canvas, {
+    gameId: 'kingBaby',
+    preset: 'swipe_pan',
+    viewWidth: canvas.width,
+    viewHeight: canvas.height,
+    layout: { viewWidth: canvas.width, viewHeight: canvas.height, buttons: [] },
+    onAction: (action, payload) => {
+      const x = payload.x ?? input.moveX ?? canvas.width / 2
+      const y = payload.y ?? input.moveY ?? canvas.height / 2
+      if (action === 'tap') {
+        applyPos(x, y, true)
+        return
+      }
+      if (action === 'swipe') {
+        input.pointerDown = true
+        applyPos(x, y, false)
+      }
+    },
+  })
 
-  const onPointerUp = () => {
+  const onUp = () => {
     input.pointerDown = false
   }
-
-  canvas.addEventListener('pointerdown', onPointerDown, { passive: false })
-  canvas.addEventListener('pointermove', onPointerMove, { passive: false })
-  canvas.addEventListener('pointerup', onPointerUp)
-  canvas.addEventListener('pointercancel', onPointerUp)
+  window.addEventListener('mouseup', onUp)
+  canvas.addEventListener('touchend', onUp)
 
   return () => {
-    canvas.removeEventListener('pointerdown', onPointerDown)
-    canvas.removeEventListener('pointermove', onPointerMove)
-    canvas.removeEventListener('pointerup', onPointerUp)
-    canvas.removeEventListener('pointercancel', onPointerUp)
+    controls?.dispose()
+    controls = null
+    window.removeEventListener('mouseup', onUp)
+    canvas.removeEventListener('touchend', onUp)
+    input.pointerDown = false
   }
 }
 

@@ -23,7 +23,11 @@ public class LoginRateLimitInterceptor implements HandlerInterceptor {
 
     private static final Map<String, AtomicInteger> ipRequestCount = new ConcurrentHashMap<>();
     private static final Map<String, Long> ipLastRequestTime = new ConcurrentHashMap<>();
-    
+    /**
+     * 按 IP 加锁，保证单 IP 计数与时间窗口判断的原子性
+     */
+    private static final Map<String, Object> ipLocks = new ConcurrentHashMap<>();
+
     /**
      * 每分钟最多允许 10 次登录请求
      */
@@ -56,33 +60,36 @@ public class LoginRateLimitInterceptor implements HandlerInterceptor {
         // 清理过期记录
         cleanExpiredRecords(currentTime);
 
-        // 获取并更新计数
-        AtomicInteger count = ipRequestCount.computeIfAbsent(ip, k -> new AtomicInteger(0));
-        Long lastTime = ipLastRequestTime.get(ip);
+        // 按 IP 加锁，保证计数与时间窗口判断的原子性（修复并发计数不准问题）
+        Object lock = ipLocks.computeIfAbsent(ip, k -> new Object());
+        synchronized (lock) {
+            AtomicInteger count = ipRequestCount.computeIfAbsent(ip, k -> new AtomicInteger(0));
+            Long lastTime = ipLastRequestTime.get(ip);
 
-        // 如果是首次请求或超过清理间隔，重置计数
-        if (lastTime == null || (currentTime - lastTime > CLEANUP_INTERVAL_MS)) {
-            count.set(1);
-            ipLastRequestTime.put(ip, currentTime);
-            log.info("IP {} 首次登录请求", ip);
-            return true;
-        }
-
-        // 增加计数
-        int currentCount = count.incrementAndGet();
-        log.debug("IP {} 登录请求次数：{}", ip, currentCount);
-
-        // 检查是否超过限制
-        if (currentCount > MAX_REQUESTS_PER_MINUTE) {
-            log.warn("IP {} 登录请求过于频繁，已限制访问。当前次数：{}", ip, currentCount);
-            response.setStatus(429);
-            response.setContentType("application/json;charset=UTF-8");
-            try {
-                response.getWriter().write("{\"code\":429,\"msg\":\"操作过于频繁，请稍后再试\"}");
-            } catch (Exception e) {
-                log.error("写入响应失败", e);
+            // 如果是首次请求或超过清理间隔，重置计数
+            if (lastTime == null || (currentTime - lastTime > CLEANUP_INTERVAL_MS)) {
+                count.set(1);
+                ipLastRequestTime.put(ip, currentTime);
+                log.info("IP {} 首次登录请求", ip);
+                return true;
             }
-            return false;
+
+            // 增加计数
+            int currentCount = count.incrementAndGet();
+            log.debug("IP {} 登录请求次数：{}", ip, currentCount);
+
+            // 检查是否超过限制
+            if (currentCount > MAX_REQUESTS_PER_MINUTE) {
+                log.warn("IP {} 登录请求过于频繁，已限制访问。当前次数：{}", ip, currentCount);
+                response.setStatus(429);
+                response.setContentType("application/json;charset=UTF-8");
+                try {
+                    response.getWriter().write("{\"code\":429,\"msg\":\"操作过于频繁，请稍后再试\"}");
+                } catch (Exception e) {
+                    log.error("写入响应失败", e);
+                }
+                return false;
+            }
         }
 
         return true;

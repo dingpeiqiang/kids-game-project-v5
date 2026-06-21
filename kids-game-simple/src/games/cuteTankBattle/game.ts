@@ -6,6 +6,7 @@ import { hostCanvas2D } from '../../platform/hostCanvas2D'
 import { audioService } from '../../services/audio'
 import { DESIGN_H, DESIGN_W, GRID_COLS, GRID_ROWS } from './config'
 import { loadGameAssets } from './assets'
+import { drawMobileControlOverlay } from '../../platform/mobileControls'
 import { createInputController, tryVibrate } from './input'
 import {
   advanceAfterLevelClear,
@@ -57,7 +58,7 @@ export async function initCuteTankBattle(engine: GameEngine, onEnd: () => void):
 
   const layout = createLayout(cellSize, mapOffsetX, mapOffsetY)
   const assets = await loadGameAssets()
-  const input = createInputController(canvas)
+  const input = createInputController(canvas, W, H)
 
   let state: GameState = createInitialState(layout)
   startLevel(state, 0)
@@ -123,6 +124,13 @@ export async function initCuteTankBattle(engine: GameEngine, onEnd: () => void):
     },
     onRender() {
       renderFrame(ctx, W, H, state, assets, hudTop)
+      if (input.controls.shouldDrawOverlay()) {
+        drawMobileControlOverlay(
+          ctx,
+          input.controls.getSnapshot(),
+          input.controls.getJoystick(),
+        )
+      }
     },
     onDestroy() {
       if (onPointerTap) {

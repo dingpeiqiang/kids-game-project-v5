@@ -13,7 +13,9 @@ import { drawPath, drawTowers, drawEnemies, drawBullets, drawParticles, drawFloa
 import { pixelToGrid, isInHUD, isInGameArea, getTowerTypeAt, getTowerAt, isOnPath, getSpecialSkillButtonBounds } from './input'
 import { audioService } from '../../services/audio'
 import { app } from '../../services/appBridge'
-import { applyCanvasMobileStyles, bindCanvasPointerInput } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { userService } from '../../services/userService'
 import { apiSubmitGameResult, apiStartGameSession } from '../../services/apiClient'
 
@@ -303,11 +305,11 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
     }
   }
 
-  let unbindPointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   function teardownInput() {
-    unbindPointer?.()
-    unbindPointer = null
+    controls?.dispose()
+    controls = null
   }
   let ending = false
 
@@ -661,8 +663,16 @@ export function initTowerDefense(engine: GameEngineType, onEnd: () => void) {
   activeHost = hostCanvas2D(lifecycleCtx, {
     onInit() {
       applyCanvasMobileStyles(canvas)
-      unbindPointer = bindCanvasPointerInput(canvas, (x, y) => {
-        handleClick(x, y)
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'towerDefense',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (action === 'tap' && payload.x != null && payload.y != null) {
+            handleClick(payload.x, payload.y)
+          }
+        },
       })
       void initGameSession()
     },

@@ -7,6 +7,9 @@ import { GAME_ORIENTATION_CATALOG, assertGameOrientationCatalogComplete } from '
 
 export type GameOrientationMode = 'portrait' | 'landscape'
 
+/** 竖屏画布占视口可用高度比例（与 canvasGameRuntime / computePortraitCanvasDisplaySize 一致） */
+export const DEFAULT_PORTRAIT_HEIGHT_RATIO = 0.88
+
 export interface GameLayoutConfig {
   designWidth: number
   designHeight: number
@@ -21,12 +24,14 @@ export interface GameLayoutConfig {
   hidePlatformPause?: boolean
   compactFooter?: boolean
   showPowerupSlot?: boolean
+  /** 横屏/RPG：默认收起顶栏，仅保留浮动返回/菜单（未设时：landscape 且 hidePlatformScore） */
+  immersiveHeader?: boolean
 }
 
 const DEFAULT_LAYOUT: GameLayoutConfig = {
   designWidth: 400,
   designHeight: 600,
-  portraitHeightRatio: 0.88,
+  portraitHeightRatio: DEFAULT_PORTRAIT_HEIGHT_RATIO,
   orientation: 'portrait',
 }
 
@@ -216,6 +221,10 @@ export function getGameLayoutConfig(
     }
   } else {
     base.forceLandscapeOnMobile = false
+  }
+  if (base.immersiveHeader === undefined) {
+    base.immersiveHeader =
+      base.orientation === 'landscape' && !!base.hidePlatformScore
   }
   return base as GameLayoutConfig
 }

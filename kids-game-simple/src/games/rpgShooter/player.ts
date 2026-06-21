@@ -63,7 +63,15 @@ export function updatePlayer(state: GameState, dt: number): void {
   if (state.keys['a'] || state.keys['arrowleft']) dx -= 1;
   if (state.keys['d'] || state.keys['arrowright']) dx += 1;
 
-  // 鼠标/触摸方向
+  // 触屏左摇杆（统一操作框架）
+  const sx = state.mobileStickX;
+  const sy = state.mobileStickY;
+  if (Math.hypot(sx, sy) > 0.08) {
+    dx += sx;
+    dy += sy;
+  }
+
+  // PC 鼠标跟手方向
   const mouseDx = state.targetX - state.playerX;
   const mouseDy = state.targetY - state.playerY;
   const mouseDist = Math.sqrt(mouseDx * mouseDx + mouseDy * mouseDy);

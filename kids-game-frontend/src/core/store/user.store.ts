@@ -148,11 +148,11 @@ export const useUserStore = defineStore('user', () => {
     try {
       console.log('[UserStore] 开始儿童登录请求...');
       const kidData = await kidApi.login(username, password);
-      console.log('[UserStore] 登录响应数据:', kidData);
+      console.debug('[UserStore] 登录响应数据:', kidData);
 
       // 检查是否有 token（在 deviceId 字段中）
       if (kidData.deviceId) {
-        console.log('[UserStore] 保存 token:', kidData.deviceId);
+        console.debug('[UserStore] 保存 token:', kidData.deviceId);
         localStorage.setItem(API_CONSTANTS.TOKEN_KEY, kidData.deviceId);
         kidApi.setToken(kidData.deviceId);
       }
@@ -168,7 +168,7 @@ export const useUserStore = defineStore('user', () => {
         parentId: kidData.parentId,
       };
 
-      console.log('[UserStore] 保存用户信息到 localStorage:', currentUser.value);
+      console.debug('[UserStore] 保存用户信息到 localStorage:', currentUser.value);
       // 保存到 localStorage
       localStorage.setItem('userInfo', JSON.stringify(currentUser.value));
       console.log('[UserStore] 儿童登录成功');
@@ -190,7 +190,7 @@ export const useUserStore = defineStore('user', () => {
 
     try {
       const parentData = await parentApi.login(username, password);
-      console.log('[UserStore] 家长登录成功:', parentData);
+      console.debug('[UserStore] 家长登录成功:', parentData);
 
       // 将家长数据转换为 ParentUserInfo 接口格式
       parentUser.value = {

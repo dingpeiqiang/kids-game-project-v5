@@ -38,10 +38,42 @@ import { createInputHandler } from './input'
 import { RouteEditor as RouteEditorImpl, addCustomRoute, clearCustomRoutes, loadCustomRoutes, customRoutes, getCustomRoutes, optimizeRoute } from './routes'
 
 let dragonTeardown: (() => void) | null = null
+/** init 时 host 的 inline position，destroy 时还原 */
+let dragonHostPositionBackup: string | null = null
+
+const DRAGON_WRAPPER_ID = 'dragon-shooter-wrapper'
+
+/** legacy `#gameCanvas` 与 Vue `#mainGameCanvas` 父级 */
+function resolveDragonCanvasHost(): HTMLElement | null {
+  const legacy = document.getElementById('gameCanvas')
+  if (legacy) return legacy
+  const main = document.getElementById('mainGameCanvas')
+  if (main?.parentElement) return main.parentElement
+  return document.querySelector<HTMLElement>('.game-play-shell__canvas')
+}
+
+function restoreDragonHostPosition(): void {
+  const host = resolveDragonCanvasHost()
+  if (host && dragonHostPositionBackup !== null) {
+    host.style.position = dragonHostPositionBackup
+    dragonHostPositionBackup = null
+  }
+}
+
+function clearDragonDomFromHost(host: HTMLElement): void {
+  document.getElementById(DRAGON_WRAPPER_ID)?.remove()
+  host.querySelectorAll('canvas:not(#mainGameCanvas)').forEach((c) => c.remove())
+}
 
 export function destroyDragonShooter(): void {
   dragonTeardown?.()
   dragonTeardown = null
+  setGameOverCallback(() => {})
+  unlockMobilePageScroll()
+  const host = resolveDragonCanvasHost()
+  if (host) clearDragonDomFromHost(host)
+  restoreDragonHostPosition()
+  setDragonViewportLayout({ isMobile: false, scale: 1 })
 }
 
 /**
@@ -52,11 +84,18 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
 
   // 加载路线配置
   await routeLoader.loadRoutes()
-  const stats = routeLoader.getStats()
+  routeLoader.getStats()
 
-  // 创建画布
-  const container = document.getElementById('gameCanvas')!
-  container.innerHTML = ''
+  const container = resolveDragonCanvasHost()
+  if (!container) {
+    console.error('[dragonShooter] 未找到画布容器 (#gameCanvas / Vue shell)')
+    onEnd()
+    return
+  }
+  dragonHostPositionBackup = container.style.position
+  container.style.position = 'relative'
+  document.getElementById(DRAGON_WRAPPER_ID)?.remove()
+  container.querySelectorAll('canvas:not(#mainGameCanvas)').forEach((c) => c.remove())
 
   const isMobile = detectDragonShooterMobile()
   setDragonViewportLayout({ isMobile, scale: 1 })
@@ -69,7 +108,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
 
   if (isMobile) {
     const wrapper = document.createElement('div')
-    wrapper.id = 'dragon-shooter-wrapper'
+    wrapper.id = DRAGON_WRAPPER_ID
     wrapper.style.cssText = createMobileWrapperStyles()
 
     canvas.style.position = 'absolute'
@@ -103,8 +142,7 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
       window.removeEventListener('resize', updateCanvasScale)
       window.removeEventListener('orientationchange', updateCanvasScale)
       unlockMobilePageScroll()
-      const wrapperEl = document.getElementById('dragon-shooter-wrapper')
-      if (wrapperEl) wrapperEl.remove()
+      document.getElementById(DRAGON_WRAPPER_ID)?.remove()
       setDragonViewportLayout({ isMobile: false, scale: 1 })
     }
   } else {
@@ -137,8 +175,9 @@ export async function initDragonShooter(engine: GameEngine, onEnd: () => void) {
     disposeViewport?.()
     disposeViewport = null
     performanceMonitor.destroy()
-    const host = document.getElementById('gameCanvas')
-    if (host) host.innerHTML = ''
+    setGameOverCallback(() => {})
+    clearDragonDomFromHost(container)
+    restoreDragonHostPosition()
   }
 
   setGameOverCallback(async () => {

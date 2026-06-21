@@ -93,6 +93,8 @@ export function createInitialState(): GameState {
     targetX: GAME_CONFIG.CANVAS_WIDTH / 2,
     targetY: GAME_CONFIG.CANVAS_HEIGHT / 2,
     keys: {},
+    mobileStickX: 0,
+    mobileStickY: 0,
   };
 }
 

@@ -33,14 +33,24 @@ public class QuestionController {
     @Autowired
     private QuestionService questionService;
 
-    @Operation(summary = "获取随机题目")
+    @Operation(summary = "获取随机题目（支持学科/知识点/难度/题型筛选）")
     @GetMapping("/random")
     public Result<Question> getRandomQuestion(
             @Parameter(description = "学龄") @RequestParam String grade,
-            @Parameter(description = "本会话已做题目ID，逗号分隔，避免重复") @RequestParam(required = false) String excludeIds,
+            @Parameter(description = "本会话已做题目ID，逗号分隔") @RequestParam(required = false) String excludeIds,
+            @Parameter(description = "学科ID") @RequestParam(required = false) Long subjectId,
+            @Parameter(description = "知识点ID，逗号分隔") @RequestParam(required = false) String knowledgePointIds,
+            @Parameter(description = "难度范围：ALL/EASY/MEDIUM/HARD") @RequestParam(required = false) String difficultyRange,
+            @Parameter(description = "题型：single/multiple/judge/fill/short_answer/image/audio") @RequestParam(required = false) String type,
             HttpServletRequest request) {
-        List<Long> exclude = parseExcludeIds(excludeIds);
-        Question question = questionService.getRandomQuestion(grade, exclude);
+        QuestionService.QuestionQuery query = new QuestionService.QuestionQuery()
+                .grade(grade)
+                .subjectId(subjectId)
+                .knowledgePointIds(parseLongIds(knowledgePointIds))
+                .difficultyRange(difficultyRange)
+                .questionType(type)
+                .excludeQuestionIds(parseExcludeIds(excludeIds));
+        Question question = questionService.getRandomQuestion(query);
         return Result.success(question);
     }
 
@@ -78,17 +88,31 @@ public class QuestionController {
         return Result.success(questionService.getTodayAnswerPoints(kidId));
     }
 
-    @Operation(summary = "分页查询题目（管理端）")
+    @Operation(summary = "分页查询题目（管理端，支持多条件）")
     @GetMapping("/page")
     public Result<PageResult<Question>> pageQuestions(
             @Parameter(description = "学龄") @RequestParam(required = false) String grade,
+            @Parameter(description = "学科ID") @RequestParam(required = false) Long subjectId,
             @Parameter(description = "题型") @RequestParam(required = false) String type,
+            @Parameter(description = "难度") @RequestParam(required = false) Integer difficulty,
             @Parameter(description = "状态") @RequestParam(required = false) Integer status,
+            @Parameter(description = "题干关键词") @RequestParam(required = false) String keyword,
+            @Parameter(description = "知识点ID") @RequestParam(required = false) Long knowledgePointId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Long page,
             @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") Long size,
             HttpServletRequest request) {
         JwtAuthHelper.assertAdmin(request);
-        return Result.success(questionService.pageQuestions(grade, type, status, page, size));
+        QuestionService.QuestionPageQuery query = new QuestionService.QuestionPageQuery();
+        query.grade = grade;
+        query.subjectId = subjectId;
+        query.type = type;
+        query.difficulty = difficulty;
+        query.status = status;
+        query.keyword = keyword;
+        query.knowledgePointId = knowledgePointId;
+        query.page = page;
+        query.size = size;
+        return Result.success(questionService.pageQuestions(query));
     }
 
     @Operation(summary = "题目详情（管理端）")
@@ -138,22 +162,33 @@ public class QuestionController {
         return Result.success(questionService.batchUpdateStatus(ids, status));
     }
 
+    @Operation(summary = "批量导入题目")
+    @PostMapping("/batch-import")
+    public Result<Integer> batchImport(@RequestBody List<QuestionSaveDTO> questions, HttpServletRequest request) {
+        JwtAuthHelper.assertAdmin(request);
+        int count = questionService.batchImport(questions);
+        return Result.success(count);
+    }
+
     private static List<Long> parseExcludeIds(String excludeIds) {
-        if (!StringUtils.hasText(excludeIds)) {
+        return parseLongIds(excludeIds);
+    }
+
+    private static List<Long> parseLongIds(String ids) {
+        if (!StringUtils.hasText(ids)) {
             return Collections.emptyList();
         }
-        List<Long> ids = new java.util.ArrayList<>();
-        for (String part : excludeIds.split(",")) {
+        List<Long> result = new java.util.ArrayList<>();
+        for (String part : ids.split(",")) {
             String t = part.trim();
             if (!StringUtils.hasText(t)) {
                 continue;
             }
             try {
-                ids.add(Long.parseLong(t));
+                result.add(Long.parseLong(t));
             } catch (NumberFormatException ignored) {
-                // skip invalid segment
             }
         }
-        return ids;
+        return result;
     }
 }

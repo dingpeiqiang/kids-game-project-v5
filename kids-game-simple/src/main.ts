@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import router from '@simple/router'
 import { installMobileShellGuards } from './utils/mobileEnv'
 
 installMobileShellGuards()
@@ -10,5 +11,6 @@ if (import.meta.env.PROD) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const app = createApp(App)
+  app.use(router)
   app.mount('#app')
 })

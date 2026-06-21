@@ -6,7 +6,9 @@ import type { GameLifecycle } from '../../platform/GameLifecycle'
 import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { createCanvasGameLifecycle } from '../../platform/createCanvasGameLifecycle'
 import { hostCanvas2D } from '../../platform/hostCanvas2D'
-import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 
 function startSlimeJumpLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecycle {
   const canvas = lifecycleCtx.canvas!
@@ -344,11 +346,11 @@ function startSlimeJumpLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecy
     }
   }
 
-  let unbindPointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   const cleanup = () => {
-    unbindPointer?.()
-    unbindPointer = null
+    controls?.dispose()
+    controls = null
   }
 
   const slimeStats = () => ({
@@ -586,15 +588,19 @@ function startSlimeJumpLifecycle(lifecycleCtx: GameLifecycleContext): GameLifecy
       lastHeight = player.y
       gameStartTime = Date.now()
       updateHTMLPowerupBar()
-      unbindPointer = bindCanvasPointerTapAndMove(
-        canvas,
-        x => {
-          mouseX = x
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'slimeJump',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (gameEnded) return
+          const x = payload.x ?? mouseX
+          if (action === 'tap' || action === 'swipe') {
+            mouseX = x
+          }
         },
-        x => {
-          mouseX = x
-        },
-      )
+      })
       lastTime = performance.now()
     },
     onUpdate(_dtSec) {

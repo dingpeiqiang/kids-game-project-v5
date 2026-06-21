@@ -6,7 +6,9 @@ import { runCanvasLifecycle } from '../../platform/GameLifecycle'
 import type { GameLifecycle } from '../../platform/GameLifecycle'
 import { requireMainGameCanvas } from '../../platform/canvasHost'
 import { resizeCanvasForMobile } from '../../utils/mobileHelper'
-import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 
 const W = 400
@@ -55,7 +57,7 @@ export function startBouncePathLifecycle(ctx: GameLifecycleContext): GameLifecyc
   let gameEnded = false
   let targetX = W / 2
   let inventory: string[] = []
-  let unbindPointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   const powerupIcons: Record<string, string> = {
     slow: '🐌',
@@ -269,25 +271,33 @@ export function startBouncePathLifecycle(ctx: GameLifecycleContext): GameLifecyc
       gameStartTime = Date.now()
       for (let i = 0; i < 5; i++) spawnStar()
       updateHTMLPowerupBar()
-      unbindPointer = bindCanvasPointerTapAndMove(
-        canvas,
-        x => {
-          targetX = x
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'bouncePath',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (gameEnded) return
+          const x = payload.x ?? targetX
+          if (action === 'tap') {
+            targetX = x
+            ball.vy = -8
+            audioService.collect()
+            return
+          }
+          if (action === 'swipe') {
+            targetX = x
+          }
         },
-        x => {
-          targetX = x
-          ball.vy = -8
-          audioService.collect()
-        },
-      )
+      })
     },
     onUpdate(_dt) {
       if (gameEnded) return
       const elapsed = Date.now() - gameStartTime
       if (elapsed > GAME_DURATION) {
         gameEnded = true
-        unbindPointer?.()
-        unbindPointer = null
+        controls?.dispose()
+        controls = null
         gameActions.gameOver({ victory: false, score: engine.getScore() })
         return
       }
@@ -297,8 +307,8 @@ export function startBouncePathLifecycle(ctx: GameLifecycleContext): GameLifecyc
       draw()
     },
     onDestroy() {
-      unbindPointer?.()
-      unbindPointer = null
+      controls?.dispose()
+      controls = null
       app.removePowerupBar?.()
     },
   })

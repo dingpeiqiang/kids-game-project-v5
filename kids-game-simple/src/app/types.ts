@@ -52,7 +52,7 @@ export interface PlatformContext {
   onUserChange(): void
   convertGameIdToNumber(gameId: string): number
   clearRankCache(gameId: string): void
-  launchGame(game: Game): void
+  launchGame(game: Game): void | Promise<void>
   closeResult(): void
   replayGame(): void
   exitGame(): void

@@ -1,5 +1,15 @@
 <template>
   <button
+    v-if="immersiveHeader && !isHeaderVisible"
+    type="button"
+    class="game-play-header__back-float"
+    @click="handleBack"
+    :aria-label="labels.back"
+  >
+    ←
+  </button>
+  <button
+    v-if="immersiveHeader"
     type="button"
     class="game-play-header__toggle"
     :class="{ 'game-play-header__toggle--hidden': isHeaderVisible }"
@@ -8,7 +18,7 @@
   >
     ☰
   </button>
-  
+
   <header
     class="game-play-header"
     :class="{ 'game-play-header--hidden': !isHeaderVisible }"
@@ -20,7 +30,7 @@
       <span v-if="icon" class="game-play-header__icon">{{ icon }}</span>
       <span class="game-play-header__title">{{ title }}</span>
     </div>
-    <div class="game-play-header__stats">
+    <div v-if="showScore" class="game-play-header__stats">
       <span class="game-play-header__score">{{ labels.score }} {{ score }}</span>
       <span v-if="combo >= 3" class="game-play-header__combo">{{ labels.combo }} ×{{ combo }}</span>
     </div>
@@ -37,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { GAME_PLAY_SHELL } from '@simple/constants/gamePlayShell';
 
 const props = withDefaults(
@@ -48,12 +58,17 @@ const props = withDefaults(
     combo?: number;
     paused?: boolean;
     showPause?: boolean;
+    showScore?: boolean;
+    /** 默认收起顶栏，保留 ☰ 与浮动返回 */
+    immersiveHeader?: boolean;
   }>(),
   {
     icon: '',
     combo: 0,
     paused: false,
     showPause: true,
+    showScore: true,
+    immersiveHeader: false,
   },
 );
 
@@ -63,7 +78,15 @@ const emit = defineEmits<{
 }>();
 
 const labels = GAME_PLAY_SHELL.labels;
-const isHeaderVisible = ref(false);
+/** 非沉浸式默认展开顶栏；沉浸式默认收起 */
+const isHeaderVisible = ref(!props.immersiveHeader);
+
+watch(
+  () => props.immersiveHeader,
+  (immersive) => {
+    isHeaderVisible.value = !immersive;
+  },
+);
 
 function toggleHeader() {
   isHeaderVisible.value = !isHeaderVisible.value;
@@ -79,6 +102,24 @@ function handleTogglePause() {
 </script>
 
 <style scoped>
+.game-play-header__back-float {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  left: calc(env(safe-area-inset-left, 0px) + 8px);
+  z-index: 102;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.65);
+  color: #93c5fd;
+  font-size: 20px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .game-play-header__toggle {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 8px);
@@ -199,16 +240,4 @@ function handleTogglePause() {
   font-size: 14px;
 }
 
-.game-play-shell--landscape .game-play-header__toggle {
-  top: auto;
-  bottom: 8px;
-  left: 8px;
-}
-
-.game-play-shell--force-landscape .game-play-header__toggle {
-  transform: rotate(-90deg);
-  left: auto;
-  right: calc(env(safe-area-inset-right, 0px) + 8px);
-  bottom: calc(50% - 18px);
-}
 </style>

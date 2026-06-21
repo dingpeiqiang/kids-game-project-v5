@@ -37,18 +37,17 @@ public interface GameSessionScoreMapper extends BaseMapper<GameSessionScore> {
      * 获取用户的游戏记录列表（每个游戏最近一次游玩），按时间倒序
      */
     @Select("""
-            SELECT t.game_id, t.score, t.create_time AS played_at,
-                   (t.score >= (
-                      SELECT MAX(s.score) FROM t_game_session_score s
-                      WHERE s.game_id = t.game_id AND s.user_id = t.user_id AND s.deleted = 0
-                   )) AS is_new_best
-            FROM t_game_session_score t
-            WHERE t.user_id = #{userId} AND t.deleted = 0
-              AND t.create_time = (
-                SELECT MAX(t2.create_time) FROM t_game_session_score t2
-                WHERE t2.game_id = t.game_id AND t2.user_id = t.user_id AND t2.deleted = 0
-              )
-            ORDER BY t.create_time DESC
+            SELECT game_id, score, create_time AS played_at, is_new_best
+            FROM (
+              SELECT t.game_id, t.score, t.create_time,
+                     ROW_NUMBER() OVER (PARTITION BY t.game_id ORDER BY t.create_time DESC) AS rn,
+                     MAX(t.score) OVER (PARTITION BY t.game_id) AS max_score,
+                     (t.score = MAX(t.score) OVER (PARTITION BY t.game_id)) AS is_new_best
+              FROM t_game_session_score t
+              WHERE t.user_id = #{userId} AND t.deleted = 0
+            ) x
+            WHERE rn = 1
+            ORDER BY create_time DESC
             """)
     List<Map<String, Object>> selectUserGameRecords(@Param("userId") Long userId);
 }

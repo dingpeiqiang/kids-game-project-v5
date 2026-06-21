@@ -3,7 +3,12 @@ import { gameActions } from '../../platform/gameBridge'
 import { audioService } from '../../services/audio'
 import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../../data/items'
 import { app } from '../../services/appBridge'
-import { applyCanvasMobileStyles, clientToCanvas } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles, bindCanvasTapDragSwap } from '../../utils/canvasMobileUtils'
+import {
+  bindMobileControlPreset,
+  getGameControlPreset,
+  type MobileControlRuntime,
+} from '../../platform/mobileControls'
 import { Block } from './Block'
 import { ParticleSystem, Particle } from './ParticleSystem'
 import { ComboSystem } from './ComboSystem'
@@ -120,11 +125,9 @@ export class EliminateGame {
   private lastTouchTime = 0
   private readonly TOUCH_DEBOUNCE_MS = 50 // 触摸防抖（过长会感觉点击不灵）
   
-  // 触摸滑动检测
-  private touchStartX = 0
-  private touchStartY = 0
   private readonly SWIPE_THRESHOLD = 30 // 滑动阈值（像素）- 增加到30避免误触
-  private hasSwiped = false // 标记是否已经执行过滑动交换
+  private controls: MobileControlRuntime | null = null
+  private unbindTouch: (() => void) | null = null
   
   // 获取当前关卡的时间限制
   private get timeLimit(): number {
@@ -600,136 +603,75 @@ export class EliminateGame {
   }
 
   private teardownInput() {
-    this.canvas.onclick = null
-    this.canvas.removeEventListener('touchstart', this.handleTouchStart)
-    this.canvas.removeEventListener('touchmove', this.handleTouchMove)
-    this.canvas.removeEventListener('touchend', this.handleTouchEnd)
+    this.controls?.dispose()
+    this.controls = null
+    this.unbindTouch?.()
+    this.unbindTouch = null
+  }
+
+  private cellIndexFromCanvas(mx: number, my: number): number | null {
+    const col = Math.floor((mx - this.PADDING) / this.CELL)
+    const row = Math.floor((my - this.TOP) / this.CELL)
+    if (row < 0 || row >= this.GRID || col < 0 || col >= this.COLS) return null
+    const idx = row * this.COLS + col
+    if (idx < 0 || idx >= this.blocks.length || !this.blocks[idx]) return null
+    return idx
+  }
+
+  private trySelectBlockAt(mx: number, my: number): number | null {
+    if (this.selectedBlock !== null || this.isAnimating) return this.selectedBlock
+    const idx = this.cellIndexFromCanvas(mx, my)
+    if (idx === null) return null
+    this.selectedBlock = idx
+    audioService.collect()
+    return idx
+  }
+
+  private resolveAdjacentForSwap(fromIdx: number, dxClient: number, dyClient: number): number | null {
+    const selectedRow = Math.floor(fromIdx / this.COLS)
+    const selectedCol = fromIdx % this.COLS
+    if (Math.abs(dxClient) > Math.abs(dyClient)) {
+      const targetCol = selectedCol + (dxClient > 0 ? 1 : -1)
+      if (targetCol < 0 || targetCol >= this.COLS) return null
+      return selectedRow * this.COLS + targetCol
+    }
+    const targetRow = selectedRow + (dyClient > 0 ? 1 : -1)
+    if (targetRow < 0 || targetRow >= this.GRID) return null
+    return targetRow * this.COLS + selectedCol
   }
 
   private setupEventListeners() {
     this.teardownInput()
     applyCanvasMobileStyles(this.canvas)
 
-    this.canvas.onclick = (e: MouseEvent) => {
-      this.lastActionTime = Date.now()
-      const { x: mx, y: my } = clientToCanvas(this.canvas, e.clientX, e.clientY)
-      this.handleClick(mx, my)
-    }
-
-    this.canvas.addEventListener('touchstart', this.handleTouchStart, { passive: false })
-    this.canvas.addEventListener('touchmove', this.handleTouchMove, { passive: false })
-    this.canvas.addEventListener('touchend', this.handleTouchEnd, { passive: false })
-  }
-  
-  // 触摸事件处理 - touchstart 记录起始位置和选中宝石
-  private handleTouchStart = (e: TouchEvent) => {
-    e.preventDefault()
-    this.lastActionTime = Date.now()
-    
-    const touch = e.touches[0]
-    this.touchStartX = touch.clientX
-    this.touchStartY = touch.clientY
-    this.hasSwiped = false // 重置滑动标记
-    
-    // 如果没有选中任何宝石，尝试选中触摸位置的宝石
-    if (!this.selectedBlock && !this.isAnimating) {
-      const { x: mx, y: my } = clientToCanvas(this.canvas, touch.clientX, touch.clientY)
-
-      const col = Math.floor((mx - this.PADDING) / this.CELL)
-      const row = Math.floor((my - this.TOP) / this.CELL)
-      const idx = row * this.COLS + col
-      
-      // 边界检查
-      if (row >= 0 && row < this.GRID && col >= 0 && col < this.COLS && 
-          idx >= 0 && idx < this.blocks.length && this.blocks[idx]) {
-        this.selectedBlock = idx
-        audioService.collect()
-      }
-    }
-  }
-  
-  // 触摸事件处理 - touchmove 处理拖拽交换
-  private handleTouchMove = (e: TouchEvent) => {
-    e.preventDefault()
-    
-    // 如果没有选中宝石、正在动画或已经执行过滑动，不处理
-    if (this.selectedBlock === null || this.isAnimating || this.hasSwiped) {
-      return
-    }
-    
-    const touch = e.touches[0]
-    
-    // 计算滑动距离
-    const dx = touch.clientX - this.touchStartX
-    const dy = touch.clientY - this.touchStartY
-    
-    // 判断滑动方向和距离
-    const threshold = this.SWIPE_THRESHOLD
-    
-    const selectedRow = Math.floor(this.selectedBlock / this.COLS)
-    const selectedCol = this.selectedBlock % this.COLS
-    
-    let targetIdx: number | null = null
-    
-    // 检测滑动方向（只触发一次）
-    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
-      // 判断是水平还是垂直滑动
-      if (Math.abs(dx) > Math.abs(dy)) {
-        // 水平滑动
-        const direction = dx > 0 ? 1 : -1
-        const targetCol = selectedCol + direction
-        if (targetCol >= 0 && targetCol < this.COLS) {
-          targetIdx = selectedRow * this.COLS + targetCol
+    this.controls = bindMobileControlPreset(this.canvas, {
+      preset: getGameControlPreset('eliminate'),
+      viewWidth: this.W,
+      viewHeight: this.H,
+      layout: { viewWidth: this.W, viewHeight: this.H, buttons: [] },
+      enableTouch: false,
+      onAction: (action, payload) => {
+        if (action === 'tap' && payload.x != null && payload.y != null) {
+          this.lastActionTime = Date.now()
+          this.handleClick(payload.x, payload.y)
         }
-      } else {
-        // 垂直滑动
-        const direction = dy > 0 ? 1 : -1
-        const targetRow = selectedRow + direction
-        if (targetRow >= 0 && targetRow < this.GRID) {
-          targetIdx = targetRow * this.COLS + selectedCol
-        }
-      }
-      
-      // 如果检测到有效的拖拽交换
-      if (targetIdx !== null && this.blocks[targetIdx]) {
-        const { x: mx, y: my } = clientToCanvas(this.canvas, touch.clientX, touch.clientY)
+      },
+    })
 
-        // 标记已执行滑动
-        this.hasSwiped = true
-        
-        // 执行交换
-        this.trySwap(this.selectedBlock, targetIdx, mx, my)
-        this.selectedBlock = null // 重置选中状态
-      }
-    }
-  }
-  
-  // 触摸事件处理 - touchend 处理点击逻辑
-  private handleTouchEnd = (e: TouchEvent) => {
-    e.preventDefault()
-    
-    const touch = e.changedTouches[0]
-    
-    // 如果已经通过拖拽处理了交换，不再处理点击
-    if (this.hasSwiped || !this.selectedBlock) {
-      this.selectedBlock = null
-      this.hasSwiped = false
-      return
-    }
-    
-    // 判断是否为点击（滑动距离很小）
-    const dx = Math.abs(touch.clientX - this.touchStartX)
-    const dy = Math.abs(touch.clientY - this.touchStartY)
-    
-    // 如果滑动距离很小，视为点击
-    if (dx < this.SWIPE_THRESHOLD && dy < this.SWIPE_THRESHOLD) {
-      const { x: mx, y: my } = clientToCanvas(this.canvas, touch.clientX, touch.clientY)
-      this.handleClick(mx, my)
-    }
-    
-    // 重置状态
-    this.selectedBlock = null
-    this.hasSwiped = false
+    this.unbindTouch = bindCanvasTapDragSwap(this.canvas, {
+      swipeThreshold: this.SWIPE_THRESHOLD,
+      onActivity: () => {
+        this.lastActionTime = Date.now()
+      },
+      canInteract: () => !this.isAnimating,
+      selectAt: (x, y) => this.trySelectBlockAt(x, y),
+      resolveAdjacent: (from, dx, dy) => this.resolveAdjacentForSwap(from, dx, dy),
+      isValidSwapTarget: (_from, to) => !!this.blocks[to],
+      onSwap: (from, to, x, y) => {
+        void this.trySwap(from, to, x, y)
+      },
+      onTap: (x, y) => this.handleClick(x, y),
+    })
   }
   
   private handleClick(mx: number, my: number) {

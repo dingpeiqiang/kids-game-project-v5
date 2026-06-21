@@ -4,7 +4,9 @@ import { gameActions } from '../../platform/gameBridge'
 import type { GameLifecycleContext } from '../../platform/GameLifecycle'
 import { runCanvasLifecycle, type GameLifecycle } from '../../platform/GameLifecycle'
 import { requireMainGameCanvas } from '../../platform/canvasHost'
-import { applyCanvasMobileStyles, bindCanvasPointerTapAndMove } from '../../utils/canvasMobileUtils'
+import { applyCanvasMobileStyles } from '../../utils/canvasMobileUtils'
+import { bindGameCanvasControls } from '../../platform/mobileControls'
+import type { MobileControlRuntime } from '../../platform/mobileControls'
 import { getCachedGTRSTheme } from '../../services/gtrsThemeLoader'
 import { resolveGtrsCanvasStyle } from '../../utils/gtrsCanvasTheme'
 import { readGtrsSceneMeta } from '../../utils/gtrsSceneMeta'
@@ -60,7 +62,7 @@ export function startStarCatcherLifecycle(ctx: GameLifecycleContext): GameLifecy
   let gameEnded = false
   let mouseX = W / 2
   let inventory: string[] = []
-  let unbindPointer: (() => void) | null = null
+  let controls: MobileControlRuntime | null = null
 
   const powerupIcons: Record<string, string> = {
     magnet: '\u{1F9F2}',
@@ -277,15 +279,19 @@ export function startStarCatcherLifecycle(ctx: GameLifecycleContext): GameLifecy
       applyCanvasMobileStyles(canvas)
       gameStartTime = Date.now()
       updateHTMLPowerupBar()
-      unbindPointer = bindCanvasPointerTapAndMove(
-        canvas,
-        x => {
-          mouseX = x
+      controls = bindGameCanvasControls(canvas, {
+        gameId: 'starCatcher',
+        viewWidth: W,
+        viewHeight: H,
+        layout: { viewWidth: W, viewHeight: H, buttons: [] },
+        onAction: (action, payload) => {
+          if (gameEnded) return
+          const x = payload.x ?? mouseX
+          if (action === 'tap' || action === 'swipe') {
+            mouseX = x
+          }
         },
-        x => {
-          mouseX = x
-        },
-      )
+      })
     },
     onUpdate() {
       if (gameEnded) return
@@ -300,8 +306,8 @@ export function startStarCatcherLifecycle(ctx: GameLifecycleContext): GameLifecy
       draw()
     },
     onDestroy() {
-      unbindPointer?.()
-      unbindPointer = null
+      controls?.dispose()
+      controls = null
       app.removePowerupBar?.()
     },
   })

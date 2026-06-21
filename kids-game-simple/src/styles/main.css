@@ -321,6 +321,41 @@ body{
 }
 .main-container::-webkit-scrollbar{width:0}
 
+/* 学习中心快捷入口 */
+.learning-quick-access{
+  margin-bottom:16px;
+  padding:14px 16px;
+  background:linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(240,248,255,0.98) 100%);
+  border-radius:var(--radius);
+  box-shadow:0 4px 16px rgba(100,149,237,0.12);
+}
+.learning-qa-title{
+  font-size:15px;
+  font-weight:700;
+  margin-bottom:10px;
+  color:var(--text-primary,#333);
+}
+.learning-qa-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+.learning-qa-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:10px 4px;
+  border-radius:12px;
+  background:rgba(255,255,255,0.8);
+  cursor:pointer;
+  transition:transform .15s,box-shadow .15s;
+}
+.learning-qa-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+.learning-qa-card:active{transform:scale(0.96)}
+.lqa-icon{font-size:24px}
+.lqa-label{font-size:11px;color:var(--text-secondary,#666);white-space:nowrap}
+
 /* 搜索和收藏页面 */
 .search-header, .favorites-header {
   display:flex;
