@@ -109,7 +109,7 @@ import {
   setRouteLandscapeSessionActive,
 } from '@simple/app/gameShellOrientation';
 import { LOBBY_HOME_PATH, navigateToLobbyHome } from '@simple/router/navigation';
-import { calculateRankDisplay } from '@simple/app/rankDisplay';
+import { calculateRank } from '@simple/app/rank';
 import type { GameResultStats } from '@simple/types/gameResult';
 
 const props = defineProps<{
@@ -269,7 +269,7 @@ function finishSessionFromEngine() {
   resultStats.value = normalizeResultStats(rawStats);
   resultCrits.value = gameEngine.getCrits();
   resultCombo.value = gameEngine.getCombo();
-  resultRankLocal.value = calculateRankDisplay(score);
+  resultRankLocal.value = calculateRank(null as any, score);
   resultServerRank.value = null;
   resultSynced.value = false;
 

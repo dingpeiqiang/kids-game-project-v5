@@ -9,11 +9,12 @@ import type { Bullet, Enemy, EnemyBullet, Particle, Shockwave, FloatText, Poweru
 import {
   BASE_W, BASE_H, ENEMY_TYPES, getLevelConfig, getLevelBossConfig,
   PLAYER_W as PW, PLAYER_H as PH, BULLET_SPEED, SHOOT_CD,
-  STAR_COUNT,
+
   MAX_BULLETS, MAX_ENEMY_BULLETS, MAX_PARTICLES, MAX_FLOAT_TEXTS, MAX_SHOCKWAVES, MAX_POWERUPS, MAX_TURRETS,
   TRANSFORM_CONFIGS, getRandomTransformType
 } from './config'
 import { renderToCanvas } from './renderer'
+import { getSpaceShooterPerfProfile } from './mobilePerf'
 
 /** Phaser 画布纹理键（勿与壳层 DOM #gameCanvas 同名） */
 export const SPACE_SHOOTER_TEXTURE_KEY = 'spaceShooterFrame'
@@ -135,6 +136,7 @@ export class SpaceShooterScene extends Phaser.Scene {
   private shellPauseLatch = false
 
   private platformControls: MobileControlRuntime | null = null
+  private readonly perf = getSpaceShooterPerfProfile()
 
   constructor(engine: GameEngine, onEnd: () => void) {
     super({ key: 'SpaceShooterScene' })
@@ -149,8 +151,8 @@ export class SpaceShooterScene extends Phaser.Scene {
     const ctx = this.gameTexture.getContext()
     if (!ctx) throw new Error('Failed to get canvas context')
     this.ctx = ctx
-    this.ctx.imageSmoothingEnabled = true
-    this.ctx.imageSmoothingQuality = 'high'
+    this.ctx.imageSmoothingEnabled = !this.perf.lowFx
+    this.ctx.imageSmoothingQuality = this.perf.lowFx ? 'low' : 'high'
   }
 
   create() {
@@ -660,7 +662,8 @@ export class SpaceShooterScene extends Phaser.Scene {
   // === 星空 ===
   private initStars() {
     this.stars.length = 0
-    for (let i = 0; i < STAR_COUNT; i++) {
+    const starN = this.perf.starCount
+    for (let i = 0; i < starN; i++) {
       this.stars.push({ x: Math.random() * BASE_W, y: Math.random() * BASE_H, speed: 0.3 + Math.random() * 1.5, size: 0.5 + Math.random() * 2, bright: 0.3 + Math.random() * 0.7 })
     }
   }
@@ -800,8 +803,11 @@ export class SpaceShooterScene extends Phaser.Scene {
 
   // === 特效 ===
   private explode(x: number, y: number, color: string, count: number, force: number = 5) {
-    const budget = Math.min(MAX_PARTICLES - this.particles.length, 20 - this._particlesThisFrame)
-    const actual = Math.min(count, Math.max(1, budget))
+    const scaledCount = Math.max(1, Math.round(count * this.perf.particleBudgetMul))
+    const frameCap = this.perf.lowFx ? 10 : 20
+    const budget = Math.min(MAX_PARTICLES - this.particles.length, frameCap - this._particlesThisFrame)
+    const actual = Math.min(scaledCount, Math.max(0, budget))
+    if (actual <= 0) return
     for (let i = 0; i < actual; i++) {
       const a = Math.random() * Math.PI * 2
       const s = Math.random() * force + 1
@@ -2117,6 +2123,7 @@ export class SpaceShooterScene extends Phaser.Scene {
   private renderToCanvas() {
     const s: SceneState = {
       ctx: this.ctx,
+      renderQuality: this.perf.renderQuality,
       gameEnded: this.gameEnded, gameWon: this.gameWon, gameStarted: this.gameStarted, isDying: this.isDying,
       shakeAmt: this.shakeAmt, screenFlash: this.screenFlash, damageFlash: this.damageFlash,
       difficulty: this.difficulty, combo: this.combo, totalKills: this.totalKills,

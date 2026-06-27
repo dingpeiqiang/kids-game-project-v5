@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { GAME_PLAY_SHELL } from '@simple/constants/gamePlayShell';
-import { rankBadgeColor } from '@simple/app/rankDisplay';
+import { rankBadgeColor } from '@simple/app/rank';
 import type { GameResultStats } from '@simple/types/gameResult';
 
 const props = defineProps<{

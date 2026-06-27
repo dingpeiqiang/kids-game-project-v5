@@ -4,6 +4,17 @@ import type { Enemy, SceneState, Turret, TransformType } from './types'
 import { BASE_W, BASE_H, SAFE_L, SAFE_R, SAFE_T, PLAYER_W, PLAYER_H } from './config'
 import { LEVEL_BOSS_CONFIGS, TRANSFORM_CONFIGS } from './config'
 
+function isLowRender(s: SceneState): boolean {
+  return s.renderQuality === 'low'
+}
+
+/** 由 renderToCanvas 每帧设置；子函数内统一用 glow() 避免 Android Canvas2D 发光拖帧 */
+let renderLowFx = false
+
+function glow(blur: number): number {
+  return renderLowFx ? 0 : blur
+}
+
 // 模块级常量（避免每帧重建）
 const PU_ICONS: Record<string, string> = {
   triple: '⚡', spread: '🔴', heal: '💚',
@@ -14,6 +25,7 @@ const PU_ICONS: Record<string, string> = {
 // ========== 主渲染入口 ==========
 
 export function renderToCanvas(s: SceneState): void {
+  renderLowFx = isLowRender(s)
   const ctx = s.ctx
   ctx.clearRect(0, 0, BASE_W, BASE_H)
 
@@ -37,7 +49,7 @@ export function renderToCanvas(s: SceneState): void {
       ctx.save()
       ctx.globalAlpha = sw.life * 0.6
       ctx.strokeStyle = sw.color; ctx.lineWidth = 2 + sw.life * 3
-      ctx.shadowColor = sw.color; ctx.shadowBlur = 4
+      ctx.shadowColor = sw.color; ctx.shadowBlur = glow(4)
       ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2); ctx.stroke()
       ctx.restore()
     }
@@ -53,7 +65,7 @@ export function renderToCanvas(s: SceneState): void {
       ctx.font = 'bold 32px sans-serif'
       ctx.textAlign = 'center'
       ctx.shadowColor = '#FFD700'
-      ctx.shadowBlur = 6
+      ctx.shadowBlur = glow(6)
       ctx.fillText('🎉 恭喜通关!', BASE_W / 2, BASE_H / 2 - 45)
       ctx.shadowBlur = 0
       ctx.fillStyle = '#FFFFFF'
@@ -69,7 +81,7 @@ export function renderToCanvas(s: SceneState): void {
       ctx.font = 'bold 28px sans-serif'
       ctx.textAlign = 'center'
       ctx.shadowColor = '#FF4757'
-      ctx.shadowBlur = 4
+      ctx.shadowBlur = glow(4)
       ctx.fillText('💀 游戏结束', BASE_W / 2, BASE_H / 2 - 40)
       ctx.shadowBlur = 0
       ctx.fillStyle = '#fff'
@@ -87,7 +99,7 @@ export function renderToCanvas(s: SceneState): void {
 
   // 敌人子弹
   for (const b of s.enemyBullets) {
-    ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = 4
+    ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = glow(4)
     ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI * 2); ctx.fill()
     ctx.fillStyle = b.color + '66'
     ctx.beginPath(); ctx.arc(b.x, b.y + 7, 4, 0, Math.PI * 2); ctx.fill()
@@ -104,12 +116,12 @@ export function renderToCanvas(s: SceneState): void {
   // 玩家子弹
   for (const b of s.bullets) {
     if (b.pierce > 0) {
-      ctx.fillStyle = '#FF9800'; ctx.shadowColor = '#FF9800'; ctx.shadowBlur = 6
+      ctx.fillStyle = '#FF9800'; ctx.shadowColor = '#FF9800'; ctx.shadowBlur = glow(6)
       ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
       ctx.fillStyle = 'rgba(255,152,0,0.35)'; ctx.fillRect(b.x - 3, b.y, 6, 20)
     } else {
-      ctx.fillStyle = '#00E5FF'; ctx.shadowColor = '#00E5FF'; ctx.shadowBlur = 5
+      ctx.fillStyle = '#00E5FF'; ctx.shadowColor = '#00E5FF'; ctx.shadowBlur = glow(5)
       ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
       ctx.fillStyle = 'rgba(0,229,255,0.3)'; ctx.fillRect(b.x - 2.5, b.y, 5, 16)
@@ -125,7 +137,7 @@ export function renderToCanvas(s: SceneState): void {
     ctx.rotate(angle + Math.PI / 2)
     
     // 导弹主体
-    ctx.fillStyle = '#FF5722'; ctx.shadowColor = '#FF5722'; ctx.shadowBlur = 8
+    ctx.fillStyle = '#FF5722'; ctx.shadowColor = '#FF5722'; ctx.shadowBlur = glow(8)
     ctx.beginPath()
     ctx.moveTo(0, -12)
     ctx.lineTo(-6, 8)
@@ -136,7 +148,7 @@ export function renderToCanvas(s: SceneState): void {
     ctx.fill()
     
     // 导弹尾焰
-    ctx.shadowBlur = 12
+    ctx.shadowBlur = glow(12)
     ctx.fillStyle = '#FF9800'
     ctx.beginPath()
     ctx.moveTo(-3, 5)
@@ -159,7 +171,7 @@ export function renderToCanvas(s: SceneState): void {
     
     // 外发光
     ctx.shadowColor = lb.color
-    ctx.shadowBlur = 15
+    ctx.shadowBlur = glow(15)
     ctx.fillStyle = lb.color
     ctx.globalAlpha = 0.3
     ctx.beginPath()
@@ -168,7 +180,7 @@ export function renderToCanvas(s: SceneState): void {
     
     // 主体
     ctx.globalAlpha = 1
-    ctx.shadowBlur = 20
+    ctx.shadowBlur = glow(20)
     ctx.beginPath()
     ctx.arc(0, 0, lb.size * pulse, 0, Math.PI * 2)
     ctx.fill()
@@ -195,7 +207,7 @@ export function renderToCanvas(s: SceneState): void {
     ctx.save()
     ctx.globalAlpha = sw.life * 0.6
     ctx.strokeStyle = sw.color; ctx.lineWidth = 2 + sw.life * 3
-    ctx.shadowColor = sw.color; ctx.shadowBlur = 4
+    ctx.shadowColor = sw.color; ctx.shadowBlur = glow(4)
     ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2); ctx.stroke()
     ctx.restore()
   }
@@ -207,9 +219,9 @@ export function renderToCanvas(s: SceneState): void {
     ctx.translate(0, bob)
     const pulse = 1 + Math.sin(Date.now() / 150) * 0.15
     ctx.scale(pulse, pulse)
-    ctx.fillStyle = 'rgba(255,215,0,0.4)'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 10
+    ctx.fillStyle = 'rgba(255,215,0,0.4)'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = glow(10)
     ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill()
-    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.shadowBlur = 4
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.shadowBlur = glow(4)
     ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.stroke()
     ctx.fillStyle = 'rgba(0,0,0,0.6)'
     ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill()
@@ -227,7 +239,7 @@ export function renderToCanvas(s: SceneState): void {
     ctx.globalAlpha = Math.min(1, ft.life * 2)
     ctx.translate(ft.x, ft.y)
     ctx.scale(ft.scale, ft.scale)
-    ctx.fillStyle = ft.color; ctx.shadowColor = ft.color; ctx.shadowBlur = 3
+    ctx.fillStyle = ft.color; ctx.shadowColor = ft.color; ctx.shadowBlur = glow(3)
     ctx.font = `bold ${ft.size}px sans-serif`; ctx.textAlign = 'center'
     ctx.fillText(ft.text, 0, 0)
     ctx.restore()
@@ -296,10 +308,10 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneState): void {
     ctx.save()
     ctx.rotate(rotation)
     ctx.strokeStyle = transformColor + '88'
-    ctx.lineWidth = 4; ctx.shadowColor = transformColor; ctx.shadowBlur = 15
+    ctx.lineWidth = 4; ctx.shadowColor = transformColor; ctx.shadowBlur = glow(15)
     ctx.beginPath(); ctx.arc(0, 0, 42 * pulse, 0, Math.PI * 2); ctx.stroke()
     ctx.strokeStyle = accentColor + 'AA'
-    ctx.lineWidth = 2; ctx.shadowBlur = 8
+    ctx.lineWidth = 2; ctx.shadowBlur = glow(8)
     ctx.beginPath(); ctx.arc(0, 0, 34 * pulse, 0, Math.PI * 2); ctx.stroke()
     
     // 变身能量粒子
@@ -308,7 +320,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneState): void {
       const px = Math.cos(angle) * 38 * pulse
       const py = Math.sin(angle) * 38 * pulse
       const particlePulse = 0.6 + 0.4 * Math.sin(Date.now() / 100 + i)
-      ctx.fillStyle = transformColor; ctx.shadowColor = transformColor; ctx.shadowBlur = 4
+      ctx.fillStyle = transformColor; ctx.shadowColor = transformColor; ctx.shadowBlur = glow(4)
       ctx.globalAlpha = particlePulse
       ctx.beginPath(); ctx.arc(px, py, 4 * particlePulse, 0, Math.PI * 2); ctx.fill()
     }
@@ -323,16 +335,16 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneState): void {
     ctx.save()
     ctx.rotate(rotation)
     ctx.strokeStyle = 'rgba(255, 215, 0, 0.7)'
-    ctx.lineWidth = 3; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 10
+    ctx.lineWidth = 3; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = glow(10)
     ctx.beginPath(); ctx.arc(0, 0, 38 * pulse, 0, Math.PI * 2); ctx.stroke()
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
-    ctx.lineWidth = 2; ctx.shadowBlur = 5
+    ctx.lineWidth = 2; ctx.shadowBlur = glow(5)
     ctx.beginPath(); ctx.arc(0, 0, 30 * pulse, 0, Math.PI * 2); ctx.stroke()
     for (let i = 0; i < 10; i++) {
       const angle = (Date.now() / 250) + (i * Math.PI * 2 / 10)
       const px = Math.cos(angle) * 35 * pulse
       const py = Math.sin(angle) * 35 * pulse
-      ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 2
+      ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = glow(2)
       ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill()
     }
     ctx.restore()
@@ -344,10 +356,10 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneState): void {
     ctx.save()
     ctx.globalAlpha = flash
     ctx.strokeStyle = `rgba(79, 195, 247, ${0.3 + flash * 0.3})`
-    ctx.lineWidth = 3; ctx.shadowColor = '#4FC3F7'; ctx.shadowBlur = 6
+    ctx.lineWidth = 3; ctx.shadowColor = '#4FC3F7'; ctx.shadowBlur = glow(6)
     ctx.beginPath(); ctx.arc(0, 0, 32, 0, Math.PI * 2); ctx.stroke()
     ctx.strokeStyle = `rgba(255, 255, 255, ${flash * 0.5})`
-    ctx.lineWidth = 1.5; ctx.shadowBlur = 3
+    ctx.lineWidth = 1.5; ctx.shadowBlur = glow(3)
     ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.stroke()
     ctx.restore()
   }
@@ -378,7 +390,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneState): void {
   // 机身颜色（变身时使用变身颜色）
   const bodyColor = transformConfig ? transformConfig.color : (level >= 8 ? '#FFD700' : level >= 5 ? '#9C27B0' : '#45B7D1')
   const bodyShadowBlur = transformConfig ? 10 : (level >= 8 ? 6 : level >= 5 ? 4 : 2)
-  ctx.fillStyle = bodyColor; ctx.shadowColor = bodyColor; ctx.shadowBlur = bodyShadowBlur
+  ctx.fillStyle = bodyColor; ctx.shadowColor = bodyColor; ctx.shadowBlur = glow(bodyShadowBlur)
   
   // 变身时机身更大
   const scale = transformConfig ? 1.2 : 1
@@ -399,14 +411,14 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneState): void {
 
   // 驾驶舱
   const cockpitColor = transformConfig ? transformConfig.color : (level >= 8 ? '#FFD700' : level >= 5 ? '#E040FB' : '#00E5FF')
-  ctx.fillStyle = cockpitColor; ctx.shadowColor = cockpitColor; ctx.shadowBlur = transformConfig ? 8 : (level >= 8 ? 6 : level >= 5 ? 4 : 3)
+  ctx.fillStyle = cockpitColor; ctx.shadowColor = cockpitColor; ctx.shadowBlur = glow(transformConfig ? 8 : level >= 8 ? 6 : level >= 5 ? 4 : 3)
   ctx.beginPath(); ctx.ellipse(0, -2, 5 + Math.floor(level / 3), 8 + Math.floor(level / 3), 0, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0
   
   ctx.restore() // 恢复缩放
 
   // 变身图标显示
   if (transformConfig) {
-    ctx.fillStyle = transformConfig.accentColor; ctx.shadowColor = transformConfig.accentColor; ctx.shadowBlur = 6
+    ctx.fillStyle = transformConfig.accentColor; ctx.shadowColor = transformConfig.accentColor; ctx.shadowBlur = glow(6)
     ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'
     ctx.fillText(transformConfig.icon, 0, -PLAYER_H / 2 - 12)
     ctx.shadowBlur = 0
@@ -436,7 +448,7 @@ function drawTurret(ctx: CanvasRenderingContext2D, t: Turret): void {
   const lifeRatio = Math.max(0, t.life / 20000)
 
   // 底座
-  ctx.fillStyle = typeColors.base; ctx.shadowColor = typeColors.glow; ctx.shadowBlur = t.type === 'burst' ? 8 : 5
+  ctx.fillStyle = typeColors.base; ctx.shadowColor = typeColors.glow; ctx.shadowBlur = glow(t.type === 'burst' ? 8 : 5)
   ctx.beginPath(); ctx.arc(0, 0, t.type === 'sniper' ? 16 : 14, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0
 
   // 内圆
@@ -502,7 +514,7 @@ function drawTurret(ctx: CanvasRenderingContext2D, t: Turret): void {
 
 function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
   ctx.save(); ctx.translate(e.x, e.y)
-  ctx.fillStyle = e.color; ctx.shadowColor = e.color; ctx.shadowBlur = 3
+  ctx.fillStyle = e.color; ctx.shadowColor = e.color; ctx.shadowBlur = glow(3)
 
   if (e.shape === 'circle') {
     ctx.beginPath(); ctx.arc(0, 0, e.w / 2, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0
@@ -512,23 +524,23 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
     ctx.beginPath(); ctx.moveTo(0, -e.h / 2); ctx.lineTo(e.w / 2, 0); ctx.lineTo(0, e.h / 2); ctx.lineTo(-e.w / 2, 0); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0
     ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1
   } else if (e.shape === 'hex') {
-    ctx.shadowBlur = 4; ctx.beginPath()
+    ctx.shadowBlur = glow(4); ctx.beginPath()
     for (let i = 0; i < 6; i++) { const a = (Math.PI / 3) * i - Math.PI / 6; const px = Math.cos(a) * e.w / 2; const py = Math.sin(a) * e.h / 2; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py) }
     ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-5, -2, 3.5, 0, Math.PI * 2); ctx.arc(5, -2, 3.5, 0, Math.PI * 2); ctx.fill()
     ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(-5, -1, 2, 0, Math.PI * 2); ctx.arc(5, -1, 2, 0, Math.PI * 2); ctx.fill()
   } else if (e.shape === 'triangle') {
     // 闪电三角敌 - 快速Z字形
-    ctx.shadowBlur = 5; ctx.beginPath()
+    ctx.shadowBlur = glow(5); ctx.beginPath()
     ctx.moveTo(0, -e.h / 2); ctx.lineTo(e.w / 2, e.h / 2); ctx.lineTo(-e.w / 2, e.h / 2); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 2, 3, 0, Math.PI * 2); ctx.fill()
   } else if (e.shape === 'square') {
     // 护盾方块敌
-    ctx.shadowBlur = 4; ctx.fillRect(-e.w / 2, -e.h / 2, e.w, e.h); ctx.shadowBlur = 0
+    ctx.shadowBlur = glow(4); ctx.fillRect(-e.w / 2, -e.h / 2, e.w, e.h); ctx.shadowBlur = 0
     ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.5; ctx.fillRect(-e.w / 2 + 3, -e.h / 2 + 3, e.w - 6, e.h - 6); ctx.globalAlpha = 1
   } else if (e.shape === 'pentagon') {
     // 五边形坦克敌 - 大体积高HP
-    ctx.shadowBlur = 5; ctx.beginPath()
+    ctx.shadowBlur = glow(5); ctx.beginPath()
     for (let i = 0; i < 5; i++) { const a = (Math.PI * 2 / 5) * i - Math.PI / 2; const px = Math.cos(a) * e.w / 2; const py = Math.sin(a) * e.h / 2; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py) }
     ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill()
@@ -537,12 +549,12 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
     ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.8
     ctx.fillRect(-3, -e.h / 2, 6, e.h); ctx.fillRect(-e.w / 2, -3, e.w, 6); ctx.globalAlpha = 1
   } else if (e.shape === 'final_boss') {
-    ctx.shadowBlur = 8
+    ctx.shadowBlur = glow(8)
     ctx.beginPath()
     ctx.moveTo(0, -e.h / 2); ctx.lineTo(-e.w / 2, 0); ctx.lineTo(-e.w / 3, e.h / 2)
     ctx.lineTo(e.w / 3, e.h / 2); ctx.lineTo(e.w / 2, 0); ctx.closePath(); ctx.fill()
     ctx.shadowBlur = 0
-    ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 6
+    ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = glow(6)
     ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0
     ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2
     ctx.beginPath(); ctx.moveTo(-15, -10); ctx.lineTo(15, -10)
@@ -555,7 +567,7 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
   // 护盾光环
   if (e.shieldHP !== undefined && e.shieldHP > 0) {
     ctx.strokeStyle = '#00E5FF'; ctx.lineWidth = 2
-    ctx.shadowColor = '#00E5FF'; ctx.shadowBlur = 4
+    ctx.shadowColor = '#00E5FF'; ctx.shadowBlur = glow(4)
     ctx.beginPath(); ctx.arc(0, 0, e.w / 2 + 5, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0
     ctx.fillStyle = '#00E5FF'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'
     ctx.fillText('盾', 0, -e.h / 2 - 8)
@@ -568,7 +580,7 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
     ctx.save()
     ctx.scale(pulse, pulse)
     ctx.strokeStyle = '#00BCD4'; ctx.lineWidth = 3
-    ctx.shadowColor = '#00BCD4'; ctx.shadowBlur = 10
+    ctx.shadowColor = '#00BCD4'; ctx.shadowBlur = glow(10)
     ctx.beginPath(); ctx.arc(0, 0, e.w / 2 + 10, 0, Math.PI * 2); ctx.stroke()
     // 内部光环
     ctx.strokeStyle = 'rgba(0, 188, 212, 0.5)'; ctx.lineWidth = 2
@@ -608,7 +620,7 @@ function drawLevelBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const enraged = (e.bossPhase ?? 0) >= 1
   const pulse = 1 + Math.sin(t / 180) * 0.06
   ctx.scale(pulse, pulse)
-  ctx.shadowBlur = enraged ? 8 : 5
+  ctx.shadowBlur = glow(enraged ? 8 : 5)
 
   switch (e.bossId) {
     case 1: {
@@ -620,7 +632,7 @@ function drawLevelBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
       ctx.shadowBlur = 0
       const eyePulse = 0.5 + 0.5 * Math.sin(t / 200)
       ctx.fillStyle = `rgba(255,${enraged ? 50 : 150},0,${eyePulse})`
-      ctx.shadowColor = '#FF0000'; ctx.shadowBlur = 4
+      ctx.shadowColor = '#FF0000'; ctx.shadowBlur = glow(4)
       ctx.beginPath(); ctx.arc(-7, -4, 5, 0, Math.PI * 2); ctx.fill()
       ctx.beginPath(); ctx.arc(7, -4, 5, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
@@ -637,7 +649,7 @@ function drawLevelBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
       ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.globalAlpha = 0.6
       ctx.beginPath(); ctx.moveTo(0, -e.h * 0.35); ctx.lineTo(e.w * 0.35, 0); ctx.lineTo(0, e.h * 0.35); ctx.lineTo(-e.w * 0.35, 0); ctx.closePath(); ctx.stroke()
       ctx.globalAlpha = 1; ctx.restore()
-      ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = 6
+      ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = glow(6)
       ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
       break
@@ -661,7 +673,7 @@ function drawLevelBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
         ctx.stroke()
       }
       ctx.globalAlpha = 1
-      ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = 5
+      ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = glow(5)
       ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
       break
@@ -681,7 +693,7 @@ function drawLevelBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
       ctx.beginPath(); ctx.moveTo(-e.w / 2, 0); ctx.lineTo(e.w / 2, 0); ctx.stroke()
       ctx.globalAlpha = 1
       const corePulse = 0.7 + 0.3 * Math.sin(t / 150)
-      ctx.fillStyle = `rgba(206,147,216,${corePulse})`; ctx.shadowColor = accent; ctx.shadowBlur = 4
+      ctx.fillStyle = `rgba(206,147,216,${corePulse})`; ctx.shadowColor = accent; ctx.shadowBlur = glow(4)
       ctx.beginPath(); ctx.arc(0, -e.h / 8, 8, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
       break
@@ -699,10 +711,10 @@ function drawLevelBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
       ctx.closePath(); ctx.fill()
       ctx.strokeStyle = accent; ctx.lineWidth = 3
       ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t / 100)
-      ctx.shadowColor = accent; ctx.shadowBlur = 8
+      ctx.shadowColor = accent; ctx.shadowBlur = glow(8)
       ctx.beginPath(); ctx.arc(0, 0, e.w * 0.6, 0, Math.PI * 2); ctx.stroke()
       ctx.globalAlpha = 1; ctx.shadowBlur = 0
-      ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 6
+      ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = glow(6)
       ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
       break
@@ -712,15 +724,15 @@ function drawLevelBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
       const offset = 14 + Math.sin(t / 400) * 4
       for (const side of [-1, 1]) {
         const ox = side * offset
-        ctx.fillStyle = e.color; ctx.shadowColor = e.color; ctx.shadowBlur = 4
+        ctx.fillStyle = e.color; ctx.shadowColor = e.color; ctx.shadowBlur = glow(4)
         ctx.beginPath()
         ctx.moveTo(ox, -e.h / 2 + 5); ctx.lineTo(ox - e.w / 4, e.h / 2 - 5); ctx.lineTo(ox + e.w / 4, e.h / 2 - 5)
         ctx.closePath(); ctx.fill()
-        ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = 3
+        ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = glow(3)
         ctx.beginPath(); ctx.arc(ox, -2, 5, 0, Math.PI * 2); ctx.fill()
       }
       ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.globalAlpha = 0.6
-      ctx.shadowColor = accent; ctx.shadowBlur = 6
+      ctx.shadowColor = accent; ctx.shadowBlur = glow(6)
       ctx.beginPath(); ctx.moveTo(-offset, 0); ctx.lineTo(offset, 0); ctx.stroke()
       ctx.globalAlpha = 1; ctx.shadowBlur = 0
       break
@@ -737,33 +749,33 @@ function drawLevelBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
       ctx.closePath(); ctx.fill()
       ctx.save(); ctx.rotate(t / 400)
       ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.globalAlpha = 0.7
-      ctx.shadowColor = accent; ctx.shadowBlur = 5
+      ctx.shadowColor = accent; ctx.shadowBlur = glow(5)
       for (let i = 0; i < 3; i++) {
         const a = (Math.PI * 2 / 3) * i
         ctx.beginPath(); ctx.arc(0, 0, e.w * 0.55, a, a + Math.PI * 0.5); ctx.stroke()
       }
       ctx.restore(); ctx.globalAlpha = 1; ctx.shadowBlur = 0
-      ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 8
+      ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = glow(8)
       ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
       break
     }
     case 8: {
       // 深渊吞噬者：黑洞 + 紫色漩涡
-      ctx.fillStyle = '#1A1A2E'; ctx.shadowColor = '#7C4DFF'; ctx.shadowBlur = 10
+      ctx.fillStyle = '#1A1A2E'; ctx.shadowColor = '#7C4DFF'; ctx.shadowBlur = glow(10)
       ctx.beginPath(); ctx.arc(0, 0, e.w / 2, 0, Math.PI * 2); ctx.fill()
       ctx.save(); ctx.rotate(t / 500)
       for (let i = 0; i < 3; i++) {
         const a = (Math.PI * 2 / 3) * i
         ctx.strokeStyle = accent; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.8
-        ctx.shadowColor = accent; ctx.shadowBlur = 5
+        ctx.shadowColor = accent; ctx.shadowBlur = glow(5)
         ctx.beginPath(); ctx.arc(0, 0, e.w * 0.3, a, a + Math.PI * 0.6); ctx.stroke()
       }
       ctx.restore(); ctx.globalAlpha = 1; ctx.shadowBlur = 0
       ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.globalAlpha = 0.5
       ctx.beginPath(); ctx.arc(0, 0, e.w * 0.48, 0, Math.PI * 2); ctx.stroke()
       ctx.globalAlpha = 1
-      ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = 6
+      ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = glow(6)
       ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
       break
@@ -787,12 +799,12 @@ function drawLevelBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
       for (let ring = 0; ring < 2; ring++) {
         ctx.strokeStyle = ring === 0 ? '#FF0066' : '#6600FF'
         ctx.lineWidth = 2; ctx.globalAlpha = 0.6
-        ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 3
+        ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = glow(3)
         ctx.beginPath(); ctx.arc(0, 0, e.w * (0.6 + ring * 0.15), t / 300 + ring, t / 300 + ring + Math.PI * 1.5); ctx.stroke()
       }
       ctx.globalAlpha = 1; ctx.shadowBlur = 0
       const coreR = 9 + Math.sin(t / 100) * 3
-      ctx.fillStyle = '#FF80AB'; ctx.shadowColor = '#FF80AB'; ctx.shadowBlur = 8
+      ctx.fillStyle = '#FF80AB'; ctx.shadowColor = '#FF80AB'; ctx.shadowBlur = glow(8)
       ctx.beginPath(); ctx.arc(0, 0, coreR, 0, Math.PI * 2); ctx.fill()
       ctx.shadowBlur = 0
       break
@@ -827,7 +839,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, s: SceneState): void {
   ctx.save()
 
   // 分数
-  ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 4
+  ctx.fillStyle = '#FFD700'; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = glow(4)
   ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'right'
   ctx.fillText(`★ ${s.getScore()}`, BASE_W - SAFE_R, SAFE_T + 10)
   ctx.shadowBlur = 0
@@ -857,7 +869,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, s: SceneState): void {
     ctx.save()
     ctx.translate(BASE_W / 2, SAFE_T + 35)
     ctx.scale(pulse, pulse)
-    ctx.fillStyle = comboColor; ctx.shadowColor = comboColor; ctx.shadowBlur = 5
+    ctx.fillStyle = comboColor; ctx.shadowColor = comboColor; ctx.shadowBlur = glow(5)
     ctx.font = `bold ${20 + Math.min(s.combo, 15)}px sans-serif`; ctx.textAlign = 'center'
     ctx.fillText(`${s.combo} COMBO!`, 0, 0)
     ctx.restore()
@@ -889,7 +901,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, s: SceneState): void {
     ctx.scale(pulse, pulse)
     
     // 变身名称和图标
-    ctx.fillStyle = config.color; ctx.shadowColor = config.color; ctx.shadowBlur = 6
+    ctx.fillStyle = config.color; ctx.shadowColor = config.color; ctx.shadowBlur = glow(6)
     ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'
     ctx.fillText(`${config.icon} ${config.name}`, 0, 0)
     
@@ -901,11 +913,11 @@ function drawHUD(ctx: CanvasRenderingContext2D, s: SceneState): void {
     
     // 变身进度条
     const barColor = transformRatio > 0.5 ? config.color : transformRatio > 0.25 ? '#FFA502' : '#FF4757'
-    ctx.fillStyle = barColor; ctx.shadowColor = barColor; ctx.shadowBlur = 3
+    ctx.fillStyle = barColor; ctx.shadowColor = barColor; ctx.shadowBlur = glow(3)
     ctx.beginPath(); ctx.roundRect(-barW / 2, 10, barW * transformRatio, barH, 3); ctx.fill()
     
     // 剩余时间
-    ctx.fillStyle = '#FFFFFF'; ctx.shadowBlur = 2; ctx.font = 'bold 11px sans-serif'
+    ctx.fillStyle = '#FFFFFF'; ctx.shadowBlur = glow(2); ctx.font = 'bold 11px sans-serif'
     ctx.fillText(`${Math.ceil(s.transform.duration / 1000)}s`, 0, 30)
     
     ctx.restore()

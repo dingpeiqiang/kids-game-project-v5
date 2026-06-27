@@ -2,6 +2,7 @@
 import type { GameEngine } from '../../services/gameEngine'
 import { SpaceShooterScene } from './scene'
 import { BASE_W, BASE_H } from './config'
+import { getSpaceShooterPerfProfile, resolvePhaserRenderType } from './mobilePerf'
 
 type Teardown = () => void
 
@@ -118,10 +119,13 @@ export async function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
     })
   }
 
+  const perf = getSpaceShooterPerfProfile()
+  const phaserType = resolvePhaserRenderType(Phaser)
+
   try {
     measureParent()
     phaserGame = new Phaser.Game({
-      type: Phaser.CANVAS,
+      type: phaserType,
       width: BASE_W,
       height: BASE_H,
       parent: phaserParent,
@@ -134,9 +138,15 @@ export async function initSpaceShooter(engine: GameEngine, onEnd: () => void) {
         min: { width: BASE_W, height: BASE_H },
         max: { width: BASE_W * 4, height: BASE_H * 4 },
       },
+      fps: perf.isMobile ? { target: 60, forceSetTimeOut: false, smoothStep: true } : undefined,
       scene: [new SpaceShooterScene(engine, wrappedOnEnd)],
       input: { touch: { capture: true } },
-      render: { antialias: true, pixelArt: false, roundPixels: true },
+      render: {
+        antialias: !perf.isMobile,
+        pixelArt: false,
+        roundPixels: true,
+        powerPreference: perf.preferWebGL ? 'high-performance' : 'default',
+      },
       audio: { noAudio: true },
       banner: false,
     })

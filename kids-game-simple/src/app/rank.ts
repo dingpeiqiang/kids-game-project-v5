@@ -225,6 +225,15 @@ export function formatRankScore(score: number): string {
   return String(score)
 }
 
+export function rankBadgeColor(rank: number): string {
+  if (rank === 1) return '#FFD700'
+  if (rank === 2) return '#C0C0C0'
+  if (rank === 3) return '#CD7F32'
+  if (rank <= 10) return '#4CAF50'
+  if (rank <= 50) return '#2196F3'
+  return '#5b9bd5'
+}
+
 export function clearRankCache(ctx: PlatformContext, gameId: string) {
   console.log('[App] 清除排行榜缓存:', gameId)
   const types = ['ALL', 'DAILY', 'MONTHLY', 'YEARLY']

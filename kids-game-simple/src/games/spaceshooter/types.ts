@@ -126,6 +126,8 @@ export interface LevelCfg {
 /** 渲染器需要的场景状态（renderer 通过此接口访问，不依赖 Scene 类） */
 export interface SceneState {
   ctx: CanvasRenderingContext2D
+  /** 移动端降画质：减少 shadowBlur 等 */
+  renderQuality?: 'high' | 'low'
   gameEnded: boolean; gameWon: boolean; gameStarted: boolean
   isDying: boolean
   shakeAmt: number; screenFlash: number; damageFlash: number
