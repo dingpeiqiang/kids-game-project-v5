@@ -53,7 +53,7 @@
           </div>
           <div class="user-details">
             <span class="user-name">{{ userStore.username }}</span>
-            <span class="user-role">小小探险家</span>
+            <span class="user-role">{{ currentUserRole }}</span>
           </div>
         </div>
         <button @click="logout" class="exit-btn" title="退出">
@@ -360,6 +360,10 @@ const userStore = useUserStore();
 const gameStore = useGameStore();
 const themeStore = useThemeStore();
 
+const userChangeListener = () => {
+  userStore.restoreFromStorage();
+};
+
 // 状态
 const currentCategory = ref('all');
 const showNotifications = ref(false);
@@ -483,6 +487,17 @@ const currentGradeName = computed(() => {
 
 const winStreak = computed(() => {
   return Math.floor(Math.random() * 10) + 1;
+});
+
+const currentUserRole = computed(() => {
+  if (userStore.currentUser?.userType === 'KID') {
+    return '儿童';
+  } else if (userStore.parentUser) {
+    return '家长';
+  } else if (userStore.adminUser) {
+    return '管理员';
+  }
+  return '小小探险家';
 });
 
 // 主题功能已移动到创作者中心
@@ -694,6 +709,7 @@ onMounted(async () => {
   // 初始化主题系统
   themeStore.init();
 
+  window.addEventListener('ugp:userChange', userChangeListener);
   userStore.restoreFromStorage();
 
   if (!userStore.isLoggedIn) {
@@ -724,6 +740,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener('ugp:userChange', userChangeListener);
   themeStore.cleanup();
 });
 </script>

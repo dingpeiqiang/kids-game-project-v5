@@ -10,6 +10,7 @@
         <input v-model="skipNext" type="checkbox" />
         不再显示本游戏引导
       </label>
+      <GameGuideCommentsSection v-if="gameCode" :game-code="gameCode" />
       <button type="button" class="start-btn" :style="{ background: accent }" @click="emit('start', skipNext)">
         开始游戏
       </button>
@@ -21,10 +22,13 @@
 import { ref, computed, type Component } from 'vue';
 import type { GameGuide } from '../../types';
 import GameGuideDefaultPanel from './GameGuideDefaultPanel.vue';
+import GameGuideCommentsSection from '@simple/components/game-guide/GameGuideCommentsSection.vue';
 
 const props = defineProps<{
   guide: GameGuide;
   accent: string;
+  /** 游戏 code，用于评论区 */
+  gameCode?: string;
   /** 游戏目录提供的自定义介绍页组件 */
   customPanel?: Component;
 }>();

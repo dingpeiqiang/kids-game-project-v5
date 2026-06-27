@@ -12,10 +12,6 @@ const PlatformShell = () => import('@simple/layouts/PlatformShell.vue');
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/',
-    redirect: () => (isLoggedIn() ? '/home' : '/login'),
-  },
-  {
     path: '/login',
     name: 'Login',
     component: () => import('@/modules/login/index.vue'),
@@ -28,11 +24,19 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '注册', requiresAuth: false, guestOnly: true },
   },
   {
+    path: '/account-select',
+    name: 'AccountSelect',
+    component: () => import('@/modules/account-select/index.vue'),
+    meta: { title: '选择账号', requiresAuth: false },
+  },
+  {
     path: '/',
     component: PlatformShell,
     meta: { requiresAuth: true },
+    redirect: { name: 'LobbyHome' },
     children: [
-      { path: 'home', name: 'LobbyHome', component: LobbyTab, meta: { title: '首页' } },
+      { path: 'home', name: 'LobbyHome', component: LobbyTab, meta: { title: '游戏中心' } },
+      { path: 'learning', name: 'LobbyLearning', component: LobbyTab, meta: { title: '学习中心' } },
       { path: 'task', name: 'LobbyTask', component: LobbyTab, meta: { title: '任务中心' } },
       { path: 'shop', name: 'LobbyShop', component: LobbyTab, meta: { title: '商城' } },
       { path: 'rank', name: 'LobbyRank', component: LobbyTab, meta: { title: '排行榜' } },

@@ -1,14 +1,7 @@
 /**
- * 游戏模块调用壳层能力（道具栏等），避免依赖 legacy App 或 Vue 根组件。
+ * 游戏模块调用壳层能力（道具栏等），路由玩法页无需注册 PlatformContext。
  */
-import type { PlatformContext } from '../app/types'
 import { removePowerupBar as removeBar, setupCustomPowerupBar as setupBar } from '../app/powerup'
-
-let ctxRef: PlatformContext | null = null
-
-export function setPlatformContextForGames(ctx: PlatformContext | null): void {
-  ctxRef = ctx
-}
 
 export const app = {
   setupCustomPowerupBar(
@@ -17,11 +10,7 @@ export const app = {
     inventory: string[],
     onUse: (powerupId: string) => void,
   ): void {
-    if (!ctxRef) {
-      console.warn('[appBridge] PlatformContext 未注册，道具栏不可用')
-      return
-    }
-    setupBar(ctxRef, gameId, powerups, inventory, onUse)
+    setupBar(gameId, powerups, inventory, onUse)
   },
   removePowerupBar(): void {
     removeBar()

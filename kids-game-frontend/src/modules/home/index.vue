@@ -24,7 +24,13 @@
       <div class="header-right">
         <div v-if="userStore.currentUser" class="user-info">
           <span class="user-avatar">{{ userStore.avatar }}</span>
-          <span class="user-name">{{ userStore.username }}</span>
+          <div class="user-details">
+            <span class="user-name">{{ userStore.username }}</span>
+            <span class="user-role">{{ currentUserRole }}</span>
+          </div>
+        </div>
+        <div v-if="userStore.currentUser" class="account-type-badge" :class="`account-type-${accountTypeClass}`">
+          {{ currentUserRole }}
         </div>
         <button @click="showParentModal = true" class="parent-btn">
           👨‍👩‍👧 家长区
@@ -350,6 +356,28 @@ const grades = ref([
 const currentGradeName = computed(() => {
   const grade = grades.value.find(g => g.id === currentGrade.value);
   return grade?.name || '一年级';
+});
+
+const currentUserRole = computed(() => {
+  if (userStore.currentUser?.userType === 'KID') {
+    return '儿童';
+  } else if (userStore.parentUser) {
+    return '家长';
+  } else if (userStore.adminUser) {
+    return '管理员';
+  }
+  return '用户';
+});
+
+const accountTypeClass = computed(() => {
+  if (userStore.currentUser?.userType === 'KID') {
+    return 'kid';
+  } else if (userStore.parentUser) {
+    return 'parent';
+  } else if (userStore.adminUser) {
+    return 'admin';
+  }
+  return 'guest';
 });
 
 const currentCategoryName = computed(() => {
@@ -749,13 +777,57 @@ onUnmounted(() => {
   border-radius: 20px;
 }
 
+.account-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.account-type-badge.account-type-kid {
+  background: linear-gradient(135deg, #4ecdc4, #45b7d1);
+}
+
+.account-type-badge.account-type-parent {
+  background: linear-gradient(135deg, #5b9bd5, #7a8cff);
+}
+
+.account-type-badge.account-type-admin {
+  background: linear-gradient(135deg, #ff8a65, #ff5252);
+}
+
+.account-type-badge.account-type-guest {
+  background: linear-gradient(135deg, #9ca3af, #6b7280);
+}
+
 .user-avatar {
   font-size: 1.5rem;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
 }
 
 .user-name {
   font-weight: 500;
   color: #333;
+  font-size: 0.95rem;
+}
+
+.user-role {
+  font-size: 0.7rem;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 0.15rem 0.4rem;
+  border-radius: 10px;
+  text-align: center;
 }
 
 .parent-btn {
@@ -1272,6 +1344,12 @@ onUnmounted(() => {
 
   .user-info {
     display: none;
+  }
+
+  .account-type-badge {
+    display: inline-flex;
+    font-size: 0.65rem;
+    padding: 0.22rem 0.55rem;
   }
 
   .hamburger-btn {

@@ -25,37 +25,17 @@ import {
   showSearchResults,
   renderFavoritesPage,
   refreshBestScores,
-  showScoreFly,
 } from '@simple/app/gameCards'
-import {
-  launchGame,
-  closeGuide,
-  cancelGuide,
-  startGame,
-  endGame,
-  showResult,
-  syncScoreAsync,
-  closeResult,
-  replayGame,
-  exitGame,
-  setRating,
-  submitComment,
-  renderComments,
-  updateCommentStats,
-} from '@simple/app/gameSession'
+import { launchGame } from '@simple/app/gameSession'
 import {
   showRank,
   showRankForGame,
   closeRank,
-  initRankGameSelector,
-  renderRank,
-  calculateRank,
   convertGameIdToNumber,
   clearRankCache,
 } from '@simple/app/rank'
 import { bindEvents, bindGameCallbacks } from '@simple/app/events'
-import { bindEconomyButtons, fetchTasksForBanner, bannerTaskView, openTaskCenter, openShop } from '@simple/app/economyUI'
-import { setupCustomPowerupBar, removePowerupBar } from '@simple/app/powerup'
+import { bindEconomyButtons, fetchTasksForBanner, bannerTaskView } from '@simple/app/economyUI'
 import { lobbyPathForTab, navigateTo } from '@simple/router/navigation'
 import '@simple/styles/main.css'
 import '@simple/styles/game-shell.css'
@@ -67,13 +47,11 @@ const authModal = new AuthModal()
 const mePanel = new MePanel(authModal)
 
 const isLoading = ref(true)
-const currentGame = ref<Game | null>(null)
 const previewAnimFrames = ref<Map<string, number>>(new Map())
 const previewObserver = ref<IntersectionObserver | null>(null)
-const currentPage = ref<'home' | 'rank' | 'favorites' | 'me' | 'task' | 'shop'>('home')
+const currentPage = ref<'home' | 'learning' | 'rank' | 'favorites' | 'me' | 'task' | 'shop'>('home')
 const searchKeyword = ref('')
-const selectedRating = ref(0)
-const guideSkipped = ref(false)
+const rankCache = ref(new Map<string, import('../services/leaderboardService').LeaderboardEntry[]>())
 
 const isGameRoute = computed(() => route.path.startsWith('/game/'))
 const isAuthRoute = computed(() => route.path === '/login' || route.path === '/register')
@@ -163,14 +141,10 @@ function navigateLobbyTab(tab: string) {
 
 const buildContext = (): PlatformContext => {
   return {
-    get currentGame() {
-      return currentGame.value
-    },
-    set currentGame(v) {
-      currentGame.value = v
-    },
+    authModal,
+    mePanel,
     get rankCache() {
-      return new Map()
+      return rankCache.value
     },
     get currentPage() {
       return currentPage.value
@@ -193,30 +167,16 @@ const buildContext = (): PlatformContext => {
     set previewObserver(v) {
       previewObserver.value = v
     },
-    get selectedRating() {
-      return selectedRating.value
-    },
-    set selectedRating(v) {
-      selectedRating.value = v
-    },
-    get guideSkipped() {
-      return guideSkipped.value
-    },
-    set guideSkipped(v) {
-      guideSkipped.value = v
-    },
-    authModal,
-    mePanel,
+    orientationManager: null,
     get store() {
       return store.value
     },
     get userServiceCurrent() {
       return userService.current
     },
-    orientationManager: null as never,
     renderGameCards: () => renderGameCards(buildContext()),
     createGameCard: (game, best) => createGameCard(buildContext(), game, best),
-    renderPreview: (game, retryCount) => renderPreview(buildContext(), game, retryCount),
+    renderPreview: (game, retryCount, canvas) => renderPreview(buildContext(), game, retryCount, canvas),
     getFavorites: () => getFavorites(buildContext()),
     toggleFavorite: (gameId) => toggleFavorite(buildContext(), gameId),
     refreshCurrentPage: () => refreshCurrentPage(buildContext()),
@@ -224,6 +184,9 @@ const buildContext = (): PlatformContext => {
     switchToHome: () => {
       navigateLobbyTab('home')
       switchToHome(buildContext())
+    },
+    switchToLearning: () => {
+      navigateLobbyTab('learning')
     },
     switchToRank: () => {
       navigateLobbyTab('rank')
@@ -247,23 +210,11 @@ const buildContext = (): PlatformContext => {
     closeRank: () => closeRank(),
     renderFavoritesPage: () => renderFavoritesPage(buildContext()),
     refreshBestScores: () => refreshBestScores(),
-    showScoreFly: (score, x, y, isCrit, isCombo) => showScoreFly(score, x, y, isCrit, isCombo),
-    renderComments: () => renderComments(buildContext()),
-    setRating: (rating) => setRating(buildContext(), rating),
-    submitComment: () => submitComment(buildContext()),
     onUserChange: () => onUserChange(),
     convertGameIdToNumber: (gameId) => convertGameIdToNumber(gameId),
     clearRankCache: (gameId) => clearRankCache(buildContext(), gameId),
     launchGame: (game) => launchGame(buildContext(), game),
-    closeResult: () => closeResult(buildContext()),
-    replayGame: () => replayGame(buildContext()),
-    exitGame: () => exitGame(buildContext()),
-    startGame: () => startGame(buildContext()),
-    closeGuide: () => closeGuide(buildContext()),
     closeDailyPop: () => closeDailyPop(),
-    setupCustomPowerupBar: (gameId, powerups, inventory, onUse) =>
-      setupCustomPowerupBar(buildContext(), gameId, powerups, inventory, onUse),
-    removePowerupBar: () => removePowerupBar(),
   }
 }
 

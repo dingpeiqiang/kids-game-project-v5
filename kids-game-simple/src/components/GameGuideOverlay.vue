@@ -2,6 +2,7 @@
   <GameGuideShell
     :guide="guide"
     :accent="accent"
+    :game-code="gameCode"
     :custom-panel="customPanel"
     @start="emit('start', $event)"
     @cancel="emit('cancel')"
@@ -16,6 +17,7 @@ import GameGuideShell from '@simple/platform/gameGuide/GameGuideShell.vue';
 defineProps<{
   guide: GameGuide;
   accent: string;
+  gameCode?: string;
   customPanel?: Component;
 }>();
 

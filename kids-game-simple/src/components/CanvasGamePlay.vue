@@ -46,14 +46,24 @@
       v-if="session.isEnded.value"
       :score="session.finalScore.value"
       :victory="session.victory.value"
+      :prev-best="sessionPrevBest"
+      :stats="resultStats"
+      :rank-badge="resultRankLocal?.badge"
+      :rank-text="resultRankLocal?.text"
+      :server-rank="resultServerRank"
+      :synced="resultSynced"
+      :crits="resultCrits"
+      :combo="resultCombo"
       @back="onBack"
       @replay="replay"
+      @reset-guide="onResetGuide"
     />
 
     <GameGuideOverlay
       v-if="session.phase.value === 'guide' && guide"
       :guide="guide"
       :accent="accentColor"
+      :game-code="props.gameId"
       :custom-panel="guideCustomPanel"
       @start="onGuideStart"
       @cancel="onGuideCancel"
@@ -98,6 +108,9 @@ import {
   resetRotateDismissForNewGame,
   setRouteLandscapeSessionActive,
 } from '@simple/app/gameShellOrientation';
+import { LOBBY_HOME_PATH, navigateToLobbyHome } from '@simple/router/navigation';
+import { calculateRankDisplay } from '@simple/app/rankDisplay';
+import type { GameResultStats } from '@simple/types/gameResult';
 
 const props = defineProps<{
   gameId: string;
@@ -147,6 +160,36 @@ const landscapeShellStyle = computed(() => {
 let sessionLandscapeResizeHandler: (() => void) | null = null;
 let activeLandscapeVp: GameViewport | null = null;
 
+const sessionPrevBest = ref(0);
+const resultStats = ref<GameResultStats | null>(null);
+const resultRankLocal = ref<{ badge: string; text: string } | null>(null);
+const resultServerRank = ref<number | null>(null);
+const resultSynced = ref(false);
+const resultCrits = ref(0);
+const resultCombo = ref(0);
+
+function resetResultPresentation() {
+  sessionPrevBest.value = 0;
+  resultStats.value = null;
+  resultRankLocal.value = null;
+  resultServerRank.value = null;
+  resultSynced.value = false;
+  resultCrits.value = 0;
+  resultCombo.value = 0;
+}
+
+function normalizeResultStats(raw: unknown): GameResultStats | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const s = raw as Record<string, unknown>;
+  return {
+    maxCombo: typeof s.maxCombo === 'number' ? s.maxCombo : undefined,
+    totalKills: typeof s.totalKills === 'number' ? s.totalKills : undefined,
+    gameTime: typeof s.gameTime === 'number' ? s.gameTime : undefined,
+    level: typeof s.level === 'number' ? s.level : undefined,
+    won: typeof s.won === 'boolean' ? s.won : undefined,
+  };
+}
+
 function isGuideSkipped(): boolean {
   const skipped = userService.isLoggedIn
     ? userService.current?.guideSkipped
@@ -154,14 +197,22 @@ function isGuideSkipped(): boolean {
   return !!(skipped && skipped[props.gameId]);
 }
 
-function onBack() {
+function leavePlayRoute() {
   teardownSession();
-  router.push('/');
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    navigateToLobbyHome();
+  }
+}
+
+function onBack() {
+  leavePlayRoute();
 }
 
 function onGuideCancel() {
   session.setPhase('guide');
-  router.back();
+  leavePlayRoute();
 }
 
 function onTogglePause() {
@@ -185,7 +236,7 @@ function onGuideStart(skipNext: boolean) {
   }
   void (async () => {
     if (!(await ensureLaunchPrepared())) {
-      router.back();
+      leavePlayRoute();
       return;
     }
     void startSession();
@@ -197,7 +248,7 @@ function replay() {
   launchPrepared = false;
   void (async () => {
     if (!(await ensureLaunchPrepared())) {
-      router.back();
+      leavePlayRoute();
       return;
     }
     void startSession();
@@ -207,13 +258,43 @@ function replay() {
 function finishSessionFromEngine() {
   if (!session.sessionActive.value) return;
   const score = gameEngine.getScore();
+  const victory = gameEngine.isVictory();
+  const rawStats = gameEngine.getGameStats();
+  const prevBest =
+    userService.isLoggedIn && userService.current
+      ? userService.current.bestScores[props.gameId] ?? 0
+      : storageService.get().bestScores?.[props.gameId] ?? 0;
+
+  sessionPrevBest.value = prevBest;
+  resultStats.value = normalizeResultStats(rawStats);
+  resultCrits.value = gameEngine.getCrits();
+  resultCombo.value = gameEngine.getCombo();
+  resultRankLocal.value = calculateRankDisplay(score);
+  resultServerRank.value = null;
+  resultSynced.value = false;
+
   liveScore.value = score;
   session.endSession({
     score,
-    victory: gameEngine.isVictory(),
-    stats: gameEngine.getGameStats(),
+    victory,
+    stats: rawStats,
   });
   gameEngine.endGame();
+
+  void userService.recordGameResult(props.gameId, score, rawStats).then((result) => {
+    resultSynced.value = result.synced;
+    if (result.rank != null) resultServerRank.value = result.rank;
+    window.dispatchEvent(new CustomEvent('ugp:userChange'));
+    window.dispatchEvent(new CustomEvent('ugp:tasksRefresh'));
+  });
+}
+
+async function onResetGuide() {
+  if (userService.isLoggedIn) userService.resetGuide(props.gameId);
+  else storageService.resetGuide(props.gameId);
+  resetResultPresentation();
+  const hasGuide = await resolveGuideForPlay();
+  if (hasGuide) session.setPhase('guide');
 }
 
 function teardownSession() {
@@ -267,6 +348,7 @@ async function startSession() {
   }
 
   clearRuntimeOnly();
+  resetResultPresentation();
   session.beginSession();
 
   wireEngineUiCallbacks();
@@ -341,7 +423,7 @@ async function resolveGuideForPlay(): Promise<boolean> {
 
 onMounted(async () => {
   if (!registration.value) {
-    router.replace('/');
+    router.replace(LOBBY_HOME_PATH);
     return;
   }
   if (!isGuideSkipped()) {
@@ -352,7 +434,7 @@ onMounted(async () => {
     }
   }
   if (!(await ensureLaunchPrepared())) {
-    router.back();
+    leavePlayRoute();
     return;
   }
   void startSession();

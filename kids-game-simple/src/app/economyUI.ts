@@ -1,4 +1,4 @@
-import { apiShopProducts, apiShopPurchase, apiTaskList, apiTaskClaim } from '../services/apiClient'
+import { apiShopProducts, apiTaskList, apiTaskClaim } from '../services/apiClient'
 import { userService } from '../services/userService'
 import { showToast } from '../services/userUI'
 
@@ -104,13 +104,15 @@ export async function renderShopProducts(containerId = 'shopProductList') {
       const name = String(p.productName ?? '商品')
       const price = Number(p.priceCoins ?? 100)
       const grant = Number(p.grantStudyCoins ?? 1)
+      const coins = userService.current?.coins ?? 0
+      const canBuy = coins >= price
       return `
         <div class="shop-item">
           <div class="shop-item-info">
             <div class="shop-item-name">${name}</div>
             <div class="shop-item-desc">${price} 金币 → ${grant} 游学币</div>
           </div>
-          <button type="button" class="btn btn-primary shop-buy-btn" data-product-id="${id}">兑换</button>
+          <button type="button" class="btn btn-primary shop-buy-btn" data-product-id="${id}" ${canBuy ? '' : 'disabled'}>${canBuy ? '兑换' : '金币不足'}</button>
         </div>
       `
     })
@@ -121,21 +123,15 @@ export async function renderShopProducts(containerId = 'shopProductList') {
       const productId = Number((btn as HTMLElement).dataset.productId)
       const b = btn as HTMLButtonElement
       b.disabled = true
-      const buy = await apiShopPurchase(productId, 1)
-      b.disabled = false
-      if (buy.ok && buy.data) {
-        const w = buy.data.wallet as { coins?: number; studyCoins?: number } | undefined
-        if (userService.current && w) {
-          if (w.coins != null) userService.current.coins = w.coins
-          if (w.studyCoins != null) userService.current.studyCoins = w.studyCoins
-          userService.saveUser(userService.current)
-        } else {
-          await userService.refreshStudyCoins()
-        }
+      try {
+        await userService.purchaseStudyCoins(productId, 1)
         syncWalletDom()
         showToast('兑换成功！', 'success')
-      } else {
-        showToast(buy.msg || String(buy.data?.message ?? '兑换失败'), 'error')
+        await renderShopProducts(containerId)
+      } catch (err) {
+        showToast(String((err as Error)?.message || '兑换失败'), 'error')
+      } finally {
+        b.disabled = false
       }
     })
   })
@@ -248,6 +244,8 @@ export async function renderTaskList(containerId = 'taskCenterList') {
           if (w.studyCoins != null) userService.current.studyCoins = w.studyCoins
           if (w.exp != null) userService.current.exp = w.exp
           userService.saveUser(userService.current)
+        } else {
+          await userService.refreshStudyCoins()
         }
         syncWalletDom()
         showToast('任务奖励已领取', 'success')

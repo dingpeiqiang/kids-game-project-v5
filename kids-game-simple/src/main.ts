@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from '@simple/router'
 import { installMobileShellGuards } from './utils/mobileEnv'
@@ -11,6 +12,8 @@ if (import.meta.env.PROD) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const app = createApp(App)
+  const pinia = createPinia()
+  app.use(pinia)
   app.use(router)
   app.mount('#app')
 })

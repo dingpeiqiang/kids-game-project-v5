@@ -166,21 +166,23 @@ async function handleLogin() {
     isLoading.value = true;
     const result = await userStore.unifiedLogin(formData.value.username, formData.value.password);
 
-    // 统一登录：所有用户登录后都跳转到 3001 终端首页（KidsHome）
-    // 家长/管理员在首页通过"家长中心"/"管理中心"按钮跳转到 3000 管理端
+    // 登录成功后统一跳转到账号选择界面，由用户选择以哪个身份进入
+    const redirectQuery = typeof router.currentRoute.value.query.redirect === 'string'
+      ? router.currentRoute.value.query.redirect
+      : '';
+
     if (result.userType === 0) {
-      toast.success('登录成功！');
-      syncAuthToCookie();
-      await router.push('/');
+      toast.error('儿童账号请通过家长账号登录后选择');
+      throw new Error('儿童账号请通过家长账号登录后选择');
     } else if (result.userType === 1) {
       toast.success('登录成功！');
       saveParentLoginUsername(formData.value.username);
       syncAuthToCookie();
-      await router.push('/');
+      await router.push({ path: '/account-select', query: redirectQuery ? { redirect: redirectQuery } : {} });
     } else if (result.userType === 2) {
       toast.success('登录成功！');
       syncAuthToCookie();
-      await router.push('/');
+      await router.push({ path: '/account-select', query: redirectQuery ? { redirect: redirectQuery } : {} });
     } else {
       toast.error('未知用户类型');
     }
@@ -402,25 +404,25 @@ function goToRegister() {
 }
 
 .logo-gamepad {
-  font-size: clamp(3rem, 11vh, 5.5rem);
-  z-index: 1;
+  font-size: clamp(3.5rem, 13vh, 6rem);
+  z-index: 10;
   animation: gamepadPulse 2s ease-in-out infinite;
   line-height: 1;
 }
 
 .logo-star {
   position: absolute;
-  top: -6%;
-  right: 8%;
-  font-size: clamp(1.25rem, 3.5vh, 2.25rem);
-  z-index: 2;
+  top: -22%;
+  right: -20%;
+  font-size: clamp(1.35rem, 4vh, 2.4rem);
+  z-index: 11;
   animation: starPulse 1.5s ease-in-out infinite;
 }
 
 .logo-star-deco {
   position: absolute;
   font-size: clamp(0.85rem, 2vh, 1.25rem);
-  z-index: 3;
+  z-index: 5;
   animation: starFloat 3s ease-in-out infinite;
 }
 
@@ -600,11 +602,11 @@ function goToRegister() {
 .login-glass {
   padding: clamp(1.1rem, 2.8vh, 1.65rem) clamp(1.1rem, 2.5vw, 1.5rem);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
   max-height: calc(100dvh - 2rem);
 }
 
@@ -752,26 +754,62 @@ function goToRegister() {
     flex-direction: column;
     gap: clamp(0.65rem, 2vh, 1rem);
     max-width: 440px;
+    justify-content: flex-start;
+    padding-top: clamp(1rem, 8vh, 2rem);
+  }
+
+  .login-container {
+    align-items: flex-start;
+    justify-content: flex-start;
   }
 
   .illustration-section {
     flex: 0 0 auto;
+    margin-bottom: 0;
+  }
+
+  .illustration-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .logo-display {
+    margin-bottom: 0.35rem;
+  }
+
+  .logo-gamepad {
+    font-size: clamp(2.5rem, 12vw, 3.5rem);
+  }
+
+  .logo-star {
+    top: -28%;
+    right: -25%;
+    font-size: clamp(1.1rem, 3.5vw, 1.8rem);
+  }
+
+  .brand-name {
+    font-size: clamp(1.3rem, 5vw, 1.8rem);
+  }
+
+  .brand-name-en {
+    display: none;
+  }
+
+  .illustration-desc {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    max-width: 18em;
+  }
+
+  .feature-list {
+    display: none;
   }
 
   .login-form-section {
     flex: 0 0 auto;
     max-width: 100%;
-  }
-
-  .feature-list {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.4rem;
-  }
-
-  .feature-item {
-    padding: 0.4rem 0.85rem;
+    width: 100%;
   }
 }
 

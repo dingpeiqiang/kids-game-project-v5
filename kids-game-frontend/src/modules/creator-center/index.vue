@@ -986,9 +986,46 @@ function handlePreview(theme: CloudThemeInfo) {
   // TODO: 打开预览窗口
 }
 
-function handleBuy(theme: CloudThemeInfo) {
+async function handleBuy(theme: CloudThemeInfo) {
   console.log('[CreatorCenter] 购买主题:', theme);
-  // TODO: 调用购买 API
+
+  try {
+    const themeId = String((theme as any).themeId || theme.id);
+    if (!themeId) {
+      ElMessage.error('主题信息不完整，无法购买');
+      return;
+    }
+
+    await ElMessageBox.confirm(
+      `确认使用金币购买主题「${theme.name}」吗？`,
+      '购买主题',
+      {
+        confirmButtonText: '购买',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+
+    const result = await themeApi.buy(themeId);
+    if (!result?.success) {
+      throw new Error('购买失败');
+    }
+
+    ElMessage.success(`已成功购买主题「${theme.name}」`);
+    window.dispatchEvent(new CustomEvent('ugp:userChange'));
+
+    if (currentTab.value === 'mine') {
+      await loadMyThemesOnly();
+    } else {
+      await reloadCurrentData();
+      await loadPurchasedThemes();
+    }
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') {
+      console.error('[CreatorCenter] 购买主题失败:', error);
+      ElMessage.error('购买失败：' + (error.response?.data?.message || error.message || '未知错误'));
+    }
+  }
 }
 
 function handleDownload(themeId: string) {

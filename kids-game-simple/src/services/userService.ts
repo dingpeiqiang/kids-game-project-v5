@@ -32,6 +32,7 @@ import {
   apiAddFavorite,
   apiGameSettle,
   apiSaveGameRecord,
+  apiShopPurchase,
   type SignInResponseData,
   type SignInInfoData
 } from './apiClient'
@@ -518,6 +519,7 @@ class UserService {
         }
         this._current.consecutiveLoginDays = consecutiveDays
         this.saveUser(this._current)
+        this._notifyUserChange()
 
         console.log('[UserService] 签到成功同步到后端', { coins, exp, study, consecutiveDays })
         return { ok: true, msg: backendData.message || `签到成功！获得 ${coins} 金币`, coins }
@@ -580,6 +582,7 @@ class UserService {
     }
 
     this.saveUser(u)
+    this._notifyUserChange()
     return { synced: false }
   }
 
@@ -665,12 +668,14 @@ class UserService {
     if (!this._current) return
     this._current.coins += amount
     this.saveUser(this._current)
+    this._notifyUserChange()
   }
 
   spendCoins(amount: number): boolean {
     if (!this._current || this._current.coins < amount) return false
     this._current.coins -= amount
     this.saveUser(this._current)
+    this._notifyUserChange()
     return true
   }
 
@@ -699,6 +704,7 @@ class UserService {
     if (!this._current || this._current.coins < price) return false
     this._current.coins -= price
     this.addItem(itemId)
+    this._notifyUserChange()
     return true
   }
 
@@ -789,6 +795,63 @@ class UserService {
       .slice(0, limit)
   }
 
+  // ── 商城兑换（金币 → 游学币）──────────────────────────────────
+  async purchaseStudyCoins(productId: number, quantity = 1): Promise<{ ok: boolean; msg: string; wallet?: { coins: number; studyCoins: number; exp?: number } }> {
+    if (!this._current || !this.isLoggedIn) return { ok: false, msg: '请先登录' }
+
+    const qty = Math.max(1, Math.floor(quantity))
+    const prevWallet = {
+      coins: this._current.coins,
+      studyCoins: this._current.studyCoins,
+      exp: this._current.exp,
+    }
+
+    try {
+      // 先给 UI 一个立即反馈，避免等待后端返回时余额看起来没变化
+      this._current.coins = prevWallet.coins
+      this.saveUser(this._current)
+      this._notifyUserChange()
+
+      const res = await apiShopPurchase(productId, qty) as { ok?: boolean; msg?: string; data?: { success?: boolean; message?: string; grantStudyCoins?: number; wallet?: { coins: number; studyCoins: number; exp?: number } } }
+      const payload = res.data
+
+      if (!res || res.ok === false || payload?.success === false) {
+        this._current.coins = prevWallet.coins
+        this._current.studyCoins = prevWallet.studyCoins
+        this._current.exp = prevWallet.exp
+        this.saveUser(this._current)
+        this._notifyUserChange()
+        return { ok: false, msg: res?.msg || payload?.message || '兑换失败' }
+      }
+
+      const wallet = payload?.wallet
+      if (wallet) {
+        this._current.coins = wallet.coins
+        this._current.studyCoins = wallet.studyCoins
+        if (typeof wallet.exp === 'number') this._current.exp = wallet.exp
+      } else if (typeof payload?.grantStudyCoins === 'number') {
+        this._current.studyCoins = prevWallet.studyCoins + payload.grantStudyCoins
+      }
+
+      this.saveUser(this._current)
+      this._notifyUserChange()
+      await this.refreshStudyCoins()
+      return { ok: true, msg: payload?.message || res.msg || '兑换成功', wallet: wallet || {
+        coins: this._current.coins,
+        studyCoins: this._current.studyCoins,
+        exp: this._current.exp,
+      } }
+    } catch (e) {
+      console.warn('[UserService] 商城兑换失败', e)
+      this._current.coins = prevWallet.coins
+      this._current.studyCoins = prevWallet.studyCoins
+      this._current.exp = prevWallet.exp
+      this.saveUser(this._current)
+      this._notifyUserChange()
+      return { ok: false, msg: '兑换失败，请稍后重试' }
+    }
+  }
+
   // ── 刷新游学币（从后端同步）───────────────────────────────────
   async refreshStudyCoins(): Promise<void> {
     if (!this._current || !this.isLoggedIn) return
@@ -799,7 +862,7 @@ class UserService {
         const gd = loadGameData(this._current.id)
         gd.studyCoins = info.fatiguePoints
         saveGameData(this._current.id, gd)
-        window.dispatchEvent(new CustomEvent('ugp:userChange'))
+        this._notifyUserChange()
       }
     } catch (e) {
       console.warn('[UserService] 刷新游学币失败', e)

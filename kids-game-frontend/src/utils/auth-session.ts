@@ -19,6 +19,19 @@ export function persistAuthSession(userData: UnifiedAuthResult): void {
     localStorage.setItem('refreshToken', userData.refreshToken);
   }
 
+  // 同步 token 到 userService（kids-game-simple）的 tokenStore，确保两个系统登录态一致
+  // 先清除旧值再写入，避免残留
+  localStorage.removeItem('sgp_access_token');
+  localStorage.removeItem('sgp_refresh_token');
+  localStorage.removeItem('sgp_user_id');
+  localStorage.removeItem('authToken');
+  localStorage.setItem('sgp_access_token', userData.token);
+  if (userData.refreshToken) {
+    localStorage.setItem('sgp_refresh_token', userData.refreshToken);
+  }
+  localStorage.setItem('sgp_user_id', String(userData.userId));
+  localStorage.setItem('authToken', userData.token);
+
   if (userData.userType === 0) {
     const kidInfo = {
       id: userData.userId,

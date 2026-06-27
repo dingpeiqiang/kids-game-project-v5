@@ -156,6 +156,44 @@ async function getFrequentlyPlayedGames(
 
 let renderGameCardsInflight: Promise<void> | null = null
 let renderGameCardsQueued = false
+const previewTimeoutIds = new Map<string, ReturnType<typeof setTimeout>>()
+
+type PreviewTarget = { game: Game; canvas: HTMLCanvasElement }
+
+function getPreviewCanvasFromCard(card: HTMLElement): HTMLCanvasElement | null {
+  return card.querySelector('canvas.card-preview-canvas') as HTMLCanvasElement | null
+}
+
+function scheduleCardPreviews(ctx: PlatformContext, targets: PreviewTarget[], staggerMs = 20) {
+  if (targets.length === 0) return
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      targets.forEach(({ game, canvas }, i) => {
+        setTimeout(() => renderPreview(ctx, game, 0, canvas), i * staggerMs)
+      })
+    })
+  })
+}
+
+/** 同 id 游戏可能出现在多个区块，优先在指定根节点内查找 canvas */
+function resolvePreviewCanvas(game: Game, hint?: HTMLCanvasElement | null): HTMLCanvasElement | null {
+  if (hint?.isConnected) return hint
+  const scoped =
+    document.querySelector(`#categorySections .game-card[data-game-id="${game.id}"] canvas.card-preview-canvas`) as
+      | HTMLCanvasElement
+      | null
+  if (scoped?.isConnected) return scoped
+  const searchScoped = document.querySelector(
+    `#searchGameList .game-card[data-game-id="${game.id}"] canvas.card-preview-canvas`,
+  ) as HTMLCanvasElement | null
+  if (searchScoped?.isConnected) return searchScoped
+  const favScoped = document.querySelector(
+    `#favoritesGameList .game-card[data-game-id="${game.id}"] canvas.card-preview-canvas`,
+  ) as HTMLCanvasElement | null
+  if (favScoped?.isConnected) return favScoped
+  const byId = document.getElementById('preview_' + game.id) as HTMLCanvasElement | null
+  return byId?.isConnected ? byId : null
+}
 
 export async function renderGameCards(ctx: PlatformContext) {
   if (renderGameCardsInflight) {
@@ -173,6 +211,10 @@ export async function renderGameCards(ctx: PlatformContext) {
     ctx.previewObserver.disconnect()
     ctx.previewObserver = null
   }
+
+  // 取消所有待处理的预览渲染重试
+  previewTimeoutIds.forEach((timeoutId) => clearTimeout(timeoutId))
+  previewTimeoutIds.clear()
 
   // 移除其他隐藏页面中的旧 canvas，避免 ID 冲突
   document.querySelectorAll('#searchResults canvas[id^="preview_"], #favoritesContent canvas[id^="preview_"]')
@@ -229,15 +271,17 @@ export async function renderGameCards(ctx: PlatformContext) {
     sec.innerHTML = `<div class="section-title"><span class="cat-label" style="--cat-color:#667eea">🕐 最近游玩</span></div>`
     const grid = document.createElement('div')
     grid.className = 'game-grid'
-    const toPreview: Game[] = []
+    const toPreview: PreviewTarget[] = []
     recentlyPlayed.forEach(game => {
       const best = bestScores[game.id] || 0
-      grid.appendChild(createGameCard(ctx, game, best))
-      toPreview.push(game)
+      const card = createGameCard(ctx, game, best)
+      grid.appendChild(card)
+      const canvas = getPreviewCanvasFromCard(card)
+      if (canvas) toPreview.push({ game, canvas })
     })
     sec.appendChild(grid)
     container.appendChild(sec)
-    setTimeout(() => toPreview.forEach(game => ctx.renderPreview(game)), 50)
+    scheduleCardPreviews(ctx, toPreview)
   }
 
   // ── 常玩游戏（按游玩次数） ──────────────────────────
@@ -248,15 +292,17 @@ export async function renderGameCards(ctx: PlatformContext) {
     sec.innerHTML = `<div class="section-title"><span class="cat-label" style="--cat-color:#f093fb">🔥 常玩游戏</span></div>`
     const grid = document.createElement('div')
     grid.className = 'game-grid'
-    const toPreview: Game[] = []
+    const toPreview: PreviewTarget[] = []
     frequentGames.forEach(game => {
       const best = bestScores[game.id] || 0
-      grid.appendChild(createGameCard(ctx, game, best))
-      toPreview.push(game)
+      const card = createGameCard(ctx, game, best)
+      grid.appendChild(card)
+      const canvas = getPreviewCanvasFromCard(card)
+      if (canvas) toPreview.push({ game, canvas })
     })
     sec.appendChild(grid)
     container.appendChild(sec)
-    setTimeout(() => toPreview.forEach(game => ctx.renderPreview(game)), 50)
+    scheduleCardPreviews(ctx, toPreview)
   }
 
   GAME_CATEGORIES.forEach(cat => {
@@ -274,18 +320,16 @@ export async function renderGameCards(ctx: PlatformContext) {
     // 游戏网格
     const grid = document.createElement('div')
     grid.className = 'game-grid'
-    const gamesToPreview: Game[] = []
+    const gamesToPreview: PreviewTarget[] = []
     gamesInCat.forEach((game) => {
       const best = bestScores[game.id] || 0
       const card = createGameCard(ctx, game, best)
       grid.appendChild(card)
-      gamesToPreview.push(game)
+      const canvas = getPreviewCanvasFromCard(card)
+      if (canvas) gamesToPreview.push({ game, canvas })
     })
     container.appendChild(grid)
-    // 使用 setTimeout 确保 DOM 已挂载并完成布局后再启动预览
-    setTimeout(() => {
-      gamesToPreview.forEach(game => ctx.renderPreview(game))
-    }, 50)
+    scheduleCardPreviews(ctx, gamesToPreview)
   })
   }
 
@@ -324,7 +368,7 @@ export function createGameCard(ctx: PlatformContext, game: Game, best: number) {
 
   card.innerHTML = `
       <div class="card-cover">
-        <canvas id="preview_${game.id}" width="320" height="200"></canvas>
+        <canvas class="card-preview-canvas" id="preview_${game.id}" width="320" height="200"></canvas>
         <div class="card-tag">${game.tag}</div>
         ${getGameDisplayConfig(game.id).badge ? `<div class="card-badge">${getGameDisplayConfig(game.id).badge}</div>` : ''}
       </div>
@@ -404,10 +448,11 @@ export function startPreviewAnimation(ctx: PlatformContext, game: Game, canvas: 
     vx: (Math.random() - 0.5) * 0.5,
   }))
 
+  const animKey = canvas.id || game.id
   let frame = 0
   const animate = () => {
-    if (!document.getElementById('preview_' + game.id)) {
-      ctx.previewAnimFrames.delete(game.id)
+    if (!canvas.isConnected) {
+      ctx.previewAnimFrames.delete(animKey)
       return
     }
     ctx2d.fillStyle = grad
@@ -427,43 +472,71 @@ export function startPreviewAnimation(ctx: PlatformContext, game: Game, canvas: 
     ctx2d.textAlign = 'center'
     ctx2d.fillText('▶', 160, 110)
     frame++
-    ctx.previewAnimFrames.set(game.id, requestAnimationFrame(animate))
+    ctx.previewAnimFrames.set(animKey, requestAnimationFrame(animate))
   }
   const rafId = requestAnimationFrame(animate)
-  ctx.previewAnimFrames.set(game.id, rafId)
+  ctx.previewAnimFrames.set(animKey, rafId)
 }
 
-export function renderPreview(ctx: PlatformContext, game: Game, retryCount = 0) {
-  const canvas = document.getElementById('preview_' + game.id) as HTMLCanvasElement
+function previewRetryKey(game: Game, canvas?: HTMLCanvasElement) {
+  return canvas ? `${game.id}:${canvas.id}` : game.id
+}
+
+export function renderPreview(
+  ctx: PlatformContext,
+  game: Game,
+  retryCount = 0,
+  canvasHint?: HTMLCanvasElement,
+) {
+  const retryKey = previewRetryKey(game, canvasHint)
+  const existingTimeout = previewTimeoutIds.get(retryKey)
+  if (existingTimeout) {
+    clearTimeout(existingTimeout)
+    previewTimeoutIds.delete(retryKey)
+  }
+
+  const canvas = resolvePreviewCanvas(game, canvasHint)
   if (!canvas) {
-    console.warn('[App] renderPreview: Canvas not found for game', game.id)
+    if (retryCount < 15) {
+      const timeoutId = setTimeout(() => {
+        previewTimeoutIds.delete(retryKey)
+        renderPreview(ctx, game, retryCount + 1, canvasHint)
+      }, 50 * (retryCount + 1))
+      previewTimeoutIds.set(retryKey, timeoutId)
+    } else {
+      console.warn('[App] renderPreview: Canvas not found after 15 retries for game', game.id)
+    }
+    return
+  }
+
+  if (!canvas.isConnected) {
+    if (retryCount < 15) {
+      const timeoutId = setTimeout(() => {
+        previewTimeoutIds.delete(retryKey)
+        renderPreview(ctx, game, retryCount + 1, canvasHint)
+      }, 50 * (retryCount + 1))
+      previewTimeoutIds.set(retryKey, timeoutId)
+    } else {
+      console.warn('[App] renderPreview: Canvas not in DOM after 15 retries for game', game.id)
+    }
     return
   }
 
   const rect = canvas.getBoundingClientRect()
 
   if (rect.width === 0 || rect.height === 0) {
-    if (retryCount < 10) {
-      console.log(`[App] renderPreview: Canvas size is 0 (${rect.width.toFixed(1)}x${rect.height.toFixed(1)}), retry ${retryCount + 1}/10 for game`, game.id)
-      requestAnimationFrame(() => {
-        renderPreview(ctx, game, retryCount + 1)
-      })
+    if (retryCount < 15) {
+      const timeoutId = setTimeout(() => {
+        previewTimeoutIds.delete(retryKey)
+        renderPreview(ctx, game, retryCount + 1, canvasHint)
+      }, 50 * (retryCount + 1))
+      previewTimeoutIds.set(retryKey, timeoutId)
     } else {
-      console.error('[App] renderPreview: Canvas still has 0 size after 10 retries for game', game.id)
-      const parent = canvas.parentElement
-      if (parent) {
-        const parentRect = parent.getBoundingClientRect()
-        const parentStyle = window.getComputedStyle(parent)
-        console.error('[App] renderPreview: Parent element -', parent.className,
-                     'rect:', `w:${parentRect.width.toFixed(1)} h:${parentRect.height.toFixed(1)}`,
-                     'display:', parentStyle.display,
-                     'visibility:', parentStyle.visibility)
-      }
+      console.error('[App] renderPreview: Canvas still has 0 size after 15 retries for game', game.id)
     }
     return
   }
 
-  console.log(`[App] renderPreview: Canvas size OK (${rect.width.toFixed(1)}x${rect.height.toFixed(1)}) for game`, game.id)
   doRenderPreview(ctx, game, canvas)
 }
 
@@ -493,7 +566,8 @@ export function doRenderPreview(ctx: PlatformContext, game: Game, canvas: HTMLCa
     return
   }
 
-  if (!ctx.previewAnimFrames.has(game.id)) {
+  const animKey = canvas.id || game.id
+  if (!ctx.previewAnimFrames.has(animKey)) {
     startPreviewAnimation(ctx, game, canvas)
   }
 }
@@ -587,6 +661,17 @@ export function switchToHome(ctx: PlatformContext) {
   renderGameCards(ctx)
 }
 
+/** 学习中心首页（与游戏中心 /home 分离） */
+export function switchToLearning(ctx: PlatformContext) {
+  closeAllOverlays()
+  hideAllPageContainers()
+
+  const learningContent = document.getElementById('learningContent')
+  if (learningContent) learningContent.style.display = 'block'
+
+  ctx.currentPage = 'learning'
+}
+
 export function switchToRank(ctx: PlatformContext) {
   closeAllOverlays()
   hideAllPageContainers()
@@ -604,7 +689,16 @@ function closeAllOverlays() {
 }
 
 function hideAllPageContainers() {
-  const ids = ['homeContent','searchResults','favoritesContent','rankContent','taskContent','shopContent','meContent']
+  const ids = [
+    'homeContent',
+    'learningContent',
+    'searchResults',
+    'favoritesContent',
+    'rankContent',
+    'taskContent',
+    'shopContent',
+    'meContent',
+  ]
   ids.forEach(id => {
     const el = document.getElementById(id)
     if (el) el.style.display = 'none'
@@ -679,6 +773,10 @@ export function showSearchResults(ctx: PlatformContext, results: Game[]) {
     ctx.previewObserver = null
   }
 
+  // 取消所有待处理的预览渲染重试
+  previewTimeoutIds.forEach((timeoutId) => clearTimeout(timeoutId))
+  previewTimeoutIds.clear()
+
   searchResults.style.display = 'block'
   void searchResults.offsetHeight
 
@@ -689,26 +787,20 @@ export function showSearchResults(ctx: PlatformContext, results: Game[]) {
   if (searchGameList) {
     searchGameList.innerHTML = ''
     if (results.length > 0) {
-      const gamesToPreview: Game[] = []
+      const gamesToPreview: PreviewTarget[] = []
       results.forEach((game, index) => {
         const best = ctx.store.bestScores[game.id] || 0
         const card = createGameCard(ctx, game, best)
         card.style.animationDelay = `${index * 55}ms`
         searchGameList.appendChild(card)
-        gamesToPreview.push(game)
+        const canvas = getPreviewCanvasFromCard(card)
+        if (canvas) gamesToPreview.push({ game, canvas })
       })
       // 移除隐藏首页的旧 canvas 避免 ID 冲突
       document.querySelectorAll('#homeContent canvas[id^="preview_"]')
         .forEach(el => el.remove())
-      console.log('[App] showSearchResults: Created', gamesToPreview.length, 'cards, starting previews')
       if (noResults) noResults.style.display = 'none'
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          gamesToPreview.forEach((game, i) => {
-            setTimeout(() => renderPreview(ctx, game), i * 30)
-          })
-        })
-      })
+      scheduleCardPreviews(ctx, gamesToPreview, 30)
     } else {
       console.log('[App] showSearchResults: No results to display')
       if (noResults) noResults.style.display = 'flex'
@@ -746,6 +838,11 @@ export function renderFavoritesPage(ctx: PlatformContext) {
     ctx.previewObserver.disconnect()
     ctx.previewObserver = null
   }
+
+  // 取消所有待处理的预览渲染重试
+  previewTimeoutIds.forEach((timeoutId) => clearTimeout(timeoutId))
+  previewTimeoutIds.clear()
+
   // 移除隐藏页面中的旧 canvas，避免与收藏页面的 canvas ID 冲突
   document.querySelectorAll('canvas[id^="preview_"]')
     .forEach(el => el.remove())
@@ -763,19 +860,17 @@ export function renderFavoritesPage(ctx: PlatformContext) {
     favoritesGameList.innerHTML = ''
     if (favoriteGames.length > 0) {
       // 立即渲染卡片（与首页保持一致，先显示再更新排名）
-      const gamesToPreview: Game[] = []
+      const gamesToPreview: PreviewTarget[] = []
       favoriteGames.forEach((game) => {
         const best = ctx.store.bestScores[game.id] || 0
         const card = createGameCard(ctx, game, best)
         favoritesGameList.appendChild(card)
-        gamesToPreview.push(game)
+        const canvas = getPreviewCanvasFromCard(card)
+        if (canvas) gamesToPreview.push({ game, canvas })
       })
       if (noFavorites) noFavorites.style.display = 'none'
 
-      // 预览动画（与首页保持一致，统一延迟50ms）
-      setTimeout(() => {
-        gamesToPreview.forEach(game => ctx.renderPreview(game))
-      }, 50)
+      scheduleCardPreviews(ctx, gamesToPreview)
 
       // 异步获取排名并更新卡片显示（后台更新，不阻塞UI）
       if (userService.isLoggedIn && userService.current) {

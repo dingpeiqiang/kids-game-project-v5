@@ -102,6 +102,7 @@ import { useGameStore } from '@/core/store/game.store';
 import { useUserStore } from '@/core/store/user.store';
 import { toast } from '@/services/toast.service';
 import GameThemeSelector from '@/components/game/GameThemeSelector.vue';
+import { lobbyHomePathForShell } from '@/utils/shell-lobby';
 
 const router = useRouter();
 const route = useRoute();
@@ -203,20 +204,7 @@ function getGameIcon(): string {
 }
 
 function goBack() {
-  // 根据用户类型跳转到对应的首页
-  const userInfo = localStorage.getItem('userInfo');
-  const parentInfo = localStorage.getItem('parentInfo');
-
-  if (parentInfo) {
-    // 家长跳转到家长首页
-    router.push('/parent');
-  } else if (userInfo) {
-    // 儿童跳转到儿童首页
-    router.push('/');
-  } else {
-    // 未登录跳转到游戏大厅
-    router.push('/game');
-  }
+  router.push(lobbyHomePathForShell());
 }
 
 function openResourceManager() {

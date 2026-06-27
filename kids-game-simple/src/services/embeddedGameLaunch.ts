@@ -3,7 +3,7 @@
  */
 import { apiConsumeFatiguePoints, tokenStore } from './apiClient'
 import { userService } from './userService'
-import { showToast } from './userUI'
+import { showToast, showConfirm } from './userUI'
 import { prepareGameTheme } from '../games/gameThemeBridge'
 
 function resolveSessionUser(): { userId: number; userType: 0 | 1 } | null {
@@ -62,8 +62,16 @@ export async function prepareEmbeddedCanvasPlay(gameCode: string): Promise<boole
   }
 
   const required = 1
-  if (getLocalFatiguePoints() < required) {
-    showToast('游学币不足，请通过答题获得游学币', 'error')
+  const currentPoints = getLocalFatiguePoints()
+  if (currentPoints < required) {
+    const confirmed = await showConfirm(
+      `当前游学币不足（${currentPoints}/${required}），需要通过答题获得游学币才能继续游戏。`,
+      '游学币不足'
+    )
+    if (!confirmed) {
+      return false
+    }
+    window.location.href = '/answer'
     return false
   }
 

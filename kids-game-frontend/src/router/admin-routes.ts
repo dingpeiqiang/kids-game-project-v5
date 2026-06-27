@@ -207,17 +207,14 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/game/:pathMatch(.*)*',
     redirect: '/',
-    component: () => import('@/modules/login/index.vue'),
   },
   {
     path: '/answer',
     redirect: '/',
-    component: () => import('@/modules/login/index.vue'),
   },
   {
     path: '/home',
     redirect: '/',
-    component: () => import('@/modules/login/index.vue'),
   },
   ...(import.meta.env.DEV
     ? ([

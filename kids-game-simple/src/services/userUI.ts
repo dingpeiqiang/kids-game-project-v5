@@ -8,6 +8,14 @@ import { GAMES } from '../games/gameRegistry'
 
 
 // ============================================================
+// 工具：导航到登录页
+// ============================================================
+function navigateToLogin() {
+  const currentPath = window.location.pathname + window.location.search
+  window.location.href = '/login?redirect=' + encodeURIComponent(currentPath)
+}
+
+// ============================================================
 // 工具：显示确认对话框
 // ============================================================
 export function showConfirm(message: string, title: string = '提示'): Promise<boolean> {
@@ -448,7 +456,7 @@ export class MePanel {
         </div>
       `
       document.getElementById('btnNlLoginPage')?.addEventListener('click', () => {
-        this.authModal.open(() => { this.renderInto(containerId) })
+        navigateToLogin()
       })
       return
     }
@@ -626,7 +634,7 @@ export class MePanel {
     `
     document.getElementById('btnNlLogin')?.addEventListener('click', () => {
       this.close()
-      this.authModal.open(() => { this.open() })
+      navigateToLogin()
     })
     document.getElementById('btnNlClose')?.addEventListener('click', () => this.close())
   }
@@ -678,9 +686,7 @@ export class MePanel {
             showToast('已退出登录', 'info')
             this.reRender()
             window.dispatchEvent(new CustomEvent('ugp:userChange'))
-            this.authModal.open(() => {
-              this.reRender()
-            })
+            navigateToLogin()
           } catch (e) {
             console.error('[MePanel] Logout error:', e)
             showToast('退出登录失败', 'error')
@@ -744,7 +750,7 @@ export class MePanel {
       }
 
       if (target.closest('#btnMeLogout')) {
-        console.log('[MePanel] Logout button clicked')
+        console.log('[MePanel] Logout button clicked (me)')
         if (await showConfirm('确定退出登录？')) {
           console.log('[MePanel] User confirmed logout')
           try {
@@ -753,10 +759,7 @@ export class MePanel {
             showToast('已退出登录', 'info')
             this.reRender()
             window.dispatchEvent(new CustomEvent('ugp:userChange'))
-            this.authModal.open(() => {
-              window.dispatchEvent(new CustomEvent('ugp:userChange'))
-              this.reRender()
-            })
+            navigateToLogin()
           } catch (e) {
             console.error('[MePanel] Logout error:', e)
             showToast('退出登录失败', 'error')
@@ -801,7 +804,7 @@ export function injectUserStyles() {
 .ugp-toast-error{background:rgba(198,40,40,0.92)}
 
 /* ===== 确认对话框 ===== */
-.ugp-confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2000;
+.ugp-confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:20000;
   display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .ugp-confirm-overlay.show{display:flex}
 .ugp-confirm-card{background:#fff;border-radius:20px;width:min(340px,88vw);padding:24px;

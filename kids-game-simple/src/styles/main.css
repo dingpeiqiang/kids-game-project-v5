@@ -188,6 +188,50 @@ body{
 .study-coin .coin-icon {
   background:#7EC8E3;
 }
+.account-type-badge{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:56px;
+  height:24px;
+  padding:0 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:0.04em;
+  color:#fff;
+  background:rgba(255,255,255,0.16);
+  border:1px solid rgba(255,255,255,0.2);
+  backdrop-filter:blur(4px);
+  box-shadow:0 2px 8px rgba(0,0,0,0.08);
+  flex-shrink:0;
+}
+.account-type-guest{background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.88)}
+.account-type-kid{background:linear-gradient(135deg,#4ecdc4,#45b7d1)}
+.account-type-parent{background:linear-gradient(135deg,#5b9bd5,#7a8cff)}
+.account-type-admin{background:linear-gradient(135deg,#ff8a65,#ff5252)}
+.account-type-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:56px;
+  height:24px;
+  padding:0 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:0.04em;
+  color:#fff;
+  background:rgba(255,255,255,0.16);
+  border:1px solid rgba(255,255,255,0.22);
+  backdrop-filter:blur(4px);
+  box-shadow:0 2px 8px rgba(0,0,0,0.08);
+  flex-shrink:0;
+}
+.account-type-kid{background:linear-gradient(135deg,#4ecdc4,#45b7d1)}
+.account-type-parent{background:linear-gradient(135deg,#5b9bd5,#7a8cff)}
+.account-type-admin{background:linear-gradient(135deg,#ff8a65,#ff5252)}
+.account-type-guest{background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.88)}
 .user-avatar{
   width:36px;
   height:36px;
@@ -242,6 +286,20 @@ body{
     font-size: 11px;
   }
   
+  .account-type-badge {
+    min-width: 48px;
+    height: 22px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+  
+  .account-type-badge {
+    min-width: 48px;
+    height: 22px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
   .user-avatar {
     width: 30px;
     height: 30px;
@@ -289,12 +347,26 @@ body{
     gap: 2px;
   }
   
+  .account-type-badge {
+    min-width: 44px;
+    height: 20px;
+    padding: 0 7px;
+    font-size: 9px;
+  }
+  
   .coin-icon {
     width: 12px;
     height: 12px;
     font-size: 7px;
   }
   
+  .account-type-badge {
+    min-width: 44px;
+    height: 20px;
+    padding: 0 7px;
+    font-size: 9px;
+  }
+
   .user-avatar {
     width: 26px;
     height: 26px;
@@ -320,6 +392,63 @@ body{
   scroll-behavior:smooth;
 }
 .main-container::-webkit-scrollbar{width:0}
+
+/* 游戏中心首页横幅 */
+.game-center-banner{
+  margin-bottom:16px;
+  padding:14px 16px;
+  background:linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,248,250,0.98) 100%);
+  border-radius:var(--radius);
+  box-shadow:0 4px 16px rgba(255,182,193,0.15);
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px 14px;
+}
+.game-center-banner-title{font-size:15px;font-weight:700;color:var(--text-primary,#333)}
+.game-center-banner-desc{margin:0;font-size:12px;color:var(--text-secondary,#666);flex:1;min-width:120px}
+.game-center-to-learning-btn{
+  padding:8px 14px;
+  border:none;
+  border-radius:10px;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  color:#fff;
+  background:linear-gradient(135deg,#6495ed 0%,#5a7fd4 100%);
+  box-shadow:0 2px 8px rgba(100,149,237,0.35);
+}
+.game-center-to-learning-btn:active{transform:scale(0.97)}
+
+/* 学习中心首页 */
+.learning-home-page{padding-bottom:8px}
+.learning-home-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:16px;
+  padding:14px 18px;
+  background:linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(240,248,255,0.98) 100%);
+  border-radius:var(--radius);
+  box-shadow:0 4px 16px rgba(100,149,237,0.12);
+}
+.learning-home-title{font-size:16px;font-weight:700;flex:1;text-align:center;margin-right:72px}
+.learning-back-btn{
+  padding:6px 12px;
+  border:none;
+  border-radius:8px;
+  background:rgba(102,126,234,0.15);
+  color:#5568d3;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+}
+.learning-login-hint{
+  text-align:center;
+  padding:24px 16px;
+  color:var(--text-secondary,#666);
+  font-size:14px;
+}
 
 /* 学习中心快捷入口 */
 .learning-quick-access{

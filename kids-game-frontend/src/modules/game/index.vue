@@ -36,6 +36,7 @@ import {
   getCurrentUserName,
   validateGameStartPermission
 } from '@/utils/auth';
+import { lobbyHomePathForShell } from '@/utils/shell-lobby';
 
 
 const router = useRouter();
@@ -142,17 +143,7 @@ if (!validateGameStartPermission()) {
     console.error('[GamePage] 初始化游戏失败:', error);
     alert(`游戏加载失败：${error.message || '未知错误'}`);
 
-    // 根据用户类型跳转到对应的首页
-    const userInfo = localStorage.getItem('userInfo');
-    const parentInfo = localStorage.getItem('parentInfo');
-
-    if (parentInfo) {
-      router.push('/parent');
-    } else if (userInfo) {
-      router.push('/');
-    } else {
-      router.push('/game');
-    }
+    router.push(lobbyHomePathForShell());
   }
 }
 
@@ -280,17 +271,7 @@ function onMessage(event: MessageEvent) {
       setTimeout(() => {
         console.log('[GamePage] 返回首页');
 
-        // 根据用户类型跳转到对应的首页
-        const userInfo = localStorage.getItem('userInfo');
-        const parentInfo = localStorage.getItem('parentInfo');
-
-        if (parentInfo) {
-          router.push('/parent');
-        } else if (userInfo) {
-          router.push('/');
-        } else {
-          router.push('/game');
-        }
+        router.push(lobbyHomePathForShell());
       }, 3000);
       break;
 

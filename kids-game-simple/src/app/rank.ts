@@ -171,8 +171,8 @@ export async function renderRank(ctx: PlatformContext, type: string, gameId?: st
 
 // ==================== 排名计算（本地） ====================
 
-export function calculateRank(ctx: PlatformContext, score: number): { rank: number; badge: string; text: string } | null {
-  if (!ctx.currentGame || score <= 0) return null
+export function calculateRank(_ctx: PlatformContext, score: number): { rank: number; badge: string; text: string } | null {
+  if (score <= 0) return null
 
   let rank: number
   let badge: string
