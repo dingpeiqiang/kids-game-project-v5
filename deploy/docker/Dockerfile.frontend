@@ -12,7 +12,7 @@ COPY packages/shared/package.json ./packages/shared/
 RUN npm install -g pnpm@9.15.0
 
 ENV NODE_OPTIONS="--max-old-space-size=512"
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --prefer-offline --no-audit
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --prefer-offline
 
 ARG BUILD_TIMESTAMP
 RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-timestamp.txt
