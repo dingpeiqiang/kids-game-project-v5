@@ -37,6 +37,7 @@ import {
 import { bindEvents, bindGameCallbacks } from '@simple/app/events'
 import { bindEconomyButtons, fetchTasksForBanner, bannerTaskView } from '@simple/app/economyUI'
 import { lobbyPathForTab, navigateTo } from '@simple/router/navigation'
+import { isLoggedIn as isSharedAuthLoggedIn } from '@/utils/auth'
 import '@simple/styles/main.css'
 import '@simple/styles/game-shell.css'
 
@@ -268,6 +269,10 @@ onMounted(async () => {
   })
 
   await userService.whenReady()
+  // 登录页 / 账号选择写入 token 后进入大厅时，userService 可能仍为空会话，需与 shared auth 对齐
+  if (isSharedAuthLoggedIn()) {
+    await userService.ensurePlayableSession()
+  }
   void renderGameCards(ctx())
   await loadBannerTasks()
   applyLobbyViewForRoute()
@@ -279,9 +284,11 @@ onMounted(async () => {
     isLoading.value = false
   }, 500)
 
-  if (!userService.isLoggedIn && showLobbyChrome.value) {
+  if (!userService.isLoggedIn && !isSharedAuthLoggedIn() && showLobbyChrome.value) {
     authModal.open(() => onUserChange())
     authModal.requireLogin = true
+  } else if (userService.isLoggedIn) {
+    onUserChange()
   }
 })
 

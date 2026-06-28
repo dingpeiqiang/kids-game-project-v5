@@ -221,10 +221,37 @@ class UserService {
     }
   }
 
+  /** 从 frontend 统一登录写入的 userInfo / parentInfo / adminInfo 读取展示名 */
+  private _readSharedProfile(uid: string): { username: string; avatar: string } | null {
+    try {
+      const blobs: Array<Record<string, unknown>> = []
+      for (const key of ['userInfo', 'parentInfo', 'adminInfo']) {
+        const raw = localStorage.getItem(key)
+        if (!raw) continue
+        blobs.push(JSON.parse(raw) as Record<string, unknown>)
+      }
+      for (const user of blobs) {
+        const id = user.userId ?? user.parentId ?? user.adminId ?? user.id
+        if (id == null || String(id) !== String(uid)) continue
+        const username =
+          (user.nickname as string) ||
+          (user.username as string) ||
+          (user.phone as string) ||
+          ''
+        const avatar = (user.avatar as string) || pickAvatar()
+        return { username, avatar }
+      }
+    } catch {
+      /* ignore */
+    }
+    return null
+  }
+
   /** 弱网/接口失败时用本地 ugp_gd_* 与账号列表恢复内存态，避免 isLoggedIn 为 false */
   private _hydrateCurrentFromLocalCache(uid: string) {
     const list = loadLocalAccounts()
     const meta = list.find(a => a.id === uid)
+    const shared = this._readSharedProfile(uid)
     const gd = loadGameData(uid)
     const today = new Date().toDateString()
     if (gd.todayDate !== today) {
@@ -233,9 +260,9 @@ class UserService {
     }
     this._current = {
       id: uid,
-      username: meta?.username || '',
+      username: shared?.username || meta?.username || '',
       password: '',
-      avatar: meta?.avatar || pickAvatar(),
+      avatar: shared?.avatar || meta?.avatar || pickAvatar(),
       createdAt: new Date().toISOString(),
       ...gd,
     }
