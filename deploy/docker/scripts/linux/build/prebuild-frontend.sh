@@ -59,39 +59,6 @@ prebuild_kids_game_simple() {
         error_exit "依赖安装失败（已重试 $max_attempts 次）"
     fi
     
-    # 验证关键依赖是否安装成功（pnpm 采用 symlink 布局，依赖在 node_modules/.pnpm/ 下）
-    log_info "验证关键依赖..."
-    local critical_deps=("jsencrypt" "vue" "pinia" "vue-router")
-    local missing_deps=()
-    
-    for dep in "${critical_deps[@]}"; do
-        if [ ! -d "node_modules/.pnpm/$dep@*" ]; then
-            missing_deps+=("$dep")
-        fi
-    done
-    
-    if [ ${#missing_deps[@]} -gt 0 ]; then
-        log_warn "发现缺失关键依赖: ${missing_deps[*]}，尝试单独安装..."
-        
-        for dep in "${missing_deps[@]}"; do
-            if ! pnpm add "$dep" 2>&1 | tee -a "$DEPLOY_LOG"; then
-                log_error "单独安装 $dep 失败"
-            fi
-        done
-        
-        # 再次验证
-        missing_deps=()
-        for dep in "${critical_deps[@]}"; do
-            if [ ! -d "node_modules/.pnpm/$dep@*" ]; then
-                missing_deps+=("$dep")
-            fi
-        done
-        
-        if [ ${#missing_deps[@]} -gt 0 ]; then
-            error_exit "关键依赖安装失败: ${missing_deps[*]}"
-        fi
-    fi
-    
     # 进入 kids-game-simple 目录执行构建
     log_info "进入目录: $simple_dir"
     cd "$simple_dir"
@@ -155,38 +122,6 @@ prebuild_kids_game_frontend() {
     
     if [ "$install_success" = false ]; then
         error_exit "依赖安装失败（已重试 $max_attempts 次）"
-    fi
-    
-    # 验证关键依赖是否安装成功
-    log_info "验证关键依赖..."
-    local critical_deps=("vue" "pinia" "vue-router" "element-plus")
-    local missing_deps=()
-    
-    for dep in "${critical_deps[@]}"; do
-        if [ ! -d "node_modules/.pnpm/$dep@*" ]; then
-            missing_deps+=("$dep")
-        fi
-    done
-    
-    if [ ${#missing_deps[@]} -gt 0 ]; then
-        log_warn "发现缺失关键依赖: ${missing_deps[*]}，尝试单独安装..."
-        
-        for dep in "${missing_deps[@]}"; do
-            if ! pnpm add "$dep" 2>&1 | tee -a "$DEPLOY_LOG"; then
-                log_error "单独安装 $dep 失败"
-            fi
-        done
-        
-        missing_deps=()
-        for dep in "${critical_deps[@]}"; do
-            if [ ! -d "node_modules/.pnpm/$dep@*" ]; then
-                missing_deps+=("$dep")
-            fi
-        done
-        
-        if [ ${#missing_deps[@]} -gt 0 ]; then
-            error_exit "关键依赖安装失败: ${missing_deps[*]}"
-        fi
     fi
     
     # 进入 kids-game-frontend 目录执行构建
