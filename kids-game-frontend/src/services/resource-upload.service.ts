@@ -1,4 +1,4 @@
-import { BaseApiService } from './base-api.service'
+import { apiClient } from './api-client.service'
 
 /**
  * 资源上传响应数据
@@ -13,12 +13,10 @@ export interface UploadResponse {
 /**
  * 资源上传服务
  */
-export class ResourceUploadService extends BaseApiService {
+export class ResourceUploadService {
   private static instance: ResourceUploadService
 
-  private constructor() {
-    super()
-  }
+  private constructor() {}
 
   static getInstance(): ResourceUploadService {
     if (!ResourceUploadService.instance) {
@@ -38,13 +36,11 @@ export class ResourceUploadService extends BaseApiService {
     formData.append('file', file)
     formData.append('category', category)
 
-    const response = await this.axiosInstance.post<UploadResponse>('/api/resource/upload/image', formData, {
+    return apiClient.post<UploadResponse>('/api/resource/upload/image', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+        'Content-Type': 'multipart/form-data',
+      },
     })
-
-    return response.data
   }
 
   /**
@@ -58,13 +54,11 @@ export class ResourceUploadService extends BaseApiService {
     formData.append('file', file)
     formData.append('category', category)
 
-    const response = await this.axiosInstance.post<UploadResponse>('/api/resource/upload/audio', formData, {
+    return apiClient.post<UploadResponse>('/api/resource/upload/audio', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+        'Content-Type': 'multipart/form-data',
+      },
     })
-
-    return response.data
   }
 
   /**
@@ -72,8 +66,8 @@ export class ResourceUploadService extends BaseApiService {
    * @param url 资源URL
    */
   async deleteResource(url: string): Promise<void> {
-    await this.axiosInstance.delete('/api/resource/delete', {
-      params: { url }
+    await apiClient.delete<void>('/api/resource/delete', {
+      params: { url },
     })
   }
 
@@ -85,7 +79,6 @@ export class ResourceUploadService extends BaseApiService {
    * @returns 上传结果
    */
   async uploadBase64Image(base64: string, filename: string, category = 'themes/images'): Promise<UploadResponse> {
-    // 将Base64转换为Blob
     const base64Data = base64.split(',')[1] || base64
     const byteCharacters = atob(base64Data)
     const byteNumbers = new Array(byteCharacters.length)
@@ -110,7 +103,6 @@ export class ResourceUploadService extends BaseApiService {
    * @returns 上传结果
    */
   async uploadBase64Audio(base64: string, filename: string, category = 'themes/audio'): Promise<UploadResponse> {
-    // 将Base64转换为Blob
     const base64Data = base64.split(',')[1] || base64
     const byteCharacters = atob(base64Data)
     const byteNumbers = new Array(byteCharacters.length)
@@ -128,6 +120,4 @@ export class ResourceUploadService extends BaseApiService {
   }
 }
 
-// 导出单例
 export const resourceUploadService = ResourceUploadService.getInstance()
-
