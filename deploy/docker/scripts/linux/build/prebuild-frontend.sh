@@ -23,23 +23,78 @@ prebuild_kids_game_simple() {
         error_exit "kids-game-simple 目录不存在: $simple_dir"
     fi
     
-    log_info "进入目录: $simple_dir"
-    cd "$simple_dir"
-    
     # 检查 package.json 是否存在
-    if [ ! -f "package.json" ]; then
+    if [ ! -f "$simple_dir/package.json" ]; then
         error_exit "package.json 不存在"
     fi
     
-    # 检查是否需要安装依赖（node_modules 不存在或 pnpm-lock.yaml 有更新）
-    if [ ! -d "node_modules" ] || [ "pnpm-lock.yaml" -nt "node_modules" ]; then
-        log_info "安装依赖..."
-        if ! pnpm install 2>&1 | tee -a "$DEPLOY_LOG"; then
-            error_exit "依赖安装失败"
+    # 从 monorepo 根目录安装依赖（pnpm-lock.yaml 在根目录）
+    log_info "进入 monorepo 根目录: $project_root"
+    cd "$project_root"
+    
+    # 清理旧依赖，确保干净的构建环境
+    log_info "清理旧依赖..."
+    rm -rf node_modules 2>/dev/null
+    
+    # 安装依赖（重试最多3次）
+    local install_attempts=0
+    local max_attempts=3
+    local install_success=false
+    
+    while [ $install_attempts -lt $max_attempts ]; do
+        install_attempts=$((install_attempts + 1))
+        log_info "安装依赖（第 $install_attempts/$max_attempts 次尝试）..."
+        
+        if pnpm install 2>&1 | tee -a "$DEPLOY_LOG"; then
+            install_success=true
+            break
         fi
-    else
-        log_info "依赖已存在，跳过安装"
+        
+        log_warn "依赖安装失败，清理后重试..."
+        rm -rf node_modules 2>/dev/null
+        sleep 2
+    done
+    
+    if [ "$install_success" = false ]; then
+        error_exit "依赖安装失败（已重试 $max_attempts 次）"
     fi
+    
+    # 验证关键依赖是否安装成功（pnpm 采用 symlink 布局，依赖在 node_modules/.pnpm/ 下）
+    log_info "验证关键依赖..."
+    local critical_deps=("jsencrypt" "vue" "pinia" "vue-router")
+    local missing_deps=()
+    
+    for dep in "${critical_deps[@]}"; do
+        if [ ! -d "node_modules/.pnpm/$dep@*" ]; then
+            missing_deps+=("$dep")
+        fi
+    done
+    
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        log_warn "发现缺失关键依赖: ${missing_deps[*]}，尝试单独安装..."
+        
+        for dep in "${missing_deps[@]}"; do
+            if ! pnpm add "$dep" 2>&1 | tee -a "$DEPLOY_LOG"; then
+                log_error "单独安装 $dep 失败"
+            fi
+        done
+        
+        # 再次验证
+        missing_deps=()
+        for dep in "${critical_deps[@]}"; do
+            if [ ! -d "node_modules/.pnpm/$dep@*" ]; then
+                missing_deps+=("$dep")
+            fi
+        done
+        
+        if [ ${#missing_deps[@]} -gt 0 ]; then
+            error_exit "关键依赖安装失败: ${missing_deps[*]}"
+        fi
+    fi
+    
+    # 进入 kids-game-simple 目录执行构建
+    log_info "进入目录: $simple_dir"
+    cd "$simple_dir"
     
     # 执行构建
     log_info "执行构建..."
@@ -67,21 +122,76 @@ prebuild_kids_game_frontend() {
         error_exit "kids-game-frontend 目录不存在: $frontend_dir"
     fi
     
-    log_info "进入目录: $frontend_dir"
-    cd "$frontend_dir"
-    
-    if [ ! -f "package.json" ]; then
+    if [ ! -f "$frontend_dir/package.json" ]; then
         error_exit "package.json 不存在"
     fi
     
-    if [ ! -d "node_modules" ] || [ "pnpm-lock.yaml" -nt "node_modules" ]; then
-        log_info "安装依赖..."
-        if ! pnpm install 2>&1 | tee -a "$DEPLOY_LOG"; then
-            error_exit "依赖安装失败"
+    # 从 monorepo 根目录安装依赖（pnpm-lock.yaml 在根目录）
+    log_info "进入 monorepo 根目录: $project_root"
+    cd "$project_root"
+    
+    # 清理旧依赖，确保干净的构建环境
+    log_info "清理旧依赖..."
+    rm -rf node_modules 2>/dev/null
+    
+    # 安装依赖（重试最多3次）
+    local install_attempts=0
+    local max_attempts=3
+    local install_success=false
+    
+    while [ $install_attempts -lt $max_attempts ]; do
+        install_attempts=$((install_attempts + 1))
+        log_info "安装依赖（第 $install_attempts/$max_attempts 次尝试）..."
+        
+        if pnpm install 2>&1 | tee -a "$DEPLOY_LOG"; then
+            install_success=true
+            break
         fi
-    else
-        log_info "依赖已存在，跳过安装"
+        
+        log_warn "依赖安装失败，清理后重试..."
+        rm -rf node_modules 2>/dev/null
+        sleep 2
+    done
+    
+    if [ "$install_success" = false ]; then
+        error_exit "依赖安装失败（已重试 $max_attempts 次）"
     fi
+    
+    # 验证关键依赖是否安装成功
+    log_info "验证关键依赖..."
+    local critical_deps=("vue" "pinia" "vue-router" "element-plus")
+    local missing_deps=()
+    
+    for dep in "${critical_deps[@]}"; do
+        if [ ! -d "node_modules/.pnpm/$dep@*" ]; then
+            missing_deps+=("$dep")
+        fi
+    done
+    
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        log_warn "发现缺失关键依赖: ${missing_deps[*]}，尝试单独安装..."
+        
+        for dep in "${missing_deps[@]}"; do
+            if ! pnpm add "$dep" 2>&1 | tee -a "$DEPLOY_LOG"; then
+                log_error "单独安装 $dep 失败"
+            fi
+        done
+        
+        missing_deps=()
+        for dep in "${critical_deps[@]}"; do
+            if [ ! -d "node_modules/.pnpm/$dep@*" ]; then
+                missing_deps+=("$dep")
+            fi
+        done
+        
+        if [ ${#missing_deps[@]} -gt 0 ]; then
+            error_exit "关键依赖安装失败: ${missing_deps[*]}"
+        fi
+    fi
+    
+    # 进入 kids-game-frontend 目录执行构建
+    log_info "进入目录: $frontend_dir"
+    cd "$frontend_dir"
     
     log_info "执行构建..."
     if ! pnpm run build 2>&1 | tee -a "$DEPLOY_LOG"; then

@@ -24,7 +24,7 @@
     "@capacitor/core": "^8.4.0",
     "axios": "^1.6.0",
     "compressorjs": "^1.2.1",
-    "jsencrypt": "^3.3.2",
+    "jsencrypt": "^3.5.4",
     "marked": "^15.0.0",
     "phaser": "3.90.0",
     "pinia": "^2.1.0",
