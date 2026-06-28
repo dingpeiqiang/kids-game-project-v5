@@ -24,8 +24,8 @@ COPY kids-game-house/shared/utils/gtrs-validator.ts ./kids-game-frontend/src/uti
 RUN sed -i "s|from '../../../kids-game-house/shared/utils/gtrs-validator'|from './gtrs-validator-local'|" ./kids-game-frontend/src/utils/gtrs-validator.ts || true
 
 ENV NODE_OPTIONS="--max-old-space-size=1024"
-WORKDIR /app/kids-game-frontend
-RUN pnpm run build
+WORKDIR /app
+RUN pnpm --filter kids-game-frontend build
 
 # 生产阶段
 FROM nginx:alpine
