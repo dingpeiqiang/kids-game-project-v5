@@ -1,7 +1,11 @@
--- ================================================
+﻿-- ================================================
 -- 儿童游戏平台 - 完整数据库初始化脚本 v1.0
 -- 生成时间：2026-06-28
 -- 包含所有 40+ 张表定义 + 初始数据
+-- 
+-- 执行顺序：
+-- 1. 先执行 mysql_cleanup.sql 清理已有表（注意外键依赖顺序）
+-- 2. 再执行本脚本创建表并插入初始数据
 -- ================================================
 
 -- 创建数据库
@@ -25,7 +29,6 @@ FLUSH PRIVILEGES;
 -- ================================================
 
 -- 统一用户表
-DROP TABLE IF EXISTS t_user;
 CREATE TABLE t_user (
     user_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '用户ID',
     user_type TINYINT NOT NULL COMMENT '用户类型：0-儿童，1-家长，2-管理员',
@@ -61,7 +64,6 @@ CREATE TABLE t_user (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='统一用户表';
 
 -- 角色表
-DROP TABLE IF EXISTS t_role;
 CREATE TABLE t_role (
     role_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '角色ID',
     role_code VARCHAR(50) NOT NULL COMMENT '角色编码',
@@ -81,7 +83,6 @@ CREATE TABLE t_role (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色表';
 
 -- 用户角色关联表
-DROP TABLE IF EXISTS t_user_role;
 CREATE TABLE t_user_role (
     user_role_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '用户角色ID',
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -95,7 +96,6 @@ CREATE TABLE t_user_role (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户角色关联表';
 
 -- 权限表
-DROP TABLE IF EXISTS t_permission;
 CREATE TABLE t_permission (
     permission_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '权限ID',
     permission_code VARCHAR(100) NOT NULL COMMENT '权限编码',
@@ -118,7 +118,6 @@ CREATE TABLE t_permission (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='权限表';
 
 -- 角色权限关联表
-DROP TABLE IF EXISTS t_role_permission;
 CREATE TABLE t_role_permission (
     role_permission_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '角色权限ID',
     role_id BIGINT NOT NULL COMMENT '角色ID',
@@ -132,7 +131,6 @@ CREATE TABLE t_role_permission (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色权限关联表';
 
 -- 用户扩展信息表
-DROP TABLE IF EXISTS t_user_profile;
 CREATE TABLE t_user_profile (
     profile_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '扩展ID',
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -147,7 +145,6 @@ CREATE TABLE t_user_profile (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户扩展信息表';
 
 -- 用户关系表
-DROP TABLE IF EXISTS t_user_relation;
 CREATE TABLE t_user_relation (
     relation_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '关系ID',
     relation_type TINYINT NOT NULL COMMENT '关系类型：1-家长儿童，2-管理员儿童，3-兄弟姐妹',
@@ -173,7 +170,6 @@ CREATE TABLE t_user_relation (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户关系表';
 
 -- 关系确认表
-DROP TABLE IF EXISTS t_relation_confirmation;
 CREATE TABLE t_relation_confirmation (
     confirmation_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '确认 ID',
     relation_id BIGINT NOT NULL COMMENT '关系 ID',
@@ -193,7 +189,6 @@ CREATE TABLE t_relation_confirmation (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='关系确认表';
 
 -- 用户申请记录表
-DROP TABLE IF EXISTS t_user_request;
 CREATE TABLE t_user_request (
     request_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '申请 ID',
     requester_id BIGINT NOT NULL COMMENT '申请人用户 ID',
@@ -217,7 +212,6 @@ CREATE TABLE t_user_request (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户申请记录表';
 
 -- 用户管控配置表
-DROP TABLE IF EXISTS t_user_control_config;
 CREATE TABLE t_user_control_config (
     config_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '配置ID',
     user_id BIGINT NOT NULL COMMENT '儿童用户ID',
@@ -254,7 +248,6 @@ CREATE TABLE t_user_control_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户管控配置表';
 
 -- 用户等级表
-DROP TABLE IF EXISTS t_user_level;
 CREATE TABLE t_user_level (
     level_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '等级记录 ID',
     user_id BIGINT NOT NULL COMMENT '用户 ID',
@@ -273,7 +266,6 @@ CREATE TABLE t_user_level (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户等级表';
 
 -- 用户成就表
-DROP TABLE IF EXISTS t_user_achievement;
 CREATE TABLE t_user_achievement (
     achievement_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '成就 ID',
     user_id BIGINT NOT NULL COMMENT '用户 ID',
@@ -297,7 +289,6 @@ CREATE TABLE t_user_achievement (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户成就表';
 
 -- 用户行为日志表
-DROP TABLE IF EXISTS t_user_action_log;
 CREATE TABLE t_user_action_log (
     log_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '日志 ID',
     user_id BIGINT NOT NULL COMMENT '用户 ID',
@@ -321,7 +312,6 @@ CREATE TABLE t_user_action_log (
 -- ================================================
 
 -- 游戏信息表
-DROP TABLE IF EXISTS t_game;
 CREATE TABLE t_game (
     game_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '游戏ID',
     game_code VARCHAR(50) NOT NULL COMMENT '游戏编码',
@@ -364,7 +354,6 @@ CREATE TABLE t_game (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏信息表';
 
 -- 游戏配置表
-DROP TABLE IF EXISTS t_game_config;
 CREATE TABLE t_game_config (
     config_id BIGINT NOT NULL AUTO_INCREMENT,
     game_id BIGINT NOT NULL,
@@ -381,7 +370,6 @@ CREATE TABLE t_game_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏配置表';
 
 -- 游戏模式配置表
-DROP TABLE IF EXISTS t_game_mode_config;
 CREATE TABLE t_game_mode_config (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '配置 ID',
     game_id BIGINT NOT NULL COMMENT '游戏 ID',
@@ -399,7 +387,6 @@ CREATE TABLE t_game_mode_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏模式配置表';
 
 -- 游戏资源配置表
-DROP TABLE IF EXISTS t_game_resource_config;
 CREATE TABLE t_game_resource_config (
     config_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '配置 ID',
     game_id BIGINT NOT NULL COMMENT '游戏 ID',
@@ -421,7 +408,6 @@ CREATE TABLE t_game_resource_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏资源配置表';
 
 -- 游戏评论表
-DROP TABLE IF EXISTS t_game_comment;
 CREATE TABLE t_game_comment (
     comment_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '评论 ID',
     user_id BIGINT NOT NULL COMMENT '儿童用户 ID',
@@ -437,7 +423,6 @@ CREATE TABLE t_game_comment (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏评论表';
 
 -- 游戏权限表
-DROP TABLE IF EXISTS t_game_permission;
 CREATE TABLE t_game_permission (
     permission_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '权限ID',
     user_id BIGINT NOT NULL COMMENT '用户ID（儿童）',
@@ -462,7 +447,6 @@ CREATE TABLE t_game_permission (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏权限表';
 
 -- 游戏记录表
-DROP TABLE IF EXISTS t_game_record;
 CREATE TABLE t_game_record (
     record_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '记录ID',
     user_id BIGINT NOT NULL COMMENT '儿童用户ID',
@@ -481,7 +465,6 @@ CREATE TABLE t_game_record (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏记录表';
 
 -- 游戏会话表
-DROP TABLE IF EXISTS t_game_session;
 CREATE TABLE t_game_session (
     session_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '会话ID',
     user_id BIGINT NOT NULL COMMENT '儿童用户ID',
@@ -509,7 +492,6 @@ CREATE TABLE t_game_session (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏会话表';
 
 -- 游戏审核记录表
-DROP TABLE IF EXISTS t_game_review_record;
 CREATE TABLE t_game_review_record (
     review_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '审核 ID',
     game_id BIGINT NOT NULL COMMENT '游戏 ID',
@@ -525,7 +507,6 @@ CREATE TABLE t_game_review_record (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏审核记录表';
 
 -- 游戏统计表
-DROP TABLE IF EXISTS t_game_statistics;
 CREATE TABLE t_game_statistics (
     stat_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '统计 ID',
     game_id BIGINT NOT NULL COMMENT '游戏 ID',
@@ -554,7 +535,6 @@ CREATE TABLE t_game_statistics (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏统计表';
 
 -- 游戏版本历史表
-DROP TABLE IF EXISTS t_game_version_history;
 CREATE TABLE t_game_version_history (
     version_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '版本 ID',
     game_id BIGINT NOT NULL COMMENT '游戏 ID',
@@ -575,7 +555,6 @@ CREATE TABLE t_game_version_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏版本历史表';
 
 -- 游戏标签表
-DROP TABLE IF EXISTS t_game_tag;
 CREATE TABLE t_game_tag (
     tag_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '标签ID',
     tag_name VARCHAR(50) NOT NULL COMMENT '标签名称',
@@ -594,7 +573,6 @@ CREATE TABLE t_game_tag (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏标签表';
 
 -- 游戏标签关联表
-DROP TABLE IF EXISTS t_game_tag_relation;
 CREATE TABLE t_game_tag_relation (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
     game_id BIGINT NOT NULL COMMENT '游戏ID',
@@ -608,7 +586,6 @@ CREATE TABLE t_game_tag_relation (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏标签关联表';
 
 -- 屏蔽游戏表
-DROP TABLE IF EXISTS t_blocked_game;
 CREATE TABLE t_blocked_game (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
     kid_id BIGINT NOT NULL COMMENT '儿童用户ID',
@@ -622,7 +599,6 @@ CREATE TABLE t_blocked_game (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='屏蔽游戏表';
 
 -- 用户收藏表
-DROP TABLE IF EXISTS t_user_favorite;
 CREATE TABLE t_user_favorite (
     favorite_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '收藏 ID',
     user_id BIGINT NOT NULL COMMENT '用户 ID',
@@ -640,7 +616,6 @@ CREATE TABLE t_user_favorite (
 -- ================================================
 
 -- 排行榜配置表
-DROP TABLE IF EXISTS t_leaderboard_config;
 CREATE TABLE t_leaderboard_config (
     config_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '配置 ID',
     game_id BIGINT NOT NULL COMMENT '游戏 ID',
@@ -663,7 +638,6 @@ CREATE TABLE t_leaderboard_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏排行榜配置表';
 
 -- 排行榜数据表
-DROP TABLE IF EXISTS t_leaderboard_data;
 CREATE TABLE t_leaderboard_data (
     data_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '数据 ID',
     game_id BIGINT NOT NULL COMMENT '游戏 ID',
@@ -694,7 +668,6 @@ CREATE TABLE t_leaderboard_data (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏排行榜数据表';
 
 -- 排行榜维度表
-DROP TABLE IF EXISTS t_leaderboard_dimension;
 CREATE TABLE t_leaderboard_dimension (
     dimension_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '维度 ID',
     game_id BIGINT NOT NULL COMMENT '游戏 ID',
@@ -718,7 +691,6 @@ CREATE TABLE t_leaderboard_dimension (
 -- ================================================
 
 -- 学科表
-DROP TABLE IF EXISTS t_subject;
 CREATE TABLE t_subject (
     subject_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '学科ID',
     subject_code VARCHAR(50) NOT NULL COMMENT '学科编码',
@@ -736,7 +708,6 @@ CREATE TABLE t_subject (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='学科表';
 
 -- 知识点表
-DROP TABLE IF EXISTS t_knowledge_point;
 CREATE TABLE t_knowledge_point (
     knowledge_point_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '知识点ID',
     subject_id BIGINT NOT NULL COMMENT '学科ID',
@@ -758,7 +729,6 @@ CREATE TABLE t_knowledge_point (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识点表';
 
 -- 题目表
-DROP TABLE IF EXISTS t_question;
 CREATE TABLE t_question (
     question_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '题目ID',
     subject_id BIGINT DEFAULT NULL COMMENT '学科ID',
@@ -791,7 +761,6 @@ CREATE TABLE t_question (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目表';
 
 -- 答题记录表
-DROP TABLE IF EXISTS t_answer_record;
 CREATE TABLE t_answer_record (
     record_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '记录ID',
     user_id BIGINT NOT NULL COMMENT '儿童用户ID',
@@ -821,7 +790,6 @@ CREATE TABLE t_answer_record (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='答题记录表';
 
 -- 错题本
-DROP TABLE IF EXISTS t_wrong_question;
 CREATE TABLE t_wrong_question (
     wrong_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '错题记录ID',
     user_id BIGINT NOT NULL COMMENT '儿童用户ID',
@@ -850,7 +818,6 @@ CREATE TABLE t_wrong_question (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='错题本';
 
 -- 题目收藏表
-DROP TABLE IF EXISTS t_collection;
 CREATE TABLE t_collection (
     collection_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '收藏ID',
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -865,7 +832,6 @@ CREATE TABLE t_collection (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目收藏表';
 
 -- 每日练习会话表
-DROP TABLE IF EXISTS t_daily_session;
 CREATE TABLE t_daily_session (
     session_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '会话ID',
     user_id BIGINT NOT NULL COMMENT '儿童用户ID',
@@ -898,7 +864,6 @@ CREATE TABLE t_daily_session (
 -- ================================================
 
 -- 班级表
-DROP TABLE IF EXISTS t_class;
 CREATE TABLE t_class (
     class_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '班级ID',
     class_name VARCHAR(50) NOT NULL COMMENT '班级名称',
@@ -918,7 +883,6 @@ CREATE TABLE t_class (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='班级表';
 
 -- 班级成员表
-DROP TABLE IF EXISTS t_class_member;
 CREATE TABLE t_class_member (
     member_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '成员ID',
     class_id BIGINT NOT NULL COMMENT '班级ID',
@@ -937,7 +901,6 @@ CREATE TABLE t_class_member (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='班级成员表';
 
 -- 教师练习任务表
-DROP TABLE IF EXISTS t_practice_assignment;
 CREATE TABLE t_practice_assignment (
     assignment_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '任务ID',
     teacher_id BIGINT NOT NULL COMMENT '教师ID',
@@ -963,7 +926,6 @@ CREATE TABLE t_practice_assignment (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='教师练习任务表';
 
 -- 任务完成情况表
-DROP TABLE IF EXISTS t_assignment_completion;
 CREATE TABLE t_assignment_completion (
     completion_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '完成记录ID',
     assignment_id BIGINT NOT NULL COMMENT '任务ID',
@@ -991,7 +953,6 @@ CREATE TABLE t_assignment_completion (
 -- ================================================
 
 -- 用户签到记录表
-DROP TABLE IF EXISTS t_user_sign_in;
 CREATE TABLE t_user_sign_in (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -1009,7 +970,6 @@ CREATE TABLE t_user_sign_in (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户签到记录表';
 
 -- 签到奖励配置表
-DROP TABLE IF EXISTS t_sign_in_reward_config;
 CREATE TABLE t_sign_in_reward_config (
     config_id BIGINT NOT NULL AUTO_INCREMENT,
     day_index INT NOT NULL COMMENT '连续签到第几天(1-7循环)',
@@ -1023,7 +983,6 @@ CREATE TABLE t_sign_in_reward_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='签到奖励配置';
 
 -- 游戏经济配置表
-DROP TABLE IF EXISTS t_game_economy_config;
 CREATE TABLE t_game_economy_config (
     id BIGINT NOT NULL AUTO_INCREMENT,
     game_id BIGINT NOT NULL,
@@ -1036,7 +995,6 @@ CREATE TABLE t_game_economy_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏经济配置';
 
 -- 单局游戏得分记录表
-DROP TABLE IF EXISTS t_game_session_score;
 CREATE TABLE t_game_session_score (
     id BIGINT NOT NULL AUTO_INCREMENT,
     game_id BIGINT NOT NULL,
@@ -1054,7 +1012,6 @@ CREATE TABLE t_game_session_score (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='单局游戏得分记录';
 
 -- 任务定义表
-DROP TABLE IF EXISTS t_task_definition;
 CREATE TABLE t_task_definition (
     task_id BIGINT NOT NULL AUTO_INCREMENT,
     task_code VARCHAR(64) NOT NULL COMMENT '任务编码',
@@ -1080,7 +1037,6 @@ CREATE TABLE t_task_definition (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='任务定义表';
 
 -- 用户任务进度表
-DROP TABLE IF EXISTS t_user_task_progress;
 CREATE TABLE t_user_task_progress (
     progress_id BIGINT NOT NULL AUTO_INCREMENT,
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -1102,7 +1058,6 @@ CREATE TABLE t_user_task_progress (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户任务进度表';
 
 -- 头衔定义表
-DROP TABLE IF EXISTS t_title_definition;
 CREATE TABLE t_title_definition (
     title_id BIGINT NOT NULL AUTO_INCREMENT,
     title_code VARCHAR(50) NOT NULL COMMENT '头衔编码',
@@ -1125,7 +1080,6 @@ CREATE TABLE t_title_definition (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='头衔定义表';
 
 -- 用户头衔表
-DROP TABLE IF EXISTS t_user_title;
 CREATE TABLE t_user_title (
     user_title_id BIGINT NOT NULL AUTO_INCREMENT,
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -1143,7 +1097,6 @@ CREATE TABLE t_user_title (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户头衔表';
 
 -- 商城商品表
-DROP TABLE IF EXISTS t_shop_product;
 CREATE TABLE t_shop_product (
     product_id BIGINT NOT NULL AUTO_INCREMENT,
     product_code VARCHAR(50) NOT NULL COMMENT '商品编码',
@@ -1172,7 +1125,6 @@ CREATE TABLE t_shop_product (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商城商品表';
 
 -- 商品配置表
-DROP TABLE IF EXISTS t_product_config;
 CREATE TABLE t_product_config (
     config_id BIGINT NOT NULL AUTO_INCREMENT,
     product_id BIGINT NOT NULL COMMENT '商品ID',
@@ -1185,7 +1137,6 @@ CREATE TABLE t_product_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商品配置表';
 
 -- 用户购买记录表
-DROP TABLE IF EXISTS t_user_purchase;
 CREATE TABLE t_user_purchase (
     purchase_id BIGINT NOT NULL AUTO_INCREMENT,
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -1214,7 +1165,6 @@ CREATE TABLE t_user_purchase (
 -- ================================================
 
 -- 主题信息表
-DROP TABLE IF EXISTS t_theme_info;
 CREATE TABLE t_theme_info (
     theme_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主题ID',
     theme_name VARCHAR(100) NOT NULL COMMENT '主题名称',
@@ -1241,7 +1191,6 @@ CREATE TABLE t_theme_info (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='主题信息表';
 
 -- 主题资源表
-DROP TABLE IF EXISTS t_theme_assets;
 CREATE TABLE t_theme_assets (
     asset_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '资源ID',
     theme_id BIGINT NOT NULL COMMENT '主题ID',
@@ -1263,7 +1212,6 @@ CREATE TABLE t_theme_assets (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='主题资源表';
 
 -- 用户主题偏好表
-DROP TABLE IF EXISTS t_user_theme_preference;
 CREATE TABLE t_user_theme_preference (
     preference_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '偏好ID',
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -1287,7 +1235,6 @@ CREATE TABLE t_user_theme_preference (
 -- ================================================
 
 -- 系统配置表
-DROP TABLE IF EXISTS t_system_config;
 CREATE TABLE t_system_config (
     config_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '配置ID',
     config_key VARCHAR(100) NOT NULL COMMENT '配置键',
@@ -1306,7 +1253,6 @@ CREATE TABLE t_system_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统配置表';
 
 -- 通知表
-DROP TABLE IF EXISTS t_notification;
 CREATE TABLE t_notification (
     notification_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '通知ID',
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -1327,7 +1273,6 @@ CREATE TABLE t_notification (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知表';
 
 -- 每日统计快照表
-DROP TABLE IF EXISTS t_daily_stats;
 CREATE TABLE t_daily_stats (
     stat_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '统计ID',
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -1355,7 +1300,6 @@ CREATE TABLE t_daily_stats (
 -- ================================================
 
 -- 草稿表
-DROP TABLE IF EXISTS t_draft;
 CREATE TABLE t_draft (
     draft_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '草稿ID',
     author_id BIGINT NOT NULL COMMENT '作者ID',
@@ -1384,7 +1328,6 @@ CREATE TABLE t_draft (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='草稿表';
 
 -- 草稿分类表
-DROP TABLE IF EXISTS t_draft_category;
 CREATE TABLE t_draft_category (
     category_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '分类ID',
     category_name VARCHAR(100) NOT NULL COMMENT '分类名称',
@@ -1402,7 +1345,6 @@ CREATE TABLE t_draft_category (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='草稿分类表';
 
 -- 草稿分类关联表
-DROP TABLE IF EXISTS t_draft_category_relation;
 CREATE TABLE t_draft_category_relation (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     draft_id BIGINT NOT NULL COMMENT '草稿ID',
@@ -1415,7 +1357,6 @@ CREATE TABLE t_draft_category_relation (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='草稿分类关联表';
 
 -- 草稿版本历史表
-DROP TABLE IF EXISTS t_draft_version;
 CREATE TABLE t_draft_version (
     version_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '版本ID',
     draft_id BIGINT NOT NULL COMMENT '草稿ID',
@@ -1431,7 +1372,6 @@ CREATE TABLE t_draft_version (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='草稿版本历史表';
 
 -- 创作者收益表
-DROP TABLE IF EXISTS t_creator_earnings;
 CREATE TABLE t_creator_earnings (
     earnings_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '收益记录ID',
     creator_id BIGINT NOT NULL COMMENT '创作者ID',

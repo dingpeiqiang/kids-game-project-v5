@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
  * 支持多种内容类型的草稿存储
  */
 @Data
-@TableName("draft")
+@TableName("t_draft")
 public class Draft {
 
     /**

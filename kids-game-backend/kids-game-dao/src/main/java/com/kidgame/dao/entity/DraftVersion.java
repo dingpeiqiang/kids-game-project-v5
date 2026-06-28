@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 草稿版本历史实体类
  */
 @Data
-@TableName("draft_version")
+@TableName("t_draft_version")
 public class DraftVersion {
 
     /**

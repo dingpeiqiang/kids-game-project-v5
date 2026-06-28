@@ -67,6 +67,12 @@ public class GameSession implements Serializable {
     private Integer consumePoints;
 
     /**
+     * 游戏数据（JSON）
+     */
+    @TableField("game_data")
+    private String gameData;
+
+    /**
      * 创建时间
      */
     private Long createTime;

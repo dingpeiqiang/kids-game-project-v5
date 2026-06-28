@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 创作者收益实体
  */
 @Data
-@TableName("creator_earnings")
+@TableName("t_creator_earnings")
 public class CreatorEarnings implements Serializable {
 
     private static final long serialVersionUID = 1L;

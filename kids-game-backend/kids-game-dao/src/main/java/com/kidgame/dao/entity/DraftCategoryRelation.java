@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 对应数据库表：draft_category_relation
  */
 @Data
-@TableName("draft_category_relation")
+@TableName("t_draft_category_relation")
 public class DraftCategoryRelation implements Serializable {
 
     private static final long serialVersionUID = 1L;

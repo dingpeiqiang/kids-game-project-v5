@@ -86,6 +86,12 @@ public class Game implements Serializable {
     private String gameConfig;
 
     /**
+     * 截图 URLs（JSON 数组）
+     */
+    @TableField("screenshot_urls")
+    private String screenshotUrls;
+
+    /**
      * 是否推荐：0-否，1-是
      */
     @TableField("is_featured")
