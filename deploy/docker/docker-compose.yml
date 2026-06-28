@@ -9,11 +9,11 @@ services:
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://localhost:3306/kidgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-kidgame}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-kidgame123}
-      SPRING_REDIS_HOST: ${SPRING_REDIS_HOST:-localhost}
-      SPRING_REDIS_PORT: ${SPRING_REDIS_PORT:-6379}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_REDIS_HOST: ${SPRING_REDIS_HOST}
+      SPRING_REDIS_PORT: ${SPRING_REDIS_PORT}
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-change-in-production}
       JAVA_OPTS: ${JAVA_OPTS:--Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200}
     ports:
