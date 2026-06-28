@@ -1,0 +1,18 @@
+# Docker build context is repo root (see deploy/docker/docker-compose.yml).
+# Exclude dependencies and build artifacts so COPY does not overwrite container installs.
+
+**/node_modules
+**/dist
+.git
+.gitignore
+.idea
+.vscode
+*.md
+docs/
+**/.env
+**/.env.*
+!**/.env.production.example
+**/*.log
+**/coverage
+.DS_Store
+Thumbs.db

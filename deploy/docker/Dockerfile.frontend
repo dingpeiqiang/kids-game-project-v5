@@ -5,7 +5,7 @@ RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY kids-game-frontend/package.json ./kids-game-frontend/
 COPY packages/shared/package.json ./packages/shared/
 COPY kids-game-simple/package.json ./kids-game-simple/
@@ -24,8 +24,10 @@ COPY packages/shared/ ./packages/shared/
 COPY kids-game-house/shared/utils/gtrs-validator.ts ./kids-game-frontend/src/utils/gtrs-validator-local.ts
 RUN sed -i "s|from '../../../kids-game-house/shared/utils/gtrs-validator'|from './gtrs-validator-local'|" ./kids-game-frontend/src/utils/gtrs-validator.ts || true
 
+# Re-link after source COPY (host node_modules must not enter context — see root .dockerignore)
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 WORKDIR /app
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --prefer-offline
 RUN pnpm --filter kids-game-frontend build
 
 # 生产阶段

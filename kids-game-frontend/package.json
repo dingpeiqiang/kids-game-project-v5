@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:clean": "node clean-vite-cache.js && vite",
-    "build": "node clean-vite-cache.js && node scripts/generate-version.js dist && vite build",
-    "build:fast": "vite build",
+    "build": "node clean-vite-cache.js && node scripts/generate-version.js dist && pnpm exec vite build",
+    "build:fast": "pnpm exec vite build",
     "build:version": "node scripts/generate-version.js dist",
     "preview": "vite preview",
     "clean": "node clean-vite-cache.js",
