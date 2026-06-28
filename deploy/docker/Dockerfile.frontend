@@ -5,9 +5,10 @@ RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 COPY kids-game-frontend/package.json ./kids-game-frontend/
 COPY packages/shared/package.json ./packages/shared/
+COPY kids-game-simple/package.json ./kids-game-simple/
 
 RUN npm install -g pnpm@9.15.0
 
