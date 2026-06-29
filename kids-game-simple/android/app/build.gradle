@@ -4,6 +4,9 @@ android {
     namespace = "com.kidsgame.simple"
     compileSdkVersion 36
     buildToolsVersion "37.0.0"
+    buildFeatures {
+        buildConfig = true
+    }
     defaultConfig {
         applicationId "com.kidsgame.simple"
         minSdkVersion 24

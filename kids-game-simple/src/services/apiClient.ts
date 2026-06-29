@@ -16,30 +16,91 @@
  */
 
 import JSEncrypt from 'jsencrypt'
+import { Capacitor } from '@capacitor/core'
 
-// 后端基地址：开发走 Vite 代理；生产默认同源 /api（Nginx → backend）
+/** 生产 Android 内置 dist 时 WebView 源为 https://localhost，相对 /api 会被 Capacitor 当本地资源拦截 */
+const DEFAULT_PROD_API_BASE = 'https://kidsgame.dingpq.cn/api'
+
+function isCapacitorNative(): boolean {
+  try {
+    return Capacitor.isNativePlatform()
+  } catch {
+    return false
+  }
+}
+
+/** 内置 dist 的 Android/iOS 包：页面源为 https://localhost，相对 /api 会被 WebView 当本地文件 */
+function isBundledCapacitorOrigin(): boolean {
+  if (typeof window === 'undefined' || !import.meta.env.PROD) return false
+  const h = window.location.hostname
+  return h === 'localhost' || h === '127.0.0.1'
+}
+
+function absoluteApiBaseFromEnv(): string {
+  const raw = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
+  const candidate = (raw || DEFAULT_PROD_API_BASE).replace(/\/$/, '')
+  if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
+    return candidate
+  }
+  return DEFAULT_PROD_API_BASE
+}
+
+// 后端基地址：开发走 Vite 代理；生产使用 .env.production 配置的地址
 function resolveApiBase(): string {
   const raw = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
-  if (import.meta.env.DEV) return '/api'
-  if (!raw) return '/api'
-  if (raw.startsWith('/')) return raw.replace(/\/$/, '') || '/api'
+  const isDev = import.meta.env.DEV
+  const native = isCapacitorNative()
+  const bundledCap = isBundledCapacitorOrigin()
+
+  if (isDev && !native && !bundledCap) {
+    console.log('[apiClient] DEV mode, using /api (Vite proxy)')
+    return '/api'
+  }
+
+  if (native || bundledCap) {
+    const absolute = absoluteApiBaseFromEnv()
+    if (!raw) {
+      console.warn('[apiClient] VITE_API_BASE missing in build, default:', absolute)
+    }
+    console.log(
+      '[apiClient] Capacitor/bundled origin — API_BASE:',
+      absolute,
+      `(native=${native}, bundled=${bundledCap})`,
+    )
+    return absolute
+  }
+
+  const fallback = raw || DEFAULT_PROD_API_BASE
+
+  if (!raw) {
+    console.error('[apiClient] VITE_API_BASE not set in production; using default:', fallback)
+  }
+
+  let base = fallback.replace(/\/$/, '') || DEFAULT_PROD_API_BASE
+
+  if (base.startsWith('/')) {
+    console.log('[apiClient] Using relative path API base:', base)
+    return base
+  }
 
   if (typeof window !== 'undefined') {
     const pageHost = window.location.hostname
     const pageIsLocal = pageHost === 'localhost' || pageHost === '127.0.0.1'
     try {
-      const apiHost = new URL(raw).hostname
+      const apiHost = new URL(fallback).hostname
       const apiIsLocal = apiHost === 'localhost' || apiHost === '127.0.0.1'
       if (!pageIsLocal && apiIsLocal) {
-        console.warn('[apiClient] 页面非本机访问但 API 指向 localhost，已改为同源 /api:', raw)
+        console.warn('[apiClient] Page not local but API points to localhost, switching to relative /api:', fallback)
         return '/api'
       }
-    } catch {
-      /* 非法 URL，走默认 */
-      return '/api'
+    } catch (e) {
+      console.error('[apiClient] Invalid API URL format:', fallback, e)
+      return DEFAULT_PROD_API_BASE
     }
   }
-  return raw.replace(/\/$/, '')
+
+  console.log('[apiClient] API_BASE resolved to:', base)
+  return base
 }
 
 const API_BASE = resolveApiBase()

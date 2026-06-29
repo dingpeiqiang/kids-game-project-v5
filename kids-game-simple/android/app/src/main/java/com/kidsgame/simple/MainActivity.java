@@ -2,8 +2,8 @@ package com.kidsgame.simple;
 
 import android.util.Log;
 import com.getcapacitor.BridgeActivity;
-import com.dnspod.httpdns.DnsConfig;
-import com.dnspod.httpdns.MSDKDnsResolver;
+import com.tencent.msdk.dns.DnsConfig;
+import com.tencent.msdk.dns.MSDKDnsResolver;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -14,7 +14,7 @@ public class MainActivity extends BridgeActivity {
             .token(BuildConfig.HTTPDNS_TOKEN)
             .https();
         if (BuildConfig.DEBUG) {
-            builder.logLevel(Log.VERBOSE);
+            builder.logLevel(Log.WARN);
         }
         MSDKDnsResolver.getInstance().init(this, builder.build());
     }
