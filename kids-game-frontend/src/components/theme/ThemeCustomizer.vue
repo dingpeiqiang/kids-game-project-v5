@@ -86,7 +86,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue';
 import { useThemeStore } from '../../core/store';
-import type { ThemeConfig } from '../../types/theme';
+import type { AppThemeConfig } from '../../types/theme.types';
 
 const emit = defineEmits<{
   close: [];
@@ -152,7 +152,7 @@ function resetToDefault(): void {
 
 // 保存主题
 function saveTheme(): void {
-  const themeConfig: Omit<ThemeConfig, 'id'> = {
+  const themeConfig: Omit<AppThemeConfig, 'id'> = {
     name: themeName.value,
     colors: {
       primary: themeColors.primary,

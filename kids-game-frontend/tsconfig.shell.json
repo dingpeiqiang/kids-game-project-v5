@@ -1,0 +1,24 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shell/*": ["src/shell/*"],
+      "@/*": ["src/*"],
+      "@kids-game/shared": ["src/shared/index.ts"],
+      "@kids-game/shared/*": ["src/shared/*"]
+    }
+  },
+  "include": [
+    "src/shell/**/*.ts",
+    "src/shell/**/*.vue",
+    "src/shell/shell/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

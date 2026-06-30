@@ -1,4 +1,2 @@
 packages:
-  - 'packages/*'
   - 'kids-game-frontend'
-  - 'kids-game-simple'

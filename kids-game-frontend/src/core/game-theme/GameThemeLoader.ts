@@ -4,10 +4,35 @@
  */
 
 import { themeApi } from '@/services/theme-api.service';
-import { API_CONSTANTS } from '@/services/api.types';
-import type { ThemeConfig } from '@/core/theme/ThemeManager';
+import type { ThemeConfig as GtrsThemePackage } from '@/types/theme.types';
+import type { ThemeConfig as PhaserThemeConfig } from '@/core/theme/ThemeManager';
 
-const API_BASE = '/api';
+/** 后端 / 本地可能返回 GTRS 包或 Phaser 扁平配置 */
+export type GameThemeRuntimeConfig = GtrsThemePackage | PhaserThemeConfig;
+
+function isGtrsPackage(config: GameThemeRuntimeConfig): config is GtrsThemePackage {
+  return typeof config === 'object' && config !== null && 'default' in config;
+}
+
+function parseThemeConfigFromDownload(raw: unknown): GameThemeRuntimeConfig | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  if ('configJson' in obj && typeof obj.configJson === 'string') {
+    try {
+      return JSON.parse(obj.configJson) as GameThemeRuntimeConfig;
+    } catch {
+      return null;
+    }
+  }
+  if ('config' in obj && obj.config && typeof obj.config === 'object') {
+    return obj.config as GameThemeRuntimeConfig;
+  }
+  return raw as GameThemeRuntimeConfig;
+}
+
+function getGtrsDefault(config: GameThemeRuntimeConfig) {
+  return isGtrsPackage(config) ? config.default : null;
+}
 
 /**
  * 游戏主题配置
@@ -16,7 +41,7 @@ export interface GameThemeConfig {
   themeId: number;
   themeName: string;
   gameCode?: string;
-  config: ThemeConfig;
+  config: GameThemeRuntimeConfig;
 }
 
 /**
@@ -180,7 +205,10 @@ export class GameThemeLoader {
       const downloadResponse = await themeApi.download(themeId.toString());
 
       if (downloadResponse) {
-        const config = downloadResponse.config || downloadResponse;
+        const config = parseThemeConfigFromDownload(downloadResponse);
+        if (!config) {
+          return null;
+        }
 
         const themeConfig: GameThemeConfig = {
           themeId,
@@ -209,10 +237,8 @@ export class GameThemeLoader {
   private async cacheThemeResources(themeConfig: GameThemeConfig): Promise<void> {
     const { config } = themeConfig;
 
-    // 主题配置处理
-    if (!config || !config.default) return;
-
-    const themeData = config.default;
+    const themeData = getGtrsDefault(config);
+    if (!themeData) return;
     const { assets, audio } = themeData;
 
     // 缓存图片资源
@@ -248,11 +274,18 @@ export class GameThemeLoader {
    * @returns 资源对象
    */
   getResource(resourceKey: string): any {
-    if (!this.currentTheme || !this.currentTheme.config || !this.currentTheme.config.default) {
+    if (!this.currentTheme?.config) {
       return null;
     }
 
-    const themeData = this.currentTheme.config.default;
+    const themeData = getGtrsDefault(this.currentTheme.config);
+    if (!themeData) {
+      const flat = this.currentTheme.config as PhaserThemeConfig;
+      if (flat.assets?.[resourceKey]) {
+        return { type: 'image', url: flat.assets[resourceKey] };
+      }
+      return null;
+    }
     const { assets, audio } = themeData;
 
     // 查找资源
@@ -273,11 +306,15 @@ export class GameThemeLoader {
    * @returns 样式值
    */
   getStyle(styleKey: string): string | undefined {
-    if (!this.currentTheme || !this.currentTheme.config || !this.currentTheme.config.default) {
+    if (!this.currentTheme?.config) {
       return undefined;
     }
 
-    const themeData = this.currentTheme.config.default;
+    const themeData = getGtrsDefault(this.currentTheme.config);
+    if (!themeData) {
+      const flat = this.currentTheme.config as PhaserThemeConfig;
+      return flat.styles?.[styleKey];
+    }
     const { styles } = themeData;
 
     if (!styles) return undefined;
@@ -370,8 +407,10 @@ export class GameThemeLoader {
   applyThemeToGame(gameContainer: HTMLElement): void {
     if (!gameContainer) return;
 
-    const themeData = this.currentTheme?.config?.default;
-    if (!themeData || !themeData.styles) return;
+    const themeData = this.currentTheme?.config
+      ? getGtrsDefault(this.currentTheme.config)
+      : null;
+    if (!themeData?.styles) return;
 
     const styles = themeData.styles;
 

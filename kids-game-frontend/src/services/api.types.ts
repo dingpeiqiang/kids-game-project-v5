@@ -246,6 +246,7 @@ export interface Game {
   iconUrl?: string;
   coverUrl?: string;
   description?: string;
+  gameUrl?: string;
   status: number;
 }
 

@@ -83,7 +83,7 @@ export async function checkGameResources(
     if (themeId) {
       console.log('[ResourceChecker] 步骤 4: 检查主题是否存在...');
       try {
-        await themeApi.getDetail(themeId);
+        await themeApi.getDetail(String(themeId));
         console.log('[ResourceChecker] 主题存在');
       } catch (error: any) {
         return {

@@ -283,7 +283,83 @@ export interface ThemeAudio {
   [key: string]: AudioAsset | BGMAudio | SFXAudio | undefined;
 }
 
-// ==================== 主题配置主接口 ====================
+// ==================== 应用 UI 主题（CSS 变量 / 预设主题） ====================
+
+/**
+ * 应用壳层主题色板（与 preset-themes、theme.service 一致）
+ */
+export interface AppThemeColors {
+  primary: string;
+  secondary: string;
+  yellow: string;
+  blue: string;
+  purple: string;
+  white: string;
+  gray: Record<string, string>;
+  success: string;
+  warning: string;
+  error: string;
+  info: string;
+}
+
+export interface AppThemeTypography {
+  fontSizes: Record<string, string>;
+}
+
+export interface AppThemeRadius {
+  sm: string;
+  base: string;
+  md: string;
+  lg: string;
+  xl: string;
+  '2xl': string;
+  full: string;
+  [key: string]: string;
+}
+
+export interface AppThemeShadow {
+  sm: string;
+  base: string;
+  md: string;
+  lg: string;
+  xl: string;
+  [key: string]: string;
+}
+
+export interface AppThemeSpacing {
+  xs: string;
+  sm: string;
+  md: string;
+  lg: string;
+  xl: string;
+  '2xl': string;
+  [key: string]: string;
+}
+
+export interface AppThemeTransition {
+  fast: string;
+  base: string;
+  slow: string;
+  [key: string]: string;
+}
+
+/**
+ * 应用 UI 主题配置（扁平结构，用于 ThemeSwitcher / theme.service）
+ * 与 GTRS 包格式 {@link ThemeConfig} 区分
+ */
+export interface AppThemeConfig {
+  id: string;
+  name: string;
+  description?: string;
+  colors: AppThemeColors;
+  typography: AppThemeTypography;
+  radius: AppThemeRadius;
+  shadow: AppThemeShadow;
+  spacing: AppThemeSpacing;
+  transition: AppThemeTransition;
+}
+
+// ==================== GTRS 主题配置主接口 ====================
 
 /**
  * 单个主题配置 (default 键)

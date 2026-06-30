@@ -303,15 +303,26 @@ class ThemeManager {
         throw new Error('Failed to download theme');
       }
 
-      const themeConfig = result.config || result;
+      let themeConfig: Record<string, unknown> = {};
+      if (result.configJson) {
+        try {
+          themeConfig = JSON.parse(result.configJson) as Record<string, unknown>;
+        } catch {
+          themeConfig = {};
+        }
+      }
+      const defaultBlock =
+        themeConfig.default && typeof themeConfig.default === 'object'
+          ? (themeConfig.default as Record<string, unknown>)
+          : themeConfig;
       const themeKey = `cloud_${themeId}`;
 
       this.localDiyThemes[themeKey] = {
         baseThemeKey: 'default',
-        name: themeConfig.name,
-        author: themeConfig.author,
-        assetOverrides: themeConfig.assets,
-        styleOverrides: themeConfig.styles,
+        name: String(defaultBlock.name ?? '云端主题'),
+        author: String(defaultBlock.author ?? ''),
+        assetOverrides: (defaultBlock.assets ?? themeConfig.assets) as ThemeAssets | undefined,
+        styleOverrides: (defaultBlock.styles ?? themeConfig.styles) as ThemeStyles | undefined,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };

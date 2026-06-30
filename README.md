@@ -7,8 +7,8 @@
 | 目录 | 职责 | 开发端口 |
 |------|------|----------|
 | `kids-game-backend` | Spring Boot API | 8080 |
-| `kids-game-frontend` | **管理端**（管理员 / 家长，`/admin` 按角色菜单） | 3000 |
-| `kids-game-simple` | **终端**（儿童游玩、答题；Capacitor） | 3001 |
+| `kids-game-frontend` | **统一前端**（终端壳 `src/shell` + 大厅/管理/家长；业务在 client-core） | 3000 |
+| `packages/client-core` | **共享业务**（模块、游戏、API、组件） | — |
 | `packages/shared` | 共享类型、角色、鉴权、`API` 常量 | — |
 | `kids-game-house` | 独立游戏工程与构建产物（可选） | 按游戏 |
 
@@ -18,28 +18,26 @@
 
 ```bash
 pnpm install
-pnpm dev:all          # 管理端 + 终端（并行）
+pnpm dev              # 统一前端
 # Windows 含后端：deploy\start-dev-all.bat
-pnpm dev:admin        # 仅管理端
-pnpm dev:simple       # 仅终端
-pnpm run build        # shared + admin + simple
+pnpm run build        # shared + 前端 dist
 # Windows 生产构建：deploy\build-production.bat
 ```
 
 | 环境 | 地址 |
 |------|------|
-| 管理端 | http://localhost:3000 |
-| 终端 | http://localhost:3001 |
+| 前端（大厅 / 管理 / 家长） | http://localhost:3000 |
 | API / 文档 | http://localhost:8080 、http://localhost:8080/doc.html |
 
-## 双前端架构（要点）
+## 双前端架构（方案 C）
 
-- **业务源码主仓**：`kids-game-frontend/src`（模块、组件、API、样式）。
-- **终端包**：`kids-game-simple` 仅保留独立入口、`@simple` 路由与轻量游戏实现；Vite 将 `@` 别名指向前端 `src`，共用 `public`。
-- **共享包**：`@kids-game/shared`，两应用鉴权与角色逻辑一致。
-- **跨应用跳转**：`VITE_ADMIN_URL` / `VITE_PLAY_URL`；终端访问 `/admin`、`/parent`、`/creator-center` 会重定向到管理端。
+- **业务源码主仓**：`packages/client-core/src`（模块、游戏、组件、API、样式）。
+- **唯一前端**：`kids-game-frontend`；`@` → `client-core`，`@shell` → `src/shell`（Canvas 平台、路由）。
+- **共享包**：`@kids-game/shared`（鉴权/角色）+ `@kids-game/client-core`（业务）。
+- 说明：[docs/CLIENT_CORE.md](./docs/CLIENT_CORE.md)、[docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)。
+- 大厅、游戏、管理后台、家长中心为 **同一路由应用**（`/admin`、`/parent` 等同源）。
 
-完整说明：[dual-frontend.md](./kids-game-frontend/src/docs/04-architecture/dual-frontend.md)。
+完整说明：[docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)。
 
 ## 目录结构（精简）
 
@@ -52,12 +50,10 @@ kids-game-project-v5-master/
 │   ├── deploy.bat            # Docker 部署（Windows）
 │   ├── deploy.sh             # Docker 部署（Linux/Mac）
 │   ├── start-dev-all.bat     # 本地：后端 + 双前端
-│   └── build-production.bat  # 生产构建双前端
+│   └── build-production.bat  # 生产构建前端
 ├── kids-game-backend/        # Java 多模块后端
-├── kids-game-frontend/       # 管理端 + 共用业务源码
+├── kids-game-frontend/       # 统一 Web 前端（src/shell + public）
 │   └── src/docs/             # 项目手册（推荐从这里读文档）
-├── kids-game-simple/         # 终端 SPA
-│   └── src/                  # 路由、Canvas 游戏、GTRS 工具
 ├── packages/shared/            # @kids-game/shared
 ├── kids-game-house/          # 独立游戏（如 snake）
 └── docs/                     # 仓库级说明与归档
@@ -69,7 +65,7 @@ kids-game-project-v5-master/
 |----|------|
 | 后端 | Spring Boot 3、MySQL、MyBatis-Plus、Redis、JWT、Knife4j |
 | 前端 | Vue 3、TypeScript、Vite、Pinia、Tailwind / SCSS |
-| 游戏 | Phaser 3（部分模块）、Canvas 轻量游戏（`kids-game-simple/src/games`） |
+| 游戏 | Phaser 3（部分模块）、Canvas 轻量游戏（`packages/client-core/src/games`） |
 | 主题 | GTRS 规范（见前端手册「项目指南」） |
 
 ## 文档入口（请优先使用）

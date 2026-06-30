@@ -2,17 +2,18 @@
   "name": "kids-game-monorepo",
   "private": true,
   "version": "5.0.0",
-  "description": "Kids game platform monorepo",
+  "description": "Kids game platform — single frontend app",
   "scripts": {
-    "dev:admin": "pnpm --filter kids-game-frontend dev",
-    "dev:simple": "pnpm --filter kids-game-simple dev",
-    "dev:shared": "pnpm --filter @kids-game/shared dev",
-    "dev:all": "pnpm -r --parallel --filter kids-game-frontend --filter kids-game-simple dev",
-    "build:admin": "pnpm --filter kids-game-frontend build",
-    "build:simple": "pnpm --filter kids-game-simple build",
-    "check:simple": "pnpm --filter kids-game-simple audit && pnpm --filter kids-game-simple type-check",
-    "build": "pnpm run build:shared && pnpm run build:admin && pnpm run build:simple",
-    "build:shared": "pnpm --filter @kids-game/shared build"
+    "dev": "pnpm --filter kids-game-frontend dev",
+    "dev:frontend": "pnpm --filter kids-game-frontend dev",
+    "build": "pnpm --filter kids-game-frontend build",
+    "build:frontend": "pnpm --filter kids-game-frontend build",
+    "fix:game-imports": "node scripts/fix-frontend-game-shell-imports.mjs",
+    "check:frontend": "node scripts/ensure-frontend-games.mjs && node scripts/fix-frontend-game-shell-imports.mjs && pnpm --filter kids-game-frontend run audit && pnpm --filter kids-game-frontend run type-check",
+    "integrate:packages": "node scripts/integrate-packages-into-frontend.mjs",
+    "remove:packages": "node scripts/remove-packages-dir.mjs",
+    "finalize:packages": "node scripts/integrate-packages-into-frontend.mjs && node scripts/remove-packages-dir.mjs",
+    "remove:simple": "node scripts/remove-kids-game-simple.mjs"
   },
   "engines": {
     "node": ">=18",

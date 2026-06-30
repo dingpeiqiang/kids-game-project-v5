@@ -4,22 +4,22 @@
 
 import { defineStore } from 'pinia';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import type { ThemeConfig } from '../../types/theme.types';
+import type { AppThemeConfig } from '../../types/theme.types';
 import { presetThemes, getThemeById, getDefaultTheme } from '../../configs/preset-themes';
 import { themeService } from '../../services/theme.service';
 
 export const useThemeStore = defineStore('theme', () => {
   // 当前主题
-  const currentTheme = ref<ThemeConfig>(getDefaultTheme());
+  const currentTheme = ref<AppThemeConfig>(getDefaultTheme());
 
   // 所有可用主题（预设 + 自定义）
-  const availableThemes = ref<ThemeConfig[]>([...presetThemes]);
+  const availableThemes = ref<AppThemeConfig[]>([...presetThemes]);
 
   // 是否正在加载
   const loading = ref(false);
 
   // 主题变更监听器
-  let themeChangeListener: ((event: Event) => void) | null = null;
+  let themeChangeListener: ((event: CustomEvent<{ theme: AppThemeConfig }>) => void) | null = null;
 
   /**
    * 初始化
@@ -39,10 +39,10 @@ export const useThemeStore = defineStore('theme', () => {
     }
 
     // 监听主题变更事件
-    themeChangeListener = (event: CustomEvent) => {
+    themeChangeListener = (event: CustomEvent<{ theme: AppThemeConfig }>) => {
       currentTheme.value = event.detail.theme;
     };
-    window.addEventListener('theme-change', themeChangeListener);
+    window.addEventListener('theme-change', themeChangeListener as EventListener);
 
     loading.value = false;
   }
@@ -74,7 +74,7 @@ export const useThemeStore = defineStore('theme', () => {
   /**
    * 创建自定义主题
    */
-  function createCustomTheme(themeConfig: Omit<ThemeConfig, 'id'>): string {
+  function createCustomTheme(themeConfig: Omit<AppThemeConfig, 'id'>): string {
     const themeId = themeService.createCustomTheme(themeConfig);
     loadCustomThemes();
     return themeId;
@@ -83,7 +83,7 @@ export const useThemeStore = defineStore('theme', () => {
   /**
    * 更新自定义主题
    */
-  function updateCustomTheme(themeId: string, themeConfig: Partial<ThemeConfig>): boolean {
+  function updateCustomTheme(themeId: string, themeConfig: Partial<AppThemeConfig>): boolean {
     const success = themeService.updateCustomTheme(themeId, themeConfig);
     if (success) {
       loadCustomThemes();
@@ -131,21 +131,21 @@ export const useThemeStore = defineStore('theme', () => {
   /**
    * 根据 ID 查找主题
    */
-  function findThemeById(themeId: string): ThemeConfig | undefined {
+  function findThemeById(themeId: string): AppThemeConfig | undefined {
     return availableThemes.value.find(theme => theme.id === themeId);
   }
 
   /**
    * 获取预设主题
    */
-  function getPresetThemes(): ThemeConfig[] {
+  function getPresetThemes(): AppThemeConfig[] {
     return presetThemes;
   }
 
   /**
    * 获取自定义主题
    */
-  function getCustomThemes(): ThemeConfig[] {
+  function getCustomThemes(): AppThemeConfig[] {
     return themeService.getCustomThemes();
   }
 
@@ -166,7 +166,7 @@ export const useThemeStore = defineStore('theme', () => {
   // 清理
   function cleanup(): void {
     if (themeChangeListener) {
-      window.removeEventListener('theme-change', themeChangeListener);
+      window.removeEventListener('theme-change', themeChangeListener as EventListener);
       themeChangeListener = null;
     }
   }

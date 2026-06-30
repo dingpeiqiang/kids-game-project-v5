@@ -10,12 +10,24 @@ importers:
 
   kids-game-frontend:
     dependencies:
+      '@babylonjs/core':
+        specifier: ^7.49.0
+        version: 7.54.3
+      '@babylonjs/loaders':
+        specifier: ^7.54.3
+        version: 7.54.3(@babylonjs/core@7.54.3)(babylonjs-gltf2interface@7.54.3)
+      '@capacitor/android':
+        specifier: ^8.4.0
+        version: 8.4.1(@capacitor/core@8.4.1)
+      '@capacitor/cli':
+        specifier: ^8.4.0
+        version: 8.4.1
+      '@capacitor/core':
+        specifier: ^8.4.0
+        version: 8.4.1
       '@element-plus/icons-vue':
         specifier: ^2.3.2
         version: 2.3.2(vue@3.5.39(typescript@5.4.5))
-      '@kids-game/shared':
-        specifier: workspace:*
-        version: link:../packages/shared
       '@types/marked':
         specifier: ^5.0.2
         version: 5.0.2
@@ -52,6 +64,9 @@ importers:
       marked:
         specifier: ^15.0.0
         version: 15.0.12
+      phaser:
+        specifier: 3.90.0
+        version: 3.90.0
       pinia:
         specifier: ^2.1.0
         version: 2.3.1(typescript@5.4.5)(vue@3.5.39(typescript@5.4.5))
@@ -95,73 +110,6 @@ importers:
       tailwindcss:
         specifier: ^3.4.0
         version: 3.4.19
-      typescript:
-        specifier: '5.4'
-        version: 5.4.5
-      vite:
-        specifier: ^5.0.0
-        version: 5.4.21(@types/node@20.19.43)(sass@1.101.0)(terser@5.48.0)
-      vue-tsc:
-        specifier: ^1.8.0
-        version: 1.8.27(typescript@5.4.5)
-
-  kids-game-simple:
-    dependencies:
-      '@capacitor/android':
-        specifier: ^8.4.0
-        version: 8.4.1(@capacitor/core@8.4.1)
-      '@capacitor/cli':
-        specifier: ^8.4.0
-        version: 8.4.1
-      '@capacitor/core':
-        specifier: ^8.4.0
-        version: 8.4.1
-      axios:
-        specifier: ^1.6.0
-        version: 1.18.1
-      compressorjs:
-        specifier: ^1.2.1
-        version: 1.3.0
-      jsencrypt:
-        specifier: ^3.5.4
-        version: 3.5.4
-      marked:
-        specifier: ^15.0.0
-        version: 15.0.12
-      phaser:
-        specifier: 3.90.0
-        version: 3.90.0
-      pinia:
-        specifier: ^2.1.0
-        version: 2.3.1(typescript@5.4.5)(vue@3.5.39(typescript@5.4.5))
-      vue:
-        specifier: ^3.4.0
-        version: 3.5.39(typescript@5.4.5)
-      vue-router:
-        specifier: ^4.2.0
-        version: 4.6.4(vue@3.5.39(typescript@5.4.5))
-    devDependencies:
-      '@types/node':
-        specifier: ^20.10.0
-        version: 20.19.43
-      '@vitejs/plugin-vue':
-        specifier: ^5.0.0
-        version: 5.2.4(vite@5.4.21(@types/node@20.19.43)(sass@1.101.0)(terser@5.48.0))(vue@3.5.39(typescript@5.4.5))
-      '@vue/tsconfig':
-        specifier: ^0.5.0
-        version: 0.5.1
-      autoprefixer:
-        specifier: ^10.4.16
-        version: 10.5.2(postcss@8.5.15)
-      postcss:
-        specifier: ^8.4.32
-        version: 8.5.15
-      sass:
-        specifier: ^1.98.0
-        version: 1.101.0
-      tailwindcss:
-        specifier: ^3.4.0
-        version: 3.4.19
       terser:
         specifier: ^5.48.0
         version: 5.48.0
@@ -177,12 +125,6 @@ importers:
       vue-tsc:
         specifier: ^1.8.0
         version: 1.8.27(typescript@5.4.5)
-
-  packages/shared:
-    devDependencies:
-      typescript:
-        specifier: '5.4'
-        version: 5.4.5
 
 packages:
 
@@ -206,6 +148,15 @@ packages:
   '@babel/types@7.29.7':
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
+
+  '@babylonjs/core@7.54.3':
+    resolution: {integrity: sha512-P5ncXVd8GEUJLhwloP9V0oVwQYIrvZztguVeLlvd5Rx+9aQnenKjpV8auJ6SRsUlAmNZU4pFTKzwF6o2EUfhAw==}
+
+  '@babylonjs/loaders@7.54.3':
+    resolution: {integrity: sha512-RBPmOsaMTxi6Ga08ueLTm6Tnvx/l2nNQigucubvrngZ7muwn5/ubfcStckkI1c0qvhR1+/FFlD54do7gZ1pnsQ==}
+    peerDependencies:
+      '@babylonjs/core': ^7.0.0
+      babylonjs-gltf2interface: ^7.0.0
 
   '@capacitor/android@8.4.1':
     resolution: {integrity: sha512-igtDCJ7QQn0P2qHFD9p4KXaa6V1b2PRNt+MxjVwtjTm/BJvqmiazOJq6rPjwFSZnfHm6iFoZk8TfzHd44pyBGw==}
@@ -833,6 +784,9 @@ packages:
 
   axios@1.18.1:
     resolution: {integrity: sha512-3nTvFlvpn9Zu/RkHUqtc7/+al4UpRW5az71ap5zccp6e8RAYEzhMTecX8Dz1wWDYrPpUoB1HAQEGEAEvUr7S9g==}
+
+  babylonjs-gltf2interface@7.54.3:
+    resolution: {integrity: sha512-ZAWYFyE+SOczfWT19O4e3YRkCZ5i57SiD2eK2kqc+Tow/t9X1S45xgSFNuHZff++dd5BlVIEQDSnFV+McFLSnQ==}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -1861,6 +1815,13 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
+  '@babylonjs/core@7.54.3': {}
+
+  '@babylonjs/loaders@7.54.3(@babylonjs/core@7.54.3)(babylonjs-gltf2interface@7.54.3)':
+    dependencies:
+      '@babylonjs/core': 7.54.3
+      babylonjs-gltf2interface: 7.54.3
+
   '@capacitor/android@8.4.1(@capacitor/core@8.4.1)':
     dependencies:
       '@capacitor/core': 8.4.1
@@ -2419,6 +2380,8 @@ snapshots:
     transitivePeerDependencies:
       - debug
       - supports-color
+
+  babylonjs-gltf2interface@7.54.3: {}
 
   balanced-match@1.0.2: {}
 

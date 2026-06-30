@@ -3,7 +3,7 @@
  * 负责应用主题到 DOM 和 localStorage 持久化
  */
 
-import type { ThemeConfig } from '../types/theme.types';
+import type { AppThemeConfig } from '../types/theme.types';
 import { getThemeById, getDefaultTheme } from '../configs/preset-themes';
 
 const THEME_STORAGE_KEY = 'app-theme';
@@ -13,8 +13,8 @@ const CUSTOM_THEME_STORAGE_KEY = 'app-custom-theme';
  * 主题管理服务类
  */
 class ThemeService {
-  private currentTheme: ThemeConfig | null = null;
-  private customThemes: Record<string, ThemeConfig> = {};
+  private currentTheme: AppThemeConfig | null = null;
+  private customThemes: Record<string, AppThemeConfig> = {};
 
   /**
    * 初始化主题
@@ -74,7 +74,7 @@ class ThemeService {
   /**
    * 应用主题到 DOM
    */
-  applyTheme(theme: ThemeConfig): void {
+  applyTheme(theme: AppThemeConfig): void {
     console.log('应用主题:', theme.name, theme.id);
     this.currentTheme = theme;
 
@@ -183,9 +183,9 @@ class ThemeService {
   /**
    * 创建自定义主题
    */
-  createCustomTheme(theme: Omit<ThemeConfig, 'id'>): string {
+  createCustomTheme(theme: Omit<AppThemeConfig, 'id'>): string {
     const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const customTheme: ThemeConfig = {
+    const customTheme: AppThemeConfig = {
       ...theme,
       id,
       name: theme.name || '自定义主题',
@@ -200,7 +200,7 @@ class ThemeService {
   /**
    * 更新自定义主题
    */
-  updateCustomTheme(id: string, theme: Partial<ThemeConfig>): boolean {
+  updateCustomTheme(id: string, theme: Partial<AppThemeConfig>): boolean {
     const customTheme = this.customThemes[id];
     if (!customTheme) {
       return false;
@@ -245,14 +245,14 @@ class ThemeService {
   /**
    * 获取所有自定义主题
    */
-  getCustomThemes(): ThemeConfig[] {
+  getCustomThemes(): AppThemeConfig[] {
     return Object.values(this.customThemes);
   }
 
   /**
    * 获取当前主题
    */
-  getCurrentTheme(): ThemeConfig | null {
+  getCurrentTheme(): AppThemeConfig | null {
     return this.currentTheme;
   }
 
@@ -273,7 +273,7 @@ class ThemeService {
    */
   importTheme(config: string): string | null {
     try {
-      const theme: ThemeConfig = JSON.parse(config);
+      const theme: AppThemeConfig = JSON.parse(config);
 
       // 验证主题配置
       if (!theme.colors || !theme.colors.primary) {
@@ -291,7 +291,7 @@ class ThemeService {
   /**
    * 根据 ID 获取主题（包括自定义主题）
    */
-  private getThemeById(id: string): ThemeConfig | null {
+  private getThemeById(id: string): AppThemeConfig | null {
     // 先检查自定义主题
     const customTheme = this.customThemes[id];
     if (customTheme) {

@@ -70,7 +70,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useThemeStore } from '../../core/store';
-import type { ThemeConfig } from '../../types/theme';
+import type { AppThemeConfig } from '../../types/theme.types';
 
 const themeStore = useThemeStore();
 
@@ -83,7 +83,7 @@ function toggleDropdown(): void {
   isDropdownOpen.value = !isDropdownOpen.value;
 }
 
-function selectTheme(theme: ThemeConfig): void {
+function selectTheme(theme: AppThemeConfig): void {
   themeStore.switchTheme(theme.id);
   isDropdownOpen.value = false;
 }

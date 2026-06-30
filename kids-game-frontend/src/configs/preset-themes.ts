@@ -2,12 +2,12 @@
  * 预设主题配置
  */
 
-import type { ThemeConfig } from '../types/theme.types';
+import type { AppThemeConfig } from '../types/theme.types';
 
 /**
  * 默认主题 - 粉彩风格
  */
-export const defaultTheme: ThemeConfig = {
+export const defaultTheme: AppThemeConfig = {
   id: 'default',
   name: '粉彩主题',
   description: '默认的粉彩风格主题',
@@ -82,7 +82,7 @@ export const defaultTheme: ThemeConfig = {
 /**
  * 深色主题
  */
-export const darkTheme: ThemeConfig = {
+export const darkTheme: AppThemeConfig = {
   id: 'dark',
   name: '深色主题',
   description: '深色护眼主题',
@@ -157,7 +157,7 @@ export const darkTheme: ThemeConfig = {
 /**
  * 森林主题
  */
-export const forestTheme: ThemeConfig = {
+export const forestTheme: AppThemeConfig = {
   id: 'forest',
   name: '森林主题',
   description: '清新自然的森林风格',
@@ -232,7 +232,7 @@ export const forestTheme: ThemeConfig = {
 /**
  * 海洋主题
  */
-export const oceanTheme: ThemeConfig = {
+export const oceanTheme: AppThemeConfig = {
   id: 'ocean',
   name: '海洋主题',
   description: '清凉的海洋风格',
@@ -307,7 +307,7 @@ export const oceanTheme: ThemeConfig = {
 /**
  * 彩虹主题
  */
-export const rainbowTheme: ThemeConfig = {
+export const rainbowTheme: AppThemeConfig = {
   id: 'rainbow',
   name: '彩虹主题',
   description: '多彩的彩虹风格',
@@ -393,13 +393,13 @@ export const presetThemes = [
 /**
  * 根据 ID 获取主题
  */
-export function getThemeById(id: string): ThemeConfig | undefined {
+export function getThemeById(id: string): AppThemeConfig | undefined {
   return presetThemes.find(theme => theme.id === id);
 }
 
 /**
  * 获取默认主题
  */
-export function getDefaultTheme(): ThemeConfig {
+export function getDefaultTheme(): AppThemeConfig {
   return defaultTheme;
 }

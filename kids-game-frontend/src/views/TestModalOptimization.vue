@@ -73,7 +73,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElDialog, ElButton } from 'element-plus'
-import { dialog } from '@/composables/useDialog'
+import { dialog, confirm } from '@/composables/useDialog'
 import KidModal from '@/components/ui/KidModal.vue'
 
 const showStats = ref(false)
@@ -106,7 +106,7 @@ const showStatsModal = () => {
 }
 
 const showConfirmModal = async () => {
-  const confirmed = await dialog.danger('确定要删除这个游戏吗？此操作不可恢复')
+  const confirmed = await confirm.danger('确定要删除这个游戏吗？此操作不可恢复')
   if (confirmed) {
     dialog.success('游戏已删除')
   }

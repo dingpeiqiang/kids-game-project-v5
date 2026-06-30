@@ -241,8 +241,8 @@ const fetchRelationList = async () => {
   loading.value = true
   try {
     const res = await getRelationList({
-      guardianId: searchForm.guardianId,
-      kidId: searchForm.kidId,
+      guardianId: searchForm.guardianId ? Number(searchForm.guardianId) : undefined,
+      kidId: searchForm.kidId ? Number(searchForm.kidId) : undefined,
       page: pagination.page,
       size: pagination.size
     })
