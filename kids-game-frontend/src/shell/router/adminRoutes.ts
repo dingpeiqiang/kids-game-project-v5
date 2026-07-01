@@ -47,22 +47,22 @@ export const adminPortalRoutes: RouteRecordRaw[] = [
       {
         path: 'users',
         meta: { title: '用户管理', menuId: 'users', adminOnly: true },
-        component: () => import('@/views/admin/UserManagement.vue'),
+        component: () => import('@/modules/admin/components/UserManagement.vue'),
       },
       {
         path: 'relations',
         meta: { title: '关系管理', menuId: 'relations', adminOnly: true },
-        component: () => import('@/views/admin/RelationManagement.vue'),
+        component: () => import('@/modules/admin/components/RelationManagement.vue'),
       },
       {
         path: 'configs',
         meta: { title: '管控配置', menuId: 'configs' },
-        component: () => import('@/views/admin/ControlConfig.vue'),
+        component: () => import('@/modules/admin/components/ControlConfig.vue'),
       },
       {
         path: 'stats',
         meta: { title: '统计报表', menuId: 'stats' },
-        component: () => import('@/views/admin/UserStats.vue'),
+        component: () => import('@/modules/admin/components/UserStats.vue'),
       },
       {
         path: 'games',

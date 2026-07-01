@@ -23,6 +23,7 @@
 - [主题 API 参考](04-architecture/theme-api-reference.md)
 
 ### 4. 架构设计
+- [v5 前端目录结构规划（仓库 docs）](../../../docs/kids-game-frontend-structure.md)
 - [架构设计文档](04-architecture/index.md)
 - [游戏核心架构](04-architecture/game-architecture.md)
 - [主题数据库设计](04-architecture/theme-database-design.md)

@@ -24,6 +24,8 @@
 
 入口：`index.html` → `src/shell/main.ts`，端口 **3000**，构建输出 **`dist`**。
 
+**详细前端结构规划**（分层、目录树、新游戏清单、演进约定）：[kids-game-frontend-structure.md](./kids-game-frontend-structure.md)
+
 ## 从 packages 迁入（一次性）
 
 若仓库仍保留 `packages/client-core`、`packages/shared`：

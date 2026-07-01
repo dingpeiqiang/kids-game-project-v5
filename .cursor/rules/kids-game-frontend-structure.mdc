@@ -1,0 +1,28 @@
+---
+description: kids-game-frontend 目录分层与改代码落位约定
+globs: kids-game-frontend/**/*
+---
+
+# kids-game-frontend 结构约定
+
+完整说明见 [docs/kids-game-frontend-structure.md](mdc:docs/kids-game-frontend-structure.md)。
+
+## 落位
+
+- 终端路由、游玩宿主、Canvas/3D、虚拟触控 → `kids-game-frontend/src/shell/`
+- 业务页面（登录、家长、教师、管理、创作中心）→ `kids-game-frontend/src/modules/`
+- 跨模块 UI → `kids-game-frontend/src/components/`
+- 单款游戏逻辑与生命周期 → `kids-game-frontend/src/games/<gameId>/`，必须提供 `*.lifecycle.ts` 并注册
+- 角色与共享类型 → `kids-game-frontend/src/shared/`（`@kids-game/shared`）
+- 新 HTTP 接口 → `kids-game-frontend/src/services/*-api.service.ts`
+
+## 禁止
+
+- 在 `shared/` 中引入 Vue 页面或 `modules/*`
+- 游戏目录直接 import `modules/*` 下的业务页面
+- 未跑 `pnpm audit`（含 `audit-src-layout.mjs`）就新增未注册的 lifecycle 游戏
+- 新增 `src/views/admin/*`；管理端只用 `modules/admin/components/`
+
+## 别名
+
+`@/*` → `src/*`；`@shell/*` → `src/shell/*`；`@kids-game/shared` → `src/shared/index.ts`

@@ -7,7 +7,7 @@
     "dev": "vite",
     "dev:clean": "node clean-vite-cache.js && vite",
     "preaudit": "node ../scripts/ensure-frontend-games.mjs",
-    "build": "node ../scripts/ensure-frontend-games.mjs && node scripts/audit-framework-registry.mjs && node scripts/audit-gtrs-lifecycle.mjs && node scripts/audit-mobile-control-registry.mjs && node scripts/audit-game-orientation.mjs && node clean-vite-cache.js && node scripts/generate-version.js dist && pnpm exec vite build",
+    "build": "node ../scripts/ensure-frontend-games.mjs && node scripts/audit-framework-registry.mjs && node scripts/audit-gtrs-lifecycle.mjs && node scripts/audit-mobile-control-registry.mjs && node scripts/audit-game-orientation.mjs && node scripts/audit-src-layout.mjs && node clean-vite-cache.js && node scripts/generate-version.js dist && pnpm exec vite build",
     "build:fast": "pnpm exec vite build",
     "build:version": "node scripts/generate-version.js dist",
     "preview": "vite preview",
@@ -15,7 +15,7 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
     "type-check": "vue-tsc --noEmit",
     "type-check:shell": "vue-tsc --noEmit -p tsconfig.shell.json",
-    "audit": "node scripts/audit-framework-registry.mjs && node scripts/audit-gtrs-lifecycle.mjs && node scripts/audit-mobile-control-registry.mjs && node scripts/audit-game-orientation.mjs",
+    "audit": "node scripts/audit-framework-registry.mjs && node scripts/audit-gtrs-lifecycle.mjs && node scripts/audit-mobile-control-registry.mjs && node scripts/audit-game-orientation.mjs && node scripts/audit-src-layout.mjs",
     "cap:sync:android": "pnpm exec cap sync android",
     "cap:sync:android:remote": "node scripts/cap-sync-android-remote.mjs"
   },

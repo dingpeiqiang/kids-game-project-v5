@@ -1,6 +1,6 @@
 import type { GameEngine } from '@shell/services/gameEngine'
 import { audioService } from '@shell/services/audio'
-import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '../../data/items'
+import { GAME_ITEMS, ITEM_UNLOCK_TIMES, ITEM_SPAWN_WEIGHTS } from '@shell/data/items'
 import { app } from '@shell/services/appBridge'
 import { gameActions } from '@shell/platform/gameBridge'
 import type { GameLifecycle } from '@shell/platform/GameLifecycle'
